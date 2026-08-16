@@ -175,8 +175,41 @@ const ConstellationBoard = (function () {
 
     var quiet = false;
 
+    // WHERE THE GRID ACTUALLY IS.
+    //
+    // The screen draws a ruled frame with a star at each corner around
+    // this grid — the same four guide stars the Magic Card carries — and
+    // it has to land exactly on the cells. It cannot be guessed at in
+    // CSS: with labels on, the row numbers take a track sized to their
+    // own text, so the offset is a share of the board that changes with
+    // the font, the board's width and the viewport. Guessed, it was
+    // visibly wrong the moment the board was small — the frame cut
+    // through the first column.
+    //
+    // So the board publishes the answer instead. Four custom properties
+    // on the host, measured from the first and last cell, and whatever
+    // is drawn there lines up by construction.
+    function markGrid() {
+      var host = board.parentNode;
+      if (!host || !host.style) return;
+      var a = board.querySelector('[data-row="0"][data-col="0"]');
+      var z = board.querySelector('[data-row="' + (size - 1) + '"][data-col="' + (size - 1) + '"]');
+      if (!a || !z) return;
+      var w = host.clientWidth, h = host.clientHeight;
+      if (!w || !h) return;
+      var l = board.offsetLeft + a.offsetLeft;
+      var t = board.offsetTop + a.offsetTop;
+      var r = w - (board.offsetLeft + z.offsetLeft + z.offsetWidth);
+      var b = h - (board.offsetTop + z.offsetTop + z.offsetHeight);
+      host.style.setProperty('--vp-grid-l', l + 'px');
+      host.style.setProperty('--vp-grid-t', t + 'px');
+      host.style.setProperty('--vp-grid-r', r + 'px');
+      host.style.setProperty('--vp-grid-b', b + 'px');
+    }
+
     function paint() {
       var i, parts, cell;
+      markGrid();
       for (i = 0; i < selected.length; i++) {
         parts = selected[i].split(',');
         cell = board.querySelector('[data-row="' + parts[0] + '"][data-col="' + parts[1] + '"]');

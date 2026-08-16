@@ -2236,3 +2236,25 @@ the Rite and the Creator Ceremony, and being recognised is neither). Verified on
 desktop and at 390px, with reduced motion, and against the suites: board EXACTLY
 THE CARD on all four cards, acceptance, try-again and the ten-second
 confirmation unchanged.
+
+**0538 — the two screens, made to hold their shape.** Reported from a wide,
+short window: the ruled frame on Mark Your Stars cut through the first column,
+and on the camera *Back to the Ether was simply not on the screen*. Both were
+the same mistake in two places — a layout guessed at rather than measured. The
+frame's offset was written in CSS as a share of the board, but with labels on,
+the row numbers take a track sized to their own TEXT, so the true offset moves
+with the font, the board's width and the viewport; guessed, it was visibly wrong
+the moment the board was small. The board now publishes the answer instead:
+`markGrid()` measures its own first and last cell and sets four custom
+properties, and the frame, the corner stars and the patch of sky inside them all
+land by construction (checked at three window shapes, within a pixel every
+time). The box that used to be drawn around the whole board went with it — it
+enclosed the row and column numbers, putting them inside a sky they are not part
+of. And both screens were sized from their WIDTH with only a ceiling on height,
+so on a short window the column ran off the bottom and took the way out with it:
+the board is now capped by a share of the height as well, and the camera window
+is sized from the height actually left once the line, the doors and the way out
+have taken theirs. Verified at 1002×581 (the reported shape), 899×557, 820×420,
+1280×800 and 390×844 — Back to the Ether on screen in all five; board EXACTLY
+THE CARD on all four cards, acceptance, try-again and the ten-second
+confirmation unchanged.

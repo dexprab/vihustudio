@@ -819,8 +819,9 @@ html, body {
    because the title and the two buttons are the parts that stop the
    screen making sense if they go. */
 @media (max-height: 640px) {
-  .vp-stars-sky { width: min(15rem, 46vh); }
-  .vp-stars-panel { gap: 0.35rem; }
+  .vp-stars-panel { gap: 0.3rem; }
+  .vp-stars-title { font-size: clamp(1.5rem, 1.2rem + 1.4vw, 2.1rem); }
+  .vp-stars-status { min-height: 1.2em; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1325,23 +1326,44 @@ html, body {
    exactly as they do on the card. */
 .vp-stars-sky { position: relative; }
 
+/* The patch of sky, exactly inside the frame rather than around the
+   whole board — the numbers belong to the room, not to the sky. */
+.vp-stars-sky::before {
+  content: '';
+  position: absolute;
+  /* Exactly the cell area. Any wider and the patch runs out past the
+     rule and the row numbers end up sitting on it, which puts them
+     inside a sky they are not part of. */
+  inset: var(--vp-grid-t, 8%) var(--vp-grid-r, 1%) var(--vp-grid-b, 1%) var(--vp-grid-l, 8%);
+  border-radius: 6px;
+  background: rgba(9, 13, 26, 0.34);
+  pointer-events: none;
+}
+
 .vp-stars-sky::after {
   content: '';
   position: absolute;
-  inset: 4.5% 0.5% 0.5% 4.5%;
+  /* Measured by the board itself — see markGrid() in
+     js/constellationBoard.js. The fallbacks are only for the frame a
+     paint before the first measurement. */
+  inset: var(--vp-grid-t, 8%) var(--vp-grid-r, 1%) var(--vp-grid-b, 1%) var(--vp-grid-l, 8%);
+  margin: -2%;
   pointer-events: none;
   /* Frame and stars in ONE image, so a star's centre is exactly a
      corner of the rule. Four separate layers could not do that: a
      background layer is positioned by its own box, so each star landed
      inside the grid and sat on top of a real one. */
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Crect x='5' y='5' width='90' height='90' fill='none' stroke='%23E8B871' stroke-opacity='0.5' stroke-width='0.5'/%3E%3Cg fill='%23FFE0A0'%3E%3Cpath transform='translate(5,5) scale(4.4)' d='M0,-1C0.09,-0.32 0.32,-0.09 1,0C0.32,0.09 0.09,0.32 0,1C-0.09,0.32 -0.32,-0.09 -1,0C-0.32,-0.09 -0.09,-0.32 0,-1Z'/%3E%3Cpath transform='translate(95,5) scale(4.4)' d='M0,-1C0.09,-0.32 0.32,-0.09 1,0C0.32,0.09 0.09,0.32 0,1C-0.09,0.32 -0.32,-0.09 -1,0C-0.32,-0.09 -0.09,-0.32 0,-1Z'/%3E%3Cpath transform='translate(5,95) scale(4.4)' d='M0,-1C0.09,-0.32 0.32,-0.09 1,0C0.32,0.09 0.09,0.32 0,1C-0.09,0.32 -0.32,-0.09 -1,0C-0.32,-0.09 -0.09,-0.32 0,-1Z'/%3E%3Cpath transform='translate(95,95) scale(4.4)' d='M0,-1C0.09,-0.32 0.32,-0.09 1,0C0.32,0.09 0.09,0.32 0,1C-0.09,0.32 -0.32,-0.09 -1,0C-0.32,-0.09 -0.09,-0.32 0,-1Z'/%3E%3C/g%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Crect x='4' y='4' width='92' height='92' fill='none' stroke='%23E8B871' stroke-opacity='0.55' stroke-width='0.45'/%3E%3Cg fill='%23FFE0A0'%3E%3Cpath transform='translate(4,4) scale(4)' d='M0,-1C0.09,-0.32 0.32,-0.09 1,0C0.32,0.09 0.09,0.32 0,1C-0.09,0.32 -0.32,-0.09 -1,0C-0.32,-0.09 -0.09,-0.32 0,-1Z'/%3E%3Cpath transform='translate(96,4) scale(4)' d='M0,-1C0.09,-0.32 0.32,-0.09 1,0C0.32,0.09 0.09,0.32 0,1C-0.09,0.32 -0.32,-0.09 -1,0C-0.32,-0.09 -0.09,-0.32 0,-1Z'/%3E%3Cpath transform='translate(4,96) scale(4)' d='M0,-1C0.09,-0.32 0.32,-0.09 1,0C0.32,0.09 0.09,0.32 0,1C-0.09,0.32 -0.32,-0.09 -1,0C-0.32,-0.09 -0.09,-0.32 0,-1Z'/%3E%3Cpath transform='translate(96,96) scale(4)' d='M0,-1C0.09,-0.32 0.32,-0.09 1,0C0.32,0.09 0.09,0.32 0,1C-0.09,0.32 -0.32,-0.09 -1,0C-0.32,-0.09 -0.09,-0.32 0,-1Z'/%3E%3C/g%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-size: 100% 100%;
-  filter: drop-shadow(0 0 5px rgba(255, 214, 128, 0.5));
+  filter: drop-shadow(0 0 5px rgba(255, 214, 128, 0.45));
 }
 
+/* The frame and the patch inside it are the sky now, so the box around
+   the WHOLE board goes — it enclosed the row and column numbers too,
+   which put them inside a sky they are not part of. */
 .vp-stars-board {
-  background: rgba(9, 13, 26, 0.30);
+  background: none;
   border-color: transparent;
 }
 
@@ -1495,3 +1517,62 @@ html, body {
   .vp-stars-actions button:hover,
   .vp-stars-actions button:focus-visible { transform: none; }
 }
+
+
+/* The status line is empty most of the time, and an empty paragraph
+   with a margin is just a hole between the sky and the answer. It
+   keeps one line of height so nothing jumps when it does speak, and
+   nothing more. */
+.vp-stars-status {
+  min-height: 1.5em;
+  margin: 0.15rem 0 0;
+}
+
+/* THE BOARD IS THE SUBJECT — AND IT STILL HAS TO FIT.
+   Three caps, and the smallest wins: a comfortable size, the narrow
+   side of the window, and a share of its HEIGHT. The last one is the
+   one that was missing: on a wide, short window vmin is the height, a
+   large share of it left nothing for the answer underneath, and
+   Continue went off the bottom of the screen. */
+.vp-stars-sky { width: min(24rem, 78vmin, 48vh); }
+
+@media (max-height: 780px) {
+  .vp-stars-panel { gap: 0.35rem; }
+  .vp-orn { margin: 0; }
+}
+
+
+/* THE WAY OUT HAS TO BE ON THE SCREEN.
+   Reported from a wide, short window: Back to the Ether was simply not
+   there. The window was sized from its WIDTH, with only a share of the
+   height as a ceiling, so on a short screen the column of things under
+   it ran off the bottom — and the thing at the bottom is the only way
+   to leave.
+
+   So the window is sized from the height it can actually have: what is
+   left of the screen once the line, the ornament, the doors and the
+   way out have taken theirs. Width follows from the card's own
+   proportions, and never exceeds what it had before. */
+.vp-scan-window {
+  height: min(56vh, calc(100dvh - 17rem));
+  width: auto;
+  max-width: min(78vw, 22rem);
+  max-height: none;
+}
+
+.vp-scan-inner {
+  max-height: 100%;
+  gap: 0.75rem;
+}
+
+@media (max-height: 620px) {
+  .vp-scan-inner { gap: 0.5rem; }
+  .vp-scan-line { font-size: clamp(1.25rem, 1rem + 1.1vw, 1.7rem); }
+  .vp-orn { margin: 0; }
+}
+
+
+/* A little air between the numbers and the rule, so the first of each
+   is not tucked under the corner star. */
+.vp-stars-label.is-col { padding-bottom: 0.2em; }
+.vp-stars-label.is-row { padding-right: 0.35em; }
