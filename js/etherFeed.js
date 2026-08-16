@@ -242,15 +242,10 @@ const EtherFeed = (function () {
   // the third page was recorded still lines up.
   function audioOf(projectId) {
     try {
-      var record = _recordFor(projectId);
-      var pages = _pagesIn(record);
-      var out = [];
-      for (var i = 0; i < pages.length; i++) {
-        var p = pages[i];
+      return _readablePages(_recordFor(projectId)).map(function (p) {
         var n = p && p.metadata && p.metadata.narration;
-        out.push((n && n.ref) || null);
-      }
-      return out;
+        return (n && n.ref) || null;
+      });
     } catch (e) { return []; }
   }
 
@@ -265,6 +260,32 @@ const EtherFeed = (function () {
     } catch (e) { return null; }
   }
 
+  // THE PAGES THE PORTAL CAN ACTUALLY SHOW — one definition, used by
+  // both the pictures and the voices.
+  //
+  // They used to be built twice, and differently: pagesOf() skipped any
+  // page with no picture while audioOf() kept a slot for every page in
+  // the record. Their own comment claimed they were "aligned
+  // index-for-index", and for most stories they were — but one page
+  // without a thumbnail is enough to shift every voice after it onto
+  // the wrong picture, or off the end into silence. A comment is not a
+  // guarantee; deriving both from the same list is.
+  function _readablePages(record) {
+    var slides = _pagesIn(record);
+    var out = [];
+    for (var i = 0; i < slides.length; i++) {
+      var s = slides[i];
+      if (!s) continue;
+      // `readImage` is the page rendered at reading size; `thumbnail`
+      // is the 110px one the page strip uses. Preferring the first and
+      // falling back to the second means a Story published before
+      // reading images existed still opens — softly, but it opens,
+      // and that is the same trade this portal has always made.
+      if (s.readImage || s.thumbnail) out.push(s);
+    }
+    return out;
+  }
+
   function pagesOf(projectId) {
     try {
       // A Canon Story is read exactly like any other — "they can be
@@ -272,20 +293,9 @@ const EtherFeed = (function () {
       // live in the project store, because it is not anybody's project.
       // Same record shape, so one lookup falls through to the other and
       // nothing below this line knows the difference.
-      var record = _recordFor(projectId);
-      var slides = _pagesIn(record);
-      var out = [];
-      for (var i = 0; i < slides.length; i++) {
-        if (!slides[i]) continue;
-        // `readImage` is the page rendered at reading size; `thumbnail`
-        // is the 110px one the page strip uses. Preferring the first and
-        // falling back to the second means a Story published before
-        // reading images existed still opens — softly, but it opens,
-        // and that is the same trade this portal has always made.
-        var img = slides[i].readImage || slides[i].thumbnail;
-        if (img) out.push(img);
-      }
-      return out;
+      return _readablePages(_recordFor(projectId)).map(function (s) {
+        return s.readImage || s.thumbnail;
+      });
     } catch (e) { return []; }
   }
 

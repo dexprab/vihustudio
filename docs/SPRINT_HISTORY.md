@@ -2373,3 +2373,40 @@ passes it to `AssetStore.resolve(ref, {ownerId})` — a parameter that already
 existed, built for Magic Card recall, and had no caller here. Verified end to
 end: a Story recorded, shared and opened through the deep link plays its page's
 voice (`Audio(blob:…) played=true`). Ether and canon suites unchanged.
+
+## Still Silent — Two More Reasons (build 0542)
+
+The Ether still would not play a shared Story's voice after 0541, and the
+browser said why once `AssetStore` was finally there to try: two POSTs to
+`/storage/v1/object/sign/…`, both **400** — which is what Supabase Storage
+returns for an object it will not show you. So the recording was not in that
+browser's IndexedDB and Storage refused it too.
+
+**The architectural gap.** Sprint VP-Ether made a shared Story public by
+widening exactly one policy: `creator_projects`' SELECT gained `or is_shared`.
+Nothing widened Storage, and until now nothing had to — a Story's PICTURES live
+inside the record as data URIs and travelled with it, so every page of a shared
+Story has always been visible to everybody. Its VOICE is the one part kept
+outside the record, as a `vihu-asset:` reference to an object in `draft-assets`,
+and that bucket stayed owner-only. A shared Story could therefore be read but
+never heard by anyone except the device that recorded it.
+`supabase/migrations_shared_story_assets.sql` widens the read policy for exactly
+that case: an asset under `creator/{owner}/{projectId}/…` is readable when a
+`creator_projects` row with that id, owned by that owner, has `is_shared`. Both
+halves matter, so an asset can never be reached by naming somebody else's shared
+project beside a private owner's folder — and `is_shared` is a generated column,
+so a client cannot set it without actually sharing. Writing is untouched:
+shared assets become readable, never editable.
+
+**A real alignment bug, found while looking.** `pagesOf()` skipped any page with
+no picture while `audioOf()` kept a slot for every page in the record. Their own
+comment claimed they were "aligned index-for-index", and for most stories they
+were — but ONE page without a thumbnail is enough to shift every voice after it
+onto the wrong picture, or off the end into silence. Both now derive from one
+`_readablePages()`; verified against a story whose first page has no picture at
+all — 2 pages, 2 voice slots, each page its own.
+
+**And a way to tell the two failures apart.** `AssetStore.where(ref)` reports
+`local` · `pending` · `remote` · `missing` · `inline`, because "never uploaded"
+and "uploaded but not readable by this session" both end as `resolve() → null`
+and want opposite fixes. Diagnostic only; nothing in the product calls it.

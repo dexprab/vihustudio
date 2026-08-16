@@ -522,10 +522,44 @@
     _scheduleBackgroundRetry();
   }
 
+  // WHERE AN ASSET ACTUALLY IS.
+  //
+  // Written because two completely different failures look identical
+  // from outside: an asset that was never uploaded, and an asset that
+  // is uploaded but not readable by whoever is asking. Both end as
+  // resolve() → null, and on a shared Story that is the difference
+  // between "the recording never left the device that made it" and
+  // "the Ether is not allowed to hear it" — which want opposite fixes.
+  //
+  // Diagnostic only: nothing in the product calls this, and it changes
+  // no behaviour. It answers, for one reference:
+  //
+  //   local    the blob is in THIS browser — playback cannot fail
+  //   pending  it is here and still queued to upload; another device
+  //            cannot hear it yet, and will be able to once it lands
+  //   remote   not here, but Storage will hand it over
+  //   missing  not here, and Storage will not (never uploaded, or not
+  //            readable by this session)
+  function where(ref, opts) {
+    const parsed = _parseRef(ref);
+    if (!parsed) return Promise.resolve(ref ? 'inline' : 'none');
+    return Promise.all([_getBlobRecord(parsed.assetId), _getPendingRecord(parsed.assetId)])
+      .then(function (pair) {
+        const blob = pair[0], pending = pair[1];
+        if (blob && blob.blob) {
+          return (pending && pending.status !== 'done') ? 'pending' : 'local';
+        }
+        return _resolveFromStorage(parsed, opts && opts.ownerId).then(function (url) {
+          return url ? 'remote' : 'missing';
+        });
+      }).catch(function () { return 'missing'; });
+  }
+
   const AssetStore = {
     put: put,
     resolve: resolve,
     resolveSync: resolveSync,
+    where: where,
     migrateFieldsOnSave: migrateFieldsOnSave,
     hydrateForExport: hydrateForExport,
     retryPending: retryPending,
