@@ -2816,8 +2816,22 @@ const ContextPanel=(function(){
       const row=_el('div','voice-recording-row');
       row.appendChild(pulse);
       row.appendChild(timer);
-      body.appendChild(_el('div','voice-hint','I’m listening…'));
+      // NOT "I'm listening" yet — it isn't.
+      //
+      // This line used to say "I'm listening…" the instant the button
+      // was pressed, and the microphone was only ASKED for afterwards.
+      // A child answers a screen that says it is listening by talking,
+      // and everything said while the device was still opening was
+      // simply not in the file. Reported as "it misses the starting",
+      // and it was the honest description of what the screen did.
+      //
+      // So it says what is actually happening, and only becomes the
+      // invitation once VoiceRecorder.start() reports the microphone
+      // genuinely running.
+      const hint=_el('div','voice-hint','Getting your microphone ready…');
+      body.appendChild(hint);
       body.appendChild(row);
+      row.classList.add('is-waiting');
       const stopBtn=_el('button','voice-record-btn is-recording','⏹ Stop');
       stopBtn.type='button';
       const cancelBtn=_el('button','context-btn','✕ Cancel');
@@ -2833,6 +2847,10 @@ const ContextPanel=(function(){
       stopBtn.addEventListener('click',finishToPreview);
       cancelBtn.addEventListener('click',function(){ VoiceRecorder.cancel(); renderIdle(); });
 
+      // Nothing to press while the microphone opens — pressing Stop
+      // before there is a recording only produces a confusing error.
+      stopBtn.disabled=true;
+
       VoiceRecorder.start({
         maxMs:maxMs,
         onTick:function(elapsed,cap){
@@ -2840,7 +2858,22 @@ const ContextPanel=(function(){
           timer.textContent=_fmtVoiceTime(Math.min(elapsed,cap))+' / '+_fmtVoiceTime(cap);
           if(cap-elapsed<=10000) timer.classList.add('voice-timer-ending');
         },
+        // A child should be able to SEE that they are being heard. The
+        // dot moves with their own voice — no numbers, no meter, no
+        // decibels; it is the same thing a candle does when you talk to
+        // it.
+        onLevel:function(level){
+          if(!pulse.isConnected) return;
+          const s=1+Math.min(1,level*2.2)*0.9;
+          pulse.style.transform='scale('+s.toFixed(3)+')';
+        },
         onAutoStop:finishToPreview
+      }).then(function(){
+        // NOW it is listening, and now it says so.
+        if(!hint.isConnected) return;
+        hint.textContent='I’m listening…';
+        row.classList.remove('is-waiting');
+        stopBtn.disabled=false;
       }).catch(function(err){
         body.innerHTML='';
         const msg=(err && err.reason==='denied')

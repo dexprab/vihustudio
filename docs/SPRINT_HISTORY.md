@@ -2296,3 +2296,53 @@ back, both still stored, restore offered to the owner and refused to the other,
 a cardless Traveller's work following them through claiming, and the Ether still
 seeing every shared Story — plus all three legacy paths (placed by name, placed
 by single card, and genuinely unknowable). Canon and Ether suites unchanged.
+
+## Voice Recording — the Missing Start, and the Scratch (build 0540)
+
+Reported: *"its too scratchy and misses the starting."* Both were real and
+neither was one thing.
+
+**The missing start was mostly a UI ordering bug.** The Voice panel painted
+"I'm listening…" and only THEN called `VoiceRecorder.start()`, so the
+permission check and the device opening — hundreds of milliseconds even when
+permission was granted long ago — happened while a child was already talking.
+Measured on this machine: **683 ms** between the button and a live microphone.
+On top of it, a recorder's own first moments can be silence while the encoder
+starts. The order is now open → record → wait until the microphone is genuinely
+running → and only then does the screen say anything; the panel shows "Getting
+your microphone ready…" with a grey, still dot and a disabled Stop until
+`start()` resolves. Readiness ends on EVIDENCE — an analyser watching the signal
+actually move — with a clock fallback, plus a deliberate 150 ms hold after that,
+because resolving the instant signal appeared measured between 11 ms of margin
+and 13 ms of loss, which is to say none: whether a first syllable survived came
+down to luck. Now 128–160 ms of guaranteed recorded lead-in across four takes.
+
+**The scratch was the browser's defaults.** `{audio:true}` takes settings tuned
+for a video call: `autoGainControl` rides the level up in every gap between
+words so the room's hiss swells and ducks around the voice — that pumping is
+most of what "scratchy" is — and `echoCancellation` subtracts a far-end talker
+that does not exist here, costing a real voice body and adding warble as it
+adapts. Both are now asked off and `noiseSuppression`, the one that genuinely
+helps a laptop mic, is kept; all as `ideal`, with a plain `{audio:true}` retry
+if a device refuses, since an ordinary recording beats none. Level is handled
+instead by a small graph the recording runs through — highpass at 80 Hz for desk
+thumps and fan rumble, a gentle compressor well above the noise floor, a fixed
+modest makeup gain, and a `tanh` soft limiter last. The limiter earned its place
+by measurement: my own first makeup gain of 1.6 took a full-scale source to a
+peak of **1.012** — hard clipping, the harshest thing a recording can contain.
+Now 0.915 with headroom, mono instead of stereo (a microphone is one
+microphone), and ~130 kbps stated rather than Chrome's thin unstated default.
+The graph is an improvement and never a dependency: if any of it is
+unavailable the raw stream records exactly as before.
+
+**A real leak found while testing the awkward moments:** `cancel()` during the
+`getUserMedia` await did nothing, because there was no recorder yet to cancel —
+the request then resolved into a recorder that started with nobody watching,
+microphone light on, from a panel the child had already closed, and the next
+attempt rejected as 'busy'. Every step after an await now checks it is still the
+attempt that was asked for. Also: the level drives the panel's dot, so a child
+can see they are being heard; chunks flush every 250 ms so an interrupted
+recording keeps everything up to that moment; and the timer counts from when the
+microphone is really listening rather than from the button. Verified: four takes
+with margin and no clipping, cancel-during-warm-up clean, stop-immediately
+sane (1 ms, not fifty years), and the panel never inviting speech early.
