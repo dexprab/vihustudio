@@ -2410,3 +2410,15 @@ all — 2 pages, 2 voice slots, each page its own.
 `local` · `pending` · `remote` · `missing` · `inline`, because "never uploaded"
 and "uploaded but not readable by this session" both end as `resolve() → null`
 and want opposite fixes. Diagnostic only; nothing in the product calls it.
+
+**0543 — Continue is gone from a met Spirit.** The preview that appears when a
+child meets a Story in the Ether offered Read story · Continue · Cheer · Back;
+Continue left the universe and opened the Studio to EDIT that Story. Meeting a
+Spirit is a reading moment — the Ether is where stories are discovered, and
+editing one is somewhere else entirely — and Studio Home already owns getting
+back to your own work, so this was a second door to it in a place that was not
+about that. Removed from the markup, the element map and its click handler; the
+`isCanon()` check it carried (a Canon Story has no project to open) went with
+it, and `isCanon` is still used for whether "shared <date>" is an honest thing
+to say. Read story · Cheer · Back, verified in the real flow with the portal
+still opening.

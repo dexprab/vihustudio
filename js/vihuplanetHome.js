@@ -172,7 +172,6 @@
       creator:  document.querySelector('[data-preview-creator]'),
       meta:     document.querySelector('[data-preview-meta]'),
       read:     document.querySelector('[data-act="read"]'),
-      cont:     document.querySelector('[data-act="continue"]'),
       cheer:    document.querySelector('[data-act="cheer"]'),
       back:     document.querySelector('[data-act="back"]'),
       portal:   document.querySelector('[data-portal]'),
@@ -1676,17 +1675,6 @@
       el.read.disabled = !pages.length;
       el.read.textContent = pages.length ? 'Read story' : 'Story is elsewhere';
 
-      // Continue means "open this in the Studio and keep working on
-      // it", which is only ever true of a Story this child made. A
-      // Canon Story is a product asset that belongs to nobody and is
-      // not in anybody's project store, so the button would open the
-      // Studio onto a project id that does not exist — and it is not
-      // theirs to change in any case. It is not there.
-      //
-      // When a public cross-creator feed exists, this is the one line
-      // that learns to ask the same question about somebody else's
-      // Story.
-      el.cont.hidden = isCanon(met);
       el.cheer.textContent = hasCheered(pid) ? 'Cheered' : 'Cheer';
 
       el.preview.hidden = false;
@@ -1713,15 +1701,6 @@
       // over a couple of seconds, so a cheer is a moment of light
       // rather than a permanent decoration.
       met.cheer = 1;
-    });
-
-    el.cont.addEventListener('click', function () {
-      if (!met) return;
-      // Continuing a Story is editing it, which is the Studio's job and
-      // a different place to be. This is the one control on this page
-      // that deliberately does leave.
-      window.location.href = JourneyResolver.STUDIO + '?project=' +
-        encodeURIComponent(projectIdOf(met) || '');
     });
 
     // ---------- Stage 5 · the Portal ----------
