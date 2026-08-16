@@ -296,6 +296,13 @@
         // the cover fading up, the cover growing, and the name
         // arriving after the picture.
         var prox = birthing ? 1 : (e.prox || 0);
+        // Published for whatever needs to draw AROUND the card without
+        // being able to see it — the Spirits' starlight is drawn on a
+        // canvas beneath this DOM, so "outside the card" is a fact only
+        // this module holds. Read next frame, which for an orbit that
+        // takes most of a minute to come round is not a distinction
+        // anything can perceive.
+        publishCardSize(e, scale, prox);
         if (node.prox !== prox) {
           node.prox = prox;
           el.style.setProperty('--vp-prox', prox.toFixed(3));
@@ -316,6 +323,42 @@
         if (t > 0.5) el.classList.add('is-focused');
         else el.classList.remove('is-focused');
       }
+    }
+
+    // HOW BIG A CARD ACTUALLY IS ON SCREEN.
+    //
+    // Read from the stylesheet rather than repeated here, because the
+    // card's width is a CSS decision (`--vp-card-width`, and one
+    // breakpoint changes it). A number copied into JS is a number that
+    // drifts the first time the CSS moves — which is precisely the
+    // mistake this runtime has already made once, with a shared
+    // geometry function whose DEFAULT was asserted instead of
+    // measured.
+    //
+    // Cached against the field's width, so the breakpoint is picked up
+    // on resize without a computed-style read every frame.
+    var _cardW = 0, _cardWFor = -1;
+    function cardWidth() {
+      if (_cardWFor === ether.viewWidth && _cardW > 0) return _cardW;
+      var v = 0;
+      try {
+        v = parseFloat(global.getComputedStyle(root).getPropertyValue('--vp-card-width'));
+      } catch (err) { v = 0; }
+      _cardW = (v > 0) ? v : 118;
+      _cardWFor = ether.viewWidth;
+      return _cardW;
+    }
+
+    // The card's half-width and half-height as the browser will lay
+    // them out this frame: the CSS width, times the scale this layer is
+    // about to write, times the cover's own reveal scale — which is a
+    // calc() in runtime.css driven by the same `--vp-prox` written
+    // below, so it is that expression and not an approximation of it.
+    // The cover is 3:4, so height is not width.
+    function publishCardSize(e, scale, prox) {
+      var cover = 0.54 + prox * 0.46;                 // runtime.css .vp-story-cover
+      e.cardHalfW = cardWidth() * 0.5 * scale * cover;
+      e.cardHalfH = e.cardHalfW / 0.75;               // aspect-ratio: 3 / 4
     }
 
     // How large a met Spirit becomes. Derived from the field so the

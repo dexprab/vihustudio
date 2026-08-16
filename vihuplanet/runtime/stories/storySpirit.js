@@ -102,7 +102,7 @@
       // the light so the renderer can draw it without ever being told
       // what a story is — the same discipline as `hue` and `warm`.
       lights.push({ alive: false, x: 0, y: 0, scale: 1, intensity: 0, warm: 0, hue: 'glow',
-                    grown: false, arriving: 0, seed: 0, radius: 84 });
+                    grown: false, arriving: 0, seed: 0, radius: 44, radiusY: 59 });
     }
 
     // Candidates, sorted by nearness each frame to decide which get a
@@ -222,12 +222,28 @@
         l.grown = !!e.grown;
         // Its own phase, so no two grown Spirits turn together.
         l.seed = e.bob.phase;
-        // How big the story itself is on screen. The Spirit's card is
+        // How big the story itself is ON SCREEN. The Spirit's card is
         // DOM and sits ON TOP of the canvas these motes are drawn on,
         // so anything orbiting closer than this is behind the card and
         // simply cannot be seen — which is exactly what happened, and
         // what a measurement of the canvas alone could not tell me.
-        l.radius = e.radius;
+        //
+        // `e.radius` is NOT this, and using it was the bug: it is the
+        // collision radius in FIELD pixels, deliberately larger than
+        // the card so Spirits keep their distance from each other, and
+        // it tracks depth rather than the scale the card is drawn at.
+        // Measured at one viewport it was 67 against a card whose real
+        // half-width was 37 — so the motes orbited at nearly two and a
+        // half times the card and the warm field spread to three, far
+        // enough that neither read as belonging to the story any more.
+        //
+        // storyLayer.js publishes the real thing, because the card's
+        // size is a CSS fact and that is the only module that holds it.
+        // Width and height separately: the cover is 3:4, so a circular
+        // orbit that clears the sides passes behind the top and the
+        // bottom.
+        l.radius  = e.cardHalfW || (e.radius * 0.55);
+        l.radiusY = e.cardHalfH || (e.radius * 0.73);
       }
       for (; n < lights.length; n++) lights[n].alive = false;
     }
