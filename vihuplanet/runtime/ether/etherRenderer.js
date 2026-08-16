@@ -194,7 +194,7 @@
   var GROWN_MOTES = 3;
   // The motes of one cheer arriving. A few more than the permanent
   // ones, because they are on screen for barely two seconds.
-  var CHEER_MOTES = 5;
+  var CHEER_MOTES = 7;
 
   function drawBlob(ctx, color, x, y, radius, alpha) {
     if (alpha <= 0.002 || radius <= 0.5) return;
@@ -972,10 +972,12 @@
           // OUTSIDE the card, always. The story's own card is drawn
           // over this canvas, so the motes have to clear its silhouette
           // or they are painted and then covered.
-          // Close enough to the card to be READ as belonging to it.
-          // At 1.22 they sat far enough out to be mistaken for two more
-          // background stars, which is what a close look showed.
-          var orbit = (core.radius || 84) * 1.10;
+          // Far enough out to CLEAR the card, close enough to belong
+          // to it. At 1.10 the motes passed within twenty pixels of the
+          // card's own edge and its title, so two of the three were
+          // lost against them and only one ever read.
+          var card = core.radius || 84;
+          var orbit = card * 1.32;
 
           // ARRIVING: starlight coming in. It starts wide and dark and
           // spirals down onto the Spirit, so what a child sees is a
@@ -986,16 +988,51 @@
             var ease = t * t * (3 - 2 * t);
             for (var s2 = 0; s2 < CHEER_MOTES; s2++) {
               var a2 = core.seed + s2 * (Math.PI * 2 / CHEER_MOTES) + ease * 1.5;
-              var r2 = orbit * (1 - ease) * 5.5 + orbit * ease;
-              drawBlob(ctx, p.spark,
-                cx0 + Math.cos(a2) * r2, cy0 + Math.sin(a2) * r2,
-                ck * 0.30, Util.clamp(core.arriving, 0, 1) * 0.7 * core.intensity);
+              // FROM WHERE A CHILD CAN SEE IT.
+              //
+              // This began five and a half times the orbit out, which
+              // for a Spirit near the middle of the screen is off the
+              // edge of it — so the journey a child was meant to watch
+              // happened somewhere they were not looking, and only the
+              // last few frames were ever on screen. Two and a half
+              // starts it just outside the Spirit's own light, which is
+              // where a gift should come from.
+              var r2 = orbit * (1 - ease) * 2.5 + orbit * ease;
+              var ax2 = cx0 + Math.cos(a2) * r2 * 1.10;
+              var ay2 = cy0 + Math.sin(a2) * r2 * 1.05;
+              // The same halo-and-heart build as the grown motes, and
+              // brightest as it lands rather than as it sets off.
+              var aa = Util.clamp(core.arriving, 0, 1) * core.intensity;
+              var land = 0.45 + ease * 0.55;
+              drawBlob(ctx, p.spark, ax2, ay2, ck * 1.05, aa * 0.34 * land);
+              drawBlob(ctx, p.spark, ax2, ay2, ck * 0.40, aa * 0.98 * land);
             }
           }
 
-          // GROWN: the company it keeps. Slow — a full turn takes the
-          // better part of a minute — so it reads as alive rather than
-          // as something spinning at a child.
+          // GROWN: the company it keeps, and the warmth it sits in.
+          //
+          // The motes alone were asked about twice and were still too
+          // easy to miss, so a grown Spirit now also rests in a soft
+          // warm field a little larger than its own card. Drawn UNDER
+          // the card (this pass is behind the story's DOM), so what a
+          // child sees is a rim of warm light around the edges of the
+          // story rather than a glow on top of it.
+          //
+          // Still not "brighter": the Spirit's own light is unchanged
+          // and its hue is unchanged. This is a different colour in a
+          // different place — starlight somebody else gave, sitting
+          // around the story — where brightness would have said the
+          // story was NEARER, which it is not.
+          if (core.grown) {
+            drawBlob(ctx, p.spark, cx0, cy0, card * 1.62,
+              Util.clamp(core.intensity * 0.34, 0, 0.38) * breath);
+            drawBlob(ctx, p.spark, cx0, cy0, card * 1.16,
+              Util.clamp(core.intensity * 0.26, 0, 0.30) * breath);
+          }
+
+          // Slow — a full turn takes the better part of a minute — so
+          // it reads as alive rather than as something spinning at a
+          // child.
           if (core.grown) {
             for (var s3 = 0; s3 < GROWN_MOTES; s3++) {
               var a3 = core.seed * 2.1 + time * 0.11 + s3 * (Math.PI * 2 / GROWN_MOTES);

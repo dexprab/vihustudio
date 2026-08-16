@@ -732,9 +732,17 @@ Locked by the product owner in the Cheer sprint brief.
   and two devices at once all end with one row and one count. There is
   no counter to drift out of step with the rows, because the count is
   the rows.
-- **A cheerer is a Magic Card** (Decision 11), and a Traveller with no
-  card yet is their own anonymous session. No second identity system,
-  no fingerprinting, and nothing here touches the Magic Card itself.
+- **Cheer is Magic Card agnostic.** A Traveller who has never claimed
+  a card, and may never claim one, can give starlight to a story
+  exactly like anybody else — being able to say "I love this" must not
+  require having become a Creator first. The cheerer is the visitor's
+  own anonymous session, derived server-side from `auth.uid()`, so
+  nothing is sent and no client can claim to be somebody else. The
+  stated cost: a cheer belongs to a browser rather than to a person, so
+  the same child on a second device can cheer the same story again.
+  That is the right way round — one extra cheer is a far smaller wrong
+  than a child being told to claim an identity before they may be kind
+  about somebody's story.
 - **Growth is ONE stage, and it is derived.** `CHEER_GROWTH_THRESHOLD`
   is a constant in `js/cheer.js`; a Story at or above it is grown.
   Deriving it from the stored count is what makes growth persistent
@@ -744,10 +752,12 @@ Locked by the product owner in the Cheer sprint brief.
   other Stories, not a profile, not the Ether. Verified against three
   Stories by one maker.
 - **The effect is company, not brightness.** A grown Spirit carries
-  three small motes turning slowly around it, outside its own card.
-  Deliberately not "brighter": brightness already means NEARNESS in
-  this universe, and a grown Story that merely looked closer would be
-  saying the wrong thing.
+  **three small warm lights that circle it**, outside its own card, and
+  rests in a soft warm field a little larger than the card. Deliberately
+  not "brighter": brightness already means NEARNESS in this universe,
+  and a grown Story that merely looked closer would be saying the wrong
+  thing. This is a different colour in a different place — starlight
+  somebody else gave, sitting around the story.
 - **A Cheer arriving is starlight travelling to the Story** and
   settling on it — never a burst, never confetti, never a reward
   popup. No hearts, no thumbs, no social-media iconography.

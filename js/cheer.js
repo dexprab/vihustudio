@@ -23,14 +23,24 @@
 // device, and stories that grow because of them.
 //
 // ---------------------------------------------------------------
-// WHO A CHEERER IS
+// WHO A CHEERER IS — AND IT IS NOT A MAGIC CARD
 //
-// The Magic Card — the identity VihuPlanet already has (Decision 11).
-// Not a new identity system, not a fingerprint, and nothing here
-// touches the Magic Card itself. A Traveller with no card yet still
-// gets to cheer; the platform keys them by their own anonymous
-// session, which is the honest answer for somebody who has not said
-// who they are.
+// Cheer is Magic Card agnostic on purpose. A Traveller who has never
+// claimed a card, and may never claim one, can give starlight to a
+// story exactly like anybody else — being able to say "I love this"
+// should not require having become a Creator first.
+//
+// So the cheerer is the visitor's own anonymous session, which every
+// browser has from its first moment and which asks nobody who they
+// are. The platform derives it server-side from auth.uid(); nothing is
+// sent, so a client cannot claim to be somebody else either.
+//
+// The cost is stated rather than hidden: a cheer belongs to a browser
+// rather than to a person, so the same child on a second device can
+// give the same story a second cheer. That is the price of letting a
+// Traveller cheer at all, and it is the right way round — one extra
+// cheer is a much smaller wrong than a child being told they must
+// claim an identity before they may be kind about somebody's story.
 const Cheer = (function () {
   'use strict';
 
@@ -87,16 +97,6 @@ const Cheer = (function () {
     return all[storyId];
   }
 
-  // The Creator giving the Cheer, or null for a Traveller who has not
-  // claimed a card. Read fresh every time: whoever is at the machine
-  // now is who is cheering now.
-  function _me() {
-    try {
-      return (typeof MagicCard !== 'undefined' && MagicCard.getActiveId)
-        ? (MagicCard.getActiveId() || null) : null;
-    } catch (e) { return null; }
-  }
-
   function _client() {
     if (typeof window.ThemeRepositoryClient === 'undefined') return Promise.resolve(null);
     return window.ThemeRepositoryClient.isConfigured().then(function (ok) {
@@ -151,7 +151,9 @@ const Cheer = (function () {
 
     return _client().then(function (client) {
       if (!client) return { ok: true, added: true, cheers: optimistic, local: true };
-      return client.rpc('cheer_story', { p_story_id: storyId, p_cheerer: _me() })
+      // No cheerer sent. The platform uses the session it already
+      // authenticated — see WHO A CHEERER IS above.
+      return client.rpc('cheer_story', { p_story_id: storyId })
         .then(function (res) {
           if (res.error || !res.data || res.data.ok !== true) {
             return { ok: true, added: true, cheers: optimistic, local: true };
@@ -188,7 +190,7 @@ const Cheer = (function () {
     _mem = null;
     return _client().then(function (client) {
       if (!client) return false;
-      return client.rpc('story_cheer_counts', { p_story_ids: ids, p_cheerer: _me() })
+      return client.rpc('story_cheer_counts', { p_story_ids: ids })
         .then(function (res) {
           if (res.error || !Array.isArray(res.data)) return false;
           var changed = false;
@@ -226,7 +228,7 @@ const Cheer = (function () {
             return e && e.mine && !theirs[id];
           }).slice(0, CATCHUP_MAX);
           owed.forEach(function (id) {
-            client.rpc('cheer_story', { p_story_id: id, p_cheerer: _me() })
+            client.rpc('cheer_story', { p_story_id: id })
               .then(function (r) {
                 if (r.error || !r.data || r.data.ok !== true) return;
                 var e = _entry(id);

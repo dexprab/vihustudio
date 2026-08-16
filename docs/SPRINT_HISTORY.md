@@ -2511,3 +2511,41 @@ in-memory mirror is filled during page load and another tab can have written
 since. Verified with a recording stub: three cheers given with no platform, all
 three carried on the next refresh, and the read call made once for the whole
 Ether rather than once per story.
+
+## Cheer, Made Visible and Made For Everybody (build 0548)
+
+Three corrections from the product owner, and the last one exposed a real gap
+between what was built and what could be seen.
+
+**Cheer is Magic Card agnostic now.** It keyed on the active card, falling back
+to the anonymous session. A Traveller who has never claimed a card — and may
+never claim one — must be able to give starlight to a story exactly like
+anybody else: being able to say "I love this" cannot require having become a
+Creator first. The cheerer is now always the visitor's own anonymous session,
+derived server-side from `auth.uid()`, so the client sends nothing and cannot
+claim to be somebody else. **No new SQL** — `cheer_story` already fell back to
+the session when the client sent no cheerer, so the deployed function was
+already right. The cost is stated rather than hidden: a cheer belongs to a
+browser rather than to a person, so the same child on a second device can cheer
+the same story twice. One extra cheer is a far smaller wrong than telling a
+child to claim an identity before they may be kind about somebody's story.
+
+**The arriving animation was happening off screen.** It started five and a half
+times the orbit out from the Spirit, which for a story anywhere near the middle
+of the view is beyond the edge of it — so the journey a child was meant to watch
+took place where they were not looking and only the last frames ever landed on
+screen. It now sets off from just outside the Spirit's own light, with seven
+lights instead of five, each built as a halo under a brighter heart, and
+brightest as it arrives rather than as it departs.
+
+**And the growth still could not be seen.** Asked twice, and both times the
+honest answer was that it was too subtle. Two changes: the three lights now
+orbit at 1.32× the card's radius rather than 1.10× — at 1.10 they passed within
+twenty pixels of the card's own edge and its title, so two of the three were
+lost against them and only one ever read — and a grown Spirit now also rests in
+a soft warm field a little larger than its card, drawn UNDER the story's own DOM
+so it reads as a rim of warm light around the edges rather than a glow on top.
+Still not "brighter": the Spirit's own light and hue are untouched, because
+brightness in this universe means nearness. Also recorded: **"mote" was my word,
+not the product's** — the canon now says "three small warm lights that circle
+it", which is what it is.
