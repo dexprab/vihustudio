@@ -123,10 +123,22 @@ function json(body: unknown, status = 200): Response {
 function skyDiagram(pattern: number[][]): string {
   const size = 10;
   const lit = new Set((pattern || []).map((p) => `${p[0]},${p[1]}`));
+  // Numbered down the side and along the top, the same as the drawn
+  // version — the stars are listed as "row 2, column 3" and counting
+  // squares to check one against the other is the parent's job
+  // otherwise.
+  //
+  // THREE characters per cell, not two. At two the tenth column's two
+  // digits sit directly against the ninth and the heading reads "910".
+  // Thirty-three columns of monospace still fits any mail client.
+  const w3 = (s: string | number) => String(s).padStart(3);
   const rows: string[] = [];
+  let head = '   ';
+  for (let c = 0; c < size; c++) head += w3(c + 1);
+  rows.push(head);
   for (let r = 0; r < size; r++) {
-    let line = '';
-    for (let c = 0; c < size; c++) line += lit.has(`${r},${c}`) ? ' ★' : ' ·';
+    let line = String(r + 1).padStart(2) + ' ';
+    for (let c = 0; c < size; c++) line += w3(lit.has(`${r},${c}`) ? '★' : '·');
     rows.push(line);
   }
   return rows.join('\n');
@@ -252,6 +264,10 @@ const GOLD = '#B57F1E';
 const PAPER = '#FFFDF7';
 const LINE = '#E4DECB';
 const NIGHT = '#141A2E';
+// The grid's own numbers, on the night panel. Brighter than an unlit
+// cell so they read as ruling rather than as faint stars, and far
+// dimmer than a lit one so they never compete with the sky itself.
+const LABEL = '#707C9E';
 const STAR = '#F0C978';
 
 function esc(s: string): string {
@@ -264,15 +280,33 @@ function esc(s: string): string {
 // stays square when a client rescales text, and the lit ones carry a
 // glyph as well as a colour — a parent reading this on a monochrome
 // screen, or colour-blind, still sees which stars are theirs.
+// RULED, like a chart.
+//
+// The stars are also listed as "row 2, col 3", and without numbers down
+// the side and along the top a parent has to count squares with a
+// finger to check one against the other. The grid is the thing being
+// read from, so it carries its own coordinates.
+//
+// The labels are deliberately dim. They are scaffolding for an adult
+// checking their work, not part of the sky.
 function skyHtml(pattern: number[][]): string {
   const size = 10;
   const lit = new Set((pattern || []).map((p) => `${p[0]},${p[1]}`));
-  const rows: string[] = [];
+  const label = `font-family:Arial,Helvetica,sans-serif;font-size:10px;line-height:22px;color:${LABEL};`;
+  const cell = 'width:22px;height:22px;';
+
+  // The column numbers, with an empty corner above the row numbers.
+  let head = `<td style="${cell}"></td>`;
+  for (let c = 0; c < size; c++) {
+    head += `<td width="22" align="center" valign="middle" style="${cell}${label}">${c + 1}</td>`;
+  }
+  const rows: string[] = [`<tr>${head}</tr>`];
+
   for (let r = 0; r < size; r++) {
-    let tds = '';
+    let tds = `<td width="22" align="center" valign="middle" style="${cell}${label}">${r + 1}</td>`;
     for (let c = 0; c < size; c++) {
       const on = lit.has(`${r},${c}`);
-      tds += `<td width="22" height="22" align="center" valign="middle" style="width:22px;height:22px;`
+      tds += `<td width="22" height="22" align="center" valign="middle" style="${cell}`
         + `font-family:Georgia,'Times New Roman',serif;font-size:${on ? 15 : 11}px;line-height:22px;`
         + `color:${on ? STAR : '#3A4463'};">${on ? '&#9733;' : '&middot;'}</td>`;
     }
@@ -280,7 +314,7 @@ function skyHtml(pattern: number[][]): string {
   }
   return `<table role="presentation" cellpadding="0" cellspacing="0" border="0"`
     + ` style="border-collapse:collapse;background:${NIGHT};border-radius:10px;">`
-    + `<tr><td style="padding:10px;"><table role="presentation" cellpadding="0" cellspacing="0"`
+    + `<tr><td style="padding:10px 12px 12px 10px;"><table role="presentation" cellpadding="0" cellspacing="0"`
     + ` border="0" style="border-collapse:collapse;">${rows.join('')}</table></td></tr></table>`;
 }
 
