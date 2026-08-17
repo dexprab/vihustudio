@@ -171,36 +171,36 @@ const StudioRite=(function(){
       {lumo:'talk', egg:'curious',
        line:{title:'This new page is the ground.',
              subtitle:'Choose a colour for the ground.'}}
-     ], end:{await:'bg-set'}, nudgeDelay:4000},
+     ], audio:{id:'riteScreen8',cues:[0]}, end:{await:'bg-set'}, nudgeDelay:4000},
 
     {band:true, lines:[
       {lumo:'curious', egg:'idle',
        line:{title:'A tree grows here.',
              subtitle:'Add a tree.'}}
-     ], end:{await:'sticker-added'}, nudgeDelay:4000},
+     ], audio:{id:'riteScreen9',cues:[0]}, end:{await:'sticker-added'}, nudgeDelay:4000},
 
     {band:true, lines:[
       {lumo:'talk', egg:'thinking',
        line:{title:'Make your tree bigger.'}}
-     ], end:{await:'sticker-resized'}, nudgeDelay:4000},
+     ], audio:{id:'riteScreen10',cues:[0]}, end:{await:'sticker-resized'}, nudgeDelay:4000},
 
     {band:true, lines:[
       {lumo:'talk', egg:'thinking',
        line:{title:'Someone comes to find the star.',
              subtitle:'Add a person or an animal.'}}
-     ], end:{await:'sticker-added'}, nudgeDelay:4000},
+     ], audio:{id:'riteScreen11',cues:[0]}, end:{await:'sticker-added'}, nudgeDelay:4000},
 
     {band:true, lines:[
       {lumo:'celebrate', egg:'excited',
        line:{title:'Good choice.',
              subtitle:'Move them next to the star.'}}
-     ], end:{await:'sticker-moved'}, nudgeDelay:4000},
+     ], audio:{id:'riteScreen12',cues:[0]}, end:{await:'sticker-moved'}, nudgeDelay:4000},
 
     {band:true, lines:[
       {lumo:'talk', egg:'thinking',
        line:{title:'They want to say something to the star.',
              subtitle:'Add some words.'}}
-     ], end:{await:'text-added'}, nudgeDelay:4000},
+     ], audio:{id:'riteScreen13',cues:[0]}, end:{await:'text-added'}, nudgeDelay:4000},
 
     // Page 3 — The Going Home. "Make it morning" used to ask for a new
     // page AND a colour in one line; split in two, one instruction each.
@@ -210,24 +210,24 @@ const StudioRite=(function(){
       {lumo:'talk', egg:'curious',
        line:{title:'Now it is morning.',
              subtitle:'Copy this page again.'}}
-     ], end:{await:'page-added'}, nudgeDelay:12000},
+     ], audio:{id:'riteScreen14',cues:[0,4.28]}, end:{await:'page-added'}, nudgeDelay:12000},
 
     {band:true, lines:[
       {lumo:'talk', egg:'curious',
        line:{title:'Make this sky light.'}}
-     ], end:{await:'bg-set'}, nudgeDelay:12000},
+     ], audio:{id:'riteScreen15',cues:[0]}, end:{await:'bg-set'}, nudgeDelay:12000},
 
     {band:true, lines:[
       {lumo:'talk', egg:'thinking',
        line:{title:'The star is strong again.',
              subtitle:'Move your star up high.'}}
-     ], end:{await:'sticker-moved'}, nudgeDelay:12000},
+     ], audio:{id:'riteScreen16',cues:[0]}, end:{await:'sticker-moved'}, nudgeDelay:12000},
 
     {band:true, lines:[
       {lumo:'talk', egg:'excited',
        line:{title:'The star is going home.',
              subtitle:'Make your star very small.'}}
-     ], end:{await:'sticker-resized'}, nudgeDelay:12000},
+     ], audio:{id:'riteScreen17',cues:[0]}, end:{await:'sticker-resized'}, nudgeDelay:12000},
 
     {band:true, lines:[
       {lumo:'curious', egg:'idle',
@@ -235,19 +235,19 @@ const StudioRite=(function(){
       {lumo:'talk', egg:'curious',
        line:{title:'Your friend is happy.',
              subtitle:'Add a heart or a smiley face.'}}
-     ], end:{await:'sticker-added'}, nudgeDelay:12000},
+     ], audio:{id:'riteScreen18',cues:[0,4.66]}, end:{await:'sticker-added'}, nudgeDelay:12000},
 
     {band:true, lines:[
       {lumo:'talk', egg:'thinking',
        line:{title:'Now tell us how the story ends.',
              subtitle:'Add some words.'}}
-     ], end:{await:'text-added'}, nudgeDelay:12000},
+     ], audio:{id:'riteScreen19',cues:[0]}, end:{await:'text-added'}, nudgeDelay:12000},
 
     {band:true, lines:[
       {lumo:'talk', egg:'curious',
        line:{title:'Every story needs a name.',
              subtitle:'Give your story a name.'}}
-     ], end:{await:'story-named'}, nudgeDelay:12000},
+     ], audio:{id:'riteScreen20',cues:[0]}, end:{await:'story-named'}, nudgeDelay:12000},
 
     // Story Play. The child watches their own three pages turn, before
     // any decision about sharing. Not a demonstration of the canonical
@@ -264,7 +264,7 @@ const StudioRite=(function(){
       {lumo:'celebrate', egg:'excited',
        line:{title:'Your story is finished.',
              subtitle:'Watch it from the beginning.'}}
-     ], end:{await:'story-played'}, nudgeDelay:2000},
+     ], audio:{id:'riteScreen21',cues:[0]}, end:{await:'story-played'}, nudgeDelay:2000},
 
     // The sharing beat (Decision 7). Declining is a real choice: the
     // story stays theirs, the Studio still unlocks, and the Creator
@@ -285,7 +285,7 @@ const StudioRite=(function(){
       {lumo:'curious', egg:'excited',
        line:{title:'Finishing it makes it yours to keep.',
              subtitle:'Tap Finish Story.'}}
-     ], end:{await:'story-shared', decline:'Not now'}, nudgeDelay:3000},
+     ], audio:{id:'riteScreen22',cues:[0,4.9]}, end:{await:'story-shared', decline:'Not now'}, nudgeDelay:3000},
 
     // The close.
     {band:true, lines:[
@@ -297,7 +297,7 @@ const StudioRite=(function(){
              subtitle:'I only asked the questions.'}},
       {lumo:'wave', egg:'idle',
        line:{title:'Now you know how to make a story.'}}
-     ], end:{move:'Into the Studio'}}
+     ], audio:{id:'riteScreen23',cues:[0,2.5,5.54]}, end:{move:'Into the Studio'}}
   ];
 
   // The mission, held on screen for the whole story so a child never

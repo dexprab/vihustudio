@@ -71,6 +71,27 @@
     riteScreen6:{file:'lumo-screen6-redone.mp3',ms:5330},
     riteScreen7:{file:'lumo-screen7-redone.mp3',ms:11960},
 
+    // Screens 8-23, recorded later and measured the same way. Lumo used
+    // to fall silent from screen 8 onward, so a child heard a guide
+    // through the opening and then made the rest of their first story
+    // with a narrator who had stopped speaking.
+    riteScreen8:{file:'lumo-screen8-redone.mp3',ms:4989},
+    riteScreen9:{file:'lumo-screen9-redone.mp3',ms:4206},
+    riteScreen10:{file:'lumo-screen10-redone.mp3',ms:2194},
+    riteScreen11:{file:'lumo-screen11-redone.mp3',ms:7628},
+    riteScreen12:{file:'lumo-screen12-redone.mp3',ms:3709},
+    riteScreen13:{file:'lumo-screen13-redone.mp3',ms:5956},
+    riteScreen14:{file:'lumo-screen14-redone.mp3',ms:11154},
+    riteScreen15:{file:'lumo-screen15-redone.mp3',ms:1724},
+    riteScreen16:{file:'lumo-screen16-redone.mp3',ms:4598},
+    riteScreen17:{file:'lumo-screen17-redone.mp3',ms:5486},
+    riteScreen18:{file:'lumo-screen18-redone.mp3',ms:6766},
+    riteScreen19:{file:'lumo-screen19-redone.mp3',ms:4362},
+    riteScreen20:{file:'lumo-screen20-redone.mp3',ms:4676},
+    riteScreen21:{file:'lumo-screen21-redone.mp3',ms:4519},
+    riteScreen22:{file:'lumo-screen22-redone.mp3',ms:10188},
+    riteScreen23:{file:'lumo-screen23-redone.mp3',ms:8281},
+
     // Traveller Gateway greeting -- title then subtitle, one real clip
     // each, played back to back (see playSequence()) while both lines of
     // text are already visible together in one bubble.

@@ -8,12 +8,17 @@ Generated from `js/studioRite.js` -> SCREENS, not transcribed by hand.
   continuous take per screen. They are registered WHOLE and the text is
   cued to the performance, so the pacing on screen is the pacing that was
   recorded.
-- **Still to record: screens 8-23 — 16 screens, 21 lines.** Files follow
-  the same convention (`lumo-screen8-redone.mp3` … `screen23`) and are
-  registered in `js/lumoVoice.js` as `riteScreen8` … `riteScreen23`.
-- Four of them carry more than one line and so need a `cues` array timed
-  to the take, exactly as screens 1, 2 and 7 do: **14, 18, 22, 23**. The
-  other twelve are single-line and take `cues:[0]`.
+- **All 23 screens are recorded and wired.** Screens 8-23 arrived later
+  (`lumo-screen8-redone.mp3` … `screen23`) and are registered in
+  `js/lumoVoice.js` as `riteScreen8` … `riteScreen23`.
+- Every declared duration was measured by decoding the file, and matches
+  the real length to 0 ms.
+- The four multi-line takes (**14, 18, 22, 23**) carry a `cues` array.
+  Those cues were found by decoding each take and locating the silences
+  between lines, then choosing between candidate boundaries with a
+  speaking rate derived from screens 1, 2 and 7 — where the cues were
+  already known, and which the same method reproduces exactly. **Worth
+  one listen**: they are inferred, not heard.
 - A screen's lines play one after another on their own; the child only
   acts (or taps) to LEAVE a screen.
 - *Italic* is the second half of the same line (the instruction). Record
