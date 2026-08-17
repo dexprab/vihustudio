@@ -100,35 +100,68 @@ declined, and never appears mid-story.
 
 ---
 
-## 3. Where the level lives, and why that is delicate
+## 3. Rites are the delivery mechanism, not onboarding
 
-It must travel with the **Magic Card**, not the browser. The current
-completion flag is one `localStorage` key, so a Creator opening the
-Studio on a grandparent's laptop would be dropped to Level I with their
-own Level III stories in front of them — the identical failure
-`CLAUDE.md` → Decision 19 already had to fix for projects.
+> *"the rites is our way of introducing new features, options in the
+> product."*
 
-**But the Magic Card has a stated "no counters, no levels" discipline**
-(`js/magicCard.js` → `growthSignals()`), which derives Stories and
-Worlds from real data rather than storing a score. A "Creator Level"
-field would break that rule outright.
+This is the statement with the longest reach in this document. The Rite
+is not onboarding that happens three times — it is how the Studio will
+gain **everything** it ever gains. Two things follow, and they bind
+every future change:
 
-The resolution is what is stored, and what is not:
+**Build a rite registry, not three levels.** Level I/II/III is today's
+count, not the design. Rites will be added, split and reordered for as
+long as the product grows, so the code must take a list of rites — each
+with its script, its gates and the capabilities it teaches — and never
+hard-code an ordinal.
 
-- **Stored:** which Rites have been completed. A record of what a child
-  has *learned* — the same shape as `hasEverPublished`, which records
-  that something happened and not how much.
-- **Never stored:** a level number, a rank, a score, a percentage.
-- **Never shown:** not on the card's face, not in the Studio, not
-  anywhere. The card gains no new visible field. Kept, never displayed —
-  exactly as Cheer keeps its count and shows only growth.
+**Every new capability ships with a story that teaches it.** Writing and
+a recording session are part of the cost of a feature, not an extra
+afterwards. That is a real and permanent tax, and it is the price of the
+"never explain, always teach through creation" rule.
+
+---
+
+## 4. What is stored, and where
+
+**Capabilities, not rite indices.** Because rites get added, split and
+reordered, a rite index is a moving reference; a capability is stable.
+Storing `['shapes','doodle','photo',…]` survives any future
+reorganisation of the rites that taught them.
+
+It also settles a question that was open: **a child who abandons a rite
+half way keeps whatever they actually reached.** There is no
+partly-finished rite to model, because completion was never the unit.
+
+**It must live on the card, and `hasEverPublished` is the wrong model to
+copy.** That flag lives in `FLAGS_KEY` in `localStorage`
+(`js/magicCard.js`), so it is per-*device*. Copying its shape would
+reproduce precisely the failure this is meant to avoid: a Creator opening
+the Studio on a grandparent's laptop, dropped to Level I with their own
+Level III stories in front of them — `CLAUDE.md` → Decision 19 had to fix
+exactly that for projects.
+
+So the record is a **column on `magic_card_identities`**, returned by
+`recall_magic_card()` so a strange device receives it along with the
+pattern. There is clean precedent for both halves: `companion_id`,
+`companion_name`, `companion_species` and `parent_email` were all added
+to that table in later sprints via `add column if not exists`, and
+Decision 18 already made `recall_magic_card()` return the stored pattern.
+
+**Never a level, rank, score or percentage. Never displayed anywhere** —
+not on the card's face, not in the Studio. The card gains no new visible
+field. A set of things learned is not a rank, which is what keeps this
+inside the card's own *"no counters, no levels"* discipline
+(`growthSignals()`). Kept, never shown — exactly as Cheer keeps its count
+and shows only growth.
 
 A child's Studio being larger is the only thing they ever see, and that
 reads as *I know how to do more*, not *I am a higher level*.
 
 ---
 
-## 4. Existing Creators
+## 5. Existing Creators
 
 Anyone who completed the Rite before this ships has been using the
 **whole** Studio. They must not lose controls they have been using for
@@ -137,7 +170,7 @@ by their claimed Magic Card, the same mechanism Decision 8 already uses.
 
 ---
 
-## 5. Sequencing — read this before writing code
+## 6. Sequencing — read this before writing code
 
 **The persistence must not ship on its own.** Making the Level I
 reduction survive the end of the Rite, before Rites II and III exist,
@@ -159,13 +192,15 @@ the starter-story *pack*, where the bill already multiplies per story: a
 pack of five at three levels is fifteen stories, and every one of them
 has to be both written and voiced.
 
-That makes this the largest item on the Release 1 list by a wide margin,
-and it is a fair question whether Levels II and III are the right shape
-but the wrong release.
+**Levels II and III are in Release 1**, by the product owner's decision.
+So this is the largest item in R1 by a wide margin, and it is content
+work rather than engineering — which means it can start immediately and
+in parallel with everything else on the list, because nothing about the
+writing waits on the registry being built.
 
 ---
 
-## 6. Out of scope
+## 7. Out of scope
 
 Level names shown to a child · badges · progress bars · percentages ·
 locked controls · anything that can be compared between children ·

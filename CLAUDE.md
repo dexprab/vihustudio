@@ -808,20 +808,42 @@ once, and its scope is no longer closed.
   has a name on screen a child can compare theirs with a sibling's,
   which is exactly the reasoning Decision 20 used to refuse growth
   stages for Cheer.
-- **The level travels with the Magic Card, and is never shown.** A
-  browser-local flag would drop a Creator to Level I on a grandparent's
-  laptop with their own Level III stories in front of them — the failure
-  Decision 19 already had to fix for projects. But the card has a stated
-  *"no counters, no levels"* discipline (`js/magicCard.js` →
-  `growthSignals()`), so what is stored is **which Rites have been
-  completed** — a record of what a child learned, the same shape as
-  `hasEverPublished` — and never a level, rank or score. The card gains
-  no new visible field. A child's larger Studio is the only thing they
-  ever see, and that reads as *I know how to do more*, not *I am a
-  higher level*.
+- **Rites are how the product introduces new capability — permanently.**
+  Stated by the product owner: *"the rites is our way of introducing new
+  features, options in the product."* So the Rite is not onboarding that
+  happens three times; it is the delivery mechanism for everything the
+  Studio will ever gain. Two consequences bind every future change:
+  build a **rite registry**, never a hard-coded Level I/II/III — three
+  is today's count, not the design; and **every new capability ships
+  with a story that teaches it**, which means writing and a recording
+  session are part of the cost of any feature, not an extra.
+- **What is stored is which CAPABILITIES a child has been taught**, not
+  which rite they finished. Rites will be added, split and reordered
+  over the product's life, so a rite index is a moving reference while a
+  capability is stable. It also settles what happens when a child
+  abandons a rite half way: they keep whatever they actually reached,
+  and there is no partly-finished rite to model.
+- **It travels on the Magic Card, and is never shown.** A browser-local
+  flag would drop a Creator to Level I on a grandparent's laptop with
+  their own Level III stories in front of them — the failure Decision 19
+  already had to fix for projects. Note that `hasEverPublished` is NOT
+  the model to copy: it lives in `FLAGS_KEY` in localStorage, so it is
+  per-device and would reproduce exactly that bug. The record belongs on
+  `magic_card_identities` as a column and must be returned by
+  `recall_magic_card()`, the way `companion_id` and `parent_email` were
+  both added in later sprints.
+- **Never a level, rank or score, and nothing new on the card's face.**
+  The card has a stated *"no counters, no levels"* discipline
+  (`js/magicCard.js` → `growthSignals()`), which this respects: a set of
+  things learned is not a rank. A child's larger Studio is the only
+  thing they ever see, and that reads as *I know how to do more*, not
+  *I am a higher level*.
 - **Existing Creators are grandfathered** by their claimed Magic Card
   and treated as having completed all three: they have been using the
   whole Studio and must not lose controls they have had for weeks.
+- **Levels II and III are in Release 1**, by the product owner's
+  decision. The writing and the recordings are therefore R1 work, and
+  they are the largest item in it.
 - **The persistence must not ship on its own.** Making the Level I
   reduction survive the end of the Rite before Rites II and III exist
   would leave every new child permanently at Level I with no way
