@@ -286,13 +286,30 @@
     // is the exact thing they can do to it, once, gently, and never
     // again. It is a demonstration disguised as an arrival.
     //
-    // Deliberately NOT a spin. "Calm before spectacle" (Decision 9)
-    // rules out anything that reads as a camera move; this is about one
-    // fifth of the turn a child gets from holding the pointer at the
-    // edge for a second, eased so it settles rather than stops.
-    var TWIRL_YAW = 0.34;      // radians, against EDGE_YAW's 0.31/second
-    var TWIRL_PITCH = -0.05;   // a touch of lift, so it is not a flat pan
-    var TWIRL_MS = 2600;
+    // MEASURED IN TURNS, NOT RADIANS.
+    //
+    // camera.js: `offset.x = (yaw / 2π) * ether.width`, so one full turn
+    // of yaw is exactly one field width — which is Decision 9's own
+    // definition of the universe closing on itself. Saying "a quarter of
+    // a turn" therefore says something true about the universe, where a
+    // raw radian figure would just be a number that happened to look
+    // right on one screen.
+    //
+    // A quarter turn moves the whole sky by roughly a third of a screen
+    // at the story layer: stories visibly travel, new sky arrives behind
+    // them, and every parallax layer moves at its own rate — which is
+    // the thing that cannot be mistaken for an animation on top of a
+    // still picture. A first attempt at a twentieth of a turn moved 75px
+    // and read as nothing at all.
+    //
+    // Still not a spin. Three and a half seconds of easeOut is a slow
+    // sweep that settles, and "calm before spectacle" survives it: the
+    // universe is doing one deliberate thing, not performing.
+    var TWIRL_TURNS = 0.25;         // of a full revolution
+    var TWIRL_PITCH_TURNS = -0.03;  // a little lift, so it is not a flat pan
+    var TWIRL_YAW = Math.PI * 2 * TWIRL_TURNS;
+    var TWIRL_PITCH = Math.PI * 2 * TWIRL_PITCH_TURNS;
+    var TWIRL_MS = 3500;
 
     function enterTheEther() {
       var u = universe;

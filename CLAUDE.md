@@ -239,10 +239,15 @@ Locked by the product owner in the Sprint VP1 brief. This is an entry
   beginning is what a form asks you to do and exploring is what this
   place is for. Crossing it is answered by the universe rather than by
   a transition: a starlight crosses the Ether, and the Ether **turns
-  once**, gently, about a fifth of the turn a child gets from holding
-  the pointer at the edge. That turn is the teaching — nothing on the
-  screen says the universe can be looked around, so the first thing it
-  does is the exact thing they can do to it. Both use seams the runtime
+  once** — a QUARTER of a full revolution, which camera.js defines as a
+  quarter of one field width. Every depth layer moves at its own rate
+  (measured: far stars 57px, mist 95, currents 145, stories 315, near
+  dust 353), and that parallax is what makes it read as the whole
+  universe turning rather than an animation played over a still
+  picture. A first attempt at a twentieth of a turn moved the stories
+  75px and read as nothing at all. That turn is the teaching — nothing
+  on the screen says the universe can be looked around, so the first
+  thing it does is the exact thing they can do to it. Both use seams the runtime
   already exposes (`ambient.shootNow()`, `camera.look()`), so no file
   under `vihuplanet/runtime/` changed, which is Decision 9's own test.
   Suppressed under `prefers-reduced-motion`.
