@@ -29,6 +29,8 @@
     var worldFadeVal=document.getElementById('am-world-fade-val');
     var muteFadeSlider=document.getElementById('am-mute-fade');
     var muteFadeVal=document.getElementById('am-mute-fade-val');
+    var worldVolSlider=document.getElementById('am-world-volume');
+    var worldVolVal=document.getElementById('am-world-volume-val');
     var worldFileInput=document.getElementById('am-world-file');
     var worldPlayBtn=document.getElementById('am-world-play');
     var worldStopBtn=document.getElementById('am-world-stop');
@@ -47,6 +49,7 @@
     var DEFAULT_MASTER=0.4;
     var DEFAULT_WORLD_FADE=2700;
     var DEFAULT_MUTE_FADE=300;
+    var DEFAULT_WORLD_VOLUME=1;
 
     function pct(n){ return Math.round(n*100); }
 
@@ -85,6 +88,7 @@
       });
       var code=
         "const FOUNDATION_LAYERS=[\n"+lines.join(',\n')+"\n  ];\n\n"+
+        "const DEFAULT_WORLD_VOLUME="+(Math.round(AudioManager.getWorldVolume()*100)/100)+";\n"+
         "const DEFAULT_WORLD_FADE_MS="+AudioManager.getWorldFadeMs()+";\n"+
         "const DEFAULT_MUTE_FADE_MS="+AudioManager.getMuteFadeMs()+";\n\n"+
         "// Master volume default (js/audioManager.js's own DEFAULT_VOLUME):\n"+
@@ -107,6 +111,16 @@
       var v=parseInt(masterSlider.value,10)/100;
       AudioManager.setVolume(v);
       masterVal.textContent=masterSlider.value+'%';
+      refreshCode();
+    });
+
+    // Heard while it moves: AudioManager.setWorldVolume() ramps a track
+    // that is already playing, so this is a real fader rather than a value
+    // that only takes effect on the next Play.
+    worldVolSlider.addEventListener('input',function(){
+      var v=parseInt(worldVolSlider.value,10)/100;
+      AudioManager.setWorldVolume(v);
+      worldVolVal.textContent=worldVolSlider.value+'%';
       refreshCode();
     });
 
@@ -159,6 +173,9 @@
       var muted=AudioManager.isMuted();
       muteBtn.textContent=muted ? '🔊 Unmute' : '🔇 Mute';
       muteBtn.classList.toggle('am-active',muted);
+      var wv=AudioManager.getWorldVolume();
+      worldVolSlider.value=String(pct(wv));
+      worldVolVal.textContent=pct(wv)+'%';
       var wf=AudioManager.getWorldFadeMs();
       worldFadeSlider.value=String(wf);
       worldFadeVal.textContent=wf+'ms';
@@ -170,10 +187,13 @@
     resetBtn.addEventListener('click',function(){
       DEFAULT_LAYERS.forEach(function(l){ AudioManager.setLayerVolume(l.file,l.volume); });
       AudioManager.setVolume(DEFAULT_MASTER);
+      AudioManager.setWorldVolume(DEFAULT_WORLD_VOLUME);
       AudioManager.setWorldFadeMs(DEFAULT_WORLD_FADE);
       AudioManager.setMuteFadeMs(DEFAULT_MUTE_FADE);
       masterSlider.value=String(pct(DEFAULT_MASTER));
       masterVal.textContent=pct(DEFAULT_MASTER)+'%';
+      worldVolSlider.value=String(pct(DEFAULT_WORLD_VOLUME));
+      worldVolVal.textContent=pct(DEFAULT_WORLD_VOLUME)+'%';
       worldFadeSlider.value=String(DEFAULT_WORLD_FADE);
       worldFadeVal.textContent=DEFAULT_WORLD_FADE+'ms';
       muteFadeSlider.value=String(DEFAULT_MUTE_FADE);

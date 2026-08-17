@@ -67,6 +67,14 @@
                 <label for="am-world-file">Filename</label>
                 <input type="text" id="am-world-file" placeholder="e.g. forest.mp3" class="am-text-input">
             </div>
+            <div class="am-row">
+                <label for="am-world-volume">World Volume</label>
+                <input type="range" id="am-world-volume" min="0" max="100" value="100">
+                <span class="am-val" id="am-world-volume-val">100%</span>
+            </div>
+            <p class="am-card-note">A World track sits on top of the whole Foundation mix, so at 100% it is
+                louder than any single layer under it. Moving this while a track is playing is heard
+                straight away.</p>
             <div class="am-btn-row">
                 <button id="am-world-play" class="am-btn">Play World Track</button>
                 <button id="am-world-stop" class="am-btn">Stop World Track</button>

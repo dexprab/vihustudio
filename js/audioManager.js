@@ -54,6 +54,14 @@
   const MUTE_KEY='vihu-audio-muted';
   const VOLUME_KEY='vihu-audio-volume';
   const DEFAULT_VOLUME=0.4;
+  // A World ambience layer's own level, against the Foundation bed it sits
+  // on top of. It used to be hard-coded to 1 at the point the element was
+  // built, with no way to say otherwise — which made a World track 2x to
+  // 30x the level of any single Foundation layer (those sit between 0.03
+  // and 0.5), so the bed vanished underneath the moment one played.
+  // Defaulting to 1 keeps that exact behaviour until somebody tunes it in
+  // tools/audio-mixer/, which is now possible.
+  const DEFAULT_WORLD_VOLUME=1;
   const DEFAULT_WORLD_FADE_MS=2700;
   const DEFAULT_MUTE_FADE_MS=300;
 
@@ -71,6 +79,7 @@
   // ear; every existing caller that never touches these keeps the exact same
   // defaults this module always shipped with.
   let _worldFadeMs=DEFAULT_WORLD_FADE_MS;
+  let _worldVolume=DEFAULT_WORLD_VOLUME;
   let _muteFadeMs=DEFAULT_MUTE_FADE_MS;
 
   function _readPrefs(){
@@ -231,7 +240,7 @@
       newEl=new Audio(src);
       newEl.loop=true;
       newEl.preload='auto';
-      newEl.__baseVolume=1;
+      newEl.__baseVolume=_worldVolume;
       newEl.volume=0;
     }catch(e){ newEl=null; }
 
@@ -245,7 +254,7 @@
       try{
         newEl.play().catch(function(){});
       }catch(e){}
-      _ramp(newEl,0,_effectiveVolume(1),_worldFadeMs);
+      _ramp(newEl,0,_effectiveVolume(_worldVolume),_worldFadeMs);
     }
   }
 
@@ -258,6 +267,23 @@
       try{ el.pause(); }catch(e){}
     });
   }
+
+  // A World ambience layer's level against the Foundation bed. Mirrors
+  // setLayerVolume() exactly -- same clamp, same _effectiveVolume() pass --
+  // except it also has to reach a track that is already playing, so the
+  // mixer's slider can be heard while it is moved rather than only on the
+  // next Play. The mute fade is used rather than the World fade: this is a
+  // level change, not a World arriving or leaving.
+  function setWorldVolume(vol){
+    if(typeof vol!=='number' || !isFinite(vol)) return;
+    _worldVolume=Math.max(0,Math.min(1,vol));
+    if(_worldEl){
+      _worldEl.__baseVolume=_worldVolume;
+      _ramp(_worldEl,_worldEl.volume,_effectiveVolume(_worldVolume),_muteFadeMs);
+    }
+  }
+
+  function getWorldVolume(){ return _worldVolume; }
 
   function setMuted(bool){
     _muted=!!bool;
@@ -353,6 +379,8 @@
     getFoundationLayers:getFoundationLayers,
     setLayerVolume:setLayerVolume,
     getLayerVolume:getLayerVolume,
+    setWorldVolume:setWorldVolume,
+    getWorldVolume:getWorldVolume,
     setWorldFadeMs:setWorldFadeMs,
     getWorldFadeMs:getWorldFadeMs,
     setMuteFadeMs:setMuteFadeMs,

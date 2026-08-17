@@ -32,6 +32,12 @@ architectural, not experiential... the AudioManager simply loads the five
 Foundation layers, applies fixed volumes, loops them indefinitely and
 optionally overlays a World ambience layer."
 
+A World ambience track's own level against this bed is
+`DEFAULT_WORLD_VOLUME` in the same file, and it too has a live slider in
+the mixer. It was hard-coded to 1 with no way to say otherwise, which put
+a World track 2x-30x above any single Foundation layer under it; the
+default is unchanged, so nothing sounds different until somebody tunes it.
+
 Each file's own relative mix level lives in `js/audioManager.js`'s
 `FOUNDATION_LAYERS` table — tuned by ear via `tools/audio-mixer/` (a temporary
 dev utility exposing these exact values as live sliders) and set as the real
