@@ -260,6 +260,18 @@ Locked by the product owner in the Sprint VP1 brief. This is an entry
   already exposes (`ambient.shootNow()`, `camera.look()`), so no file
   under `vihuplanet/runtime/` changed, which is Decision 9's own test.
   Suppressed under `prefers-reduced-motion`.
+- **And if nobody answers, the universe glances.** A Traveller who has
+  not turned it after about eleven seconds sees it lean a little one
+  way and come back — the movement a person makes when something
+  catches their eye, which is the one gesture that means *look over
+  there* without saying it. Wordless on purpose: there is not one
+  instruction anywhere in VihuPlanet, this would be the first, and it
+  would have to be read. Three rules keep it an invitation rather than
+  a nag — it waits, so a child already exploring is never interrupted;
+  it **stops forever** the moment they turn the universe themselves,
+  because the question has been answered; and it gives up after three.
+  Built on `traveller.stillSeconds()`, which already existed and means
+  exactly this. Also suppressed under `prefers-reduced-motion`.
   The Traveller Gateway's own `✨ Tap to Begin ✨` screen was removed: one
   journey, one threshold. That gate existed to satisfy the browser's
   autoplay policy (a real gesture in the Studio's own document, which a

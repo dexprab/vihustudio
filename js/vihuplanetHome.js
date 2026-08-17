@@ -331,6 +331,94 @@
     function _rand(lo, hi) { return lo + Math.random() * (hi - lo); }
     function _coin() { return Math.random() < 0.5 ? -1 : 1; }
 
+    // ---------- the invitation ----------
+    //
+    // "A subtle, curious way of saying move around and explore."
+    //
+    // Wordless, on purpose. There is not one instruction anywhere in
+    // VihuPlanet and this would be the first; it would also have to be
+    // READ, which rules out a good share of the children it is for.
+    //
+    // So it is a GLANCE. If the universe has not been turned for a
+    // while, it leans a little one way and comes back — the movement a
+    // person makes when something catches their eye, which is the one
+    // gesture that means "look over there" without saying it. The
+    // Traveller is still at the centre and nothing has actually moved
+    // in the field; it is the viewpoint being curious.
+    //
+    // Three rules keep it an invitation rather than a nag:
+    //   · it waits, so a child already exploring is never interrupted;
+    //   · it STOPS FOREVER the moment they turn the universe
+    //     themselves — the question has been answered;
+    //   · it gives up after a few tries, because a place that keeps
+    //     asking is a place that is nagging.
+    var GLANCE_AFTER_S = 11;     // stillness before the first one
+    var GLANCE_SPACING_S = 14;   // and between the ones after it
+    var GLANCE_TRIES = 3;
+    var GLANCE_TURNS = 0.055;    // a fifth of the arrival turn
+    var GLANCE_OUT_MS = 1100;
+    var GLANCE_BACK_MS = 1700;
+
+    var glanceTimer = null;
+    var glancesGiven = 0;
+    var glanceLastStill = 0;
+
+    function watchForStillness() {
+      if (glanceTimer) return;
+      glanceTimer = window.setInterval(function () {
+        var u = universe;
+        if (!u || !u.traveller || !u.traveller.stillSeconds) return stopWatching();
+        var still = u.traveller.stillSeconds();
+
+        // They turned it. That is the whole answer — never ask again.
+        if (still < glanceLastStill - 0.4) return stopWatching();
+        glanceLastStill = still;
+
+        // A Spirit being met holds the universe still on purpose
+        // (traveller is disabled), and leaning during that would pull
+        // the story out from under them.
+        if (u.focus && u.focus.isOpen && u.focus.isOpen()) return;
+
+        var due = GLANCE_AFTER_S + glancesGiven * GLANCE_SPACING_S;
+        if (still < due) return;
+
+        glancesGiven++;
+        glance();
+        if (glancesGiven >= GLANCE_TRIES) stopWatching();
+      }, 700);
+    }
+
+    function stopWatching() {
+      if (glanceTimer) { window.clearInterval(glanceTimer); glanceTimer = null; }
+    }
+
+    // Out, then back. The return is slower than the departure, which is
+    // what makes it read as a look rather than a wobble.
+    function glance() {
+      var u = universe;
+      if (!u || !u.camera || !u.camera.look) return;
+      var yaw = Math.PI * 2 * GLANCE_TURNS * _coin();
+      sweep(yaw, GLANCE_OUT_MS, function () {
+        sweep(-yaw, GLANCE_BACK_MS);
+      });
+    }
+
+    // One eased movement of `total` radians over `ms`, differenced per
+    // frame so the sum is exact however the frames land.
+    function sweep(total, ms, done) {
+      var u = universe;
+      var started = null, lastT = 0;
+      (function step(now) {
+        if (started === null) started = now;
+        var t = Math.min(1, (now - started) / ms);
+        var eased = 1 - Math.pow(1 - t, 3);
+        u.camera.look((eased - lastT) * total, 0);
+        lastT = eased;
+        if (t < 1) window.requestAnimationFrame(step);
+        else if (done) done();
+      })(performance.now());
+    }
+
     function enterTheEther() {
       var u = universe;
       if (!u) return;
@@ -357,8 +445,8 @@
           reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         } catch (e) {}
         // A child who has asked for less motion is told the same thing
-        // by the story lights alone; they are not shown a moving
-        // camera.
+        // by the story lights alone: no arrival turn, and no glances
+        // either — both are camera movement they did not ask for.
         if (reduced) return;
 
         // Decided once, here, for this arrival only.
@@ -382,6 +470,12 @@
           u.camera.look((eased - lastT) * yawTotal, (eased - lastT) * pitchTotal);
           lastT = eased;
           if (t < 1) window.requestAnimationFrame(step);
+          else {
+            // The arrival has said its piece. From here the universe
+            // waits, and only asks again if nobody has answered.
+            glanceLastStill = 0;
+            watchForStillness();
+          }
         })(performance.now());
       } catch (e) {}
     }
