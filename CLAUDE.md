@@ -750,6 +750,68 @@ from vihupapa was still available in the god."*
   sweeps unowned records to the new card — only unowned ones, never
   another Creator's.
 
+### 22. The Studio a Child Meets Is the One They Completed a Rite In
+
+Locked by the product owner: *"the studio the child meet is the one on
+which he completed the rite. i would suggest levels of rites. 3 levels
+for full progression"* — and then: *"level 1 is mandatory to become a
+creator. level 2 and level 3 are the progressions in the studio. they
+should be purely opt ins."*
+
+Amends Decision 8 on two points: the Rite is no longer completed exactly
+once, and its scope is no longer closed.
+
+- **The Rite's reduction outlives the Rite.**
+  `body.studio-rite-running` hides the controls the Starter Story never
+  asks for, and it is scoped to the Rite *running* — so all of them
+  reappear the instant it ends. A child made their first story in a
+  Studio of five controls and was handed one of forty at the moment they
+  were least equipped to read it. The reduction was right; its lifetime
+  was wrong.
+- **Three levels, and each one's unlocks are what the previous level's
+  story had no use for.** *Make a story → make it yours → make it live
+  somewhere.* Level I is the existing Starter Story. Level II adds
+  Shapes, Doodle, Photo, Add Page and Card Designer. Level III adds the
+  World Designer, Page Style, Page Shape, From This World, Family
+  Photos, Voice and the remaining publish formats.
+- **Level I is mandatory; II and III are purely opt-in.** Completing
+  Level I is what makes a child a Creator. Nothing else is ever required
+  of anybody.
+- **A child who never takes Rite II loses nothing.** They keep making,
+  finishing and sharing stories with the Level I set for as long as they
+  like. Progression is an invitation and must never become a wall, a
+  prompt that returns, or a reason anything is refused.
+- **Hidden, never locked.** No padlocks, no greyed-out controls with a
+  "Level 2" tooltip, no progress bar, no badge. A control not yet taught
+  is simply not there; when it is taught, it appears. The moment a level
+  has a name on screen a child can compare theirs with a sibling's,
+  which is exactly the reasoning Decision 20 used to refuse growth
+  stages for Cheer.
+- **The level travels with the Magic Card, and is never shown.** A
+  browser-local flag would drop a Creator to Level I on a grandparent's
+  laptop with their own Level III stories in front of them — the failure
+  Decision 19 already had to fix for projects. But the card has a stated
+  *"no counters, no levels"* discipline (`js/magicCard.js` →
+  `growthSignals()`), so what is stored is **which Rites have been
+  completed** — a record of what a child learned, the same shape as
+  `hasEverPublished` — and never a level, rank or score. The card gains
+  no new visible field. A child's larger Studio is the only thing they
+  ever see, and that reads as *I know how to do more*, not *I am a
+  higher level*.
+- **Existing Creators are grandfathered** by their claimed Magic Card
+  and treated as having completed all three: they have been using the
+  whole Studio and must not lose controls they have had for weeks.
+- **The persistence must not ship on its own.** Making the Level I
+  reduction survive the end of the Rite before Rites II and III exist
+  would leave every new child permanently at Level I with no way
+  forward — the wall this decision forbids, and worse than the cliff it
+  replaces. Order: Rite II, Rite III, the card record and the opt-in,
+  and only then the persistence.
+- Out of scope: level names shown to a child, badges, progress bars,
+  percentages, locked controls, anything comparable between children,
+  and required progression of any kind.
+- Design and sequencing: `docs/STUDIO_RITE_LEVELS.md`.
+
 ### 21. VihuPlanet Is For Everybody; the Studio Needs a Laptop
 
 Locked by the product owner: *"vihuplanet is meant for laptop screens
