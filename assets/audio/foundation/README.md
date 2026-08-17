@@ -39,12 +39,23 @@ a World track 2x-30x above any single Foundation layer under it; the
 default is unchanged, so nothing sounds different until somebody tunes it.
 
 Each file's own relative mix level lives in `js/audioManager.js`'s
-`FOUNDATION_LAYERS` table — tuned by ear via `tools/audio-mixer/` (a temporary
-dev utility exposing these exact values as live sliders) and set as the real
-shipped mix: Air 0.5, Harmony 0.03, Magic 0, Forest 0.28, Wind 0.07, alongside
-a Master Volume of 0.4 and a 2700ms World Fade (Mute Fade stays at the
-original 300ms). "For the time being" — still open to further re-tuning the
-same way, disclosed as a real, current mix rather than a guessed placeholder.
+`FOUNDATION_LAYERS` table — tuned by ear via `tools/audio-mixer/` (a dev
+utility exposing these exact values as live sliders).
+
+The shipped mix is now **Air 0, Harmony 0, Magic 0, Forest 0.35, Wind 0.15**,
+with a Master Volume of 0.55, a World Volume of 0.33 and a 2700ms World Fade
+(Mute Fade stays at the original 300ms).
+
+**Three of the five are deliberately silent.** The previous mix measured 73%
+air.mp3, and air, harmony and magic are all held pitches (spectral flatness
+0.21, 0.09 and 0.13, where 1.0 is noise) — so what a child heard was two
+sustained tones with almost no texture under them, reported by the product
+owner as sounding like horror-movie music. What is left is the two textural
+layers: wind at about three quarters of the bed and forest, the most textural
+of the five, at the rest.
+
+**So the bed is weather, and the music is the World track on top of it.** See
+`assets/audio/worlds/README.md`.
 
 ## Discipline
 

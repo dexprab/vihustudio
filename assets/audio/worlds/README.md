@@ -28,12 +28,26 @@ assets (that function itself is not called directly here, since it's scoped
 to a compiled Theme package's own embedded assets map, and V1 World ambience
 lives in this fixed, non-package location instead).
 
-## Currently empty
+## What's here
 
-No World-specific ambience tracks exist yet — this folder is a placeholder
-for when a Theme Author (via World Builder, in a future sprint) or the
-platform itself supplies one. A Theme with no `audio.ambience` field behaves
-exactly as it does today: Foundation plays, nothing else.
+`a.mp3` `b.mp3` `c.mp3` `d.mp3` — four tracks supplied by the product owner.
+`a` and `c` are the shipped default (`DEFAULT_WORLD_AMBIENCE` in
+`js/audioManager.js`); `b` and `d` are kept and unused for now.
+
+**The default pair alternates.** `playWorld()` always took an array and only
+ever played `[0]`; more than one entry now means "and then this one, and then
+back". A single track still loops exactly as it always did, so no existing
+caller changed. The change of hands is the same crossfade `playWorld` already
+performs between two different Worlds — the outgoing track ramps down over the
+World Fade while the next ramps up — so a turn never lands on a silence, and
+the same forty-five seconds never repeats back to back.
+
+**It is a default, never an override.** A Theme that declares its own
+`audio.ambience` replaces it through the ordinary `playWorld` path, and
+`AudioManager` still knows nothing about what a Theme is. A Theme with no
+`audio.ambience` field now gets the default pair rather than the Foundation
+bed alone — which is the point, since that bed is deliberately texture with no
+music in it.
 
 ## Discipline
 

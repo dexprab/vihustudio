@@ -38,30 +38,56 @@
   const WORLDS_BASE=AUDIO_ROOT+'worlds/';
 
   // Five Foundation layers, each with its own fixed relative volume -- a
-  // deliberate mix, not five equal levels. These starting values are a
-  // placeholder balance, not a creative judgment this module is able to make on
-  // its own; they're deliberately just one small, easily-editable table, meant
-  // to be re-tuned by ear once the five real files can actually be heard mixed
-  // together.
+  // deliberate mix, not five equal levels. Tuned by ear in
+  // tools/audio-mixer/ and pasted back here, which is the whole loop that
+  // tool exists for.
+  //
+  // THREE OF THE FIVE ARE DELIBERATELY SILENT. That is not an oversight to
+  // be helpfully corrected. Measured, the old mix was 73% air.mp3, and
+  // air/harmony/magic are all held pitches (spectral flatness 0.21, 0.09,
+  // 0.13 where 1.0 is noise) -- so what a child heard was two sustained
+  // tones with almost no texture under them, which is how suspense is
+  // scored. Reported as "the music sounds like a horror movie music".
+  //
+  // What is left is the two textural layers: wind (0.47 flatness) at about
+  // three quarters of the bed and forest (0.61, the most textural of the
+  // five) at the rest. The bed is now weather rather than music, and the
+  // music is whatever World ambience plays on top of it.
   const FOUNDATION_LAYERS=[
-    {file:'air.mp3',volume:0.5},
-    {file:'harmony.mp3',volume:0.03},
+    {file:'air.mp3',volume:0},
+    {file:'harmony.mp3',volume:0},
     {file:'magic.mp3',volume:0},
-    {file:'forest.mp3',volume:0.28},
-    {file:'wind.mp3',volume:0.07}
+    {file:'forest.mp3',volume:0.35},
+    {file:'wind.mp3',volume:0.15}
   ];
 
   const MUTE_KEY='vihu-audio-muted';
   const VOLUME_KEY='vihu-audio-volume';
-  const DEFAULT_VOLUME=0.4;
+  const DEFAULT_VOLUME=0.55;
   // A World ambience layer's own level, against the Foundation bed it sits
   // on top of. It used to be hard-coded to 1 at the point the element was
-  // built, with no way to say otherwise — which made a World track 2x to
-  // 30x the level of any single Foundation layer (those sit between 0.03
-  // and 0.5), so the bed vanished underneath the moment one played.
-  // Defaulting to 1 keeps that exact behaviour until somebody tunes it in
-  // tools/audio-mixer/, which is now possible.
-  const DEFAULT_WORLD_VOLUME=1;
+  // built, with no way to say otherwise, so nothing else could ever be
+  // auditioned; tools/audio-mixer/ now has a fader for it.
+  //
+  // At 0.33 a World track still sits well above the bed -- measured, the
+  // four tracks in assets/audio/worlds/ run about 7x the bed's own level
+  // at this setting. That is the intended shape rather than an imbalance:
+  // the Foundation layers are weather now, and the World track is the
+  // music.
+  const DEFAULT_WORLD_VOLUME=0.33;
+
+  // THE MUSIC OF THE PLACE, when no World has said otherwise.
+  //
+  // The Foundation bed is weather now (see FOUNDATION_LAYERS above), so
+  // without this there is texture and no music at all. These two alternate,
+  // handing over with the same crossfade playWorld uses between Worlds, so
+  // the same forty-five seconds never repeats back to back. Chosen by the
+  // product owner after listening to all four uploaded tracks.
+  //
+  // It is the DEFAULT, never an override: a Theme that declares its own
+  // audio.ambience replaces this through the ordinary playWorld path, and
+  // nothing here knows that Themes exist.
+  const DEFAULT_WORLD_AMBIENCE=['a.mp3','c.mp3'];
   const DEFAULT_WORLD_FADE_MS=2700;
   const DEFAULT_MUTE_FADE_MS=300;
 
@@ -70,6 +96,9 @@
   let _masterVolume=DEFAULT_VOLUME;
   let _foundationEls=[]; // [{el, baseVolume, file}]
   let _worldEl=null;
+  let _worldSequence=[];      // the World refs in play; more than one alternates
+  let _worldIndex=0;
+  let _worldAdvanceTimer=null;
   let _worldRefsKey=null; // JSON-stringified current World ambience refs, for the no-op re-entry check
   let _unlockHandler=null;
   let _fadeTimers=[]; // active setInterval ids, cleared defensively on shutdown
@@ -220,45 +249,106 @@
         if(entry.el.paused) entry.el.play().catch(function(){});
       }catch(e){}
     });
+    // Started from here rather than from init(), for the reason every other
+    // playback in this module is: it has to begin inside a real user gesture
+    // or the browser blocks it. Only when nothing else is already playing, so
+    // a World that got in first is never interrupted by the default.
+    if(!_worldEl && DEFAULT_WORLD_AMBIENCE.length) playWorld(DEFAULT_WORLD_AMBIENCE);
   }
 
   // ambienceRefs: array of filenames (resolved against assets/audio/worlds/) or
   // already-qualified paths, e.g. ['forest.mp3']. A no-op if the exact same
   // refs are already the active World ambience. Never called with a Theme
   // object -- the caller (js/themeEngine.js) already extracted the plain array.
+  //
+  // MORE THAN ONE REF ALTERNATES. The signature always took an array and only
+  // ever played [0]; a second entry now means "and then this one, and then
+  // back", which is what the array shape always implied. One track alone still
+  // loops exactly as it always did, so every existing caller is unaffected.
+  //
+  // The change of hands is the same crossfade playWorld already performs
+  // between two different Worlds -- one track ramps down over the World Fade
+  // while the next ramps up -- so a turn never lands on a silence or a seam.
   function playWorld(ambienceRefs){
     if(!_initialized) return;
     if(!ambienceRefs || !ambienceRefs.length){ stopWorld(); return; }
     const key=JSON.stringify(ambienceRefs);
     if(key===_worldRefsKey) return; // already playing this exact World ambience
     _worldRefsKey=key;
+    _worldSequence=ambienceRefs.slice();
+    _worldIndex=0;
+    _startWorldTrack();
+  }
 
-    const src=_resolveWorldRef(ambienceRefs[0]);
+  // Builds the element for _worldSequence[_worldIndex], crossfading whatever
+  // is currently playing out underneath it.
+  function _startWorldTrack(){
+    const refs=_worldSequence;
+    if(!refs || !refs.length) return;
+    const alternating=refs.length>1;
+    const src=_resolveWorldRef(refs[_worldIndex % refs.length]);
     const oldEl=_worldEl;
     let newEl;
     try{
       newEl=new Audio(src);
-      newEl.loop=true;
+      // A single track loops itself, as it always has. A sequence must not:
+      // it has to reach its own end for there to be a moment to hand over on.
+      newEl.loop=!alternating;
       newEl.preload='auto';
       newEl.__baseVolume=_worldVolume;
       newEl.volume=0;
     }catch(e){ newEl=null; }
 
+    _clearWorldAdvance();
     if(oldEl){
       _ramp(oldEl,oldEl.volume,0,_worldFadeMs,function(){
         try{ oldEl.pause(); }catch(e){}
       });
     }
     _worldEl=newEl;
-    if(newEl){
-      try{
-        newEl.play().catch(function(){});
-      }catch(e){}
-      _ramp(newEl,0,_effectiveVolume(_worldVolume),_worldFadeMs);
+    if(!newEl) return;
+    try{
+      newEl.play().catch(function(){});
+    }catch(e){}
+    _ramp(newEl,0,_effectiveVolume(_worldVolume),_worldFadeMs);
+    if(alternating) _scheduleWorldAdvance(newEl);
+  }
+
+  // The hand-over starts one World Fade BEFORE the track ends, so the two
+  // overlap and the change is a crossfade rather than a cut. 'ended' is kept
+  // as a backstop for anything whose duration never resolves (a stream, a
+  // metadata failure) -- there it becomes a plain cut, which is still better
+  // than the music stopping for good.
+  function _scheduleWorldAdvance(el){
+    function advance(){
+      if(el!==_worldEl) return;          // superseded by a real World already
+      _clearWorldAdvance();
+      _worldIndex=(_worldIndex+1)%_worldSequence.length;
+      _startWorldTrack();
     }
+    el.addEventListener('ended',advance);
+    el.__advanceOnEnded=advance;
+    function arm(){
+      const d=el.duration;
+      if(!isFinite(d) || d<=0) return;   // 'ended' will have to do it
+      const ms=Math.max(500,(d*1000)-_worldFadeMs);
+      _clearWorldAdvance();
+      el.addEventListener('ended',advance);
+      el.__advanceOnEnded=advance;
+      _worldAdvanceTimer=setTimeout(advance,ms);
+    }
+    if(isFinite(el.duration) && el.duration>0) arm();
+    else el.addEventListener('loadedmetadata',arm,{once:true});
+  }
+
+  function _clearWorldAdvance(){
+    if(_worldAdvanceTimer){ clearTimeout(_worldAdvanceTimer); _worldAdvanceTimer=null; }
   }
 
   function stopWorld(){
+    _clearWorldAdvance();
+    _worldSequence=[];
+    _worldIndex=0;
     if(!_worldEl){ _worldRefsKey=null; return; }
     const el=_worldEl;
     _worldEl=null;
@@ -352,6 +442,8 @@
       try{ entry.el.pause(); entry.el.src=''; }catch(e){}
     });
     _foundationEls=[];
+    _clearWorldAdvance();
+    _worldSequence=[];
     if(_worldEl){
       try{ _worldEl.pause(); _worldEl.src=''; }catch(e){}
       _worldEl=null;
