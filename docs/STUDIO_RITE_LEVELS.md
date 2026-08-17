@@ -291,12 +291,70 @@ a sibling's — which is precisely the reasoning `CLAUDE.md` → Decision 20
 used to refuse growth stages for Cheer, and it applies here without
 modification.
 
-**The offer is quiet, and it is made once.** An opt-in has to be
-discoverable or it is not an opt-in, so there is one unobtrusive way to
-ask for the next Rite. It never nags, never returns after being
-declined, and never appears mid-story.
+**The offer is quiet, and it never asks a question.** See §2.1 — the
+original wording of this rule was *"made once … never returns after being
+declined"*, and building it proved both halves wrong.
 
 **Nothing about a level is ever displayed.** See §4.
+
+### 2.1 Where the offer lives — LOCKED
+
+Locked by the product owner: *"agreed with placement. you can lock it."*
+Rendered into the running Studio and measured at build 0562. **One slot,
+on Studio Home, showing one story — never two.** A child who has done
+Rite I sees *My Little House* there; a child who has done that sees
+whatever is next; a child who has done them all sees nothing, and the band
+is absent rather than empty. There is never more than one, so there is no
+ladder on screen to count or compare.
+
+It sits in `_renderTypeScreen()` between the creation-type grid and
+`.creation-flow-secondary-options`, reusing that band's own dashed rule,
+width and card treatment. It reads **A new story is waiting**, then the
+story's own name and one line about what happens in it.
+
+**Four of the five candidate surfaces are closed by decisions already
+locked**, and that elimination is the argument rather than a preference:
+
+| Surface | | Why |
+|---|---|---|
+| VihuPlanet home | closed | Two permanent actions, forever. Decision 10 names this case: *no new button may appear as a child progresses.* |
+| The Finish Story celebration | closed | Exactly two equal choices, neither primary. A third makes one of them the thing you skip — Decision 12. |
+| Inside the editor | closed | Never mid-story; and in the Add panel it would read as *more tools*, which is the one thing a Rite is not. |
+| My Projects | closed | *Continue a Project* has one job. |
+| **Studio Home** | **open** | Between stories, already a screen about what to make, already has a quiet secondary band. |
+
+**And not as a pill, a badge or a seventh card.** The two pills are
+*things of mine* — my projects, my card — and a story nobody has made yet
+is not one of those; a third starts reading as permanent navigation. A
+seventh card in the type grid is worse: those are *kinds* of story and a
+Rite is *one specific* story, so sitting it among categories gives it
+equal permanent weight. Nothing goes on the Magic Card's face
+(`growthSignals()`).
+
+**It names a story, never a capability.** *My Little House* tells a child
+what they would be making; *Learn shapes and drawing* tells them what they
+are being taught, which is the sentence this product does not write
+(Decision 8). Nothing on it says level, rite, two, three, next, progress,
+unlock, or the name of any control.
+
+**There is no decline, and no dismiss** — which amends this section's own
+original rule. Both halves of *"made once, never returns after being
+declined"* were written assuming a prompt, and a prompt is the wrong form:
+
+- **A prompt that must be answered is a nag; a card on a shelf can be
+  walked past forever.** The invitation simply sits there every time
+  Studio Home opens, until the child takes it. It never interrupts, never
+  covers anything and never asks anything, so it does not need answering
+  in order to stop.
+- **A decline would build the wall this design forbids.** One tap of *No
+  thanks* by a five-year-old and progression is closed permanently, with
+  nowhere else to reach it from. The rule says a child who never takes
+  Rite II *loses nothing* — a dismissible offer makes that false by
+  accident.
+
+**It is the last piece, not the first.** One function, additive, nothing
+in the editor or VihuPlanet touched — and it cannot ship before there is a
+Rite II for it to offer.
 
 ---
 

@@ -808,6 +808,44 @@ once, and its scope is no longer closed.
 - **Level I is mandatory; II and III are purely opt-in.** Completing
   Level I is what makes a child a Creator. Nothing else is ever required
   of anybody.
+- **The offer lives in ONE slot on Studio Home, and shows ONE story —
+  never two.** Locked by the product owner after seeing it rendered into
+  the running Studio. It sits between the creation-type grid and the
+  existing `Already have something?` band, reusing that band's own rule,
+  width and card treatment, and reads *A new story is waiting* followed by
+  the story's own name and one line about it. A child who has done Rite I
+  sees *My Little House*; one who has done that sees whatever is next; one
+  who has done them all sees nothing, and the band is **absent rather than
+  empty**. Because there is never more than one, there is no ladder on
+  screen to count or compare — which is how this stays inside "hidden,
+  never locked".
+- **Four of the five candidate surfaces were already closed**, and the
+  elimination is the reasoning rather than a preference: VihuPlanet home
+  (Decision 10 — no new button may appear as a child progresses), the
+  Finish Story celebration (Decision 12 — exactly two equal choices),
+  inside the editor (never mid-story, and in the Add panel it would read
+  as *more tools*), and My Projects (*Continue a Project* has one job).
+  Studio Home is what is left, and it is right: between stories, already
+  a screen about what to make.
+- **Not a pill, not a badge, not a seventh type card.** The two pills are
+  *things of mine*; a story nobody has made yet is not one. The type grid
+  holds *kinds* of story and a Rite is *one specific* story, so a seventh
+  card would give it equal permanent weight. Nothing is added to the
+  Magic Card's face.
+- **It names a story, never a capability.** *My Little House* says what a
+  child would be making; *Learn shapes and drawing* would say what they
+  are being taught, which is the sentence this product does not write.
+  Nothing on it says level, rite, two, three, next, progress, unlock, or
+  the name of any control.
+- **There is no decline and no dismiss**, which amends this decision's own
+  earlier wording ("the offer is made once, and never returns after being
+  declined"). Both halves assumed a prompt, and a prompt is the wrong
+  form: *a prompt that must be answered is a nag; a card on a shelf can be
+  walked past forever*. It never interrupts, covers anything or asks
+  anything, so it does not need answering in order to stop. A decline
+  would also build the wall this decision forbids — one tap of "No thanks"
+  by a five-year-old and progression is closed permanently, making "a
+  child who never takes Rite II loses nothing" false by accident.
 - **A child who never takes Rite II loses nothing.** They keep making,
   finishing and sharing stories with the Level I set for as long as they
   like. Progression is an invitation and must never become a wall, a
