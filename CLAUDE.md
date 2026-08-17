@@ -42,7 +42,7 @@ These subsystems are shipped and frozen. Do not redesign them without explicit a
 
 **Audio** — Atmosphere Engine · Lumo Voice · per-page narration · voice notes
 
-**Publish** — Story Book · Story Carousel · Story Reel · Magic Publish (M1–M9) · Magic Strip
+**Publish** — Story Book · Story Carousel · Story Reel · Magic Publish (M1–M9). (The **Magic Strip** was withdrawn by the product owner and is no longer offered or built. `js/magicStrip.js` stays loaded: Magic Creation reads its brand line and font stack.)
 
 **Tools** — Sheet Extractor · Audio Mixer · Platform Status
 

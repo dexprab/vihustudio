@@ -1335,7 +1335,16 @@ const StoryDestinations=(function(){
     }
   };
 
-  const REGISTRY=[BOOK, CAROUSEL, REEL, MAGIC, STRIP];
+  // STRIP is deliberately NOT registered. The Magic Strip is no longer
+  // offered — the product owner withdrew it — so it must not appear in
+  // the destination picker or under "Other formats".
+  //
+  // The STRIP definition above is kept rather than deleted, and the
+  // js/magicStrip.js module stays loaded, because MAGIC still reads
+  // MagicStrip.BRAND_LINE and MagicStrip.FONT_STACK (see _brandLine and
+  // _fontStack): removing the module would take the brand line off
+  // Magic Creation, which IS still offered.
+  const REGISTRY=[BOOK, CAROUSEL, REEL, MAGIC];
   function list(){ return REGISTRY.slice(); }
   function find(id){
     for(let i=0;i<REGISTRY.length;i++){

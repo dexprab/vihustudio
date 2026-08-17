@@ -805,10 +805,14 @@ const PublishStudio=(function(){
   // artifacts it names; the Strip follows the same shape. Each row is
   // one task in two states, which is what the roadmap's four lines
   // actually describe.
+  //
+  // The Magic Strip has been withdrawn and is no longer built. It was
+  // the third task here, so every child finishing a story waited for a
+  // strip nobody had asked for; the bundle is now the book and the
+  // Magic Creation.
   const PUBLISH_BUNDLE=[
     {destinationId:'book',  formatId:'digital',  activeLabel:'✨ Preparing Story',  doneLabel:'✓ Book Ready'},
-    {destinationId:'magic', formatId:'vertical', activeLabel:'✨ Creating Magic',   doneLabel:'✓ Magic Ready'},
-    {destinationId:'strip', formatId:'strip',    activeLabel:'✨ Printing the Strip', doneLabel:'✓ Strip Ready'}
+    {destinationId:'magic', formatId:'vertical', activeLabel:'✨ Creating Magic',   doneLabel:'✓ Magic Ready'}
   ];
   // 'bundle' — the default, fork-free path from Almost Ready.
   // 'single' — the classic one-destination path, still reachable via
