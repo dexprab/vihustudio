@@ -119,11 +119,29 @@
 
     // Touch: one to one with the finger, which is the only model that
     // feels right on a phone — the sky follows the hand exactly.
+    // THE HOLD HAS TO HOLD ON TOUCH TOO.
+    //
+    // update() checks `enabled`, so the mouse and the arrow keys both
+    // stop turning the universe the moment something asks it to hold
+    // still. Touch never did: it calls camera.look() straight from the
+    // handler, so it bypassed the flag completely — measured at 1.45
+    // radians of turn while the universe was disabled.
+    //
+    // That made it a phone-only fault, and it broke the two moments the
+    // hold exists for. Meeting a Spirit disables the traveller because
+    // "the universe holding still is part of what makes that a moment"
+    // (universe.js, focus:begin) — on a phone the sky swung anyway while
+    // focus was trying to keep the story centred, and the two writing
+    // the camera at once is what a child sees as the Ether glitching.
+    // The portal's own keyboard handler already states the assumption
+    // this violated: "the universe is stopped anyway."
     function onTouchStart(ev) {
+      if (!enabled) { drag = null; return; }
       if (!ev.touches || ev.touches.length !== 1) return;
       drag = { x: ev.touches[0].clientX, y: ev.touches[0].clientY, moved: 0 };
     }
     function onTouchMove(ev) {
+      if (!enabled) { drag = null; return; }
       if (!drag || !ev.touches || ev.touches.length !== 1) return;
       var t = ev.touches[0];
       var dx = t.clientX - drag.x;

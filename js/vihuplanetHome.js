@@ -533,6 +533,22 @@
       if (!biggerEl) return;
       biggerEl.classList.remove('is-open');
       window.setTimeout(function () { biggerEl.hidden = true; }, 260);
+      // THE SKY HAS TO COME BACK TO LIFE.
+      //
+      // openBigger() closes the camera with keepUniverseStill, which
+      // leaves the traveller disabled — right for a child on their way
+      // into the Studio, wrong for a child on a phone who was just
+      // turned back and is now standing in the Ether again. Nothing else
+      // re-enabled it, so after being recognised on a phone the universe
+      // could not be looked around at all. Measured: traveller off, and
+      // it never came back.
+      //
+      // Guarded on focus, because a Spirit being met is the other reason
+      // the universe is deliberately held still, and this must not
+      // overrule it.
+      try {
+        if (!universe.focus.isOpen()) universe.traveller.setEnabled(true);
+      } catch (e) {}
     }
     if (biggerEl) {
       biggerEl.addEventListener('click', function (ev) {
@@ -2189,6 +2205,47 @@
       else if (ev.key === 'ArrowLeft') { turn(-1); ev.preventDefault(); }
       else if (ev.key === 'Escape') { closePortal(); ev.preventDefault(); ev.stopPropagation(); }
     }, true);
+
+    // ---------- turning a page with a finger ----------
+    //
+    // The arrows are two small targets at the edges of a phone screen,
+    // and reaching for them is not how anybody turns a page. A swipe is,
+    // so a swipe does it — and it is the same turn() the arrows and the
+    // arrow keys call, so the animation, the narration hand-off and the
+    // mid-turn guard are all shared rather than reimplemented.
+    //
+    // Left for onward, matching both the arrows and every book: the page
+    // leaves the way the finger went.
+    //
+    // A swipe has to be told from a tap and from a scroll, so it needs
+    // real horizontal travel AND has to be more sideways than upright.
+    // Without that second test a child dragging up the page would turn
+    // it by accident.
+    var SWIPE_MIN = 44;          // px of travel before it is a swipe
+    var SWIPE_SLOPE = 1.2;       // how much sideways has to beat upright
+    var reading = null;
+
+    el.portal.addEventListener('touchstart', function (ev) {
+      // Two fingers is a pinch on the picture, never a page turn.
+      if (el.portal.hidden || !ev.touches || ev.touches.length !== 1) { reading = null; return; }
+      reading = { x: ev.touches[0].clientX, y: ev.touches[0].clientY, done: false };
+    }, { passive: true });
+
+    el.portal.addEventListener('touchmove', function (ev) {
+      if (!reading || reading.done || !ev.touches || ev.touches.length !== 1) return;
+      var dx = ev.touches[0].clientX - reading.x;
+      var dy = ev.touches[0].clientY - reading.y;
+      if (Math.abs(dx) < SWIPE_MIN || Math.abs(dx) < Math.abs(dy) * SWIPE_SLOPE) return;
+      // One swipe turns one page: a long drag must not run through the
+      // whole book.
+      reading.done = true;
+      turn(dx < 0 ? 1 : -1);
+      ev.preventDefault();
+    }, { passive: false });
+
+    function endReadingSwipe() { reading = null; }
+    el.portal.addEventListener('touchend', endReadingSwipe);
+    el.portal.addEventListener('touchcancel', endReadingSwipe);
 
     // ---------- the Stories ----------
     if (typeof EtherFeed === 'undefined') {

@@ -2549,3 +2549,53 @@ Still not "brighter": the Spirit's own light and hue are untouched, because
 brightness in this universe means nearness. Also recorded: **"mote" was my word,
 not the product's** — the canon now says "three small warm lights that circle
 it", which is what it is.
+
+## The Ether Glitched on a Phone — and a Page Turns With a Finger (build 0564)
+
+Reported: *"i just tried on my mobile. after recognizing my stars when i came
+back to ether, stories in it started glitching."*
+
+**The hold did not hold on touch.** `update()` in
+`vihuplanet/runtime/core/traveller.js` checks `enabled`, so the mouse and the
+arrow keys both stop turning the universe the moment something asks it to hold
+still. Touch never did — `onTouchMove` calls `camera.look()` straight from the
+handler and bypassed the flag completely. Measured: **1.45 radians of turn while
+the traveller was disabled**, against 0.0000 for the mouse in the same state.
+Phone-only by construction, which is why it took a phone to find.
+
+It broke the two moments the hold exists for. Meeting a Spirit disables the
+traveller because *"the universe holding still is part of what makes that a
+moment"* (`universe.js`, `focus:begin`), so on a phone the sky swung while focus
+was trying to keep the story centred — two systems writing the camera at once,
+which is exactly what a child sees as glitching. The portal's own keyboard
+handler already stated the assumption this violated: *"the universe is stopped
+anyway."*
+
+**And the sky never came back.** `openBigger()` — the panel a phone gets instead
+of the Studio (Decision 21) — closes the camera with `keepUniverseStill`, which
+leaves the traveller disabled. That is right for a child on their way into the
+Studio and wrong for a child who was just turned back and is standing in the
+Ether again, and nothing re-enabled it. `closeBigger()` now does, guarded on
+`focus.isOpen()` so it can never overrule a Spirit being met.
+
+**Three hypotheses were measured and thrown away first**, which is the reason
+the fix is one line rather than a rewrite: the mobile URL bar resizing the field
+(it round-trips exactly — `ether.resize` multiplies by a ratio and back, and
+stories moved 4px in total over a nine-step wobble), a stalled frame teleporting
+physics (`clock.js` clamps `dt` to 1/15s and resets `last` on visibility), and a
+stuck `pointer.inside` (real in isolation — one `pointermove` past the dead zone
+turns the universe forever at 0.17 rad/s — but a touch lift does fire
+`pointerleave`, so a phone clears it).
+
+**A page now turns with a finger** (asked for in the same breath). Swipe left
+for onward, matching the arrows and every book: the page leaves the way the
+finger went. It calls the same `turn()` the arrows and the arrow keys call, so
+the animation, the narration hand-off and the mid-turn guard are shared rather
+than reimplemented. A swipe needs 44px of travel and has to be more sideways
+than upright (1.2×), or a child dragging up the page would turn it by accident;
+one swipe turns one page, and two fingers is a pinch rather than a turn.
+
+Verified on a 390×844 touch viewport: the hold holds · the sky still turns when
+it should · it comes back after a phone is turned back · a met Spirit still
+overrules it · swipe left and right turn pages · a vertical drag is ignored ·
+zero page errors.
