@@ -17,6 +17,13 @@ Canonical project context for VihuStudio. Read this first before making any chan
 - Metadata should not occupy permanent workspace.
 - Architecture changes require explicit approval.
 - Repository is the source of truth.
+- **The complete system is online.** We are not building an offline
+  product. Stated by the product owner. Nothing needs to be designed
+  around a first launch with no network, and any argument of the form
+  "this would hard-fail offline" is no longer a reason to choose one
+  design over another. Graceful degradation when the network drops
+  mid-session is still ordinary good behaviour; designing *for* offline
+  is not a goal.
 
 ## Current Status
 
@@ -774,6 +781,20 @@ once, and its scope is no longer closed.
   Shapes, Doodle, Photo, Add Page and Card Designer. Level III adds the
   World Designer, Page Style, Page Shape, From This World, Family
   Photos, Voice and the remaining publish formats.
+- **Each level has its own starter story.** Not a feature tour with a
+  narrative wrapper — a real story that happens to need the things that
+  level teaches, because the Rite may show where a control is and may
+  never explain what it does (Decision 8). Every capability a level
+  introduces is used at least twice, once to discover it and once to own
+  it, which is the Starter Story's own success metric.
+- **Level I stays on a blank page with no World, but for a new reason.**
+  The recorded reason was offline safety — Studio ships with zero
+  built-in Worlds and a Rite that needed one would hard-fail on a first
+  launch with no network. That argument is void now the system is
+  online-only (Core Principles). The decision survives on better
+  grounds: a World brings Places, Frames and Experiences, which a child
+  making their first story has no use for — and Level III is *about*
+  Worlds, so giving one to Level I would take Level III's subject away.
 - **Level I is mandatory; II and III are purely opt-in.** Completing
   Level I is what makes a child a Creator. Nothing else is ever required
   of anybody.

@@ -37,6 +37,39 @@ level's story had no use for.
 
 The arc is **make a story → make it yours → make it live somewhere.**
 
+**Each level has its own starter story.** Not a feature tour with a
+narrative wrapper. A real story that happens to need the things that
+level teaches, because the Rite may show where a control is and may
+never explain what it does — so the only way to introduce Doodle is to
+write a story that wants a drawing in it. Every capability a level
+introduces is used **at least twice**, once to discover it and once to
+own it, which is Level I's own success metric applied to its successors.
+
+That makes the writing the critical path, not the code. Level II needs
+roughly ten beats for five capabilities before continuity; Level III
+more.
+
+### Level I keeps its blank page, for a new reason
+
+The recorded reason was offline safety: Studio ships with zero built-in
+Worlds, the Theme Repository is remote, and a mandatory gate that needed
+a World would hard-fail on a first launch with no network
+(`docs/STUDIO_RITE_PROPOSAL.md` §, `docs/STUDIO_RITE_STARTER_STORY.md`
+§0). **That argument is void** — the complete system is online
+(`CLAUDE.md` → Core Principles), and nothing is designed around a
+network being absent.
+
+The decision survives on stronger grounds:
+
+- A World brings Places, Frames and Experiences. A child making their
+  very first story has no use for any of them, and Level I's whole
+  discipline is that it contains only what the story asks for.
+- **Level III is about Worlds.** Handing one to Level I would take away
+  Level III's subject and leave it as a bag of leftovers.
+
+So the blank page is now a progression choice rather than a
+compatibility one, which is a better reason to keep doing it.
+
 ---
 
 ## 2. The rules that govern it
@@ -119,12 +152,16 @@ The order is therefore:
 3. The level record on the Magic Card, and the opt-in.
 4. Only then: make the reduction outlive the Rite.
 
-**The cost is mostly voice.** Level I is 23 screens of dialogue and cost
-16 recordings. Levels II and III each need their own script and their own
-voice work, and this compounds with the starter-story *pack*, where the
-recording bill already multiplies per story. This is the largest item on
-the Release 1 list by some distance, and it is a fair question whether
-Levels II and III are the right shape but the wrong release.
+**The cost is writing, then voice.** Each level needs its own starter
+story written first — a real story, not a tour — and then recorded. Level
+I is 23 screens of dialogue and cost 16 recordings. This compounds with
+the starter-story *pack*, where the bill already multiplies per story: a
+pack of five at three levels is fifteen stories, and every one of them
+has to be both written and voiced.
+
+That makes this the largest item on the Release 1 list by a wide margin,
+and it is a fair question whether Levels II and III are the right shape
+but the wrong release.
 
 ---
 

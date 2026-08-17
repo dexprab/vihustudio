@@ -19,6 +19,14 @@ different narrative situations** — once to discover it, once to own it.
 
 ## 0. Three constraints that shaped it
 
+> **One of these three no longer holds.** The offline argument below —
+> that a Rite needing a World would hard-fail on a launch with no
+> network — is void: the complete system is online (`CLAUDE.md` → Core
+> Principles). The blank page is still right, but for a progression
+> reason rather than a compatibility one; see
+> `docs/STUDIO_RITE_LEVELS.md`.
+
+
 **Places, Frames and Experiences are unavailable.** They belong to a **World**,
 and the Rite deliberately runs on a **blank page with no World at all**
 (`CREATION_TYPES`' `blank:true` path). Studio ships with zero built-in Worlds —

@@ -729,6 +729,13 @@ The Rite needs the child to make something real. Two facts decide how:
    card skips Screen 2 entirely and lands straight in the editor on a page
    with no World at all."*
 
+> **The offline half of this argument is void.** The complete system is
+> online (`CLAUDE.md` → Core Principles), so "would fail on a launch with
+> no network" is no longer a reason to choose the blank path. It is still
+> the right path, for a progression reason instead: a World brings Places,
+> Frames and Experiences a first story has no use for, and Rite III is
+> *about* Worlds. See `docs/STUDIO_RITE_LEVELS.md`.
+
 **The Rite uses the `blank` path.** No World, no Repository, no network, no new
 content pipeline — and it is the existing, shipped code path, not a special
 case built for the Rite. The character in Act III is an emoji-glyph sticker
