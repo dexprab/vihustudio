@@ -609,6 +609,38 @@ const StudioRite=(function(){
   // Prefers a label that STARTS with the term ("Size260px" -> "size")
   // over one that merely contains it ("Font Size"), so a new unrelated
   // row cannot quietly steal the nudge.
+  // Where the share control is RIGHT NOW, and what to say about it.
+  //
+  // Innermost first: the ceremony's own Yes if Lumo is already asking,
+  // then the celebration's choice, then the editor's button. Each hint
+  // describes the screen the child is actually looking at.
+  function _shareTarget(){
+    // 1 — the Share Ceremony is open and has reached its last question.
+    const yes=_byLabel('.share-ceremony-btn.is-yes','share with vihuplanet')
+           || document.querySelector('.share-ceremony-btn.is-yes');
+    if(_visible(yes)) return {el:yes, hint:'It is the one with the little galaxy.'};
+
+    // 2 — the celebration, which is where Finish Story lands them.
+    const celeb=_byLabel('.publish-celebration-choice-label','share with vihuplanet',
+                         '.publish-celebration-choice');
+    if(_visible(celeb)) return {el:celeb, hint:'The one with the little galaxy — Share with VihuPlanet.'};
+
+    // 3 — still in the editor, so Finish Story has not been pressed yet.
+    const top=document.getElementById('shareBtn');
+    return {el:top, hint:'It is up at the top, next to Play My Story.'};
+  }
+
+  // On screen and reachable — not merely present in the document. A
+  // control behind a closed modal has a box of zero size.
+  function _visible(el){
+    if(!el) return false;
+    try{
+      const r=el.getBoundingClientRect();
+      if(r.width<2 || r.height<2) return false;
+      return getComputedStyle(el).visibility!=='hidden';
+    }catch(e){ return false; }
+  }
+
   function _byLabel(labelSel,text,liftSel){
     const want=String(text).toLowerCase();
     const lift=function(el){ return liftSel ? el.closest(liftSel) : el; };
@@ -712,9 +744,24 @@ const StudioRite=(function(){
       find:function(){ return document.getElementById('playStoryBtn'); },
       hint:'It is up at the top, and it just woke up.'
     },
+    // SHARING HAPPENS IN THREE PLACES, AND THE CHILD IS ONLY EVER IN
+    // ONE OF THEM.
+    //
+    // This used to point at #shareBtn and say "up at the top, next to
+    // Play My Story" — the editor's own button. But this beat's
+    // instruction is "Tap Finish Story", and finishing opens the
+    // celebration over the editor, where #shareBtn is behind a modal
+    // and the real choice is "Share with VihuPlanet". The nudge could
+    // not paint a hidden target, fell back to words after three and a
+    // half seconds, and told the child to go somewhere they could not
+    // see — which is how a child reached the end of their first story
+    // and never became a Creator. Canon 8 is explicit: a nudge must
+    // bring its target into view first, or not point at all.
+    //
+    // So it looks for the child, innermost surface first.
     'story-shared':{
-      find:function(){ return document.getElementById('shareBtn'); },
-      hint:'It is up at the top, next to Play My Story.'
+      find:function(){ return _shareTarget().el; },
+      hint:function(){ return _shareTarget().hint; }
     },
     'story-named':{
       find:function(){ return document.getElementById('bookTitle'); },
