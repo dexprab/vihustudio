@@ -1348,7 +1348,10 @@ const StudioRite=(function(){
       const offerConfirm=function(){
         if(confirmBtn || !_els) return;
         try{
-          confirmBtn=_el('button','studio-rite-choice studio-rite-done',DONE_LABEL);
+          confirmBtn=_el('button','studio-rite-choice studio-rite-done');
+          // _el is (tag, cls) -- it takes no text. Passing a third
+          // argument silently drops it and leaves a blank gold pill.
+          confirmBtn.textContent=DONE_LABEL;
           confirmBtn.type='button';
           confirmBtn.addEventListener('click',finish);
           _els.controls.appendChild(confirmBtn);
@@ -1387,7 +1390,11 @@ const StudioRite=(function(){
       };
       if(declineLabel && _els){
         try{
-          const btn=_el('button','studio-rite-choice studio-rite-decline',declineLabel);
+          const btn=_el('button','studio-rite-choice studio-rite-decline');
+          // Same bug, and older: the Rite's only way to decline sharing
+          // has been an unlabelled button. A child who did not want to
+          // share had no readable way out of that beat.
+          btn.textContent=declineLabel;
           btn.type='button';
           btn.addEventListener('click',function(){ cleanup(); try{ _els.controls.innerHTML=''; }catch(e){} resolve(); });
           // Appended, not assigned: the confirmation may already be
