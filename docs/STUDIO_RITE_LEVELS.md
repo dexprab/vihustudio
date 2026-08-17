@@ -52,7 +52,7 @@ visible rather than assumed.
 | Book name (`#bookTitle`) | visible | **I** |
 | Play My Story | visible | **I** |
 | Finish Story | visible | **I** |
-| Back to the Ether | visible | **I** *(open — see below)* |
+| Back to the Ether | visible | **all levels, always** |
 | Add · Shapes | hidden | **II** |
 | Add · Doodle | hidden | **II** |
 | Add · Photo | hidden | **II** |
@@ -92,10 +92,23 @@ extra to hide, nothing extra to unlock.
 The same is true of the World Designer tab: what Level III actually gates
 is the World itself and the Page Style / Page Shape tiles, not a tab.
 
-**One genuine open question remains:** **Back to the Ether**. It is a way
-out rather than a capability, so Level I is probably right — but a child
-pressing it mid-Rite leaves a mandatory gate part-finished, and nothing
-here says what happens then. Worth a decision.
+**Back to the Ether stays alive throughout**, at every level and at every
+moment of a Rite — decided by the product owner. It is a way out rather
+than a capability, and a mandatory gate that cannot be left is a trap
+rather than a threshold.
+
+**With one consequence recorded rather than designed around.** The Rite
+stores a single completion flag (`vihu.studioRite.v1`) and no progress, so
+a child who leaves part-way and returns starts the Rite at screen 1 — and
+their half-made story is still there, autosaved. Each beat captures its
+own baseline when it begins and waits for a *change* against it, so the
+star already on the page does not satisfy "add a star": the child adds a
+second one, and works through the whole story again on top of the first
+attempt.
+
+Deliberately not fixed now. Worth knowing before the levels ship, because
+resuming becomes more valuable the more levels there are — Rite III is the
+longest and the likeliest to be interrupted.
 
 **Publish destinations are the fourth surface.** Story Adventure (the
 book) is what Level I's story finishes into. Carousel, Reel and Magic
