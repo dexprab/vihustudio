@@ -37,17 +37,35 @@ level's story had no use for.
 
 The arc is **make a story → make it yours → make it live somewhere.**
 
-**Each level has its own starter story.** Not a feature tour with a
-narrative wrapper. A real story that happens to need the things that
-level teaches, because the Rite may show where a control is and may
-never explain what it does — so the only way to introduce Doodle is to
-write a story that wants a drawing in it. Every capability a level
-introduces is used **at least twice**, once to discover it and once to
-own it, which is Level I's own success metric applied to its successors.
+**Each level has its own starter story — one each, for now.** Not a
+feature tour with a narrative wrapper. A real story that happens to need
+the things that level teaches, because the Rite may show where a control
+is and may never explain what it does — so the only way to introduce
+Doodle is to write a story that wants a drawing in it. Every capability a
+level introduces is used **at least twice**, once to discover it and once
+to own it, which is Level I's own success metric applied to its
+successors.
 
 That makes the writing the critical path, not the code. Level II needs
 roughly ten beats for five capabilities before continuity; Level III
 more.
+
+### The pack is deferred, not cancelled
+
+One story per level for now. Level I's is written and recorded, so the
+content left is **two stories**, not fifteen.
+
+The pack was proposed to stop the Ether filling with the same first
+story. That concern is real but weaker than it first appears: what a
+Story Spirit actually shows in the Ether is its **cover** (the child's own
+page 1 — their colours, their stickers, where they put them), its
+**name** (they name it) and its **maker**. All three are child-authored,
+so two children who both made the Starter Story produce two Spirits that
+look nothing alike. The sameness lives in the narrative beats, which a
+Traveller only meets after opening and reading.
+
+Revisit once there are enough real shared stories to judge whether
+sameness is visible in practice rather than in theory.
 
 ### Level I keeps its blank page, for a new reason
 
@@ -188,9 +206,8 @@ The order is therefore:
 **The cost is writing, then voice.** Each level needs its own starter
 story written first — a real story, not a tour — and then recorded. Level
 I is 23 screens of dialogue and cost 16 recordings. This compounds with
-the starter-story *pack*, where the bill already multiplies per story: a
-pack of five at three levels is fifteen stories, and every one of them
-has to be both written and voiced.
+one story per level: Level I's is done, so what is left is **two stories**
+to write and two sessions to record.
 
 **Levels II and III are in Release 1**, by the product owner's decision.
 So this is the largest item in R1 by a wide margin, and it is content

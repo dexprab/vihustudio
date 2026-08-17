@@ -781,12 +781,22 @@ once, and its scope is no longer closed.
   Shapes, Doodle, Photo, Add Page and Card Designer. Level III adds the
   World Designer, Page Style, Page Shape, From This World, Family
   Photos, Voice and the remaining publish formats.
-- **Each level has its own starter story.** Not a feature tour with a
-  narrative wrapper — a real story that happens to need the things that
-  level teaches, because the Rite may show where a control is and may
-  never explain what it does (Decision 8). Every capability a level
-  introduces is used at least twice, once to discover it and once to own
-  it, which is the Starter Story's own success metric.
+- **Each level has its own starter story — ONE each, for now.** Not a
+  feature tour with a narrative wrapper: a real story that happens to
+  need the things that level teaches, because the Rite may show where a
+  control is and may never explain what it does (Decision 8). Every
+  capability a level introduces is used at least twice, once to discover
+  it and once to own it, which is the Starter Story's own success metric.
+- **The starter-story PACK is deferred, not cancelled.** One story per
+  level for now, by the product owner's decision — which leaves the
+  content for Levels II and III at two stories rather than fifteen. The
+  pack was proposed to stop the Ether filling with the same first story,
+  and that concern stands but is weaker than it looks: what the Ether
+  actually shows for a Story is its cover, its name and its maker, and
+  all three are the child's own. Two children who both made the Starter
+  Story produce two Spirits that look nothing alike. Revisit when there
+  are enough real shared stories to see whether sameness is visible in
+  practice.
 - **Level I stays on a blank page with no World, but for a new reason.**
   The recorded reason was offline safety — Studio ships with zero
   built-in Worlds and a Rite that needed one would hard-fail on a first
