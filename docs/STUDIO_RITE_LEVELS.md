@@ -32,7 +32,7 @@ level's story had no use for.
 | | Rite | What it teaches |
 |---|---|---|
 | **I** | *The Night a Star Came Down* (exists) | emoji, background, resize, rotate, move, text, copy a page, name it, play it, finish it, share it |
-| **II** | *make it yours* | their own marks and their own pictures; a page made from nothing rather than copied |
+| **II** | *My Little House* (`docs/STUDIO_RITE_LEVEL_II_STORY.md`) | building a thing out of parts, drawing by hand, bringing a real picture in, a page made from nothing rather than copied |
 | **III** | *make it live somewhere* | a World, a voice, an audience |
 
 ### Every control, and the level it appears at
@@ -57,7 +57,7 @@ visible rather than assumed.
 | Add · Doodle | hidden | **II** |
 | Add · Photo | hidden | **II** |
 | Add Page (blank) | hidden | **II** |
-| Add · Family Photos | hidden | **III** |
+| Add · Family Photos | hidden | **II** *(either source satisfies the beat)* |
 | Add · From This World | hidden | **III** |
 | Add · Voice | hidden | **III** |
 | Set · Story Title | hidden | **III** |
