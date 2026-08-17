@@ -33,7 +33,7 @@ level's story had no use for.
 |---|---|---|
 | **I** | *The Night a Star Came Down* (exists) | emoji, background, resize, rotate, move, text, copy a page, name it, play it, finish it, share it |
 | **II** | *My Little House* (`docs/STUDIO_RITE_LEVEL_II_STORY.md`) | building a thing out of parts, drawing by hand, bringing a real picture in, a page made from nothing rather than copied |
-| **III** | *make it live somewhere* | a World, a voice, an audience |
+| **III** | *make it live somewhere* | a World, **its Places**, a voice, an audience |
 
 ### Every control, and the level it appears at
 
@@ -55,10 +55,12 @@ visible rather than assumed.
 | Back to the Ether | visible | **all levels, always** |
 | Add · Shapes | hidden | **II** |
 | Add · Doodle | hidden | **II** |
-| Add · Photo | hidden | **II** |
+| Add · Photo (device file) | hidden | **II** |
 | Add Page (blank) | hidden | **II** |
-| Add · Family Photos | hidden | **II** *(either source satisfies the beat)* |
+| Add · Family Photos | hidden | **II**, and *not a level capability* — see below |
+| Set · Background → Picture row | **visible — leak** | **II** *(with the pictures)* |
 | Add · From This World | hidden | **III** |
+| A Scene's Artwork Places | *(only exist with a World)* | **III** — see §1.1 |
 | Add · Voice | hidden | **III** |
 | Set · Story Title | hidden | **III** |
 | Set · Page Shape | hidden | **III** |
@@ -66,6 +68,99 @@ visible rather than assumed.
 | Story Carousel · Story Reel · Magic Creation | *(Publish Studio)* | **III** |
 | Story Adventure (book) | *(Publish Studio)* | **I** |
 | Open · Save · Home · Theme toggle · Object Strip legend | hidden | never during a Rite |
+
+### Pictures are two kinds of thing, and three surfaces
+
+The product owner: *"regarding photos we have two types."* Correct, and an
+earlier draft of the Rite II story conflated them into one gate. Measured
+in `js/contextPanel.js`:
+
+| | Control | What it opens | Present when |
+|---|---|---|---|
+| **Photo** | `data-add-id='photo'` → `_addImageObject()` | the device's own `<input type=file>` folder browser | always |
+| **Family Photos** | `data-add-id='family'` → `_showFamilyPhotosPicker()` | a wall of thumbnails from an album a grown-up shared | `_familyPhotosAvailable()` — the repository layer configured **and** a parent has added an album |
+
+**Family Photos is not a control, it is a source, and it appears at three
+surfaces** — Add Something (`js/contextPanel.js` line 3326), a Scene
+Place's picture (line 1806, `📷 From Family Album`) and the page
+background (line 2145, same label). Device upload is the same: `🖼️ Add /
+Replace Artwork` on a Place, `🖼️ Upload Picture` on the background.
+
+Two consequences follow, and the second is a shipped defect.
+
+**Family Photos cannot be a level capability.** A Rite may only teach a
+control that is on the screen, and on most devices this one is absent —
+it needs a grown-up to have done something first. So it gets no beat and
+no gate. Its rule is the one it already has: it appears wherever pictures
+can go, whenever somebody has set one up. That is not "hidden then
+unlocked" — it is the second door on a room the child has already been
+shown. **What a level gates is Photo**; Family Photos rides along with it
+from Level II onward, at all three surfaces.
+
+**The unlock set must equal the taught set.** The Rite II draft said
+`photo-added` accepts either source, which was a sound engineering answer
+and the wrong product one: it would teach one capability and unlock two.
+The gate is a device image landing, and the story's two photo beats teach
+that.
+
+**The leak.** `_appendBackground()` renders `Colour`, then a `Picture` row
+carrying `🖼️ Upload Picture` and — when configured — `📷 From Family
+Album`, then `Picture Area · Transparent`. That is the panel Level I's
+**very first beat** opens (*"Choose a colour for the ground"*), so a child
+in the first minute of the mandatory Rite can already reach a device file
+picker. The `data-add-id` rules cannot reach it: those buttons carry no id
+and no data attribute. Fixing it needs a hook on the row — the same
+`.context-rep-section` treatment Page Style already got, which was added
+for exactly this reason ("it used to append a heading, a name and a button
+loose into the column, which left nothing to hide").
+
+### 1.1 Places — the thing no level covered
+
+The product owner: *"we have not covered places in any of the levels."*
+True, and the reason it was invisible to the control table is that **a
+Place is not a control that can be hidden.** It is a picture-holder
+authored into a World's Scene (`image-holder` for Place 1,
+`image-place-N` for the rest), so it does not exist on a blank page at
+all. Level I and Level II are both World-free, so nothing there could
+have leaked and nothing there could be gated.
+
+Selecting one gives, from `_renderArtworkActions()`: a `Your Picture`
+banner, a status pill — `✏️ You can edit this` or `🔒 Locked` — then
+`🖼️ Add Artwork`, `📷 From Family Album` when configured, `✂️ Crop /
+Rotate` once filled, and Card Designer's image and frame sections below.
+
+**Places belong to Level III, as its central act rather than an item on
+its list.** *Make it live somewhere* is precisely: choose a World → the
+page becomes a Scene → the Scene has places waiting → put your own
+picture into the world's own frame. That is the strongest beat available
+to Level III and the draft omitted it.
+
+Two things follow that change what Level III costs.
+
+**A Place is the first object a child meets that they did not make and may
+not be allowed to move.** The `🔒 Locked` pill is a guardrail
+(`CLAUDE.md` → Creator Governing Rule 2) and no earlier level has anything
+resembling it. Level III's story therefore has to have a beat for a locked
+Place as well as an editable one — otherwise the first padlock a child
+ever sees arrives unexplained, in a product whose rule is that nothing is
+ever explained. That is a writing problem, and it is the interesting one
+in the level.
+
+**Level III's first beat happens before the Studio opens.** Both existing
+levels start with `CreationFlow.startBlank()`, which the Rite calls
+directly — *"no type screen, no World picker"* (`js/studioRite.js`).
+Choosing a World is `CreationFlow.start()`, a screen outside the editor
+and outside the `body.studio-rite-running` block entirely. Every Rite beat
+that exists today lives in the editor, so Level III needs either beats
+that can play over the Creation Flow screens or a Rite that pre-selects a
+World and starts the story already on a Scene. **This is unlisted
+engineering, and it is the only level that needs it.**
+
+And Level III's story cannot be written until a World is chosen to write
+it against: the beats have to name what is in the Scene. Levels I and II
+depend on no content asset; this one depends on a specific, stable World
+existing. Worth knowing before the writing is scheduled — it is the
+largest hidden item in R1.
 
 ### The editor's tabs are not a surface at all
 

@@ -46,6 +46,9 @@ The division is deliberate and the story never blurs it:
 | **Doodle** | the hand-made parts — the path, the garden, what happens | wobbly, personal, theirs |
 | **Photo** | the real people who live there | brought from their own life |
 
+(Photo means a picture arriving on the page. There are two ways it can
+arrive and they are not equivalent — §3.)
+
 A child finishes the story having used three kinds of making — assembled,
 drawn and brought — and knowing, without being told, which is for what.
 
@@ -128,36 +131,62 @@ next one.
 
 ---
 
-## 3. The photo beats, and the two ways they can fail
+## 3. Photos are two types, and only one of them can be taught
 
-Photos are in Level II, and the pairing with doodle is the reason. But
-both photo sources can fail through no fault of the child, so the beats
-are written to survive it.
+*"Regarding photos we have two types"* — the product owner, correcting an
+earlier version of this section, which treated them as one gate with two
+doors. They are not the same thing:
 
-**Photo opens a file picker.** `_addImageObject()` creates a native
-`<input type="file" accept="image/*">` — a folder browser. That is a
-grown-up's interaction, and a Rite beat that stalls until an adult walks
-past is a beat that breaks a mandatory gate.
+| | What it opens | Present when |
+|---|---|---|
+| **Photo** | the device's own file browser (`_addImageObject()` builds a native `<input type=file>`) | always |
+| **Family Photos** | a wall of thumbnails from an album a grown-up shared (`_showFamilyPhotosPicker()`) | only when the repository layer is configured **and** a parent has added an album |
 
-**Family Photos can be empty.** It is the child-friendly source — a
-curated album — but it needs the repository configured *and* a parent to
-have put something in it. "Add a picture of who lives here" is a dead end
+**Only Photo can carry a beat.** A Rite may show where a control is, so
+the control has to be there — and on most devices Family Photos is
+absent, because it waits on a grown-up having done something first. A
+mandatory-shaped beat aimed at a control that may not exist is a dead end
 in a house with an empty album.
 
-Two rules make the beats safe, and neither invents a mechanism:
+**And Family Photos is a source, not a control.** It appears at three
+surfaces — Add Something, a Scene Place's picture, and the page
+background — so there is no single tile that is "the Family Photos
+capability" to unlock. Its rule is the one it already has: it shows up
+wherever pictures can go, whenever somebody has set one up. Level II
+teaches Photo; Family Photos rides along with it from then on, at all
+three surfaces, and never needs a beat of its own.
 
-1. **`photo-added` accepts either source.** Whichever of Photo or Family
-   Photos a child reaches for, the beat is satisfied. The gate cares that
-   a picture arrived, never where from.
-2. **Both photo beats carry a decline.** Screen 22 of Level I already does
-   this — `end:{await:…, decline:'Not now'}` — so the pattern exists and is
-   shipped. Wording in the child's own voice, never an apology: *"I'll find
-   one later."* The story continues; the house is no less theirs for having
-   a drawing where a face would go.
+That also settles a product rule the earlier version broke. *"`photo-added`
+accepts either source"* was a sound engineering answer — the gate cares
+that a picture arrived — and the wrong product one, because it would have
+taught one capability and unlocked two. **The unlock set has to equal the
+taught set**, or "hidden, never locked" becomes "hidden, then handed
+something you have never seen".
 
-That second rule is what makes photos affordable here. Without it, a
-capability that depends on a grown-up having done something first cannot
-sit inside a Rite at all.
+So: **the gate is a device image landing**, and beats 11 and 13 teach it
+twice. A child whose parent HAS set up an album will very likely reach for
+it instead, and that is fine — the beat is satisfied either way, because
+what it waits on is a picture on the page. The difference is that the
+story is written for the control that is always there.
+
+**Both photo beats still carry a decline.** Screen 22 of Level I already
+does this — `end:{await:…, decline:'Not now'}` — so the pattern exists and
+is shipped. Wording in the child's own voice, never an apology: *"I'll
+find one later."* The reason is no longer an empty album but the file
+browser itself: it is a grown-up's interaction, and a beat that stalls
+until an adult walks past is a beat that strands a child. The story
+continues; the house is no less theirs for having a drawing where a face
+would go.
+
+### The leak this uncovered
+
+The Background panel renders `Colour`, then a `Picture` row carrying
+`🖼️ Upload Picture` and, when configured, `📷 From Family Album`. That is
+the panel **beat 1 of Level I** opens. A child in the first minute of the
+mandatory Rite can already reach a device file picker, and the shipped
+`data-add-id` rules cannot hide it because those buttons carry no id.
+Recorded in `docs/STUDIO_RITE_LEVELS.md`; it is a Level I fix, not a
+Level II one.
 
 ---
 
@@ -174,9 +203,14 @@ Three gates that do not exist (`docs/STUDIO_RITE_LEVELS.md` → B3):
 - **`blank-page-added`** — `page-added` only counts pages, and Level I
   taught *copying* one, which satisfies the same count. Without this gate,
   beat 9 is passed by the old skill and the new one is never taught.
-- **`photo-added`** — satisfied by an image object arriving from either
-  `_addImageObject()` (device file) or the Family Photos picker, so the
-  gate inspects the object rather than which control produced it.
+- **`photo-added`** — an image object arriving on the page. The gate
+  inspects the object, not which control produced it, so a child with a
+  Family Album satisfies it that way; what §3 settles is that the *story*
+  is written for Photo, because that is the control that always exists.
+
+Also needed, and it belongs to Level I rather than here: **a hook on the
+Background panel's `Picture` row**, so the reduction can hide a device
+file picker that is currently reachable from Level I's first beat (§3).
 
 Verified as already working: the renderer draws multi-stroke doodles with
 brush taper (`renderer/slideRenderer.js`), so a child's drawn parts survive
