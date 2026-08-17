@@ -81,6 +81,12 @@
   // are real deep links (Decisions 9 and 12) and a child arriving on one
   // must still arrive there after updating.
   function refetch(latest) {
+    // This page coming back as itself with a fresh copy. On the Studio
+    // that has to carry its entry authority across, or the gate at the
+    // top of studio.html treats the update as an unauthorised arrival
+    // and sends the child to VihuPlanet mid-story. A no-op on
+    // VihuPlanet's own page, which is where this badge also runs.
+    try { StudioEntry.renewHere(); } catch (e) {}
     try {
       var url = new URL(window.location.href);
       url.searchParams.set('b', latest);

@@ -504,6 +504,12 @@ if(homeBtnEl){
         ProjectManager.discardSession();
       }
     }catch(e){}
+    // The Studio reloading itself, deliberately, to come back as itself.
+    // Without this the entry gate at the top of studio.html reads it as
+    // somebody arriving from nowhere and sends them to VihuPlanet —
+    // which is exactly what this button must NOT do (it goes to
+    // "Continue a Project"). js/studioEntry.js.
+    try{ StudioEntry.renewHere(); }catch(e){}
     window.location.reload();
   });
 }

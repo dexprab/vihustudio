@@ -499,6 +499,12 @@
         openBigger(decision && decision.journey === JourneyResolver.CREATOR);
         return;
       }
+      // This is the ONE door into the Studio (Decision 21), so it is the
+      // one place that authorises a load of it. The Studio consumes the
+      // pass on its first line, so a refresh, a reopened tab or a
+      // bookmark arrives with nothing and is sent back here — Decisions
+      // 10 and 23. See js/studioEntry.js.
+      try { StudioEntry.pass(); } catch (e) {}
       window.location.href = (decision && decision.destination) || JourneyResolver.STUDIO;
     }
 

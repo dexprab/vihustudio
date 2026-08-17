@@ -1106,6 +1106,42 @@ of discard and restore state also."*
   again has a deep link.
 - `Back to the Ether` keeps its name. The Ether *is* what they come back
   to; it is alive behind the threshold, one tap away, as it always is.
+- **The Studio is never opened directly, and it is now ENFORCED** —
+  reported by the product owner: *"if i am working on a story and than
+  refresh the page or simply close the page and reopen vihuplanet it goes
+  directly to studio."* There was never a resume feature; the browser was
+  doing it. The moment a child taps ✨ Create Story the address bar reads
+  `studio.html`, so a refresh, a reopened tab, a restored session, the
+  back button and a bookmark all landed in the Studio and never on
+  VihuPlanet. Decision 10 has always said this must not happen; nothing
+  checked.
+- **Authority is minted per navigation and consumed on arrival**
+  (`js/studioEntry.js`). `goStudio()` — the single door, Decision 21 —
+  leaves a one-shot pass; the first line of `studio.html` consumes it, so
+  it authorises exactly ONE load. A **flag** would not do: "this browser
+  has been through VihuPlanet" is true forever after the first visit, and
+  a session flag would survive a refresh, which is one of the two cases
+  named.
+- **A page reloading ITSELF keeps its own authority.**
+  `StudioEntry.renewHere()` is called by the Studio's Home button, Publish
+  Studio's clean-slate reload and the build stamp's cache-busting
+  refetch — all three are deliberate in-Studio navigations, and without it
+  the gate would read them as arrivals from nowhere. It is a no-op
+  anywhere that is not the Studio, so the build stamp cannot mint a Studio
+  pass while running on VihuPlanet.
+- **Author Mode is the one exemption** (Decision 13): a development
+  configuration, so `studio.html?author=on` and a browser already carrying
+  the flag still open the Studio directly.
+- **Stated cost, accepted, and it is what was asked for:** a refresh
+  mid-story goes home. Nothing is lost — the story is autosaved and the
+  session slot offers it back — and re-entry is two taps (Tap to Explore ·
+  ✨ Create Story). An unreadable browser opens the Studio rather than
+  stranding a child, the same call `DeviceGate` makes.
+- Verified end to end at build 0563, zero page errors: a typed
+  `studio.html` goes home · the real journey opens the Studio · a plain
+  refresh goes home · the back button does not bounce back in · the Home
+  button stays in the Studio · `renewHere()` mints nothing on VihuPlanet ·
+  Back to the Ether still leaves · and one tap gets back in.
 
 ## Roadmap
 

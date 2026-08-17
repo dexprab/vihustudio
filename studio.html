@@ -4,6 +4,44 @@
 <meta charset='UTF-8'>
 <meta name='viewport' content='width=device-width,initial-scale=1'>
 <title>VihuStudio · the Hall of Creation</title>
+<!-- THE STUDIO IS NEVER OPENED DIRECTLY.
+     CLAUDE.md -> Decision 10 ("Studio is never opened directly — only
+     through intent") and Decision 23 ("VihuPlanet is never resumed — it
+     is always entered"). Neither was enforced, and the browser broke
+     both for every child: the moment a child taps Create Story this
+     file's name is in the address bar, so a refresh, a reopened tab, a
+     restored session, the back button and a bookmark all land here and
+     never on VihuPlanet.
+     js/vihuplanetHome.js's goStudio() — the single door, per Decision
+     21 — leaves a one-shot pass in sessionStorage. It is consumed here,
+     so it authorises exactly ONE load: a refresh has no pass and goes
+     home. Nothing is lost by that; the story is autosaved and the
+     session slot offers it back.
+     FIRST script in the document on purpose. location.replace runs
+     during parse, before a single line of Studio JS, so a child never
+     sees a frame of the Hall of Creation they did not ask for — the
+     same discipline as body.creation-flow-active below.
+     Author Mode (Decision 13) is the one exemption: it is a development
+     configuration, and an author typing studio.html?author=on must
+     reach the Studio. 'vihu-author-mode' is owned by
+     js/publishTarget.js — read raw here because that module has not
+     loaded yet, and deliberately not re-implemented beyond this line. -->
+<script>
+  (function () {
+    try {
+      var pass = sessionStorage.getItem('vihu.studioEntry.pass');
+      sessionStorage.removeItem('vihu.studioEntry.pass');
+      if (pass) return;
+      var url = new URL(window.location.href);
+      if (url.searchParams.get('author') !== null) return;
+      if (localStorage.getItem('vihu-author-mode') === 'on') return;
+      window.location.replace('index.html');
+    } catch (e) {
+      // An unreadable browser is never a reason to strand a child in
+      // front of nothing — the same call DeviceGate makes.
+    }
+  })();
+</script>
 <!-- "its still there" -- a real CSS fix (hiding .buddy-placeholder by
      default) had already shipped, but GitHub Pages/the browser can
      keep serving a stale cached copy of a same-URL file even after the
@@ -25,9 +63,9 @@
      stylesheets AND every script tag) on every ship that touches ANY
      JS or CSS file — not just the files that actually changed — the
      same manual ritual build-info.json's own version bump already uses. -->
-<link rel='stylesheet' href='css/style.css?v=0562'>
-<link rel='stylesheet' href='css/share-ceremony.css?v=0562'>
-<link rel='stylesheet' href='assets/fonts/fonts.css?v=0562'>
+<link rel='stylesheet' href='css/style.css?v=0563'>
+<link rel='stylesheet' href='css/share-ceremony.css?v=0563'>
+<link rel='stylesheet' href='assets/fonts/fonts.css?v=0563'>
 </head>
 <body class='light-theme creation-flow-active'>
 <!-- "under any circumstance, inner studio screen can never load before
@@ -636,9 +674,9 @@ Your <strong>World</strong> is the story's whole look and feel. Every change her
 <button class='context-item' data-action='delete'>🗑 Delete Page</button>
 </div>
 
-<script src='js/state.js?v=0562'></script><script src='js/zipReader.js?v=0562'></script><script src='js/themePresets.js?v=0562'></script><script src='js/themeRegistry.js?v=0562'></script><script src='js/themeRepositoryClient.js?v=0562'></script><script src='js/assetStore.js?v=0562'></script><script src='js/familyAlbum.js?v=0562'></script><script src='js/voiceRecorder.js?v=0562'></script><script src='js/placeFrameV2.js?v=0562'></script><script src='js/cardPlatform.js?v=0562'></script><script src='js/themeEngine.js?v=0562'></script><script src='js/workspaceBuilder.js?v=0562'></script><script src='js/sceneEngine.js?v=0562'></script><script src='js/imageViewEngine.js?v=0562'></script><script src='js/stickerLibrary.js?v=0562'></script><script src='js/layerEngine.js?v=0562'></script><script src='renderer/slideRenderer.js?v=0562'></script><script src='js/buildInfo.js?v=0562'></script><script src='js/thumbnails.js?v=0562'></script><script src='js/pageOps.js?v=0562'></script><script src='js/theme.js?v=0562'></script><script src='js/creatorProjectStore.js?v=0562'></script><script src='js/creatorProjectSync.js?v=0562'></script><script src='js/creatorProjectCache.js?v=0562'></script><script src='js/magicCardArt.js?v=0562'></script><script src='js/magicCard.js?v=0562'></script><script src='js/creatorRecognition.js?v=0562'></script><script src='js/lumoVoice.js?v=0562'></script><script src='js/magicCardUI.js?v=0562'></script><script src='js/projectManager.js?v=0562'></script><script src='tools/sheet-extractor/js/pngEncoder.js?v=0562'></script><script src='tools/sheet-extractor/js/extractor.js?v=0562'></script><script src='tools/sheet-extractor/js/tileEditor.js?v=0562'></script><script src='js/pictureStudio.js?v=0562'></script><script src='js/composePanel.js?v=0562'></script><script src='js/emojiPicker.js?v=0562'></script><script src='js/cardDesigner.js?v=0562'></script><script src='js/pageDesigner.js?v=0562'></script><script src='js/stickerStudio.js?v=0562'></script><script src='js/publishValidator.js?v=0562'></script><script src='js/pdfWriter.js?v=0562'></script><script src='js/zipWriter.js?v=0562'></script><script src='js/reelComposer.js?v=0562'></script><script src='js/magicReveal.js?v=0562'></script><script src='js/magicStrip.js?v=0562'></script><script src='js/storyDestinations.js?v=0562'></script><script src='js/publishTarget.js?v=0562'></script><script src='js/canonRepository.js?v=0562'></script><script src='js/skyProtection.js?v=0562'></script><script src='js/shareCeremony.js?v=0562'></script><script src='js/publishStudio.js?v=0562'></script><script src='js/creationFlow.js?v=0562'></script><script src='js/contextPanel.js?v=0562'></script><script src='js/objectStrip.js?v=0562'></script><script src='js/selectionActionStrip.js?v=0562'></script><script src='js/pageRuntime.js?v=0562'></script><script src='js/travellerSaveNotice.js?v=0562'></script><script src='js/companionEngine.js?v=0562'></script><script src='js/companionDirector.js?v=0562'></script><script src='js/audioManager.js?v=0562'></script><script src='js/gatewayAudio.js?v=0562'></script><script src='js/gatewaySequence.js?v=0562'></script><script src='js/storyPlayer.js?v=0562'></script><script src='js/stageSky.js?v=0562'></script><script src='js/studioRite.js?v=0562'></script><script src='js/app.js?v=0562'></script>
+<script src='js/studioEntry.js?v=0563'></script><script src='js/state.js?v=0563'></script><script src='js/zipReader.js?v=0563'></script><script src='js/themePresets.js?v=0563'></script><script src='js/themeRegistry.js?v=0563'></script><script src='js/themeRepositoryClient.js?v=0563'></script><script src='js/assetStore.js?v=0563'></script><script src='js/familyAlbum.js?v=0563'></script><script src='js/voiceRecorder.js?v=0563'></script><script src='js/placeFrameV2.js?v=0563'></script><script src='js/cardPlatform.js?v=0563'></script><script src='js/themeEngine.js?v=0563'></script><script src='js/workspaceBuilder.js?v=0563'></script><script src='js/sceneEngine.js?v=0563'></script><script src='js/imageViewEngine.js?v=0563'></script><script src='js/stickerLibrary.js?v=0563'></script><script src='js/layerEngine.js?v=0563'></script><script src='renderer/slideRenderer.js?v=0563'></script><script src='js/buildInfo.js?v=0563'></script><script src='js/thumbnails.js?v=0563'></script><script src='js/pageOps.js?v=0563'></script><script src='js/theme.js?v=0563'></script><script src='js/creatorProjectStore.js?v=0563'></script><script src='js/creatorProjectSync.js?v=0563'></script><script src='js/creatorProjectCache.js?v=0563'></script><script src='js/magicCardArt.js?v=0563'></script><script src='js/magicCard.js?v=0563'></script><script src='js/creatorRecognition.js?v=0563'></script><script src='js/lumoVoice.js?v=0563'></script><script src='js/magicCardUI.js?v=0563'></script><script src='js/projectManager.js?v=0563'></script><script src='tools/sheet-extractor/js/pngEncoder.js?v=0563'></script><script src='tools/sheet-extractor/js/extractor.js?v=0563'></script><script src='tools/sheet-extractor/js/tileEditor.js?v=0563'></script><script src='js/pictureStudio.js?v=0563'></script><script src='js/composePanel.js?v=0563'></script><script src='js/emojiPicker.js?v=0563'></script><script src='js/cardDesigner.js?v=0563'></script><script src='js/pageDesigner.js?v=0563'></script><script src='js/stickerStudio.js?v=0563'></script><script src='js/publishValidator.js?v=0563'></script><script src='js/pdfWriter.js?v=0563'></script><script src='js/zipWriter.js?v=0563'></script><script src='js/reelComposer.js?v=0563'></script><script src='js/magicReveal.js?v=0563'></script><script src='js/magicStrip.js?v=0563'></script><script src='js/storyDestinations.js?v=0563'></script><script src='js/publishTarget.js?v=0563'></script><script src='js/canonRepository.js?v=0563'></script><script src='js/skyProtection.js?v=0563'></script><script src='js/shareCeremony.js?v=0563'></script><script src='js/publishStudio.js?v=0563'></script><script src='js/creationFlow.js?v=0563'></script><script src='js/contextPanel.js?v=0563'></script><script src='js/objectStrip.js?v=0563'></script><script src='js/selectionActionStrip.js?v=0563'></script><script src='js/pageRuntime.js?v=0563'></script><script src='js/travellerSaveNotice.js?v=0563'></script><script src='js/companionEngine.js?v=0563'></script><script src='js/companionDirector.js?v=0563'></script><script src='js/audioManager.js?v=0563'></script><script src='js/gatewayAudio.js?v=0563'></script><script src='js/gatewaySequence.js?v=0563'></script><script src='js/storyPlayer.js?v=0563'></script><script src='js/stageSky.js?v=0563'></script><script src='js/studioRite.js?v=0563'></script><script src='js/app.js?v=0563'></script>
 <!-- Which build is on screen. Reads its own ?v= stamp, so it cannot
      disagree with the files the browser actually fetched. -->
-<script src="js/buildStamp.js?v=0562"></script>
+<script src="js/buildStamp.js?v=0563"></script>
 </body>
 </html>

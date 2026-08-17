@@ -1827,7 +1827,12 @@ const PublishStudio=(function(){
       if(typeof ProjectManager!=='undefined' && typeof ProjectManager.discardSession==='function'){
         ProjectManager.discardSession();
       }
-      // Soft reload — the simplest path back to a true clean slate.
+      // Soft reload — the simplest path back to a true clean slate. It
+      // has to carry the Studio's entry authority across (js/
+      // studioEntry.js), or the gate at the top of studio.html reads a
+      // clean slate as an unauthorised arrival and lands the child on
+      // VihuPlanet instead of an empty Studio.
+      try{ StudioEntry.renewHere(); }catch(e){}
       window.location.reload();
     }catch(e){
       _close();
