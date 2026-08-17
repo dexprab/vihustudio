@@ -11703,3 +11703,24 @@ body.light-theme .story-action.is-asleep{ background:rgba(255,255,255,.09); }
   justify-content:center;
   gap:1px;
 }
+
+/* "I did it!" — the child's confirmation that a Rite step is finished.
+ *
+ * It appears only once the step is actually done, so its arrival is
+ * itself the acknowledgement: the thing you were asked to do has been
+ * noticed. A slow breath draws the eye without flashing — the Rite is
+ * calm, and a blinking button in a child's first ten minutes reads as
+ * an alarm. */
+.studio-rite-choice.studio-rite-done{
+  padding:11px 30px;
+  font-size:clamp(14px,1.6vw,19px);
+  animation:studio-rite-btn-in .45s ease both,
+            studio-rite-done-breathe 2.8s ease-in-out .45s infinite;
+}
+@keyframes studio-rite-done-breathe{
+  0%,100%{ box-shadow:0 10px 30px rgba(0,0,0,.45), 0 0 20px rgba(255,203,69,.42); }
+  50%    { box-shadow:0 10px 30px rgba(0,0,0,.45), 0 0 34px rgba(255,203,69,.72); }
+}
+@media (prefers-reduced-motion: reduce){
+  .studio-rite-choice.studio-rite-done{ animation:studio-rite-btn-in .45s ease both; }
+}

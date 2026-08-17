@@ -308,7 +308,19 @@ const StudioRite=(function(){
   // Long enough to cover the gap between two colour taps or two words of
   // a title; short enough that a child who really has stopped is not
   // left waiting on Lumo.
-  const SETTLE_MS=1800;
+  // How long a child must be still before the "I did it!" confirmation
+  // is OFFERED. Short, because it is not deciding anything -- it only
+  // keeps the button from flickering under a hand mid-drag.
+  //
+  // This replaces a SETTLE_MS of 1800ms that used to ADVANCE the Rite
+  // once a child had been still that long. Nothing advances on a timer
+  // any more, which is the whole point: a child pausing to think looked
+  // exactly like a child who had finished, and Lumo moved on.
+  const OFFER_AFTER_MS=500;
+  // The child's own voice, like every other button in the Rite
+  // ("Let's Begin", "That is my story", "Into the Studio") -- never
+  // "Next", which is what a tutorial says.
+  const DONE_LABEL='I did it!';
   // Beats with nothing to settle — they happen once, in an instant.
   const DISCRETE={'page-added':1,'story-played':1,'story-shared':1};
 
@@ -1257,23 +1269,57 @@ const StudioRite=(function(){
       // Discrete beats are exempt. Copying a page, pressing Play and
       // sharing all happen in an instant and have no "still working"
       // state, so waiting there would just be dead air.
+      // THE CHILD SAYS WHEN THEY ARE DONE.
+      //
+      // Settling on a pause was still a guess, and it guessed wrong in
+      // the one case that matters: a child who has added their star and
+      // is looking at it, deciding, is indistinguishable from a child
+      // who has finished. Both are simply not touching anything. So
+      // Lumo moved on while they were still thinking.
+      //
+      // No timer can tell those two apart, which is why this is not a
+      // longer timer. Once the step is actually done a confirmation
+      // appears, and the beat waits for it however long that takes.
+      // The Rite is theirs to pace.
+      //
+      // It appears only when the condition is MET, so it can never be
+      // used to skip a step — and it disappears again if they undo the
+      // thing, because there is then nothing to confirm.
       const settles=!DISCRETE[kind];
-      let settleTimer=null, settleSig=null;
+      let settleTimer=null, settleSig=null, confirmBtn=null;
       const finish=function(){
         if(settleTimer){ clearTimeout(settleTimer); settleTimer=null; }
         cleanup();
         try{ if(_els) _els.controls.innerHTML=''; }catch(e){}
         resolve();
       };
+      const dropConfirm=function(){
+        if(!confirmBtn) return;
+        try{ if(confirmBtn.parentNode) confirmBtn.parentNode.removeChild(confirmBtn); }catch(e){}
+        confirmBtn=null;
+      };
+      const offerConfirm=function(){
+        if(confirmBtn || !_els) return;
+        try{
+          confirmBtn=_el('button','studio-rite-choice studio-rite-done',DONE_LABEL);
+          confirmBtn.type='button';
+          confirmBtn.addEventListener('click',finish);
+          _els.controls.appendChild(confirmBtn);
+        }catch(e){ confirmBtn=null; }
+      };
+      // A short stillness before OFFERING it — not before advancing. It
+      // only stops the button flickering in and out under a child's
+      // hand while they drag.
       const armSettle=function(){
         if(settleTimer) clearTimeout(settleTimer);
         settleSig=_workSignature();
-        settleTimer=setTimeout(finish,SETTLE_MS);
+        settleTimer=setTimeout(offerConfirm,OFFER_AFTER_MS);
       };
 
       const check=function(){
         if(!_conditionMet(kind,baseline)){
           if(settleTimer){ clearTimeout(settleTimer); settleTimer=null; }
+          dropConfirm();
           rearmIdle();
           // They changed something, and it was not the thing being
           // waited on. Say the instruction again — at most once every
@@ -1297,7 +1343,9 @@ const StudioRite=(function(){
           const btn=_el('button','studio-rite-choice studio-rite-decline',declineLabel);
           btn.type='button';
           btn.addEventListener('click',function(){ cleanup(); try{ _els.controls.innerHTML=''; }catch(e){} resolve(); });
-          _els.controls.innerHTML='';
+          // Appended, not assigned: the confirmation may already be
+          // sitting here, and clobbering it would take away the only
+          // way forward.
           _els.controls.appendChild(btn);
         }catch(e){}
       }
