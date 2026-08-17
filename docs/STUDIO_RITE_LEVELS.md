@@ -52,38 +52,50 @@ visible rather than assumed.
 | Book name (`#bookTitle`) | visible | **I** |
 | Play My Story | visible | **I** |
 | Finish Story | visible | **I** |
-| Tab · Story | visible | **I** |
-| Tab · ✨ Emojis | visible | **I** |
 | Back to the Ether | visible | **I** *(open — see below)* |
 | Add · Shapes | hidden | **II** |
 | Add · Doodle | hidden | **II** |
 | Add · Photo | hidden | **II** |
 | Add Page (blank) | hidden | **II** |
-| **Tab · Card Designer** | **visible** | **II** ← leak |
 | Add · Family Photos | hidden | **III** |
 | Add · From This World | hidden | **III** |
 | Add · Voice | hidden | **III** |
 | Set · Story Title | hidden | **III** |
 | Set · Page Shape | hidden | **III** |
 | Page Style / Change Look | hidden | **III** |
-| **Tab · World Designer** | **visible** | **III** ← leak |
 | Story Carousel · Story Reel · Magic Creation | *(Publish Studio)* | **III** |
 | Story Adventure (book) | *(Publish Studio)* | **I** |
 | Open · Save · Home · Theme toggle · Object Strip legend | hidden | never during a Rite |
 
-**Three findings from the audit, not from the design:**
+### The editor's tabs are not a surface at all
 
-1. **`Tab · Card Designer` is visible at Level I** and should not be.
-   Card Designer belongs to Level II — a child on their first story has
-   not been shown it and the Starter Story never opens it.
-2. **`Tab · World Designer` is visible at Level I** and should not be.
-   It belongs to Level III, and it is the largest surface in the Studio.
-   Both leaks exist because the current reduction hides *Add Something*
-   cards and *Set* tiles but was never extended to the editor's tabs.
-3. **Back to the Ether is an open question.** It is a way out rather
-   than a capability, so Level I is probably right — but a child mid-Rite
-   pressing it leaves a mandatory gate part-finished, and nothing here
-   says what happens then. Worth a decision.
+`studio.html` carries a tab row — Story · Card Designer · ✨ Emojis ·
+World Designer — and an earlier draft of this document listed the last
+two as leaking into Level I. **That was wrong**, and the correction
+matters because it removes a whole category of work.
+
+`js/contextPanel.js` adds `context-panel-mode` to the right sidebar once
+at init, and that rule is `.tabs { display: none }`. Measured in the real
+DOM: the tab row is `display:none` in the normal Studio and during the
+Rite alike. Nobody sees those tabs. The earlier finding came from a test
+that planted stand-in elements on `document.body`, outside the
+`.right-sidebar.context-panel-mode` ancestor the rule needs — the probe
+was wrong, not the product.
+
+**So Card Designer is not a control to gate.** It is the module behind the
+right panel's *object* controls — its sections are Sticker, Picture Frame
+and Picture — surfaced inline by the Context Panel whenever a child
+selects an object. It arrives automatically with the objects it refines,
+so gating Doodle and Photo at Level II gates their controls too. Nothing
+extra to hide, nothing extra to unlock.
+
+The same is true of the World Designer tab: what Level III actually gates
+is the World itself and the Page Style / Page Shape tiles, not a tab.
+
+**One genuine open question remains:** **Back to the Ether**. It is a way
+out rather than a capability, so Level I is probably right — but a child
+pressing it mid-Rite leaves a mandatory gate part-finished, and nothing
+here says what happens then. Worth a decision.
 
 **Publish destinations are the fourth surface.** Story Adventure (the
 book) is what Level I's story finishes into. Carousel, Reel and Magic
