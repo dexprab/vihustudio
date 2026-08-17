@@ -10846,8 +10846,10 @@ body.studio-rite-running .companion-widget{ display:none !important; }
    editor should only carry controls that improve the ACTIVE workflow.
 
    Deliberately still visible: the page thumbnails and their ⋮ (the
-   story's Copy This Page beat lives there), Emojis / Shapes / Text, the
-   Background tile, the Object Strip, and #bookTitle (the naming beat). */
+   story's Copy This Page beat lives there), Emojis and Text, the
+   Background tile, the Object Strip, and #bookTitle (the naming beat).
+   Shapes, Story Title and Page Shape/Page Style are hidden — see the
+   rules below for why each one. */
 
 /* The save notice. It occupies 123px of the top-right corner and its
    call to action is "Publish Now" — a word Canon 7 says a child is
@@ -10897,12 +10899,37 @@ body.studio-rite-running #addPageBtn{ display:none !important; }
 /* Add Something keeps only what the story asks for. Doodle, Photo,
    Family Photos, From This World and Voice are all real capabilities a
    child will meet the moment the Rite ends — they are just five more
-   decisions during the one beat that says "add a star". */
+   decisions during the one beat that says "add a star".
+
+   Shapes joins them. The Starter Story asks for a star, a tree, a
+   person or animal, and a heart or smiley — every one of those is an
+   emoji, and none of the ten capability gates is satisfied by a shape.
+   A triangle on the beat that says "add a star" is a wrong turn the
+   story then has to talk the child back from. */
 body.studio-rite-running .context-add-card[data-add-id='doodle'],
 body.studio-rite-running .context-add-card[data-add-id='photo'],
 body.studio-rite-running .context-add-card[data-add-id='family'],
 body.studio-rite-running .context-add-card[data-add-id='fromWorld'],
-body.studio-rite-running .context-add-card[data-add-id='voice']{ display:none !important; }
+body.studio-rite-running .context-add-card[data-add-id='voice'],
+body.studio-rite-running .context-add-card[data-add-id='shapes']{ display:none !important; }
+
+/* The page-level Set tiles the Starter Story never touches.
+ *
+ * 📖 Story Title is NOT the naming beat. That beat gates on
+ * `story-named` and its nudge points at #bookTitle in the header (see
+ * js/studioRite.js -> NUDGE), which stays visible and is where the
+ * child actually types. This tile is a second, page-level way to the
+ * same idea, and two doors to one thing is exactly the confusion the
+ * Rite cannot afford on a first morning.
+ *
+ * 📐 Page Shape and the Page Style section (its heading, the
+ * representation's name and "🔄 Change Look") belong to a World. The
+ * Rite deliberately runs on a blank page with NO World at all
+ * (docs/STUDIO_RITE_STARTER_STORY.md), so these either do nothing or
+ * offer a look the story did not ask for. */
+body.studio-rite-running .context-set-tile[data-set-id='storyTitle'],
+body.studio-rite-running .context-set-tile[data-set-id='pageShape'],
+body.studio-rite-running .context-rep-section{ display:none !important; }
 
 /* ---- The Rite docks in the left rail --------------------------------
    Approved placement. The conversation leaves the bottom of the screen

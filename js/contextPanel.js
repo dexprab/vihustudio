@@ -1872,6 +1872,12 @@ const ContextPanel=(function(){
     const info=_repInfo();
     const reps=(typeof CreationFlow!=='undefined') ? CreationFlow.currentRepresentations() : null;
     if(!info && !(reps&&reps.length)) return;
+    // Wrapped so the whole section can be addressed as one thing. It
+    // used to append a heading, a name and a button loose into the
+    // column, which left nothing to hide.
+    const wrap=_el('div','context-rep-section');
+    container.appendChild(wrap);
+    container=wrap;
     container.appendChild(_el('div','context-panel-heading','Page Style'));
     if(info && info.name){
       container.appendChild(_el('div','context-rep-name',info.name));
@@ -3409,6 +3415,7 @@ const ContextPanel=(function(){
   // other.
   function _buildBackgroundTile(){
     const wrap=_el('div','context-set-tile');
+    wrap.setAttribute('data-set-id','background');
     const trigger=_el('button','context-set-trigger');
     trigger.type='button';
     trigger.appendChild(_el('span','context-set-trigger-label','🎨 Background'));
@@ -3454,6 +3461,7 @@ const ContextPanel=(function(){
     const isCaption=!isQuote && rep.actions.indexOf('editCaption')!==-1;
     if(!isQuote && !isCaption) return null;
     const wrap=_el('div','context-set-tile');
+    wrap.setAttribute('data-set-id',isQuote?'quote':'caption');
     const trigger=_el('button','context-set-trigger');
     trigger.type='button';
     trigger.appendChild(_el('span','context-set-trigger-label',isQuote?'📝 Your Quote':'📝 Caption'));
@@ -3712,6 +3720,7 @@ const ContextPanel=(function(){
 
   function _buildStoryTitleTile(){
     const wrap=_el('div','context-set-tile');
+    wrap.setAttribute('data-set-id','storyTitle');
     const trigger=_el('button','context-set-trigger');
     trigger.type='button';
     trigger.appendChild(_el('span','context-set-trigger-label','📖 Story Title'));
@@ -3731,6 +3740,7 @@ const ContextPanel=(function(){
 
   function _buildPageShapeTile(){
     const wrap=_el('div','context-set-tile');
+    wrap.setAttribute('data-set-id','pageShape');
     const trigger=_el('button','context-set-trigger');
     trigger.type='button';
     trigger.appendChild(_el('span','context-set-trigger-label','📐 Page Shape'));
