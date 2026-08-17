@@ -1056,6 +1056,57 @@ Locked by the product owner in the Cheer sprint brief.
   is the opposite of levels, not a set of them.)
 - `supabase/migrations_cheer.sql` · `js/cheer.js`.
 
+### 23. VihuPlanet Is Never Resumed — It Is Always Entered
+
+Locked by the product owner: *"the vihuplanet is never resumed from
+studio. it should always be resumed from home screen. this will get rid
+of discard and restore state also."*
+
+- **Leaving the Studio always lands on VihuPlanet's home screen** — the
+  threshold, then the two permanent actions. Never a mid-session Ether,
+  never the Spirit a child was looking at, never the yaw they had turned
+  the sky to.
+- **So there is no universe state to save, discard or restore, and there
+  never will be.** No camera yaw, no focus target, no "where was I", no
+  snapshot taken on the way out. This is the point of the rule rather
+  than a consequence of it: the cheapest way to never have a
+  save/discard/restore problem is to have nothing to save.
+- **This is already how the product behaves**, verified rather than
+  assumed: `#etherBtn` in `js/app.js` does
+  `window.location.href='index.html'` — a full page load — and the
+  threshold is up on every load of the root. The rule makes that
+  permanent and forbids the optimisation that would look like an
+  improvement.
+- **Decision 9's "nothing was lost rather than something restored" still
+  holds, and this is its other half.** That clause governs *inside*
+  VihuPlanet, where the portal is an overlay and the universe is never
+  torn down. Crossing to the Studio leaves the document entirely, and
+  there the honest answer is not a restored universe but a fresh
+  arrival. A restored universe is a picture of a place; an entered one
+  is the place.
+- **The threshold earns its keep on every arrival.** Decision 10's
+  turn is deliberately different every time, and it is the teaching. A
+  resumed Ether would skip it, so a child coming back from making
+  something would get *less* of the universe than one who opened a new
+  tab — which is exactly backwards.
+- **What this forbids**, so nobody adds it later believing it is a
+  courtesy: persisting camera state, a "return to where you were"
+  parameter, skipping the threshold for a returning session, and any
+  back-button special case that rebuilds the previous view.
+- **Intent may cross; state may not.** `index.html?born=<projectId>` and
+  `?story=<projectId>` are one-shot intents — consumed, then stripped
+  from the address bar. Never a snapshot of a session.
+- **The Story Birth hand-off already obeys this.** A shared Story does
+  not play its arrival behind the threshold: `js/vihuplanetHome.js` holds
+  it in `onThreshold` and brings it in once the child is actually looking.
+  The intent survived the trip; no state did.
+- **Stated cost, accepted.** A child looking at one Spirit who goes to
+  the Studio and comes back has to find it again. The Ether is a place to
+  wander, not a document with a cursor in it — and a Story they want
+  again has a deep link.
+- `Back to the Ether` keeps its name. The Ether *is* what they come back
+  to; it is alive behind the threshold, one tap away, as it always is.
+
 ## Roadmap
 
 1. Theme Designer Polish
