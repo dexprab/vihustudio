@@ -305,11 +305,31 @@
     // Still not a spin. Three and a half seconds of easeOut is a slow
     // sweep that settles, and "calm before spectacle" survives it: the
     // universe is doing one deliberate thing, not performing.
-    var TWIRL_TURNS = 0.25;         // of a full revolution
-    var TWIRL_PITCH_TURNS = -0.03;  // a little lift, so it is not a flat pan
-    var TWIRL_YAW = Math.PI * 2 * TWIRL_TURNS;
-    var TWIRL_PITCH = Math.PI * 2 * TWIRL_PITCH_TURNS;
-    var TWIRL_MS = 3500;
+    // NEVER THE SAME TWICE.
+    //
+    // A fixed turn is an intro: watch it three times and it is a title
+    // sequence, something the product plays AT a child. A turn that
+    // differs every arrival — a little further, the other way round, a
+    // touch more lift — is the universe doing something, which is the
+    // whole difference between an animation and a place.
+    //
+    // Math.random, deliberately, and not the runtime's seeded Rng. The
+    // seeded generator exists so every viewer sees the SAME Ether;
+    // this is one visitor's own arrival and has no business being
+    // shared or reproducible.
+    var TWIRL_MIN_TURNS = 0.18;
+    var TWIRL_MAX_TURNS = 0.34;
+    // The PACE is what is held steady, not the distance — so a longer
+    // turn takes proportionally longer rather than moving faster, and
+    // every arrival is the same unhurried speed whatever it decides to
+    // do. Bounded at both ends so a short one is still slow and a long
+    // one never outstays the moment.
+    var TWIRL_TURNS_PER_SEC = 0.052;
+    var TWIRL_MIN_MS = 4200;
+    var TWIRL_MAX_MS = 6500;
+
+    function _rand(lo, hi) { return lo + Math.random() * (hi - lo); }
+    function _coin() { return Math.random() < 0.5 ? -1 : 1; }
 
     function enterTheEther() {
       var u = universe;
@@ -341,15 +361,25 @@
         // camera.
         if (reduced) return;
 
+        // Decided once, here, for this arrival only.
+        var turns = _rand(TWIRL_MIN_TURNS, TWIRL_MAX_TURNS) * _coin();
+        // The lift takes its own coin, so the universe is not always
+        // turning down-and-left or up-and-right like a hinge.
+        var pitchTurns = _rand(0.015, 0.045) * _coin();
+        var yawTotal = Math.PI * 2 * turns;
+        var pitchTotal = Math.PI * 2 * pitchTurns;
+        var ms = Math.max(TWIRL_MIN_MS,
+                 Math.min(TWIRL_MAX_MS, Math.abs(turns) / TWIRL_TURNS_PER_SEC * 1000));
+
         var started = null;
         var lastT = 0;
         (function step(now) {
           if (started === null) started = now;
-          var t = Math.min(1, (now - started) / TWIRL_MS);
+          var t = Math.min(1, (now - started) / ms);
           // easeOutCubic on the TOTAL, differenced each frame, so the
-          // sum is exactly TWIRL_YAW however the frames land.
+          // sum is exactly yawTotal however the frames land.
           var eased = 1 - Math.pow(1 - t, 3);
-          u.camera.look((eased - lastT) * TWIRL_YAW, (eased - lastT) * TWIRL_PITCH);
+          u.camera.look((eased - lastT) * yawTotal, (eased - lastT) * pitchTotal);
           lastT = eased;
           if (t < 1) window.requestAnimationFrame(step);
         })(performance.now());

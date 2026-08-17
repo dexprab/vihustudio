@@ -239,13 +239,22 @@ Locked by the product owner in the Sprint VP1 brief. This is an entry
   beginning is what a form asks you to do and exploring is what this
   place is for. Crossing it is answered by the universe rather than by
   a transition: a starlight crosses the Ether, and the Ether **turns
-  once** — a QUARTER of a full revolution, which camera.js defines as a
-  quarter of one field width. Every depth layer moves at its own rate
-  (measured: far stars 57px, mist 95, currents 145, stories 315, near
-  dust 353), and that parallax is what makes it read as the whole
-  universe turning rather than an animation played over a still
-  picture. A first attempt at a twentieth of a turn moved the stories
-  75px and read as nothing at all. That turn is the teaching — nothing
+  once** — between a fifth and a third of a full revolution, which
+  camera.js defines as that fraction of one field width. Every depth
+  layer moves at its own rate (measured: far stars 57px, mist 95,
+  currents 145, stories 315, near dust 353), and that parallax is what
+  makes it read as the whole universe turning rather than an animation
+  played over a still picture. A first attempt at a twentieth of a turn
+  moved the stories 75px and read as nothing at all.
+  **The turn is different on every arrival** — a little further, the
+  other way round, a touch more lift — because a fixed one is a title
+  sequence played AT a child, and watching it twice would say so. What
+  is held steady is the PACE, not the distance, so a longer turn takes
+  proportionally longer instead of moving faster and every arrival is
+  equally unhurried (4.2–6.5 seconds). It uses `Math.random`, not the
+  runtime's seeded Rng: the seeded generator exists so every viewer
+  sees the SAME Ether, and one visitor's own arrival has no business
+  being shared or reproducible. That turn is the teaching — nothing
   on the screen says the universe can be looked around, so the first
   thing it does is the exact thing they can do to it. Both use seams the runtime
   already exposes (`ambient.shootNow()`, `camera.look()`), so no file
