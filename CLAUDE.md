@@ -216,7 +216,7 @@ Locked by the product owner in the Sprint VP1 brief. This is an entry
 *architecture* decision, not UI polish.
 
 - **There is exactly one entrance, and everyone uses it.**
-  `Tap to Begin → VihuPlanet`. A first-time Traveller, a Returning
+  `Tap to Explore → VihuPlanet`. A first-time Traveller, a Returning
   Traveller, a first-time Creator and a Returning Creator all land on
   the same screen. Nobody bypasses it and nobody gets a different one.
 - **VihuPlanet is Home. VihuStudio is the Hall of Creation.** Children
@@ -234,8 +234,19 @@ Locked by the product owner in the Sprint VP1 brief. This is an entry
 - **Studio is never opened directly** — only through intent, and intent
   is one of exactly two things: *I want to see my stories* or *I want
   to create a story*.
-- **There is exactly ONE "Tap to Begin", and it is VihuPlanet's.** The
-  Traveller Gateway's own `✨ Tap to Begin ✨` screen was removed: one
+- **There is exactly ONE threshold, and it is VihuPlanet's.** The
+  button reads **Tap to Explore** — renamed from "Tap to Begin" because
+  beginning is what a form asks you to do and exploring is what this
+  place is for. Crossing it is answered by the universe rather than by
+  a transition: a starlight crosses the Ether, and the Ether **turns
+  once**, gently, about a fifth of the turn a child gets from holding
+  the pointer at the edge. That turn is the teaching — nothing on the
+  screen says the universe can be looked around, so the first thing it
+  does is the exact thing they can do to it. Both use seams the runtime
+  already exposes (`ambient.shootNow()`, `camera.look()`), so no file
+  under `vihuplanet/runtime/` changed, which is Decision 9's own test.
+  Suppressed under `prefers-reduced-motion`.
+  The Traveller Gateway's own `✨ Tap to Begin ✨` screen was removed: one
   journey, one threshold. That gate existed to satisfy the browser's
   autoplay policy (a real gesture in the Studio's own document, which a
   tap on VihuPlanet cannot provide), so removing it carries a disclosed

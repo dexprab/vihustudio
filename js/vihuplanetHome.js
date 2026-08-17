@@ -241,6 +241,13 @@
 
       thresholdEl.classList.add('is-gone');
       window.setTimeout(function () { thresholdEl.hidden = true; }, 900);
+
+      // CROSSING THE THRESHOLD IS A THING THAT HAPPENS TO THE UNIVERSE.
+      //
+      // Two answers, and both use seams the runtime already exposes —
+      // nothing in vihuplanet/runtime/ is touched, which is Decision 9's
+      // whole test for a system plugging in rather than modifying.
+      enterTheEther();
       if (actionsEl) {
         actionsEl.hidden = false;
         // Two frames so the browser has laid them out before they
@@ -265,6 +272,71 @@
       thresholdEl.addEventListener('keydown', function (ev) {
         if (ev.key === 'Enter' || ev.key === ' ') crossThreshold();
       });
+    }
+
+    // ---------- crossing in ----------
+    //
+    // A starlight goes into the Ether, and the Ether turns.
+    //
+    // The turn is the teaching, and it is why it is a turn rather than
+    // a flourish. Nothing on this screen says the universe can be
+    // looked around — Decision 9 puts the Traveller at the centre with
+    // the universe rotating about them, which is only discoverable by
+    // discovering it. So the first thing a child sees the universe do
+    // is the exact thing they can do to it, once, gently, and never
+    // again. It is a demonstration disguised as an arrival.
+    //
+    // Deliberately NOT a spin. "Calm before spectacle" (Decision 9)
+    // rules out anything that reads as a camera move; this is about one
+    // fifth of the turn a child gets from holding the pointer at the
+    // edge for a second, eased so it settles rather than stops.
+    var TWIRL_YAW = 0.34;      // radians, against EDGE_YAW's 0.31/second
+    var TWIRL_PITCH = -0.05;   // a touch of lift, so it is not a flat pan
+    var TWIRL_MS = 2600;
+
+    function enterTheEther() {
+      var u = universe;
+      if (!u) return;
+
+      // The starlight. `shootNow()` is the Ambient System's own shooting
+      // star, already exposed for exactly this — a light crossing the
+      // Ether, in the universe's own visual language rather than a new
+      // effect invented for one moment.
+      try {
+        if (u.ambient && u.ambient.shootNow) {
+          window.setTimeout(function () { u.ambient.shootNow(); }, 220);
+        }
+      } catch (e) {}
+
+      // The turn. camera.look() adds to the target and the camera eases
+      // toward it on its own, so handing it the whole angle in small
+      // pieces produces one smooth movement that decelerates into
+      // stillness — no keyframes, and it composes with the involuntary
+      // drift instead of fighting it.
+      try {
+        if (!u.camera || !u.camera.look) return;
+        var reduced = false;
+        try {
+          reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        } catch (e) {}
+        // A child who has asked for less motion is told the same thing
+        // by the story lights alone; they are not shown a moving
+        // camera.
+        if (reduced) return;
+
+        var started = null;
+        var lastT = 0;
+        (function step(now) {
+          if (started === null) started = now;
+          var t = Math.min(1, (now - started) / TWIRL_MS);
+          // easeOutCubic on the TOTAL, differenced each frame, so the
+          // sum is exactly TWIRL_YAW however the frames land.
+          var eased = 1 - Math.pow(1 - t, 3);
+          u.camera.look((eased - lastT) * TWIRL_YAW, (eased - lastT) * TWIRL_PITCH);
+          lastT = eased;
+          if (t < 1) window.requestAnimationFrame(step);
+        })(performance.now());
+      } catch (e) {}
     }
 
     // ---------- the two permanent actions ----------
