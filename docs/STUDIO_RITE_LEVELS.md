@@ -29,11 +29,67 @@ equipped to read it. The reduction was right; its lifetime was wrong.
 Each level is a Rite, and each level's unlocks are things the previous
 level's story had no use for.
 
-| | Rite | What it teaches | What it leaves visible |
-|---|---|---|---|
-| **I** | *The Night a Star Came Down* (exists) | emoji, background, resize, rotate, move, text, copy a page, name it, play it, finish it, share it | Emojis · Text · Background · Caption · page thumbnails and ⋮ · Object Strip · `#bookTitle` · Play · Finish |
-| **II** | *make it yours* | their own marks and their own pictures; a page made from nothing rather than copied | **+** Shapes · Doodle · Photo · Add Page · Card Designer |
-| **III** | *make it live somewhere* | a World, a voice, an audience | **+** World Designer · Page Style · Page Shape · From This World · Family Photos · Voice · the other publish formats |
+| | Rite | What it teaches |
+|---|---|---|
+| **I** | *The Night a Star Came Down* (exists) | emoji, background, resize, rotate, move, text, copy a page, name it, play it, finish it, share it |
+| **II** | *make it yours* | their own marks and their own pictures; a page made from nothing rather than copied |
+| **III** | *make it live somewhere* | a World, a voice, an audience |
+
+### Every control, and the level it appears at
+
+Measured against build 0562 — the "now" column is what the shipped
+`body.studio-rite-running` block actually does today, so the gaps are
+visible rather than assumed.
+
+| Control | Now (Rite running) | Should be |
+|---|---|---|
+| Add · Emojis | visible | **I** |
+| Add · Text | visible | **I** |
+| Set · Background | visible | **I** |
+| Set · Caption / Your Quote | visible | **I** |
+| Page thumbnails and ⋮ | visible | **I** |
+| Object Strip (cards) | visible | **I** |
+| Book name (`#bookTitle`) | visible | **I** |
+| Play My Story | visible | **I** |
+| Finish Story | visible | **I** |
+| Tab · Story | visible | **I** |
+| Tab · ✨ Emojis | visible | **I** |
+| Back to the Ether | visible | **I** *(open — see below)* |
+| Add · Shapes | hidden | **II** |
+| Add · Doodle | hidden | **II** |
+| Add · Photo | hidden | **II** |
+| Add Page (blank) | hidden | **II** |
+| **Tab · Card Designer** | **visible** | **II** ← leak |
+| Add · Family Photos | hidden | **III** |
+| Add · From This World | hidden | **III** |
+| Add · Voice | hidden | **III** |
+| Set · Story Title | hidden | **III** |
+| Set · Page Shape | hidden | **III** |
+| Page Style / Change Look | hidden | **III** |
+| **Tab · World Designer** | **visible** | **III** ← leak |
+| Story Carousel · Story Reel · Magic Creation | *(Publish Studio)* | **III** |
+| Story Adventure (book) | *(Publish Studio)* | **I** |
+| Open · Save · Home · Theme toggle · Object Strip legend | hidden | never during a Rite |
+
+**Three findings from the audit, not from the design:**
+
+1. **`Tab · Card Designer` is visible at Level I** and should not be.
+   Card Designer belongs to Level II — a child on their first story has
+   not been shown it and the Starter Story never opens it.
+2. **`Tab · World Designer` is visible at Level I** and should not be.
+   It belongs to Level III, and it is the largest surface in the Studio.
+   Both leaks exist because the current reduction hides *Add Something*
+   cards and *Set* tiles but was never extended to the editor's tabs.
+3. **Back to the Ether is an open question.** It is a way out rather
+   than a capability, so Level I is probably right — but a child mid-Rite
+   pressing it leaves a mandatory gate part-finished, and nothing here
+   says what happens then. Worth a decision.
+
+**Publish destinations are the fourth surface.** Story Adventure (the
+book) is what Level I's story finishes into. Carousel, Reel and Magic
+Creation are Level III. They live inside Publish Studio rather than the
+editor, so they need the manifest too — the CSS block has never touched
+them.
 
 The arc is **make a story → make it yours → make it live somewhere.**
 
