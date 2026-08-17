@@ -22,6 +22,11 @@ A child therefore makes their first story in a Studio of five controls
 and is handed a Studio of forty at the exact moment they are least
 equipped to read it. The reduction was right; its lifetime was wrong.
 
+It is also not quite complete: the Background panel's own `Picture` row
+was never hidden, so a device file picker is reachable from Level I's
+first beat. That is a defect rather than a design question, and it is
+recorded with the pictures below.
+
 ---
 
 ## 1. What the three levels are
@@ -222,9 +227,10 @@ level introduces is used **at least twice**, once to discover it and once
 to own it, which is Level I's own success metric applied to its
 successors.
 
-That makes the writing the critical path, not the code. Level II needs
-roughly ten beats for five capabilities before continuity; Level III
-more.
+That makes the writing the critical path, not the code. Level II came out
+at nineteen beats for four new capabilities — the estimate here was ten,
+and continuity is what the other nine bought. Level III will be longer
+again, because a World is a bigger subject than a house.
 
 ### The pack is deferred, not cancelled
 
@@ -290,7 +296,7 @@ discoverable or it is not an opt-in, so there is one unobtrusive way to
 ask for the next Rite. It never nags, never returns after being
 declined, and never appears mid-story.
 
-**Nothing about a level is ever displayed.** See §3.
+**Nothing about a level is ever displayed.** See §4.
 
 ---
 
@@ -374,22 +380,31 @@ cliff it replaces.
 
 The order is therefore:
 
-1. Rite II's script and its recordings.
-2. Rite III's script and its recordings.
+1. Rite II's script and its recordings. *(Script drafted —
+   `docs/STUDIO_RITE_LEVEL_II_STORY.md`. Needs four new gates and the
+   Background `Picture` row hook.)*
+2. **Choose the World Rite III is written against**, then Rite III's
+   script and its recordings.
 3. The level record on the Magic Card, and the opt-in.
 4. Only then: make the reduction outlive the Rite.
 
+Step 2 gained a first half it did not have. Rite III's beats have to name
+what is in the Scene, so a specific, stable World has to exist before a
+word of it can be written — and it needs beats that play over the Creation
+Flow, or a Rite that starts already on a Scene (§1.1). Neither is content
+work, and neither is on the R1 engineering list.
+
 **The cost is writing, then voice.** Each level needs its own starter
 story written first — a real story, not a tour — and then recorded. Level
-I is 23 screens of dialogue and cost 16 recordings. This compounds with
-one story per level: Level I's is done, so what is left is **two stories**
-to write and two sessions to record.
+I is 23 screens of dialogue and cost 16 recordings. Level II's draft is 19
+beats. So what is left is **one story to write and two sessions to
+record**.
 
 **Levels II and III are in Release 1**, by the product owner's decision.
-So this is the largest item in R1 by a wide margin, and it is content
-work rather than engineering — which means it can start immediately and
-in parallel with everything else on the list, because nothing about the
-writing waits on the registry being built.
+So this is the largest item in R1 by a wide margin, and it is *mostly*
+content work — Level II's is content plus four gates and one CSS hook,
+which can proceed in parallel with anything. Level III is the one with a
+real dependency in front of it.
 
 ---
 
