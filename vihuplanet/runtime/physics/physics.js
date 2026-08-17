@@ -53,6 +53,11 @@
 
   var Util = VihuPlanet.Util;
   var Physics = VihuPlanet.ns('Physics');
+  // How far a Story Spirit may lean from upright, in degrees. Its own
+  // resting tilt is rng.between(-6, 6) (storyEntity.js), so this leaves
+  // room to sway well past that and still never approach unreadable.
+  var MAX_TILT = 14;
+
   var STATES = VihuPlanet.Stories.STATES;
 
   var DEFAULTS = {
@@ -210,9 +215,24 @@
         e.position.x += e.velocity.x * dt * motionScale;
         e.position.y += e.velocity.y * dt * motionScale;
 
+        // A Spirit SWAYS. It does not revolve.
+        //
+        // This used to accumulate without bound and wrap at +/-180, so a
+        // Story kept turning for as long as the Ether was open. Measured
+        // at the shipped spin of 0.5-0.9 deg/s: past 90 degrees in two to
+        // three minutes, fully inverted by five. A child who stayed a
+        // while was looking at upside-down covers with their names
+        // written backwards -- which is what "the stories keep
+        // fluttering" was showing, frame after frame.
+        //
+        // Turning back at the limit rather than clamping there keeps the
+        // motion continuous: nothing stops dead at an edge and nothing
+        // jumps. The Spirit drifts one way, slows into the turn and
+        // drifts back, which is what the currents carrying it should
+        // look like -- and its name stays readable the whole time.
         e.rotation += e.spin * dt * motionScale;
-        if (e.rotation > 180) e.rotation -= 360;
-        else if (e.rotation < -180) e.rotation += 360;
+        if (e.rotation > MAX_TILT) { e.rotation = MAX_TILT; e.spin = -Math.abs(e.spin); }
+        else if (e.rotation < -MAX_TILT) { e.rotation = -MAX_TILT; e.spin = Math.abs(e.spin); }
 
         wrap(e, field);
       }

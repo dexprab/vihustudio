@@ -126,6 +126,13 @@
   // is then an elsewhere.
   var INTIMATE_BELOW = 5;
 
+  // How far outside the view the field must extend on every side, so the
+  // wrap seam is never on screen. MUST stay >= storyLayer.js's own cull
+  // margin (140), which is the distance outside the view at which it
+  // stops drawing a card -- the swap has to happen past the last point
+  // anything is drawn.
+  var SEAM_MARGIN = 160;
+
   EtherNS.create = function (opts) {
     opts = opts || {};
     var signal = opts.signal;
@@ -344,6 +351,22 @@
       var scale = Math.sqrt(wanted / viewArea);
       var w = ether.viewWidth * scale;
       var h = ether.viewHeight * scale;
+      // THE SEAM HAS TO BE OFF SCREEN.
+      //
+      // The Ether closes on itself, and storySpirit.js resolves every
+      // Story to the whole-field copy nearest the centre of the view. The
+      // point where that choice changes is exactly half a field from the
+      // centre -- so when the field is the same size as the view, which
+      // is what `spread = 1` produced for fewer than INTIMATE_BELOW
+      // stories, the seam runs straight down both edges of the screen.
+      // Measured there: a Story's screenX climbing 1365.9, 1366, then 0 --
+      // the same Story vanishing off one edge and reappearing at the
+      // other in a single frame, over and over as the camera drifts.
+      //
+      // Held off the screen by at least the story layer's own cull
+      // margin, the swap happens where nothing is being drawn.
+      w = Math.max(w, ether.viewWidth + SEAM_MARGIN * 2);
+      h = Math.max(h, ether.viewHeight + SEAM_MARGIN * 2);
       if (w <= ether.width && h <= ether.height) return null;
       var ratio = { x: Math.max(1, w / ether.width), y: Math.max(1, h / ether.height) };
       ether.width = Math.max(ether.width, w);

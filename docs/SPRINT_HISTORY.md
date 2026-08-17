@@ -2599,3 +2599,49 @@ Verified on a 390×844 touch viewport: the hold holds · the sky still turns whe
 it should · it comes back after a phone is turned back · a met Spirit still
 overrules it · swipe left and right turn pages · a vertical drag is ignored ·
 zero page errors.
+
+## The Ether Was Tumbling, and Wrapping On Screen (build 0566)
+
+Reported with a screen recording: *"the stories keep fluttering, same stories
+appears at multiple places in same go. when am screenshotting its not
+showing."* Two separate defects, both visible in the recording and both
+reproduced and measured before anything was changed.
+
+**Story Spirits revolved, forever.** `physics.js` did
+`e.rotation += e.spin * dt` and wrapped it at ±180, so rotation accumulated
+for as long as the Ether was open. At the shipped spin of 0.5–0.9°/s that is
+past 90° in two to three minutes and fully inverted by five. Every frame of
+the recording shows it: covers upside down and names written backwards —
+*"The falling star"* mirrored above its own card. It gets worse the longer a
+child stays, which is why it read as the Ether degrading rather than as a
+constant. Rotation is now bounded at ±14° and the spin turns back at the
+limit rather than clamping, so a Spirit sways — measured over thirty
+simulated minutes, turning back every 43 and 55 seconds and never leaving
+±14°. Its own resting tilt is `rng.between(-6, 6)`, so the sway has real room
+and the name stays readable throughout.
+
+**And the wrap seam ran down both edges of the screen.** `ether.fit()` used
+`spread = 1` below `INTIMATE_BELOW`, so with fewer than five stories the field
+was exactly the size of the view. `storySpirit.js` resolves every Story to the
+whole-field copy nearest the centre, and that choice changes half a field from
+the centre — which, when the field IS the view, is the screen edge. Measured
+with a Story parked there: `screenX` climbing 1365.9, 1366, then 0. The same
+Story leaving one edge and arriving at the other within a single frame, over
+and over as the camera drifts, which is the "same story in multiple places".
+The field is now floored at the view plus 160px on every side — comfortably
+past `storyLayer.js`'s own 140px cull margin, so the swap happens where
+nothing is drawn. Verified: field 1686×925 against a 1366×605 view, the swap
+point at x=1526 with cards culled past 1506, and no frame-to-frame jump at all.
+
+**Three other hypotheses were measured and thrown away**, and one reading of
+my own was wrong and is corrected here: entity positions oscillating (they do
+not — zero direction flips over 90 frames), a card flickering across
+`BODY_THRESHOLD` with no hysteresis (parked exactly on it, the card never
+flickered once in 90 frames), and duplicate entities from `EtherFeed`'s four
+sources (it dedupes by record id, first source wins). I also claimed from a
+cropped frame tile that a card was visible on one frame in four; that was an
+artifact of a crop placed on the card's own boundary, not a flicker.
+
+`ffmpeg` is not installed in this environment and Playwright's Chromium has no
+H.264, so the recording was read by installing `ffmpeg-static` from npm —
+worth knowing for the next time a recording arrives.
