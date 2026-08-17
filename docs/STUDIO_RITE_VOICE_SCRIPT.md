@@ -3,11 +3,17 @@
 Every line Lumo speaks, in order, exactly as the shipped code says it.
 Generated from `js/studioRite.js` -> SCREENS, not transcribed by hand.
 
-- **Screens:** 22  · **Lines to record:** 31
+- **Screens:** 23  · **Lines:** 33
 - **Recorded: screens 1-7** (`lumo-screen1-redone.mp3` … `screen7`), one
   continuous take per screen. They are registered WHOLE and the text is
   cued to the performance, so the pacing on screen is the pacing that was
-  recorded. **Still to record: screens 8-22.**
+  recorded.
+- **Still to record: screens 8-23 — 16 screens, 21 lines.** Files follow
+  the same convention (`lumo-screen8-redone.mp3` … `screen23`) and are
+  registered in `js/lumoVoice.js` as `riteScreen8` … `riteScreen23`.
+- Four of them carry more than one line and so need a `cues` array timed
+  to the take, exactly as screens 1, 2 and 7 do: **14, 18, 22, 23**. The
+  other twelve are single-line and take `cues:[0]`.
 - A screen's lines play one after another on their own; the child only
   acts (or taps) to LEAVE a screen.
 - *Italic* is the second half of the same line (the instruction). Record
@@ -200,28 +206,30 @@ Generated from `js/studioRite.js` -> SCREENS, not transcribed by hand.
 
 ### Screen 22 — dock (beside the page)
 
-**29.** You made this story.  
+**29.** Right now your story only lives on this screen.
+
+**30.** Finishing it makes it yours to keep.  
+*Tap Finish Story.*
+
+> gate: the child finishes their story
+
+
+### Screen 23 — dock (beside the page)
+
+**31.** You made this story.  
 *It was not here before today.*
 
-**30.** You did all of it yourself.  
+**32.** You did all of it yourself.  
 *I only asked the questions.*
 
-**31.** Now you know how to make a story.
+**33.** Now you know how to make a story.
 
 > button: **Into the Studio**
 
 
 ---
 
-## Not built yet — the sharing beat
-
-Drafted, approved in shape, sits between the finale and the close.
-
-**S1.** Right now your story only lives on this screen.
-
-**S2.** Sharing makes it into something you can keep.  
-*Tap Share with VihuPlanet.*
-
-**S3.** *(if they share)* Now you have it for keeps.
-
-**S4.** *(if they decline)* That is alright. Your story is still yours.
+*The sharing beat below was listed here as "not built yet". It is built,
+and it ships BEFORE the finale — so what was screen 22 is now screen 23.
+Its wording changed with Decision 12, which took the word "Publish" out
+of child-facing language: the control is Finish Story.*
