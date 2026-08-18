@@ -3472,3 +3472,36 @@ Canon Story and a Leafy-hosted Story speak and the rest are correctly
 silent. And the autoplay policy still applies — a Traveller who has
 touched nothing since the page loaded may get a silent welcome, which is
 handled as silence rather than as an error.
+
+**The World Host was silent on VihuPlanet, for the wrong reason** (build
+0587). Reported from a real reading: *"i checked the tiny seed story did
+not hear anything from lumo."*
+
+**`js/vihuVoice.js` was never loaded on `index.html`.** It was added to
+`studio.html` when it was built, because the Companion widget lived
+there; `js/etherHost.js` runs on VihuPlanet and calls `VihuVoice.speak()`,
+which hit its own `typeof VihuVoice === 'undefined'` guard and returned.
+Silence is the correct handling of a missing voice — it was simply
+reached for a reason that had nothing to do with voices.
+
+**Thirty-five checks passed while this was broken**, and the reason is
+worth recording: every one of them builds its own page and loads
+`js/vihuVoice.js` itself. **A harness that constructs its own page cannot
+verify what the real page loads.** The suite now reads the shipped HTML
+and asserts that every global `etherHost.js` names — taken from its own
+source rather than from a list somebody must remember to update — is
+loaded on VihuPlanet.
+
+**Verified against the real Little Seed**, through the real journey: the
+threshold, the deep link, the Spirit's preview, Read story. Lumo mounts
+(`assets/lumo/idle.png`) and asks for *"Come along… the story's about to
+begin."* on `eleven_v3` in his own voice.
+
+**Two harness faults found on the way**, both of which looked like
+product failures: a catch-all Playwright route registered AFTER the
+specific one answered the voice request with `[]` (the most recently
+registered route wins), and the deep link opens a Spirit's PREVIEW rather
+than the portal — the reading starts on `Read story`, which the trace was
+not pressing.
+
+43/43, zero page errors.
