@@ -30,9 +30,17 @@ lives in this fixed, non-package location instead).
 
 ## What's here
 
-`a.mp3` `b.mp3` `c.mp3` `d.mp3` — four tracks supplied by the product owner.
-`a` and `c` are the shipped default (`DEFAULT_WORLD_AMBIENCE` in
+`a.mp3` `b.mp3` `c.mp3` `d.mp3` `e.mp3` — five tracks supplied by the product
+owner. `a`, `c` and `e` are the shipped default (`DEFAULT_WORLD_AMBIENCE` in
 `js/audioManager.js`); `b` and `d` are kept and unused for now.
+
+They are not equal lengths — `a` and `c` run 45 seconds each and `e` runs 150 —
+so one full cycle is four minutes and `e` holds most of it. Reordering the list
+changes what follows what, never how long each is heard.
+
+Measured, all five sit within 10% of each other in loudness, so one World
+Volume suits any of them: at the shipped 0.33 each runs seven to eight times
+the Foundation bed's own level.
 
 **The default pair alternates.** `playWorld()` always took an array and only
 ever played `[0]`; more than one entry now means "and then this one, and then

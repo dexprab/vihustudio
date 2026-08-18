@@ -69,9 +69,9 @@
   // built, with no way to say otherwise, so nothing else could ever be
   // auditioned; tools/audio-mixer/ now has a fader for it.
   //
-  // At 0.33 a World track still sits well above the bed -- measured, the
-  // four tracks in assets/audio/worlds/ run about 7x the bed's own level
-  // at this setting. That is the intended shape rather than an imbalance:
+  // At 0.33 a World track still sits well above the bed -- measured against
+  // the shipped Foundation mix, the five tracks in assets/audio/worlds/ run
+  // seven to eight times the bed's own level at this setting. That is the intended shape rather than an imbalance:
   // the Foundation layers are weather now, and the World track is the
   // music.
   const DEFAULT_WORLD_VOLUME=0.33;
@@ -79,15 +79,20 @@
   // THE MUSIC OF THE PLACE, when no World has said otherwise.
   //
   // The Foundation bed is weather now (see FOUNDATION_LAYERS above), so
-  // without this there is texture and no music at all. These two alternate,
-  // handing over with the same crossfade playWorld uses between Worlds, so
-  // the same forty-five seconds never repeats back to back. Chosen by the
-  // product owner after listening to all four uploaded tracks.
+  // without this there is texture and no music at all. These take it in
+  // turns, handing over with the same crossfade playWorld uses between
+  // Worlds, so nothing repeats back to back. Chosen by the product owner
+  // after listening to all five uploaded tracks.
+  //
+  // They are not equal lengths -- a and c run 45 seconds each, e runs 150 --
+  // so one full cycle is four minutes and e holds most of it. That is a
+  // property of the tracks rather than a decision this table can express;
+  // reordering it changes what follows what, never how long each is heard.
   //
   // It is the DEFAULT, never an override: a Theme that declares its own
   // audio.ambience replaces this through the ordinary playWorld path, and
   // nothing here knows that Themes exist.
-  const DEFAULT_WORLD_AMBIENCE=['a.mp3','c.mp3'];
+  const DEFAULT_WORLD_AMBIENCE=['a.mp3','c.mp3','e.mp3'];
   const DEFAULT_WORLD_FADE_MS=2700;
   const DEFAULT_MUTE_FADE_MS=300;
 
