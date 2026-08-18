@@ -226,6 +226,18 @@ pace the voice itself has. If slowness matters more than expression for a
 particular character, turbo is the right choice for them — this is
 per-character, not per-product.
 
+**The whole cast is on `eleven_v3` as shipped**, chosen by ear after
+hearing both. So the base `speed` values in the registry are currently
+**inert** — they are kept, not deleted, because they are the right
+numbers the moment a character moves back, and deleting a setting to
+record that it is unused loses the tuning. The suite prints how many
+characters are on v3 so this never becomes invisible.
+
+Pace on v3 comes back through what v3 *does* read: `[short pause]`,
+ellipses (which "add pauses and weight") and capitalisation for emphasis.
+That is a change to the LINES rather than to a number, so it belongs with
+whoever writes them.
+
 ### Hearing them side by side
 
 `VihuVoice.audition({characterId, text, emotion, modelId})` speaks a line

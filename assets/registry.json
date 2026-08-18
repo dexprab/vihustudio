@@ -9,7 +9,7 @@
       "voice": {
         "provider": "elevenlabs",
         "voiceId": "KCJ7BMrQv6I1OgO6swSt",
-        "modelId": "eleven_turbo_v2_5",
+        "modelId": "eleven_v3",
         "settings": {
           "stability": 0.55,
           "similarity_boost": 0.75,
@@ -27,7 +27,7 @@
       "voice": {
         "provider": "elevenlabs",
         "voiceId": "",
-        "modelId": "eleven_turbo_v2_5",
+        "modelId": "eleven_v3",
         "settings": {
           "stability": 0.6,
           "similarity_boost": 0.75,
@@ -45,7 +45,7 @@
       "voice": {
         "provider": "elevenlabs",
         "voiceId": "",
-        "modelId": "eleven_turbo_v2_5",
+        "modelId": "eleven_v3",
         "settings": {
           "stability": 0.5,
           "similarity_boost": 0.75,
@@ -63,7 +63,7 @@
       "voice": {
         "provider": "elevenlabs",
         "voiceId": "",
-        "modelId": "eleven_turbo_v2_5",
+        "modelId": "eleven_v3",
         "settings": {
           "stability": 0.6,
           "similarity_boost": 0.75,
@@ -81,7 +81,7 @@
       "voice": {
         "provider": "elevenlabs",
         "voiceId": "",
-        "modelId": "eleven_turbo_v2_5",
+        "modelId": "eleven_v3",
         "settings": {
           "stability": 0.5,
           "similarity_boost": 0.75,
@@ -99,7 +99,7 @@
       "voice": {
         "provider": "elevenlabs",
         "voiceId": "",
-        "modelId": "eleven_turbo_v2_5",
+        "modelId": "eleven_v3",
         "settings": {
           "stability": 0.55,
           "similarity_boost": 0.75,

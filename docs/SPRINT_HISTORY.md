@@ -3157,3 +3157,24 @@ one value, and that every declared tag appears in the published list. One
 assertion was corrected rather than loosened: M4 tested "a feeling with no
 tag adds nothing" against `think`, which now has one, so it was pointed at
 `gentle`, which honestly has none.
+
+**The cast moved to v3** (build 0580), chosen by ear after hearing both
+families on a real voice. `assets/registry.json` is the whole change —
+six `modelId` fields, no code.
+
+The base `speed` values are now **inert**, since speed is not v3's dial.
+They are kept rather than deleted: they are the right numbers the moment
+a character moves back, and deleting a setting to record that it is
+unused loses the tuning. Pace on v3 returns through what v3 does read —
+`[short pause]`, ellipses and capitalisation — which is a change to the
+LINES rather than to a number, so it belongs with whoever writes them.
+
+**A test-design fault the change exposed, worth recording.** The fixture
+derived from the live registry, so the instant the product moved to v3
+seventeen checks silently changed which model family they were testing —
+the turbo sections were exercising v3 and failing for entirely correct
+behaviour. **A test that depends on live configuration measures the
+configuration, not the code.** The fixture now pins its own model, and
+the shipped registry is checked in one clearly separate section that also
+prints how many characters are on v3, so the inert-speed fact never
+becomes invisible. 122/122, zero page errors.
