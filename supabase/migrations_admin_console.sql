@@ -165,7 +165,12 @@ create or replace function public.notify_creator_born()
 returns trigger
 language plpgsql
 security definer
-set search_path = public
+-- net AND extensions are both on the path deliberately. pg_net's
+-- functions are named http_post/http_get, and WHICH schema they land in
+-- differs between Supabase projects — older ones get `net`, newer ones
+-- `extensions`. Hardcoding either is a guess that fails on half of them,
+-- so the name is resolved rather than qualified.
+set search_path = public, extensions, net
 as $$
 declare
   fn_url text;
@@ -180,7 +185,7 @@ begin
     return new;
   end if;
 
-  perform extensions.net_http_post(
+  perform http_post(
     url     := fn_url,
     headers := jsonb_build_object(
                  'Content-Type',  'application/json',
@@ -216,9 +221,16 @@ create trigger creator_born
 -- No reconnect needed — a table is read on every call, unlike a
 -- database parameter.
 --
--- TEST IT, using the same path the trigger uses:
+-- WHICH SCHEMA IS pg_net IN? Ask, rather than assume:
 --
---   select extensions.net_http_post(
+--   select n.nspname as schema, p.proname as fn
+--   from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+--   where p.proname = 'http_post';
+--
+-- TEST IT, using the same path the trigger uses. Replace `net.` with
+-- whatever that query returned:
+--
+--   select net.http_post(
 --     url     := (select value from public.platform_settings where key='creator_born_url'),
 --     headers := jsonb_build_object('Content-Type','application/json',
 --                  'Authorization','Bearer ' ||
