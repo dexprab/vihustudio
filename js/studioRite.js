@@ -332,16 +332,24 @@ const StudioRite=(function(){
   // line is the title, the instruction is the subtitle, exactly as the
   // document lays them out.
   //
-  // NO `audio` FIELD ANYWHERE, DELIBERATELY. A screen with no recording
-  // falls through _playScreen's own `rec` test to _playLines(), which
-  // reveals each line at reading speed and calls _speak(undefined) —
-  // which stops the previous clip and plays nothing. So this story is
-  // walkable and testable in silence today, and the ONLY change a
-  // recording session needs later is an `audio:{id,cues}` on each
-  // screen, alongside the lines that are already here. No placeholder
-  // ids are invented: an id that names a file nobody has recorded would
-  // make LumoVoice look for it on every beat, and would have to be
-  // found and corrected later rather than simply added.
+  // NO `audio` FIELD ANYWHERE, AND THERE NEVER WILL BE. Stated by the
+  // product owner: "for story rite 2 plug the eleven labs lumo voice. we
+  // wont be recording it." So these screens fall past _playScreen's
+  // `rec` test into _playSpoken(), where Lumo says each line in his own
+  // generated voice and the next line follows when he has finished it.
+  //
+  // Which means there are no cues here, and none are missing. A recorded
+  // screen carries a hand-measured offset per line, re-measured whenever
+  // a line is re-recorded; a spoken one tells us when it ended. Rewording
+  // a line below is therefore a one-line edit with nothing to keep in
+  // step — which is the real reason this is a better fit for a rite whose
+  // script may still move.
+  //
+  // Still no placeholder ids, for the original reason: an id naming a
+  // file nobody recorded would send LumoVoice hunting on every beat. And
+  // if generation is unavailable for any reason, these screens fall back
+  // to reading speed exactly as they did before — walkable in silence,
+  // as they always were.
   const MISSION_HOUSE='Our story: a little house is built, and someone comes home to it.';
 
   const SCREENS_HOUSE=[
@@ -1467,6 +1475,96 @@ const StudioRite=(function(){
       if(_voiceId && typeof LumoVoice!=='undefined' && LumoVoice.stop) LumoVoice.stop(_voiceId);
     }catch(e){}
     _voiceId=null;
+    try{ if(typeof VihuVoice!=='undefined' && VihuVoice.stop) VihuVoice.stop(); }catch(e){}
+  }
+
+  // ---------------------------------------------------------------
+  // LUMO SPEAKS A RITE THAT WAS NEVER RECORDED
+  //
+  // "for story rite 2 plug the eleven labs lumo voice. we wont be
+  // recording it." So Rite II is spoken rather than performed, and this
+  // is the path that does it.
+  //
+  // RECORDINGS STILL WIN, and that is the whole ordering: a screen with
+  // an `audio:{id,cues}` takes _playRecorded and never comes here. Rite
+  // I has fifty recorded lines and is untouched by this. Rite II has
+  // none, which is exactly the gap generation is for.
+  //
+  // IT NEEDS NO CUES, and that is the real gain. A recording is timed by
+  // hand — every cue measured against the take, and re-measured whenever
+  // a line is re-recorded. Generated speech tells us when it finished,
+  // so each line simply waits for its own voice and the next one
+  // follows. Nothing to measure, and nothing to keep in step when a line
+  // is reworded.
+  //
+  // THE FEELING IS THE POSE LUMO IS ALREADY IN. `entry.lumo` is already
+  // 'talk', 'curious', 'celebrate' — the same vocabulary VihuVoice takes
+  // — so a line is spoken with the face it is shown with, and no rite
+  // content had to be annotated for this.
+  function _canSpeakLumo(){
+    try{
+      if(typeof VihuVoice==='undefined' || !VihuVoice.canSpeak) return Promise.resolve(false);
+      return VihuVoice.canSpeak('lumo');
+    }catch(e){ return Promise.resolve(false); }
+  }
+
+  // Generation costs a round trip, and a child watching Lumo's mouth
+  // wait for it would feel every one. Priming the whole screen at once
+  // means only its first line can ever wait; priming the NEXT screen as
+  // this one plays means even that is usually already in hand. Both are
+  // fire-and-forget — a failed prime just becomes a normal generation
+  // later, or silence, which is a correct answer here as everywhere.
+  function _primeScreen(screen){
+    try{
+      if(!screen || !screen.lines) return;
+      if(screen.audio) return;                     // recorded; nothing to generate
+      if(typeof VihuVoice==='undefined' || !VihuVoice.prepare) return;
+      screen.lines.forEach(function(entry){
+        const t=_lineText(entry);
+        if(t) VihuVoice.prepare({characterId:'lumo',text:t,emotion:entry.lumo});
+      });
+    }catch(e){}
+  }
+
+  // One string per line, because that is what is spoken. The subtitle is
+  // usually the instruction ("Add a square.") and belongs in the speech:
+  // the Rite may show where a control is and may never explain what it
+  // does (CLAUDE.md -> Decision 8), and "add a square" is the former.
+  function _lineText(entry){
+    const l=entry && entry.line;
+    if(!l) return '';
+    return [l.title,l.subtitle].filter(Boolean).join(' ').trim();
+  }
+
+  function _playSpoken(lines,holdForAudio){
+    return lines.reduce(function(chain,entry,i){
+      return chain.then(function(){
+        _showLine(entry);
+        const text=_lineText(entry);
+        const last=(i===lines.length-1);
+        // The last line of a screen that ends by WAITING FOR THE CHILD
+        // resolves at once, exactly as _playLines does: a child who acts
+        // while Lumo is still talking must have that action counted
+        // rather than swallowed. A screen ending in a BUTTON holds, so
+        // the button cannot be pressed over the top of him.
+        if(last && !holdForAudio){
+          if(text) VihuVoice.speak({characterId:'lumo',text:text,emotion:entry.lumo});
+          return;
+        }
+        if(!text) return new Promise(function(r){ _timer=setTimeout(r,_gapFor(entry)); });
+        return VihuVoice.speak({characterId:'lumo',text:text,emotion:entry.lumo})
+          .then(function(heard){
+            // Not heard — no voice, no network, the browser refusing
+            // audio without a gesture. The line is already on screen, so
+            // fall back to the reading-speed rhythm the Rite has always
+            // used when silent. A child never learns anything went
+            // wrong; the pacing is simply the unvoiced one.
+            if(heard) return last ? null : new Promise(function(r){ _timer=setTimeout(r,450); });
+            if(last) return null;
+            return new Promise(function(r){ _timer=setTimeout(r,_gapFor(entry)); });
+          });
+      });
+    },Promise.resolve());
   }
 
   // A spoken line stays up until Lumo has finished saying it; an unvoiced
@@ -1791,7 +1889,10 @@ const StudioRite=(function(){
     _cueTimers=[];
   }
 
-  function _playScreen(screen){
+  // `next` is handed in rather than looked up, because this module has
+  // no screen cursor to consult — the walk is a reduce over the rite's
+  // own array. Passing it keeps that true.
+  function _playScreen(screen,next){
     _clearCues();
     _applyStageBg(!!screen.bg && !screen.band);
     if(screen.band) _toBandMode();
@@ -1805,8 +1906,20 @@ const StudioRite=(function(){
               && screen.audio.cues.length===screen.lines.length
               && typeof LumoVoice!=='undefined' && LumoVoice.play;
     const holdForAudio=!!(screen.end && (screen.end.move||screen.end.choice));
-    return (rec?_playRecorded(screen.lines,screen.audio,holdForAudio)
-               :_playLines(screen.lines)).then(function(){
+
+    // THE ORDER IS THE POLICY: a recorded performance, then a generated
+    // voice, then silence. Rite I is recorded and never reaches the
+    // second branch; Rite II has no recordings and never reaches the
+    // first. Nothing had to know which rite it is in.
+    const play=rec
+      ? Promise.resolve().then(function(){ return _playRecorded(screen.lines,screen.audio,holdForAudio); })
+      : _canSpeakLumo().then(function(can){
+          if(!can) return _playLines(screen.lines);
+          _primeScreen(next);        // generate the next screen while this one plays
+          return _playSpoken(screen.lines,holdForAudio);
+        });
+
+    return play.then(function(){
       return _playEnd(screen.end,screen.nudgeDelay,_instructionOf(screen));
     });
   }
@@ -2194,9 +2307,13 @@ const StudioRite=(function(){
           _blankStart();
           try{ if(typeof window.refreshStoryActions==='function') window.refreshStoryActions(); }catch(e){}
         }
-        return _rite.screens.reduce(function(chain,screen){
+        // The first screen has nobody playing ahead of it, so it is
+        // primed here. A recorded rite is a no-op: _primeScreen returns
+        // immediately for any screen that has its own audio.
+        _primeScreen(_rite.screens[0]);
+        return _rite.screens.reduce(function(chain,screen,i){
           return chain.then(function(){
-            return _playScreen(screen).then(function(){
+            return _playScreen(screen,_rite.screens[i+1]).then(function(){
               // The screen the child says "Yes" on is the one that opens
               // the Studio: boot it underneath, then open a blank page
               // directly — no type screen, no World picker, and no Theme

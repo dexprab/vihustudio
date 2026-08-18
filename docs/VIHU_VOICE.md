@@ -488,6 +488,38 @@ feel like somebody answering rather than a page talking at you. The
 Traveller Gateway already solved this exact problem the same way
 (`js/gatewayAudio.js`).
 
+### The Studio Rite
+
+**Rite I is recorded. Rite II is spoken, and never will be recorded** —
+*"for story rite 2 plug the eleven labs lumo voice. we wont be recording
+it."*
+
+Both go through the same dispatch in `js/studioRite.js`, and the order
+*is* the policy:
+
+1. a screen with `audio:{id,cues}` → the recording, via `LumoVoice`
+2. otherwise, if Lumo has a voice → **generated, via `VihuVoice`**
+3. otherwise → reading speed, in silence
+
+Rite I never reaches step 2; Rite II never reaches step 1. Nothing in
+either rite had to know which one it is in.
+
+**The spoken path needs no cues, and that is the real gain.** A recorded
+screen carries a hand-measured offset per line, re-measured whenever a
+line is re-recorded. Generated speech reports when it ended, so each line
+waits for its own voice and the next follows. **Rewording a Rite II line
+is a one-line edit with nothing to keep in step** — which matters for a
+script that may still move.
+
+**The feeling is the pose Lumo is already in.** `entry.lumo` was already
+`talk`, `curious`, `celebrate` — the same vocabulary — so no rite content
+needed annotating. Same trick as the Companion widget.
+
+Generation is primed a screen ahead, so only the very first line of a
+rite can ever wait on a round trip. If speech is unavailable for any
+reason the screens fall back to reading speed exactly as before —
+walkable in silence, as they always were.
+
 ### Where it deliberately does not go
 
 The Ether's World Host does not speak. `CLAUDE.md` → Decision 24 is

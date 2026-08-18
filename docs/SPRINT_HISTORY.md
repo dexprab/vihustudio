@@ -3178,3 +3178,44 @@ configuration, not the code.** The fixture now pins its own model, and
 the shipped registry is checked in one clearly separate section that also
 prints how many characters are on v3, so the inert-speed fact never
 becomes invisible. 122/122, zero page errors.
+
+**Rite II is spoken rather than recorded** (build 0581). *"for story rite
+2 plug the eleven labs lumo voice. we wont be recording it."* Decision 22
+listed Rite II's recordings as the next thing to build; they are now
+cancelled rather than pending, and `js/studioRite.js` says so where the
+screens are declared.
+
+**The dispatch order IS the policy**, and it needed no rite to know which
+one it is in: a screen with `audio:{id,cues}` plays the recording, a
+screen without one is spoken if Lumo has a voice, and silence is the last
+resort. Rite I never reaches the second branch; Rite II never reaches the
+first.
+
+**The spoken path needs no cues, which is the real gain.** A recorded
+screen carries a hand-measured offset per line, re-measured whenever a
+line is re-recorded; generated speech reports when it ended, so each line
+waits for its own voice and the next follows. Rewording a Rite II line is
+now a one-line edit with nothing to keep in step — which matters for a
+script that may still move. **The feeling is the pose Lumo is already
+in** (`entry.lumo` was already `talk`/`curious`/`celebrate`), so no rite
+content needed annotating — the same trick the Companion widget used.
+Generation is primed a screen ahead, so only a rite's first line can wait
+on a round trip.
+
+**A HARNESS FAULT THIS EXPOSED, and it had been hiding since the first
+build.** The fake MP3 the suite fed every test was a hand-built base64
+fragment whose own comment called it "a genuine short silent mp3 frame".
+It was not one — Chromium refused to decode it, so **every** `speak()`
+through the audio path had always resolved `false`. Nothing caught it
+because no check had ever asserted a TRUE there: the suite verified the
+failure modes exhaustively against an instrument that could only fail.
+It now feeds one of Lumo's real recorded files, and asserts the positive
+case. The cache section was also made to count from zero rather than
+continue the previous section's tally, since adding one call upstream had
+silently shifted three assertions.
+
+**Verified 141/141, zero page errors** — nineteen new checks across the
+dispatch order, that Rite I still names its 23 recordings and Rite II
+still names none and invents no placeholder id, that the pose is passed
+as the feeling, that `_hush()` stops the generated voice too, and that a
+real Rite II line is spoken and resolves only once the audio has ended.
