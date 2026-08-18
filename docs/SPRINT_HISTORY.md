@@ -2846,3 +2846,94 @@ finished coming forward. Waiting on the preview merely being *visible* catches
 the previous Story's preview, so Read opened the previous Story and the host
 looked one Story behind. The harness now waits for the preview to be showing
 the Story it asked for, by name.
+
+---
+
+## Vihu Voice Foundation — the Companions get a voice, and Lumo keeps his
+
+**Build 0574.** One vertical slice: a character can be asked to say
+something, and it happens. `docs/VIHU_VOICE.md` is the full write-up.
+
+**Recon settled the design before any code was written.** Lumo already has
+fifty recorded MP3s in `assets/lumo/voice/`, performed and measured, played
+by `js/lumoVoice.js` — which already handles play, stop, sequencing,
+preloading and no-overlap. Synthesising over those would replace a real
+performance with a copy of one, which is the opposite of this product's own
+stated vision. So the rule is **recordings win**: a line naming a recording
+that exists is played and nothing is generated. Generation is for the lines
+with no recording, which is every line the five Companions have — they have
+never had a voice at all, and that is where this earns its place.
+
+**`js/vihuVoice.js` is the one thing story code calls.**
+`VihuVoice.speak({characterId, text})` and nothing else to learn. A caller
+never learns a provider exists, never holds a voice id, never builds a
+request and never sees a key. `who` resolves by id, name **or role**, so a
+Canon Story's host is found without an `if (id === 'lumo')` anywhere —
+Decision 24's own discipline.
+
+**The key is in exactly one place and cannot be anywhere else.**
+`supabase/functions/voice-speak` holds `ELEVENLABS_API_KEY`; the browser
+sends `{characterId, voiceId, modelId, settings, text}` and gets audio back.
+The **voice id is content, not a secret** — it names a voice and authorises
+nothing — so it lives in `assets/registry.json` beside the art and the role,
+which is what lets a voice be changed or retuned with **no code change and
+no redeploy**. The audition page holds no key either, and that is the
+argument: if the listening room can be written without it, so can
+everything else.
+
+**Silence is a correct answer, in every direction.** No voice chosen yet,
+no key, no platform configured, no network, a provider having a bad day, or
+a browser refusing audio without a gesture — each ends the same way: the
+line is not spoken, the screen carries on exactly as before, and the reason
+goes to the console. The function returns **HTTP 200 with a `reason`** for
+all of them, deliberately, so a caller that treats "not audio" as silence
+needs no error handling at all and a child never meets a status code. An
+empty `voiceId` is a **normal state**, not a fault: every character starts
+that way and the whole product works with none configured.
+
+**Caching is two layers, and the far one is the one that matters.** The
+function caches into Supabase Storage keyed on a SHA-256 of the whole
+request, so the *second child ever* to hear a line costs nothing; the
+browser caches via the Cache API so a line heard twice does not even make
+the request. Both key on voice + model + settings + text, so a retuned voice
+correctly misses rather than serving yesterday's take. The browser layer is
+treated as a bonus at every step — absent in an insecure context, evictable
+at any moment, and nothing depends on it.
+
+**The wiring is one method, and its own header predicted it.**
+`CompanionEngine.speak()` has said since its first sprint that *"speak()
+could grow a typewriter effect or TTS"*. It now does, and the prediction
+held exactly: **the signature is unchanged and no caller was edited**, so
+every line the Companion Director already speaks in the Studio gained a
+voice for free. `{silent:true}` suppresses it; `speak('')` hides the bubble
+and stops the voice together; a page without `js/vihuVoice.js` is
+completely unchanged.
+
+**Disclosed, not worked around: the autoplay policy.** Several Director
+lines fire on load or on a timer, and a browser will not start audio no
+gesture asked for — those stay silent, with the bubble still on screen so
+nothing looks broken. The fix is to make speech follow a real interaction,
+which is also what makes it feel like somebody answering rather than a page
+talking at you; `js/gatewayAudio.js` solved the same problem the same way.
+
+**Deliberately NOT wired: the Ether's World Host.** Decision 24 says the
+host is not a control, has no bubble, and must be ignorable in full. A voice
+over somebody's story is the loudest thing on the page; giving it one is a
+canon change, not a feature.
+
+**Verified 51/51 in a real browser, zero page errors.** Resolution by id,
+name, role and case; unknown and empty asks; an empty `voiceId` returning
+false and calling nothing; exactly what is sent to the function and that it
+carries no key of any kind; the cache holding across a reload, missing
+correctly across voices and across text, collapsing two simultaneous asks
+into one call, and really forgetting on `clearCache()`; all three failure
+modes returning false with no page error; that a recorded line plays and
+generates nothing while an unknown recording id falls through to speech;
+and that the widget's public API was not widened. One harness bug found and
+fixed rather than the product: the scratch server does not resolve
+directory indexes, so the audition page had to be fetched by its full path.
+
+**Still to do before a child hears any of this:** the voice ids are all
+empty. They are chosen by ear in the provider's console and pasted into
+`assets/registry.json` — `tools/voice-audition/index.html` exists for
+exactly that.

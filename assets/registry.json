@@ -5,42 +5,108 @@
       "name": "Lumo",
       "species": "Story Dragon",
       "path": "lumo/",
-      "role": "guardian"
+      "role": "guardian",
+      "voice": {
+        "provider": "elevenlabs",
+        "voiceId": "",
+        "modelId": "eleven_turbo_v2_5",
+        "settings": {
+          "stability": 0.55,
+          "similarity_boost": 0.75,
+          "style": 0.1,
+          "speed": 0.95
+        }
+      }
     },
     {
       "id": "story-egg",
       "name": "Story Egg",
       "species": "Creative Potential",
       "path": "story-egg/",
-      "role": "traveller"
+      "role": "traveller",
+      "voice": {
+        "provider": "elevenlabs",
+        "voiceId": "",
+        "modelId": "eleven_turbo_v2_5",
+        "settings": {
+          "stability": 0.6,
+          "similarity_boost": 0.75,
+          "style": 0.05,
+          "speed": 0.95
+        }
+      }
     },
     {
       "id": "nimbus",
       "name": "Nimbus",
       "species": "Dream Sprite",
       "path": "nimbus/",
-      "role": "companion"
+      "role": "companion",
+      "voice": {
+        "provider": "elevenlabs",
+        "voiceId": "",
+        "modelId": "eleven_turbo_v2_5",
+        "settings": {
+          "stability": 0.5,
+          "similarity_boost": 0.75,
+          "style": 0.15,
+          "speed": 1.0
+        }
+      }
     },
     {
       "id": "quill",
       "name": "Quill",
       "species": "Ink Spirit",
       "path": "quill/",
-      "role": "companion"
+      "role": "companion",
+      "voice": {
+        "provider": "elevenlabs",
+        "voiceId": "",
+        "modelId": "eleven_turbo_v2_5",
+        "settings": {
+          "stability": 0.6,
+          "similarity_boost": 0.75,
+          "style": 0.1,
+          "speed": 0.95
+        }
+      }
     },
     {
       "id": "leafy",
       "name": "Leafy",
       "species": "Bloomling",
       "path": "leafy/",
-      "role": "companion"
+      "role": "companion",
+      "voice": {
+        "provider": "elevenlabs",
+        "voiceId": "",
+        "modelId": "eleven_turbo_v2_5",
+        "settings": {
+          "stability": 0.5,
+          "similarity_boost": 0.75,
+          "style": 0.15,
+          "speed": 1.0
+        }
+      }
     },
     {
       "id": "leosaurus",
       "name": "Leo",
       "species": "Lantern Lion",
       "path": "leosaurus/",
-      "role": "companion"
+      "role": "companion",
+      "voice": {
+        "provider": "elevenlabs",
+        "voiceId": "",
+        "modelId": "eleven_turbo_v2_5",
+        "settings": {
+          "stability": 0.55,
+          "similarity_boost": 0.75,
+          "style": 0.12,
+          "speed": 0.9
+        }
+      }
     }
   ]
 }

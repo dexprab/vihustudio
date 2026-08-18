@@ -1278,6 +1278,51 @@ The Companion enriches the experience."*
   community, version management, and any Builder or Studio redesign.
 - `js/companionRecord.js` · `js/storyHost.js` · `js/etherHost.js`.
 
+### 25. Characters Speak, and Recordings Win
+
+Locked by the product owner in the Vihu Voice Foundation brief.
+
+- **A recorded performance always beats a generated one.** Lumo has
+  fifty recorded lines and they are never synthesised over. A line that
+  names a recording plays the recording and generates nothing —
+  "beautify originals rather than replacing them" (Product Vision)
+  applies to a voice as much as to a picture. Generation exists for the
+  lines with no recording, which is every line the five Companions have.
+- **`js/vihuVoice.js` is the one thing story code calls.**
+  `VihuVoice.speak({ characterId, text })` and nothing else to learn. A
+  caller never learns a provider exists, never holds a voice id, never
+  builds a request and never sees a key. If a future change has to touch
+  story code to swap the provider, the seam is in the wrong place.
+- **The key lives in `supabase/functions/voice-speak` and nowhere
+  else** — never in the browser, never in a bundle, never in a
+  client-side environment variable, never committed. Non-negotiable.
+- **A voice id is content, not a secret.** It names a voice and
+  authorises nothing, so it lives in `assets/registry.json` beside the
+  art and the role. Changing, retuning or replacing a voice is a JSON
+  edit with **no code change and no redeploy**.
+- **Silence is a correct answer.** No voice chosen yet, no key, no
+  platform, no network, a provider having a bad day, or a browser
+  refusing audio without a gesture — each ends with the line unspoken,
+  the screen exactly as it was, and the reason in the console. **An empty
+  `voiceId` is a normal state, not a fault**: every character starts that
+  way and the whole product works with none configured.
+- **No provider terminology and no technical error ever reaches a
+  child.** Never "TTS", "ElevenLabs", "API", "unavailable" or "failed".
+  The function answers **HTTP 200 with a `reason`** for every failure so
+  a caller that treats "not audio" as silence needs no error handling at
+  all.
+- **The Ether's World Host does not speak**, and giving it a voice is a
+  canon change rather than a feature. Decision 24 requires the host to be
+  ignorable in full; a voice over somebody's story is the loudest thing
+  on the page.
+- **Disclosed:** lines that fire on load or on a timer are blocked by the
+  browser's autoplay policy and stay silent, with the bubble still shown.
+  Not worked around — speech should follow a real interaction, which is
+  also what makes it feel like somebody answering.
+- Where voices live, how to add one, and how to configure credentials:
+  `docs/VIHU_VOICE.md`. Listening room:
+  `tools/voice-audition/index.html`.
+
 ## Roadmap
 
 1. Theme Designer Polish

@@ -33,6 +33,15 @@
 // widening this class's public API, which is frozen as of this sprint:
 // load/unload/show/hide/setState/getState/speak/wake/sleep/destroy.
 //
+// Vihu Voice sprint: speak() grew exactly the TTS this paragraph
+// anticipated, and the prediction held — the signature is unchanged and
+// no caller was edited. The Companion's own voice lives in
+// assets/registry.json and is spoken by js/vihuVoice.js; this class
+// hands over an id and some words and knows nothing else about it.
+// personality.json's "neverSays" is still inert for the same reason as
+// before: every line spoken here is still static, curated, human-
+// authored text, so there is still no generated speech to police.
+//
 // Story Egg Interaction & Presence sprint: adds "feels alive" polish
 // (soft-eased/rotating drag with a sparkle trail and a settle bounce,
 // idle bobbing + ambient sparkles + a breathing glow ring, hover glow/
@@ -448,12 +457,38 @@
      * just keyed off the speech bubble's own lifetime instead of a
      * fixed state duration (how long someone has something to say
      * varies, unlike wave/celebrate's fixed timing).
+     *
+     * VIHU VOICE. This method's own header has said since the first
+     * sprint that "speak() could grow a typewriter effect or TTS", and
+     * this is that: the bubble is now also SAID, in this Companion's own
+     * voice, by js/vihuVoice.js. Nothing else changed — the bubble, its
+     * timer and its package-driven transition are exactly as they were,
+     * so every existing caller keeps working with no edit.
+     *
+     * It is deliberately best-effort in every direction. A Companion
+     * with no voice chosen yet, a browser that will not start audio
+     * without a gesture, no network, no platform configured — each ends
+     * as silence with the bubble still on screen, which is precisely
+     * how this surface behaved before it could speak at all. Pass
+     * {silent:true} where a caller wants the bubble and no voice.
      * @param {string} text
+     * @param {object} [opts]
+     * @param {boolean} [opts.silent] Show the bubble without saying it.
      */
-    speak(text){
+    speak(text,opts){
       this._ensureDom();
       if(this._speakTimer){ clearTimeout(this._speakTimer); this._speakTimer=null; }
-      if(!text){ this._bubbleEl.classList.add('companion-bubble-hidden'); return; }
+      if(!text){
+        this._bubbleEl.classList.add('companion-bubble-hidden');
+        try{ if(window.VihuVoice) window.VihuVoice.stop(); }catch(e){}
+        return;
+      }
+      if(!(opts&&opts.silent)){
+        try{
+          const who=this._package&&this._package.id;
+          if(who&&window.VihuVoice) window.VihuVoice.speak({characterId:who,text:String(text)});
+        }catch(e){}
+      }
       this._bubbleEl.textContent=String(text);
       this._bubbleEl.classList.remove('companion-bubble-hidden');
       this._speakTimer=setTimeout(()=>{
