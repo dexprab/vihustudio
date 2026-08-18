@@ -471,9 +471,15 @@
      * as silence with the bubble still on screen, which is precisely
      * how this surface behaved before it could speak at all. Pass
      * {silent:true} where a caller wants the bubble and no voice.
+     *
+     * The line is spoken with the feeling of whatever state this
+     * Companion is currently in — which is why no caller needed
+     * changing to get an expressive voice rather than a flat one.
      * @param {string} text
      * @param {object} [opts]
      * @param {boolean} [opts.silent] Show the bubble without saying it.
+     * @param {string} [opts.emotion] Override the state's own feeling,
+     *   for a line whose words do not match the pose.
      */
     speak(text,opts){
       this._ensureDom();
@@ -486,7 +492,17 @@
       if(!(opts&&opts.silent)){
         try{
           const who=this._package&&this._package.id;
-          if(who&&window.VihuVoice) window.VihuVoice.speak({characterId:who,text:String(text)});
+          // THE FEELING IS THE STATE THIS COMPANION IS ALREADY IN. A
+          // Companion pulling a delighted face while speaking in a flat
+          // monotone is the one thing giving it a voice must not
+          // produce, and the state is right here — no caller has to
+          // remember to pass a mood, and none of them was changed to.
+          // opts.emotion overrides it for the rare line whose words
+          // carry a different feeling from the pose.
+          const mood=(opts&&opts.emotion)||this._state;
+          if(who&&window.VihuVoice){
+            window.VihuVoice.speak({characterId:who,text:String(text),emotion:mood});
+          }
         }catch(e){}
       }
       this._bubbleEl.textContent=String(text);

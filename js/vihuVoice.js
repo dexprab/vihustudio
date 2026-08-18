@@ -5,12 +5,22 @@
 // WHAT A CALLER KNOWS, AND WHAT IT MUST NEVER KNOW
 //
 //   VihuVoice.speak({ characterId: 'lumo', text: 'Something wonderful is waiting.' });
+//   VihuVoice.speak({ characterId: 'leafy', text: 'You made it!', emotion: 'celebrate' });
 //
 // That is the whole contract. A caller never learns that a speech
 // provider exists, never holds a voice id, never builds a request and
 // never sees a key. Swapping the provider, retuning a voice or turning
 // speech off entirely is a change to this file and to
 // assets/registry.json — never to a single line of story code.
+//
+// ---------------------------------------------------------------
+// EMOTION IS THE WORD THAT IS ALREADY ON THE FACE
+//
+// The emotions a character can be asked for are the states their own
+// Companion Package already declares — happy, sad, curious, celebrate,
+// surprised, sleep, wave. Not a second vocabulary of feeling-words to
+// keep in step with the art: the same word, drawn and spoken. See the
+// EMOTIONS table below for why that matters and how it degrades.
 //
 // ---------------------------------------------------------------
 // RECORDINGS WIN. ALWAYS.
@@ -56,7 +66,88 @@
 
   var FN_NAME = 'voice-speak';
   var VOLUME = 0.85;          // the same level Lumo's recordings play at
-  var CACHE_NAME = 'vihu-voice-v1';
+  var CACHE_NAME = 'vihu-voice-v2';   // v1 held takes with no emotion applied
+
+  // ---------------------------------------------------------------
+  // EMOTION
+  //
+  // A Companion already HAS an emotion when it speaks. Every package
+  // declares states — happy, sad, curious, celebrate, surprised, sleep,
+  // wave — and one of them is on the Companion's face at the moment the
+  // words come out. A Companion pulling a delighted face while speaking
+  // in a flat monotone is the exact thing this must not produce.
+  //
+  // So the emotion vocabulary IS the state vocabulary. Not a second,
+  // parallel list of feeling-words that somebody has to keep in step
+  // with the art — the same word, drawn and spoken. That is why
+  // CompanionEngine.speak() needs no new argument to feel right: it
+  // passes the state it is already in.
+  //
+  // The four extra names below (neutral, warm, gentle, whisper) are for
+  // story characters that have no art and therefore no state — a
+  // narrator, a line in a book. They are registers rather than feelings,
+  // which is why they are not in any package.
+  //
+  // WHAT AN ENTRY MEANS. Each is a DELTA on the character's own base
+  // settings, never an absolute. A voice tuned breathy and slow stays
+  // breathy and slow when it is happy; it becomes a happier version of
+  // itself rather than being replaced by a generic happy voice. That is
+  // the whole reason these are offsets: the character survives the mood.
+  //
+  //   stability  lower  = freer, more variable delivery
+  //   style      higher = more pronounced performance
+  //   speed      relative to the character's own pace
+  //
+  // `tag` is an inline audio tag, and it is DELIBERATELY NOT USED by
+  // most models. Only the v3 family understands them; a turbo model
+  // hands the brackets to the reader, and a child would hear the word
+  // "whispers" spoken aloud. So a tag is dropped unless the character's
+  // own model declares it can read one — see _supportsTags(). Never
+  // assume; that failure is audible and lands on a child.
+  var EMOTIONS = {
+    // registers — for voices with no face
+    neutral:   { },
+    warm:      { stability:  0.05, style:  0.05, speed: -0.03 },
+    gentle:    { stability:  0.12, style: -0.05, speed: -0.06 },
+    whisper:   { stability:  0.15, style:  0.00, speed: -0.08, tag: '[whispers]' },
+
+    // the Companion states, spoken
+    happy:     { stability: -0.10, style:  0.15, speed:  0.03, tag: '[happy]' },
+    excited:   { stability: -0.20, style:  0.25, speed:  0.06, tag: '[excited]' },
+    celebrate: { stability: -0.12, style:  0.22, speed:  0.04, tag: '[excited]' },
+    surprised: { stability: -0.18, style:  0.20, speed:  0.02, tag: '[surprised]' },
+    curious:   { stability: -0.05, style:  0.10, speed: -0.02, tag: '[curious]' },
+    think:     { stability:  0.08, style:  0.00, speed: -0.08 },
+    sad:       { stability:  0.10, style:  0.05, speed: -0.10, tag: '[sad]' },
+    sleep:     { stability:  0.15, style: -0.05, speed: -0.15 },
+    wave:      { stability:  0.00, style:  0.10, speed:  0.02 }
+  };
+
+  // States that are poses rather than feelings resolve to neutral, and
+  // one package spells the same feeling differently. Both are aliases
+  // rather than special cases, so a caller can hand over ANY state a
+  // package declares and get something sensible back — which is what
+  // lets CompanionEngine pass its state through without knowing this
+  // table exists.
+  var ALIASES = {
+    idle: 'neutral', talk: 'neutral', hero: 'neutral',
+    hatching: 'neutral', magic: 'excited', thinking: 'think'
+  };
+
+  // Deltas would happily walk a voice off the end of its own scale over
+  // a few applications; a provider given stability 1.4 is being handed
+  // nonsense. These are the ranges the settings actually mean anything
+  // in, and speed's floor is deliberately not 0 — a voice at half pace
+  // is not sad, it is broken.
+  var RANGE = {
+    stability: [0, 1], similarity_boost: [0, 1], style: [0, 1], speed: [0.7, 1.2]
+  };
+
+  function _clamp(name, v) {
+    var r = RANGE[name];
+    if (!r || typeof v !== 'number' || !isFinite(v)) return v;
+    return Math.min(r[1], Math.max(r[0], v));
+  }
 
   // ---------------------------------------------------------------
   // configuration
@@ -151,10 +242,78 @@
         name: entry.name || entry.id,
         voiceId: v.voiceId,
         modelId: v.modelId || 'eleven_turbo_v2_5',
-        settings: v.settings || {}
+        settings: v.settings || {},
+        // Per-character emotion overrides, if this character has any.
+        // Shape is the shared table's, so a registry entry can retune
+        // one feeling for one character without restating the rest —
+        // Leosaurus can be a louder kind of excited than Leafy.
+        emotions: (v.emotions && typeof v.emotions === 'object') ? v.emotions : null
       };
     });
   }
+
+  // ---------------------------------------------------------------
+  // emotion, resolved
+
+  function _emotionName(emotion) {
+    var key = String(emotion || '').trim().toLowerCase();
+    if (!key) return 'neutral';
+    if (ALIASES[key]) key = ALIASES[key];
+    // An emotion nobody has defined is neutral, never an error and never
+    // a refusal to speak. A future package that declares a state this
+    // table has never heard of still gets a line said, in the
+    // character's own voice, which is the right failure.
+    return EMOTIONS[key] ? key : 'neutral';
+  }
+
+  function _emotionFor(v, emotion) {
+    var key = _emotionName(emotion);
+    var own = v && v.emotions && v.emotions[key];
+    // A character's own entry REPLACES the shared one for that feeling
+    // rather than stacking on it. Stacking would mean a registry edit
+    // could only ever push a value further in the direction the shared
+    // table already chose, which is not tuning, it is nudging.
+    return own || EMOTIONS[key] || {};
+  }
+
+  // Only the v3 family reads inline audio tags. Every other model hands
+  // the brackets straight to the reader — a child would hear the word
+  // "whispers" spoken out loud, which is a failure that lands on them
+  // rather than on us. So this is a positive check, and anything it does
+  // not recognise is assumed NOT to support tags.
+  function _supportsTags(v) {
+    if (v && typeof v.supportsTags === 'boolean') return v.supportsTags;
+    return /^eleven_v3/.test(String((v && v.modelId) || ''));
+  }
+
+  // The character's own settings, moved by the feeling. Deltas, never
+  // absolutes, so the character survives the mood (see EMOTIONS).
+  function _settingsFor(v, emotion) {
+    var base = v.settings || {};
+    var mood = _emotionFor(v, emotion);
+    var out = {};
+    Object.keys(base).forEach(function (k) { out[k] = base[k]; });
+    ['stability', 'similarity_boost', 'style', 'speed'].forEach(function (k) {
+      if (typeof mood[k] !== 'number') return;
+      var from = (typeof base[k] === 'number') ? base[k] : (k === 'speed' ? 1 : 0.5);
+      out[k] = _clamp(k, from + mood[k]);
+    });
+    return out;
+  }
+
+  function _textFor(v, emotion, text) {
+    var mood = _emotionFor(v, emotion);
+    if (!mood.tag || !_supportsTags(v)) return text;
+    return mood.tag + ' ' + text;
+  }
+
+  /**
+   * Every feeling a character can be asked for. The Companion states are
+   * in here by name, which is the point — the word on the face and the
+   * word in the voice are the same word.
+   * @returns {string[]}
+   */
+  function emotions() { return Object.keys(EMOTIONS); }
 
   // ---------------------------------------------------------------
   // the cache
@@ -244,8 +403,15 @@
 
   var _inflight = Object.create(null);
 
-  function _generate(v, text) {
-    var key = _key(v, text);
+  function _generate(v, text, emotion) {
+    // The feeling is resolved into the request BEFORE the key is taken,
+    // which is what makes emotion cache correctly for free: a happy line
+    // and a sad line have different settings, so they have different
+    // keys, so neither can ever be served in place of the other. There
+    // is no separate emotion field in the key to keep in step.
+    var settings = _settingsFor(v, emotion);
+    var spoken = _textFor(v, emotion, text);
+    var key = _key({ voiceId: v.voiceId, modelId: v.modelId, settings: settings }, spoken);
     if (_inflight[key]) return _inflight[key];
 
     _inflight[key] = _fromCache(key).then(function (hit) {
@@ -264,8 +430,8 @@
             characterId: v.characterId,
             voiceId: v.voiceId,
             modelId: v.modelId,
-            settings: v.settings,
-            text: text
+            settings: settings,
+            text: spoken
           })
         }).then(function (r) {
           var type = (r.headers.get('Content-Type') || '');
@@ -358,27 +524,42 @@
    * Make a character say something.
    *
    *   VihuVoice.speak({ characterId: 'lumo', text: '…' })
+   *   VihuVoice.speak({ characterId: 'leafy', text: '…', emotion: 'happy' })
    *   VihuVoice.speak({ characterId: 'lumo', text: '…', recorded: 'riteScreen1' })
+   *
+   * `emotion` is one of the Companion's own states — happy, sad,
+   * curious, celebrate, surprised, sleep, wave — or one of the four
+   * registers for characters with no face (neutral, warm, gentle,
+   * whisper). It moves the character's own voice rather than replacing
+   * it, so a happy Quill still sounds like Quill. Anything unrecognised
+   * is neutral, never an error and never a refusal to speak.
    *
    * `recorded` names a line in js/lumoVoice.js. If that recording
    * exists it is played and nothing is generated — a real performance
-   * always beats a synthesised one, and it costs nothing.
+   * always beats a synthesised one, and it costs nothing. **A recording
+   * carries the feeling it was performed with**, so `emotion` is ignored
+   * on that path rather than quietly re-generating the line to obtain a
+   * different mood; overriding a real performance is exactly what this
+   * module exists not to do.
    *
    * Resolves to true if the words were actually heard, false if they
    * were not. Never rejects, never throws, never shows anything.
    *
-   * @param {{characterId:string, text:string, recorded?:string}|string} opts
+   * @param {{characterId:string, text:string, emotion?:string, recorded?:string}|string} opts
    * @param {string} [text] when called as speak('lumo', 'hello')
+   * @param {string} [emotion] when called as speak('leafy', 'hello', 'happy')
    * @returns {Promise<boolean>}
    */
-  function speak(opts, text) {
-    var o = (typeof opts === 'string') ? { characterId: opts, text: text } : (opts || {});
+  function speak(opts, text, emotion) {
+    var o = (typeof opts === 'string')
+      ? { characterId: opts, text: text, emotion: emotion }
+      : (opts || {});
     var who = o.characterId || o.character || o.id;
     var words = String(o.text || '').trim();
 
     if (!who || !words) return Promise.resolve(false);
 
-    // Recordings win.
+    // Recordings win, and they bring their own feeling with them.
     if (o.recorded && window.LumoVoice) {
       try {
         if (window.LumoVoice.durationMs(o.recorded) > 0) {
@@ -393,7 +574,7 @@
 
     return voiceOf(who).then(function (v) {
       if (!v) return false;                        // no voice chosen yet
-      return _generate(v, words).then(function (src) {
+      return _generate(v, words, o.emotion).then(function (src) {
         if (!src) return false;
         return _play(src);
       });
@@ -403,11 +584,16 @@
   /**
    * Prepare a line without speaking it — generate it, cache it, say
    * nothing. Use it a beat before a line is due so the words arrive the
-   * instant they are wanted rather than after a round trip.
+   * instant they are wanted rather than after a round trip. Takes the
+   * same `emotion` speak() does, and must be given the SAME one — a
+   * line prepared neutral and spoken happy is a different sound, so it
+   * is a different cache entry and the preparation buys nothing.
    * @returns {Promise<boolean>} true when the line is ready to play
    */
-  function prepare(opts, text) {
-    var o = (typeof opts === 'string') ? { characterId: opts, text: text } : (opts || {});
+  function prepare(opts, text, emotion) {
+    var o = (typeof opts === 'string')
+      ? { characterId: opts, text: text, emotion: emotion }
+      : (opts || {});
     var who = o.characterId || o.character || o.id;
     var words = String(o.text || '').trim();
     if (!who || !words) return Promise.resolve(false);
@@ -421,7 +607,7 @@
     }
     return voiceOf(who).then(function (v) {
       if (!v) return false;
-      return _generate(v, words).then(function (src) { return !!src; });
+      return _generate(v, words, o.emotion).then(function (src) { return !!src; });
     }).catch(function () { return false; });
   }
 
@@ -450,6 +636,7 @@
     stop: stop,
     canSpeak: canSpeak,
     voiceOf: voiceOf,
+    emotions: emotions,
     clearCache: clearCache
   };
   try { window.VihuVoice = VihuVoice; } catch (e) {}

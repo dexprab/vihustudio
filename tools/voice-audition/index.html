@@ -67,8 +67,16 @@
 
   <h2>The line</h2>
   <textarea id="text">Something wonderful is waiting.</textarea>
+
+  <h2>The feeling</h2>
+  <div class="row" id="moods"></div>
+  <p class="note">These are the Companions’ own states — the word on the face is the word in the
+     voice. A feeling moves a character’s voice rather than replacing it, so a happy Quill still
+     sounds like Quill. Use <b>Hear every feeling</b> on one character to tune it.</p>
+
   <div class="row">
     <button id="all">Hear everyone</button>
+    <button class="ghost" id="allMoods">Hear every feeling</button>
     <button class="ghost" id="stop">Stop</button>
     <button class="ghost" id="clear">Forget cached audio</button>
   </div>
@@ -86,15 +94,45 @@
      lives only in <code>supabase/functions/voice-speak</code>.</p>
 </div>
 
-<script src="../../js/companionEngine.js?v=0574"></script>
-<script src="../../js/lumoVoice.js?v=0574"></script>
-<script src="../../js/vihuVoice.js?v=0574"></script>
+<script src="../../js/companionEngine.js?v=0575"></script>
+<script src="../../js/lumoVoice.js?v=0575"></script>
+<script src="../../js/vihuVoice.js?v=0575"></script>
 <script>
 (function () {
   'use strict';
 
   var $ = function (id) { return document.getElementById(id); };
   var line = function () { return $('text').value.trim(); };
+
+  // ---- the feeling ----
+  var mood = 'neutral';
+  VihuVoice.emotions().forEach(function (name) {
+    var b = document.createElement('button');
+    b.className = name === mood ? '' : 'ghost';
+    b.textContent = name;
+    b.dataset.mood = name;
+    b.addEventListener('click', function () {
+      mood = name;
+      Array.prototype.forEach.call($('moods').children, function (o) {
+        o.className = o.dataset.mood === mood ? '' : 'ghost';
+      });
+    });
+    $('moods').appendChild(b);
+  });
+
+  // One character, every feeling, back to back — the only way to tell
+  // whether a delta is doing anything. Speaks the feeling's own name
+  // first so you can hear which one you are listening to.
+  var lastSpoken = null;
+  $('allMoods').addEventListener('click', function () {
+    if (!lastSpoken) { $('fn').textContent += '\npick a character first (press Speak on one)'; return; }
+    var moods = VihuVoice.emotions().slice();
+    (function next() {
+      if (!moods.length) return;
+      var m = moods.shift();
+      VihuVoice.speak({ characterId: lastSpoken, text: m + '. ' + line(), emotion: m }).then(next);
+    })();
+  });
 
   // The registry is read directly here, rather than through VihuVoice,
   // because this page wants to show characters that have NO voice too —
@@ -122,7 +160,8 @@
       btn.disabled = !has;
       btn.addEventListener('click', function () {
         btn.disabled = true;
-        VihuVoice.speak({ characterId: e.id, text: line() }).then(function (heard) {
+        lastSpoken = e.id;
+        VihuVoice.speak({ characterId: e.id, text: line(), emotion: mood }).then(function (heard) {
           btn.disabled = false;
           if (!heard) { tag.textContent = 'stayed silent'; tag.className = 'tag no'; }
         });
@@ -142,7 +181,7 @@
       (function next() {
         if (i >= list.length) return;
         var e = list[i++];
-        VihuVoice.speak({ characterId: e.id, text: line() }).then(next);
+        VihuVoice.speak({ characterId: e.id, text: line(), emotion: mood }).then(next);
       })();
     });
   });

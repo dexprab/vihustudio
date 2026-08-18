@@ -32,13 +32,20 @@ VihuVoice.speak({ characterId: 'lumo', text: 'Something wonderful is waiting.' }
 
 That is the whole contract. There is no second thing to learn.
 
+…and when the line has a feeling in it:
+
+```js
+VihuVoice.speak({ characterId: 'leafy', text: 'You made it!', emotion: 'celebrate' });
+```
+
 | | |
 |---|---|
-| `VihuVoice.speak({characterId, text, recorded?})` | Say it. Resolves `true` if the words were heard, `false` if not. Never rejects. |
-| `VihuVoice.prepare({characterId, text})` | Generate and cache it without saying it. Call a beat early so the line arrives instantly. |
+| `VihuVoice.speak({characterId, text, emotion?, recorded?})` | Say it. Resolves `true` if the words were heard, `false` if not. Never rejects. |
+| `VihuVoice.prepare({characterId, text, emotion?})` | Generate and cache it without saying it. Call a beat early so the line arrives instantly. |
 | `VihuVoice.stop()` | Stop whatever is speaking. |
 | `VihuVoice.canSpeak(who)` | Does this character have a voice yet? |
 | `VihuVoice.voiceOf(who)` | The resolved voice, or `null`. For tools; story code does not need it. |
+| `VihuVoice.emotions()` | Every feeling that can be asked for. |
 | `VihuVoice.clearCache()` | Forget this browser's cached audio. For the audition page. |
 
 `who` may be an **id** (`'lumo'`), a **name** (`'Lumo'`) or a **role**
@@ -65,6 +72,103 @@ would have, and the reason goes to the console where a grown-up can find
 it and a child never looks.
 
 A child must never meet the words *TTS*, *ElevenLabs*, *API* or *failed*.
+
+---
+
+## Emotion
+
+**The emotion vocabulary is the Companion's own state vocabulary.** Not a
+second, parallel list of feeling-words that somebody has to keep in step
+with the art — the same word, drawn and spoken.
+
+```
+happy   sad   curious   celebrate   surprised   sleep   wave
+```
+
+Every one of those is a state a Companion Package already declares. A
+Companion pulling a delighted face while speaking in a flat monotone is
+the exact thing giving it a voice must not produce, so the word on the
+face and the word in the voice are one word.
+
+Four more exist for characters that have **no face** — a narrator, a line
+in a book, anything with no package and therefore no state. They are
+registers rather than feelings, which is why they are in no package:
+
+```
+neutral (the default)   warm   gentle   whisper
+```
+
+### A feeling moves a voice; it never replaces one
+
+Each entry is a **delta** on the character's own settings, never an
+absolute. A voice tuned breathy and slow stays breathy and slow when it
+is happy — it becomes a happier version of *itself* rather than being
+swapped for a generic happy voice. That is the whole reason these are
+offsets: **the character survives the mood.**
+
+Verified: the same feeling applied to two characters produces two
+different requests, and `similarity_boost` — the setting that carries who
+somebody *is* — is never touched by any feeling.
+
+Deltas are clamped to the ranges the settings actually mean anything in,
+so a few applications can never walk a voice off the end of its own
+scale. `speed`'s floor is deliberately not zero: a voice at half pace is
+not sad, it is broken.
+
+### Anything unrecognised is neutral
+
+An emotion nobody has defined, a state that is a pose rather than a
+feeling (`idle`, `talk`, `hero`, `hatching`), a package inventing a state
+this table has never heard of — all resolve to neutral. The line is still
+said, in the character's own voice. It is never an error and never a
+refusal to speak.
+
+`thinking` and `think` are the same feeling; `magic` reads as `excited`.
+Aliases, not special cases, so **any** state a package declares can be
+handed over unchanged.
+
+### Retuning one feeling for one character
+
+Optional, and only where the shared table is wrong for somebody.
+Leosaurus can be a louder kind of excited than Leafy:
+
+```json
+"voice": {
+  "voiceId": "…",
+  "settings": { "stability": 0.5, "style": 0.15 },
+  "emotions": {
+    "excited": { "stability": -0.30, "style": 0.35, "speed": 0.08 }
+  }
+}
+```
+
+An override **replaces** the shared entry for that feeling rather than
+stacking on it — stacking would mean a registry edit could only ever push
+a value further in the direction the shared table already chose, which is
+not tuning, it is nudging. Feelings not listed still come from the shared
+table.
+
+### Audio tags, and the failure that would land on a child
+
+Some feelings carry an inline tag (`[whispers]`, `[excited]`). **Only the
+v3 model family can read one.** Every other model hands the brackets
+straight to the reader — a child would hear the word *"whispers"* spoken
+out loud.
+
+So tags are gated on a positive check of the character's own model, and
+anything unrecognised is assumed **not** to support them. Today every
+character is on `eleven_turbo_v2_5`, so **no tag is ever sent** and
+emotion is carried entirely by the settings. Move a character to
+`eleven_v3` and its tags switch on with no other change. Verified in both
+directions, including that no bracket of any kind survives on a turbo
+model.
+
+### Recordings keep their own feeling
+
+A recorded line was performed with a feeling already in it. Asking for a
+different one does **not** re-generate it — the recording still wins and
+nothing is sent. Overriding a real performance is precisely what this
+module exists not to do.
 
 ---
 
@@ -185,6 +289,12 @@ them twice is paying twice for one sound. Two layers:
 Both key on the **whole request**: voice, model, settings and text. Change
 any of them and it is a different sound, which correctly misses.
 
+**Emotion caches for free**, and deliberately so: the feeling is resolved
+into the settings and the text *before* the key is taken, so a happy line
+and a sad line are different keys and neither can ever be served in place
+of the other. There is no separate emotion field in the key to keep in
+step. `neutral` and no feeling at all are the same entry, correctly.
+
 The browser layer is treated as a bonus at every step: the Cache API is
 absent in an insecure context and can be evicted at any moment, so nothing
 depends on it being there.
@@ -202,7 +312,15 @@ effect or TTS"* — and the prediction held: **the signature is unchanged
 and no caller was edited.** Every existing line the Companion Director
 already speaks in the Studio gained a voice for free.
 
+**And the feeling comes for free too**, because the Companion is already
+wearing one: `speak()` passes **the state it is currently in** as the
+emotion. That is the whole reason no caller had to learn about moods — a
+Companion that has just been set to `celebrate` speaks in celebration
+without anybody remembering to say so.
+
 - Pass `{silent: true}` for the bubble without the voice.
+- Pass `{emotion: '…'}` for the rare line whose words carry a different
+  feeling from the pose.
 - `speak('')` hides the bubble and stops the voice together.
 - A page that does not load `js/vihuVoice.js` is completely unchanged.
 
@@ -236,9 +354,11 @@ page. Giving it one is a canon change, not a feature.
 it and no child reaches it.
 
 It lists every character, shows whether they have a voice, speaks one line
-in any of them, and can play the same line through the whole cast back to
-back. That is the only way to tell whether Nimbus sounds like a Dream
-Sprite; a stability number tells you nothing.
+in any of them **in any feeling**, and can play the same line through the
+whole cast back to back. **Hear every feeling** runs one character through
+all fourteen, naming each as it goes. That is the only way to tell whether
+Nimbus sounds like a Dream Sprite, or whether a delta is doing anything at
+all; a stability number tells you nothing.
 
 **It holds no key**, builds no provider request and knows no provider URL.
 That is the point: if the audition room can be written without the key,
@@ -257,8 +377,13 @@ so can everything else.
 | `js/lumoVoice.js` | Lumo's recordings. Unchanged, and they still win. |
 | `tools/voice-audition/index.html` | Listening room. |
 
-Verified 51/51 with zero page errors: voice resolution by id, name and
+Verified 84/84 with zero page errors: voice resolution by id, name and
 role; an empty `voiceId`; what is and is not sent to the function; the
-cache across a reload, across voices and under simultaneous asks; all
-three failure modes; that recordings win and generate nothing; and that
-the widget's public API was not widened.
+cache across a reload, across voices, across feelings and under
+simultaneous asks; all three failure modes; that recordings win and
+generate nothing even when a feeling is asked for; that a feeling moves a
+voice without replacing it and cannot walk it off its own scale; that an
+unrecognised feeling is neutral rather than an error; that **no audio tag
+ever reaches a model that would read it aloud**; that a character can
+retune one feeling for itself without affecting anyone else; and that the
+widget's public API was not widened.

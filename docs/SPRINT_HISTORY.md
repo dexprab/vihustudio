@@ -2937,3 +2937,84 @@ directory indexes, so the audition page had to be fetched by its full path.
 empty. They are chosen by ear in the provider's console and pasted into
 `assets/registry.json` — `tools/voice-audition/index.html` exists for
 exactly that.
+
+### Emotion — the word that is already on the face
+
+**Build 0575.** *"in the speak function we need to insert emotions also."*
+
+**The vocabulary was already in the repository.** Every Companion Package
+declares states — `happy sad curious celebrate surprised sleep wave` — and
+one of them is on the Companion's face at the moment the words come out. A
+Companion pulling a delighted face while speaking in a flat monotone is
+the exact thing giving it a voice must not produce. So the emotion
+vocabulary **is** the state vocabulary: the same word, drawn and spoken,
+rather than a second parallel list somebody has to keep in step with the
+art. Four registers were added for characters with no face and therefore
+no state — `neutral warm gentle whisper` — a narrator, a line in a book.
+
+**A feeling moves a voice; it never replaces one.** Every entry is a DELTA
+on the character's own settings, so a voice tuned breathy and slow stays
+breathy and slow when it is happy — it becomes a happier version of
+*itself*. That is the whole reason they are offsets: the character
+survives the mood. Measured: the same feeling on two characters produces
+two different requests, and `similarity_boost`, the setting that carries
+who somebody *is*, is untouched by every feeling. Deltas clamp to the
+ranges the settings mean anything in, and speed's floor is deliberately
+not zero — a voice at half pace is not sad, it is broken.
+
+**Nothing had to be told about moods, because the Companion already knows
+its own.** `CompanionEngine.speak()` passes the state it is currently in.
+Same shape as the sprint before it: no caller changed, signature
+unwidened, and a Companion set to `celebrate` speaks in celebration
+without anybody remembering to say so. `{emotion}` overrides it for the
+rare line whose words carry a different feeling from the pose.
+
+**Emotion caches for free.** The feeling is resolved into the settings and
+the text BEFORE the key is taken, so a happy line and a sad line are
+different keys and neither can be served in place of the other. There is
+no separate emotion field in the key to keep in step; `neutral` and no
+feeling at all are correctly the same entry. The browser cache bumped to
+`vihu-voice-v2`, since v1 holds takes with no emotion applied.
+
+**THE FAILURE THAT WOULD HAVE LANDED ON A CHILD, caught in design rather
+than in a session.** Some feelings carry an inline audio tag —
+`[whispers]`, `[excited]` — and only the v3 model family can read one.
+Every other model hands the brackets straight to the reader, so a child
+would have heard the word *"whispers"* spoken out loud. Every character is
+on `eleven_turbo_v2_5` today, so a naive implementation would have leaked
+a tag on the very first line anybody generated. The check is therefore
+POSITIVE — a tag is dropped unless the character's own model declares it
+can read one — and anything unrecognised is assumed not to. Today no tag
+is ever sent and emotion is carried entirely by the settings; moving a
+character to `eleven_v3` switches its tags on with no other change.
+Verified in both directions, including that no bracket of any kind
+survives on a turbo model.
+
+**Degrading is the normal path, not the edge.** An undefined feeling, a
+state that is a pose rather than a feeling (`idle`, `talk`, `hero`,
+`hatching`), or a future package inventing a state nobody has heard of —
+all resolve to neutral, the line still said in the character's own voice.
+`thinking`/`think` and `magic`/`excited` are aliases rather than special
+cases, so ANY state a package declares can be handed over unchanged.
+
+**Per-character overrides REPLACE rather than stack.** `voice.emotions` in
+the registry retunes one feeling for one character — Leosaurus can be a
+louder kind of excited than Leafy — and feelings it does not list still
+come from the shared table. Stacking was rejected: it would mean a
+registry edit could only ever push a value further in the direction the
+shared table already chose, which is not tuning, it is nudging.
+
+**A recording keeps its own feeling.** Asking for a different one does not
+re-generate the line; the recording still wins and nothing is sent.
+Overriding a real performance is precisely what this module exists not to
+do.
+
+**Verified 84/84 in a real browser, zero page errors** — the 51 from the
+foundation plus 33 for emotion across seven new sections. One failing
+check was **my assertion rather than the product**: I2 tested for the
+guard in its old one-line form, and the guard is still there in the
+multi-line one; the assertion was corrected to match the code rather than
+loosened. The audition page now has a feeling picker and a **Hear every
+feeling** pass that runs one character through all fourteen, naming each,
+because a stability number tells you nothing about whether a delta is
+doing anything.

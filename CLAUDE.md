@@ -1311,6 +1311,31 @@ Locked by the product owner in the Vihu Voice Foundation brief.
   The function answers **HTTP 200 with a `reason`** for every failure so
   a caller that treats "not audio" as silence needs no error handling at
   all.
+- **Emotion is the word that is already on the face.** Asked for by the
+  product owner: *"in the speak function we need to insert emotions
+  also."* The vocabulary is the **Companion's own states** — happy, sad,
+  curious, celebrate, surprised, sleep, wave — and not a second,
+  parallel list of feeling-words somebody has to keep in step with the
+  art. A Companion pulling a delighted face while speaking in a flat
+  monotone is the exact thing a voice must not produce, so the word
+  drawn and the word spoken are one word. Four registers exist for
+  characters with no face and therefore no state (neutral · warm ·
+  gentle · whisper).
+- **A feeling moves a voice; it never replaces one.** Every entry is a
+  delta on the character's own settings, so a happy Quill is a happier
+  version of Quill rather than a generic happy voice — **the character
+  survives the mood**. Verified: the setting that carries who somebody
+  *is* is never touched by any feeling.
+- **`CompanionEngine.speak()` passes the state it is already in**, which
+  is why no caller had to learn about moods and none was changed.
+- **Anything unrecognised is neutral, never an error and never a refusal
+  to speak** — an undefined feeling, a pose that is not a feeling, or a
+  future package inventing a state this table has never heard of.
+- **An audio tag is never sent to a model that would read it aloud.**
+  Only the v3 family understands them; every other model hands the
+  brackets to the reader and a child hears the word "whispers" spoken.
+  So the check is positive and anything unrecognised is assumed not to
+  support tags. Today no tag is sent at all.
 - **The Ether's World Host does not speak**, and giving it a voice is a
   canon change rather than a feature. Decision 24 requires the host to be
   ignorable in full; a voice over somebody's story is the loudest thing
