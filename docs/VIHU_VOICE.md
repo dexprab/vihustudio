@@ -46,6 +46,7 @@ VihuVoice.speak({ characterId: 'leafy', text: 'You made it!', emotion: 'celebrat
 | `VihuVoice.canSpeak(who)` | Does this character have a voice yet? |
 | `VihuVoice.voiceOf(who)` | The resolved voice, or `null`. For tools; story code does not need it. |
 | `VihuVoice.emotions()` | Every feeling that can be asked for. |
+| `VihuVoice.resolve({characterId, text, emotion})` | What would actually be sent. **Tools only** — see *When a feeling is not audible*. |
 | `VihuVoice.clearCache()` | Forget this browser's cached audio. For the audition page. |
 
 `who` may be an **id** (`'lumo'`), a **name** (`'Lumo'`) or a **role**
@@ -111,9 +112,47 @@ different requests, and `similarity_boost` — the setting that carries who
 somebody *is* — is never touched by any feeling.
 
 Deltas are clamped to the ranges the settings actually mean anything in,
-so a few applications can never walk a voice off the end of its own
-scale. `speed`'s floor is deliberately not zero: a voice at half pace is
-not sad, it is broken.
+and those ranges are narrower than the provider's own: **stability
+0.20–0.95, style 0–0.65, speed 0.7–1.2.** Below about 0.2 stability stops
+being expressive and starts being erratic; much over 0.65 style distorts.
+So it is the clamps that keep a voice safe, not timid numbers.
+
+**The first set of deltas was too small to hear**, and the product owner
+said so on listening to the first real voice: *"emotions does not seem to
+be affecting the voice quality."* They were right — a `style` nudge of
++0.15 on a base of 0.1 sits inside the range where this provider barely
+moves. Restraint that cannot be heard is not restraint, it is a no-op.
+The deltas roughly doubled.
+
+### Pace
+
+Every character's base `speed` is well below the provider's default,
+because this is read aloud to children and the default pace is written
+for adults. Lumo is slowest at **0.84** — unhurried is his whole manner —
+and Leo quickest at **0.88**, which is still slow. `0.7` is the provider's
+own floor, so these sit near the slow end while leaving the `sad` and
+`sleep` deltas somewhere to go.
+
+Pace is a **base setting, not a feeling**: how fast somebody talks is part
+of who they are, and only then something a mood bends.
+
+### When a feeling is not audible
+
+There are two completely different reasons, with two different fixes, and
+from the outside they look identical. `VihuVoice.resolve()` tells them
+apart — the audition page shows it live under **What is actually sent**:
+
+- **The numbers do not change with the feeling** → the feeling is not
+  reaching the request. A bug.
+- **The numbers change but the voice does not** → the model is ignoring
+  them. Not a bug, a model limit. `eleven_turbo_v2_5` is built for low
+  latency and is deliberately flat; `eleven_v3` is the expressive one and
+  is the only family that reads the audio tags. That is a one-field
+  registry change per character.
+
+`resolve()` is **for tools, not for story code.** Nothing in the product
+calls it and nothing should — a caller that reads settings is a caller
+that has learned a provider exists.
 
 ### Anything unrecognised is neutral
 

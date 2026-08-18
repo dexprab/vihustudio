@@ -104,23 +104,36 @@
   // "whispers" spoken aloud. So a tag is dropped unless the character's
   // own model declares it can read one — see _supportsTags(). Never
   // assume; that failure is audible and lands on a child.
+  // HOW BIG THE DELTAS ARE, and why they got bigger. The first set was
+  // written to be tasteful — style +0.15, stability -0.10 — and the
+  // product owner's verdict on hearing it was "emotions does not seem to
+  // be affecting the voice quality". They were right: on a base style of
+  // 0.1, a +0.15 nudge is well inside the range where this provider's
+  // delivery barely moves. Restraint that cannot be heard is not
+  // restraint, it is a no-op.
+  //
+  // These are the ranges the settings actually do something in, while
+  // staying clear of where they misbehave: stability below about 0.2
+  // gets erratic rather than expressive, and style much above 0.6
+  // distorts. So the deltas are large but the CLAMPS are what keep a
+  // voice safe, not the timidity of the numbers.
   var EMOTIONS = {
     // registers — for voices with no face
     neutral:   { },
-    warm:      { stability:  0.05, style:  0.05, speed: -0.03 },
-    gentle:    { stability:  0.12, style: -0.05, speed: -0.06 },
-    whisper:   { stability:  0.15, style:  0.00, speed: -0.08, tag: '[whispers]' },
+    warm:      { stability:  0.08, style:  0.10, speed: -0.04 },
+    gentle:    { stability:  0.18, style: -0.08, speed: -0.08 },
+    whisper:   { stability:  0.22, style: -0.05, speed: -0.10, tag: '[whispers]' },
 
     // the Companion states, spoken
-    happy:     { stability: -0.10, style:  0.15, speed:  0.03, tag: '[happy]' },
-    excited:   { stability: -0.20, style:  0.25, speed:  0.06, tag: '[excited]' },
-    celebrate: { stability: -0.12, style:  0.22, speed:  0.04, tag: '[excited]' },
-    surprised: { stability: -0.18, style:  0.20, speed:  0.02, tag: '[surprised]' },
-    curious:   { stability: -0.05, style:  0.10, speed: -0.02, tag: '[curious]' },
-    think:     { stability:  0.08, style:  0.00, speed: -0.08 },
-    sad:       { stability:  0.10, style:  0.05, speed: -0.10, tag: '[sad]' },
-    sleep:     { stability:  0.15, style: -0.05, speed: -0.15 },
-    wave:      { stability:  0.00, style:  0.10, speed:  0.02 }
+    happy:     { stability: -0.20, style:  0.30, speed:  0.05, tag: '[happy]' },
+    excited:   { stability: -0.30, style:  0.42, speed:  0.09, tag: '[excited]' },
+    celebrate: { stability: -0.26, style:  0.40, speed:  0.07, tag: '[excited]' },
+    surprised: { stability: -0.28, style:  0.34, speed:  0.03, tag: '[surprised]' },
+    curious:   { stability: -0.12, style:  0.20, speed: -0.03, tag: '[curious]' },
+    think:     { stability:  0.16, style: -0.05, speed: -0.11 },
+    sad:       { stability:  0.18, style:  0.12, speed: -0.15, tag: '[sad]' },
+    sleep:     { stability:  0.26, style: -0.10, speed: -0.18 },
+    wave:      { stability: -0.06, style:  0.16, speed:  0.04 }
   };
 
   // States that are poses rather than feelings resolve to neutral, and
@@ -139,8 +152,13 @@
   // nonsense. These are the ranges the settings actually mean anything
   // in, and speed's floor is deliberately not 0 — a voice at half pace
   // is not sad, it is broken.
+  // Not the provider's full 0–1, deliberately. Stability under about 0.2
+  // stops being expressive and starts being erratic — words slurred,
+  // pitch wandering — and style much over 0.6 distorts and slows
+  // generation. These are the ranges where the knobs do something a
+  // person would call a mood.
   var RANGE = {
-    stability: [0, 1], similarity_boost: [0, 1], style: [0, 1], speed: [0.7, 1.2]
+    stability: [0.2, 0.95], similarity_boost: [0, 1], style: [0, 0.65], speed: [0.7, 1.2]
   };
 
   function _clamp(name, v) {
@@ -314,6 +332,41 @@
    * @returns {string[]}
    */
   function emotions() { return Object.keys(EMOTIONS); }
+
+  /**
+   * What would actually be sent for this character in this feeling.
+   *
+   * FOR TOOLS, NOT FOR STORY CODE. Nothing in the product calls this and
+   * nothing should — a caller that reads settings is a caller that has
+   * learned a provider exists, which is the one thing the seam is for.
+   *
+   * It exists because "the emotion is not doing anything" is otherwise
+   * unanswerable from the outside: there is no way to tell a feeling
+   * that never reached the request from one that reached it and was
+   * ignored by the model. Those have completely different fixes, so the
+   * audition room shows this on screen rather than guessing.
+   *
+   * Carries no key and cannot: the key is not in this browser.
+   * @returns {Promise<object|null>}
+   */
+  function resolve(opts, text, emotion) {
+    var o = (typeof opts === 'string')
+      ? { characterId: opts, text: text, emotion: emotion }
+      : (opts || {});
+    var who = o.characterId || o.character || o.id;
+    return voiceOf(who).then(function (v) {
+      if (!v) return null;
+      return {
+        characterId: v.characterId,
+        voiceId: v.voiceId,
+        modelId: v.modelId,
+        emotion: _emotionName(o.emotion),
+        supportsTags: _supportsTags(v),
+        settings: _settingsFor(v, o.emotion),
+        text: _textFor(v, o.emotion, String(o.text || ''))
+      };
+    }).catch(function () { return null; });
+  }
 
   // ---------------------------------------------------------------
   // the cache
@@ -637,6 +690,7 @@
     canSpeak: canSpeak,
     voiceOf: voiceOf,
     emotions: emotions,
+    resolve: resolve,
     clearCache: clearCache
   };
   try { window.VihuVoice = VihuVoice; } catch (e) {}

@@ -72,14 +72,22 @@
   <div class="row" id="moods"></div>
   <p class="note">These are the Companions’ own states — the word on the face is the word in the
      voice. A feeling moves a character’s voice rather than replacing it, so a happy Quill still
-     sounds like Quill. Use <b>Hear every feeling</b> on one character to tune it.</p>
+     sounds like Quill.</p>
 
   <div class="row">
     <button id="all">Hear everyone</button>
     <button class="ghost" id="allMoods">Hear every feeling</button>
+    <button class="ghost" id="ab">Calm ⇄ excited</button>
     <button class="ghost" id="stop">Stop</button>
     <button class="ghost" id="clear">Forget cached audio</button>
   </div>
+
+  <h2>What is actually sent</h2>
+  <div class="status" id="resolved">pick a character and a feeling</div>
+  <p class="note">If these numbers change with the feeling but the voice does not, the model is
+     ignoring them rather than the feeling failing to arrive — a different problem with a
+     different fix. <code>eleven_v3</code> reads the audio tag; <code>eleven_turbo_v2_5</code>
+     cannot, so no tag is sent to it and the mood rides entirely on the numbers.</p>
 
   <h2>The cast</h2>
   <div class="cast" id="cast"></div>
@@ -94,9 +102,9 @@
      lives only in <code>supabase/functions/voice-speak</code>.</p>
 </div>
 
-<script src="../../js/companionEngine.js?v=0575"></script>
-<script src="../../js/lumoVoice.js?v=0575"></script>
-<script src="../../js/vihuVoice.js?v=0575"></script>
+<script src="../../js/companionEngine.js?v=0576"></script>
+<script src="../../js/lumoVoice.js?v=0576"></script>
+<script src="../../js/vihuVoice.js?v=0576"></script>
 <script>
 (function () {
   'use strict';
@@ -116,14 +124,38 @@
       Array.prototype.forEach.call($('moods').children, function (o) {
         o.className = o.dataset.mood === mood ? '' : 'ghost';
       });
+      showResolved();
     });
     $('moods').appendChild(b);
   });
+
+  // The whole point of this panel: it tells a feeling that never reached
+  // the request apart from one that reached it and was ignored.
+  function showResolved() {
+    if (!lastSpoken) return;
+    VihuVoice.resolve({ characterId: lastSpoken, text: line(), emotion: mood })
+      .then(function (r) {
+        $('resolved').textContent = r ? JSON.stringify(r, null, 2) : 'no voice for this character';
+      });
+  }
 
   // One character, every feeling, back to back — the only way to tell
   // whether a delta is doing anything. Speaks the feeling's own name
   // first so you can hear which one you are listening to.
   var lastSpoken = null;
+
+  // The sharpest test there is: the two extremes of the range, same
+  // words, back to back. If these two sound the same, the settings are
+  // not carrying emotion on this model and no amount of tuning between
+  // them will help.
+  $('ab').addEventListener('click', function () {
+    if (!lastSpoken) { $('resolved').textContent = 'press Speak on a character first'; return; }
+    VihuVoice.speak({ characterId: lastSpoken, text: line(), emotion: 'sleep' })
+      .then(function () {
+        return VihuVoice.speak({ characterId: lastSpoken, text: line(), emotion: 'excited' });
+      });
+  });
+
   $('allMoods').addEventListener('click', function () {
     if (!lastSpoken) { $('fn').textContent += '\npick a character first (press Speak on one)'; return; }
     var moods = VihuVoice.emotions().slice();
@@ -161,6 +193,7 @@
       btn.addEventListener('click', function () {
         btn.disabled = true;
         lastSpoken = e.id;
+        showResolved();
         VihuVoice.speak({ characterId: e.id, text: line(), emotion: mood }).then(function (heard) {
           btn.disabled = false;
           if (!heard) { tag.textContent = 'stayed silent'; tag.className = 'tag no'; }

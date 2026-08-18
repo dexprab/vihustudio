@@ -3018,3 +3018,51 @@ loosened. The audition page now has a feeling picker and a **Hear every
 feeling** pass that runs one character through all fourteen, naming each,
 because a stability number tells you nothing about whether a delta is
 doing anything.
+
+**Two corrections after the first real voice was heard** (build 0576).
+Lumo got a voice id — pasted into `assets/registry.json`, no code change,
+which is the point of the id living there — and listening to it produced
+two findings the suite could not have.
+
+**The deltas were too small to hear.** *"emotions does not seem to be
+affecting the voice quality."* Correct: a `style` nudge of +0.15 on a base
+of 0.1 sits inside the range where this provider barely moves. They were
+written to be tasteful and were in practice a no-op, which is the worse
+failure — restraint that cannot be heard is not restraint. Roughly
+doubled, and the CLAMPS narrowed to where the knobs actually mean
+something (stability 0.20–0.95, style 0–0.65) so it is the ranges keeping
+a voice safe rather than the timidity of the numbers.
+
+**And the pace was written for adults.** *"we need to slow down the
+speech."* Every character's base `speed` dropped well below the
+provider's default — Lumo slowest at 0.84 since unhurried is his whole
+manner, Leo quickest at 0.88 and still slow. Pace is a base setting, not
+a feeling: how fast somebody talks is part of who they are, and only then
+something a mood bends.
+
+**`VihuVoice.resolve()` was added because the question was otherwise
+unanswerable.** "The emotion is not doing anything" has two completely
+different causes with two different fixes — the feeling never reached the
+request, or it reached it and the model ignored it — and from outside they
+are indistinguishable. The audition room now shows the resolved request
+live, plus a **Calm ⇄ excited** A/B on the two extremes, which is the
+sharpest test available: if those two sound alike, no tuning between them
+will help and the answer is a different model. It is documented as tools
+only — a caller that reads settings is a caller that has learned a
+provider exists.
+
+**A REAL BUG THE 84 PASSING CHECKS COULD NOT SEE**, found by the product
+owner's screenshot instead: `voice-speak` listed only
+`authorization, content-type` in its CORS allow-list while both callers
+also send `apikey`, so every browser refused the request before making it
+— "TypeError: Failed to fetch", and not merely on the status ping but on
+every line of speech. `sky-protection` and `family-album` both list the
+full set; this now matches them. Worth recording why the suite was blind
+to it: the harness intercepts the request with Playwright routing, which
+bypasses CORS entirely. **A mocked boundary cannot test the boundary.**
+
+**Verified 92/92, zero page errors** — eight new checks that the extremes
+differ by a real margin, that the clamps hold at both ends, and that
+`resolve()` carries no key. Two assertions were corrected rather than
+loosened when the new clamp floor made their fixtures unable to
+distinguish a replaced override from a stacked one.
