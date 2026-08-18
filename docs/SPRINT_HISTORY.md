@@ -3252,3 +3252,30 @@ Egg correctly absent, counts on the right rows, a zero shown rather than
 omitted, an unknown id flagged rather than dropped, and — the one that
 matters operationally — the section reporting "does not exist" without
 breaking the Creators table when the migration has not been run yet.
+
+**And each Companion shows its own face** (build 0583). *"i dont want
+just names, i actually want to see each companion hero image there."*
+
+**The portrait comes from the PACKAGE, not from a guessed filename.**
+Every Companion Package declares its own `states -> file` map in
+`companion.json` — the contract `CompanionEngine` already loads — so the
+page reads `states.hero` from there, falling back to `states.idle` for a
+package that ships no hero (the Story Egg is one, and although it is not
+listed here, a future Companion could be). Hardcoding `hero.png` would
+have worked today for all four and broken silently on the first package
+that renamed its art.
+
+The portrait sits on its own dark tile because every one of these is a
+cut-out PNG and the pale ones nearly vanish on the panel colour. An
+`<img>` that fails to load removes itself rather than showing the
+browser's broken-file icon, which reads as an error on a page whose whole
+job is reporting; an id with no art gets an empty dashed tile instead. A
+zero now draws an empty track rather than a two-pixel nub — `min-width`
+exists so a count of ONE is visible, and at zero it was drawing something
+where nothing had happened.
+
+**Verified 21/21, zero page errors**, including that the images actually
+DECODED rather than merely being referenced (`naturalWidth > 0` on all
+four), that the path matches the package's declared file, and that a
+Companion with zero creators still shows its face — it is real, and the
+count is what says nothing has happened yet.
