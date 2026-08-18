@@ -79,15 +79,15 @@
   // THE MUSIC OF THE PLACE, when no World has said otherwise.
   //
   // The Foundation bed is weather now (see FOUNDATION_LAYERS above), so
-  // without this there is texture and no music at all. These take it in
-  // turns, handing over with the same crossfade playWorld uses between
-  // Worlds, so nothing repeats back to back. Chosen by the product owner
-  // after listening to all five uploaded tracks.
+  // without this there is texture and no music at all. One of these plays,
+  // then another, chosen at random and never the same one twice running,
+  // handing over with the same crossfade playWorld uses between Worlds.
+  // Chosen by the product owner after listening to all five uploaded tracks.
   //
   // They are not equal lengths -- a and c run 45 seconds each, e runs 150 --
-  // so one full cycle is four minutes and e holds most of it. That is a
-  // property of the tracks rather than a decision this table can express;
-  // reordering it changes what follows what, never how long each is heard.
+  // so e is heard for more of any given visit than the other two. That is a
+  // property of the tracks rather than something this list can express; the
+  // ORDER here means nothing now, only the membership does.
   //
   // It is the DEFAULT, never an override: a Theme that declares its own
   // audio.ambience replaces this through the ordinary playWorld path, and
@@ -266,10 +266,11 @@
   // refs are already the active World ambience. Never called with a Theme
   // object -- the caller (js/themeEngine.js) already extracted the plain array.
   //
-  // MORE THAN ONE REF ALTERNATES. The signature always took an array and only
-  // ever played [0]; a second entry now means "and then this one, and then
-  // back", which is what the array shape always implied. One track alone still
-  // loops exactly as it always did, so every existing caller is unaffected.
+  // MORE THAN ONE REF IS A SET TO CHOOSE FROM. The signature always took an
+  // array and only ever played [0]; more than one entry now means "any of
+  // these, one after another", which is what the array shape always implied.
+  // One track alone still loops exactly as it always did, so every existing
+  // caller is unaffected.
   //
   // The change of hands is the same crossfade playWorld already performs
   // between two different Worlds -- one track ramps down over the World Fade
@@ -281,7 +282,12 @@
     if(key===_worldRefsKey) return; // already playing this exact World ambience
     _worldRefsKey=key;
     _worldSequence=ambienceRefs.slice();
-    _worldIndex=0;
+    // Where it starts is chosen too, or every arrival in VihuPlanet would
+    // open on the same track and the randomness would only begin after the
+    // first hand-over -- which is the part of it a child is least likely to
+    // still be there for.
+    _worldIndex=_worldSequence.length>1
+      ? Math.floor(Math.random()*_worldSequence.length) : 0;
     _startWorldTrack();
   }
 
@@ -328,7 +334,7 @@
     function advance(){
       if(el!==_worldEl) return;          // superseded by a real World already
       _clearWorldAdvance();
-      _worldIndex=(_worldIndex+1)%_worldSequence.length;
+      _worldIndex=_nextWorldIndex();
       _startWorldTrack();
     }
     el.addEventListener('ended',advance);
@@ -344,6 +350,26 @@
     }
     if(isFinite(el.duration) && el.duration>0) arm();
     else el.addEventListener('loadedmetadata',arm,{once:true});
+  }
+
+  // WHICH TRACK COMES NEXT. Any of them except the one just heard.
+  //
+  // Chosen rather than taken in turns, so the place does not run to a
+  // timetable a child could learn -- and the one exclusion is what keeps
+  // "random" from meaning the same forty-five seconds twice in a row, which
+  // is the one thing an ambience must never do. With two tracks that leaves
+  // exactly one answer, so a pair still simply alternates.
+  //
+  // Math.random, deliberately, and NOT the runtime's seeded Rng. The seeded
+  // generator exists so that every viewer sees the same Ether; what one
+  // child happens to hear on one visit is theirs, and has no business being
+  // shared or reproducible. Same reasoning the arrival turn already uses
+  // (CLAUDE.md -> Decision 10).
+  function _nextWorldIndex(){
+    var n=_worldSequence.length;
+    if(n<2) return 0;
+    var i=Math.floor(Math.random()*(n-1));
+    return i>=_worldIndex ? i+1 : i;
   }
 
   function _clearWorldAdvance(){

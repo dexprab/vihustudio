@@ -35,20 +35,32 @@ owner. `a`, `c` and `e` are the shipped default (`DEFAULT_WORLD_AMBIENCE` in
 `js/audioManager.js`); `b` and `d` are kept and unused for now.
 
 They are not equal lengths — `a` and `c` run 45 seconds each and `e` runs 150 —
-so one full cycle is four minutes and `e` holds most of it. Reordering the list
-changes what follows what, never how long each is heard.
+so `e` is heard for more of any given visit than the other two. The ORDER of
+the list means nothing now; only its membership does.
 
 Measured, all five sit within 10% of each other in loudness, so one World
 Volume suits any of them: at the shipped 0.33 each runs seven to eight times
 the Foundation bed's own level.
 
-**The default pair alternates.** `playWorld()` always took an array and only
-ever played `[0]`; more than one entry now means "and then this one, and then
-back". A single track still loops exactly as it always did, so no existing
-caller changed. The change of hands is the same crossfade `playWorld` already
-performs between two different Worlds — the outgoing track ramps down over the
-World Fade while the next ramps up — so a turn never lands on a silence, and
-the same forty-five seconds never repeats back to back.
+**One plays, then another, chosen at random.** `playWorld()` always took an
+array and only ever played `[0]`; more than one entry now means "any of these,
+one after another". The next track is picked from all of them EXCEPT the one
+just heard — which is what stops "random" from meaning the same forty-five
+seconds twice running, the one thing an ambience must never do. With exactly
+two tracks that leaves one answer, so a pair simply alternates. Which track a
+visit opens on is chosen the same way, or every arrival would begin identically
+and the randomness would only start after the first hand-over.
+
+It uses `Math.random`, deliberately, and not the runtime's seeded `Rng`: the
+seeded generator exists so every viewer sees the SAME Ether, and what one child
+happens to hear on one visit is theirs rather than a shared property of the
+universe — the same reasoning the arrival turn already uses (`CLAUDE.md` →
+Decision 10).
+
+A single track still loops exactly as it always did, so no existing caller
+changed. The change of hands is the same crossfade `playWorld` already performs
+between two different Worlds — the outgoing track ramps down over the World
+Fade while the next ramps up — so a turn never lands on a silence.
 
 **It is a default, never an override.** A Theme that declares its own
 `audio.ambience` replaces it through the ordinary `playWorld` path, and
