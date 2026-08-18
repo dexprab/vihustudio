@@ -2057,6 +2057,17 @@
         el.portalCreator.hidden = !maker;
       }
       el.portal.hidden = false;
+
+      // THE STORY'S HOST (Sprint 1, Companion as World Host).
+      //
+      // The Companion of whoever made this Story — or Lumo for a Story
+      // VihuPlanet itself owns — comes to stand in the portal while it
+      // is being read. Quiet, subordinate, and nothing to interact
+      // with: everything about it lives in js/etherHost.js, and a
+      // Story with no host resolvable shows nobody at all rather than
+      // a stand-in.
+      try { if (window.EtherHost) EtherHost.open(met); } catch (e) {}
+
       // Two frames, so the browser has laid the overlay out before the
       // opening class starts it animating — without this the transition
       // has nothing to transition from.
@@ -2076,6 +2087,8 @@
     function closePortal() {
       // A voice must never outlive the page it belongs to.
       stopVoice();
+      // Neither must a host outlive the Story it lives in.
+      try { if (window.EtherHost) EtherHost.close(); } catch (e) {}
       // Running again before the portal has finished closing, so the
       // universe is alive underneath as it is revealed rather than
       // starting up once it is exposed.
@@ -2167,6 +2180,17 @@
       catch (e) { return false; }
     }
 
+    // The host is told a page has turned only once the turn is OVER.
+    // A Companion moving while the paper is moving is two things
+    // competing for one glance, and the page has to win — the
+    // attention hierarchy this sprint is built on says so in as many
+    // words.
+    function hostTurned() {
+      try {
+        if (window.EtherHost) EtherHost.pageTurned(pageIndex, pages.length);
+      } catch (e) {}
+    }
+
     function turn(by) {
       // A second press mid-turn would swap the picture under a running
       // animation and leave the count disagreeing with the page.
@@ -2174,7 +2198,7 @@
       var next = pageIndex + by;
       if (next < 0 || next >= pages.length) return;
 
-      if (reducedMotion()) { pageIndex = next; showPage(); return; }
+      if (reducedMotion()) { pageIndex = next; showPage(); hostTurned(); return; }
 
       turning = true;
       var cls = by > 0 ? 'is-turning-next' : 'is-turning-prev';
@@ -2189,6 +2213,7 @@
       window.setTimeout(function () {
         el.page.classList.remove(cls);
         turning = false;
+        hostTurned();
       }, PAGE_TURN_MS);
     }
 

@@ -180,7 +180,29 @@ const EtherFeed = (function () {
       // start). So it is the right place for origin: a surface that
       // legitimately needs to know where a Story came from can ask,
       // and the universe still cannot tell the two apart.
-      source: { projectId: record.id, origin: canon ? 'canon' : 'creator' }
+      source: {
+        projectId: record.id,
+        origin: canon ? 'canon' : 'creator',
+        // WHO LIVES IN THIS STORY (Sprint 1, Companion as World Host).
+        //
+        // Rides on `source` for exactly the reason `origin` does: the
+        // runtime copies this object wholesale and never reads inside
+        // it, so physics, the renderer and the story layer cannot tell
+        // one Story's host from another's — there is no difference for
+        // them to act on, and there must not be. js/storyHost.js is
+        // the only thing that reads it.
+        //
+        // Copied opaquely: a field a future build puts on a Companion
+        // Record travels through here without this line changing.
+        // Null for a Canon Story, which is owned by nobody and
+        // therefore has no owner's Companion — StoryHost resolves that
+        // case to Lumo, who belongs to VihuPlanet itself.
+        companion: canon
+          ? null
+          : ((typeof CompanionRecord !== 'undefined')
+              ? CompanionRecord.clone(record.companion)
+              : (record.companion || null))
+      }
     };
   }
 
