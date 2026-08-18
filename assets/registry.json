@@ -8,7 +8,7 @@
       "role": "guardian",
       "voice": {
         "provider": "elevenlabs",
-        "voiceId": "",
+        "voiceId": "KCJ7BMrQv6I1OgO6swSt",
         "modelId": "eleven_turbo_v2_5",
         "settings": {
           "stability": 0.55,
