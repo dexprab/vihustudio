@@ -2114,8 +2114,23 @@ const ContextPanel=(function(){
     });
   }
 
-  function _appendBackgroundImageControls(container,co){
+  // Everything this appends goes into ONE section element rather than
+  // loose into the column above it, for the same reason .context-rep-section
+  // was introduced for Page Style: a heading, a button row and a hint
+  // appended loose leave nothing to address. The Rite's own reduction
+  // hides this section while a rite that has not taught pictures is
+  // running — before it existed, the very first beat of the mandatory
+  // Rite ("Choose a colour for the ground") opened this panel, and a
+  // device file picker sat one tap below the colours. The buttons carry
+  // no id, so no data-add-id rule could ever have reached them.
+  // docs/STUDIO_RITE_LEVELS.md §1 ("The leak").
+  // (The parameter is `parent`, never `host` — `host` is this module's
+  //  own editor handle, used for redraw/markDirty throughout the body
+  //  below, and shadowing it here would silently stop the page redrawing.)
+  function _appendBackgroundImageControls(parent,co){
     const bg=co.backgroundImage||null;
+    const container=_el('div','context-bg-picture-section');
+    parent.appendChild(container);
 
     container.appendChild(_el('div','designer-row-label','Picture'));
 

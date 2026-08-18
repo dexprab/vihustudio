@@ -1,6 +1,10 @@
 # Rite II — *My Little House*
 
-**Status: draft for review. No implementation, no recordings.**
+**Status: built and walkable. No recordings.**
+The nineteen beats below are in `js/studioRite.js` as the
+`my-little-house` entry of the rite registry, with every gate they need.
+What is missing is Lumo's voice: no screen carries an `audio` field, and
+none will until there is a recording session (§4).
 Level II's starter story. Companion to
 `docs/STUDIO_RITE_STARTER_STORY.md` (Level I) and
 `docs/STUDIO_RITE_LEVELS.md` (the progression).
@@ -186,11 +190,19 @@ the panel **beat 1 of Level I** opens. A child in the first minute of the
 mandatory Rite can already reach a device file picker, and the shipped
 `data-add-id` rules cannot hide it because those buttons carry no id.
 Recorded in `docs/STUDIO_RITE_LEVELS.md`; it is a Level I fix, not a
-Level II one.
+Level II one. **Closed.** `_appendBackgroundImageControls()` now puts the
+whole row inside a `.context-bg-picture-section`, exactly the
+`.context-rep-section` treatment Page Style already has, and the
+reduction hides it for any rite that has not taught pictures. In this
+story it is revealed along with Photo, so a child who wants their house
+to stand on a real photograph can put one there.
 
 ---
 
-## 4. What this needs from engineering
+## 4. What this needed from engineering — and what was built
+
+**All of it is built.** What follows is the original ask, then what
+each gate actually became and the two things the ask did not know about.
 
 Three gates that do not exist (`docs/STUDIO_RITE_LEVELS.md` → B3):
 
@@ -216,6 +228,59 @@ Verified as already working: the renderer draws multi-stroke doodles with
 brush taper (`renderer/slideRenderer.js`), so a child's drawn parts survive
 into Play My Story and the finished book. The doodle editor gives a child
 colour swatches, thickness, two mediums and `↩ Undo Last Line`.
+
+### 4.1 What each gate became
+
+**`shape-added`, `photo-added`** — a count of objects of that `kind` on
+the page, against the count when the beat began. Nothing else changed.
+
+**`doodle-added` counts DRAWN doodles, not doodle objects**, and the
+question §4 raised turned out to have a decisive answer rather than a
+balanced one. The pad is created the instant the child taps its way in —
+empty, and selected. An "an object arrived" gate is therefore satisfied
+by the *tap*: Lumo says "Draw a path to the door", the child opens the
+pad, and the beat closes before a single line is drawn. It would teach
+the tap and never the drawing, and the story would move on past a page
+with nothing new on it. So the condition is a stroke — `strokes.length >
+0` — which is exactly what the beat's own instruction says.
+
+One consequence worth knowing: a drawing in progress does not move,
+resize or turn anything, so the Rite's "has the child stopped working?"
+signature could not see it and offered `I did it!` after the first
+stroke. The signature now carries a stroke count for objects that have
+strokes, and only for those — every object the first Rite makes produces
+the identical string it always did.
+
+**`blank-page-added` has two signals and needs both**, because neither is
+enough alone. Page count rising cannot tell a new page from a copied one.
+Emptiness nearly can — a copy of the house page arrives carrying a house
+— but not if the page copied was itself empty. So the gate passes when
+the count rises AND either the make-a-page control was used or the page
+that arrived carries nothing. The control click is watched by a listener
+registered for this one beat and no other, so no other beat's timing
+changes.
+
+### 4.2 Two things the ask did not know about
+
+**Beat 19 needed a gate that did not exist.** The table marks it *finish
+(rehearse)*, but there was nothing to rehearse: the first Rite's
+equivalent beat waits on `story-shared`, and §5 is explicit that this
+story ends at finishing instead. So `story-finished` was written — it
+reads `PublishStudio.getStage()` reaching its own celebration, the moment
+every artifact exists and the story is the child's to keep. Opening
+Publish Studio does not satisfy it; arriving at "You finished your
+story!" does.
+
+**A rite with no recordings works, and always did.** The check that
+refuses to run — `if(!_packs.guardian)` — is about Lumo's *art* package
+(`assets/lumo/companion.json`), not his voice; the voice is a per-screen
+`audio:{id,cues}` field, and `_playScreen` already falls through to
+reading-speed timing for any screen that has none. So this story is
+walkable and testable in silence today with no new mechanism, and the
+only change a recording session needs is to add an `audio` field to each
+screen. No placeholder ids were invented: an id naming a file nobody has
+recorded would have to be found and corrected later rather than simply
+added.
 
 ---
 

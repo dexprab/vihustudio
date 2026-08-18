@@ -2645,3 +2645,96 @@ artifact of a crop placed on the card's own boundary, not a flicker.
 `ffmpeg` is not installed in this environment and Playwright's Chromium has no
 H.264, so the recording was read by installing `ffmpeg-static` from npm —
 worth knowing for the next time a recording arrives.
+
+## My Little House — the Second Rite, and a Registry to Hold It (build 0569)
+
+`docs/STUDIO_RITE_LEVELS.md` §6 step 1, built: the rite registry, Rite II's
+nineteen beats, the four gates they need, and the Background `Picture` leak
+closed. **Deliberately not built** — the capability record on the Magic Card,
+the offer on Studio Home, and making the reduction outlive the Rite. §6 is
+explicit that the persistence must not ship before every rite exists, and
+Rite III does not.
+
+**`RITES` is a list, and nothing reads a position out of it.** Each entry
+carries its `id`, `mission`, `screens`, what it `teaches`, what it `reveals`
+and whether it `unlocksStudio`; a rite is found by id and the mandatory one is
+the one that says it unlocks the Studio. Level I is the first entry with no
+behaviour change — verified by walking all 23 of its screens end to end, in
+order, on a fresh browser. `StudioRite.start(id)` runs a named rite over an
+already-open Studio; that is the seam §2.1's offer will call.
+
+**`reveals` is what makes it more than a list of scripts.** The reduction in
+`css/style.css` hid Shapes, Doodle, Photo, Family Photos and `+ Add Page`
+unconditionally — the exact five capabilities Rite II teaches. Every one of
+those rules now reads `body.studio-rite-running:not(.studio-rite-shows-<cap>)`,
+and the classes come from the rite's own `reveals`. A rite that reveals
+nothing meets exactly the Studio these rules always produced, which is how
+Level I is unchanged by construction rather than by care.
+
+**`doodle-added` counts strokes, not objects, and the argument is decisive
+rather than balanced.** The drawing pad is created the instant a child taps
+its way in — empty, and selected — so an "an object arrived" gate is satisfied
+by the *tap*: Lumo says "Draw a path to the door", the pad opens, and the beat
+closes before a line is drawn. Measured in the real Studio: a doodle object on
+the page with its pad on screen and `drawnDoodles: 0`, and the beat correctly
+still waiting; one real mouse stroke on the real pad closed it. A drawing in
+progress moves, resizes and turns nothing, so the Rite's "has the child
+stopped?" signature could not see it — it now carries a stroke count for
+objects that have strokes and only for those, so every object Level I makes
+produces the identical string it always did.
+
+**`blank-page-added` needs two signals because neither is enough.** Page count
+rising cannot tell a new page from a copy; emptiness nearly can, but not if the
+page copied was itself empty. It passes when the count rises AND either the
+make-a-page control was used or the arriving page carries nothing. Measured: a
+duplicate of the house page took pages 1→2 carrying `{sticker:1, shape:5,
+doodle:2}` and the beat did not move; `+ Add Page` took it to 3 with `{}` on
+the new page and it did. The control click is watched by a listener registered
+for that one beat and no other.
+
+**Two things the brief did not know about, and both are said out loud.** Beat
+19's gate is marked *finish (rehearse)* in the script but nothing existed to
+rehearse — Level I's equivalent beat waits on `story-shared`, and Rite II ends
+at finishing by design (§5) — so a fifth gate, `story-finished`, reads
+`PublishStudio.getStage()` reaching its own celebration. And the brief's
+premise that "no Lumo voice pack means the Rite refuses to run" is mistaken:
+`_packs.guardian` is Lumo's *art* package, and audio is a per-screen
+`audio:{id,cues}` that `_playScreen` already falls through for. Rite II's
+screens carry their text and no `audio` field at all, so the story is walkable
+and testable in silence today and a recording session adds one field per
+screen. No placeholder ids were invented.
+
+**The leak from Level I's first beat is closed.**
+`_appendBackgroundImageControls()` used to append a `Picture` heading, an
+`🖼️ Upload Picture` button and a hint loose into the Background panel, so the
+`data-add-id` rules could not reach them and a device file picker sat one tap
+below the colours in the first minute of the mandatory Rite. It is now wrapped
+in `.context-bg-picture-section` — the same treatment Page Style already has —
+and hidden for any rite that has not taught pictures. The parameter is `parent`
+rather than `host` on purpose: `host` is the module's own editor handle, used
+for redraw/markDirty throughout that function, and shadowing it would have
+silently stopped the page redrawing.
+
+**Verified in a real browser at 1440×900, both rites, zero unexplained page
+errors.** Level I: 23 screens walked in order, the flag written, the Studio
+handed back with no reveal classes, and the Background `Picture` row visible
+again the moment it ended. Rite II: all 19 beats, every new gate proved against
+its neighbour — an emoji does not pass `shape-added`, a shape passes neither
+`doodle-added` nor `photo-added`, a copied page does not pass
+`blank-page-added` — the picture beat driven through the real file chooser and
+Picture Studio, the decline on beat 13 taken, and no completion flag written by
+an opt-in rite. The only pre-existing failures in either run are the three
+Story Egg assets the pack has always been missing and the sandbox's blocked
+Supabase route.
+
+**One thing is verified in two pieces rather than one, and it is said out
+loud.** The last beat's real walk went Finish Story → read → `Finish My
+Story` → almost-ready → `Finish My Story` → publishing, all through the real
+buttons, but the bundle for a three-page story with photographs and drawings
+had not produced its artifacts inside the harness's thirty seconds, so the
+final hop was taken with `PublishStudio._setStage` — the seam that module
+already exposes for harnesses. Separately, on a one-page story, the same real
+walk reached `celebration` on its own in **8 seconds**, with
+`PublishStudio.isOpen() && getStage()===STAGES.CELEBRATION` — which is
+literally what the gate reads — returning true. So the chain is proved end to
+end, in two runs rather than one.
