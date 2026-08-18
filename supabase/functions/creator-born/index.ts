@@ -20,7 +20,17 @@
 // inbox is not an access-controlled surface.
 //
 // Deploy:
-//   supabase functions deploy creator-born --no-verify-jwt
+//   supabase functions deploy creator-born
+//
+// LEAVE JWT VERIFICATION ON — do NOT pass --no-verify-jwt. This function
+// sends mail, so an unauthenticated one is a way for anybody who learns
+// the URL to fill an inbox. The trigger that calls it sends the service
+// role key (supabase/migrations_admin_console.sql), so it is unaffected.
+// The cost is only that a browser tab cannot test it: a plain GET
+// returns UNAUTHORIZED_NO_AUTH_HEADER from Supabase's gateway before
+// reaching this code, which is the gateway working rather than a fault.
+// Test with the anon key, which is public by design:
+//   curl -i <url> -H "Authorization: Bearer <anon key>"
 // Environment (already set for sky-protection):
 //   RESEND_API_KEY + SKY_FROM_EMAIL, or SMTP_HOST/SMTP_USER/SMTP_PASS
 // Optional:
