@@ -457,7 +457,20 @@ html, body {
      presence. On a phone the host is smaller AND softer, because a
      Companion that holds its ground on a 390px screen is competing with
      the story rather than keeping it company. */
-  --vp-host-size: clamp(38px, 7vmin, 72px);
+  /* SIZED TO THE SCREEN, deliberately across a wide range. Stated by the
+     product owner: "on large screens companion can have big size on
+     small size it can be smaller." The first pass ran 38-72px, which
+     gave a 27-inch monitor barely more presence than a laptop — the
+     ceiling was doing all the work and the room went unused.
+     vmin, not vw: it is the SHORTER edge that decides how much room
+     there is, so a wide-but-short window keeps the host modest instead
+     of letting a 21:9 monitor inflate it. Measured at this range —
+     phone 390x844: 40px (floor) · laptop 1280x800: 80px ·
+     1920x1080: 108px · 2560x1440: 132px (ceiling).
+     The floor and ceiling both matter: below ~40px the art is unreadable
+     mush, and above ~132px the host starts competing with the page for
+     the eye, which the attention hierarchy forbids. */
+  --vp-host-size: clamp(40px, 10vmin, 132px);
   --vp-host-opacity: 0.92;
 }
 
