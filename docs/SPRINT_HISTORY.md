@@ -3505,3 +3505,55 @@ than the portal — the reading starts on `Read story`, which the trace was
 not pressing.
 
 43/43, zero page errors.
+
+**The welcome comes first** (build 0588). Reported from a real reading of
+the Little Seed: *"the page voice came first and than after a pause it
+was lumo voice"* — a welcome delivered after the page has already been
+read aloud is not a welcome. Product owner's ruling: **A with B as
+fallback** — the greeting first, with the short-yield as the fallback.
+Amends Decision 26.
+
+**A correction first:** the Little Seed HAS narration on all five pages.
+An earlier read of the canon file looked for a top-level `audio` key;
+narration lives at `metadata.narration`, so "no narration on those pages"
+was wrong, and what the product owner heard was the code working exactly
+as built — the host yielding to a first page that was already talking.
+
+**A — the arrival page waits for the host.** `EtherHost.open()` now takes
+`openingDone`, settled EXACTLY ONCE on every path out of the opening —
+no host, no art, no voice, spoken to the end, given up, cut by a page
+turn, or the portal closing — as a single latch rather than eight
+remembered call sites being careful. The portal arms a narration hold
+BEFORE `showPage()` (armed after, the first page has already started
+talking), defers `playVoice()` while held, and releases on `openingDone`.
+The seam stays symmetrical and one-way: the host asks *"is the story
+talking?"*, the story asks *"is the welcome over?"*, and neither holds a
+reference into the other's machinery.
+
+**Three releases, whichever comes first:** the settle; a page turn (the
+child has answered the welcome — a pending or mid-sentence greeting is
+CUT, never queued, because a greeting two pages in is not a greeting);
+and an 8-second cap, because a story left silent by a host bug would be
+the Companion mattering more than the story — the one inversion this
+feature forbids. `closePortal()` DROPS the hold rather than releasing it:
+`EtherHost.close()` settles the pending opening, and a release with the
+waiting flag still set would have started narration into a closing
+portal.
+
+**B — the fallback shrank from six seconds to 2.5.** Six meant whether a
+child was greeted at all depended on how long the first page's recording
+happened to run — a 5-second page got a welcome, a 7-second one got
+silence, and nobody chose that. With the hold in place the fallback only
+fires when a page is genuinely already talking (a child who turned pages
+early), where §11's "delay slightly, or suppress" reads as 2.5s and then
+silence.
+
+**Verified 55/55, zero page errors**, including that `openingDone` fires
+only AFTER the spoken line has actually ended, promptly when there is no
+host, within ~2.5s when yielding, and that a page turn cuts the pending
+welcome with nothing firing late. **And measured on the real Little Seed
+through the real journey: host voice at 10.3s, page narration at 14.2s —
+Lumo first, the page after his line.** The instrument is an
+`Audio.prototype.play` stamp that tells narration (data: URI) from the
+host's line (blob: URL), so the ordering is measured rather than listened
+for.

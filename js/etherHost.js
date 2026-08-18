@@ -152,7 +152,18 @@ const EtherHost = (function () {
   // two people speaking at once, which is worse than a Companion that
   // said nothing.
   const YIELD_POLL_MS   = 250;
-  const OPENING_WAIT_MS = 6000;   // then the arrival has passed; stay quiet
+  // The opening's patience, and why it SHRANK from six seconds to two
+  // and a half. Six meant that whether a child was greeted at all
+  // depended on how long the first page's recording happened to run —
+  // a 5-second page got a welcome, a 7-second one got silence, and
+  // nobody chose that. The product owner's ruling: the welcome comes
+  // FIRST (the portal holds the arrival page's narration until the
+  // greeting has landed — see openingDone below), and this short wait
+  // is only the FALLBACK for a page already talking when the host
+  // wants to speak, e.g. a child who turned pages before the welcome
+  // fired. §11's "delay slightly, or suppress": 2.5s is slightly;
+  // six was not.
+  const OPENING_WAIT_MS = 2500;
   const FAREWELL_WAIT_MS = 12000; // an ending can afford to wait longer
 
   // Ambience sits UNDER the Companion (§11). Ducked rather than
@@ -181,6 +192,26 @@ const EtherHost = (function () {
   let spokeOpening = false;
   let spokeFarewell = false;
   let lastLine = { open: -1, bye: -1 };   // never the same line twice running
+
+  // THE OPENING REPORTS WHEN IT IS OVER — spoken, suppressed, or
+  // impossible — so the portal can hold the arrival page's own narration
+  // exactly that long and not a moment longer. Settled EXACTLY ONCE on
+  // every path out of the opening: no host, no art, no voice, spoken to
+  // the end, given up, cut by a page turn, or the portal closing. A
+  // path that forgot to settle would leave a story silent behind the
+  // caller's own safety cap, which is why the settle is a single latch
+  // rather than eight remembered call sites being careful.
+  let openingDone = null;
+  let openingSettled = false;
+
+  function _settleOpening() {
+    if (openingSettled) return;
+    openingSettled = true;
+    const cb = openingDone;
+    openingDone = null;
+    if (!cb) return;
+    try { cb(); } catch (e) {}
+  }
 
   // One token per open(). Everything asynchronous checks it before
   // touching the DOM, so a Story closed while its Companion was still
@@ -316,14 +347,19 @@ const EtherHost = (function () {
   // Wait for the Story to stop talking, then run `go`. Gives up after
   // `budget` — which is a real outcome, not a failure: the Companion
   // simply did not get a word in, and the Story was more important.
-  function _whenStoryQuiet(go, budget) {
+  // `gaveUp` (optional) is told when that happens, because the opening
+  // needs to settle its promise on that path too.
+  function _whenStoryQuiet(go, budget, gaveUp) {
     const mine = token;
     let waited = 0;
     (function tick() {
       if (mine !== token) return;
       if (!_storyTalking()) { go(); return; }
       waited += YIELD_POLL_MS;
-      if (waited >= budget) return;          // suppressed, silently
+      if (waited >= budget) {                // suppressed, silently
+        if (gaveUp) { try { gaveUp(); } catch (e) {} }
+        return;
+      }
       _later(tick, YIELD_POLL_MS);
     })();
   }
@@ -335,42 +371,53 @@ const EtherHost = (function () {
    * line unspoken and the Story exactly as it was (§16).
    */
   function _say(line) {
-    if (!line || !who) return;
-    if (typeof VihuVoice === 'undefined' || !VihuVoice.speak) return;
-    const mine = token;
+    if (!line || !who) return Promise.resolve(false);
+    if (typeof VihuVoice === 'undefined' || !VihuVoice.speak) return Promise.resolve(false);
     try { if (window.AudioManager) AudioManager.duckFor(DUCK_LEVEL); } catch (e) {}
     const release = function () {
       try { if (window.AudioManager) AudioManager.releaseDuck(); } catch (e) {}
     };
-    let done = false;
-    const settle = function () { if (done) return; done = true; release(); };
-    // A belt-and-braces release: if speak() somehow never settles, the
-    // world must not stay quiet for the rest of the reading.
-    _later(settle, 15000);
-    try {
-      VihuVoice.speak({ characterId: who, text: line.text, emotion: line.emotion })
-        .then(settle, settle);
-    } catch (e) { settle(); }
-    // A Story closed mid-sentence takes the voice with it — see close().
-    return mine;
+    // Resolves when the words have actually finished (or could not be
+    // said) — which is what lets the opening tell the portal "now the
+    // page may speak". VihuVoice.speak() resolves on the audio's own
+    // `ended`, so this is the real end of the line, not an estimate.
+    return new Promise(function (resolve) {
+      let done = false;
+      const settle = function (heard) {
+        if (done) return;
+        done = true;
+        release();
+        resolve(!!heard);
+      };
+      // A belt-and-braces release: if speak() somehow never settles, the
+      // world must not stay quiet for the rest of the reading.
+      _later(function () { settle(false); }, 15000);
+      try {
+        VihuVoice.speak({ characterId: who, text: line.text, emotion: line.emotion })
+          .then(settle, function () { settle(false); });
+      } catch (e) { settle(false); }
+      // A Story closed mid-sentence takes the voice with it — see close().
+    });
   }
 
   function open(story, opts) {
     close();
     const mine = ++token;
     isBusy = (opts && typeof opts.isBusy === 'function') ? opts.isBusy : null;
-    if (typeof StoryHost === 'undefined') return;
+    openingDone = (opts && typeof opts.openingDone === 'function') ? opts.openingDone : null;
+    openingSettled = false;
+    if (typeof StoryHost === 'undefined') { _settleOpening(); return; }
 
     StoryHost.resolve(story).then(function (record) {
-      if (mine !== token || !record) return null;
+      if (mine !== token || !record) { _settleOpening(); return null; }
       return StoryHost.packOf(record).then(function (found) {
-        if (mine !== token || !found) return null;
+        if (mine !== token || !found) { _settleOpening(); return null; }
         pack = found;
         return _resolvePoses().then(function (resolved) {
-          if (mine !== token) return null;
+          if (mine !== token) { _settleOpening(); return null; }
           // Not one real image in the whole package. Showing an empty
           // frame would be worse than showing nothing.
-          if (!resolved.presence) return null;
+          if (!resolved.presence) { _settleOpening(); return null; }
           poses = resolved;
           who = record.id || null;
           _mount(record);
@@ -384,19 +431,31 @@ const EtherHost = (function () {
             // Traveller before it says anything to them. Roughly 1.2s
             // into the portal, which sits inside the brief's 3-5s
             // arrival without being timed to a frame.
+            //
+            // THE WELCOME COMES FIRST (product owner: "go with A and B
+            // as fallback"). On the arrival page the portal is holding
+            // the page's own narration until _settleOpening() fires, so
+            // _whenStoryQuiet is normally already quiet — it is the B
+            // fallback, for a child who turned pages before the welcome
+            // fired, where a page's voice IS playing and the host waits
+            // briefly then yields. Either way the settle runs exactly
+            // once: after the line ends, or on giving up.
             _later(function () {
-              if (spokeOpening) return;
+              if (spokeOpening) { _settleOpening(); return; }
               _whenStoryQuiet(function () {
-                if (spokeOpening) return;
+                if (spokeOpening) { _settleOpening(); return; }
                 spokeOpening = true;
-                _say(_pick(OPENING, 'open'));
-              }, OPENING_WAIT_MS);
+                _say(_pick(OPENING, 'open')).then(_settleOpening, _settleOpening);
+              }, OPENING_WAIT_MS, _settleOpening);
             }, SPEAK_AFTER_WAVE_MS);
           }, WELCOME_DELAY_MS);
           return null;
         });
       });
-    }).catch(function () { /* a quieter portal, never a broken one */ });
+    }).catch(function () {
+      /* a quieter portal, never a broken one */
+      _settleOpening();
+    });
   }
 
   /**
@@ -408,6 +467,20 @@ const EtherHost = (function () {
    */
   function pageTurned(index, total) {
     if (!poses || !root || root.hidden) return;
+
+    // A CHILD WHO TURNS THE PAGE HAS ANSWERED THE WELCOME. If the
+    // opening has not happened yet — still waiting on its delay, or
+    // mid-sentence — it is cut, not queued: a greeting delivered two
+    // pages in is no longer a greeting, and the story always wins over
+    // the Companion (§15). Marking spokeOpening stops the pending timer
+    // path from firing it late; the settle releases the arrival page's
+    // narration hold, which no longer matters but must not dangle.
+    if (!openingSettled) {
+      spokeOpening = true;
+      try { if (typeof VihuVoice !== 'undefined' && VihuVoice.stop) VihuVoice.stop(); } catch (e) {}
+      try { if (window.AudioManager) AudioManager.releaseDuck(); } catch (e) {}
+      _settleOpening();
+    }
 
     // The last page. A brief flourish, once per reading — a Companion
     // that celebrated again every time a child flicked back and forth
@@ -460,6 +533,9 @@ const EtherHost = (function () {
     // the page's own narration follows (stopVoice on close).
     try { if (typeof VihuVoice !== 'undefined' && VihuVoice.stop) VihuVoice.stop(); } catch (e) {}
     try { if (window.AudioManager) AudioManager.releaseDuck(); } catch (e) {}
+    // A pending openingDone must not dangle into the next Story — the
+    // caller's hold has its own safety cap, but a settle here is exact.
+    _settleOpening();
     pack = null;
     poses = null;
     who = null;

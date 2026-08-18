@@ -2106,6 +2106,13 @@
       }
 
       pageIndex = 0;
+      // ARMED BEFORE showPage(), which is what makes it a hold at all:
+      // showPage() calls playVoice(), and a hold set after that call has
+      // already let the arrival page start talking. Only armed when
+      // there is a host to wait for — with no EtherHost there will be no
+      // openingDone to release it, and the cap would just delay every
+      // story's narration by eight silent seconds.
+      if (window.EtherHost) holdNarration();
       showPage();
       el.portalTitle.textContent = met.title || 'A story';
 
@@ -2139,11 +2146,20 @@
       // question, and knows nothing about narration, AssetStore or how a
       // page gets its voice. Story narration always wins — the host
       // waits for quiet and gives up rather than talking over it.
+      //
+      // AND THE ARRIVAL PAGE WAITS FOR THE HOST (Decision 26, amended):
+      // openingDone fires once the welcome has landed — spoken to the
+      // end, suppressed, or impossible — and that is what releases the
+      // narration hold armed above. The two callbacks make the seam
+      // symmetrical: the host asks "is the story talking?", the story
+      // asks "is the welcome over?", and neither holds a reference into
+      // the other's machinery.
       try {
         if (window.EtherHost) EtherHost.open(met, {
-          isBusy: function () { return !!(voice && !voice.paused && !voice.ended); }
+          isBusy: function () { return !!(voice && !voice.paused && !voice.ended); },
+          openingDone: releaseNarration
         });
-      } catch (e) {}
+      } catch (e) { releaseNarration(); }
 
       // Two frames, so the browser has laid the overlay out before the
       // opening class starts it animating — without this the transition
@@ -2164,6 +2180,14 @@
     function closePortal() {
       // A voice must never outlive the page it belongs to.
       stopVoice();
+      // The hold is DROPPED, not released: EtherHost.close() below
+      // settles a pending opening, which fires openingDone, which is
+      // releaseNarration — and a release with narrationWaiting still
+      // set would START the arrival page's narration into a portal
+      // that is closing. Clearing the waiting flag first turns that
+      // settle into a no-op.
+      narrationWaiting = false;
+      releaseNarration();
       // Neither must a host outlive the Story it lives in.
       try { if (window.EtherHost) EtherHost.close(); } catch (e) {}
       // Running again before the portal has finished closing, so the
@@ -2197,10 +2221,45 @@
       voice = null;
     }
 
+    // THE WELCOME COMES FIRST (Decision 26, amended by the product
+    // owner: "go with A and B as fallback"). On arrival the page's own
+    // narration is HELD until the host has finished greeting — or
+    // decided it cannot — so the greeting is a greeting rather than a
+    // voice that turns up after the story has already been read aloud.
+    //
+    // Held, never lost: playVoice() remembers it deferred and the
+    // release plays it. Three things release the hold, whichever comes
+    // first — the host's openingDone (spoken to the end, suppressed, or
+    // impossible), a page turn (the child moved on; the new page speaks
+    // at once), and a safety cap, because a story left silent by a host
+    // bug would be the Companion mattering more than the story, which
+    // is the one inversion this whole feature forbids.
+    var narrationHeld = false;
+    var narrationWaiting = false;
+    var narrationCapTimer = null;
+    var NARRATION_HOLD_CAP_MS = 8000;
+
+    function holdNarration() {
+      narrationHeld = true;
+      narrationWaiting = false;
+      if (narrationCapTimer) { clearTimeout(narrationCapTimer); }
+      narrationCapTimer = window.setTimeout(releaseNarration, NARRATION_HOLD_CAP_MS);
+    }
+    function releaseNarration() {
+      if (narrationCapTimer) { clearTimeout(narrationCapTimer); narrationCapTimer = null; }
+      if (!narrationHeld) return;
+      narrationHeld = false;
+      if (narrationWaiting) {
+        narrationWaiting = false;
+        playVoice();
+      }
+    }
+
     function playVoice() {
       stopVoice();
       var ref = audio[pageIndex];
       if (!ref) return;
+      if (narrationHeld) { narrationWaiting = true; return; }
       var at = pageIndex;
       var start = function (src) {
         // The child may have turned the page while this resolved.

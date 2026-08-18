@@ -1387,11 +1387,26 @@ Decision 24's hierarchy.
   Decision 24's test is unchanged and still binds: a Traveller must be
   able to experience the complete Story without paying the Companion any
   attention.
-- **Story narration ALWAYS wins.** If a page's own recorded voice is
-  playing, the host waits for quiet — six seconds at the opening, twelve
-  at the ending — and then **gives up rather than talking over it**.
-  Never two voices at once, and the Story is never paused to let a
-  Companion speak.
+- **The welcome comes first, and the arrival page waits for it**
+  (amended by the product owner: *"go with A and B as fallback"*). The
+  portal holds the first page's own narration until the greeting has
+  landed — spoken to the end, suppressed, or impossible — because a
+  welcome that arrives after the page has already been read aloud is not
+  a welcome. The hold is bounded (8s cap), released instantly when there
+  is no host, and dropped by a page turn: a child who turns the page has
+  answered the welcome, and a pending or mid-sentence greeting is cut,
+  never queued. The brief's §2 ordering (companion greets → story plays)
+  is what this implements; nothing advances by itself while held, so the
+  story is never paused for the Companion.
+- **Story narration still ALWAYS wins everywhere else.** If a page's
+  voice is already playing when the host wants to speak — a child who
+  turned pages before the welcome fired, or the farewell landing on a
+  narrated last page — the host waits for quiet (2.5 seconds at the
+  opening, twelve at the ending) and then **gives up rather than talking
+  over it**. The opening's wait shrank from six seconds to 2.5 when the
+  hold arrived: six meant whether a child was greeted depended on how
+  long the first recording happened to run, which nobody chose. Never
+  two voices at once.
 - **The host is handed a predicate, never a reference.** Narration lives
   in the portal's own closure, so `EtherHost.open(story, {isBusy})` asks
   a question and the host knows nothing about narration, AssetStore or
