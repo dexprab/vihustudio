@@ -3344,3 +3344,59 @@ through a reload, a second document opening already off, two tabs staying
 in step without ping-ponging, a page with no AudioManager mounting
 nothing at all, and both real pages. The 141 voice checks and 21 admin
 checks still pass.
+
+**The Studio door measures the window, not the device** (build 0585).
+Asked for after a measurement pass: *"can you check what is the minimum
+screensize for vihuplanet. studio should be workable. i have a feeling we
+need to make it accessible on tablets."* The feeling was right and the
+cause was not what it looked like. Amends Decision 21.
+
+**VihuPlanet has no minimum.** Zero horizontal overflow and zero page
+errors at every size down to 390×844. It already worked everywhere.
+
+**The Studio works on tablets — in landscape.** Measured against the real
+three-column grid: 1024 wide → 260 | 444 | 320 with a 412×515 canvas;
+1194 → 614 centre; and an **iPad Pro 12.9 landscape gives more canvas
+than a 1280 laptop** (627×784 against 448×560).
+
+**The old rule was wrong in both directions at once.** It asked whether
+the SCREEN's short edge was ≥ 768 — device-fixed, so it answered the same
+in either orientation. An **iPad Pro 11 held upright** (834) was let in,
+and the columns became 260 | **254** | 320: a canvas narrower than either
+sidebar, 222×278, with the header controls overlapping each other. An
+**iPad mini held sideways** (1133 wide) was turned away for its 744 short
+edge, when it would have had a 553px centre — more room than the iPad 9.7
+landscape the same rule happily admitted. So it admitted broken cases and
+refused working ones.
+
+**The number that predicts the layout is the width available now.**
+`MIN_WIDTH = 1024`, and it is a measurement rather than a taste. The
+coarse-pointer test is unchanged and still decides who is even ASKED:
+a mouse means yes whatever the window is doing, so a laptop with a narrow
+window is never locked out of its own Studio.
+
+**Three answers now, not two.** A tablet held upright is the same device
+that works one gesture later, so telling that child to find a bigger
+screen would be a lie about the iPad in their hands: *"Turn your screen
+around · Stories are made the wide way. Turn it, and everything will be
+right here."* A device already sideways in a narrow window is **not**
+told to rotate — that is a window problem, not an orientation one, and
+the check tests for portrait before offering it.
+
+**Turning it opens the door with nothing pressed again**, since the panel
+is what asked. Watched only while the rotate wording is up, and dropped
+the moment a child chooses Back to the Ether — otherwise turning the
+tablet minutes later would open the Studio out of nowhere.
+
+**Verified 29/29, zero page errors**, across twelve real device
+geometries plus the two errors the old rule made, the 1023/1024 boundary,
+an unreadable screen still getting in, a mouse never being asked about
+width, and the whole journey end to end: an upright iPad asked to turn,
+rotated, and the Studio opening on its own.
+
+**One harness bug worth recording**, because it looked exactly like a
+product failure: the first version clicked `[data-vp-act="create"]`,
+which does not exist. Nothing was clicked, the panel stayed shut, and two
+checks reported that an upright tablet was being refused rather than
+asked to turn. The suite now crosses the threshold and presses the real
+`[data-act="create"]`, the way a child does.

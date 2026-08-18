@@ -945,15 +945,39 @@ detection."*
   ways in — the two permanent actions and both recognition paths — pass
   through it, so a phone is turned back once rather than by four checks
   that could disagree.
-- **A phone is told from a computer by TWO signals, both of which must
-  agree** (`js/deviceGate.js`): the primary pointer is coarse, AND the
-  SCREEN's short edge is under `MIN_SHORT_EDGE` (768). Never the user
-  agent — a string anybody can set, which lies by default on iPad.
-  Never window width alone: a laptop with a narrow window is still a
-  laptop and must not be locked out of its own Studio. A 1280×720
-  laptop fails the size test and passes on its pointer, which is the
-  whole reason there are two. **Tablets are allowed** — an iPad's short
-  edge is 834.
+- **A phone is told from a computer by TWO signals** (`js/deviceGate.js`):
+  the primary pointer is coarse, AND the width available *right now* is
+  under `MIN_WIDTH` (1024). Never the user agent — a string anybody can
+  set, which lies by default on iPad. Never width alone: a laptop with a
+  narrow window is still a laptop and must not be locked out of its own
+  Studio, so a mouse means yes whatever the window is doing. **Tablets
+  are allowed**, and in landscape an iPad Pro 12.9 gives a child *more*
+  canvas than a 1280 laptop.
+- **It measures WIDTH NOW, not the device** (amended after measuring).
+  The first rule asked whether the SCREEN's short edge was ≥ 768 — a
+  device-fixed number, so it answered the same in either orientation,
+  and it was wrong in both directions at once. An **iPad Pro 11 held
+  upright** (834 wide) was let in, and the three columns became
+  260 | 254 | 320 — a canvas *narrower than either sidebar*, 222×278,
+  with the header controls overlapping. An **iPad mini held sideways**
+  (1133 wide) was turned away for a 744 short edge, when it would have
+  had a 553px middle column, more room than the iPad 9.7 landscape the
+  same rule admitted. `MIN_WIDTH` is a measurement, not a taste:
+  1024 → 444px centre, 1080 → 500, 1194 → 614, and 834 → 254.
+- **A tablet held upright is not a refusal — it is asked to turn.**
+  *"Turn your screen around · Stories are made the wide way. Turn it,
+  and everything will be right here."* It is the same device that works
+  perfectly one gesture later, so "stories are made on a bigger screen"
+  would be a lie about the iPad in the child's hands. There are three
+  answers, not two: yes, rotate, and not on this screen. A device
+  already sideways in a narrow window is **not** told to rotate — that
+  is a window problem, not an orientation one.
+- **Turning it opens the door, with nothing pressed again.** The panel
+  asked them to rotate, so asking for the button a second time would be
+  asking twice for one answer. Watched only while the rotate wording is
+  up, and dropped the moment a child chooses Back to the Ether — so
+  turning the tablet minutes later never opens the Studio out of
+  nowhere.
 - **Unreadable signals mean yes.** A Creator wrongly turned away from
   their own stories is a far worse failure than a phone getting a
   Studio it cannot use well.

@@ -496,8 +496,8 @@
     // look at their stars at all, which is a different and much colder
     // product.
     function goStudio(decision) {
-      if (typeof DeviceGate !== 'undefined' && !DeviceGate.canOpenStudio()) {
-        openBigger(decision && decision.journey === JourneyResolver.CREATOR);
+      if (typeof DeviceGate !== 'undefined' && DeviceGate.verdict() !== DeviceGate.YES) {
+        openBigger(decision && decision.journey === JourneyResolver.CREATOR, decision);
         return;
       }
       // This is the ONE door into the Studio (Decision 21), so it is the
@@ -511,11 +511,61 @@
 
     // ---------- a bigger screen ----------
     var biggerEl = document.querySelector('[data-bigger]');
-    function openBigger(recognised) {
+
+    // WHAT THIS PANEL SAYS DEPENDS ON WHICH ANSWER IT IS.
+    //
+    // A tablet held upright is not a small screen — it is the right
+    // screen, the wrong way round, and one gesture from working. Telling
+    // that child to go and find a laptop would be a lie about the device
+    // in their hands. Neither wording blames anybody, and neither says
+    // "unsupported", "incompatible" or "device" (Decision 21).
+    var BIGGER_WORDS = {
+      rotate: {
+        glyph: '🔄',
+        title: 'Turn your screen around',
+        sub: 'Stories are made the wide way. Turn it, and everything will be right here.'
+      },
+      no: {
+        glyph: '✨',
+        title: 'Stories are made on a bigger screen',
+        sub: 'Open VihuPlanet on a laptop and everything will be waiting for you.'
+      }
+    };
+
+    // Set while the rotate prompt is up, so turning the device can carry
+    // on with the very journey it interrupted rather than dropping the
+    // child back at the start.
+    var _rotateWatch = null;
+
+    function openBigger(recognised, decision) {
       if (!biggerEl) {
         // Nothing to show is not a reason to send a phone somewhere it
         // cannot work — it is a reason to do nothing at all.
         return;
+      }
+      var verdict = (typeof DeviceGate !== 'undefined') ? DeviceGate.verdict() : 'no';
+      var words = BIGGER_WORDS[verdict] || BIGGER_WORDS.no;
+      var el;
+      if ((el = biggerEl.querySelector('[data-bigger-glyph]'))) el.textContent = words.glyph;
+      if ((el = biggerEl.querySelector('[data-bigger-title]'))) el.textContent = words.title;
+      if ((el = biggerEl.querySelector('[data-bigger-sub]'))) el.textContent = words.sub;
+
+      // THE DOOR OPENS THE MOMENT THEY TURN IT. They rotated because
+      // this panel asked them to, so making them press the button again
+      // would be asking twice for one answer. Watched only while the
+      // ROTATE wording is up — a phone is never waiting for anything.
+      _stopRotateWatch();
+      if (verdict === (DeviceGate && DeviceGate.ROTATE)) {
+        _rotateWatch = function () {
+          if (DeviceGate.verdict() !== DeviceGate.YES) return;
+          _stopRotateWatch();
+          closeBigger();
+          goStudio(decision);
+        };
+        try {
+          window.addEventListener('resize', _rotateWatch);
+          window.addEventListener('orientationchange', _rotateWatch);
+        } catch (e) {}
       }
       // Whatever asked the question is finished with. Left open, the
       // board and its buttons sit behind this panel still offering
@@ -530,8 +580,21 @@
       // Next frame, so the transition has a closed state to run from.
       window.requestAnimationFrame(function () { biggerEl.classList.add('is-open'); });
     }
+    function _stopRotateWatch() {
+      if (!_rotateWatch) return;
+      try {
+        window.removeEventListener('resize', _rotateWatch);
+        window.removeEventListener('orientationchange', _rotateWatch);
+      } catch (e) {}
+      _rotateWatch = null;
+    }
+
     function closeBigger() {
       if (!biggerEl) return;
+      // A child who chose Back to the Ether is not waiting to be sent to
+      // the Studio any more. Without this, turning the tablet minutes
+      // later would open it out of nowhere.
+      _stopRotateWatch();
       biggerEl.classList.remove('is-open');
       window.setTimeout(function () { biggerEl.hidden = true; }, 260);
       // THE SKY HAS TO COME BACK TO LIFE.
