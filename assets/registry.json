@@ -80,7 +80,7 @@
       "role": "companion",
       "voice": {
         "provider": "elevenlabs",
-        "voiceId": "",
+        "voiceId": "TFtTw6aJxwpVRsuwAmyG",
         "modelId": "eleven_v3",
         "settings": {
           "stability": 0.5,
