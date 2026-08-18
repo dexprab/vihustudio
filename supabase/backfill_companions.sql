@@ -107,8 +107,25 @@ where p.is_shared
 
 -- A sanity check that nothing else moved: page counts before and after
 -- should be identical, because jsonb_set touched one key.
+--
+-- MIND THE TWO LEVELS. `creator_projects.data` holds the WHOLE store
+-- record (js/creatorProjectSync.js uploads `data: record`), and that
+-- record has its own `data` field holding the pages. So a Story's
+-- pages are at data->'data'->'pages', while publishedAt, creatorName
+-- and companion are top-level fields of the record at data->'...'.
+-- The first draft of this query read data->'pages' and reported 0 for
+-- every Story, which looked exactly like data loss and was not.
 select data->>'name' as story,
-       jsonb_array_length(coalesce(data->'pages', data->'slides', '[]'::jsonb)) as pages
+       jsonb_array_length(
+         coalesce(data->'data'->'pages', data->'data'->'slides', '[]'::jsonb)) as pages,
+       -- What the portal will actually show: js/etherFeed.js keeps a
+       -- page only when it has a picture (readImage, or thumbnail as
+       -- the fallback). A gap between these two columns IS the
+       -- missing-pages bug, and names the Stories it hit.
+       (select count(*) from jsonb_array_elements(
+          coalesce(data->'data'->'pages', data->'data'->'slides', '[]'::jsonb)) pg
+         where pg->>'readImage' is not null or pg->>'thumbnail' is not null)
+         as readable_in_ether
 from public.creator_projects
 where is_shared
 order by 1;
