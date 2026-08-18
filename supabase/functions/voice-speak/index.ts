@@ -45,9 +45,25 @@ const MAX_CHARS = 600; // a spoken line, not a chapter
 
 function env(n: string) { return (Deno.env.get(n) || '').trim(); }
 
+// EVERY header a caller actually sends must be listed here, or the
+// browser refuses the request before it is made and the caller sees
+// "TypeError: Failed to fetch" with no further detail.
+//
+// This bit me: the first version listed only authorization and
+// content-type, while js/vihuVoice.js and the audition page both send
+// `apikey` as well — so the preflight was refused and NOTHING worked,
+// not merely the status ping. The two functions in this project that
+// already work from a browser (sky-protection, family-album) both list
+// the full set, and this now matches them exactly rather than being
+// trimmed to what looked sufficient.
+//
+// It is also why a mocked test suite cannot catch this class of bug:
+// intercepting the request in the test harness bypasses CORS entirely,
+// so 84 passing checks said nothing about whether a real browser would
+// allow the call.
 const cors = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
 };
 
