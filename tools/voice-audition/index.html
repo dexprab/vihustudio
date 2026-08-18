@@ -105,15 +105,27 @@
      <code>assets/registry.json</code>. Until one is there, that character stays silent and
      everything around them carries on.</p>
 
+  <h2>Does this voice read tags?</h2>
+  <p class="note">The one test that settles it, and it needs no code. Choose <b>v3</b> and the
+     feeling <b>neutral</b> (so nothing of ours is prepended), then put a tag in the line above
+     and press Speak on a character. Three outcomes, three different meanings:
+     <b>it whispers</b> → tags work · <b>you hear the word “whispers”</b> → this model is not
+     reading tags · <b>it sounds normal</b> → the tag was accepted and ignored, which is
+     voice-dependent and documented as such.</p>
+  <div class="row">
+    <button class="ghost" id="tagTest">Put a tag in the line</button>
+    <button class="ghost" id="models2">Which models can this account use?</button>
+  </div>
+
   <h2>The speech function</h2>
   <div class="status" id="fn">…</div>
   <p class="note">This page never holds a key. It calls <code>VihuVoice.speak()</code>; the key
      lives only in <code>supabase/functions/voice-speak</code>.</p>
 </div>
 
-<script src="../../js/companionEngine.js?v=0577"></script>
-<script src="../../js/lumoVoice.js?v=0577"></script>
-<script src="../../js/vihuVoice.js?v=0577"></script>
+<script src="../../js/companionEngine.js?v=0578"></script>
+<script src="../../js/lumoVoice.js?v=0578"></script>
+<script src="../../js/vihuVoice.js?v=0578"></script>
 <script>
 (function () {
   'use strict';
@@ -252,6 +264,37 @@
         say(e.id, line(), mood).then(next);
       })();
     });
+  });
+
+  $('tagTest').addEventListener('click', function () {
+    $('text').value = '[whispers] Something wonderful is waiting.';
+    model = 'eleven_v3'; mood = 'neutral';
+    Array.prototype.forEach.call($('models').children, function (o) {
+      o.className = o.dataset.model === model ? '' : 'ghost';
+    });
+    Array.prototype.forEach.call($('moods').children, function (o) {
+      o.className = o.dataset.mood === mood ? '' : 'ghost';
+    });
+    showResolved();
+  });
+
+  // Ground truth, from the provider rather than from anybody's memory:
+  // the exact model ids this account may use, and which of them the
+  // provider itself says take a `style` setting.
+  $('models2').addEventListener('click', function () {
+    $('fn').textContent = 'asking…';
+    fetch('../../supabase-config.json', { cache: 'no-store' })
+      .then(function (r) { return r.json(); })
+      .then(function (cfg) {
+        return fetch(cfg.url.replace(/\/+$/, '') + '/functions/v1/voice-speak?models=1', {
+          headers: { Authorization: 'Bearer ' + cfg.anonKey, apikey: cfg.anonKey }
+        }).then(function (r) { return r.text(); });
+      })
+      .then(function (t) {
+        try { $('fn').textContent = JSON.stringify(JSON.parse(t), null, 2); }
+        catch (e) { $('fn').textContent = t; }
+      })
+      .catch(function (e) { $('fn').textContent = String(e); });
   });
 
   $('stop').addEventListener('click', function () { VihuVoice.stop(); });

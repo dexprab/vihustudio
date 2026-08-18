@@ -39,7 +39,7 @@
 // Leave JWT verification ON. This spends money per call, so an
 // unauthenticated one is somebody else's bill.
 
-const BUILD = '2026-08-18 · vihu voice foundation';
+const BUILD = '2026-08-18 · vihu voice · models probe';
 const TTS_ROOT = 'https://api.elevenlabs.io/v1/text-to-speech';
 const MAX_CHARS = 600; // a spoken line, not a chapter
 
@@ -104,10 +104,48 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
 
   if (req.method === 'GET') {
+    // ?models=1 — WHICH MODELS DOES THIS ACCOUNT ACTUALLY HAVE?
+    //
+    // Added after a real dead end: emotion was not audible, and the
+    // candidate explanations were "the model id is wrong", "this account
+    // cannot use that model" and "the tags are wrong" — three different
+    // problems that all present as "sounds the same", and all of which
+    // were being answered from memory rather than from fact.
+    //
+    // The provider knows. Asking it is one request, and it ends the
+    // guessing: the ids returned here are the only ids worth putting in
+    // assets/registry.json. It returns model metadata and no
+    // credential — the key stays here, as always.
+    const apiKey0 = env('ELEVENLABS_API_KEY');
+    if (new URL(req.url).searchParams.has('models')) {
+      if (!apiKey0) return json({ ok: false, reason: 'not-configured' }, 200);
+      try {
+        const r = await fetch('https://api.elevenlabs.io/v1/models', {
+          headers: { 'xi-api-key': apiKey0 },
+        });
+        const body = await r.json();
+        if (!r.ok) return json({ ok: false, reason: 'provider', status: r.status, detail: body }, 200);
+        return json({
+          ok: true,
+          models: (Array.isArray(body) ? body : []).map((m: Record<string, unknown>) => ({
+            model_id: m.model_id,
+            name: m.name,
+            tts: m.can_do_text_to_speech,
+            // The provider's own answer to "what settings does this
+            // model take", which is exactly what we were guessing at.
+            style: m.can_use_style,
+            speaker_boost: m.can_use_speaker_boost,
+          })),
+        });
+      } catch (e) {
+        return json({ ok: false, reason: 'unreachable', detail: String(e).slice(0, 200) }, 200);
+      }
+    }
+
     return json({
       ok: true,
       build: BUILD,
-      configured: !!env('ELEVENLABS_API_KEY'),
+      configured: !!apiKey0,
       cache: env('VOICE_CACHE_BUCKET') || 'voice-cache',
     });
   }
