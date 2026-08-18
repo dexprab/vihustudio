@@ -139,9 +139,45 @@
   // The one place "how loud should this element actually be right now" is
   // decided -- baseVolume (a layer's own fixed mix level, or 1 for the single
   // World element) times the master multiplier, zeroed entirely while muted.
+  // A DUCK IS NOT A VOLUME CHANGE, and must not be mistaken for one.
+  //
+  // setVolume() persists — it is the child's own setting. Ducking under
+  // a Companion's voice for two seconds and then "restoring" through
+  // that path would write the ducked value to localStorage the instant
+  // anything went wrong in between, and a child would come back to a
+  // universe permanently quieter than they left it. So the duck is a
+  // separate multiplier that nothing persists and nothing reads back.
+  var _duck = 1;
+
   function _effectiveVolume(baseVolume){
     if(_muted) return 0;
-    return Math.max(0,Math.min(1,baseVolume*_masterVolume));
+    return Math.max(0,Math.min(1,baseVolume*_masterVolume*_duck));
+  }
+
+  /**
+   * Hold the ambience down while something more important is speaking.
+   * `level` is a multiplier (0.35 keeps the world present rather than
+   * removing it — the point is intelligibility, not silence).
+   * Always pair with release(); calling it twice is harmless.
+   */
+  function duckFor(level,ms){
+    var v=(typeof level==='number'&&isFinite(level))?Math.max(0,Math.min(1,level)):0.35;
+    if(v===_duck) return;
+    _duck=v;
+    _rampAll(typeof ms==='number'?ms:280);
+  }
+
+  function releaseDuck(ms){
+    if(_duck===1) return;
+    _duck=1;
+    _rampAll(typeof ms==='number'?ms:520);   // back up more gently than down
+  }
+
+  function _rampAll(ms){
+    _foundationEls.forEach(function(entry){
+      _ramp(entry.el,entry.el.volume,_effectiveVolume(entry.baseVolume),ms);
+    });
+    if(_worldEl) _ramp(_worldEl,_worldEl.volume,_effectiveVolume(_worldEl.__baseVolume||1),ms);
   }
 
   function _applyVolumesInstantly(){
@@ -509,7 +545,9 @@
     setWorldFadeMs:setWorldFadeMs,
     getWorldFadeMs:getWorldFadeMs,
     setMuteFadeMs:setMuteFadeMs,
-    getMuteFadeMs:getMuteFadeMs
+    getMuteFadeMs:getMuteFadeMs,
+    duckFor:duckFor,
+    releaseDuck:releaseDuck
   };
   // THE STORED PREFERENCE IS TRUE FROM THE MOMENT THIS FILE LOADS, not
   // from whenever somebody happens to call init().

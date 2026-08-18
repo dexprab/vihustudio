@@ -2131,7 +2131,19 @@
       // with: everything about it lives in js/etherHost.js, and a
       // Story with no host resolvable shows nobody at all rather than
       // a stand-in.
-      try { if (window.EtherHost) EtherHost.open(met); } catch (e) {}
+      // THE HOST IS TOLD HOW TO TELL WHETHER THE STORY IS TALKING.
+      //
+      // A page's own recorded narration lives in this closure and the
+      // host has no way to see it, so it is handed a predicate rather
+      // than a reference. That keeps the seam one-way: the host asks a
+      // question, and knows nothing about narration, AssetStore or how a
+      // page gets its voice. Story narration always wins — the host
+      // waits for quiet and gives up rather than talking over it.
+      try {
+        if (window.EtherHost) EtherHost.open(met, {
+          isBusy: function () { return !!(voice && !voice.paused && !voice.ended); }
+        });
+      } catch (e) {}
 
       // Two frames, so the browser has laid the overlay out before the
       // opening class starts it animating — without this the transition

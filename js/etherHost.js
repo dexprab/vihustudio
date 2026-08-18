@@ -93,8 +93,76 @@ const EtherHost = (function () {
     celebrate: ['celebrate', 'happy', 'hero', 'idle']
   };
 
+  // ---------------------------------------------------------------
+  // THE HOST SPEAKS TWICE, AND ONLY TWICE
+  //
+  // Once as the Traveller arrives, once as the Story ends. Nothing in
+  // between — the Companion's job for the whole middle of a Story is to
+  // be present and to be ignorable.
+  //
+  // This is a deliberate change to CLAUDE.md → Decision 25, which said
+  // the World Host does not speak at all and that giving it a voice
+  // would be a canon change rather than a feature. It was, and it was
+  // made: "Sprint 1.1 — World Host Vocal Welcome & Farewell". Decision
+  // 24's test still binds every line of this — a Traveller must be able
+  // to experience the complete Story without paying the Companion any
+  // attention — which is why there are two moments rather than a
+  // presence that talks.
+  //
+  // NOT A NARRATOR. These lines never describe the Story, never explain
+  // it, never refer to what is on the page, and never claim to have met
+  // this Traveller before. The Ether knows nobody: it has a Story, its
+  // owner, and that owner's Companion, and nothing else. "Welcome back"
+  // is unwriteable here because it would be a lie.
+  const OPENING = [
+    { text: 'Hey… you\'re here.',                       emotion: 'happy'     },
+    { text: 'Oh! Ready to see what\'s here?',           emotion: 'curious'   },
+    { text: 'Come on… let\'s explore.',                 emotion: 'warm'      },
+    { text: 'I wonder what we\'ll find.',               emotion: 'curious'   },
+    { text: 'Ooh… this looks interesting.',             emotion: 'curious'   },
+    { text: 'Something magical is waiting.',            emotion: 'warm'      },
+    { text: 'Come along… the story\'s about to begin.', emotion: 'gentle'    },
+    { text: 'Oh! I think we\'re going to like this.',   emotion: 'happy'     },
+    { text: 'Shhh… look around.',                       emotion: 'whisper'   },
+    { text: 'Ready? Let\'s go.',                        emotion: 'happy'     }
+  ];
+
+  const FAREWELL = [
+    { text: 'That was a lovely story.',                 emotion: 'warm'      },
+    { text: 'Wow… what an adventure!',                  emotion: 'celebrate' },
+    { text: 'And that\'s where our story ends.',        emotion: 'gentle'    },
+    { text: 'What a wonderful little adventure.',       emotion: 'warm'      },
+    { text: 'I wonder what happens next…',              emotion: 'curious'   },
+    { text: 'That was fun!',                            emotion: 'happy'     },
+    { text: 'Thanks for coming along.',                 emotion: 'warm'      },
+    { text: 'And so… the story comes to an end.',       emotion: 'gentle'    },
+    { text: 'The story\'s resting now.',                emotion: 'gentle'    },
+    { text: 'See you in the next story.',               emotion: 'warm'      }
+  ];
+
+  // The canonical fallbacks, named by the brief. Index 0 of each library
+  // is that line, so "the default" and "the first entry" cannot drift
+  // apart.
+  const DEFAULT_OPENING  = OPENING[0];
+  const DEFAULT_FAREWELL = FAREWELL[0];
+
+  // How long the host is willing to WAIT for the Story to stop talking
+  // before giving up on its own line. Story narration always wins
+  // (§11, §15): a Companion talking over a page's own recorded voice is
+  // two people speaking at once, which is worse than a Companion that
+  // said nothing.
+  const YIELD_POLL_MS   = 250;
+  const OPENING_WAIT_MS = 6000;   // then the arrival has passed; stay quiet
+  const FAREWELL_WAIT_MS = 12000; // an ending can afford to wait longer
+
+  // Ambience sits UNDER the Companion (§11). Ducked rather than
+  // silenced — the world should still be there behind the voice.
+  const DUCK_LEVEL = 0.35;
+
   const WELCOME_DELAY_MS   = 760;   // after the portal has finished opening
   const WELCOME_HOLD_MS    = 1900;
+  const SPEAK_AFTER_WAVE_MS = 420;  // the wave lands, then the line begins
+  const FAREWELL_PAUSE_MS  = 900;   // the flourish, a breath, then goodbye
   const REACTION_HOLD_MS   = 1300;
   const REACTION_QUIET_MS  = 2600;  // never react more often than this
   const CELEBRATE_HOLD_MS  = 2400;
@@ -108,6 +176,11 @@ const EtherHost = (function () {
   let timers = [];
   let lastReactionAt = 0;
   let celebrated = false;
+  let who = null;         // the companion id currently hosting, for its voice
+  let isBusy = null;      // the caller's "is the Story itself talking?" predicate
+  let spokeOpening = false;
+  let spokeFarewell = false;
+  let lastLine = { open: -1, bye: -1 };   // never the same line twice running
 
   // One token per open(). Everything asynchronous checks it before
   // touching the DOM, so a Story closed while its Companion was still
@@ -221,9 +294,71 @@ const EtherHost = (function () {
    *
    * @param {object} story the Story Entity the portal is showing
    */
-  function open(story) {
+  // ---------------------------------------------------------------
+  // speaking
+
+  // Lightweight random, per the brief — with the one rule that keeps it
+  // from reading as a script: never the line that played last. A child
+  // who opens two Stories in a row and hears the same greeting twice
+  // learns immediately that it is a recording.
+  function _pick(list, slot) {
+    if (list.length < 2) return list[0];
+    let i;
+    do { i = Math.floor(Math.random() * list.length); } while (i === lastLine[slot]);
+    lastLine[slot] = i;
+    return list[i];
+  }
+
+  function _storyTalking() {
+    try { return !!(isBusy && isBusy()); } catch (e) { return false; }
+  }
+
+  // Wait for the Story to stop talking, then run `go`. Gives up after
+  // `budget` — which is a real outcome, not a failure: the Companion
+  // simply did not get a word in, and the Story was more important.
+  function _whenStoryQuiet(go, budget) {
+    const mine = token;
+    let waited = 0;
+    (function tick() {
+      if (mine !== token) return;
+      if (!_storyTalking()) { go(); return; }
+      waited += YIELD_POLL_MS;
+      if (waited >= budget) return;          // suppressed, silently
+      _later(tick, YIELD_POLL_MS);
+    })();
+  }
+
+  /**
+   * Say one line, in the host Companion's own voice, with the ambience
+   * held down under it. Everything about it is optional: no voice, no
+   * platform, no network, a browser refusing audio — each ends with the
+   * line unspoken and the Story exactly as it was (§16).
+   */
+  function _say(line) {
+    if (!line || !who) return;
+    if (typeof VihuVoice === 'undefined' || !VihuVoice.speak) return;
+    const mine = token;
+    try { if (window.AudioManager) AudioManager.duckFor(DUCK_LEVEL); } catch (e) {}
+    const release = function () {
+      try { if (window.AudioManager) AudioManager.releaseDuck(); } catch (e) {}
+    };
+    let done = false;
+    const settle = function () { if (done) return; done = true; release(); };
+    // A belt-and-braces release: if speak() somehow never settles, the
+    // world must not stay quiet for the rest of the reading.
+    _later(settle, 15000);
+    try {
+      VihuVoice.speak({ characterId: who, text: line.text, emotion: line.emotion })
+        .then(settle, settle);
+    } catch (e) { settle(); }
+    // A Story closed mid-sentence takes the voice with it — see close().
+    return mine;
+  }
+
+  function open(story, opts) {
     close();
     const mine = ++token;
+    isBusy = (opts && typeof opts.isBusy === 'function') ? opts.isBusy : null;
     if (typeof StoryHost === 'undefined') return;
 
     StoryHost.resolve(story).then(function (record) {
@@ -237,6 +372,7 @@ const EtherHost = (function () {
           // frame would be worse than showing nothing.
           if (!resolved.presence) return null;
           poses = resolved;
+          who = record.id || null;
           _mount(record);
           // The welcome waits for the portal to have finished opening.
           // Arriving in the middle of that is one movement too many at
@@ -244,6 +380,18 @@ const EtherHost = (function () {
           _later(function () {
             _pose('welcome');
             _later(function () { _pose('presence'); }, WELCOME_HOLD_MS);
+            // The wave first, then the words — the Companion notices the
+            // Traveller before it says anything to them. Roughly 1.2s
+            // into the portal, which sits inside the brief's 3-5s
+            // arrival without being timed to a frame.
+            _later(function () {
+              if (spokeOpening) return;
+              _whenStoryQuiet(function () {
+                if (spokeOpening) return;
+                spokeOpening = true;
+                _say(_pick(OPENING, 'open'));
+              }, OPENING_WAIT_MS);
+            }, SPEAK_AFTER_WAVE_MS);
           }, WELCOME_DELAY_MS);
           return null;
         });
@@ -272,6 +420,23 @@ const EtherHost = (function () {
       celebrated = true;
       _pose('celebrate');
       _later(function () { _pose('presence'); }, CELEBRATE_HOLD_MS);
+      // THE GOODBYE. React, breathe, then speak — a farewell that lands
+      // on top of its own flourish is a notification, and this is meant
+      // to be somebody seeing a visitor out.
+      //
+      // Once per reading, like the flourish it follows: a child flicking
+      // back and forth over the last page is not arriving at the end
+      // again. The wait is longer than the opening's because an ending
+      // page is the most likely one to carry narration, and there is no
+      // hurry — nothing follows it.
+      _later(function () {
+        if (spokeFarewell) return;
+        _whenStoryQuiet(function () {
+          if (spokeFarewell) return;
+          spokeFarewell = true;
+          _say(_pick(FAREWELL, 'bye'));
+        }, FAREWELL_WAIT_MS);
+      }, FAREWELL_PAUSE_MS);
       return;
     }
 
@@ -289,8 +454,18 @@ const EtherHost = (function () {
   function close() {
     token++;
     _clearTimers();
+    // A VOICE MUST NOT OUTLIVE THE STORY IT BELONGED TO. Closing the
+    // portal while the host is mid-sentence would leave a Companion
+    // talking about a world the child has already left — the same rule
+    // the page's own narration follows (stopVoice on close).
+    try { if (typeof VihuVoice !== 'undefined' && VihuVoice.stop) VihuVoice.stop(); } catch (e) {}
+    try { if (window.AudioManager) AudioManager.releaseDuck(); } catch (e) {}
     pack = null;
     poses = null;
+    who = null;
+    isBusy = null;
+    spokeOpening = false;
+    spokeFarewell = false;
     celebrated = false;
     lastReactionAt = 0;
     if (!root && !_els()) return;

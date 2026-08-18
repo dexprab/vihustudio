@@ -3400,3 +3400,75 @@ which does not exist. Nothing was clicked, the panel stayed shut, and two
 checks reported that an upright tablet was being refused rather than
 asked to turn. The suite now crosses the threshold and presses the real
 `[data-act="create"]`, the way a child does.
+
+## Sprint 1.1 — the World Host welcomes a Traveller in, and sees them out
+
+**Build 0586.** The canon change Decision 25 said would be needed, made
+deliberately. It is now Decision 26; Decision 24's hierarchy is
+unchanged and still binds every line.
+
+**Two moments, and nothing between them.** The Companion speaks as the
+Traveller arrives and once more when the Story ends. The whole middle of
+a reading is unchanged — present, non-verbal, ignorable. Verified: four
+page turns in a row say nothing at all.
+
+**STORY NARRATION ALWAYS WINS, and this path really has narration** —
+`EtherFeed.audioOf()` gives a recorded voice per page, which made §11 a
+real constraint rather than a hypothetical one. The host waits for quiet
+(six seconds at the opening, twelve at the ending) and then **gives up
+rather than talking over it**. Both halves are measured: silent while the
+page narrates, speaking once it stops, and silent forever against
+narration that never ends.
+
+**The host is handed a predicate, never a reference.** Narration lives in
+the portal's own closure, so `EtherHost.open(story, {isBusy})` asks a
+question; the host knows nothing about narration, AssetStore or how a
+page gets its voice.
+
+**A duck is not a volume change.** `setVolume()` persists — it is the
+child's own setting — so ducking through it would leave a universe
+permanently quieter than they left it the first time anything failed in
+between. `AudioManager.duckFor()/releaseDuck()` is a separate multiplier
+that nothing persists and nothing reads back. Asserted: localStorage is
+untouched across a duck, and the child's own volume never moves.
+
+**No Traveller memory, made unwriteable rather than merely avoided.** The
+Ether knows a Story, its owner and that owner's Companion. "Welcome
+back" would be a lie, so the suite holds the twenty lines and **fails on
+any containing "back", "again" or "remember"** — the rule is enforced
+against the library itself, not against one sampled line.
+
+**Randomness with one rule: never the line before.** A child who opens
+two Stories and hears the same greeting twice has learned it is a
+recording. `"Hey… you're here."` and `"That was a lovely story."` are the
+canonical defaults AND index 0 of each library, so the default and the
+first entry cannot drift apart.
+
+**A voice never outlives its Story.** Closing the portal stops the host
+mid-sentence and releases the duck — the same rule the page's own
+narration already followed.
+
+**THE CHECK THAT MATTERED MOST WAS THE ONE THE UNIT TESTS COULD NOT
+SEE.** `voice` is declared LATER in `vihuplanetHome.js` than the
+`EtherHost.open()` call that closes over it. Had the two been in
+different function scopes, the predicate would have thrown
+ReferenceError, `_storyTalking()` would have swallowed it and returned
+false, and the host would have talked over every narrated page — exactly
+the hard requirement in AC6, failing silently. `var` hoisting makes it
+work only if they share a scope, so the suite measures brace depth at
+both declarations with strings and comments stripped, rather than
+trusting the indentation.
+
+**Verified 35/35 in a real browser, zero page errors**, covering the
+acceptance criteria directly: one opening line in the OWNER's Companion
+voice (Creator A gets Leafy, Creator B gets Quill, a Canon Story gets
+Lumo), silence through the middle, one farewell that does not repeat when
+a child flicks back over the end, a Story with no Companion showing and
+saying nothing without throwing, no bubble in the portal, and the host
+still `alt=""` decoration.
+
+**Disclosed:** only Lumo and Leafy have voice ids so far, so today a
+Canon Story and a Leafy-hosted Story speak and the rest are correctly
+silent. And the autoplay policy still applies — a Traveller who has
+touched nothing since the page loaded may get a silent welcome, which is
+handled as silence rather than as an error.

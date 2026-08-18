@@ -1360,10 +1360,10 @@ Locked by the product owner in the Vihu Voice Foundation brief.
   brackets to the reader and a child hears the word "whispers" spoken.
   So the check is positive and anything unrecognised is assumed not to
   support tags. Today no tag is sent at all.
-- **The Ether's World Host does not speak**, and giving it a voice is a
-  canon change rather than a feature. Decision 24 requires the host to be
-  ignorable in full; a voice over somebody's story is the loudest thing
-  on the page.
+- ~~**The Ether's World Host does not speak**~~ — **amended by Decision
+  26.** The canon change that clause named was made deliberately, in the
+  Sprint 1.1 brief. The host now speaks exactly twice, and Decision 24's
+  test still binds every line of it.
 - **Disclosed:** lines that fire on load or on a timer are blocked by the
   browser's autoplay policy and stay silent, with the bubble still shown.
   Not worked around — speech should follow a real interaction, which is
@@ -1371,6 +1371,58 @@ Locked by the product owner in the Vihu Voice Foundation brief.
 - Where voices live, how to add one, and how to configure credentials:
   `docs/VIHU_VOICE.md`. Listening room:
   `tools/voice-audition/index.html`.
+
+### 26. The World Host Welcomes a Traveller In, and Sees Them Out
+
+Locked by the product owner in the Sprint 1.1 brief. It is the canon
+change Decision 25 said would be required, and it changes nothing about
+Decision 24's hierarchy.
+
+- **The Companion speaks exactly twice: once on arrival, once at the
+  end.** Nothing in between. *"Someone from this world welcomed me in"*
+  and later *"someone from this world saw me off"* — and the whole middle
+  of a Story is the Companion being present and ignorable.
+- **It is not a narrator, not a chatbot and not commentary.** No line
+  describes the Story, explains it, or refers to what is on the page.
+  Decision 24's test is unchanged and still binds: a Traveller must be
+  able to experience the complete Story without paying the Companion any
+  attention.
+- **Story narration ALWAYS wins.** If a page's own recorded voice is
+  playing, the host waits for quiet — six seconds at the opening, twelve
+  at the ending — and then **gives up rather than talking over it**.
+  Never two voices at once, and the Story is never paused to let a
+  Companion speak.
+- **The host is handed a predicate, never a reference.** Narration lives
+  in the portal's own closure, so `EtherHost.open(story, {isBusy})` asks
+  a question and the host knows nothing about narration, AssetStore or
+  how a page gets its voice.
+- **Twenty system-owned lines, ten each way**, chosen at random with the
+  one rule that never repeats the line before — a child who opens two
+  Stories and hears the same greeting twice has learned it is a
+  recording. `"Hey… you're here."` and `"That was a lovely story."` are
+  the canonical defaults and are index 0 of each library, so the default
+  and the first entry cannot drift apart.
+- **No Traveller memory, and it is unwriteable rather than merely
+  avoided.** The Ether knows a Story, its owner and that owner's
+  Companion — nothing else. "Welcome back", "good to see you again" and
+  "I remember you" would all be lies, so no line contains *back*,
+  *again* or *remember*, and the suite fails on any that does.
+- **Ambience ducks under the voice; the Story does not.** A duck is a
+  separate multiplier in `AudioManager` that **nothing persists** —
+  `setVolume()` writes the child's own setting, and ducking through it
+  would leave a universe permanently quieter than they left it if
+  anything failed in between.
+- **A voice never outlives its Story.** Closing the portal stops the
+  host mid-sentence and releases the duck, the same rule the page's own
+  narration already followed.
+- **Still no UI of any kind** — no bubble, no panel, no nameplate, no
+  prompt. The host stays `pointer-events: none` and `aria-hidden`.
+- **The creator cannot author any of this yet.** Companion Augmentations
+  — notice this, react here, stay quiet here — are a later sprint. For
+  now the library is system-controlled.
+- Out of scope and not implemented: AI-generated dialogue, per-scene
+  lines, Traveller identity, Traveller preferences, previous-visit
+  awareness, and conversation of any kind.
 
 ## Roadmap
 
