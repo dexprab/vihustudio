@@ -195,6 +195,7 @@
 
     var met = null;      // the entity currently being met
     var pages = [];
+    var tints = [];
     var audio = [];   // narration, one slot per page, aligned with `pages`
     var audioOwner = null;  // who recorded it, for a Story shared by somebody else
     var pageIndex = 0;
@@ -1951,6 +1952,7 @@
       // surface concern and the runtime has no business knowing about
       // them.
       pages = (pid && window.EtherFeed) ? EtherFeed.pagesOf(pid) : [];
+      tints = (pid && window.EtherFeed && EtherFeed.tintsOf) ? EtherFeed.tintsOf(pid) : [];
       audio = (pid && window.EtherFeed && EtherFeed.audioOf) ? EtherFeed.audioOf(pid) : [];
       // Whoever recorded it, when the Story came from somebody else —
       // see playVoice(). Null for this device's own Stories, where the
@@ -2160,7 +2162,28 @@
     }
 
     function showPage() {
-      el.page.src = pages[pageIndex] || '';
+      // A PAGE WITH NO PICTURE IS STILL A PAGE.
+      //
+      // The Ether reads a Story as it is (js/etherFeed.js →
+      // _readablePages). A page whose picture was never rendered used
+      // to be dropped from the Story entirely, turning a six-page
+      // Story into a one-page Story with nothing saying so. Now it is
+      // turned to like any other: the child's own background colour,
+      // and no broken-image frame where a picture would have been.
+      //
+      // src is CLEARED rather than left stale — an <img> keeps showing
+      // the last thing it loaded, so without this the previous page's
+      // picture would sit under the next page's colour.
+      var src = pages[pageIndex] || null;
+      if (src) {
+        el.page.src = src;
+        el.page.hidden = false;
+      } else {
+        el.page.removeAttribute('src');
+        el.page.hidden = true;
+      }
+      el.portal.classList.toggle('is-blank-page', !src);
+      el.portal.style.setProperty('--vp-page-tint', tints[pageIndex] || 'transparent');
       el.pageNo.textContent = (pageIndex + 1) + ' / ' + pages.length;
       el.prev.disabled = pageIndex === 0;
       el.next.disabled = pageIndex >= pages.length - 1;

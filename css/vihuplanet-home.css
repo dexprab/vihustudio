@@ -336,6 +336,32 @@ html, body {
  * no library, no per-frame JS. */
 .ether-portal-stage { perspective: 1600px; }
 
+/* ---------- a page with no picture ----------
+ *
+ * The Ether reads a Story as it is: a page whose picture was never
+ * rendered is still turned to, rather than dropped from the Story (see
+ * js/etherFeed.js -> _readablePages, and the six-page Story that was
+ * arriving as a one-page Story). The <img> is hidden and the paper is
+ * drawn here instead — the child's OWN background colour, carried
+ * through as --vp-page-tint, so it reads as their empty page rather
+ * than as a hole where a picture failed.
+ *
+ * Same radius and shadow as a real page, so a Story that mixes drawn
+ * and undrawn pages still turns as one object. `transparent` is the
+ * honest default when a page never set a colour: the portal's own
+ * paper shows through. */
+.ether-portal.is-blank-page .ether-portal-stage::after {
+  content: "";
+  display: block;
+  height: 100%;
+  aspect-ratio: 4 / 3;
+  max-width: 100%;
+  border-radius: 10px;
+  background: var(--vp-page-tint, transparent);
+  box-shadow: 0 18px 50px rgba(6, 9, 20, 0.66);
+}
+
+
 .ether-portal-page.is-turning-next,
 .ether-portal-page.is-turning-prev {
   will-change: transform, opacity;

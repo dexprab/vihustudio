@@ -316,30 +316,49 @@ const EtherFeed = (function () {
     } catch (e) { return null; }
   }
 
-  // THE PAGES THE PORTAL CAN ACTUALLY SHOW — one definition, used by
-  // both the pictures and the voices.
+  // EVERY PAGE OF THE STORY — one definition, used by the pictures, the
+  // tints and the voices alike.
   //
-  // They used to be built twice, and differently: pagesOf() skipped any
-  // page with no picture while audioOf() kept a slot for every page in
-  // the record. Their own comment claimed they were "aligned
-  // index-for-index", and for most stories they were — but one page
-  // without a thumbnail is enough to shift every voice after it onto
-  // the wrong picture, or off the end into silence. A comment is not a
-  // guarantee; deriving both from the same list is.
+  // THE ETHER READS A STORY AS IT IS. Stated by the product owner:
+  // "there is no need for it to have images. a story without images is
+  // good for ether." This function used to keep only pages that had a
+  // picture, and the consequence was the worst kind: a six-page Story
+  // whose pictures had never been rendered arrived in the universe as a
+  // ONE-page Story, silently, with nothing anywhere saying so. Measured
+  // on a real shared Story — six pages, one readable.
+  //
+  // A picture is how a page is usually DRAWN; it was never what makes a
+  // page exist. So every page is returned, and the portal shows an
+  // empty page where there is nothing to draw rather than dropping it.
+  // A page a child made is a page a Traveller turns to.
+  //
+  // Alignment, still: pictures, tints and voices are all derived from
+  // this one list, so they cannot disagree about which page is which.
+  // That was the reason this function exists at all, and removing the
+  // filter makes it MORE true rather than less — there is no longer any
+  // way for a missing picture to shift the voices out from under the
+  // pages.
   function _readablePages(record) {
     var slides = _pagesIn(record);
     var out = [];
     for (var i = 0; i < slides.length; i++) {
-      var s = slides[i];
-      if (!s) continue;
-      // `readImage` is the page rendered at reading size; `thumbnail`
-      // is the 110px one the page strip uses. Preferring the first and
-      // falling back to the second means a Story published before
-      // reading images existed still opens — softly, but it opens,
-      // and that is the same trade this portal has always made.
-      if (s.readImage || s.thumbnail) out.push(s);
+      if (slides[i]) out.push(slides[i]);
     }
     return out;
+  }
+
+  // The child's own background colour for each page, so a page with no
+  // picture is still THEIR page rather than a white rectangle in a dark
+  // universe. Read from the same place the renderer reads it, and null
+  // when the page never set one — the portal's own paper shows through
+  // then, which is the honest answer rather than an invented colour.
+  function tintsOf(projectId) {
+    try {
+      return _readablePages(_recordFor(projectId)).map(function (s) {
+        var co = s && s.metadata && s.metadata.cardOverrides;
+        return (co && co.background) || null;
+      });
+    } catch (e) { return []; }
   }
 
   function pagesOf(projectId) {
@@ -350,7 +369,9 @@ const EtherFeed = (function () {
       // Same record shape, so one lookup falls through to the other and
       // nothing below this line knows the difference.
       return _readablePages(_recordFor(projectId)).map(function (s) {
-        return s.readImage || s.thumbnail;
+        // null, not undefined and never '' — the portal branches on it
+        // to show an empty page instead of a broken picture.
+        return s.readImage || s.thumbnail || null;
       });
     } catch (e) { return []; }
   }
@@ -616,6 +637,7 @@ const EtherFeed = (function () {
     load: load,
     attach: attach,
     pagesOf: pagesOf,
+    tintsOf: tintsOf,
     audioOf: audioOf,
     ownerOf: ownerOf,
     publishInto: publishInto,
