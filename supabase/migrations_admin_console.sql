@@ -136,7 +136,30 @@ grant execute on function public.admin_creators_roll() to authenticated;
 -- (supabase/functions/creator-born), which already has the sending
 -- path sky-protection uses.
 -- ---------------------------------------------------------------
+-- ---------------------------------------------------------------
+-- WHERE THE TRIGGER'S SETTINGS LIVE.
+--
+-- The first draft used `alter database postgres set app.creator_born_url
+-- = ...`, which fails on hosted Supabase with "permission denied to set
+-- parameter" — the dashboard role cannot set database-level parameters
+-- on a managed instance. That is a fact about hosted Postgres, not
+-- something to work around with more privilege.
+--
+-- A private table instead. RLS on with NO policies at all, exactly like
+-- platform_admins above and story_cheers before it (Decision 20), so no
+-- client can read it whatever key they hold — the service role key lives
+-- here and must never be reachable from a browser. Only the SECURITY
+-- DEFINER trigger below consults it, which bypasses RLS by design.
+-- ---------------------------------------------------------------
+
 create extension if not exists pg_net with schema extensions;
+
+create table if not exists public.platform_settings (
+  key   text primary key,
+  value text not null
+);
+
+alter table public.platform_settings enable row level security;
 
 create or replace function public.notify_creator_born()
 returns trigger
@@ -145,9 +168,12 @@ security definer
 set search_path = public
 as $$
 declare
-  fn_url text := current_setting('app.creator_born_url', true);
-  fn_key text := current_setting('app.creator_born_key', true);
+  fn_url text;
+  fn_key text;
 begin
+  select value into fn_url from public.platform_settings where key = 'creator_born_url';
+  select value into fn_key from public.platform_settings where key = 'creator_born_key';
+
   -- Unconfigured is a no-op, never an error: the Ceremony completing
   -- matters, the notification does not.
   if coalesce(fn_url, '') = '' then
@@ -179,12 +205,27 @@ create trigger creator_born
   for each row execute function public.notify_creator_born();
 
 -- ---------------------------------------------------------------
--- CONFIGURE (run once, with your own values):
+-- CONFIGURE (run once, with your own service role key):
 --
---   alter database postgres set app.creator_born_url =
---     'https://<project-ref>.functions.supabase.co/creator-born';
---   alter database postgres set app.creator_born_key =
---     '<the service role key>';
+--   insert into public.platform_settings (key, value) values
+--     ('creator_born_url',
+--      'https://<project-ref>.supabase.co/functions/v1/creator-born'),
+--     ('creator_born_key', '<service role key>')
+--   on conflict (key) do update set value = excluded.value;
 --
--- Then reconnect, or the settings are not visible to new sessions.
+-- No reconnect needed — a table is read on every call, unlike a
+-- database parameter.
+--
+-- TEST IT, using the same path the trigger uses:
+--
+--   select extensions.net_http_post(
+--     url     := (select value from public.platform_settings where key='creator_born_url'),
+--     headers := jsonb_build_object('Content-Type','application/json',
+--                  'Authorization','Bearer ' ||
+--                  (select value from public.platform_settings where key='creator_born_key')),
+--     body    := jsonb_build_object('nickname','Test','code','MC-00099',
+--                                   'companion','Leafy','species','Bloomling'));
+--
+-- Then, if no email arrives:
+--   select status_code, content from net._http_response order by created desc limit 3;
 -- ---------------------------------------------------------------
