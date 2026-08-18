@@ -180,9 +180,54 @@ const CreatorProjectStore=(function(){
     return {ok:true,claimed:n};
   }
 
+  // THE STORIES THAT WERE ALREADY SHARED.
+  //
+  // Reported by the product owner: "can we update the preexisting
+  // stories too. there is no way to reshare them." Both halves are
+  // true, and the second is worse than it sounds — markPublished()
+  // returns `already` on its FIRST line, before the block that puts a
+  // Companion aboard, so even a re-share would not have fixed one.
+  // Without this, every Story shared before Sprint 1 would have stood
+  // empty for ever.
+  //
+  // Nothing is invented. This is the same stamp the same device would
+  // have applied at share time, from the same card, applied late — the
+  // Companion of the child who is sitting here, onto the Stories that
+  // are demonstrably theirs.
+  //
+  // Ownership is judged exactly as markPublished() judges it, which is
+  // Decision 19's own standard: refuse only on positive evidence that
+  // a record belongs to somebody else. A shared machine can therefore
+  // never put one child's Companion into another child's Story.
+  //
+  // Only ever fills a MISSING one. A Story that already carries a
+  // Companion is never rewritten, so this can run as often as it likes
+  // and can never overwrite what a Story already knows about itself.
+  //
+  // A Story made by another child and living here through the shared
+  // feed is not ours to stamp, and is left alone: it heals when its own
+  // maker next opens VihuPlanet, and their sweep syncs it up.
+  let _companionsSwept=false;
+  function _sweepCompanions(){
+    if(_companionsSwept) return;
+    const mine=_localCompanion();
+    if(!mine) return;              // no card, or no bonded Companion yet
+    _companionsSwept=true;         // only once we could actually have done it
+    const active=_activeCardId();
+    listAll().forEach(function(r){
+      if(!r || !r.publishedAt || r.companion) return;
+      if(r.cardId && active && r.cardId!==active) return;
+      const next={};
+      Object.keys(r).forEach(function(k){ next[k]=r[k]; });
+      next.companion=mine;
+      _cache().putLocal(next,{onPersistFailed:_onPersistFailed(r.id)});
+    });
+  }
+
   // Newest-first — matches World Builder's own "My World Projects" list.
   function list(){
     _claimLegacy();
+    _sweepCompanions();
     var active=_activeCardId();
     return listAll().filter(function(r){
       if(!r) return false;
@@ -418,6 +463,7 @@ const CreatorProjectStore=(function(){
   // Projects is the surface that must be scoped; the universe is not.
   function listPublished(){
     _claimLegacy();
+    _sweepCompanions();
     return listAll().filter(function(r){ return !!r.publishedAt; })
       .sort(function(a,b){ return new Date(b.publishedAt)-new Date(a.publishedAt); });
   }

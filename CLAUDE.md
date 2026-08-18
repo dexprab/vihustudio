@@ -1173,8 +1173,27 @@ The Companion enriches the experience."*
   a generic one, never one made up for the visit.** If it cannot be
   resolved, **no host is shown at all** — a host that is not the
   owner's would be a stranger in the child's world claiming to live
-  there. That is a disclosed, temporary state for Stories shared before
-  this shipped, and it clears as they are re-shared.
+  there. That is a disclosed state, and it is now rare rather than
+  permanent — see the backfill below.
+- **Stories shared before this existed are stamped where ownership is
+  provable, not left empty.** Reported by the product owner: *"can we
+  update the preexisting stories too. there is no way to reshare
+  them."* Both halves were true, and the second was worse than it
+  sounded — `markPublished()` returns `already` on its first line,
+  before the block that puts a Companion aboard, so even re-sharing
+  would not have fixed one. A one-shot sweep
+  (`CreatorProjectStore._sweepCompanions`, run lazily from `list()` and
+  `listPublished()` exactly as `_claimLegacy()` already is) fills a
+  MISSING Companion on a Story this device can prove is its own.
+  Nothing is invented: it is the same stamp the same device would have
+  applied at share time, from the same card, applied late.
+  **Ownership is judged by Decision 19's own standard** — refuse only
+  on positive evidence that a record belongs to somebody else — so a
+  Story owned by another card is left alone and a shared machine can
+  never put one child's Companion into another child's Story. A Story
+  that already carries one is never rewritten. A Story made by another
+  child and living here through the shared feed heals when its own
+  maker next opens VihuPlanet, and their sweep syncs it up.
 - **If the Traveller notices it, it should read as *"there is someone
   living in this world"*, never *"an AI assistant has appeared"*.** The
   test: a Traveller must be able to experience the complete Story
