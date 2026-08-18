@@ -3110,3 +3110,50 @@ sent no style, speed or similarity_boost, that its stability is one of
 its three legal values and still carries the feeling's direction, that
 turbo is unchanged and still gets no tag, and that the audition override
 cannot reach story code.
+
+**The provider's own documentation, and the bug it exposed** (build
+0579). *"we sure we are using right tags"* — a fair challenge, and the
+answer turned out to be yes on the tags and **no on the setting that
+matters most**. The sandbox's egress policy blocks `elevenlabs.io`, so
+the product owner supplied the page.
+
+**The tags were right.** `[whispers]` `[excited]` `[surprised]`
+`[curious]` `[sad]` are on the published audio-tag list; `[happy]` and
+`[thoughtful]` on its emotional-direction set. `[thoughtful]` and
+`[sighs]` were added for `think` and `sleep`, which had none. The suite
+now HOLDS the published list and fails any tag not in it, so this cannot
+drift back to remembering.
+
+**The bug was the stability snapping.** The provider is blunt that
+stability is *"the most important setting in v3"* and that **Robust is
+"less responsive to directional prompts"** — it partly ignores the tag.
+The first attempt took the turbo stability and snapped it to the nearest
+of v3's three, and measured against the real numbers that collapsed
+almost the entire range onto Natural: neutral 0.55, happy 0.35, curious
+0.43, warm 0.63, gentle 0.73 all round to 0.5. Two of thirteen feelings
+landed anywhere else and one of those was Robust. **Every feeling was
+arriving on v3 as very nearly the same request**, which is exactly what
+"i dont see much difference" was.
+
+Each feeling now names its **own** v3 stability and **nothing is ever
+Robust**. It must be a separate field rather than a derivation, because
+the families want OPPOSITE numbers for one feeling: on turbo `sad` is
+steadier than neutral; on v3 that same move switches the expression off,
+so `sad` there is Creative. Both directions are asserted.
+
+**And the honest headline the docs put above all of this: the voice
+matters more than any setting.** *"The most important parameter for
+Eleven v3 is the voice you choose"*, tag effectiveness depends on the
+voice's own training samples, and library voices are more variable on v3
+than on v2 — hence a curated v3 collection. So a tag doing nothing is a
+real and expected outcome whose fix is **a different voice, not a
+different number**. Recorded in the module and the doc so the next person
+does not spend an afternoon tuning numbers against a voice that was never
+going to move.
+
+**Verified 119/119, zero page errors** — eleven new checks including that
+no feeling ever asks for Robust, that the v3 range does not collapse onto
+one value, and that every declared tag appears in the published list. One
+assertion was corrected rather than loosened: M4 tested "a feeling with no
+tag adds nothing" against `think`, which now has one, so it was pointed at
+`gentle`, which honestly has none.

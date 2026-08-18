@@ -104,6 +104,17 @@
   // "whispers" spoken aloud. So a tag is dropped unless the character's
   // own model declares it can read one — see _supportsTags(). Never
   // assume; that failure is audible and lands on a child.
+  //
+  // Every tag below is taken from the provider's own published list
+  // rather than from memory. Two are from its emotional-direction set
+  // ([thoughtful], [happy]) and the rest from the audio-tag list proper
+  // ([whispers], [excited], [surprised], [curious], [sad], [sighs]).
+  //
+  // Its own warning is worth keeping in view: tag effectiveness depends
+  // on the VOICE and its training samples — "don't expect a whispering
+  // voice to suddenly shout". A tag doing nothing is therefore a real
+  // and expected outcome, and the fix for it is a different voice, not
+  // a different number.
   // HOW BIG THE DELTAS ARE, and why they got bigger. The first set was
   // written to be tasteful — style +0.15, stability -0.10 — and the
   // product owner's verdict on hearing it was "emotions does not seem to
@@ -117,23 +128,36 @@
   // gets erratic rather than expressive, and style much above 0.6
   // distorts. So the deltas are large but the CLAMPS are what keep a
   // voice safe, not the timidity of the numbers.
+  // `v3` IS THE STABILITY THIS FEELING WANTS ON v3, and it is a separate
+  // axis rather than something derived from the delta above. The
+  // provider's own guidance is blunt about it: stability is "the most
+  // important setting in v3", and its three values are Creative (0),
+  // Natural (0.5) and Robust (1) — where Robust is documented as "less
+  // responsive to directional prompts", which is to say it partly
+  // ignores the audio tag.
+  //
+  // Nothing here is ever Robust, deliberately. A feeling that reads as
+  // "steadier" on turbo — sad, sleep — must NOT become steadier on v3,
+  // because there the same move switches the expression off. The two
+  // families genuinely want opposite numbers for the same feeling, which
+  // is exactly why this is its own field and not a clever derivation.
   var EMOTIONS = {
     // registers — for voices with no face
-    neutral:   { },
-    warm:      { stability:  0.08, style:  0.10, speed: -0.04 },
-    gentle:    { stability:  0.18, style: -0.08, speed: -0.08 },
-    whisper:   { stability:  0.22, style: -0.05, speed: -0.10, tag: '[whispers]' },
+    neutral:   { v3: 0.5 },
+    warm:      { stability:  0.08, style:  0.10, speed: -0.04, v3: 0.5 },
+    gentle:    { stability:  0.18, style: -0.08, speed: -0.08, v3: 0.5 },
+    whisper:   { stability:  0.22, style: -0.05, speed: -0.10, v3: 0.5, tag: '[whispers]' },
 
     // the Companion states, spoken
-    happy:     { stability: -0.20, style:  0.30, speed:  0.05, tag: '[happy]' },
-    excited:   { stability: -0.30, style:  0.42, speed:  0.09, tag: '[excited]' },
-    celebrate: { stability: -0.26, style:  0.40, speed:  0.07, tag: '[excited]' },
-    surprised: { stability: -0.28, style:  0.34, speed:  0.03, tag: '[surprised]' },
-    curious:   { stability: -0.12, style:  0.20, speed: -0.03, tag: '[curious]' },
-    think:     { stability:  0.16, style: -0.05, speed: -0.11 },
-    sad:       { stability:  0.18, style:  0.12, speed: -0.15, tag: '[sad]' },
-    sleep:     { stability:  0.26, style: -0.10, speed: -0.18 },
-    wave:      { stability: -0.06, style:  0.16, speed:  0.04 }
+    happy:     { stability: -0.20, style:  0.30, speed:  0.05, v3: 0,   tag: '[happy]' },
+    excited:   { stability: -0.30, style:  0.42, speed:  0.09, v3: 0,   tag: '[excited]' },
+    celebrate: { stability: -0.26, style:  0.40, speed:  0.07, v3: 0,   tag: '[excited]' },
+    surprised: { stability: -0.28, style:  0.34, speed:  0.03, v3: 0,   tag: '[surprised]' },
+    curious:   { stability: -0.12, style:  0.20, speed: -0.03, v3: 0,   tag: '[curious]' },
+    think:     { stability:  0.16, style: -0.05, speed: -0.11, v3: 0.5, tag: '[thoughtful]' },
+    sad:       { stability:  0.18, style:  0.12, speed: -0.15, v3: 0,   tag: '[sad]' },
+    sleep:     { stability:  0.26, style: -0.10, speed: -0.18, v3: 0.5, tag: '[sighs]' },
+    wave:      { stability: -0.06, style:  0.16, speed:  0.04, v3: 0,   tag: '[happy]' }
   };
 
   // States that are poses rather than feelings resolve to neutral, and
@@ -319,15 +343,20 @@
   // deliberately MINIMAL for v3 — one dial and the tag — because a
   // rejected request costs a child their line, while an omitted dial
   // costs a little nuance the tag was going to carry anyway.
+  // WHY SNAPPING THE CONTINUOUS VALUE WAS WRONG, and this replaced it.
+  //
+  // The first attempt took the turbo stability and snapped it to the
+  // nearest of v3's three. Measured against the real numbers, that
+  // collapsed almost the entire range onto 0.5: neutral 0.55, happy
+  // 0.35, curious 0.43, warm 0.63, gentle 0.73 — every one of them
+  // rounds to Natural. Two feelings out of thirteen landed anywhere
+  // else, and one of those was Robust, which the provider documents as
+  // *less* responsive to a tag.
+  //
+  // So on v3 every feeling was arriving as very nearly the same request,
+  // which is precisely what "i dont see much difference" sounded like.
+  // The feeling now names its own v3 stability outright.
   var V3_STABILITY = [0, 0.5, 1];
-
-  function _snap(v, choices) {
-    var best = choices[0];
-    for (var i = 1; i < choices.length; i++) {
-      if (Math.abs(choices[i] - v) < Math.abs(best - v)) best = choices[i];
-    }
-    return best;
-  }
 
   // The character's own settings, moved by the feeling. Deltas, never
   // absolutes, so the character survives the mood (see EMOTIONS).
@@ -343,11 +372,13 @@
     });
 
     if (_supportsTags(v)) {
-      // Keep the continuous value's INTENT — a feeling that lowered
-      // stability still lands on the freer of the three choices — then
-      // drop what this family has no use for.
-      var s = (typeof out.stability === 'number') ? out.stability : 0.5;
-      out = { stability: _snap(s, V3_STABILITY) };
+      // v3 takes one dial and the tag. A character may still override
+      // its own value; anything outside v3's three legal choices would
+      // be refused, so an override is honoured only if it is one of
+      // them.
+      var want = mood.v3;
+      if (V3_STABILITY.indexOf(want) === -1) want = 0.5;   // Natural
+      out = { stability: want };
     }
     return out;
   }

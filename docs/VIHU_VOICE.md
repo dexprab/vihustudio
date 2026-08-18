@@ -164,17 +164,59 @@ the line is never spoken.
 |---|---|---|
 | Built for | speed | expression |
 | Audio tags | cannot read them | **this is its vocabulary** |
-| `stability` | continuous slider | three choices: 0 · 0.5 · 1 |
+| `stability` | continuous slider | **Creative 0 · Natural 0.5 · Robust 1** |
 | `style` | yes | not its vocabulary |
-| `speed` | yes | not its vocabulary |
+| `speed` | yes | via audio tags instead |
 | A feeling arrives as | numbers | the tag |
 
 `js/vihuVoice.js` sends each family only what that family understands. For
 v3 that is deliberately **minimal — one dial and the tag** — because a
 refused request costs a child their line, while an omitted dial costs a
-little nuance the tag was going to carry anyway. The continuous
-stability still sets the *intent*: a feeling that lowered it lands on the
-freer of v3's three choices.
+little nuance the tag was going to carry anyway.
+
+### The v3 stability is its own axis, and this was a real bug
+
+The provider is blunt: stability is *"the most important setting in v3"*,
+and **Robust is "less responsive to directional prompts"** — which is to
+say it partly ignores the tag.
+
+The first attempt took the turbo stability and **snapped it to the
+nearest of v3's three**. Measured against the real numbers, that
+collapsed almost the whole range onto Natural — neutral 0.55, happy 0.35,
+curious 0.43, warm 0.63, gentle 0.73 all round to 0.5. Two feelings out
+of thirteen landed anywhere else, and one of those was Robust. **Every
+feeling was arriving on v3 as very nearly the same request**, which is
+what *"i dont see much difference"* actually was.
+
+So each feeling now names its **own** v3 stability, and **nothing is ever
+Robust**. It has to be a separate field rather than a clever derivation,
+because the two families want *opposite* numbers for the same feeling: on
+turbo, `sad` is steadier than neutral; on v3 that same move would switch
+the expression off, so `sad` there is Creative.
+
+### The tags come from the provider's published list
+
+Not from memory — that is how the first set went wrong. `[whispers]`
+`[excited]` `[surprised]` `[curious]` `[sad]` `[sighs]` are from the
+audio-tag list proper; `[happy]` and `[thoughtful]` from its
+emotional-direction set. The suite holds that list and fails on any tag
+that is not in it.
+
+Feelings with no honest tag — `warm`, `gentle`, `neutral` — carry none.
+Inventing a word for them is precisely the mistake being guarded against.
+
+### The voice matters more than any of this
+
+The provider's own first line on v3: *"The most important parameter for
+Eleven v3 is the voice you choose."* Tag effectiveness depends on the
+voice and its training samples — *"don't expect a whispering voice to
+suddenly shout"* — and library voices "may produce more variable results"
+than on v2, which is why there is a **curated collection for v3**.
+
+**A tag doing nothing is therefore a real and expected outcome, and its
+fix is a different voice rather than a different number.** Professional
+Voice Clones are documented as not yet optimised for v3; an Instant Voice
+Clone or a designed voice is the recommendation.
 
 ### The trade-off, stated plainly
 
