@@ -47,6 +47,7 @@ VihuVoice.speak({ characterId: 'leafy', text: 'You made it!', emotion: 'celebrat
 | `VihuVoice.voiceOf(who)` | The resolved voice, or `null`. For tools; story code does not need it. |
 | `VihuVoice.emotions()` | Every feeling that can be asked for. |
 | `VihuVoice.resolve({characterId, text, emotion})` | What would actually be sent. **Tools only** — see *When a feeling is not audible*. |
+| `VihuVoice.audition({characterId, text, emotion, modelId})` | Speak through a different model. **Audition room only** — see *The two model families*. |
 | `VihuVoice.clearCache()` | Forget this browser's cached audio. For the audition page. |
 
 `who` may be an **id** (`'lumo'`), a **name** (`'Lumo'`) or a **role**
@@ -145,14 +146,71 @@ apart — the audition page shows it live under **What is actually sent**:
 - **The numbers do not change with the feeling** → the feeling is not
   reaching the request. A bug.
 - **The numbers change but the voice does not** → the model is ignoring
-  them. Not a bug, a model limit. `eleven_turbo_v2_5` is built for low
-  latency and is deliberately flat; `eleven_v3` is the expressive one and
-  is the only family that reads the audio tags. That is a one-field
-  registry change per character.
+  them. Not a bug, a model limit. See below.
 
 `resolve()` is **for tools, not for story code.** Nothing in the product
 calls it and nothing should — a caller that reads settings is a caller
 that has learned a provider exists.
+
+---
+
+## The two model families
+
+They carry a feeling in **opposite ways**, and sending one the other's
+dials is not a soft failure — the provider refuses the whole request and
+the line is never spoken.
+
+| | `eleven_turbo_v2_5` | `eleven_v3` |
+|---|---|---|
+| Built for | speed | expression |
+| Audio tags | cannot read them | **this is its vocabulary** |
+| `stability` | continuous slider | three choices: 0 · 0.5 · 1 |
+| `style` | yes | not its vocabulary |
+| `speed` | yes | not its vocabulary |
+| A feeling arrives as | numbers | the tag |
+
+`js/vihuVoice.js` sends each family only what that family understands. For
+v3 that is deliberately **minimal — one dial and the tag** — because a
+refused request costs a child their line, while an omitted dial costs a
+little nuance the tag was going to carry anyway. The continuous
+stability still sets the *intent*: a feeling that lowered it lands on the
+freer of v3's three choices.
+
+### The trade-off, stated plainly
+
+**Moving a character to v3 gives up `speed`.** The base pace above is a
+turbo setting; v3 has no equivalent, so a v3 character speaks at whatever
+pace the voice itself has. If slowness matters more than expression for a
+particular character, turbo is the right choice for them — this is
+per-character, not per-product.
+
+### Hearing them side by side
+
+`VihuVoice.audition({characterId, text, emotion, modelId})` speaks a line
+through a **different** model than the character's own. The audition page
+exposes it as the model row.
+
+**For the audition room only**, and named so nobody mistakes it for the
+story contract. `speak()` takes no model and ignores one if given — that
+is asserted in the suite, along with a sweep proving no module in `js/`
+except `vihuVoice.js` mentions a model at all. Choosing a model is the
+same kind of decision as choosing a voice: a listening one, and the
+alternative is editing the registry, pushing, waiting for a deploy and
+guessing again. Whatever wins gets written into the registry and this is
+never called again.
+
+### When the provider refuses
+
+`voice-speak` returns `{ok: false, reason: 'provider', status, detail}` —
+the provider's own error, truncated. `js/vihuVoice.js` writes it to the
+console and nothing in the product ever renders it.
+
+It exists because a refused request was otherwise **indistinguishable
+from every other kind of quiet**, which made moving between model
+families pure guesswork: the families take different settings, and
+"silence" was the only symptom of getting that wrong. It cannot leak the
+key — it is the provider's error body, and a provider does not echo
+credentials back.
 
 ### Anything unrecognised is neutral
 

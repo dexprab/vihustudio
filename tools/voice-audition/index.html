@@ -74,6 +74,15 @@
      voice. A feeling moves a character’s voice rather than replacing it, so a happy Quill still
      sounds like Quill.</p>
 
+  <h2>The model</h2>
+  <div class="row" id="models"></div>
+  <p class="note">The two families carry a feeling in opposite ways.
+     <code>eleven_turbo_v2_5</code> is built for speed and has only the sliders;
+     <code>eleven_v3</code> is the expressive one and is the only family that reads the audio
+     tags — so on v3 the mood rides on the tag, its stability becomes a three-way choice, and
+     style and speed are not its vocabulary at all. <b>Choosing here changes nothing permanently</b>
+     — it is for listening. Whatever wins gets written into <code>assets/registry.json</code>.</p>
+
   <div class="row">
     <button id="all">Hear everyone</button>
     <button class="ghost" id="allMoods">Hear every feeling</button>
@@ -102,9 +111,9 @@
      lives only in <code>supabase/functions/voice-speak</code>.</p>
 </div>
 
-<script src="../../js/companionEngine.js?v=0576"></script>
-<script src="../../js/lumoVoice.js?v=0576"></script>
-<script src="../../js/vihuVoice.js?v=0576"></script>
+<script src="../../js/companionEngine.js?v=0577"></script>
+<script src="../../js/lumoVoice.js?v=0577"></script>
+<script src="../../js/vihuVoice.js?v=0577"></script>
 <script>
 (function () {
   'use strict';
@@ -129,14 +138,42 @@
     $('moods').appendChild(b);
   });
 
+  // ---- the model ----
+  // '' means "whatever the registry says for this character", which is
+  // the only setting the product itself ever uses.
+  var model = '';
+  [['', 'as configured'], ['eleven_turbo_v2_5', 'turbo v2.5'], ['eleven_v3', 'v3']]
+    .forEach(function (pair) {
+      var b = document.createElement('button');
+      b.className = pair[0] === model ? '' : 'ghost';
+      b.textContent = pair[1];
+      b.dataset.model = pair[0];
+      b.addEventListener('click', function () {
+        model = pair[0];
+        Array.prototype.forEach.call($('models').children, function (o) {
+          o.className = o.dataset.model === model ? '' : 'ghost';
+        });
+        showResolved();
+      });
+      $('models').appendChild(b);
+    });
+
+  function say(who, text, feeling) {
+    return VihuVoice.audition({
+      characterId: who, text: text, emotion: feeling,
+      modelId: model || undefined
+    });
+  }
+
   // The whole point of this panel: it tells a feeling that never reached
   // the request apart from one that reached it and was ignored.
   function showResolved() {
     if (!lastSpoken) return;
-    VihuVoice.resolve({ characterId: lastSpoken, text: line(), emotion: mood })
-      .then(function (r) {
-        $('resolved').textContent = r ? JSON.stringify(r, null, 2) : 'no voice for this character';
-      });
+    VihuVoice.resolve({
+      characterId: lastSpoken, text: line(), emotion: mood, modelId: model || undefined
+    }).then(function (r) {
+      $('resolved').textContent = r ? JSON.stringify(r, null, 2) : 'no voice for this character';
+    });
   }
 
   // One character, every feeling, back to back — the only way to tell
@@ -150,10 +187,8 @@
   // them will help.
   $('ab').addEventListener('click', function () {
     if (!lastSpoken) { $('resolved').textContent = 'press Speak on a character first'; return; }
-    VihuVoice.speak({ characterId: lastSpoken, text: line(), emotion: 'sleep' })
-      .then(function () {
-        return VihuVoice.speak({ characterId: lastSpoken, text: line(), emotion: 'excited' });
-      });
+    say(lastSpoken, line(), 'sleep')
+      .then(function () { return say(lastSpoken, line(), 'excited'); });
   });
 
   $('allMoods').addEventListener('click', function () {
@@ -162,7 +197,7 @@
     (function next() {
       if (!moods.length) return;
       var m = moods.shift();
-      VihuVoice.speak({ characterId: lastSpoken, text: m + '. ' + line(), emotion: m }).then(next);
+      say(lastSpoken, m + '. ' + line(), m).then(next);
     })();
   });
 
@@ -194,9 +229,9 @@
         btn.disabled = true;
         lastSpoken = e.id;
         showResolved();
-        VihuVoice.speak({ characterId: e.id, text: line(), emotion: mood }).then(function (heard) {
+        say(e.id, line(), mood).then(function (heard) {
           btn.disabled = false;
-          if (!heard) { tag.textContent = 'stayed silent'; tag.className = 'tag no'; }
+          if (!heard) { tag.textContent = 'silent — see console'; tag.className = 'tag no'; }
         });
       });
       el.appendChild(btn);
@@ -214,7 +249,7 @@
       (function next() {
         if (i >= list.length) return;
         var e = list[i++];
-        VihuVoice.speak({ characterId: e.id, text: line(), emotion: mood }).then(next);
+        say(e.id, line(), mood).then(next);
       })();
     });
   });

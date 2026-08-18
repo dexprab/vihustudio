@@ -304,6 +304,31 @@
     return /^eleven_v3/.test(String((v && v.modelId) || ''));
   }
 
+  // v3 DOES NOT TAKE THE SAME DIALS, and sending it the wrong ones is
+  // not a soft failure — the provider refuses the whole request and the
+  // line is simply never spoken.
+  //
+  // The two families express emotion in opposite ways. A turbo model has
+  // no tags and only continuous sliders, so a feeling has to be carried
+  // entirely by numbers. v3 is the reverse: expression is what the audio
+  // TAGS are for, its stability is a three-way choice rather than a
+  // slider (creative / natural / robust), and style and speed are not
+  // its vocabulary at all.
+  //
+  // So this sends each family only what that family understands. It is
+  // deliberately MINIMAL for v3 — one dial and the tag — because a
+  // rejected request costs a child their line, while an omitted dial
+  // costs a little nuance the tag was going to carry anyway.
+  var V3_STABILITY = [0, 0.5, 1];
+
+  function _snap(v, choices) {
+    var best = choices[0];
+    for (var i = 1; i < choices.length; i++) {
+      if (Math.abs(choices[i] - v) < Math.abs(best - v)) best = choices[i];
+    }
+    return best;
+  }
+
   // The character's own settings, moved by the feeling. Deltas, never
   // absolutes, so the character survives the mood (see EMOTIONS).
   function _settingsFor(v, emotion) {
@@ -316,6 +341,14 @@
       var from = (typeof base[k] === 'number') ? base[k] : (k === 'speed' ? 1 : 0.5);
       out[k] = _clamp(k, from + mood[k]);
     });
+
+    if (_supportsTags(v)) {
+      // Keep the continuous value's INTENT — a feeling that lowered
+      // stability still lands on the freer of the three choices — then
+      // drop what this family has no use for.
+      var s = (typeof out.stability === 'number') ? out.stability : 0.5;
+      out = { stability: _snap(s, V3_STABILITY) };
+    }
     return out;
   }
 
@@ -332,6 +365,42 @@
    * @returns {string[]}
    */
   function emotions() { return Object.keys(EMOTIONS); }
+
+  function _withModel(v, modelId) {
+    var out = {};
+    Object.keys(v).forEach(function (k) { out[k] = v[k]; });
+    out.modelId = modelId;
+    return out;
+  }
+
+  /**
+   * Speak a line through a DIFFERENT model than the character's own.
+   *
+   * FOR THE AUDITION ROOM ONLY, and named so nobody mistakes it for the
+   * story contract. Story code calls speak(), which never takes a model
+   * — the model lives in assets/registry.json and the whole point of the
+   * seam is that a caller does not know one exists.
+   *
+   * It exists because choosing a model is the same kind of decision as
+   * choosing a voice: a listening one. The two families carry emotion in
+   * completely different ways, and the alternative to hearing them side
+   * by side is editing the registry, pushing, waiting for a deploy and
+   * guessing again. Whatever wins gets written into the registry, and
+   * this is never called again.
+   * @returns {Promise<boolean>}
+   */
+  function audition(opts) {
+    var o = opts || {};
+    var words = String(o.text || '').trim();
+    if (!o.characterId || !words) return Promise.resolve(false);
+    return voiceOf(o.characterId).then(function (v) {
+      if (!v) return false;
+      if (o.modelId) v = _withModel(v, o.modelId);
+      return _generate(v, words, o.emotion).then(function (src) {
+        return src ? _play(src) : false;
+      });
+    }).catch(function () { return false; });
+  }
 
   /**
    * What would actually be sent for this character in this feeling.
@@ -356,6 +425,7 @@
     var who = o.characterId || o.character || o.id;
     return voiceOf(who).then(function (v) {
       if (!v) return null;
+      if (o.modelId) v = _withModel(v, o.modelId);
       return {
         characterId: v.characterId,
         voiceId: v.voiceId,
@@ -691,6 +761,7 @@
     voiceOf: voiceOf,
     emotions: emotions,
     resolve: resolve,
+    audition: audition,
     clearCache: clearCache
   };
   try { window.VihuVoice = VihuVoice; } catch (e) {}

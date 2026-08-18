@@ -152,10 +152,19 @@ Deno.serve(async (req) => {
   });
 
   if (!res.ok) {
-    // Logged for us, never surfaced to a child. The caller treats any
-    // non-audio answer as silence.
-    console.error('elevenlabs', res.status, await res.text());
-    return json({ ok: false, reason: 'provider' }, 200);
+    const body = (await res.text()).slice(0, 400);
+    console.error('elevenlabs', res.status, body);
+    // `detail` is for whoever is fixing it, and NEVER for a child: no
+    // caller in the product renders it, js/vihuVoice.js writes it to the
+    // console, and the audition room shows it. Without it a refused
+    // request is indistinguishable from every other kind of quiet, which
+    // made moving between model families pure guesswork — the models
+    // take different settings, and "silence" was the only symptom of
+    // getting that wrong.
+    //
+    // It cannot leak the key: this is the provider's own error body, and
+    // a provider does not echo credentials back. Truncated regardless.
+    return json({ ok: false, reason: 'provider', status: res.status, detail: body }, 200);
   }
 
   const audio = new Uint8Array(await res.arrayBuffer());

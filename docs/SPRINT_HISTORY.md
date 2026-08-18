@@ -3066,3 +3066,47 @@ differ by a real margin, that the clamps hold at both ends, and that
 `resolve()` carries no key. Two assertions were corrected rather than
 loosened when the new clamp floor made their fixtures unable to
 distinguish a replaced override from a stacked one.
+
+**v3, and why it was not a one-word swap** (build 0577). *"i think you
+need to move to v3."* Right call, and changing `modelId` alone would have
+made Lumo go silent. The two model families carry a feeling in **opposite
+ways**: turbo has no tags and only continuous sliders, so a mood must ride
+on numbers; v3's whole vocabulary is the audio TAG, its stability is a
+three-way choice rather than a slider, and style and speed are not its
+dials at all. Sending one the other's settings is not a soft failure —
+the provider refuses the request and the line is never spoken.
+
+So `_settingsFor()` now shapes the payload per family, deliberately
+**minimal for v3 — one dial and the tag** — because a refused request
+costs a child their line while an omitted dial costs a little nuance the
+tag was going to carry anyway. The continuous stability still sets the
+INTENT: a feeling that lowered it lands on the freer of v3's three
+choices, so excited is still freer than sleep.
+
+**Stated cost, not hidden: v3 gives up `speed`**, which is the slowdown
+that was just asked for. It is per-character rather than per-product, so
+a character for whom pace matters more than expression stays on turbo.
+
+**`VihuVoice.audition()` exists so this is decided by ear rather than by
+deploy.** It speaks a line through a different model than the character's
+own, and the audition room exposes it as a model row — turbo, v3, or as
+configured. Choosing a model is the same kind of decision as choosing a
+voice, and the alternative was edit the registry, push, wait for a
+deploy, guess again. It is named so nobody mistakes it for the story
+contract: `speak()` takes no model and **ignores one if given**, asserted
+in the suite alongside a sweep proving no module in `js/` except
+`vihuVoice.js` mentions a model at all.
+
+**And a refused request is no longer indistinguishable from silence.**
+`voice-speak` now returns the provider's own error as `{reason:
+'provider', status, detail}`, truncated, logged to the console by the
+client and rendered by nothing in the product. Without it, "silence" was
+the only symptom of getting a model's settings wrong — which is precisely
+the failure mode this change introduces the possibility of. It cannot
+leak the key: a provider does not echo credentials back in an error body.
+
+**Verified 106/106, zero page errors** — fourteen new checks that v3 is
+sent no style, speed or similarity_boost, that its stability is one of
+its three legal values and still carries the feeling's direction, that
+turbo is unchanged and still gets no tag, and that the audition override
+cannot reach story code.
