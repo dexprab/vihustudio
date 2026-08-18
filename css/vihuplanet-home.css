@@ -408,6 +408,99 @@ html, body {
   outline-offset: 3px;
 }
 
+/* ---------- the Story's host ----------
+ *
+ * Sprint 1, Companion as World Host. The Companion of whoever made the
+ * Story stands quietly at the foot of the portal while it is read.
+ *
+ * THE ATTENTION HIERARCHY IS GEOMETRY HERE, NOT CARE.
+ * story -> story content -> interactive elements -> Companion -> UI.
+ * The host lives in its own row of the portal's flex column, so it
+ * cannot overlap the page, either arrow, the way out, the title or the
+ * count — those live in other rows, and no page shape, no Story and no
+ * viewport can make two rows of a flex column intersect. A z-index and
+ * some judgement would have looked identical today and broken the first
+ * time a Story had an unusual page.
+ *
+ * The band is RESERVED, never taken: it only grows to the host's height
+ * when a host is really standing in it, so a Story with none reads
+ * exactly as it did before this sprint, to the pixel. */
+
+.ether-portal-inner {
+  /* Quieter when there is less room, which is the rule for this whole
+     presence. On a phone the host is smaller AND softer, because a
+     Companion that holds its ground on a 390px screen is competing with
+     the story rather than keeping it company. */
+  --vp-host-size: clamp(38px, 7vmin, 72px);
+  --vp-host-opacity: 0.92;
+}
+
+.ether-portal-foot {
+  flex: 0 0 auto;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ether-portal-foot.has-host { min-height: var(--vp-host-size); }
+
+.ether-portal-host {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: var(--vp-host-size);
+  height: var(--vp-host-size);
+  /* Never a control. There is nothing to tap, so there is nothing to
+     explain, dismiss or configure. */
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 900ms ease, transform 900ms ease;
+}
+
+.ether-portal-host[hidden] { display: none; }
+
+.ether-portal-host.is-here {
+  opacity: var(--vp-host-opacity);
+  transform: none;
+}
+
+.ether-portal-host-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 6px 16px rgba(6, 9, 20, 0.55));
+}
+
+/* The gentlest float, and nothing else. Calm before spectacle
+   (Decision 9): no sparkles, no bursts, no bobbing that would read as
+   an animation playing at somebody. Long and small enough that it is
+   noticed as breathing rather than as movement. */
+@keyframes vp-host-breathe {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-4px); }
+}
+
+.ether-portal-host.is-here .ether-portal-host-img {
+  animation: vp-host-breathe 5.4s ease-in-out infinite;
+}
+
+@media (max-width: 640px) {
+  .ether-portal-inner { --vp-host-opacity: 0.72; }
+}
+
+/* A child who has asked their device for less movement gets a presence
+   that is simply there, with no arrival and no breathing. */
+@media (prefers-reduced-motion: reduce) {
+  .ether-portal-host {
+    transition: none;
+    transform: none;
+  }
+  .ether-portal-host.is-here .ether-portal-host-img { animation: none; }
+}
+
 @media (max-width: 640px) {
   .ether-preview { padding: 0.8rem 0.8rem 0.9rem; }
   .ether-preview-actions button { font-size: 0.84rem; padding: 0.36rem 0.75rem; }

@@ -1161,6 +1161,104 @@ of discard and restore state also."*
   button stays in the Studio · `renewHere()` mints nothing on VihuPlanet ·
   Back to the Ether still leaves · and one tap gets back in.
 
+### 24. A Story Is Somebody's World, and Its Companion Lives There
+
+Locked by the product owner in the Companion as World Host brief:
+*"When a Traveller opens a published story, the story owner's Companion
+should appear naturally within the story experience and accompany the
+Traveller as a quiet, living presence. The story owns the attention.
+The Companion enriches the experience."*
+
+- **The host is the OWNER's Companion. Never the Traveller's own, never
+  a generic one, never one made up for the visit.** If it cannot be
+  resolved, **no host is shown at all** — a host that is not the
+  owner's would be a stranger in the child's world claiming to live
+  there. That is a disclosed, temporary state for Stories shared before
+  this shipped, and it clears as they are re-shared.
+- **If the Traveller notices it, it should read as *"there is someone
+  living in this world"*, never *"an AI assistant has appeared"*.** The
+  test: a Traveller must be able to experience the complete Story
+  without interacting with, understanding, or paying any attention to
+  the Companion.
+- **The Companion travels WITH the Story**, stamped from the authoring
+  device's own Magic Card and carried forward on every save, exactly as
+  `creatorName` and `cardId` already are (Decision 15). Nothing else
+  could work: `cardId` is the owner's Magic Card and a Magic Card lives
+  on the owner's own device, so resolving it any other way would mean a
+  new identity lookup across children, which VihuPlanet does not do.
+- **What travels is a structured Companion Record, not an id string**
+  (`js/companionRecord.js`), because the product owner asked for it to
+  stay expandable "when companion is given more growth and maturity".
+  Every layer between the store and the renderer passes it through
+  **opaquely** — reading only the fields it needs and preserving the
+  ones it does not understand. The test any change is held to: adding a
+  growth or maturity field later must require **no change** to the
+  store, the feed or the host resolver. Same discipline Decision 9
+  already states for the Story Entity.
+- **Room for maturity is not room for a ladder.** `js/magicCard.js` →
+  `growthSignals()`'s stated *"no counters, no levels"* and Decision
+  20's refusal of growth **stages** both apply here without a word
+  changed: a stage is a level, a level has a name, and a name can be
+  compared between children. Whatever arrives on the record later must
+  be a quality a Companion has, never a rank a child could hold up
+  against a sibling's.
+- **A Canon Story is hosted by Lumo.** Canon is owned by nobody
+  (Decision 13) so there is no Creator's Companion to be its host — and
+  Decision 13 also requires that a child can never tell a Canon Story
+  from a Creator Story, so a Canon Story that alone had no host would
+  be exactly that tell. Lumo belongs to VihuPlanet itself and
+  attributes nobody (Canon 2). Resolved by ROLE from the registry,
+  never by the id.
+- **`js/storyHost.js` is the only thing that answers "who hosts this
+  Story"**, and the Companion rides on the entity's `source` — which
+  the runtime copies wholesale and never reads inside, exactly as
+  `origin` does. Physics, the renderer and the story layer cannot tell
+  one Story's host from another's, because there is no difference for
+  them to act on.
+- **The attention hierarchy is *story → story content → interactive
+  elements → Companion → UI*, and it is enforced as GEOMETRY.** The
+  host lives in its own reserved row at the foot of the portal, so it
+  cannot overlap the page, either arrow, the close control, the title
+  or the count — those are in other rows of the same flex column. A
+  z-index and some judgement would have looked identical and broken on
+  the first oddly-shaped page. **Stated cost, measured:** a hosted page
+  is 5.2% shorter at 1280×800 and 2.3% shorter at 390×844. A Story with
+  no host reserves nothing and gets the layout it always had.
+- **It is not a control.** `pointer-events: none`, `aria-hidden`. No
+  Companion panel, no click target, no dismiss, no configuration, no
+  tutorial, no chat bubble, no onboarding — and quieter when there is
+  less room.
+- **Four behaviours and only four:** welcome (wave → idle), idle
+  presence, one quiet reaction on a page turn, a brief celebrate on the
+  last page. The reaction fires **after** the turn animation finishes —
+  a Companion moving while the paper moves is two things competing for
+  one glance — and is rate-limited.
+- **look/observe, react-to-story-events and scene transition are CUT,
+  and this is a fact about the runtime rather than a deferral.**
+  `EtherFeed.pagesOf()` returns a flat list of page images; there is no
+  `SceneEngine` anywhere in this path, no scenes and no story events.
+  The page turn is the only real event. **Do not invent an event model
+  to react to.**
+- **Poses are preferences, never requirements.** The packs are unevenly
+  complete (quill ships no `celebrate`, `happy`, `surprised` or
+  `sleep`; nimbus and leosaurus no `think`), so every behaviour
+  degrades down a chain that ends where every pack has art. A child
+  bonded to Quill never sees a broken or missing image.
+- **No second companion system, and `js/companionEngine.js` is
+  untouched.** The Studio's mounted widget is draggable, clickable,
+  position-remembering and carries a speech bubble — right in the
+  Studio, wrong over a story being read, not least because a draggable
+  portrait a child can park on the page is the one thing the hierarchy
+  forbids. The host uses the same seams the three existing in-place
+  companion surfaces already use: `loadRegistry()` and the package's
+  own `companion.json` states map.
+- Out of scope and not implemented: augmentations, creator scripting,
+  AI dialogue, conversation, memory, personality systems, autonomous
+  reasoning, companion-generated content, companion-controlled
+  progression, social features, new Companion UI, marketplace,
+  community, version management, and any Builder or Studio redesign.
+- `js/companionRecord.js` · `js/storyHost.js` · `js/etherHost.js`.
+
 ## Roadmap
 
 1. Theme Designer Polish

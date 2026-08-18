@@ -2738,3 +2738,111 @@ walk reached `celebration` on its own in **8 seconds**, with
 `PublishStudio.isOpen() && getStage()===STAGES.CELEBRATION` — which is
 literally what the gate reads — returning true. So the chain is proved end to
 end, in two runs rather than one.
+
+## Somebody Lives In This Story — the Companion as World Host (build 0570)
+
+**When a Traveller opens a published Story, the Companion of whoever made it
+is there.** Not the Traveller's own, not a generic one, not one made up for
+the visit — the owner's. The story owns the attention and the Companion
+enriches it: it never overlaps the page, the arrows, the way out, the title or
+the count, it is not a control, and the whole Story can be read start to
+finish by somebody who never notices it.
+
+**The Companion travels WITH the Story, because nothing else could work.**
+A record's `cardId` is the owner's Magic Card and a Magic Card lives on the
+owner's own device; asking the platform "who is card X bonded to" would be a
+new identity lookup across children, which VihuPlanet does not do. So it is
+stamped from the authoring device's own card and carried forward, exactly as
+`creatorName` and `cardId` already are (Decision 15). The trap that made this
+non-trivial is recorded twice already in `js/creatorProjectStore.js`:
+`upsert()` rebuilds the whole record on every debounced autosave, so anything
+not carried forward is wiped the instant editing continues. Verified: three
+further autosaves — two of them with a *different* Magic Card active on the
+device — leave the Story's Companion exactly as it was.
+
+**It is a structured record, not an id string** (`js/companionRecord.js`),
+because the product owner asked for the Companion information to stay
+expandable for growth and maturity. Every layer passes it through opaquely:
+`clone()` copies every own key rather than a declared list, so a field this
+build has never heard of survives the store, the cloud, the feed and the host
+resolver untouched. Proved rather than asserted — a record carrying
+`maturity` and `memories` came back out of `StoryHost.resolve()` with both
+intact, and nothing in the store, the feed or the resolver knows those words.
+Room for maturity is not room for a ladder: `growthSignals()`'s "no counters,
+no levels" discipline and Decision 20's refusal of growth *stages* both apply
+here without a word changed.
+
+**A Canon Story is hosted by Lumo**, decided by the product owner. Canon is
+owned by nobody (Decision 13) so there is no Creator's Companion to be its
+host, and Decision 13 also requires that a child can never tell a Canon Story
+from a Creator Story — a Canon Story that alone had no host would be exactly
+that tell. Lumo belongs to VihuPlanet itself and attributes nobody (Canon 2).
+Resolved by ROLE from `assets/registry.json`, never by the id `lumo`, the same
+rule `companionDirector`, `magicCardUI`, `studioRite` and `shareCeremony`
+already follow.
+
+**A Story shared before this shipped shows NO host at all** — never a
+substitute. A host that is not the owner's would be a stranger in the child's
+world claiming to live there. Disclosed and temporary; it clears as stories
+are re-shared, and `markPublished()` fills the gap at share time for anything
+still on the device (guarded by ownership, so a shared machine can never put
+one child's Companion into another's Story).
+
+**The attention hierarchy is geometry, not care.** The host lives in its own
+reserved row at the foot of the portal, so it *cannot* overlap the page,
+either arrow, the close control, the title or the count — those are in other
+rows of the same flex column, and no page shape, Story or viewport can make
+two rows of a flex column intersect. A z-index and some judgement would have
+looked identical today and broken on the first oddly-shaped page. The band
+reserves height only when a host is really standing in it, so a Story with
+none gets the layout it always had. **Stated cost, measured:** a hosted page
+is 35px shorter at 1280×800 (5.2%) and 17px shorter at 390×844 (2.3%).
+
+**Four behaviours and only four** — welcome (wave → idle), idle presence, one
+quiet reaction on a page turn, a brief celebrate on the last page. §3.3
+look/observe, §3.4 react-to-story-events and §3.5 scene transition are cut,
+and not as an omission: `EtherFeed.pagesOf()` returns a flat list of page
+images, there is no `SceneEngine` anywhere in this path, and there are no
+scenes and no story events to hook. Inventing events to react to would be
+inventing a story model that does not exist. The page-turn reaction fires
+*after* the turn animation finishes — a Companion moving while the paper moves
+is two things competing for one glance — and is rate-limited so fast page
+turning gives a companion reading along rather than one flickering.
+
+**Poses are preferences, never requirements**, because the packs are genuinely
+uneven: leafy is complete, nimbus and leosaurus have no `think`, and quill
+ships no `celebrate`, `happy`, `surprised` or `sleep`. Each chain ends
+somewhere every pack has, so the worst case is a host that simply does not
+change pose. Verified on the real art: a Quill owner's last page falls
+`celebrate → happy → hero` and shows a real image (1264px wide), never a
+broken one.
+
+**No second companion system and zero lines changed in
+`js/companionEngine.js`.** The Studio's mounted widget is draggable, clickable,
+position-remembering and carries a speech bubble, a grass-and-flowers home and
+a cloud charm — all right in the Studio and all wrong over a story somebody is
+reading, not least because a draggable portrait a child can park on the page is
+the one thing the hierarchy forbids. So this uses the same seams the three
+existing in-place companion surfaces already use: `loadRegistry()` for who
+exists, and the package's own `companion.json` states map for the art.
+Verified: `document.querySelectorAll('.companion-widget').length === 0`.
+
+**Verified in a real browser, 52/52, zero page errors** — desktop 1280×800, a
+390×844 phone, and `prefers-reduced-motion`. Two different owners get two
+different Companions and never the Traveller's own (whose card was active on
+the viewing device throughout); a Canon Story gets Lumo; welcome, reaction,
+rate limiting and celebrate each measured by the pose actually on screen;
+occlusion measured as rectangles at **0.00px² against all six targets** on a
+landscape page, a portrait page and a phone; one host node and one host image
+across page turns and reopens; and a Story with no Companion shows nobody and
+reserves no room. The only failing resources in the whole run are the
+sandbox's blocked Supabase CDN route and the two deliberate probes for poses
+Quill does not ship.
+
+**One thing found and fixed in the harness rather than the product**, worth
+recording because it looked exactly like a bug: `focus.open()` and
+`focus.close()` are animated, and `focus:opened` fires only once a Spirit has
+finished coming forward. Waiting on the preview merely being *visible* catches
+the previous Story's preview, so Read opened the previous Story and the host
+looked one Story behind. The harness now waits for the preview to be showing
+the Story it asked for, by name.

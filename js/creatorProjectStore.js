@@ -237,6 +237,35 @@ const CreatorProjectStore=(function(){
     }catch(e){ return null; }
   }
 
+  // The bonded Story Companion on this device's own Magic Card, used
+  // only when stamping a record this device is authoring — the exact
+  // same rule _localCreatorName() above holds, and for the exact same
+  // reason: a Story read in the Ether must never be given the
+  // Companion of whoever happens to be looking at it.
+  //
+  // Null for a Traveller who has not had their Creator Ceremony yet.
+  // That is honest rather than a gap: they have no Companion, so their
+  // Story carries none, and it gains one on the next save after the
+  // Ceremony bonds it.
+  function _localCompanion(){
+    try{
+      if(typeof MagicCard==='undefined' || typeof CompanionRecord==='undefined') return null;
+      return CompanionRecord.fromCard(MagicCard.getActive());
+    }catch(e){ return null; }
+  }
+
+  // Opaque copy, guarded — a surface that does not load
+  // js/companionRecord.js still saves projects exactly as it always
+  // did, it simply carries whatever is already on the record through
+  // untouched rather than re-copying it.
+  function _companionClone(rec){
+    if(!rec) return null;
+    try{
+      if(typeof CompanionRecord==='undefined') return rec;
+      return CompanionRecord.clone(rec);
+    }catch(e){ return rec; }
+  }
+
   function upsert(id,meta,data){
     const now=new Date().toISOString();
     const existing=_cache().get(id);
@@ -288,6 +317,24 @@ const CreatorProjectStore=(function(){
       // active card does: MagicCard.adopt(), materialising a recalled
       // Creator's own Stories on a new device.
       cardId:(meta&&meta.cardId)||(existing&&existing.cardId)||_activeCardId()||undefined,
+      // WHOSE COMPANION LIVES IN THIS STORY (Sprint 1, Companion as
+      // World Host). A Story opened by a Traveller shows the Companion
+      // of the child who made it, and nothing in the Ether could look
+      // that up: a Magic Card lives on its owner's device. So the
+      // Companion travels with the Story, exactly as creatorName above
+      // does — see js/companionRecord.js for why it is a structured
+      // record and not a bare id.
+      //
+      // Carried forward like publishedAt, creatorName and cardId, and
+      // for the same reason spelled out above them: this record is
+      // rebuilt from scratch on every debounced autosave, so anything
+      // not carried forward is wiped the moment editing continues.
+      // Copied through CompanionRecord.clone(), which copies every own
+      // key rather than a declared list — a field a future build adds
+      // survives this function without this function being changed.
+      companion:_companionClone(meta&&meta.companion)||
+                _companionClone(existing&&existing.companion)||
+                _localCompanion()||undefined,
       data:data
     };
     _cache().putLocal(record,{onPersistFailed:_onPersistFailed(id)});
@@ -335,6 +382,26 @@ const CreatorProjectStore=(function(){
     const record=_cache().get(id);
     if(!record) return {ok:false};
     if(record.publishedAt) return {ok:true,record:record,already:true};
+    // SHARE TIME IS THE MOMENT THE COMPANION MUST BE ABOARD.
+    //
+    // upsert() above stamps it on every save, so a Story written since
+    // Sprint 1 already carries one. This covers the Story that does
+    // not: one made before this shipped, or one made by a Traveller
+    // whose Creator Ceremony happened between their last edit and this
+    // moment (Canon 6 puts the Ceremony AFTER a first share, so that
+    // ordering is the normal case rather than an edge one).
+    //
+    // Guarded by ownership: a record belonging to a different Magic
+    // Card is left alone, so a machine two children share can never
+    // put one child's Companion into the other's Story (the failure
+    // CLAUDE.md -> Decision 19 had to fix for projects).
+    if(!record.companion){
+      const active=_activeCardId();
+      if(!record.cardId || !active || record.cardId===active){
+        const mine=_localCompanion();
+        if(mine) record.companion=mine;
+      }
+    }
     record.publishedAt=when||new Date().toISOString();
     record.updatedAt=new Date().toISOString();
     _cache().putLocal(record,{onPersistFailed:_onPersistFailed(id)});
