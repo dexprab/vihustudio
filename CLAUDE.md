@@ -901,7 +901,25 @@ once, and its scope is no longer closed.
 - Out of scope: level names shown to a child, badges, progress bars,
   percentages, locked controls, anything comparable between children,
   and required progression of any kind.
-- Design and sequencing: `docs/STUDIO_RITE_LEVELS.md`.
+- **Step 1 is built** (build 0569): the **rite registry** (`RITES` in
+  `js/studioRite.js` — id, mission, screens, `teaches`, `reveals`,
+  `unlocksStudio`, found by id and never by ordinal), Rite II's
+  nineteen beats, its four new gates, and the Background `Picture`
+  leak closed with `.context-bg-picture-section`. **What a rite makes
+  reachable is data on the rite**: each entry in `reveals` becomes a
+  `studio-rite-shows-<capability>` class, and the reduction's rules
+  stand down for exactly those — so the first Rite, which reveals
+  nothing, meets the Studio it always did. `StudioRite.start(id)` is
+  the seam the Studio Home offer will call. **Still not built, in this
+  order:** Rite II's recordings, Rite III, the capability record on the
+  Magic Card, the opt-in, and only then the persistence.
+- **A rite with no recordings is walkable, and always was.** A screen
+  with no `audio:{id,cues}` reveals its lines at reading speed and
+  plays nothing; the guard that refuses to run is about Lumo's *art*
+  package, not his voice. So a new rite ships silent and a recording
+  session adds one field per screen. Never invent placeholder audio ids.
+- Design and sequencing: `docs/STUDIO_RITE_LEVELS.md`. Rite II's script
+  and its engineering notes: `docs/STUDIO_RITE_LEVEL_II_STORY.md`.
 
 ### 21. VihuPlanet Is For Everybody; the Studio Needs a Laptop
 

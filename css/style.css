@@ -10891,27 +10891,49 @@ body.studio-rite-running .preview-wrapper{
   body.studio-rite-running .preview-wrapper{ transition:none; }
 }
 
-/* "+ Add Page" makes an EMPTY page, and the story teaches copying one
-   instead — a blank page would arrive with no star on it and, on page
-   3, nothing to move. The ⋮ menu right beside it stays. */
-body.studio-rite-running #addPageBtn{ display:none !important; }
+/* WHAT A RITE REVEALS.
+   Every rule below hides a control unless the rite being performed says
+   it teaches it. `studio-rite-shows-<capability>` is written onto <body>
+   from the rite's own `reveals` list (js/studioRite.js -> _applyReveals),
+   so the set is data on the rite rather than a branch anywhere in the
+   code — and a rite that reveals nothing, which is what the first one
+   does, meets exactly the Studio these rules have always produced.
+   A control a child has not been taught is simply not there; there is no
+   padlock, no greyed-out tile and nothing to compare. */
 
-/* Add Something keeps only what the story asks for. Doodle, Photo,
-   Family Photos, From This World and Voice are all real capabilities a
-   child will meet the moment the Rite ends — they are just five more
-   decisions during the one beat that says "add a star".
+/* "+ Add Page" makes an EMPTY page, and the first story teaches copying
+   one instead — a blank page would arrive with no star on it and, on
+   page 3, nothing to move. The ⋮ menu right beside it stays. A later
+   story is ABOUT a page made from nothing, and reveals it. */
+body.studio-rite-running:not(.studio-rite-shows-blank-page) #addPageBtn{ display:none !important; }
 
-   Shapes joins them. The Starter Story asks for a star, a tree, a
+/* Add Something keeps only what the story being made asks for.
+
+   From This World and Voice belong to a story about Worlds, which no
+   rite tells yet, so nothing reveals them.
+
+   Doodle and Shapes are hidden for the first story and revealed by the
+   one that is ABOUT them. The first story asks for a star, a tree, a
    person or animal, and a heart or smiley — every one of those is an
-   emoji, and none of the ten capability gates is satisfied by a shape.
-   A triangle on the beat that says "add a star" is a wrong turn the
-   story then has to talk the child back from. */
-body.studio-rite-running .context-add-card[data-add-id='doodle'],
-body.studio-rite-running .context-add-card[data-add-id='photo'],
-body.studio-rite-running .context-add-card[data-add-id='family'],
+   emoji, and none of its gates is satisfied by a shape, so a triangle
+   on the beat that says "add a star" is a wrong turn the story then has
+   to talk the child back from. In the story that builds a house out of
+   parts, the same triangle is the point. */
 body.studio-rite-running .context-add-card[data-add-id='fromWorld'],
-body.studio-rite-running .context-add-card[data-add-id='voice'],
-body.studio-rite-running .context-add-card[data-add-id='shapes']{ display:none !important; }
+body.studio-rite-running .context-add-card[data-add-id='voice']{ display:none !important; }
+body.studio-rite-running:not(.studio-rite-shows-doodle) .context-add-card[data-add-id='doodle']{ display:none !important; }
+body.studio-rite-running:not(.studio-rite-shows-shapes) .context-add-card[data-add-id='shapes']{ display:none !important; }
+
+/* Photo and Family Photos travel together, and only Photo is ever
+   taught. Family Photos is a SOURCE rather than a control — it appears
+   at three surfaces and only when a grown-up has already shared an
+   album, so it can never carry a beat of its own (a beat aimed at a
+   control that may not be on the screen is a dead end). It rides along
+   with Photo from the story that teaches pictures onward, wherever
+   pictures can go. docs/STUDIO_RITE_LEVELS.md §1. */
+body.studio-rite-running:not(.studio-rite-shows-photo) .context-add-card[data-add-id='photo'],
+body.studio-rite-running:not(.studio-rite-shows-photo) .context-add-card[data-add-id='family'],
+body.studio-rite-running:not(.studio-rite-shows-photo) .context-bg-picture-section{ display:none !important; }
 
 /* The page-level Set tiles the Starter Story never touches.
  *

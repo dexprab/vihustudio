@@ -322,9 +322,218 @@ const StudioRite=(function(){
   // "Next", which is what a tutorial says.
   const DONE_LABEL='I did it!';
   // Beats with nothing to settle — they happen once, in an instant.
-  const DISCRETE={'page-added':1,'story-played':1,'story-shared':1};
+  const DISCRETE={'page-added':1,'story-played':1,'story-shared':1,
+                  'blank-page-added':1,'story-finished':1};
 
   const MISSION='Our story: a star falls from the sky, and someone helps it home.';
+
+  // ---------- "My Little House" (docs/STUDIO_RITE_LEVEL_II_STORY.md) ----------
+  // Nineteen beats, taken verbatim from the approved script: the story
+  // line is the title, the instruction is the subtitle, exactly as the
+  // document lays them out.
+  //
+  // NO `audio` FIELD ANYWHERE, DELIBERATELY. A screen with no recording
+  // falls through _playScreen's own `rec` test to _playLines(), which
+  // reveals each line at reading speed and calls _speak(undefined) —
+  // which stops the previous clip and plays nothing. So this story is
+  // walkable and testable in silence today, and the ONLY change a
+  // recording session needs later is an `audio:{id,cues}` on each
+  // screen, alongside the lines that are already here. No placeholder
+  // ids are invented: an id that names a file nobody has recorded would
+  // make LumoVoice look for it on every beat, and would have to be
+  // found and corrected later rather than simply added.
+  const MISSION_HOUSE='Our story: a little house is built, and someone comes home to it.';
+
+  const SCREENS_HOUSE=[
+    // ---- Page one — building the house
+    {band:true, lines:[
+      {lumo:'talk', egg:'curious',
+       line:{title:'Once upon a time, there was a little patch of land waiting for a story.',
+             subtitle:'Choose a colour for the ground.'}}
+     ], end:{await:'bg-set'}, nudgeDelay:6000},
+
+    {band:true, lines:[
+      {lumo:'talk', egg:'curious',
+       line:{title:'Someone was going to live here. But first, they needed a house.',
+             subtitle:'Add a square.'}}
+     ], end:{await:'shape-added'}, nudgeDelay:6000},
+
+    {band:true, lines:[
+      {lumo:'curious', egg:'idle',
+       line:{title:'A house needs a roof to keep the rain away.',
+             subtitle:'Add a triangle on top.'}}
+     ], end:{await:'shape-added'}, nudgeDelay:6000},
+
+    // Unconditional wording — "Roofs are never quite the right size the
+    // first time" is about roofs, not about this child's roof. An
+    // earlier draft said "that roof looks a little too big", which is
+    // Lumo judging work he cannot see.
+    {band:true, lines:[
+      {lumo:'talk', egg:'thinking',
+       line:{title:'Roofs are never quite the right size the first time.',
+             subtitle:'Make it the right size.'}}
+     ], end:{await:'sticker-resized'}, nudgeDelay:6000},
+
+    {band:true, lines:[
+      {lumo:'talk', egg:'thinking',
+       line:{title:'The little house was almost ready. But how would anyone get inside?',
+             subtitle:'Give it a door.'}}
+     ], end:{await:'shape-added'}, nudgeDelay:6000},
+
+    {band:true, lines:[
+      {lumo:'curious', egg:'curious',
+       line:{title:'And inside the house, there was no window to look through.',
+             subtitle:'Give it a window.'}}
+     ], end:{await:'shape-added'}, nudgeDelay:6000},
+
+    {band:true, lines:[
+      {lumo:'talk', egg:'curious',
+       line:{title:'There was still no way to reach the door.',
+             subtitle:'Draw a path to the door.'}}
+     ], end:{await:'doodle-added'}, nudgeDelay:6000},
+
+    {band:true, lines:[
+      {lumo:'curious', egg:'excited',
+       line:{title:'Beside the path, there was a little space waiting for something to grow.',
+             subtitle:'Draw something beside the house.'}}
+     ], end:{await:'doodle-added'}, nudgeDelay:6000},
+
+    // ---- Page two — who lives there?
+    {band:true, lines:[
+      {lumo:'celebrate', egg:'excited',
+       line:{title:'The little house was ready. But a house is lonely without a story.',
+             subtitle:'Give your story a new page.'}}
+     ], end:{await:'blank-page-added'}, nudgeDelay:10000},
+
+    {band:true, lines:[
+      {lumo:'talk', egg:'curious',
+       line:{title:'Morning came, and the new day was waiting outside.',
+             subtitle:'Choose a colour for this day.'}}
+     ], end:{await:'bg-set'}, nudgeDelay:10000},
+
+    // The two photo beats carry a decline, in the child's own voice.
+    // The file browser is a grown-up's interaction, and a beat that
+    // stalls until an adult walks past is a beat that strands a child
+    // (docs/STUDIO_RITE_LEVEL_II_STORY.md §3). Declining costs the story
+    // nothing — the house is no less theirs for having a drawing where a
+    // face would go.
+    {band:true, lines:[
+      {lumo:'curious', egg:'curious',
+       line:{title:'And then, someone finally came home. Who could it be?',
+             subtitle:'Add a picture of them.'}}
+     ], end:{await:'photo-added', decline:"I'll find one later."}, nudgeDelay:10000},
+
+    {band:true, lines:[
+      {lumo:'talk', egg:'excited',
+       line:{title:'They had brought their favourite thing with them.',
+             subtitle:'Draw it beside them.'}}
+     ], end:{await:'doodle-added'}, nudgeDelay:10000},
+
+    {band:true, lines:[
+      {lumo:'curious', egg:'excited',
+       line:{title:'Just then, someone came walking up the little path. A visitor!',
+             subtitle:'Add a picture of them.'}}
+     ], end:{await:'photo-added', decline:"I'll find one later."}, nudgeDelay:10000},
+
+    {band:true, lines:[
+      {lumo:'talk', egg:'thinking',
+       line:{title:'They reached the door and said something very important.',
+             subtitle:'Add some words.'}}
+     ], end:{await:'text-added'}, nudgeDelay:10000},
+
+    // ---- Page three — the last day
+    {band:true, lines:[
+      {lumo:'talk', egg:'curious',
+       line:{title:'The next morning, something was waiting at the little house.',
+             subtitle:'Give your story another page.'}}
+     ], end:{await:'blank-page-added'}, nudgeDelay:10000},
+
+    {band:true, lines:[
+      {lumo:'curious', egg:'thinking',
+       line:{title:'What do you think happened next?',
+             subtitle:'Draw it.'}}
+     ], end:{await:'doodle-added'}, nudgeDelay:10000},
+
+    {band:true, lines:[
+      {lumo:'talk', egg:'curious',
+       line:{title:'Every good story deserves a name. What will you call yours?',
+             subtitle:'Give it a name.'}}
+     ], end:{await:'story-named'}, nudgeDelay:10000},
+
+    // `unlock` wakes Play My Story and Finish Story, which have been
+    // asleep in the header since this story began — the same finale
+    // mechanism the first Rite uses, at the same point in the arc.
+    {band:true, unlock:true, lines:[
+      {lumo:'celebrate', egg:'excited',
+       line:{title:'Now let us see what happened at the little house, from the very beginning.',
+             subtitle:'Play your story.'}}
+     ], end:{await:'story-played'}, nudgeDelay:3000},
+
+    // Finish, NOT share (docs/STUDIO_RITE_LEVEL_II_STORY.md §5). The
+    // Creator Ceremony happens once, at the first Rite, as the
+    // consequence of a first share; this story ends when the child has
+    // their finished story in their hands. Sharing afterwards is theirs
+    // to choose, from the celebration, with no ceremony repeated.
+    {band:true, lines:[
+      {lumo:'celebrate', egg:'excited',
+       line:{title:'And just like that, the little house had a story of its own.',
+             subtitle:'Finish your story.'}}
+     ], end:{await:'story-finished'}, nudgeDelay:3000}
+  ];
+
+  // ---------- The rite registry (docs/STUDIO_RITE_LEVELS.md §3) ----------
+  // "Build a rite registry, not three levels. Level I/II/III is today's
+  // count, not the design." So this is a LIST, and nothing anywhere
+  // reads an ordinal out of it: a rite is found by id, the mandatory one
+  // is the one that says it unlocks the Studio, and what a rite makes
+  // reachable is data on the rite rather than a branch in the code.
+  //
+  //   id            — stable, never shown to a child.
+  //   teaches       — the CAPABILITIES the story teaches, not a level
+  //                   number (§4: rites get added, split and reordered;
+  //                   a capability is the stable thing). NOTHING PERSISTS
+  //                   THIS YET, deliberately — §6 forbids shipping the
+  //                   persistence before every rite exists, or a child
+  //                   is stranded at the first one with no way forward.
+  //   reveals       — what the Studio shows while this rite runs. Each
+  //                   entry becomes a `studio-rite-shows-<name>` class on
+  //                   <body>, and the reduction's own rules stand down for
+  //                   exactly those (css/style.css). The first rite
+  //                   reveals nothing, which is precisely the Studio of
+  //                   five controls it has always run in.
+  //   startsBlank   — this rite opens its own blank story when it begins
+  //                   (the first rite does it later, on the screen that
+  //                   boots the Studio, and so does not set this).
+  //   unlocksStudio — writes the completion flag on a genuine full run.
+  //                   Exactly one rite is mandatory; the rest are opt-in
+  //                   and store nothing.
+  const RITES=[
+    {id:'the-night-a-star-came-down',
+     mission:MISSION,
+     screens:SCREENS,
+     teaches:['emoji','background','resize','rotate','move','text','copy-page',
+              'story-name','play','finish','share'],
+     reveals:[],
+     unlocksStudio:true},
+
+    {id:'my-little-house',
+     mission:MISSION_HOUSE,
+     screens:SCREENS_HOUSE,
+     teaches:['shapes','doodle','photo','blank-page'],
+     reveals:['shapes','doodle','photo','blank-page'],
+     startsBlank:true,
+     unlocksStudio:false}
+  ];
+
+  function _riteById(id){
+    for(let i=0;i<RITES.length;i++){ if(RITES[i].id===id) return RITES[i]; }
+    return null;
+  }
+  // The mandatory one, by what it DOES rather than by its position.
+  function _mandatoryRite(){
+    for(let i=0;i<RITES.length;i++){ if(RITES[i].unlocksStudio) return RITES[i]; }
+    return RITES[0];
+  }
 
   // The stage artwork behind screens 1 and 2. Three extensions are tried
   // in order rather than one canonical name, because the file arrives by
@@ -443,6 +652,9 @@ const StudioRite=(function(){
   let _running=false;
   let _voiceId=null;   // the clip currently speaking, so it can be silenced
   let _bgTouched=false; // the child actually used the background control
+  let _addPageUsed=false;   // the child actually used the make-a-page control
+  let _blankPageSeen=false; // a page arrived with nothing on it (latched)
+  let _rite=null;      // the rite being performed, from RITES below
 
   function _el(tag,cls){
     const e=document.createElement(tag);
@@ -483,7 +695,7 @@ const StudioRite=(function(){
     // being read to, can look back at what was said instead of racing a
     // timer. Advancing is always the child's own click.
     const mission=_el('div','studio-rite-mission');
-    mission.textContent=MISSION;
+    mission.textContent=(_rite&&_rite.mission)||MISSION;
     const convo=_el('div','studio-rite-convo');
     const controls=_el('div','studio-rite-controls');
     panel.appendChild(cast);
@@ -693,6 +905,18 @@ const StudioRite=(function(){
     return document.querySelector('.context-add-trigger');
   }
 
+  // One particular tile inside Add Something, once the accordion is
+  // open; the way in while it is still shut. Resolved by the tile's own
+  // id rather than its label or its position, because the row's
+  // contents change with what a World and a family album make available.
+  function _addTile(id){
+    try{
+      const tile=document.querySelector(".context-add-card[data-add-id='"+id+"']");
+      if(tile) return tile;
+    }catch(e){}
+    return document.querySelector('.context-add-trigger');
+  }
+
   // capability -> {find(), hint}. `find` may return null at any moment
   // (the control genuinely isn't on screen yet); the nudge then simply
   // waits and tries again rather than pointing at nothing.
@@ -799,6 +1023,35 @@ const StudioRite=(function(){
         return document.querySelector('.context-add-trigger');
       },
       hint:'Words live with the other things you can add.'
+    },
+    'shape-added':{
+      find:function(){ return _addTile('shapes'); },
+      hint:"It's over on the right, with the other things you can add."
+    },
+    // Two steps, the same shape the spatial beats already use: the way
+    // in while there is nothing to draw on, and the pad itself once it
+    // is open in front of them.
+    'doodle-added':{
+      find:function(){
+        return document.querySelector('.doodle-pad-canvas') || _addTile('doodle');
+      },
+      hint:function(){
+        return document.querySelector('.doodle-pad-canvas')
+          ? 'The little square on the right is yours to draw on.'
+          : "It's over on the right, with the other things you can add.";
+      }
+    },
+    'photo-added':{
+      find:function(){ return _addTile('photo'); },
+      hint:'Pictures live with the other things you can add.'
+    },
+    'blank-page-added':{
+      find:function(){ return document.getElementById('addPageBtn'); },
+      hint:'Your pages are down the left side.'
+    },
+    'story-finished':{
+      find:function(){ return document.getElementById('shareBtn'); },
+      hint:'It is up at the top, next to Play My Story.'
     },
     // A page the child has emptied — by deleting what they made, which
     // exploring children do — used to leave these three beats with
@@ -1029,6 +1282,45 @@ const StudioRite=(function(){
       catch(e){ return false; }
     }
     if(kind==='text-added') return _textCount()>(baseline&&baseline.__texts||0);
+    // Counted by KIND, so a shape never passes a doodle beat and a photo
+    // never passes a shape beat — the whole reason these gates exist.
+    if(kind==='shape-added') return _kindCount('shape')>(baseline&&baseline.__shapes||0);
+    if(kind==='photo-added') return _kindCount('image')>(baseline&&baseline.__images||0);
+    if(kind==='doodle-added') return _drawnDoodleCount()>(baseline&&baseline.__doodles||0);
+    // A page that arrived EMPTY. `page-added` counts pages and the first
+    // Rite teaches copying one, so a copy satisfies that count and this
+    // beat would be passed by the skill the child already has.
+    //
+    // Two signals, either of which is enough, because neither is enough
+    // alone. The control that makes an empty page is the exact thing the
+    // beat is about, so using it counts outright. And a page that arrives
+    // carrying nothing is an empty page however it was made — which
+    // covers a child who found another way there. A copy of a page with
+    // a house on it satisfies neither. (The one case both miss is a copy
+    // of an already-empty page; in this story page one holds a house by
+    // the time this beat is reached, so there is no empty page to copy.)
+    //
+    // Latched: a child who adds a page and immediately puts something on
+    // it must not lose the beat between two polls.
+    if(kind==='blank-page-added'){
+      if(_blankPageSeen) return true;
+      if(_pageCount()<=(baseline&&baseline.__pages||0)) return false;
+      if(_addPageUsed || _stickers().length===0){ _blankPageSeen=true; return true; }
+      return false;
+    }
+    // The child finished their story: Publish Studio has reached its own
+    // celebration — "You finished your story!" — which is the moment
+    // every artifact exists and the story is theirs to keep. Read from
+    // PublishStudio's own public stage rather than from the DOM, so this
+    // can never disagree with what actually happened. Deliberately NOT
+    // `story-shared`: sharing is a separate act (CLAUDE.md → Decision 12)
+    // and this story ends at finishing.
+    if(kind==='story-finished'){
+      try{
+        return typeof PublishStudio!=='undefined' && PublishStudio.isOpen()
+               && PublishStudio.getStage()===PublishStudio.STAGES.CELEBRATION;
+      }catch(e){ return false; }
+    }
     const list=_stickers();
     if(kind==='sticker-added') return list.length>(baseline&&baseline.__count||0);
     if(!list.length) return false;
@@ -1079,6 +1371,32 @@ const StudioRite=(function(){
     return _stickers().filter(function(s){ return s.kind==='text'; }).length;
   }
 
+  // Shapes and photos land in the same object list emojis do, so
+  // `sticker-added` is already satisfied by every one of them
+  // (docs/STUDIO_RITE_LEVEL_II_STORY.md §4). What tells them apart is the
+  // object's own `kind`, written by js/contextPanel.js when it is made:
+  // 'shape' from the shape picker, 'image' from a picture, 'doodle' from
+  // the drawing pad.
+  function _kindCount(kind){
+    return _stickers().filter(function(s){ return s.kind===kind; }).length;
+  }
+
+  // A DRAWN doodle — one with at least one stroke on it — and never
+  // merely a doodle object that exists.
+  //
+  // The pad is created the instant the child taps its way in, empty, and
+  // selected. An "a doodle object arrived" gate would therefore be
+  // satisfied by the tap itself: Lumo would say "Draw a path to the
+  // door", the child would open the pad, and the beat would pass before
+  // a single line was drawn — teaching the tap and never the drawing.
+  // The beat's own instruction is the condition, so the condition is a
+  // stroke.
+  function _drawnDoodleCount(){
+    return _stickers().filter(function(s){
+      return s.kind==='doodle' && s.strokes && s.strokes.length>0;
+    }).length;
+  }
+
   // Everything a beat might be waiting on, sampled at the moment the
   // beat begins. Counts are per-PAGE, so adding a page resets them —
   // which is what makes "add something" work again on page 2 and 3.
@@ -1092,6 +1410,9 @@ const StudioRite=(function(){
     map.__pages=_pageCount();
     map.__count=_stickers().length;
     map.__texts=_textCount();
+    map.__shapes=_kindCount('shape');
+    map.__images=_kindCount('image');
+    map.__doodles=_drawnDoodleCount();
     try{ map.__plays=StoryPlayer.playCount(); }catch(e){ map.__plays=0; }
     try{ map.__published=!!MagicCard.growthSignals().hasEverPublished; }catch(e){ map.__published=false; }
     return map;
@@ -1224,7 +1545,14 @@ const StudioRite=(function(){
     try{
       return _pageCount()+'|'+_bgNow()+'|'+_titleNow()+'|'+_textCount()+'|'+
         _stickers().map(function(s){
-          return s.id+':'+s.x+','+s.y+':'+s.w+'x'+s.h+':'+(s.rotation||0);
+          // Drawing adds strokes without moving, resizing or turning
+          // anything, so a doodle in progress would otherwise look
+          // identical to a child who had stopped. Only objects that
+          // actually carry strokes contribute the extra term, so every
+          // object the first Rite ever makes produces exactly the string
+          // it always did.
+          return s.id+':'+s.x+','+s.y+':'+s.w+'x'+s.h+':'+(s.rotation||0)
+                 +(s.strokes?(':'+s.strokes.length):'');
         }).join('~');
     }catch(e){ return ''; }
   }
@@ -1260,7 +1588,13 @@ const StudioRite=(function(){
   // Never done for the spatial beats: move, resize and spin need the
   // selection they are about to use.
   const PAGE_LEVEL={'bg-set':1,'page-added':1,'story-named':1,
-                    'sticker-added':1,'text-added':1};
+                    'sticker-added':1,'text-added':1,
+                    // All four arrive from the page's own Add Something
+                    // and page list, exactly like the five above: the
+                    // panel has to be showing the PAGE rather than the
+                    // object the child has just finished with.
+                    'shape-added':1,'doodle-added':1,'photo-added':1,
+                    'blank-page-added':1};
 
   function _showPageControls(){
     try{
@@ -1282,11 +1616,13 @@ const StudioRite=(function(){
       if(PAGE_LEVEL[kind]) _showPageControls();
       const baseline=_baseline();
       _bgTouched=false;
+      _addPageUsed=false;
+      _blankPageSeen=false;
       _startNudge(kind,nudgeDelay);
       const redirect=_redirectText(instruction);
       const startedAt=Date.now();
       let lastWork=_workSignature();
-      let idleTimer=null, onInput=null, poll=null;
+      let idleTimer=null, onInput=null, onClick=null, poll=null;
       const rearmIdle=function(){
         if(idleTimer) clearTimeout(idleTimer);
         idleTimer=setTimeout(function(){
@@ -1301,6 +1637,7 @@ const StudioRite=(function(){
         if(idleTimer){ clearTimeout(idleTimer); idleTimer=null; }
         if(poll){ clearInterval(poll); poll=null; }
         if(onInput){ try{ document.removeEventListener('input',onInput,true); }catch(e){} onInput=null; }
+        if(onClick){ try{ document.removeEventListener('click',onClick,true); }catch(e){} onClick=null; }
         if(_unobserve){ try{ _unobserve(); }catch(e){} _unobserve=null; }
       };
       // A beat used to end on the FIRST qualifying change, which is not
@@ -1422,6 +1759,21 @@ const StudioRite=(function(){
           check();
         };
         document.addEventListener('input',onInput,true);
+        // The one beat that cares WHICH control was used, and only that
+        // beat — registered nowhere else, so no other beat's timing can
+        // change. Making an empty page and copying a full one are
+        // indistinguishable by page count alone (see _conditionMet), and
+        // this is the honest half of telling them apart.
+        if(kind==='blank-page-added'){
+          onClick=function(ev){
+            try{
+              const t=ev&&ev.target;
+              if(t&&t.closest&&t.closest('#addPageBtn')) _addPageUsed=true;
+            }catch(e){}
+            check();
+          };
+          document.addEventListener('click',onClick,true);
+        }
         // Last-resort safety net: a beat must never be able to trap a
         // child in a mandatory Rite because a signal was missed.
         poll=setInterval(check,1200);
@@ -1490,6 +1842,45 @@ const StudioRite=(function(){
     _inPaper=false;
   }
 
+  // Open a blank page directly — no type screen, no World picker — and
+  // hold every page of the story on plain paper for as long as the rite
+  // runs. Shared by both ways a rite can begin: the first rite does it
+  // on the screen that boots the Studio, an opt-in one does it the
+  // moment it starts, in a Studio that is already open.
+  function _blankStart(){
+    try{
+      if(typeof CreationFlow!=='undefined' && CreationFlow.startBlank) CreationFlow.startBlank();
+    }catch(e){}
+    _plainPaper();
+    try{
+      if(typeof PageRuntime!=='undefined' && PageRuntime.observe)
+        _paperGuard=PageRuntime.observe(_plainPaper);
+    }catch(e){}
+  }
+
+  // What the Studio shows while THIS rite runs. The reduction in
+  // css/style.css hides everything the first story never asks for, and
+  // each of these classes tells one of those rules to stand down — so a
+  // rite that teaches drawing has a drawing control to point at, and the
+  // first rite, which reveals nothing, meets exactly the Studio it
+  // always has.
+  function _applyReveals(rite){
+    try{
+      ((rite&&rite.reveals)||[]).forEach(function(c){
+        document.body.classList.add('studio-rite-shows-'+c);
+      });
+    }catch(e){}
+  }
+
+  function _clearReveals(){
+    try{
+      const cl=document.body.classList;
+      Array.prototype.slice.call(cl).forEach(function(c){
+        if(c.indexOf('studio-rite-shows-')===0) cl.remove(c);
+      });
+    }catch(e){}
+  }
+
   function _teardown(){
     _running=false;
     _clearCues();
@@ -1505,6 +1896,7 @@ const StudioRite=(function(){
     try{ document.body.style.removeProperty('--rite-list-max'); }catch(e){}
     try{ document.body.style.removeProperty('--rite-band-h'); }catch(e){}
     try{ document.body.classList.remove('studio-rite-running'); }catch(e){}
+    _clearReveals();
     _clearNudge();
     _hush();
     if(_timer){ clearTimeout(_timer); _timer=null; }
@@ -1749,10 +2141,13 @@ const StudioRite=(function(){
   // The whole Rite: Act I (Where am I?) - Act II (Who am I?) -
   // Act III (What do I do here?) - Act IV (Why do stories matter?) -
   // Completion. Marks completion only on a genuine full run.
-  function run(next){
+  // `rite` is optional and defaults to the mandatory one, so the gate
+  // below calls this exactly as it always did.
+  function run(next,rite){
     if(typeof window.CompanionEngine==='undefined' || !window.CompanionEngine.loadRegistry){
       next(); return;
     }
+    _rite=rite||_mandatoryRite();
     _running=true;
     _actionsUnlocked=false;
     // next() boots the Studio. It happens PART WAY through the Rite —
@@ -1771,6 +2166,7 @@ const StudioRite=(function(){
 
     try{
       try{ document.body.classList.add('studio-rite-running'); }catch(e){}
+      _applyReveals(_rite);
       _els=_buildStage();
 
       requestAnimationFrame(function(){ if(_els) _els.overlay.classList.add('studio-rite-in'); });
@@ -1789,7 +2185,16 @@ const StudioRite=(function(){
         // performed, so hand straight off rather than showing a child
         // an empty stage.
         if(!_packs.guardian){ abandon(); return null; }
-        return SCREENS.reduce(function(chain,screen){
+        // A rite that begins in a Studio that is already open makes its
+        // own blank story here, the way the first rite makes one on the
+        // screen that boots the Studio. Same call, same plain-paper
+        // guard, same reason: these stories run on paper, with no World.
+        if(_rite.startsBlank){
+          handOff();
+          _blankStart();
+          try{ if(typeof window.refreshStoryActions==='function') window.refreshStoryActions(); }catch(e){}
+        }
+        return _rite.screens.reduce(function(chain,screen){
           return chain.then(function(){
             return _playScreen(screen).then(function(){
               // The screen the child says "Yes" on is the one that opens
@@ -1799,22 +2204,17 @@ const StudioRite=(function(){
               // work on a first launch with no network).
               if(!screen.opensStudio) return;
               handOff();
-              try{
-                if(typeof CreationFlow!=='undefined' && CreationFlow.startBlank) CreationFlow.startBlank();
-              }catch(e){}
-              _plainPaper();
-              try{
-                if(typeof PageRuntime!=='undefined' && PageRuntime.observe)
-                  _paperGuard=PageRuntime.observe(_plainPaper);
-              }catch(e){}
+              _blankStart();
             });
           });
         },Promise.resolve()).then(function(){
           // The one place the flag is ever written: a genuine, complete
-          // run. Reached only after the child has actually made and
-          // named a story, so no partial or abandoned Rite can unlock
-          // the Studio.
-          markComplete();
+          // run of the rite that unlocks the Studio. Reached only after
+          // the child has actually made and named a story, so no
+          // partial or abandoned Rite can unlock the Studio — and an
+          // opt-in rite writes nothing at all, because nothing depends
+          // on having taken it (docs/STUDIO_RITE_LEVELS.md §6).
+          if(_rite.unlocksStudio) markComplete();
           _teardown();
         });
       }).catch(abandon);
@@ -1837,12 +2237,36 @@ const StudioRite=(function(){
     }catch(e){ done(); }
   }
 
+  // Start a named rite over a Studio that is already open. This is the
+  // seam the offer on Studio Home will call when it ships — the offer
+  // itself is deliberately NOT built here (docs/STUDIO_RITE_LEVELS.md
+  // §6: the last piece, and it cannot ship before every rite exists).
+  // Refuses rather than stacking a second guide over the first.
+  function start(id){
+    if(_running) return false;
+    const rite=_riteById(id);
+    if(!rite) return false;
+    run(function(){},rite);
+    return true;
+  }
+
+  // The registry itself, read-only: id and the capabilities each rite
+  // teaches. No ordinal, no level number, and nothing that has to be
+  // counted to be understood.
+  function rites(){
+    return RITES.map(function(r){
+      return {id:r.id, teaches:(r.teaches||[]).slice(), mandatory:!!r.unlocksStudio};
+    });
+  }
+
   return {
     isComplete:isComplete,
     isRunning:isRunning,
     actionsUnlocked:actionsUnlocked,
     markComplete:markComplete,
-    gate:gate
+    gate:gate,
+    rites:rites,
+    start:start
   };
 })();
 try{ window.StudioRite=StudioRite; }catch(e){}

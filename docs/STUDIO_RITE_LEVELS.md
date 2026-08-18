@@ -1,6 +1,9 @@
 # Studio Rite — Three Levels
 
-**Status: approved in shape by the product owner. No implementation yet.**
+**Status: approved in shape by the product owner. Step 1 of §6 is built
+— the rite registry, Rite II's script and its four gates, and the
+Background `Picture` hook. Its recordings, Rite III, the card record,
+the opt-in and the persistence are all still to come, in that order.**
 This document records the decision and the design. It amends
 `CLAUDE.md` → Decision 8 on two points and must be read before any of it
 is built.
@@ -108,7 +111,12 @@ and the wrong product one: it would teach one capability and unlock two.
 The gate is a device image landing, and the story's two photo beats teach
 that.
 
-**The leak.** `_appendBackground()` renders `Colour`, then a `Picture` row
+**The leak — closed.** `.context-bg-picture-section` now wraps the whole
+row (`js/contextPanel.js` → `_appendBackgroundImageControls`), and the
+reduction hides it for any rite that has not taught pictures. The
+original finding follows.
+
+`_appendBackground()` renders `Colour`, then a `Picture` row
 carrying `🖼️ Upload Picture` and — when configured — `📷 From Family
 Album`, then `Picture Area · Transparent`. That is the panel Level I's
 **very first beat** opens (*"Choose a colour for the ground"*), so a child
@@ -373,6 +381,20 @@ count, not the design. Rites will be added, split and reordered for as
 long as the product grows, so the code must take a list of rites — each
 with its script, its gates and the capabilities it teaches — and never
 hard-code an ordinal.
+
+**Built** — `RITES` in `js/studioRite.js`. Each entry carries its `id`,
+its `mission`, its `screens`, the capabilities it `teaches`, what it
+`reveals` and whether it `unlocksStudio`. Nothing reads a position out
+of the list: a rite is found by id, and the mandatory one is the one
+that says it unlocks the Studio, so adding, splitting or reordering
+rites needs no code change. `reveals` is what makes this more than a
+list of scripts — the reduction in `css/style.css` now stands down for
+exactly the capabilities the rite being performed teaches, written onto
+`<body>` as `studio-rite-shows-<capability>`, so a rite about drawing
+has a drawing control on the screen and the first rite meets the Studio
+of five controls it always has. `StudioRite.start(id)` runs a named rite
+over a Studio that is already open; that is the seam §2.1's offer will
+call, and the offer itself is deliberately not built (§6).
 
 **Every new capability ships with a story that teaches it.** Writing and
 a recording session are part of the cost of a feature, not an extra
