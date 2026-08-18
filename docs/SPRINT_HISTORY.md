@@ -3279,3 +3279,68 @@ DECODED rather than merely being referenced (`naturalWidth > 0` on all
 four), that the path matches the package's declared file, and that a
 Companion with zero creators still shows its face — it is real, and the
 count is what says nothing has happened yet.
+
+**One small way to turn the sound off** (build 0584). *"add a universal
+non intrusive button to turn on/off ambience."* `js/ambienceToggle.js` —
+a 34px circle in the bottom-left, faint at rest, no label, on both
+VihuPlanet and the Studio.
+
+**Nothing new was built underneath it.** `AudioManager` already had
+`setMuted`/`isMuted` and already persisted the answer to localStorage;
+because both pages are one origin, the preference was ALREADY shared
+between them and simply had no way to be set. This is a control for a
+setting that existed.
+
+**It mounts itself, and carries its own style.** No configuration, no
+caller, no wiring: a page that loads the script has the button. The CSS
+is injected rather than split across `css/style.css` and
+`css/vihuplanet-home.css`, because two rules that must agree forever will
+eventually not, and the first divergence would be invisible.
+
+**It does not silence a voice, deliberately.** Lumo and the Companions
+play through `LumoVoice`/`VihuVoice`, which own their own audio elements.
+A child who wants the music off during the Rite still wants to hear what
+Lumo is telling them; a single mute for everything would be a different
+control with a different name.
+
+**Decision 10 is intact.** VihuPlanet's home still has exactly two
+permanent ACTIONS. This never joins that row, carries no label, sits in a
+corner at low contrast, and is identical on a first visit and a
+thousandth — the clause is "no new button may appear as a child
+progresses", and nothing here appears or is about the journey.
+
+**THREE REAL BUGS, all found by measuring rather than by reading.**
+
+1. **A product ordering bug this exposed in `AudioManager`.** Prefs were
+   read only inside `init()`, so `isMuted()` answered `false` for a child
+   who had turned the sound OFF until whenever init happened to run — and
+   the button drew "sound on" over an AudioManager about to mute itself.
+   `_readPrefs()` now runs at module load, which removes the ordering
+   question rather than making callers wait.
+2. **The Studio's global `button` rule ate the geometry.**
+   `button:not(.tab-btn)...:not(#saveBtn)` is specificity **(2,4,1)** —
+   two ids and four classes — so `width:100%; margin-bottom:12px` won,
+   and the button was **1280px wide** in the Studio while correct on
+   VihuPlanet. Exactly the drift a self-mounting widget exists to
+   prevent. Fixed with `!important` on the geometry, which is the
+   codebase's own established answer: two other rules in `style.css`
+   carry the comment *"escape the global button{width:100%} cascade"*.
+3. **The corner was already taken.** `js/buildStamp.js` mounts a fixed
+   strip at `left:8 bottom:6, 228x20` on BOTH pages, and the Studio adds
+   `.dev-footer` in the mirror band on the right. The button sat straight
+   on top of the build stamp — **visible in a screenshot, and passed by
+   an `elementFromPoint` check**, because a widget deliberately on top of
+   everything always reports itself. Moved to `bottom:34px`, clearing the
+   26px band.
+
+That third one changed the suite: overlap is now measured as
+**rectangles against every other fixed element**, which is the assertion
+that would have caught it, plus one that the geometry is **identical on
+both pages** — the real invariant for a universal control, and what
+caught the `!important` problem.
+
+**Verified 34/34, zero page errors**, across mount, toggle, persistence
+through a reload, a second document opening already off, two tabs staying
+in step without ping-ponging, a page with no AudioManager mounting
+nothing at all, and both real pages. The 141 voice checks and 21 admin
+checks still pass.

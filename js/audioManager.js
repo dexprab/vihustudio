@@ -204,6 +204,8 @@
   function init(){
     if(_initialized) return;
     _initialized=true;
+    // Harmless second read — see the module-load call at the bottom of
+    // this file. Kept so init() remains correct on its own terms.
     _readPrefs();
     try{
       _foundationEls=FOUNDATION_LAYERS.map(function(layer){
@@ -509,5 +511,18 @@
     setMuteFadeMs:setMuteFadeMs,
     getMuteFadeMs:getMuteFadeMs
   };
+  // THE STORED PREFERENCE IS TRUE FROM THE MOMENT THIS FILE LOADS, not
+  // from whenever somebody happens to call init().
+  //
+  // Found by the ambience toggle, which paints itself from isMuted() at
+  // DOMContentLoaded: prefs were read only inside init(), so on any page
+  // where init() ran later, isMuted() answered `false` for a child who
+  // had turned the sound OFF — and the button drew "sound on" over an
+  // AudioManager that was about to mute itself. Reading here removes the
+  // ordering question entirely rather than making every caller wait for
+  // init(). It touches no audio: _readPrefs only reads two localStorage
+  // values into two variables.
+  _readPrefs();
+
   try{ window.AudioManager=AudioManager; }catch(e){}
 })();
