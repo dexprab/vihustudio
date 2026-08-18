@@ -66,6 +66,27 @@
   .flag { color:var(--warn); font-size:.8rem; }
   .hidden { display:none; }
   footer { margin-top:2rem; color:var(--faint); font-size:.82rem; }
+
+  h2 { font:400 .72rem/1.4 var(--mono); letter-spacing:.13em; text-transform:uppercase;
+       color:var(--faint); margin:2.2rem 0 .8rem; }
+  p.foot { color:var(--faint); font-size:.82rem; margin:.7rem 0 0; max-width:44rem; }
+
+  /* One row per Companion. The bar is proportional to the largest count,
+     not to the total: with four Companions and an even spread, shares of
+     the total would all be stubs and say nothing. */
+  .bars { display:grid; gap:1px; background:var(--line);
+          border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+  .bar { display:grid; grid-template-columns:11rem 1fr 4.5rem; gap:1rem; align-items:center;
+         background:var(--panel); padding:.7rem 1rem; }
+  .bar .who b { font-weight:600; }
+  .bar .who span { display:block; color:var(--faint); font-size:.78rem; }
+  .bar .track { background:#0f1526; border-radius:4px; height:.55rem; overflow:hidden; }
+  .bar .fill { height:100%; background:var(--gold); border-radius:4px; min-width:2px; }
+  .bar .fill.none { background:var(--line); }
+  .bar .n { text-align:right; font-family:var(--mono); font-size:.9rem;
+            font-variant-numeric:tabular-nums; }
+  .bar .n.zero { color:var(--faint); }
+  .bar.stranger .who b { color:var(--warn); }
 </style>
 </head>
 <body>
@@ -84,6 +105,14 @@
 
   <div id="roll" class="hidden">
     <div class="counts" id="counts"></div>
+
+    <h2>Companions</h2>
+    <div class="bars" id="companions"></div>
+    <p class="foot">Every Companion in the registry, including any nobody has chosen yet — a zero
+       is the more interesting number here, and filtering it out would hide it. Counted by
+       Companion id rather than by name, because the name on a card belongs to that child.</p>
+
+    <h2>Creators</h2>
     <div class="tablewrap">
       <table>
         <thead><tr>
@@ -140,6 +169,8 @@ async function show() {
      [protectedCount, 'skies protected'], [withCompanion, 'with a Companion']]
     .map(([n, l]) => `<div><b>${n}</b><span>${l}</span></div>`).join('');
 
+  showCompanions();
+
   $('rows').innerHTML = data.map(r => {
     const shared = Number(r.cards_on_device) > 1;
     return `<tr>
@@ -159,6 +190,68 @@ async function show() {
 function esc(s) {
   return String(s == null ? '' : s).replace(/[&<>"]/g, c =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+}
+
+// WHICH COMPANIONS ARE BEING CHOSEN.
+//
+// Two sources, and each answers something the other cannot. The database
+// knows who has been chosen; only the REGISTRY knows who exists. Reading
+// the database alone would silently omit a Companion nobody has picked —
+// which is the single most useful row on this list, because a zero is a
+// finding and an absent row is nothing at all.
+//
+// So the registry is the spine and the counts are joined onto it. An id
+// in the database that the registry has never heard of still appears,
+// flagged, rather than being dropped: a package removed since, or a
+// record from an older build, is a real Creator either way.
+async function showCompanions() {
+  const [{ data, error }, registry] = await Promise.all([
+    sb.rpc('admin_companion_roll'),
+    fetch('../assets/registry.json').then(r => r.json()).catch(() => ({ companions: [] })),
+  ]);
+  if (error) {
+    // The function may simply not be deployed yet. That is a migration
+    // to run, not a broken page, and the Creators roll below is
+    // unaffected — so say so quietly instead of failing the whole view.
+    $('companions').innerHTML =
+      `<div class="bar"><div class="who">${esc(error.message)}</div></div>`;
+    return;
+  }
+
+  const counts = new Map((data || []).map(r => [r.companion_id || '', r]));
+  const known = (registry.companions || []).filter(c => c.role === 'companion');
+
+  const rows = known.map(c => ({
+    id: c.id,
+    name: c.name || c.id,
+    species: c.species || '',
+    n: Number(counts.get(c.id)?.creators || 0),
+  }));
+
+  // Anything in the data that the registry does not describe.
+  (data || []).forEach(r => {
+    const id = r.companion_id || '';
+    if (!id) return;                                   // the "none yet" row, handled below
+    if (known.some(c => c.id === id)) return;
+    rows.push({ id, name: id, species: r.species || '', n: Number(r.creators), stranger: true });
+  });
+
+  rows.sort((a, b) => b.n - a.n || a.name.localeCompare(b.name));
+
+  const none = Number(counts.get('')?.creators || 0);
+  const most = Math.max(1, ...rows.map(r => r.n));
+
+  $('companions').innerHTML = rows.map(r => `
+    <div class="bar${r.stranger ? ' stranger' : ''}">
+      <div class="who"><b>${esc(r.name)}</b><span>${esc(r.species || (r.stranger ? 'not in the registry' : ''))}</span></div>
+      <div class="track"><div class="fill${r.n ? '' : ' none'}" style="width:${Math.round(r.n / most * 100)}%"></div></div>
+      <div class="n${r.n ? '' : ' zero'}">${r.n}</div>
+    </div>`).join('') + (none ? `
+    <div class="bar">
+      <div class="who"><b>—</b><span>no Companion yet</span></div>
+      <div class="track"><div class="fill none" style="width:${Math.round(none / most * 100)}%"></div></div>
+      <div class="n zero">${none}</div>
+    </div>` : '');
 }
 
 $('go').addEventListener('click', async () => {

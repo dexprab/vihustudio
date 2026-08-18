@@ -241,3 +241,54 @@ create trigger creator_born
 -- Then, if no email arrives:
 --   select status_code, content from net._http_response order by created desc limit 3;
 -- ---------------------------------------------------------------
+
+-- ---------------------------------------------------------------
+-- WHICH COMPANIONS ARE BEING CHOSEN.
+--
+-- "show me all the companions and how many creators each have."
+--
+-- Grouped on companion_id and NOTHING ELSE, deliberately. A Companion's
+-- display name is not reliable at the group level — companion_name is
+-- what a child's own card carries, so picking one row's value to label a
+-- whole group would put one child's wording on everybody else's. The id
+-- is the only stable identity here, and the admin page labels it from
+-- assets/registry.json, which is the source of truth for who exists
+-- (CLAUDE.md -> Decision 24: the registry is where a Companion's name,
+-- species and role live).
+--
+-- companion_species is still returned as a FALLBACK, for an id the
+-- registry has never heard of — a package removed since, or a record
+-- written by an older build. Better to show it imperfectly than to drop
+-- a real Creator out of the count.
+--
+-- A card with no Companion is its own row rather than being filtered
+-- away: "how many have not woken one yet" is exactly the kind of thing
+-- this page exists to answer.
+-- ---------------------------------------------------------------
+create or replace function public.admin_companion_roll()
+returns table (
+  companion_id  text,
+  species       text,
+  creators      bigint,
+  first_bonded  timestamptz,
+  last_bonded   timestamptz
+)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select
+    coalesce(nullif(m.companion_id, ''), '')          as companion_id,
+    max(nullif(m.companion_species, ''))              as species,
+    count(*)                                          as creators,
+    min(m.claimed_at)                                 as first_bonded,
+    max(m.claimed_at)                                 as last_bonded
+  from public.magic_card_identities m
+  where public.is_platform_admin()
+  group by coalesce(nullif(m.companion_id, ''), '')
+  order by count(*) desc, 1;
+$$;
+
+revoke all on function public.admin_companion_roll() from public;
+grant execute on function public.admin_companion_roll() to authenticated;

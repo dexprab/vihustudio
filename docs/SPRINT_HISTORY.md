@@ -3219,3 +3219,36 @@ dispatch order, that Rite I still names its 23 recordings and Rite II
 still names none and invents no placeholder id, that the pose is passed
 as the feeling, that `_hush()` stops the generated voice too, and that a
 real Rite II line is spoken and resolves only once the audio has ended.
+
+**Which Companions are being chosen** (build 0582). *"on the admin page,
+show me all the companions and how many creators each have."* A
+`Companions` band above the Creators roll, one row per Companion with a
+proportional bar and a count.
+
+**Two sources, because each answers something the other cannot.** The
+database knows who has been CHOSEN; only `assets/registry.json` knows who
+EXISTS. Reading the database alone would silently omit a Companion nobody
+has picked — which is the single most useful row on the list, since **a
+zero is a finding and an absent row is nothing at all**. So the registry
+is the spine and the counts are joined onto it. An id the registry has
+never heard of still appears, flagged, rather than being dropped: a
+package removed since, or a record from an older build, is a real Creator
+either way.
+
+**Grouped on `companion_id` and nothing else.** A Companion's display
+name is not reliable at the group level — `companion_name` is what a
+child's own card carries, so picking one row's value to label a whole
+group would put one child's wording on everybody else's. The registry
+supplies the name and species; the database's `companion_species` is kept
+only as a fallback for an unknown id.
+
+The bar is proportional to the LARGEST count rather than to the total:
+with four Companions and an even spread, shares of the total would all be
+stubs and say nothing. Cards with no Companion yet get their own row.
+
+**Verified 16/16 in a real browser, zero page errors**, with the platform
+stubbed: all four bondable Companions listed and the guardian and Story
+Egg correctly absent, counts on the right rows, a zero shown rather than
+omitted, an unknown id flagged rather than dropped, and — the one that
+matters operationally — the section reporting "does not exist" without
+breaking the Creators table when the migration has not been run yet.
