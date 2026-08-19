@@ -3712,3 +3712,62 @@ round the 1px feather ring by ±1 (the same exemption the preservation
 rule has stated since v0.1); very light pencil at the claim threshold
 remains v0.1's roughest edge; and this is still a standalone tool —
 nothing yet carries a creation into the Studio or the Ether.
+
+## Bring It Alive v0.2 — From Paper Drawing → Editable Vihu Creation
+
+Built in a worker worktree from the product owner's full v0.2 brief.
+Independently re-verified before merging: the 105-check suite reproduced
+under fresh invocations (in the worktree and again on the merged tree),
+the new assertions confirmed to be real pixel measurements rather than
+mocks, the three commits touch nothing outside `tools/bring-it-alive/`,
+and the ORIGINAL | MY VERSION acceptance visual passes the product test
+— the same child's pencil drawing on both sides, filled and recoloured,
+never redrawn.
+
+**Hybrid, not vectorization** (`js/regions.js`): the original raster
+stays the line art; a region map is *derived* from the raw segmentation
+mask — closed areas found against a gap-closed ink barrier (gap radius
+auto-widened twice before honestly reporting "open lines only"), grown
+back to the true ink edge so fills meet the pencil, per-region boundary
+ink bounded by the stroke's own measured half-width. Derived from the
+raw mask (lossless RLE in the JSON), so a reopened creation resolves
+ops onto byte-identical regions. Measured on the real photo's left
+character: 3 closed areas, gap 12px, half-width ~7px, 204ms.
+
+**Creation document v2** (`js/creation.js`): `fill` composes UNDER the
+original — every fully-opaque original pixel provably byte-unchanged;
+`lineColor` is a tint of the child's own ink — per-pixel alpha
+untouched, darkness order preserved (0 order breaks in 3,198 sampled
+pairs); `lineWidth` Thin | Original | Thick is compose-time morphology,
+measured 11,746 < 27,963 < 49,504 dark line pixels; `pencil` is
+point-path ops rendered on demand, Fine default (~2.6px doc radius,
+opaque exact-colour core); `reset` moves the cursor to zero with ops
+kept, so a Reset is itself redoable. `fromJSON` still accepts v1 files.
+**One retirement, sanctioned by the brief:** erase now clears the
+child's edits only and cannot reach the ORIGINAL layer by construction
+— the old erase-hides-original checks were replaced by the stronger
+"erase over bare original is a byte-level no-op".
+
+**Editor**: Original | My Version (two views of one creation), Pencil |
+Fill | Erase | Move, six colours, Fine/Medium/Thick, Lines Thin |
+Original | Thick, Undo | Redo | Reset My Changes, Original PNG +
+Current PNG + creation JSON. The developer checkerboard is replaced by
+a flat warm paper-grey (asserted uniform). No vector terminology
+anywhere child-facing.
+
+**105/105, zero page errors.** All prior checks pass (adapted names
+only), plus the brief's A–L acceptance walk on the real photograph,
+every capability pixel-asserted. Demo ends with
+`screenshots/6-original-vs-my-version.png`.
+
+**Where it still breaks for a child, disclosed:** an open drawing whose
+gaps beat ~2× the gap radius yields no fillable region and a failed
+fill tap gives no child-facing feedback yet; internal strokes split
+shapes (the face line makes the head two fillable areas); an unenclosed
+stroke bounds no region so only region boundaries can be recoloured;
+a border shared by two filled shapes belongs to whichever was tinted
+last; Thick is honestly chunky on very textured strokes; the JSON
+round trip may drift ±4 on the tinted 1px feather ring (fully-opaque
+and fully-transparent pixels byte-exact, asserted). SAM 2 / hosted
+segmentation remains untestable from this sandbox; the
+`segment(image, claim)` seam is unchanged and replaceable.
