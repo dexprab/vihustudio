@@ -3875,3 +3875,55 @@ is the ideal case — perfect focus, no motion blur, no exposure hunting
 — a real webcam does worse, never better. **Where it still breaks for a
 child:** a whole-page webcam extraction is honest but small and goes
 blurry when grown; nothing yet says "bring it closer".
+
+## My Library — a Child's Characters, Kept
+
+Asked for by the product owner: *"lets introduce the concept of my
+library in studio where kid can save their characters of these
+extractions. the library item goes on cloud. can be edited like any
+other object when used on scene. can be deleted from library when
+needed."* Scouted first (every seam mapped), built in a worker
+worktree, independently re-verified before merging: the tool suite and
+a 22-check Playwright walk of the real Studio both reproduced fresh;
+the migration's RLS inspected; merged tool suite **163/163** (133 base
++ 11 library + 19 camera).
+
+**The store** (`js/creatorLibrary.js`, table `creator_library` via
+`supabase/migrations_creator_library.sql` — **not yet applied**; the
+library is silently local-only until the product owner runs it).
+Records are **self-contained** — thumbnail, placement PNG (1600px/1.5MB
+discipline) and the full editable `vihu-creation` document — the
+deliberate architectural choice, because AssetStore refs, storage paths
+and their RLS all join on a projectId and a cross-project asset has no
+representation today. Local-first IndexedDB with a pending-sync queue;
+cardId scoping as a filter never a delete, `claimUnowned` wired beside
+the projects' in `MagicCard.claim()`, and a `_claimLegacy` evidence
+sweep (Decision 19's posture throughout). RLS: owner-only writes,
+SELECT widened only by the existing `has_magic_recall_grant`.
+
+**In the Studio**: My Library joins the Add panel; the picker follows
+the From This World full-panel grid. Placing calls the same tail Photo
+uses, so the placed character is an ordinary image sticker with a
+normal per-project asset ref — drag, resize, rotate, Object Strip,
+Refine panel and publish hydration all work **by construction**, and
+were asserted anyway (real mouse drag moved the record's x/y).
+Removing from the library shows one gentle confirm and **never touches
+placed objects**. Empty library invites the child to bring a drawing
+to life (new tab — Decision 23's gate would eat an in-tab return).
+
+**In the tool**: a "Keep in My Library" row on Make It Yours — the
+tool's first outside links (`themeRepositoryClient.js` +
+`creatorLibrary.js`), hidden entirely on a bare copy. A save lands
+locally with no platform and no card, never errors at a child, and the
+whole save+sync window was asserted network-silent without a card.
+
+**Disclosed:** rows carry their own bytes (hundreds of KB–MB each); no
+pull path yet — a character saved on one device does not appear on
+another (cloud rows are a backup in v1, and a wiped browser is not yet
+restored from them); private-mode browsers without IndexedDB keep a
+save only for the session. Merge note: the tool suite's library
+section runs BEFORE the camera section, which deliberately walks the
+page back to the capture step; the Studio walk's 404 gate excludes
+companion pose art a pack declares but never shipped (Decision 24's
+known unevenness), which run-to-run bonding surfaces
+nondeterministically.
