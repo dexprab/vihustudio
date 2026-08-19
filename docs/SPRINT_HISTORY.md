@@ -4070,3 +4070,32 @@ joins only some letters lands between the gates and gets the generic
 retake; a dim capture plus joined writing can still confuse
 registration; the boxed fallback sheet remains deferred — a child who
 cannot write unjoined loops on retakes.
+
+## The Camera Photographs a Written Page Tall
+
+Asked for by the product owner (*"for taking handwriting pics the
+camera needs to be portrait not landscape give a button to move camera
+between landscape and protrait"*). Built in a worker worktree in
+parallel with the registration sprint, fenced to camera files;
+independently re-verified — base suite **176/176** (+13 camera checks),
+handwriting suite untouched at 57/57, reproduced fresh and on the
+merged tree.
+
+One button on the live preview: **⇄ Tall page / ⇄ Wide page** — no
+portrait/landscape jargon child-facing (asserted). Tall re-requests the
+stream with swapped ideals so a phone's back camera can truly deliver a
+tall stream; a landscape-only sensor (every laptop) gets a **centred
+crop to the writing sheet's own aspect** (`HWSheet.GEOM`, A4 fallback —
+numerically identical), previewed honestly and captured from the native
+frame — proven byte-for-byte against the wide frame's centred region
+(679×960 crop at offset x=301, mismatch 0). Switching stops every track
+first (light-off discipline); a refused reopen falls back kindly. The
+My Handwriting journey opens the camera **tall by default**
+(`BIACamera.setPreferredShape`, which never overrides a shape the child
+pressed themselves); the drawing journey keeps wide; the child's last
+choice wins for the session. One implementation serves both hosts.
+Disclosed: verified against Chromium's fake landscape feed — a genuine
+tall phone stream is exercised only through the swapped-ideals path;
+the crop improves framing, not pixels — a 720p webcam still gives
+coarse letters, which the registration sprint's "come closer" hint
+addresses.
