@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bring It Alive · v0.1</title>
+<link rel="icon" href="data:,"><!-- no favicon fetch → no 404 in the error-free console the suite asserts -->
+<!-- BRING IT ALIVE — v0.1.
+     A development tool. No child reaches it and nothing in the product
+     links to it. It exists to answer one product question honestly:
+     can a child photograph a drawing on paper, draw ONE loose loop
+     around the thing they made, fix the proposal with Keep/Remove
+     strokes, and receive their EXACT drawing — original pixels, never
+     redrawn, never beautified — as a transparent PNG?
+
+     Four marks: CAPTURE → CLAIM → REFINE → BRING IT ALIVE.
+     The loop is called a Claim, never a Trace: the child is claiming
+     what they made, not performing an editing operation.
+
+     It integrates with NOTHING — not the Studio, not the runtime, not
+     the asset pipeline. It can be deleted whole. Verification suite:
+     test/run-tests.js (drives this real page with pointer events). -->
+<style>
+  :root {
+    --bg:#0d1220; --panel:#151c2e; --line:#253048;
+    --ink:#e7eaf3; --soft:#a6adbf; --faint:#6e7893; --gold:#dfb169; --warn:#e2917a; --good:#8fc7a4;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+         font:400 15px/1.6 -apple-system,"Segoe UI",Roboto,sans-serif; }
+  .wrap { max-width:60rem; margin:0 auto; padding:2.4rem 1.2rem 5rem; }
+  h1 { font:400 1.7rem/1.2 Georgia,serif; margin:0 0 .3rem; }
+  .sub { color:var(--faint); font-size:.9rem; margin:0 0 2rem; }
+  h2 { font:400 .74rem/1.4 var(--mono); letter-spacing:.12em; text-transform:uppercase;
+       color:var(--faint); margin:2rem 0 .7rem; }
+  button { padding:.5rem 1rem; background:var(--gold); color:#1a1206; border:0;
+           border-radius:6px; font-weight:700; font-size:.9rem; cursor:pointer; }
+  button.ghost { background:transparent; color:var(--soft); border:1px solid var(--line); }
+  button.on { outline:2px solid var(--gold); }
+  button:disabled { opacity:.4; cursor:default; }
+  .row { display:flex; gap:.6rem; flex-wrap:wrap; align-items:center; margin-top:.8rem; }
+  p.note { color:var(--faint); font-size:.86rem; }
+  .step { display:none; }
+  .step.here { display:block; }
+
+  #drop { border:2px dashed var(--line); border-radius:12px; padding:3rem 1rem;
+          text-align:center; color:var(--soft); background:var(--panel); }
+  #drop.over { border-color:var(--gold); color:var(--ink); }
+
+  .board { background:var(--panel); border:1px solid var(--line); border-radius:10px;
+           padding:10px; display:inline-block; }
+  canvas.work { display:block; touch-action:none; cursor:crosshair; border-radius:6px; }
+
+  .quiet { background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--warn);
+           border-radius:8px; padding:.7rem 1rem; color:var(--soft); margin-top:.8rem; display:none; }
+  #devError { display:none; background:#3a1620; border:1px solid var(--warn); color:#f2c4b5;
+              border-radius:8px; padding:.7rem 1rem; margin:.8rem 0;
+              font:400 .82rem/1.6 var(--mono); white-space:pre-wrap; }
+
+  .duo { display:flex; gap:14px; flex-wrap:wrap; }
+  .duo figure { margin:0; }
+  .duo figcaption { font:400 .7rem/1.8 var(--mono); letter-spacing:.1em;
+                    text-transform:uppercase; color:var(--faint); }
+  details { margin-top:1.6rem; border:1px solid var(--line); border-radius:10px;
+            background:var(--panel); }
+  details summary { cursor:pointer; padding:.6rem 1rem;
+                    font:400 .74rem/1.6 var(--mono); letter-spacing:.12em;
+                    text-transform:uppercase; color:var(--faint); }
+  details .inner { padding: .4rem 1rem 1rem; }
+  #devLog { background:#0f1526; border:1px solid var(--line); border-radius:8px;
+            padding:.7rem 1rem; font:400 .78rem/1.7 var(--mono); color:var(--soft);
+            white-space:pre-wrap; max-height:14rem; overflow:auto; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Bring It Alive</h1>
+  <p class="sub">Your drawing, exactly as you made it — alive. <span id="buildTag">v0.1</span></p>
+  <div id="devError"></div>
+
+  <!-- CAPTURE -->
+  <section class="step here" id="stepCapture">
+    <h2>Photograph</h2>
+    <div id="drop">
+      Drop a photograph of your drawing here
+      <div class="row" style="justify-content:center; margin-top:1rem;">
+        <button id="pickBtn">Choose a photo</button>
+        <button class="ghost" id="testBtn">Use test page</button>
+      </div>
+      <input type="file" id="fileInput" accept="image/*" style="display:none">
+    </div>
+    <p class="note">The test page is a <b>procedural surrogate</b> of Test Case 001 —
+       a rendered stand-in, not a real photograph. The real Test Case 001
+       photographs live in <code>tools/imagebed/</code> and load through
+       “Choose a photo” like any other image.</p>
+  </section>
+
+  <!-- CLAIM -->
+  <section class="step" id="stepClaim">
+    <h2>Make your claim</h2>
+    <p class="note">Draw one loose loop around the thing you made.</p>
+    <div class="board"><canvas class="work" id="claimCanvas"></canvas></div>
+    <div class="quiet" id="nothingFound"></div>
+    <div class="row">
+      <button class="ghost" id="claimNewPhoto">New photo</button>
+    </div>
+  </section>
+
+  <!-- REFINE -->
+  <section class="step" id="stepRefine">
+    <h2>We found this</h2>
+    <p class="note">Paint <b>Keep</b> over anything of yours we missed ·
+       paint <b>Remove</b> over anything that isn’t yours.</p>
+    <div class="row">
+      <button class="ghost on" id="keepBtn">Keep</button>
+      <button class="ghost" id="removeBtn">Remove</button>
+    </div>
+    <div class="board" style="margin-top:.8rem;"><canvas class="work" id="refineCanvas"></canvas></div>
+    <div class="row">
+      <button id="aliveBtn">Bring it alive</button>
+      <button class="ghost" id="reclaimBtn">Claim again</button>
+    </div>
+  </section>
+
+  <!-- ALIVE -->
+  <section class="step" id="stepAlive">
+    <h2>Your drawing</h2>
+    <div class="duo">
+      <figure><figcaption>On anything</figcaption>
+        <canvas id="checkerCanvas" width="380" height="300"></canvas></figure>
+      <figure><figcaption>Alive</figcaption>
+        <canvas id="skyCanvas" width="380" height="300"></canvas></figure>
+    </div>
+    <div class="row">
+      <button id="downloadBtn">Download PNG</button>
+      <button class="ghost" id="downloadJsonBtn">Download JSON</button>
+      <button class="ghost" id="anotherBtn">Make another claim</button>
+      <button class="ghost" id="aliveNewPhoto">New photo</button>
+    </div>
+    <details id="devStrip">
+      <summary>Developer · preservation</summary>
+      <div class="inner">
+        <div class="duo">
+          <figure><figcaption>Original crop</figcaption>
+            <canvas id="devOrig" width="300" height="240"></canvas></figure>
+          <figure><figcaption>Extracted asset</figcaption>
+            <canvas id="devAsset" width="300" height="240"></canvas></figure>
+          <figure><figcaption>Raw mask</figcaption>
+            <canvas id="devMask" width="300" height="240"></canvas></figure>
+        </div>
+        <p class="note" id="devStats"></p>
+        <p class="note">Perspective is not corrected in v0.1 — the photographed page is
+           the source, untouched. Lighting is flattened on a decision copy only;
+           the export path reads original pixels exclusively.</p>
+      </div>
+    </details>
+  </section>
+
+  <h2>Log</h2>
+  <pre id="devLog"></pre>
+</div>
+
+<script src="js/capture.js"></script>
+<script src="js/claim.js"></script>
+<script src="js/segment.js"></script>
+<script src="js/refine.js"></script>
+<script src="js/extract.js"></script>
+<script src="js/preview.js"></script>
+<script src="js/exportAsset.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
