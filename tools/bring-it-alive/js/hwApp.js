@@ -1,0 +1,280 @@
+/* HW APP — the MY HANDWRITING journey's UI wiring on the standalone page.
+ *
+ * Four marks: WRITING SHEET → PHOTOGRAPH → YOUR LETTERS → TRY YOUR FONT.
+ *
+ * The photograph arrives through the EXISTING capture entry — the picker,
+ * the drop zone and the camera, all unchanged (app.js owns them). This
+ * module only ARMS the journey: after "I've written it", the next
+ * photograph that lands is taken for the handwriting sheet. app.js's own
+ * loadPhoto runs untouched and steps to the claim as it always does; the
+ * observer here notices, takes the decoded photo (one decode, one truth —
+ * capture.js's rule), and walks into the handwriting reading instead.
+ * Nothing in app.js, flow.js, capture.js or camera.js changed.
+ *
+ * The alphabet is SHOWN before anything is built (Decision 18's move:
+ * show what was recognised and let the child say "that's not right"
+ * before the door opens). Missing letters are quiet empty slots — never
+ * an error, never a blank glyph later; recovery is per line, never
+ * start-over.
+ *
+ * window.__hw is the developer seam, exactly as window.__bia is for the
+ * drawing flow: the suite and a human in devtools read the journey's
+ * state through it.
+ */
+(function () {
+  'use strict';
+
+  const $ = (id) => document.getElementById(id);
+  const ALPHABET = 'abcdefghijklmnopqrstuvwxyz0123456789';
+
+  const state = {
+    stage: 'idle',      // idle · sheet · armed · reading · alphabet · test
+    armed: false,
+    retakeLine: null,
+    lines: null,        // the kept per-line read results (merged across retakes)
+    samples: null,      // Map ch → best sample
+    font: null,         // {buffer, report}
+    builds: 0,
+    sheetDrawn: null
+  };
+  window.__hw = state;
+
+  function log(msg) {
+    console.log('[hw] ' + msg);
+    const el = $('devLog');
+    el.textContent += msg + '\n';
+    el.scrollTop = el.scrollHeight;
+  }
+
+  function go(step) {
+    for (const s of document.querySelectorAll('.step')) s.classList.remove('here');
+    $(step).classList.add('here');
+  }
+
+  // ---- the sheet -------------------------------------------------------------
+  function showSheet() {
+    state.sheetDrawn = HWSheet.draw($('hwSheetCanvas'), 640);
+    HWSheet.draw($('hwPrintCanvas'), 1600); // the printable copy, crisp
+    $('hwQuietSheet').style.display = 'none';
+    state.stage = 'sheet';
+    go('stepHwSheet');
+  }
+  $('hwEntryBtn').addEventListener('click', showSheet);
+  $('hwPrintBtn').addEventListener('click', () => window.print());
+  $('hwSheetBack').addEventListener('click', () => { state.stage = 'idle'; go('stepCapture'); });
+
+  function arm(retakeLine) {
+    state.armed = true;
+    state.retakeLine = (retakeLine == null ? null : retakeLine);
+    state.stage = 'armed';
+    const banner = $('hwArmed');
+    $('hwArmedText').textContent = state.retakeLine == null
+      ? 'Your next photo becomes your handwriting — photograph your written sheet, flat and whole.'
+      : 'Photograph the sheet with line ' + (state.retakeLine + 1) + ' written once more — flat and whole.';
+    banner.style.display = 'block';
+    go('stepCapture');
+  }
+  function disarm() {
+    state.armed = false;
+    $('hwArmed').style.display = 'none';
+  }
+  $('hwWroteBtn').addEventListener('click', () => arm(null));
+  $('hwDisarmBtn').addEventListener('click', () => {
+    const hadLines = !!state.lines;
+    disarm();
+    if (state.retakeLine != null && hadLines) { state.stage = 'alphabet'; go('stepHwLetters'); }
+    else showSheet();
+  });
+
+  // The existing capture entry, unchanged, is the way in: when a photo
+  // lands while armed, app.js steps to the claim as it always does and
+  // this observer takes over from there.
+  new MutationObserver(() => {
+    if (!state.armed) return;
+    if (!$('stepClaim').classList.contains('here')) return;
+    disarm();
+    const photo = window.__bia && window.__bia.photo;
+    if (photo) readSheet(photo);
+  }).observe($('stepClaim'), { attributes: true, attributeFilter: ['class'] });
+
+  // ---- reading ---------------------------------------------------------------
+  function readSheet(photo) {
+    state.stage = 'reading';
+    go('stepHwReading');
+    const retake = state.retakeLine;
+    state.retakeLine = null;
+    setTimeout(() => {
+      let res;
+      try {
+        res = HWRead.read(photo, { log, onlyLine: retake });
+      } catch (e) {
+        console.error('[hw]', e);
+        log('hw: reading threw — ' + (e && e.message ? e.message : e));
+        res = { ok: false, reason: 'lines' };
+      }
+      if (!res.ok) {
+        // Child-safe: the sheet is never "invalid", the picture just
+        // didn't show the lines yet.
+        const q = $('hwQuietSheet');
+        q.textContent = 'I couldn’t find the writing lines in that picture yet — ' +
+          'lay the sheet flat, get the whole page in, and take it again.';
+        q.style.display = 'block';
+        state.stage = 'sheet';
+        go('stepHwSheet');
+        return;
+      }
+      if (retake != null && state.lines) {
+        if (res.lines[retake] && res.lines[retake].found) {
+          state.lines[retake] = res.lines[retake];
+          log('hw: line ' + (retake + 1) + ' replaced from the new photograph');
+        }
+      } else {
+        state.lines = res.lines;
+      }
+      rebuildAlphabet();
+      renderLetters();
+      state.stage = 'alphabet';
+      go('stepHwLetters');
+    }, 40);
+  }
+
+  // ---- the alphabet ----------------------------------------------------------
+  function rebuildAlphabet() {
+    const best = new Map();
+    for (const ln of state.lines) {
+      if (!ln.found) continue;
+      for (const letter of ln.letters) {
+        if (!letter.accepted || !letter.sample) continue;
+        const prev = best.get(letter.ch);
+        if (!prev || letter.cost < prev.cost ||
+            (letter.cost === prev.cost && letter.sample.w > prev.sample.w)) {
+          best.set(letter.ch, { cost: letter.cost, sample: letter.sample, line: ln.index });
+        }
+      }
+    }
+    const samples = new Map();
+    for (const [ch, e] of best) samples.set(ch, e.sample);
+    state.samples = samples;
+  }
+
+  function drawSample(canvas, sample) {
+    const box = 56;
+    canvas.width = box; canvas.height = box;
+    const ctx = canvas.getContext('2d');
+    const s = Math.min((box - 8) / sample.w, (box - 8) / sample.h);
+    const ox = (box - sample.w * s) / 2, oy = (box - sample.h * s) / 2;
+    const img = ctx.createImageData(box, box);
+    for (let y = 0; y < box; y++) {
+      for (let x = 0; x < box; x++) {
+        const sx = Math.floor((x - ox) / s), sy = Math.floor((y - oy) / s);
+        if (sx >= 0 && sx < sample.w && sy >= 0 && sy < sample.h &&
+            sample.mask[sy * sample.w + sx]) {
+          const d = (y * box + x) * 4;
+          img.data[d] = 231; img.data[d + 1] = 234; img.data[d + 2] = 243;
+          img.data[d + 3] = 255;
+        }
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+  }
+
+  function renderLetters() {
+    const grid = $('hwGrid');
+    grid.innerHTML = '';
+    let have = 0;
+    for (const ch of ALPHABET) {
+      const slot = document.createElement('div');
+      slot.className = 'hw-slot';
+      slot.dataset.ch = ch;
+      const label = document.createElement('div');
+      label.className = 'hw-slot-label';
+      label.textContent = ch;
+      slot.appendChild(label);
+      const sample = state.samples.get(ch);
+      if (sample) {
+        have++;
+        const c = document.createElement('canvas');
+        drawSample(c, sample);
+        slot.appendChild(c);
+      } else {
+        slot.classList.add('empty');
+        const e = document.createElement('div');
+        e.className = 'hw-slot-empty';
+        slot.appendChild(e);
+      }
+      grid.appendChild(slot);
+    }
+    $('hwGridNote').textContent = have === ALPHABET.length
+      ? 'Every letter is here — these are all yours.'
+      : 'An empty box is a letter I haven’t met yet. You can write its line once more, or build the font without it — words will borrow a plain letter there.';
+
+    const list = $('hwLineList');
+    list.innerHTML = '';
+    for (const ln of state.lines) {
+      const row = document.createElement('div');
+      row.className = 'hw-linerow';
+      const txt = document.createElement('span');
+      if (ln.found) {
+        txt.textContent = 'Line ' + (ln.index + 1) + ' · “' + ln.text + '” · ' +
+          ln.accepted + ' of ' + ln.expected + ' letters';
+      } else {
+        txt.textContent = 'Line ' + (ln.index + 1) + ' · “' + ln.text + '” · not read yet';
+      }
+      row.appendChild(txt);
+      const btn = document.createElement('button');
+      btn.className = 'ghost';
+      btn.textContent = 'Write this line once more';
+      btn.dataset.line = String(ln.index);
+      btn.addEventListener('click', () => arm(ln.index));
+      row.appendChild(btn);
+      list.appendChild(row);
+    }
+    $('hwBuildBtn').disabled = state.samples.size === 0;
+  }
+
+  $('hwNewSheetBtn').addEventListener('click', () => {
+    state.lines = null; state.samples = null; state.font = null; state.builds = 0;
+    if (previewFace) { document.fonts.delete(previewFace); previewFace = null; }
+    showSheet();
+  });
+
+  // ---- the font ---------------------------------------------------------------
+  let previewFace = null;
+
+  $('hwBuildBtn').addEventListener('click', async () => {
+    try {
+      state.font = HWFont.build(state.samples, state.lines, { log });
+      state.builds++;
+      if (previewFace) { document.fonts.delete(previewFace); previewFace = null; }
+      previewFace = new FontFace('My Handwriting Preview', state.font.buffer);
+      await previewFace.load();
+      document.fonts.add(previewFace);
+      log('hw: FontFace registered for the preview (' + state.font.report.bytes + ' bytes)');
+      renderPreview();
+      state.stage = 'test';
+      go('stepHwTest');
+    } catch (e) {
+      console.error('[hw]', e);
+      log('hw: font build threw — ' + (e && e.message ? e.message : e));
+    }
+  });
+
+  function renderPreview() {
+    $('hwPreview').textContent = $('hwTryInput').value || 'the quick brown fox jumps over a lazy dog';
+  }
+  $('hwTryInput').addEventListener('input', renderPreview);
+
+  $('hwDownloadBtn').addEventListener('click', () => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([state.font.buffer], { type: 'font/ttf' }));
+    a.download = 'My Handwriting.ttf';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    log('hw: "My Handwriting.ttf" handed over (' + state.font.report.bytes + ' bytes)');
+  });
+
+  $('hwBackToLetters').addEventListener('click', () => { state.stage = 'alphabet'; go('stepHwLetters'); });
+  $('hwTestNewSheet').addEventListener('click', () => $('hwNewSheetBtn').click());
+
+  log('my handwriting ready (sheet · capture · letters · font)');
+})();

@@ -93,6 +93,31 @@
               border-radius:8px; padding:.7rem 1rem; margin:.8rem 0;
               font:400 .82rem/1.6 var(--mono); white-space:pre-wrap; }
 
+  /* MY HANDWRITING — the writing sheet, the alphabet grid, the try box. */
+  #hwSheetCanvas { display:block; background:#fff; border-radius:6px; max-width:100%; }
+  .hw-grid { display:grid; grid-template-columns:repeat(9, 64px); gap:8px; margin-top:.8rem; }
+  .hw-slot { background:var(--panel); border:1px solid var(--line); border-radius:8px;
+             padding:4px; text-align:center; }
+  .hw-slot-label { font:400 .68rem/1.2 var(--mono); color:var(--faint); }
+  .hw-slot canvas { display:block; margin:0 auto; }
+  .hw-slot.empty { border-style:dashed; }
+  .hw-slot-empty { width:56px; height:56px; margin:0 auto; }
+  .hw-linerow { display:flex; gap:.8rem; align-items:center; justify-content:space-between;
+                border:1px solid var(--line); border-radius:8px; background:var(--panel);
+                padding:.5rem .8rem; margin-top:.5rem; font-size:.86rem; color:var(--soft); }
+  #hwTryInput { background:var(--panel); border:1px solid var(--line); border-radius:6px;
+                color:var(--ink); padding:.45rem .7rem; font:inherit; width:100%; max-width:34rem; }
+  #hwPreview { background:#fdfcf8; color:#1d2433; border-radius:10px; margin-top:.8rem;
+               padding:1.2rem 1.4rem; font:400 2.1rem/1.5 'My Handwriting Preview', Georgia, serif;
+               min-height:4.4rem; max-width:44rem; overflow-wrap:anywhere; }
+  #hwPrintArea { display:none; }
+  @media print {
+    body > .wrap { display:none !important; }
+    body { background:#fff; }
+    #hwPrintArea { display:block !important; }
+    #hwPrintArea canvas { width:100%; height:auto; }
+  }
+
   .duo { display:flex; gap:14px; flex-wrap:wrap; }
   .duo figure { margin:0; }
   .duo figcaption { font:400 .7rem/1.8 var(--mono); letter-spacing:.1em;
@@ -150,6 +175,13 @@
     <div class="row">
       <button class="ghost" id="openCreationBtn">Open a creation (JSON)</button>
       <input type="file" id="creationInput" accept="application/json,.json" style="display:none">
+      <button class="ghost" id="hwEntryBtn">✍️ My Handwriting — make a font of your own letters</button>
+    </div>
+    <!-- MY HANDWRITING, armed: the next photograph through this very entry
+         (picker, drop or camera — all unchanged) becomes the written sheet. -->
+    <div class="quiet" id="hwArmed">
+      <span id="hwArmedText"></span>
+      <div class="row"><button class="ghost" id="hwDisarmBtn">Never mind — back to my sheet</button></div>
     </div>
     <p class="note">The test page is a <b>procedural surrogate</b> of Test Case 001 —
        a rendered stand-in, not a real photograph. The real Test Case 001
@@ -286,9 +318,69 @@
     </details>
   </section>
 
+  <!-- MY HANDWRITING — a child copies the printed lines in their own
+       handwriting, photographs the sheet, and the tool builds a real font
+       of their letters. Known text per line turns reading into ALIGNMENT
+       (hwRead.js) — never OCR, never guessing a child's letters; the
+       refuse-rather-than-guess rule skips what it cannot be sure of, and
+       recovery is per line. The alphabet is SHOWN before the font is
+       built; missing letters are quiet empty slots and are simply absent
+       from the font's cmap, so text falls back to a plain letter there. -->
+
+  <!-- THE WRITING SHEET -->
+  <section class="step" id="stepHwSheet">
+    <h2>Your writing sheet</h2>
+    <p class="note">Print this sheet. Copy each line in your own handwriting on
+       the empty line under it — dark pencil or pen, letters apart, sitting on
+       the line. Then photograph the whole sheet, flat.</p>
+    <div class="board"><canvas id="hwSheetCanvas"></canvas></div>
+    <div class="quiet" id="hwQuietSheet"></div>
+    <div class="row">
+      <button id="hwPrintBtn">Print the sheet</button>
+      <button id="hwWroteBtn">I’ve written it — photograph my sheet</button>
+      <button class="ghost" id="hwSheetBack">Never mind</button>
+    </div>
+  </section>
+
+  <!-- READING -->
+  <section class="step" id="stepHwReading">
+    <h2>Your letters</h2>
+    <p class="note">Looking at your letters…</p>
+  </section>
+
+  <!-- THE ALPHABET -->
+  <section class="step" id="stepHwLetters">
+    <h2>Your letters</h2>
+    <p class="note" id="hwGridNote"></p>
+    <div class="hw-grid" id="hwGrid"></div>
+    <div id="hwLineList"></div>
+    <div class="row">
+      <button id="hwBuildBtn">Make my font</button>
+      <button class="ghost" id="hwNewSheetBtn">Start with a fresh sheet</button>
+    </div>
+  </section>
+
+  <!-- TRY YOUR FONT -->
+  <section class="step" id="stepHwTest">
+    <h2>Try your font</h2>
+    <p class="note">Type anything — it appears in your own handwriting. A letter
+       you haven’t written yet borrows a plain letter instead.</p>
+    <input type="text" id="hwTryInput" value="the quick brown fox jumps over a lazy dog" maxlength="120">
+    <div id="hwPreview"></div>
+    <div class="row">
+      <button id="hwDownloadBtn">Download “My Handwriting.ttf”</button>
+      <button class="ghost" id="hwBackToLetters">Back to my letters</button>
+      <button class="ghost" id="hwTestNewSheet">Start with a fresh sheet</button>
+    </div>
+  </section>
+
   <h2>Log</h2>
   <pre id="devLog"></pre>
 </div>
+
+<!-- The printable copy of the writing sheet — hidden on screen, the only
+     thing on paper when printing. -->
+<div id="hwPrintArea"><canvas id="hwPrintCanvas"></canvas></div>
 
 <!-- The tool's FIRST outside links (precedent: tools/world-builder-v2/
      already loads root js files). js/themeRepositoryClient.js resolves
@@ -311,5 +403,13 @@
 <script src="js/preview.js"></script>
 <script src="js/exportAsset.js"></script>
 <script src="js/app.js"></script>
+<!-- MY HANDWRITING — the sheet, the reader, the font builder, the wiring.
+     vendor/opentype.min.js is opentype.js 2.0.0 (MIT), vendored; see
+     vendor/README.md for the two facts a maintainer should know. -->
+<script src="vendor/opentype.min.js"></script>
+<script src="js/hwSheet.js"></script>
+<script src="js/hwRead.js"></script>
+<script src="js/hwFont.js"></script>
+<script src="js/hwApp.js"></script>
 </body>
 </html>
