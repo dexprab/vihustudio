@@ -19,11 +19,21 @@
  *
  * v0.2 adds the MAKE IT YOURS section: the layered creation document
  * (ORIGINAL / EDITS / TRANSFORM) driven through the real editing canvas —
- * paint, erase, move, resize, rotate, undo/redo, PNG render, and the JSON
+ * pencil, erase, move, resize, rotate, undo/redo, PNG render, and the JSON
  * round trip — every equality a pixel-buffer comparison. The v0.1 checks
  * above it are regression: none were invalidated by the sprint (nothing
  * ever asserted the night sky); only the two v0.1 demo screenshots were
  * replaced by the sprint's five-shot demo.
+ *
+ * v0.2 "editable creation" adds the MARK 3.5 section: the region structure
+ * (fills under the lines, line colour as a tint of the child's own ink,
+ * Thin/Original/Thick line weight, the fine pencil, edits-only erase,
+ * Original|My Version, Reset) — the product owner's A–L acceptance list,
+ * on the real photograph, ending in the ORIGINAL | MY VERSION side-by-side.
+ * ONE v0.2 behaviour was retired BY THE BRIEF, not by regression: erase no
+ * longer hides original pixels — the child's eraser touches the child's
+ * edits only, so the old Y5 hide-original checks are replaced by their
+ * successors ("erase over the original is a no-op").
  *
  * Run:
  *   node test/serve.js 8765 &
@@ -681,8 +691,22 @@ function check(name, cond, detail) {
   check('Y1 the creation document exists on Make It Yours', y1.creation && y1.onStep && y1.edit);
   check('Y1 the night-sky preview is gone from the final step', !y1.sky);
   check('Y1 developer strip shows the layer stack and op history',
-    y1.opsLine.includes('original') && y1.opsLine.includes('erase mask') &&
+    y1.opsLine.includes('original') && y1.opsLine.includes('fills') &&
     /history 0\/0 ops/.test(y1.opsLine), JSON.stringify(y1.opsLine.slice(0, 80)));
+  // The working surface: a quiet warm paper-grey, not a checkerboard (a
+  // checkerboard is a developer's transparency indicator) and not a sky.
+  const surf = await page.evaluate(() => {
+    const c = document.getElementById('editCanvas');
+    const x = c.getContext('2d');
+    const px = (a, b) => Array.from(x.getImageData(a, b, 1, 1).data);
+    return { a: px(3, 3), b: px(3 + 14, 3), c: px(c.width - 4, 3) };
+  });
+  check('Y1 the surface is ONE quiet colour — no checkerboard cells',
+    surf.a.join() === surf.b.join() && surf.a.join() === surf.c.join(),
+    surf.a.join() + ' / ' + surf.b.join());
+  check('Y1 the surface is warm paper-grey, not dark, not white',
+    surf.a[0] >= 215 && surf.a[0] <= 248 && surf.a[0] >= surf.a[2] && surf.a[3] === 255,
+    'rgb(' + surf.a.slice(0, 3).join(',') + ')');
 
   // ---- Y2: the ghost check ---------------------------------------------------
   // The initial view must BE the original extraction — full pencil darkness,
@@ -714,19 +738,18 @@ function check(name, cond, detail) {
   const dims = await page.evaluate(() => ({
     w: window.__bia.creation.original.width, h: window.__bia.creation.original.height }));
   await page.locator('button.swatch[data-color="#e5484d"]').click();
-  await editStroke('toolPaint', [[dims.w * 0.25, dims.h * 0.5], [dims.w * 0.75, dims.h * 0.5]]);
-  await page.screenshot({ path: path.join(SHOTS, '4-painted.png') });
+  await editStroke('toolPencil', [[dims.w * 0.25, dims.h * 0.5], [dims.w * 0.75, dims.h * 0.5]]);
   const y4a = await page.evaluate(async (d) => ({
     changed: window.__test.cmpView('v0').mismatches,
     at: window.__test.viewAt(d.w * 0.5, d.h * 0.5),
     walk: await window.__test.originalWalk('/tools/imagebed/1000299474.jpg')
   }), dims);
-  check('Y4 a paint stroke changes the current view', y4a.changed > 1000,
+  check('Y4 a pencil stroke changes the current view', y4a.changed > 1000,
     y4a.changed + ' bytes differ');
-  check('Y4 paint lands at full alpha in the chosen colour',
+  check('Y4 the pencil core lands at full alpha in the exact chosen colour',
     y4a.at[0] === 229 && y4a.at[1] === 72 && y4a.at[2] === 77 && y4a.at[3] === 255,
     'rgba(' + y4a.at.join(',') + ')');
-  check('Y4 paint never touches the ORIGINAL layer (byte-identical to the photograph)',
+  check('Y4 the pencil never touches the ORIGINAL layer (byte-identical to the photograph)',
     y4a.walk.mismatches === 0 && y4a.walk.opaque > 10000,
     y4a.walk.opaque + ' opaque px walked');
 
@@ -757,7 +780,6 @@ function check(name, cond, detail) {
     y4b.walk.opaque + ' opaque px byte-identical to the source photograph');
   check('Y4 the render after undo equals the original render, byte for byte',
     y4b.render.mismatches === 0, y4b.render.dims);
-  await page.screenshot({ path: path.join(SHOTS, '5-original-recovered.png') });
 
   await page.evaluate(() => { BIAEditor.redo(); BIAEditor.redo(); BIAEditor.redo(); });
   const y4c = await page.evaluate(async () => ({
@@ -770,9 +792,13 @@ function check(name, cond, detail) {
     y4c.png.dimsMatch && y4c.png.opaqueMismatch === 0 && y4c.png.farMismatch === 0,
     'png ' + y4c.png.pngBytes + ' bytes, opaque exact, feather ±2');
 
-  // ---- Y5: erase-over-original hides, never destroys -------------------------
-  console.log('\n-- Y5: erase hides the original; undo brings it back exactly');
-  await page.evaluate(() => { BIAEditor.undo(); BIAEditor.undo(); }); // back to paint-only, identity transform
+  // ---- Y5: the eraser touches the child's edits ONLY -------------------------
+  // SUPERSEDES the old Y5 (erase hides original pixels, recoverably): the
+  // product owner's new brief says erase must not damage the protected
+  // original artwork, so erase over bare drawing is now a visual NO-OP —
+  // asserted as byte equality, plus the original walk.
+  console.log('\n-- Y5: the eraser cannot touch the original drawing');
+  await page.evaluate(() => { BIAEditor.undo(); BIAEditor.undo(); }); // back to pencil-only, identity transform
   const spot = await page.evaluate(() => {
     const c = window.__bia.creation;
     const pd = c.paintCtx.getImageData(0, 0, c.original.width, c.original.height).data;
@@ -801,27 +827,26 @@ function check(name, cond, detail) {
   await editStroke('toolErase', [[spot[0] - 12, spot[1]], [spot[0] + 12, spot[1]]]);
   const y5 = await page.evaluate(async (s) => ({
     at: window.__test.viewAt(s[0], s[1]),
+    cmp: window.__test.cmpView('v5pre'),
     walk: await window.__test.originalWalk('/tools/imagebed/1000299474.jpg')
   }), spot);
-  check('Y5 erase hides the original pixel in the view (alpha 0)', y5.at[3] === 0,
+  check('Y5 erase over the bare original changes NOTHING in the view (byte equality)',
+    y5.cmp.mismatches === 0 && y5.cmp.transformSame,
+    y5.cmp.mismatches + ' bytes differ');
+  check('Y5 the original pixel is still there at full alpha', y5.at[3] === 255,
     'rgba(' + y5.at.join(',') + ')');
-  check('Y5 the hidden pixels are NOT destroyed — ORIGINAL still byte-identical',
-    y5.walk.mismatches === 0);
-  await page.evaluate(() => BIAEditor.undo());
-  const y5b = await page.evaluate((s) => ({
-    cmp: window.__test.cmpView('v5pre'), at: window.__test.viewAt(s[0], s[1])
-  }), spot);
-  check('Y5 undo brings the hidden pixels back exactly',
-    y5b.cmp.mismatches === 0 && y5b.at[3] === 255);
+  check('Y5 ORIGINAL layer byte-identical after the erase', y5.walk.mismatches === 0);
+  await page.evaluate(() => BIAEditor.undo());   // the no-op erase op leaves the history
 
   // ---- Y6: erasing PAINT removes paint, and only paint ------------------------
   console.log('\n-- Y6: erasing paint removes paint, not the drawing');
   const clear = await page.evaluate(() => {
     // Clear of the ORIGINAL and clear of any existing PAINT, so the only
-    // thing this paint-then-erase pair can touch is itself.
+    // thing this mark-then-erase pair can touch is itself. The margin must
+    // exceed the THICK eraser's full reach (radius ~27 + stroke ±12).
     const c = window.__bia.creation, w = c.original.width, h = c.original.height;
     const pd = c.paintCtx.getImageData(0, 0, w, h).data;
-    const od = c.original.data, m = 30;
+    const od = c.original.data, m = 44;
     outer:
     for (let y = m; y < h - m; y += 3) {
       for (let x = m; x < w - m; x += 3) {
@@ -840,21 +865,21 @@ function check(name, cond, detail) {
   check('Y6 found clear space to paint on', !!clear, JSON.stringify(clear));
   await page.evaluate(() => window.__test.snapView('v6pre'));
   await page.locator('button.swatch[data-color="#3e63dd"]').click();
-  await editStroke('toolPaint', [[clear[0] - 10, clear[1]], [clear[0] + 10, clear[1]]]);
+  await editStroke('toolPencil', [[clear[0] - 10, clear[1]], [clear[0] + 10, clear[1]]]);
   const y6a = await page.evaluate((s) => window.__test.viewAt(s[0], s[1]), clear);
-  check('Y6 paint on clear space lands at full alpha',
+  check('Y6 a pencil mark on clear space lands at full alpha',
     y6a[3] === 255 && y6a[2] > 150, 'rgba(' + y6a.join(',') + ')');
-  // A bigger eraser than the brush, so the stroke's anti-aliased fringe goes too.
-  await page.locator('button.brush[data-size="12"]').click();
+  // A bigger eraser than the pencil, so the stroke's textured fringe goes too.
+  await page.locator('button.brush[data-size="thick"]').click();
   await editStroke('toolErase', [[clear[0] - 12, clear[1]], [clear[0] + 12, clear[1]]]);
   const y6b = await page.evaluate(async () => ({
     cmp: window.__test.cmpView('v6pre'),
     walk: await window.__test.originalWalk('/tools/imagebed/1000299474.jpg')
   }));
-  check('Y6 erase removes the paint and nothing else — view back to pre-paint bytes',
+  check('Y6 erase removes the pencil mark and nothing else — view back to pre-mark bytes',
     y6b.cmp.mismatches === 0);
   check('Y6 ORIGINAL layer untouched throughout', y6b.walk.mismatches === 0);
-  await page.locator('button.brush[data-size="7"]').click();
+  await page.locator('button.brush[data-size="fine"]').click();
 
   // ---- Y7: undo/redo round trip over mixed ops, compared as pixel buffers ----
   console.log('\n-- Y7: N ops, undo all, redo all — identical each way');
@@ -935,8 +960,8 @@ function check(name, cond, detail) {
       opaqueMismatch, farMismatch, bytes: s.length
     };
   });
-  check('Y8 the JSON is a versioned, complete layered document',
-    y8.format === 'vihu-creation' && y8.version === 1 && y8.hasMask && y8.hasPixels &&
+  check('Y8 the JSON is a versioned, complete layered document (v2)',
+    y8.format === 'vihu-creation' && y8.version === 2 && y8.hasMask && y8.hasPixels &&
     y8.srcName === '1000299474.jpg' && y8.cursor > 0,
     y8.bytes + ' bytes, ' + y8.cursor + '/' + y8.ops + ' ops');
   check('Y8 a fresh reload composes the identical current view',
@@ -964,6 +989,437 @@ function check(name, cond, detail) {
     y8b.onStep && y8b.tol.opaqueMismatch === 0 && y8b.tol.farMismatch === 0);
   check('Y8 a reopened creation offers no "Make another claim" (no photograph behind it)',
     y8b.reclaimHidden);
+
+  // ==========================================================================
+  // MARK 3.5 — the editable structure: fills under the lines, line colour
+  // and weight, the fine pencil, edits-only erase, Original|My Version,
+  // Reset — the product owner's acceptance list on the REAL photograph,
+  // driven through the real buttons and real taps, asserted pixel by pixel.
+  console.log('\n== MARK 3.5 — fills, lines, pencil (the editable structure) ==');
+  await newPhotoFromAlive();
+  await page.evaluate(() => { window.__prevPhoto = window.__bia.photo; });
+  await page.setInputFiles('#fileInput',
+    { name: '1000299474.jpg', mimeType: 'image/jpeg', buffer: realBuf });
+  await page.waitForFunction(() =>
+    window.__bia.photo && window.__bia.photo !== window.__prevPhoto, null, { timeout: 60000 });
+  await drawLoop(R.leftClaim);
+  await bringAlive();
+  await page.locator('#yoursTools').scrollIntoViewIfNeeded();
+
+  // A tap on the editing canvas at a document coordinate — down and up,
+  // no movement, exactly the child's Fill gesture.
+  async function editTap(docX, docY) {
+    const eb = await page.locator('#editCanvas').boundingBox();
+    const [px, py] = await page.evaluate(([x, y]) => BIAEditor.docToScreen(x, y), [docX, docY]);
+    const before = await page.evaluate(() => window.__bia.creation.cursor);
+    await page.mouse.move(eb.x + px, eb.y + py);
+    await page.mouse.down();
+    await page.mouse.up();
+    await page.waitForFunction((n) => window.__bia.creation.cursor > n, before);
+  }
+
+  // ---- M1: the structure is derived, and the real character has it ---------
+  const m1 = await page.evaluate(() => {
+    const c = window.__bia.creation;
+    const R2 = c.regions();
+    if (R2.none) return { none: true, note: R2.note };
+    const w = c.original.width, h = c.original.height, od = c.original.data;
+    // the largest closed area
+    let best = 0, bestA = 0;
+    for (let id = 1; id < R2.areas.length; id++) {
+      if (R2.areas[id] > bestA) { bestA = R2.areas[id]; best = id; }
+    }
+    // an interior point: transparent in ORIGINAL, labelled, and clear of ink
+    // beyond the Fill tap's own snap radius (max(3, halfWidth)), so the tap
+    // reads as "inside", never as "on the line"
+    const clearance = Math.max(3, R2.halfWidth) + 3;
+    let interior = null;
+    for (let y = clearance; y < h - clearance && !interior; y += 2) {
+      for (let x = clearance; x < w - clearance; x += 2) {
+        const i = y * w + x;
+        if (R2.labels[i] !== best || od[i * 4 + 3] !== 0) continue;
+        let ok = true;
+        for (let dy = -clearance; dy <= clearance && ok; dy += 2) {
+          for (let dx = -clearance; dx <= clearance; dx += 2) {
+            const j = (y + dy) * w + (x + dx);
+            if (R2.labels[j] !== best || od[j * 4 + 3] !== 0 || c.mask[j]) { ok = false; break; }
+          }
+        }
+        if (ok) { interior = [x, y]; break; }
+      }
+    }
+    // an ink point on that area's line: raw-mask 3×3 solid, fully opaque
+    const B = R2.boundaryOf(best);
+    let inkPt = null;
+    for (const i of B) {
+      const x = i % w, y = (i / w) | 0;
+      if (x < 2 || y < 2 || x >= w - 2 || y >= h - 2) continue;
+      if (od[i * 4 + 3] !== 255) continue;
+      let solid = true;
+      for (let dy = -1; dy <= 1 && solid; dy++) for (let dx = -1; dx <= 1; dx++) {
+        if (!c.mask[(y + dy) * w + (x + dx)]) { solid = false; break; }
+      }
+      if (solid) { inkPt = [x, y]; break; }
+    }
+    return { none: false, count: R2.count, g: R2.g, halfWidth: R2.halfWidth,
+             best, bestA, interior, inkPt, boundaryN: B.length };
+  });
+  check('M1 closed areas are found on the real character (structure, not paths)',
+    !m1.none && m1.count >= 2 && m1.bestA > 5000,
+    m1.none ? m1.note : m1.count + ' areas, largest ' + m1.bestA + ' px, gap radius ' + m1.g);
+  check('M1 the largest area offers an interior point and a line point',
+    !!m1.interior && !!m1.inkPt,
+    JSON.stringify({ interior: m1.interior, ink: m1.inkPt }));
+
+  // Boundary-visibility measure for Thin/Original/Thick: dark visible line
+  // pixels in the boundary band (fills are excluded by exact colour).
+  await page.evaluate(() => {
+    window.__test.lineVisibility = function (regionId, fillHex) {
+      const c = window.__bia.creation, R2 = c.regions(), w = c.original.width;
+      const d = c.view().data, n = R2.labels.length;
+      const B = R2.boundaryOf(regionId);
+      const fill = fillHex ? [parseInt(fillHex.slice(1, 3), 16), parseInt(fillHex.slice(3, 5), 16),
+                              parseInt(fillHex.slice(5, 7), 16)] : null;
+      const seen = new Uint8Array(n);
+      let vis = 0;
+      for (const i of B) {
+        const x = i % w, y = (i / w) | 0;
+        for (let dy = -10; dy <= 10; dy++) for (let dx = -10; dx <= 10; dx++) {
+          const j = (y + dy) * w + (x + dx);
+          if (j < 0 || j >= n || seen[j]) continue;
+          seen[j] = 1;
+          const p = j * 4;
+          if (d[p + 3] === 0) continue;
+          if (fill && d[p] === fill[0] && d[p + 1] === fill[1] && d[p + 2] === fill[2]) continue;
+          const L = (d[p] * 77 + d[p + 1] * 150 + d[p + 2] * 29) >> 8;
+          if (L < 150) vis++;
+        }
+      }
+      return vis;
+    };
+  });
+
+  // ---- M2 (E): tap-to-fill — colour INSIDE, under the lines -----------------
+  console.log('\n-- M2 (E): tap inside → the area fills UNDER the pencil lines');
+  const visOriginal = await page.evaluate((id) => window.__test.lineVisibility(id, '#3e63dd'), m1.best);
+  await page.click('#toolFill');
+  await page.locator('button.swatch[data-color="#3e63dd"]').click();
+  const m2tool = await page.evaluate(() => BIAEditor.state.tool);
+  check('M2 choosing a colour does not steal the Fill tool', m2tool === 'fill', m2tool);
+  await editTap(m1.interior[0], m1.interior[1]);
+  const m2 = await page.evaluate(async (M) => {
+    const c = window.__bia.creation, R2 = c.regions(), w = c.original.width;
+    const od = c.original.data, d = c.view().data;
+    const last = c.ops[c.cursor - 1];
+    // EVERY interior pixel that was transparent is now exactly the fill
+    // colour; EVERY fully-opaque original pixel is byte-unchanged.
+    let interiorTotal = 0, interiorFilled = 0, opaqueChanged = 0, opaqueTotal = 0;
+    for (let i = 0; i < R2.labels.length; i++) {
+      const p = i * 4;
+      if (R2.labels[i] === M.best && od[p + 3] === 0) {
+        interiorTotal++;
+        if (d[p] === 62 && d[p + 1] === 99 && d[p + 2] === 221 && d[p + 3] === 255) interiorFilled++;
+      }
+      if (od[p + 3] === 255) {
+        opaqueTotal++;
+        if (d[p] !== od[p] || d[p + 1] !== od[p + 1] || d[p + 2] !== od[p + 2] ||
+            d[p + 3] !== od[p + 3]) opaqueChanged++;
+      }
+    }
+    return { op: last && last.t, region: last && last.region,
+             interiorTotal, interiorFilled, opaqueChanged, opaqueTotal,
+             walk: await window.__test.originalWalk('/tools/imagebed/1000299474.jpg') };
+  }, m1);
+  check('M2 the tap landed as a fill op on the tapped area',
+    m2.op === 'fill' && m2.region === m1.best, m2.op + ' region ' + m2.region);
+  check('M2 every transparent interior pixel is EXACTLY the fill colour',
+    m2.interiorTotal > 3000 && m2.interiorFilled === m2.interiorTotal,
+    m2.interiorFilled + '/' + m2.interiorTotal + ' px');
+  check('M2 every fully-opaque original pixel is byte-unchanged — lines stay on top',
+    m2.opaqueChanged === 0, m2.opaqueTotal + ' opaque px checked');
+  check('M2 ORIGINAL layer byte-identical to the photograph after the fill',
+    m2.walk.mismatches === 0);
+
+  // ---- M3 (F): tap the line → line colour, texture preserved ----------------
+  console.log('\n-- M3 (F): tap the line itself → the line takes the colour, texture intact');
+  await page.locator('button.swatch[data-color="#e5484d"]').click();
+  await editTap(m1.inkPt[0], m1.inkPt[1]);
+  const m3 = await page.evaluate((M) => {
+    const c = window.__bia.creation, R2 = c.regions();
+    const od = c.original.data, d = c.view().data;
+    const last = c.ops[c.cursor - 1];
+    const B = R2.boundaryOf(M.best);
+    // alpha NEVER changes under a tint; darkness ORDER survives; red leads
+    let alphaChanged = 0, redLeads = 0, opaqueN = 0;
+    const lums = [];
+    for (const i of B) {
+      const p = i * 4;
+      if (d[p + 3] !== od[p + 3]) alphaChanged++;
+      if (od[p + 3] !== 255) continue;
+      opaqueN++;
+      if (d[p] >= d[p + 1] && d[p] >= d[p + 2]) redLeads++;
+      if (opaqueN % 7 === 0) {
+        lums.push([(od[p] * 77 + od[p + 1] * 150 + od[p + 2] * 29) >> 8,
+                   (d[p] * 77 + d[p + 1] * 150 + d[p + 2] * 29) >> 8]);
+      }
+    }
+    lums.sort((a, b) => a[0] - b[0]);
+    let orderBreaks = 0;
+    for (let k = 1; k < lums.length; k++) if (lums[k][1] < lums[k - 1][1] - 2) orderBreaks++;
+    // the fill is still there — fill and line colour COEXIST
+    let stillBlue = true;
+    { const w = c.original.width, i = M.interior[1] * w + M.interior[0], p = i * 4;
+      stillBlue = d[p] === 62 && d[p + 1] === 99 && d[p + 2] === 221; }
+    return { op: last && last.t, region: last && last.region, alphaChanged,
+             redLeads, opaqueN, orderBreaks, pairs: lums.length, stillBlue };
+  }, m1);
+  check('M3 the tap on ink landed as a line-colour op on the same area',
+    m3.op === 'lineColor' && m3.region === m1.best, m3.op + ' region ' + m3.region);
+  check('M3 the tint preserves per-pixel alpha exactly', m3.alphaChanged === 0,
+    m3.alphaChanged + ' of the line\'s px changed alpha');
+  check('M3 the line is red now, and its darkness ORDER survives (texture, not flat paint)',
+    m3.redLeads / m3.opaqueN > 0.98 && m3.orderBreaks === 0,
+    (m3.redLeads / m3.opaqueN * 100).toFixed(1) + '% red-led, ' + m3.orderBreaks +
+    ' order breaks in ' + m3.pairs + ' sampled pairs');
+  check('M3 fill blue + line red coexist', m3.stillBlue);
+
+  // ---- M4 (G): Thin | Original | Thick, measured -----------------------------
+  console.log('\n-- M4 (G): line weight — Thin < Original < Thick, measured on the ink');
+  await page.click('#lineThinBtn');
+  await page.waitForFunction(() => {
+    const c = window.__bia.creation;
+    return c.ops[c.cursor - 1] && c.ops[c.cursor - 1].t === 'lineWidth';
+  });
+  const visThin = await page.evaluate((id) => window.__test.lineVisibility(id, '#3e63dd'), m1.best);
+  const thinWalk = await page.evaluate(() =>
+    window.__test.originalWalk('/tools/imagebed/1000299474.jpg'));
+  await page.click('#lineThickBtn');
+  await page.waitForFunction(() => {
+    const c = window.__bia.creation;
+    return c.ops[c.cursor - 1] && c.ops[c.cursor - 1].width === 'thick';
+  });
+  const visThick = await page.evaluate((id) => window.__test.lineVisibility(id, '#3e63dd'), m1.best);
+  check('M4 Thin shows measurably less line than Original', visThin < visOriginal * 0.8,
+    'thin ' + visThin + ' < original ' + visOriginal + ' dark px');
+  check('M4 Thin still shows a line (thinner, never gone)', visThin > visOriginal * 0.1,
+    visThin + ' px');
+  check('M4 Thick shows measurably more line than Original', visThick > visOriginal * 1.15,
+    'thick ' + visThick + ' > original ' + visOriginal + ' dark px');
+  check('M4 ORIGINAL layer byte-identical under Thin (weight is compose-time, not destruction)',
+    thinWalk.mismatches === 0);
+
+  // ---- M5 (H): the fine pencil ------------------------------------------------
+  console.log('\n-- M5 (H): a fine pencil detail — a mark, not a paintbrush');
+  const m5spot = await page.evaluate(() => {
+    // clear of original, paint AND regions, with room for the eraser after
+    const c = window.__bia.creation, R2 = c.regions(), w = c.original.width, h = c.original.height;
+    const od = c.original.data, m = 40;
+    for (let y = m; y < h - m; y += 3) {
+      for (let x = m; x < w - m; x += 3) {
+        let ok = true;
+        for (let yy = -m; yy <= m && ok; yy += 4) for (let xx = -m; xx <= m; xx += 4) {
+          const j = (y + yy) * w + (x + xx);
+          if (od[j * 4 + 3] !== 0 || R2.labels[j] !== 0) { ok = false; break; }
+        }
+        if (ok) return [x, y];
+      }
+    }
+    return null;
+  });
+  check('M5 found clear space for the detail', !!m5spot, JSON.stringify(m5spot));
+  await page.evaluate(() => window.__test.snapView('m5pre'));
+  await page.click('#toolPencil');
+  await page.locator('button.swatch[data-color="#30a46c"]').click();
+  await editStroke('toolPencil', [[m5spot[0] - 14, m5spot[1]], [m5spot[0] + 14, m5spot[1]]]);
+  const m5 = await page.evaluate((s) => {
+    const c = window.__bia.creation, w = c.original.width;
+    const last = c.ops[c.cursor - 1];
+    const at = window.__test.viewAt(s[0], s[1]);
+    // measure the mark's height at its middle column — fine means FINE
+    const d = c.view().data;
+    let minY = 1e9, maxY = -1;
+    for (let y = s[1] - 12; y <= s[1] + 12; y++) {
+      if (d[(y * w + s[0]) * 4 + 3] > 0) { minY = Math.min(minY, y); maxY = Math.max(maxY, y); }
+    }
+    return { op: last.t, size: last.size, radius: last.radius,
+             points: last.points.length, at, markHeight: maxY - minY + 1 };
+  }, m5spot);
+  check('M5 the pencil op is a point path with a pinned radius (rendered on demand)',
+    m5.op === 'pencil' && m5.size === 'fine' && m5.points >= 2 && m5.radius > 0,
+    m5.points + ' points, radius ' + m5.radius.toFixed(2));
+  check('M5 the core of the mark is the exact colour at full alpha',
+    m5.at[0] === 48 && m5.at[1] === 164 && m5.at[2] === 108 && m5.at[3] === 255,
+    'rgba(' + m5.at.join(',') + ')');
+  check('M5 fine IS fine — the mark is a few pixels tall, not a paintbrush band',
+    m5.markHeight >= 2 && m5.markHeight <= 9, m5.markHeight + ' px tall');
+
+  // ---- M6 (I): erase the detail — edits only ---------------------------------
+  console.log('\n-- M6 (I): erase the detail — back to before it, byte for byte');
+  await page.locator('button.brush[data-size="medium"]').click();
+  await editStroke('toolErase', [[m5spot[0] - 16, m5spot[1]], [m5spot[0] + 16, m5spot[1]]]);
+  await page.locator('button.brush[data-size="fine"]').click();
+  const m6 = await page.evaluate(async () => ({
+    cmp: window.__test.cmpView('m5pre'),
+    walk: await window.__test.originalWalk('/tools/imagebed/1000299474.jpg')
+  }));
+  check('M6 erasing the detail restores the pre-detail view exactly',
+    m6.cmp.mismatches === 0, m6.cmp.mismatches + ' bytes differ');
+  check('M6 ORIGINAL layer byte-identical after the erase', m6.walk.mismatches === 0);
+  // One pencil detail that STAYS — a small zigzag next to the drawing — so
+  // the demo's My Version carries all three kinds of edit at once.
+  await page.click('#toolPencil');
+  await editStroke('toolPencil', [
+    [m5spot[0] - 16, m5spot[1] + 6], [m5spot[0] - 8, m5spot[1] - 8],
+    [m5spot[0], m5spot[1] + 6], [m5spot[0] + 8, m5spot[1] - 8],
+    [m5spot[0] + 16, m5spot[1] + 6]]);
+  await page.screenshot({ path: path.join(SHOTS, '4-made-mine.png') });
+
+  // ---- M7 (J): undo/redo across the new op vocabulary -------------------------
+  console.log('\n-- M7 (J): undo everything, redo everything — pixel-exact each way');
+  const m7top = await page.evaluate(() => window.__bia.creation.cursor);
+  await page.evaluate(() => window.__test.snapView('m7top'));
+  await page.evaluate(() => { while (BIAEditor.state.creation.undo()) {} });
+  const m7zero = await page.evaluate(() => ({
+    cursor: window.__bia.creation.cursor,
+    vsOrig: window.__test.viewVsOriginal()
+  }));
+  check('M7 undo through fills, line ops, pencil and erase lands on the untouched original',
+    m7zero.cursor === 0 && m7zero.vsOrig === 0, 'cursor 0, ' + m7zero.vsOrig + ' bytes differ');
+  await page.evaluate(() => { while (BIAEditor.state.creation.redo()) {} });
+  const m7back = await page.evaluate(() => Object.assign(
+    { cursor: window.__bia.creation.cursor }, window.__test.cmpView('m7top')));
+  check('M7 redo reproduces the edited state byte for byte',
+    m7back.cursor === m7top && m7back.mismatches === 0 && m7back.transformSame,
+    'cursor ' + m7back.cursor + ', ' + m7back.mismatches + ' bytes differ');
+
+  // ---- M8 (K): Reset My Changes ------------------------------------------------
+  console.log('\n-- M8 (K): Reset → the exact original extracted artwork');
+  await page.click('#resetBtn');
+  await page.waitForFunction(() => window.__bia.creation.cursor === 0);
+  const m8 = await page.evaluate(async () => ({
+    vsOrig: window.__test.viewVsOriginal(),
+    t: window.__bia.creation.transform,
+    walk: await window.__test.originalWalk('/tools/imagebed/1000299474.jpg')
+  }));
+  check('M8 after Reset the view is byte-identical to the ORIGINAL layer',
+    m8.vsOrig === 0 && m8.walk.mismatches === 0);
+  check('M8 Reset also clears the transform',
+    m8.t.x === 0 && m8.t.y === 0 && m8.t.scale === 1 && m8.t.rotation === 0);
+  await page.screenshot({ path: path.join(SHOTS, '5-original-recovered.png') });
+  // Reset is history movement, not destruction: Redo can walk it back.
+  await page.evaluate(() => { while (BIAEditor.state.creation.redo()) {} });
+  const m8b = await page.evaluate(() => window.__test.cmpView('m7top'));
+  check('M8 even a Reset can be redone — nothing was destroyed',
+    m8b.mismatches === 0 && m8b.transformSame);
+
+  // ---- M9: Original | My Version — one creation, two honest views -------------
+  console.log('\n-- M9: Original | My Version toggle');
+  await page.click('#viewOriginalBtn');
+  const m9a = await page.evaluate((M) => {
+    const [px, py] = BIAEditor.docToScreen(M.interior[0], M.interior[1]);
+    const d = document.getElementById('editCanvas').getContext('2d')
+      .getImageData(Math.round(px), Math.round(py), 1, 1).data;
+    return Array.from(d);
+  }, m1);
+  await page.click('#viewMineBtn');
+  const m9b = await page.evaluate((M) => {
+    const [px, py] = BIAEditor.docToScreen(M.interior[0], M.interior[1]);
+    const d = document.getElementById('editCanvas').getContext('2d')
+      .getImageData(Math.round(px), Math.round(py), 1, 1).data;
+    return Array.from(d);
+  }, m1);
+  check('M9 Original shows the untouched drawing — the filled spot is bare paper-grey there',
+    Math.abs(m9a[0] - 236) <= 4 && Math.abs(m9a[1] - 234) <= 4 && Math.abs(m9a[2] - 228) <= 4,
+    'rgb(' + m9a.slice(0, 3).join(',') + ')');
+  check('M9 My Version shows the fill at the same spot — one creation, two views',
+    m9b[2] > 150 && m9b[2] > m9b[0] && m9b[3] === 255,
+    'rgb(' + m9b.slice(0, 3).join(',') + ')');
+
+  // ---- M10: the two PNGs and the editable JSON ---------------------------------
+  console.log('\n-- M10: Original PNG · Current PNG · the creation JSON (v2, v1 still opens)');
+  const m10 = await page.evaluate(async () => {
+    const c = window.__bia.creation;
+    // Original PNG: encode the untouched layer, decode it back, walk it.
+    const blob = await new Promise((res) => c.originalCanvas().toBlob(res, 'image/png'));
+    const bmp = await createImageBitmap(blob);
+    const cv = document.createElement('canvas');
+    cv.width = bmp.width; cv.height = bmp.height;
+    const x = cv.getContext('2d', { willReadFrequently: true });
+    x.drawImage(bmp, 0, 0);
+    const dec = x.getImageData(0, 0, cv.width, cv.height).data;
+    const od = c.original.data;
+    let opaqueMismatch = 0, farMismatch = 0;
+    for (let p = 0; p < od.length; p += 4) {
+      let dd = 0;
+      for (let k = 0; k < 4; k++) dd = Math.max(dd, Math.abs(od[p + k] - dec[p + k]));
+      if (!dd) continue;
+      if (od[p + 3] === 255) opaqueMismatch++;
+      else if (dd > 2) farMismatch++;
+    }
+    const png = await window.__test.pngRendersCurrentView();
+    // JSON round trip WITH fills, line ops and a pencil mark in history:
+    // fully-opaque and fully-transparent original pixels compose EXACTLY;
+    // the feather ring (partial alpha) may drift ±4 after a tint of ±1-off
+    // RGB — the stated exemption, one ring wide, nothing else.
+    const s = c.toJSONString();
+    const c2 = await BIACreation.fromJSON(s);
+    const a = c.view().data, b = c2.view().data;
+    let hardMismatch = 0, featherDrift = 0, featherFar = 0;
+    for (let p = 0; p < a.length; p += 4) {
+      let dd = 0;
+      for (let k = 0; k < 4; k++) dd = Math.max(dd, Math.abs(a[p + k] - b[p + k]));
+      if (!dd) continue;
+      const oa = od[p + 3];
+      if (oa === 0 || oa === 255) hardMismatch++;
+      else { featherDrift++; if (dd > 4) featherFar++; }
+    }
+    // v1 files still open (empty history — the cheap, honest compat check)
+    const doc = c.toJSON();
+    doc.version = 1; doc.edits = { ops: [], cursor: 0 };
+    let v1ok = false, v1ghost = -1;
+    try {
+      const c1 = await BIACreation.fromJSON(JSON.stringify(doc));
+      v1ghost = 0;
+      const v = c1.view().data, o1 = c1.original.data;
+      for (let i = 0; i < v.length; i++) if (v[i] !== o1[i]) v1ghost++;
+      v1ok = true;
+    } catch (e) { v1ok = false; }
+    return { dims: bmp.width === cv.width, opaqueMismatch, farMismatch,
+             pngBytes: blob.size, png,
+             json: { hardMismatch, featherDrift, featherFar, ops: c2.ops.length },
+             v1ok, v1ghost };
+  });
+  check('M10 Original PNG is the untouched extracted artwork (opaque exact, feather ±2)',
+    m10.opaqueMismatch === 0 && m10.farMismatch === 0, m10.pngBytes + ' bytes');
+  check('M10 Current PNG is a render of the current edited view',
+    m10.png.dimsMatch && m10.png.opaqueMismatch === 0 && m10.png.farMismatch === 0);
+  check('M10 the v2 JSON replays fills, line ops and pencil to the same bytes',
+    m10.json.hardMismatch === 0 && m10.json.featherFar === 0 && m10.json.ops > 0,
+    m10.json.featherDrift + ' feather px within ±4, 0 elsewhere');
+  check('M10 a version-1 file still opens, ghost-free', m10.v1ok && m10.v1ghost === 0);
+
+  // ---- THE ACCEPTANCE VISUAL: ORIGINAL | MY VERSION, side by side --------------
+  await page.evaluate(() => {
+    const c = window.__bia.creation;
+    const w = c.original.width, h = c.original.height;
+    const board = document.createElement('canvas');
+    board.width = w * 2 + 90; board.height = h + 96;
+    const x = board.getContext('2d');
+    x.fillStyle = '#eceae4'; x.fillRect(0, 0, board.width, board.height);
+    x.drawImage(c.originalCanvas(), 30, 66);
+    x.drawImage(c.viewCanvas(), w + 60, 66);
+    x.fillStyle = '#4a463e';
+    x.font = '600 30px Georgia, serif';
+    x.fillText('ORIGINAL', 30, 44);
+    x.fillText('MY VERSION', w + 60, 44);
+    board.id = 'sideBySide';
+    board.style.width = '1040px';
+    document.querySelector('.wrap').appendChild(board);
+  });
+  await page.locator('#sideBySide').scrollIntoViewIfNeeded();
+  await page.locator('#sideBySide').screenshot({
+    path: path.join(SHOTS, '6-original-vs-my-version.png') });
+  await page.evaluate(() => document.getElementById('sideBySide').remove());
 
   // ---- hygiene -------------------------------------------------------------
   console.log('\n-- hygiene');
