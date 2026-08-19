@@ -1792,6 +1792,274 @@ function check(name, cond, detail) {
   check('K7 ORIGINAL layer byte-identical through every erase/mark order',
     k7b.walk.mismatches === 0);
 
+  // ==========================================================================
+  // CAMERA — the second way in (v0.3). Three environments, all real:
+  //   · the MAIN browser: the API exists (127.0.0.1 is a secure context)
+  //     but Playwright refuses the permission — the refused path, exactly
+  //     as a child would meet it, must end in gentle words and a working
+  //     picker;
+  //   · a context with NO mediaDevices at all (the plain-http reality) —
+  //     the step must be exactly as it was before the camera existed;
+  //   · a SECOND browser launched with Chromium's fake camera serving
+  //     test/camera-feed-001.y4m — the real Test Case 001 drawing at
+  //     webcam resolution (whole page fitted into 1280×960; see
+  //     make-camera-feed.js for the documented geometry) — driving the
+  //     FULL pipeline from a live camera frame, ending in an extraction.
+  // The section closes with the effectiveness measurement the camera was
+  // built to answer: the same claim on the full-resolution upload and on
+  // the camera frame, as numbers.
+  console.log('\n== CAMERA — the second way in =============================');
+  const feed = require('./make-camera-feed.js');
+  const Y4M = feed.OUT;
+
+  // Shared measurement: what did the pipeline keep of this claim?
+  const MEASURE = () => {
+    const st = window.__bia, seg = st.seg, a = st.asset;
+    const d = a.imageData.data, cw = a.crop.w;
+    let opaque = 0, paperish = 0;
+    for (let y = 0; y < a.crop.h; y++) for (let x = 0; x < cw; x++) {
+      const i4 = (y * cw + x) * 4;
+      if (d[i4 + 3] !== 255) continue;
+      opaque++;
+      const gi = (a.crop.y + y) * seg.width + (a.crop.x + x);
+      if (seg.paper[gi] - seg.lum[gi] < 12) paperish++;
+    }
+    return { mask: seg.maskCount, comps: seg.compCount, crop: a.crop,
+             opaque, paperish, haloFrac: opaque ? paperish / opaque : 0,
+             verified: st.lastExport ? st.lastExport.verified : null,
+             png: st.lastExport ? st.lastExport.blob.size : null };
+  };
+  // Detected ink inside a box — the light-pencil probe (the ground line).
+  const INKBOX = (b) => {
+    const seg = window.__bia.seg, w = seg.width;
+    let ink = 0, inMask = 0;
+    for (let y = b.y; y < b.y + b.h; y++) for (let x = b.x; x < b.x + b.w; x++) {
+      const i = y * w + x;
+      if (seg.ink[i]) { ink++; if (seg.mask[i]) inMask++; }
+    }
+    return { ink, inMask };
+  };
+  // The main page still holds the left-character claim from MAKE IT YOURS —
+  // the full-resolution upload's numbers, gathered before anything moves.
+  const upNumbers = await page.evaluate(MEASURE);
+  const upGround = await page.evaluate(INKBOX, R.groundBox);
+
+  // ---- C1: both options stand side by side ---------------------------------
+  console.log('\n-- C1: both options, side by side');
+  await newPhotoFromAlive();
+  await page.locator('#drop').scrollIntoViewIfNeeded();
+  const c1 = await page.evaluate(() => ({
+    onCapture: document.querySelector('#stepCapture').classList.contains('here'),
+    cam: document.getElementById('cameraBtn').style.display !== 'none',
+    pick: !!document.getElementById('pickBtn'),
+    panelHidden: document.getElementById('cameraPanel').style.display === 'none',
+    label: document.getElementById('cameraBtn').textContent
+  }));
+  check('C1 the camera option appears beside the picker, both first-class',
+    c1.onCapture && c1.cam && c1.pick && c1.panelHidden, JSON.stringify(c1.label));
+  await page.screenshot({ path: path.join(SHOTS, '8-capture-both-ways.png') });
+
+  // ---- C2: permission refused → gentle words, the picker right there -------
+  console.log('\n-- C2: the camera is refused (no permission granted)');
+  await page.click('#cameraBtn');
+  await page.waitForFunction(() =>
+    document.getElementById('cameraQuiet').style.display === 'block');
+  const c2 = await page.evaluate(() => ({
+    text: document.getElementById('cameraQuiet').textContent,
+    panel: document.getElementById('cameraPanel').style.display,
+    log: document.querySelector('#devLog').textContent,
+    pickVisible: !!document.getElementById('pickBtn').offsetParent
+  }));
+  check('C2 refused camera: one gentle line, never a technical word',
+    c2.text.length > 10 &&
+    !/fail|denied|error|device|permission|invalid|allowed|unsupported|secure/i.test(c2.text),
+    JSON.stringify(c2.text));
+  check('C2 the panel is closed and the picker is right there',
+    c2.panel === 'none' && c2.pickVisible);
+  check('C2 the honest reason went to the developer log',
+    /camera: not available \(/.test(c2.log));
+  // …and uploading still works after the refusal:
+  await page.click('#testBtn');
+  await page.waitForFunction(() =>
+    document.querySelector('#stepClaim').classList.contains('here'), null, { timeout: 30000 });
+  check('C2 uploading works untouched after the refusal', true);
+
+  // ---- C3: no camera API at all → the step is exactly as today -------------
+  console.log('\n-- C3: no camera API (the plain-http reality)');
+  const noCamPage = await browser.newPage();
+  const noCamErrors = [];
+  noCamPage.on('pageerror', (e) => noCamErrors.push(String(e)));
+  noCamPage.on('console', (m) => { if (m.type() === 'error') noCamErrors.push(m.text()); });
+  await noCamPage.addInitScript(() => {
+    Object.defineProperty(Navigator.prototype, 'mediaDevices',
+      { get: () => undefined, configurable: true });
+  });
+  await noCamPage.goto(BASE);
+  await noCamPage.waitForFunction(() => window.__bia);
+  const c3 = await noCamPage.evaluate(() => ({
+    cam: document.getElementById('cameraBtn').style.display,
+    quiet: document.getElementById('cameraQuiet').style.display
+  }));
+  await noCamPage.click('#testBtn');
+  await noCamPage.waitForFunction(() =>
+    document.querySelector('#stepClaim').classList.contains('here'), null, { timeout: 30000 });
+  check('C3 no camera API: the option never appears and nothing is said',
+    c3.cam === 'none' && c3.quiet !== 'block');
+  check('C3 uploading works exactly as before, zero page errors',
+    noCamErrors.length === 0, noCamErrors.slice(0, 2).join(' | '));
+  await noCamPage.close();
+
+  // ---- C4–C8: the real drawing through a real camera frame -----------------
+  console.log('\n-- C4: the fake camera serves the real drawing');
+  if (!fs.existsSync(Y4M)) {
+    console.log('     (generating ' + path.basename(Y4M) + ' — first run)');
+    await feed.generate(Y4M);
+  }
+  const camBrowser = await chromium.launch({ executablePath: CHROME, args: [
+    '--use-fake-ui-for-media-stream',
+    '--use-fake-device-for-media-stream',
+    '--use-file-for-fake-video-capture=' + Y4M
+  ]});
+  const cam = await camBrowser.newPage({ viewport: { width: 1100, height: 840 } });
+  const camErrors = [];
+  cam.on('pageerror', (e) => camErrors.push(String(e)));
+  cam.on('console', (m) => { if (m.type() === 'error') camErrors.push(m.text()); });
+  await cam.goto(BASE);
+  await cam.waitForFunction(() => window.__bia);
+
+  await cam.click('#cameraBtn');
+  await cam.waitForFunction(() => {
+    const v = document.getElementById('cameraLive');
+    return document.getElementById('cameraPanel').style.display === 'block' &&
+           v.videoWidth > 0;
+  }, null, { timeout: 30000 });
+  const c4 = await cam.evaluate(() => {
+    const v = document.getElementById('cameraLive');
+    return { w: v.videoWidth, h: v.videoHeight,
+             logged: document.querySelector('#devLog').textContent
+               .includes('camera: looking through the camera at ' +
+                         v.videoWidth + 'x' + v.videoHeight) };
+  });
+  check('C4 the live preview runs at the camera’s native resolution',
+    c4.w === feed.W && c4.h === feed.H && c4.logged, c4.w + 'x' + c4.h);
+  await cam.waitForTimeout(400); // let a frame paint before the picture
+  await cam.screenshot({ path: path.join(SHOTS, '9-camera-live.png') });
+
+  console.log('\n-- C5: take the picture — light off while the child decides');
+  await cam.click('#cameraTakeBtn');
+  await cam.waitForFunction(() =>
+    document.getElementById('cameraShot').style.display === 'block');
+  const c5 = await cam.evaluate(() => {
+    const v = document.getElementById('cameraLive');
+    const c = document.getElementById('cameraShot');
+    const tracks = v.srcObject ? v.srcObject.getTracks() : [];
+    return { cw: c.width, ch: c.height,
+             tracks: tracks.map((t) => t.readyState),
+             use: !!document.getElementById('cameraUseBtn').offsetParent,
+             retake: !!document.getElementById('cameraRetakeBtn').offsetParent };
+  });
+  check('C5 the shot is the native frame, never the CSS size',
+    c5.cw === feed.W && c5.ch === feed.H, c5.cw + 'x' + c5.ch);
+  check('C5 every track is ended the moment the picture is taken',
+    c5.tracks.length > 0 && c5.tracks.every((s) => s === 'ended'),
+    c5.tracks.join(','));
+  check('C5 the choice is Use this one / Take it again', c5.use && c5.retake);
+
+  // Take it again resumes a live camera, then take the real picture.
+  await cam.click('#cameraRetakeBtn');
+  await cam.waitForFunction(() => {
+    const v = document.getElementById('cameraLive');
+    return v.style.display === 'block' && v.videoWidth > 0 &&
+           v.srcObject.getTracks().every((t) => t.readyState === 'live');
+  }, null, { timeout: 30000 });
+  check('C5 Take it again brings the live camera back', true);
+  await cam.waitForTimeout(300);
+  await cam.click('#cameraTakeBtn');
+  await cam.waitForFunction(() =>
+    document.getElementById('cameraShot').style.display === 'block');
+
+  console.log('\n-- C6: Use this one → the same pipeline as an upload');
+  await cam.click('#cameraUseBtn');
+  await cam.waitForFunction(() =>
+    window.__bia.photo && /^camera-\d+\.png$/.test(window.__bia.photo.filename),
+    null, { timeout: 30000 });
+  const c6 = await cam.evaluate(() => ({
+    f: window.__bia.photo.filename,
+    w: window.__bia.photo.width, h: window.__bia.photo.height,
+    notes: (window.__bia.photo.notes || []).join(' | '),
+    onClaim: document.querySelector('#stepClaim').classList.contains('here'),
+    panel: document.getElementById('cameraPanel').style.display,
+    log: document.querySelector('#devLog').textContent
+  }));
+  check('C6 the camera frame lands in the exact upload state shape',
+    c6.w === feed.W && c6.h === feed.H && c6.onClaim && c6.panel === 'none',
+    c6.f + ' ' + c6.w + 'x' + c6.h);
+  check('C6 honest capture facts logged: native resolution and the page measurement',
+    /camera: picture taken at native \d+x\d+/.test(c6.log) &&
+    /deskew: page found \(\d+% of frame\)/.test(c6.notes),
+    JSON.stringify(c6.notes.slice(0, 90)));
+
+  console.log('\n-- C7: the full pipeline from a camera frame');
+  const camMap = (p) => [Math.round(feed.OFFSET_X + p[0] * feed.SCALE),
+                         Math.round(p[1] * feed.SCALE)];
+  async function drawLoopOnCam(points) {
+    const box = await cam.locator('#claimCanvas').boundingBox();
+    const scale = await cam.evaluate(() => window.__bia.displayScale);
+    const map = ([ix, iy]) => [box.x + ix * scale, box.y + iy * scale];
+    const [sx, sy] = map(points[0]);
+    await cam.mouse.move(sx, sy);
+    await cam.mouse.down();
+    for (const p of points) { const [x, y] = map(p); await cam.mouse.move(x, y); }
+    const [ex, ey] = map(points[0]);
+    await cam.mouse.move(ex, ey);
+    await cam.mouse.up();
+    await cam.waitForFunction(() =>
+      document.querySelector('#stepRefine').classList.contains('here') ||
+      document.querySelector('#nothingFound').style.display === 'block');
+  }
+  await drawLoopOnCam(R.leftClaim.map(camMap));
+  check('C7 the claim on the camera frame reaches refine',
+    await cam.locator('#stepRefine.here').count() === 1);
+  await cam.click('#aliveBtn');
+  await cam.waitForFunction(() => window.__bia.exports.length > 0, null, { timeout: 60000 });
+  const camNumbers = await cam.evaluate(MEASURE);
+  const camGround = await cam.evaluate(INKBOX, {
+    x: Math.round(feed.OFFSET_X + R.groundBox.x * feed.SCALE),
+    y: Math.round(R.groundBox.y * feed.SCALE),
+    w: Math.round(R.groundBox.w * feed.SCALE),
+    h: Math.round(R.groundBox.h * feed.SCALE) });
+  check('C7 a real extraction came out of the camera frame',
+    camNumbers.opaque > 1500 && camNumbers.verified > 1500 &&
+    camNumbers.crop.w > 100 && camNumbers.crop.h > 80,
+    camNumbers.opaque + ' opaque px, crop ' + camNumbers.crop.w + 'x' + camNumbers.crop.h);
+  check('C7 the extraction is verified byte-identical to the camera frame',
+    camNumbers.verified === camNumbers.opaque,
+    camNumbers.verified + ' of ' + camNumbers.opaque + ' verified');
+  await cam.locator('#yoursTools').scrollIntoViewIfNeeded();
+  await cam.screenshot({ path: path.join(SHOTS, '10-camera-extracted.png') });
+
+  // ---- C8: EFFECTIVENESS — the product owner's actual question -------------
+  console.log('\n-- C8: effectiveness, camera vs upload — the same claim, as numbers');
+  const f2 = (v) => (v * 100).toFixed(2) + '%';
+  console.log('     upload  ' + '3472x4624: mask ' + upNumbers.mask + ' px, crop ' +
+    upNumbers.crop.w + 'x' + upNumbers.crop.h + ', ' + upNumbers.opaque +
+    ' opaque px, paper-halo ' + f2(upNumbers.haloFrac) +
+    ', ground-line ink ' + upGround.ink + ' px detected');
+  console.log('     camera  ' + feed.W + 'x' + feed.H + ':  mask ' + camNumbers.mask +
+    ' px, crop ' + camNumbers.crop.w + 'x' + camNumbers.crop.h + ', ' + camNumbers.opaque +
+    ' opaque px, paper-halo ' + f2(camNumbers.haloFrac) +
+    ', ground-line ink ' + camGround.ink + ' px detected');
+  console.log('     ratio   camera keeps ' +
+    f2(camNumbers.opaque / upNumbers.opaque) + ' of the upload’s opaque pixels; ' +
+    'ground line ' + (upGround.ink ? f2(camGround.ink / upGround.ink) : 'n/a') +
+    ' of its detected ink');
+  check('C8 the comparison ran on both paths (numbers above are the deliverable)',
+    upNumbers.opaque > 10000 && camNumbers.opaque > 1500,
+    'upload ' + upNumbers.opaque + ' vs camera ' + camNumbers.opaque + ' opaque px');
+  check('C8 camera zero page errors', camErrors.length === 0,
+    camErrors.slice(0, 3).join(' | '));
+  await camBrowser.close();
+
   // ---- hygiene -------------------------------------------------------------
   console.log('\n-- hygiene');
   const banner = await page.evaluate(() => document.querySelector('#devError').style.display);
