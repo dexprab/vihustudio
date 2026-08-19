@@ -13,7 +13,7 @@
  * run reads the same sheet. Ground truth is the drawn letters' own
  * positions, which is what makes the mislabel assertions exact.
  *
- * Four scenarios:
+ * Five scenarios:
  *   HW-A  the sheet itself — geometry, coverage of a–z + A–Z + digits,
  *         the printed no-cursive callout, print.
  *   HW-B  a complete filled sheet — every letter captured, every accepted
@@ -31,6 +31,15 @@
  *         pairs keeps the generic one; most lines welded → ONE gentle
  *         sheet-level message, and still zero letters accepted anywhere
  *         a weld ran.
+ *   HW-E  a real camera — the fixture warped by a TRUE projective
+ *         transform carrying the field failure's own numbers (page ~68%
+ *         of a 720p frame, edges ~20°/8° off square) plus blur and JPEG:
+ *         the end-mark ladder registers it, every line reads, zero
+ *         mislabels; an upside-down photo is turned around and read; a
+ *         drawing and a half page refuse kindly; a 640×360 photo keeps
+ *         what it can and says, kindly, that the photo is far away; and
+ *         an old sheet with no marks still reads square-on through the
+ *         rule fallback.
  *
  * DISCLOSED: this verifies the journey against synthetic handwriting.
  * Real child handwriting — real-paper lighting, pencil pressure, letters
@@ -150,8 +159,102 @@ const COMPOSE = `(opts) => {
       }
     }
   }
-  return { dataURL: c.toDataURL('image/png'), gt, W: c.width, H: c.height };
+  return { dataURL: c.toDataURL('image/png'), gt, W: c.width, H: c.height,
+           ruleYs: drawn.lines.map((l) => l.ruleY) };
 }`;
+
+/* A REAL CAMERA, synthesised honestly: the flat fixture warped by a TRUE
+ * projective transform (unit square → quad, inverse-mapped with bilinear
+ * sampling over a desk-grey background), softened a touch and re-encoded
+ * as JPEG — the same degradations the field photo carried. Returns a
+ * dataURL. */
+const WARP = `(args) => new Promise((resolve) => {
+  const img = new Image();
+  img.onload = () => {
+    const W = img.width, H = img.height;
+    const sc = document.createElement('canvas');
+    sc.width = W; sc.height = H;
+    const sx = sc.getContext('2d', { willReadFrequently: true });
+    sx.drawImage(img, 0, 0);
+    const S = sx.getImageData(0, 0, W, H).data;
+    const [[x0,y0],[x1,y1],[x2,y2],[x3,y3]] = args.quad; // tl tr br bl
+    const dx1 = x1 - x2, dx2 = x3 - x2, dy1 = y1 - y2, dy2 = y3 - y2;
+    const sxx = x0 - x1 + x2 - x3, syy = y0 - y1 + y2 - y3;
+    const den = dx1 * dy2 - dy1 * dx2;
+    const g = (sxx * dy2 - syy * dx2) / den;
+    const h = (dx1 * syy - dy1 * sxx) / den;
+    const M = [x1 - x0 + g * x1, x3 - x0 + h * x3, x0,
+               y1 - y0 + g * y1, y3 - y0 + h * y3, y0, g, h, 1];
+    const [a,b,c,d,e,f,g2,h2,i2] = M;
+    const A = e*i2 - f*h2, B = c*h2 - b*i2, C = b*f - c*e;
+    const D2 = f*g2 - d*i2, E = a*i2 - c*g2, F = c*d - a*f;
+    const G = d*h2 - e*g2, H2 = b*g2 - a*h2, I3 = a*e - b*d;
+    const det = a*A + b*D2 + c*G;
+    const I = [A/det, B/det, C/det, D2/det, E/det, F/det, G/det, H2/det, I3/det];
+    const fw = args.frameW, fh = args.frameH;
+    const dc = document.createElement('canvas');
+    dc.width = fw; dc.height = fh;
+    const dctx = dc.getContext('2d', { willReadFrequently: true });
+    dctx.fillStyle = args.bg || '#6a7180';
+    dctx.fillRect(0, 0, fw, fh);
+    const out = dctx.getImageData(0, 0, fw, fh);
+    const D = out.data;
+    for (let y = 0; y < fh; y++) {
+      for (let x = 0; x < fw; x++) {
+        const w3 = I[6]*x + I[7]*y + I[8];
+        const u = (I[0]*x + I[1]*y + I[2]) / w3;
+        const v = (I[3]*x + I[4]*y + I[5]) / w3;
+        if (u < 0 || u > 1 || v < 0 || v > 1) continue;
+        const fx = Math.min(W - 1.001, Math.max(0, u * W - 0.5));
+        const fy = Math.min(H - 1.001, Math.max(0, v * H - 0.5));
+        const ix = fx | 0, iy = fy | 0, ax = fx - ix, ay = fy - iy;
+        const p00 = (iy * W + ix) * 4, p10 = p00 + 4;
+        const p01 = p00 + W * 4, p11 = p01 + 4;
+        const dd = (y * fw + x) * 4;
+        for (let ch = 0; ch < 3; ch++) {
+          D[dd+ch] = (S[p00+ch]*(1-ax)+S[p10+ch]*ax)*(1-ay) +
+                     (S[p01+ch]*(1-ax)+S[p11+ch]*ax)*ay;
+        }
+        D[dd+3] = 255;
+      }
+    }
+    dctx.putImageData(out, 0, 0);
+    const bc = document.createElement('canvas');
+    bc.width = fw; bc.height = fh;
+    const bctx = bc.getContext('2d');
+    bctx.filter = 'blur(' + (args.blur == null ? 0.5 : args.blur) + 'px)';
+    bctx.drawImage(dc, 0, 0);
+    resolve(bc.toDataURL('image/jpeg', args.quality == null ? 0.85 : args.quality));
+  };
+  img.src = args.dataURL;
+})`;
+
+// The same forward homography in Node, for carrying the ground truth
+// through the warp (mislabel checks compare x-extents per line).
+function homographyTo(quad, W, H) {
+  const [[x0, y0], [x1, y1], [x2, y2], [x3, y3]] = quad;
+  const dx1 = x1 - x2, dx2 = x3 - x2, dy1 = y1 - y2, dy2 = y3 - y2;
+  const sx = x0 - x1 + x2 - x3, sy = y0 - y1 + y2 - y3;
+  const den = dx1 * dy2 - dy1 * dx2;
+  const g = (sx * dy2 - sy * dx2) / den;
+  const h = (dx1 * sy - dy1 * sx) / den;
+  const M = [x1 - x0 + g * x1, x3 - x0 + h * x3, x0,
+             y1 - y0 + g * y1, y3 - y0 + h * y3, y0, g, h, 1];
+  return (x, y) => {
+    const u = x / W, v = y / H;
+    const w3 = M[6] * u + M[7] * v + M[8];
+    return [(M[0] * u + M[1] * v + M[2]) / w3,
+            (M[3] * u + M[4] * v + M[5]) / w3];
+  };
+}
+function warpGt(made, quad) {
+  const f = homographyTo(quad, made.W, made.H);
+  return made.gt.map((g) => {
+    const y = made.ruleYs[g.line];
+    const a = f(g.x0, y)[0], b = f(g.x1, y)[0];
+    return { line: g.line, ch: g.ch, x0: Math.min(a, b), x1: Math.max(a, b) };
+  });
+}
 
 const LOWER = 'abcdefghijklmnopqrstuvwxyz';
 const UPPER = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
@@ -175,6 +278,15 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
     made.buffer = Buffer.from(made.dataURL.split(',')[1], 'base64');
     return made;
   }
+  // Warp a composed sheet through the true projective camera; the ground
+  // truth travels through the same homography.
+  async function warp(made, quad, frameW, frameH, extra) {
+    const args = Object.assign({ dataURL: made.dataURL, quad, frameW, frameH }, extra);
+    const dataURL = await page.evaluate(`(${WARP})(${JSON.stringify(args)})`);
+    return { buffer: Buffer.from(dataURL.split(',')[1], 'base64'),
+             dataURL, name: 'camera.jpg', mime: 'image/jpeg',
+             gt: warpGt(made, quad) };
+  }
   // The REAL journey: the entry button, the armed capture step, the real
   // file input app.js owns.
   async function feed(made, viaRetakeLine) {
@@ -187,7 +299,8 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
       await page.click(`#hwLineList button[data-line="${viaRetakeLine}"]`);
     }
     await page.setInputFiles('#fileInput',
-      { name: 'filled-sheet.png', mimeType: 'image/png', buffer: made.buffer });
+      { name: made.name || 'filled-sheet.png',
+        mimeType: made.mime || 'image/png', buffer: made.buffer });
     await page.waitForFunction(() =>
       window.__hw.stage === 'alphabet' || window.__hw.stage === 'sheet',
       null, { timeout: 180000 });
@@ -301,6 +414,10 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
     const stage = await feed(clean);
     check('B2 the journey reaches the alphabet through the real capture entry',
       stage === 'alphabet', 'stage ' + stage);
+    const capB = await page.evaluate(() => window.__hw.capture);
+    check('B2b the sheet registered by its END-MARKS (anchors 10 of 10, not the rule fallback)',
+      capB && capB.anchors === 10 && Math.abs(capB.anis - 1) < 0.05,
+      capB ? 'anchors ' + capB.anchors + ', vertical scale ' + capB.anis.toFixed(2) : 'no capture facts');
     const data = await lettersData();
     check('B3 every letter, every CAPITAL and every digit was captured',
       data.have === SORTED, data.have.length + '/62: ' + data.have);
@@ -579,15 +696,187 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
       Array.from(document.querySelectorAll('.hw-linerow span')).map((s) => s.textContent));
     check('D14 the line rows stay generic under the sheet-level message',
       rows3.every((t) => !/holding hands/.test(t)));
-    // Line 1's one-letter word “a” is never welded (a single letter has
-    // nothing to hold hands with) and reads honestly — so ≤1 there, 0 on
-    // the lines whose words are all ≥3 letters.
+    // Every word on lines 1–3 is ≥2 letters (line 1's old one-letter “a”
+    // left with the old pangram), so a welded line contributes nothing.
     check('D15 welded lines still contribute NOTHING: 0 accepted where welds ran, 0 mislabels',
       dm.lines[0].accepted <= 1 && dm.lines[1].accepted === 0 &&
       dm.lines[2].accepted === 0 && mislabels(dm, cursive.gt).length === 0,
       [0, 1, 2].map((i) => dm.lines[i].accepted + '/' + dm.lines[i].expected).join(' '));
     check('D16 no blame word in either joined-up message',
       !/failed|invalid|error|wrong|cursive/i.test(rows.join(' ') + ' ' + surface.note));
+  }
+
+  // ==== HW-E: a real camera — end-marks under perspective ====================
+  console.log('\n== HW-E: A REAL CAMERA — END-MARKS UNDER PERSPECTIVE =======');
+  {
+    // The field failure's own numbers: page ~68% of a 1280×720 frame,
+    // left edge ~20.2° off vertical, right ~8.1° — a webcam looking down
+    // at a sheet on the desk (which is also why the page lands vertically
+    // foreshortened). E1 documents that the fixture really carries them.
+    const QUAD = [[160, 10], [1224, 14], [1124, 712], [418, 706]]; // tl tr br bl
+    const deg = (dx, dy) => Math.atan2(dx, dy) * 180 / Math.PI;
+    const leftTilt = deg(QUAD[3][0] - QUAD[0][0], QUAD[3][1] - QUAD[0][1]);
+    const rightTilt = deg(QUAD[1][0] - QUAD[2][0], QUAD[2][1] - QUAD[1][1]);
+    let area2 = 0;
+    for (let i = 0; i < 4; i++) {
+      const [ax, ay] = QUAD[i], [bx, by] = QUAD[(i + 1) % 4];
+      area2 += ax * by - bx * ay;
+    }
+    const coverage = Math.abs(area2 / 2) / (1280 * 720);
+    check('E1 the camera fixture matches the field photo (tilts ~20.2°/~8.1°, page ~68% of 720p frame)',
+      Math.abs(leftTilt - 20.2) < 1 && Math.abs(rightTilt - 8.1) < 1 &&
+      coverage > 0.62 && coverage < 0.72,
+      'left ' + leftTilt.toFixed(1) + '° right ' + rightTilt.toFixed(1) +
+      '° coverage ' + Math.round(coverage * 100) + '%');
+
+    const eClean = await compose({ seed: 7, width: 2000, omit: '' });
+    const cam = await warp(eClean, QUAD, 1280, 720);
+    await page.click('#hwNewSheetBtn');
+    await page.waitForSelector('#stepHwSheet.here');
+    const stage = await feed(cam);
+    check('E2 the warped 720p photo reaches the alphabet', stage === 'alphabet');
+    const cap = await page.evaluate(() => window.__hw.capture);
+    check('E3 the anchor ladder was found under the warp (10 of 10 end-marks)',
+      cap && cap.anchors === 10, cap ? 'anchors ' + cap.anchors : 'no capture facts');
+    check('E3b the measured vertical squash matches the camera (per-line registration, not a flat guess)',
+      cap && cap.anis > 0.4 && cap.anis < 0.75,
+      'vertical scale ' + (cap ? cap.anis.toFixed(2) : '—') + '× the horizontal');
+    const dE = await lettersData();
+    check('E4 EVERY line reads under the warp (each within 2 letters of full)',
+      dE.lines.every((l) => l.found && l.accepted >= l.expected - 2),
+      dE.lines.map((l) => l.accepted + '/' + l.expected).join(' '));
+    const badE = mislabels(dE, cam.gt);
+    check('E5 ZERO mislabels under the warp — refuse-rather-than-guess holds at 720p',
+      badE.length === 0, badE.length ? badE.slice(0, 5).join(' ')
+        : dE.lines.reduce((a, l) => a + l.accepted, 0) + ' letters checked');
+    // At this distance the letters land ~10 camera pixels tall: the read
+    // is complete but the traced glyphs are honestly blocky, so the kind
+    // coarse note is CORRECT here — and absent on the flat sheet (B).
+    const coarseE = await page.evaluate(() => ({
+      coarse: window.__hw.capture.coarse,
+      xh: window.__hw.capture.xHeightPx,
+      shown: document.getElementById('hwCoarseNote').style.display === 'block',
+      text: document.getElementById('hwCoarseNote').textContent
+    }));
+    check('E6 the capture facts are honest: x-height measured in camera pixels, under the floor',
+      coarseE.xh > 5 && coarseE.xh < 14, 'x-height ~' + Math.round(coarseE.xh) + 'px');
+    check('E7 the kind coarse note shows — closer or a phone photo — with no blame word',
+      coarseE.coarse && coarseE.shown && /closer/.test(coarseE.text) &&
+      /phone/.test(coarseE.text) && !/failed|invalid|error|wrong|small for/i.test(coarseE.text),
+      '"' + coarseE.text.slice(0, 60) + '…"');
+    const logE = await page.evaluate(() => document.getElementById('devLog').textContent);
+    check('E8 the dev log carries the capture facts (anchors n of 10, per-line tilt, x-height)',
+      /anchors 10 of 10/.test(logE) && /line tilt/.test(logE) && /x-height/.test(logE));
+    await page.locator('#hwGrid').scrollIntoViewIfNeeded();
+    await page.screenshot({ path: path.join(SHOTS, '15-handwriting-camera-alphabet.png') });
+
+    // Upside down: the ladder is top-bottom symmetric, so the reader asks
+    // the sheet (the title block) — a clearly inverted photo is turned
+    // around and read, never refused and never misread.
+    const flipped = await page.evaluate(async (durl) => {
+      const img = new Image();
+      await new Promise((r) => { img.onload = r; img.src = durl; });
+      const c = document.createElement('canvas');
+      c.width = img.width; c.height = img.height;
+      const x = c.getContext('2d');
+      x.translate(c.width, c.height); x.rotate(Math.PI);
+      x.drawImage(img, 0, 0);
+      return c.toDataURL('image/jpeg', 0.92);
+    }, cam.dataURL);
+    await page.click('#hwNewSheetBtn');
+    await page.waitForSelector('#stepHwSheet.here');
+    const stageF = await feed({ buffer: Buffer.from(flipped.split(',')[1], 'base64'),
+                                name: 'camera-upside-down.jpg', mime: 'image/jpeg' });
+    const capF = await page.evaluate(() => window.__hw.capture);
+    const dF = await lettersData();
+    check('E9 an upside-down photo is TURNED AROUND and read (never refused, never misread)',
+      stageF === 'alphabet' && capF && capF.flipped && capF.anchors === 10,
+      'stage ' + stageF + ', flipped ' + (capF && capF.flipped));
+    check('E10 …and reads like the right way up: every line, zero mislabels',
+      dF.lines.every((l) => l.found && l.accepted >= l.expected - 3) &&
+      mislabels(dF, cam.gt).length === 0,
+      dF.lines.map((l) => l.accepted + '/' + l.expected).join(' '));
+
+    // A photo of something else entirely still refuses with kind words.
+    await page.click('#hwNewSheetBtn');
+    await page.waitForSelector('#stepHwSheet.here');
+    const garbage = fs.readFileSync(path.join(__dirname, 'surrogate-001.png'));
+    const stageG = await feed({ buffer: garbage, name: 'drawing.png' });
+    const quietG = await page.evaluate(() => ({
+      shown: document.getElementById('hwQuietSheet').style.display === 'block',
+      text: document.getElementById('hwQuietSheet').textContent
+    }));
+    check('E11 a photo of something else REFUSES (no ladder can be invented from a drawing)',
+      stageG === 'sheet' && quietG.shown, 'stage ' + stageG);
+    check('E12 …with the kind retake words, never blame',
+      /lay the sheet flat/.test(quietG.text) &&
+      !/failed|invalid|error|wrong/i.test(quietG.text));
+
+    // Half a page: three rungs are not a ladder, and the faint rules
+    // cannot rescue a perspective photo — refused, never guessed.
+    const half = await page.evaluate(async (durl) => {
+      const img = new Image();
+      await new Promise((r) => { img.onload = r; img.src = durl; });
+      const c = document.createElement('canvas');
+      c.width = img.width; c.height = Math.round(img.height * 0.55);
+      c.getContext('2d').drawImage(img, 0, 0);
+      return c.toDataURL('image/jpeg', 0.92);
+    }, cam.dataURL);
+    const stageH = await feed({ buffer: Buffer.from(half.split(',')[1], 'base64'),
+                                name: 'half.jpg', mime: 'image/jpeg' });
+    check('E13 half a page REFUSES (the ladder is matched whole or not at all)',
+      stageH === 'sheet');
+
+    // Low resolution: the same camera twice as far away. Everything that
+    // can read still reads, nothing is mislabeled, and the child is told
+    // kindly that the photo is a little far away.
+    const low = await warp(eClean, QUAD.map(([x, y]) => [x / 2, y / 2]), 640, 360,
+                           { blur: 0.4 });
+    const stageL = await feed(low);
+    check('E14 a 640×360 photo still reads what it can', stageL === 'alphabet');
+    const capL = await page.evaluate(() => window.__hw.capture);
+    const dL = await lettersData();
+    const gotL = dL.lines.reduce((a, l) => a + l.accepted, 0);
+    check('E15 the coarse note appears at low resolution (and letters were still kept)',
+      capL && capL.coarse && gotL >= 40 &&
+      await page.evaluate(() => document.getElementById('hwCoarseNote').style.display === 'block'),
+      gotL + ' letters kept, x-height ~' + Math.round(capL.xHeightPx) + 'px');
+    check('E16 zero mislabels even at 640×360 — refusals rise, guesses never',
+      mislabels(dL, low.gt).length === 0, gotL + ' accepted letters checked');
+
+    // A sheet printed BEFORE the end-marks existed: the rule-pattern
+    // fallback still reads it square-on (the marks are painted out of the
+    // fixture, simulating an old printout).
+    const markless = await page.evaluate(`(async () => {
+      const made = (${COMPOSE})({ seed: 7, width: 2000, omit: '' });
+      const img = new Image();
+      await new Promise((r) => { img.onload = r; img.src = made.dataURL; });
+      const c = document.createElement('canvas');
+      c.width = img.width; c.height = img.height;
+      const x = c.getContext('2d');
+      x.drawImage(img, 0, 0);
+      const G = HWSheet.GEOM, W = c.width;
+      const R = G.anchorRadius * W * 1.8;
+      x.fillStyle = '#ffffff';
+      for (let i = 0; i < HWSheet.LINES.length; i++) {
+        const y = HWSheet.ruleYFrac(i) * c.height;
+        x.fillRect(G.anchorXLeft * W - R, y - R, 2 * R, 2 * R);
+        x.fillRect(G.anchorXRight * W - R, y - R, 2 * R, 2 * R);
+      }
+      return c.toDataURL('image/png');
+    })()`);
+    await page.click('#hwNewSheetBtn');
+    await page.waitForSelector('#stepHwSheet.here');
+    const stageM = await feed({ buffer: Buffer.from(markless.split(',')[1], 'base64') });
+    const capM = await page.evaluate(() => window.__hw.capture);
+    const dM = await lettersData();
+    check('E17 an old markless sheet still reads square-on through the RULE fallback',
+      stageM === 'alphabet' && capM && capM.anchors === 0 &&
+      dM.lines.every((l) => l.found && l.accepted >= l.expected - 3),
+      'anchors ' + (capM && capM.anchors) + ', ' +
+      dM.lines.map((l) => l.accepted + '/' + l.expected).join(' '));
+    check('E18 …and zero mislabels on the fallback path too',
+      mislabels(dM, eClean.gt).length === 0);
   }
 
   // ---- hygiene ---------------------------------------------------------------
