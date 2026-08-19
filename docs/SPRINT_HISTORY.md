@@ -4023,3 +4023,50 @@ whole words (designed, may be frequent); printed-rule grey vs home
 printers; faint pencil i-dots; typographic width priors refusing
 unusual letter widths (empty slots, never wrong letters); strong page
 curl refuses the whole photo.
+
+## My Handwriting: Capitals, and Joined-Up Writing Met Kindly
+
+Asked for by the product owner (*"lets call out no cursive in child
+friendly manner. add uppercase in the print sheet. wire this looks
+joined up detection."*). Built in a worker worktree; independently
+re-verified before merging — base suite 163/163, handwriting suite
+**57/57** (was 34), reproduced fresh in the worktree and again on the
+merged tree.
+
+**Capitals**: the sheet gains ONE uppercase pangram line (`HOW QUICKLY
+DAFT JUMPING ZEBRAS VEX` — line 2's own sentence in capitals, already
+familiar; capitals are wide so the shortest pangram). Every capital
+≥1× — the disclosed cost of one line is a single sample per capital;
+an ugly capital is retaken by line. Cap-height is now MEASURED (two
+independent witnesses on the fixture: 600 vs OS/2 597 units, against
+the old inferred 760–803). Only the new 5-line sheet is supported —
+the 4-line sheet shipped hours earlier and no child holds a printout;
+an old photo refuses cleanly, and the ascender fallback survives only
+for a sheet whose capitals line was wholly refused.
+
+**The callout**, printed on the sheet: *"Write each letter on its own,
+with a little space — letters that hold hands are hard for me to
+see."* **Joined-up detection**: when touching-refusals dominate a line
+(≥50% of expected letters, or ≤20% accepted with ≥35% touching —
+thresholds sitting far from both measured shores: fully welded 22/30
+vs two-touching-pairs 6%), the retake message becomes specific and
+kind — *"these letters are holding hands — write this line once more
+with a little space between each letter, and I'll meet them all"* —
+and when most lines are joined, ONE gentle sheet-level message
+(*"Your letters like to hold hands!..."*) instead of four copies. A
+merely-messy line keeps the ordinary retake. No "cursive", no blame
+words anywhere child-facing (suite-enforced).
+
+**Two refuse-rather-than-guess violations found and fixed in the
+reader**, exposed while wiring detection: rule removal counted
+firm-pressed letter feet as rule ink (shredding letter bottoms
+sheet-wide), and weld ink could drag the fitted rule centre up into
+the child's ink — unfixed, shredded weld fragments were ACCEPTED as
+letters they were not. Both now testify only on bare rule stretches /
+the band's own row. The suite's fixture face moved DejaVu Serif→Sans
+(serifs detached at fixture scale and impersonated letters — rejected
+alternative documented). **Still breaks for a child:** a child who
+joins only some letters lands between the gates and gets the generic
+retake; a dim capture plus joined writing can still confuse
+registration; the boxed fallback sheet remains deferred — a child who
+cannot write unjoined loops on retakes.
