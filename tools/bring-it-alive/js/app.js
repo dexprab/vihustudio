@@ -263,11 +263,14 @@
     let fills = 0;
     for (let i = 3; i < c.fillPlane.length; i += 4) if (c.fillPlane[i]) fills++;
     const lines = Object.keys(c._lines).length;
+    let marked = 0;
+    if (c.inkTintPlane) for (let i = 0; i < c.inkTintPlane.length; i++) if (c.inkTintPlane[i]) marked++;
     const regionInfo = c._regions
       ? (c._regions.none ? 'none found' : c._regions.count + ' found') : 'not yet asked';
     $('devOps').textContent =
       'layers: original ' + w + '×' + h + ' (never written) · pencil & paint (ops) · fills ' +
-      fills + ' px under the lines · line edits on ' + lines + ' area(s) · regions ' +
+      fills + ' px under the lines · marked-line tint ' + marked +
+      ' px · line edits on ' + lines + ' area(s) · regions ' +
       regionInfo + ' · history ' + c.cursor + '/' + c.ops.length +
       ' ops · transform x' + c.transform.x + ' y' + c.transform.y +
       ' scale ' + c.transform.scale.toFixed(2) + ' rot ' + c.transform.rotation + '°';
@@ -351,12 +354,14 @@
   function setTool(tool) {
     BIAEditor.setTool(tool);
     for (const [id, t] of [['toolPencil', 'pencil'], ['toolFill', 'fill'],
-                           ['toolErase', 'erase'], ['toolMove', 'move']]) {
+                           ['toolMark', 'mark'], ['toolErase', 'erase'],
+                           ['toolMove', 'move']]) {
       $(id).classList.toggle('on', t === tool);
     }
   }
   $('toolPencil').addEventListener('click', () => setTool('pencil'));
   $('toolFill').addEventListener('click', () => setTool('fill'));
+  $('toolMark').addEventListener('click', () => setTool('mark'));
   $('toolErase').addEventListener('click', () => setTool('erase'));
   $('toolMove').addEventListener('click', () => setTool('move'));
   for (const b of document.querySelectorAll('.swatch')) {
@@ -364,9 +369,12 @@
       BIAEditor.setColor(b.dataset.color);
       for (const o of document.querySelectorAll('.swatch')) o.classList.toggle('on', o === b);
       // Choosing a colour means "I want to make a mark" — but never steals
-      // the Fill tool: pick blue, then tap the shape.
+      // the Fill tool (pick blue, then tap the shape), and while a Mark is
+      // live it means "colour the marked lines NOW"; the mark stays live
+      // so another colour can be tried.
       const t = BIAEditor.state.tool;
-      if (t !== 'pencil' && t !== 'fill') setTool('pencil');
+      if (t === 'mark') BIAEditor.tintMarked();
+      else if (t !== 'pencil' && t !== 'fill') setTool('pencil');
     });
   }
   for (const b of document.querySelectorAll('.brush')) {

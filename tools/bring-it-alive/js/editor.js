@@ -21,9 +21,13 @@
  *
  * Tools: Pencil (Fine/Medium/Thick point-path strokes) · Fill (tap
  * inside a shape to colour it under the lines; tap the line itself to
- * colour the line) · Erase (anything under it — edits are cleared, the
- * original is hidden recoverably, never destroyed) · Move. Line
- * weight (Thin/Original/Thick) applies to the last shape touched.
+ * colour the line) · Mark (draw a loose loop around a part of the
+ * drawing — the same gesture as the Claim — then push a colour swatch
+ * and the marked ink takes it; the selection stays live so another
+ * colour can be tried, and a loop around everything colours ALL the
+ * lines) · Erase (anything under it — edits are cleared, the original
+ * is hidden recoverably, never destroyed) · Move. Line weight
+ * (Thin/Original/Thick) applies to the last shape touched.
  *
  * One display scale (ds) maps document space to screen; the creation's
  * own TRANSFORM is drawn inside that mapping.
@@ -39,6 +43,10 @@
     stroke: null,          // in-progress pencil/erase stroke (doc coords)
     drag: null,            // in-progress move drag {sx, sy, dx, dy} display px
     tap: null,             // pointerdown spot for the fill tap {px, py}
+    markDraft: null,       // in-progress Mark loop {points} (doc coords)
+    mark: null,            // live Mark selection {loop, display, all} —
+                           // loop is what the op carries (null = everything),
+                           // display is always the drawn loop
     bound: false
   };
 
@@ -50,6 +58,7 @@
     S.onNote = onNote || null;
     S.viewMode = 'mine';
     S.lastRegion = 0;
+    S.mark = null; S.markDraft = null;
     S.cx = canvas.width / 2;
     S.cy = canvas.height / 2;
     // Fit the document into ~72% of the surface at transform scale 1, so
@@ -142,6 +151,29 @@
       ctx.stroke();
       ctx.restore();
     }
+
+    // The Mark loop — the claim's own soft gold, never marching ants:
+    // a loose glowing line while it is being drawn, closed once it holds.
+    if (S.markDraft && S.markDraft.points.length > 1) drawMarkLoop(S.markDraft.points, false);
+    else if (S.mark) drawMarkLoop(S.mark.display, true);
+  }
+
+  function drawMarkLoop(pts, closed) {
+    const ctx = S.ctx;
+    ctx.save();
+    ctx.lineCap = ctx.lineJoin = 'round';
+    ctx.beginPath();
+    const sp = pts.map((p) => docToScreen(p[0], p[1]));
+    ctx.moveTo(sp[0][0], sp[0][1]);
+    for (const p of sp) ctx.lineTo(p[0], p[1]);
+    if (closed) ctx.closePath();
+    ctx.strokeStyle = 'rgba(223,177,105,.30)';   // soft halo first…
+    ctx.lineWidth = 9;
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(223,177,105,.85)';   // …then the line itself
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+    ctx.restore();
   }
 
   // ---- gestures ------------------------------------------------------------------
@@ -155,6 +187,8 @@
         S.drag = { sx: px, sy: py, dx: 0, dy: 0 };
       } else if (S.tool === 'fill') {
         S.tap = { px, py, moved: false };
+      } else if (S.tool === 'mark') {
+        S.markDraft = { points: [screenToDoc(px, py)] };
       } else {
         S.stroke = {
           t: S.tool === 'erase' ? 'erase' : 'pencil',
@@ -170,6 +204,7 @@
       const [px, py] = eventPoint(e);
       if (S.drag) { S.drag.dx = px - S.drag.sx; S.drag.dy = py - S.drag.sy; draw(); }
       else if (S.stroke) { S.stroke.points.push(screenToDoc(px, py)); draw(); }
+      else if (S.markDraft) { S.markDraft.points.push(screenToDoc(px, py)); draw(); }
       else if (S.tap && Math.hypot(px - S.tap.px, py - S.tap.py) > 6) S.tap.moved = true;
     });
     c.addEventListener('pointerup', (e) => {
@@ -182,6 +217,9 @@
       } else if (S.stroke) {
         const op = S.stroke; S.stroke = null;
         applyOp({ t: op.t, color: op.color, size: S.size, radius: op.radius, points: op.points });
+      } else if (S.markDraft) {
+        const pts = S.markDraft.points; S.markDraft = null;
+        closeMark(pts);
       } else if (S.tap) {
         const tap = S.tap; S.tap = null;
         if (tap.moved) { draw(); return; }
@@ -215,6 +253,54 @@
     }
   }
 
+  /* The Mark loop, closed. Decimated to ~every 3 document px so the op
+   * stays a light JSON polygon; the pixel set is DERIVED from it — here
+   * for honesty about what was caught, in the creation on every replay.
+   * A loop that holds every ink pixel IS "colour all the lines": the op
+   * travels as loop:null, so the whole-drawing case is the same op with
+   * nothing extra on the toolbar. An empty loop, or a tap, drops the
+   * selection — tapping empty space is how a mark is let go. */
+  function closeMark(points) {
+    const loop = decimateLoop(points);
+    if (loop.length < 3) {
+      if (S.mark) { S.mark = null; note('mark: let go'); }
+      else note('mark: draw a loose loop around the part you want to colour');
+      draw(); return;
+    }
+    const info = S.creation.markInfo(loop);
+    if (!info.inkInside) {
+      S.mark = null;
+      note('mark: none of the drawing is inside that loop — loop around some lines');
+      draw(); return;
+    }
+    const all = info.inkInside === info.inkTotal;
+    S.mark = { loop: all ? null : loop, display: loop, all };
+    note('mark: ' + (all ? 'the whole drawing' : info.inkInside + ' of ' + info.inkTotal +
+         ' ink px') + ' marked — push a colour to change its lines');
+    draw();
+  }
+  function decimateLoop(points) {
+    const out = [];
+    let last = null;
+    for (const p of points) {
+      const q = [Math.round(p[0]), Math.round(p[1])];
+      if (!last || Math.hypot(q[0] - last[0], q[1] - last[1]) >= 3) { out.push(q); last = q; }
+    }
+    return out;
+  }
+  /* A colour pushed while a mark is live: the marked ink takes it. The
+   * selection STAYS live so the child can try another colour — the next
+   * op simply wins where they overlap. Returns false when there is
+   * nothing marked, so the caller can leave the tap meaning "colour
+   * chosen" as it always did. */
+  function tintMarked() {
+    if (S.tool !== 'mark' || !S.mark) return false;
+    applyOp({ t: 'inkTint', color: S.color, loop: S.mark.loop });
+    note('mark: the marked lines take ' + S.color +
+         (S.mark.all ? ' (all the lines)' : '') + ' — tinted, the pencil texture stays');
+    return true;
+  }
+
   function applyOp(op) {
     S.creation.apply(op);
     draw();
@@ -223,7 +309,10 @@
   function note(msg) { if (S.onNote) S.onNote(msg); }
 
   // ---- the small API app.js wires to buttons -----------------------------------
-  function setTool(tool) { S.tool = tool; }
+  function setTool(tool) {
+    if (tool !== 'mark' && S.mark) { S.mark = null; if (S.creation) draw(); }
+    S.tool = tool;
+  }
   function setColor(color) { S.color = color; }
   function setSize(size) { S.size = size; }
   function setView(mode) { S.viewMode = mode; draw(); }
@@ -242,7 +331,7 @@
   function redraw() { draw(); }
 
   window.BIAEditor = {
-    mount, setTool, setColor, setSize, setView, setLineWidth,
+    mount, setTool, setColor, setSize, setView, setLineWidth, tintMarked,
     undo, redo, reset, scaleBy, rotateBy, redraw,
     // Instrumentation for the suite and devtools — same standing as __bia.
     docToScreen, screenToDoc, state: S
