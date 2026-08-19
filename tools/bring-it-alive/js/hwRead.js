@@ -187,19 +187,27 @@
   }
 
   // Least-squares fit of one rule: y = a + b·x, plus measured thickness.
+  // Per column, only the dark run CONTAINING the band's own row counts —
+  // first-dark-to-last-dark across the whole window let ink hovering
+  // above the rule (a joined-up child's welded strokes, a low descender)
+  // drag the fitted centre off the printed line, measured at three
+  // quarters of a rule thickness.
   function fitRule(seg, band) {
     const w = seg.width, h = seg.height;
     const yPad = Math.max(3, (band.y1 - band.y0 + 1) * 2);
+    const dark = (x, y) => seg.paper[y * w + x] - seg.lum[y * w + x] > P.RULE_DARK;
+    const yMid = Math.round((band.y0 + band.y1) / 2);
     const xs = [], ys = [], ts = [];
     for (let x = band.x0; x <= band.x1; x += 4) {
-      let y0 = -1, y1 = -1;
-      for (let y = Math.max(0, band.y0 - yPad); y <= Math.min(h - 1, band.y1 + yPad); y++) {
-        if (seg.paper[y * w + x] - seg.lum[y * w + x] > P.RULE_DARK) {
-          if (y0 < 0) y0 = y;
-          y1 = y;
-        }
+      let seed = -1;
+      for (let dy = 0; dy <= 2 && seed < 0; dy++) {
+        if (yMid - dy >= 0 && dark(x, yMid - dy)) seed = yMid - dy;
+        else if (yMid + dy <= h - 1 && dark(x, yMid + dy)) seed = yMid + dy;
       }
-      if (y0 < 0) continue;
+      if (seed < 0) continue;
+      const yLo = Math.max(0, band.y0 - yPad), yHi = Math.min(h - 1, band.y1 + yPad);
+      let y0 = seed; while (y0 > yLo && dark(x, y0 - 1)) y0--;
+      let y1 = seed; while (y1 < yHi && dark(x, y1 + 1)) y1++;
       xs.push(x); ys.push((y0 + y1) / 2); ts.push(y1 - y0 + 1);
     }
     if (xs.length < 8) return null;
@@ -221,16 +229,30 @@
   // construction (hwSheet.js), so normally none of it is ink and there is
   // nothing to remove — this runs only when a dim capture pushed the rule
   // over the margin, and says so in the log.
+  //
+  // Only BARE stretches of the rule — no ink standing just above — may
+  // testify. A child pressing firmly puts ink at the rule's own row at
+  // every letter foot, and counting those said "the rule is ink" about
+  // handwriting (measured: flat sans-like letter bottoms alone crossed
+  // the 30% gate), which sent the run-length remover through the child's
+  // letter bottoms on a perfectly bright capture.
   function ruleReadsAsInk(seg, rule) {
     const w = seg.width;
+    const t = Math.max(2, rule.thickness);
     let on = 0, total = 0;
     for (let x = rule.x0; x <= rule.x1; x += 3) {
       const y = Math.round(rule.yAt(x));
       if (y < 0 || y >= seg.height) continue;
+      let letterAbove = false;
+      for (let dy = t + 2; dy <= t + 6; dy++) {
+        const yy = y - dy;
+        if (yy >= 0 && seg.ink[yy * w + x]) { letterAbove = true; break; }
+      }
+      if (letterAbove) continue; // a letter stands here — its foot is not the rule
       total++;
       if (seg.ink[y * w + x]) on++;
     }
-    return total > 0 && on / total > 0.3;
+    return total > 8 && on / total > 0.3;
   }
 
   function removeRule(cleaned, seg, rule, pad) {
