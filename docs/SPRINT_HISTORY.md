@@ -4099,3 +4099,49 @@ tall phone stream is exercised only through the swapped-ideals path;
 the crop improves framing, not pixels — a 720p webcam still gives
 coarse letters, which the registration sprint's "come closer" hint
 addresses.
+
+## The Writing Sheet Is Drawn to Be Read — Anchor Stars
+
+The fix for the product owner's REAL FIELD FAILURE (*"REFUSED — the
+sheet's ruled lines were not found"* — 720p webcam, page at 68% of
+frame, 20° tilt). Root causes measured: the printed rule is
+deliberately fainter than the ink margin and nearly vanishes at webcam
+quality (1 of 5 bands found), and 20° of perspective breaks the
+even-pitch pattern match. The fix is Decision 17's lesson applied to
+paper: **stop inferring registration from faint content — print
+anchors at known coordinates.**
+
+**Every ruled line now carries a small solid five-point star at both
+ends** — the Magic Card's own shape, outside the writing zone, sharing
+the ONE `GEOM` contract with the reader. The reader finds the ten-mark
+ladder as a whole (RANSAC columns over isolated marks; whole-ladder
+gates including "every mark sized as a printed star at that scale" and
+≥8/10 isolated — a mark-like blob cannot fake a ladder), and **each
+line registers from its own pair**: baseline, tilt, length and
+vertical scale per line, absorbing perspective foreshortening; letter
+patches are resampled back to square pixels so the font is never
+squashed. An upside-down sheet flips and reads (title block decides);
+the rule-pattern path survives as the square-on fallback for markless
+printouts. **Field-matched fixture** (left 20.3°, right 8.2°, 67% of
+1280×720, JPEG): anchors 10/10, letters 140/142, zero mislabels;
+measuring 640×360 exposed that shattered sub-5px lines let the DP
+accept 18 wrong letters — a `MIN_UNIT_PX` floor now refuses such lines
+entirely and tells the child the photo is far away, never that
+anything failed.
+
+**Also carries the owner's sheet feedback**: side margins narrowed
+(writing span +5.4%) and line 1 replaced — `jackdaws love my big
+sphinx of quartz` (37 chars, programmatically verified pangram) for
+the 43-char fox line; every lowercase letter still ≥3 samples, digits
+≥2, capitals ≥1, all asserted against the render. Line numbers
+lightened below the mark-darkness gate so a number can never
+impersonate an anchor.
+
+Suites: base 163/163 in its worktree, **77/77** handwriting (was 57;
++20); merged tree with the camera toggle: **176/176 + 77/77**.
+**Disclosed:** verified against rendered-and-warped sheets, not yet a
+printed sheet under real light (Decision 17 carried the same
+disclosure before its field pass); letters written over an end-mark
+cost that pair (two tolerated); a photo cropping the title block
+refuses kindly; old markless printouts read square-on only, keep the
+long line 1, and run ~5% off-scale within tolerance.
