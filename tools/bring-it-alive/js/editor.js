@@ -1,4 +1,4 @@
-/* EDITOR — Make It Yours: the editing canvas over a neutral working surface.
+/* EDITOR — Make It Yours: the editing canvas over a quiet working surface.
  *
  * This is presentation and gesture only. Every decision a gesture produces
  * is handed to the Creation as an OP (creation.js owns the layers, the
@@ -6,33 +6,48 @@
  * split is the same one the rest of the tool already lives by: preview.js
  * shows and never touches, and this module gestures and never composes.
  *
- * The working surface is a LIGHT checkerboard — transparency shown
- * honestly, per the sprint's correction. It is not a sky, not dark, not a
- * place. The extraction sits on it at full visual weight: no ghosting, no
- * glow, no halo — whatever the view's bytes say, scaled for display and
- * nothing else.
+ * The working surface is a plain warm paper-grey — not a checkerboard
+ * (that reads as a developer surface), not a sky, not a place. The
+ * artwork sits on it at full visual weight: no ghosting, no glow, no
+ * halo — whatever the view's bytes say, scaled for display and nothing
+ * else. Transparency stays real in the document; the surface just
+ * doesn't announce it.
  *
- * One display scale (ds) maps document space to screen; the creation's own
- * TRANSFORM is drawn inside that mapping, so what the child moves/resizes/
- * rotates is the document's state, never the viewport.
+ * Two views of the SAME creation: ORIGINAL (exactly what came from
+ * paper — the untouched layer, shown plain) and MY VERSION (original +
+ * the child's edits + transform). Not two files; a toggle. Gestures land
+ * only on My Version — the Original view is for looking.
+ *
+ * Tools: Pencil (Fine/Medium/Thick point-path strokes) · Fill (tap
+ * inside a shape to colour it under the lines; tap the line itself to
+ * colour the line) · Erase (the child's own edits only) · Move. Line
+ * weight (Thin/Original/Thick) applies to the last shape touched.
+ *
+ * One display scale (ds) maps document space to screen; the creation's
+ * own TRANSFORM is drawn inside that mapping.
  */
 (function () {
   'use strict';
 
   const S = {
-    canvas: null, ctx: null, creation: null, onChange: null,
-    tool: 'paint', color: '#1f2430', brushDisp: 7,
+    canvas: null, ctx: null, creation: null, onChange: null, onNote: null,
+    tool: 'pencil', color: '#1f2430', size: 'fine', viewMode: 'mine',
+    lastRegion: 0,
     ds: 1, cx: 0, cy: 0,
-    stroke: null,          // in-progress paint/erase stroke (doc coords)
+    stroke: null,          // in-progress pencil/erase stroke (doc coords)
     drag: null,            // in-progress move drag {sx, sy, dx, dy} display px
+    tap: null,             // pointerdown spot for the fill tap {px, py}
     bound: false
   };
 
-  function mount(canvas, creation, onChange) {
+  function mount(canvas, creation, onChange, onNote) {
     S.canvas = canvas;
     S.ctx = canvas.getContext('2d');
     S.creation = creation;
     S.onChange = onChange || null;
+    S.onNote = onNote || null;
+    S.viewMode = 'mine';
+    S.lastRegion = 0;
     S.cx = canvas.width / 2;
     S.cy = canvas.height / 2;
     // Fit the document into ~72% of the surface at transform scale 1, so
@@ -66,28 +81,38 @@
     return [(e.clientX - r.left) * (S.canvas.width / r.width),
             (e.clientY - r.top) * (S.canvas.height / r.height)];
   }
-  // Brush radius in document pixels: constant on SCREEN, whatever the
-  // document's scale — a finger is a finger.
-  function brushDocRadius() {
-    return Math.max(1, S.brushDisp / (S.ds * S.creation.transform.scale));
-  }
+  // Pencil radius in DOCUMENT pixels — a pencil mark belongs to the
+  // drawing, so its width is the drawing's, not the screen's.
+  function pencilDocRadius() { return S.creation.pencilRadius(S.size); }
+  function eraseDocRadius() { return S.creation.pencilRadius(S.size) * 2.4 + 2; }
 
   // ---- drawing -----------------------------------------------------------------
   function surface(ctx, w, h) {
-    // Light checkerboard: transparency, honestly, and NOT a night sky.
-    const T = 14;
-    for (let y = 0; y < h; y += T) for (let x = 0; x < w; x += T) {
-      ctx.fillStyle = ((x / T + y / T) % 2) ? '#ece7dd' : '#f7f4ee';
-      ctx.fillRect(x, y, T, T);
-    }
+    // A quiet warm paper-grey. Deliberately NOT a checkerboard: that is a
+    // developer's transparency indicator, and this canvas faces a child.
+    ctx.fillStyle = '#eceae4';
+    ctx.fillRect(0, 0, w, h);
   }
 
   function draw() {
     if (!S.creation) return;
     const ctx = S.ctx, cw = S.canvas.width, chh = S.canvas.height;
     surface(ctx, cw, chh);
-    const t = S.creation.transform;
     const w = S.creation.original.width, h = S.creation.original.height;
+
+    if (S.viewMode === 'original') {
+      // ORIGINAL: the untouched layer, plain and centred — no edits, no
+      // transform, exactly what came from paper.
+      ctx.save();
+      ctx.imageSmoothingQuality = 'high';
+      ctx.translate(S.cx, S.cy);
+      ctx.scale(S.ds, S.ds);
+      ctx.drawImage(S.creation.originalCanvas(), -w / 2, -h / 2);
+      ctx.restore();
+      return;
+    }
+
+    const t = S.creation.transform;
     const liveDx = S.drag ? S.drag.dx : 0, liveDy = S.drag ? S.drag.dy : 0;
     ctx.save();
     ctx.imageSmoothingQuality = 'high';
@@ -103,7 +128,7 @@
       ctx.save();
       ctx.strokeStyle = ctx.fillStyle =
         S.stroke.t === 'erase' ? 'rgba(180,175,165,.65)' : S.stroke.color;
-      ctx.lineWidth = S.brushDisp * 2;
+      ctx.lineWidth = Math.max(1.5, S.stroke.radius * 2 * S.ds * t.scale);
       ctx.lineCap = ctx.lineJoin = 'round';
       const pts = S.stroke.points.map((p) => docToScreen(p[0], p[1]));
       ctx.beginPath();
@@ -118,14 +143,20 @@
   function bind() {
     const c = S.canvas;
     c.addEventListener('pointerdown', (e) => {
-      if (!S.creation) return;
+      if (!S.creation || S.viewMode === 'original') return;
       c.setPointerCapture(e.pointerId);
       const [px, py] = eventPoint(e);
       if (S.tool === 'move') {
         S.drag = { sx: px, sy: py, dx: 0, dy: 0 };
+      } else if (S.tool === 'fill') {
+        S.tap = { px, py, moved: false };
       } else {
-        S.stroke = { t: S.tool, color: S.color, radius: brushDocRadius(),
-                     points: [screenToDoc(px, py)] };
+        S.stroke = {
+          t: S.tool === 'erase' ? 'erase' : 'pencil',
+          color: S.color,
+          radius: S.tool === 'erase' ? eraseDocRadius() : pencilDocRadius(),
+          points: [screenToDoc(px, py)]
+        };
       }
       draw();
     });
@@ -134,8 +165,9 @@
       const [px, py] = eventPoint(e);
       if (S.drag) { S.drag.dx = px - S.drag.sx; S.drag.dy = py - S.drag.sy; draw(); }
       else if (S.stroke) { S.stroke.points.push(screenToDoc(px, py)); draw(); }
+      else if (S.tap && Math.hypot(px - S.tap.px, py - S.tap.py) > 6) S.tap.moved = true;
     });
-    c.addEventListener('pointerup', () => {
+    c.addEventListener('pointerup', (e) => {
       if (!S.creation) return;
       if (S.drag) {
         const dx = Math.round(S.drag.dx / S.ds), dy = Math.round(S.drag.dy / S.ds);
@@ -144,9 +176,38 @@
         else draw();
       } else if (S.stroke) {
         const op = S.stroke; S.stroke = null;
-        applyOp({ t: op.t, color: op.color, radius: op.radius, points: op.points });
+        applyOp({ t: op.t, color: op.color, size: S.size, radius: op.radius, points: op.points });
+      } else if (S.tap) {
+        const tap = S.tap; S.tap = null;
+        if (tap.moved) { draw(); return; }
+        fillTap(eventPoint(e));
       }
     });
+  }
+
+  /* The Fill tap. Inside a shape → colour it in (under the lines). On the
+   * line itself → colour the line, keeping its pencil texture. Anywhere
+   * else — open space, an unenclosed scribble — nothing happens and the
+   * developer log says why; the drawing is never guessed at. */
+  function fillTap(pt) {
+    const [dx, dy] = screenToDoc(pt[0], pt[1]);
+    const hit = S.creation.hitAt(dx, dy);
+    if (!hit) {
+      const R = S.creation.regions();
+      note(R.none ? R.note
+        : 'fill: nothing enclosed there — tap inside a shape, or on its line');
+      return;
+    }
+    S.lastRegion = hit.region;
+    if (hit.kind === 'region') {
+      applyOp({ t: 'fill', region: hit.region, color: S.color,
+                x: Math.round(dx), y: Math.round(dy) });
+      note('fill: area ' + hit.region + ' ← ' + S.color + ' (under the lines)');
+    } else {
+      applyOp({ t: 'lineColor', region: hit.region, color: S.color });
+      note('line colour: area ' + hit.region + ' ← ' + S.color +
+           ' (tinted — the pencil texture stays)');
+    }
   }
 
   function applyOp(op) {
@@ -154,19 +215,30 @@
     draw();
     if (S.onChange) S.onChange();
   }
+  function note(msg) { if (S.onNote) S.onNote(msg); }
 
   // ---- the small API app.js wires to buttons -----------------------------------
   function setTool(tool) { S.tool = tool; }
   function setColor(color) { S.color = color; }
-  function setBrush(px) { S.brushDisp = px; }
+  function setSize(size) { S.size = size; }
+  function setView(mode) { S.viewMode = mode; draw(); }
+  /* Thin / Original / Thick for the last shape the child touched. Returns
+   * false when no shape has been touched yet — the caller says so. */
+  function setLineWidth(width) {
+    if (!S.lastRegion) return false;
+    applyOp({ t: 'lineWidth', region: S.lastRegion, width });
+    return true;
+  }
   function undo() { if (S.creation.undo()) { draw(); if (S.onChange) S.onChange(); } }
   function redo() { if (S.creation.redo()) { draw(); if (S.onChange) S.onChange(); } }
+  function reset() { if (S.creation.reset()) { draw(); if (S.onChange) S.onChange(); } }
   function scaleBy(f) { applyOp({ t: 'scale', f }); }
   function rotateBy(deg) { applyOp({ t: 'rotate', deg }); }
   function redraw() { draw(); }
 
   window.BIAEditor = {
-    mount, setTool, setColor, setBrush, undo, redo, scaleBy, rotateBy, redraw,
+    mount, setTool, setColor, setSize, setView, setLineWidth,
+    undo, redo, reset, scaleBy, rotateBy, redraw,
     // Instrumentation for the suite and devtools — same standing as __bia.
     docToScreen, screenToDoc, state: S
   };

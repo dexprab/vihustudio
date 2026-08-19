@@ -20,9 +20,15 @@
      v0.2's correction (the sprint): the output is NOT an Ether scene —
      the night sky is gone. The output is an editable VihuPlanet
      creation: a LAYERED document (ORIGINAL, never destroyed · EDITS,
-     undoable · TRANSFORM) on a transparent editing canvas. The child
-     paints, erases, moves, resizes, rotates — and the original stays
-     recoverable underneath, always.
+     undoable · TRANSFORM) on a quiet paper-grey editing canvas. The
+     child draws with a real pencil, FILLS enclosed shapes under their
+     own lines, colours and re-weights those lines (a tint and a
+     compose-time morphology of their own ink — never a redrawn vector),
+     erases their own edits (never the original), moves, resizes,
+     rotates, toggles Original|My Version, resets — and the original
+     stays recoverable underneath, always. The structure that makes
+     shapes tappable is DERIVED from the drawing's raw mask
+     (js/regions.js); nothing is vectorized, nothing is redrawn.
 
      It integrates with NOTHING — not the Studio, not the runtime, not
      the asset pipeline. It can be deleted whole. Verification suite:
@@ -69,6 +75,8 @@
   .brush i { display:block; border-radius:50%; background:currentColor; }
   .brush.on { outline:2px solid var(--gold); }
   .toolgap { width:.6rem; }
+  .rowlabel { font:400 .7rem/1.4 var(--mono); letter-spacing:.1em;
+              text-transform:uppercase; color:var(--faint); }
 
   .quiet { background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--warn);
            border-radius:8px; padding:.7rem 1rem; color:var(--soft); margin-top:.8rem; display:none; }
@@ -149,8 +157,13 @@
   <!-- MAKE IT YOURS -->
   <section class="step" id="stepAlive">
     <h2>Make it yours</h2>
+    <div class="row" id="viewRow">
+      <button class="ghost" id="viewOriginalBtn">Original</button>
+      <button class="ghost on" id="viewMineBtn">My Version</button>
+    </div>
     <div class="row" id="yoursTools">
-      <button class="ghost on" id="toolPaint">Paint</button>
+      <button class="ghost on" id="toolPencil">Pencil</button>
+      <button class="ghost" id="toolFill">Fill</button>
       <button class="ghost" id="toolErase">Erase</button>
       <button class="ghost" id="toolMove">Move</button>
       <span class="toolgap"></span>
@@ -161,12 +174,20 @@
       <button class="swatch" data-color="#3e63dd" style="background:#3e63dd" title="blue"></button>
       <button class="swatch" data-color="#8e4ec6" style="background:#8e4ec6" title="purple"></button>
       <span class="toolgap"></span>
-      <button class="brush" data-size="4" title="small"><i style="width:5px;height:5px"></i></button>
-      <button class="brush on" data-size="7" title="medium"><i style="width:9px;height:9px"></i></button>
-      <button class="brush" data-size="12" title="big"><i style="width:14px;height:14px"></i></button>
+      <button class="brush on" data-size="fine" title="fine"><i style="width:4px;height:4px"></i></button>
+      <button class="brush" data-size="medium" title="medium"><i style="width:8px;height:8px"></i></button>
+      <button class="brush" data-size="thick" title="thick"><i style="width:13px;height:13px"></i></button>
+    </div>
+    <div class="row">
+      <span class="rowlabel">Lines</span>
+      <button class="ghost" id="lineThinBtn">Thin</button>
+      <button class="ghost on" id="lineOriginalBtn">Original</button>
+      <button class="ghost" id="lineThickBtn">Thick</button>
       <span class="toolgap"></span>
       <button class="ghost" id="undoBtn">Undo</button>
       <button class="ghost" id="redoBtn">Redo</button>
+      <button class="ghost" id="resetBtn">Reset My Changes</button>
+      <span class="toolgap"></span>
       <button class="ghost" id="smallerBtn">Smaller</button>
       <button class="ghost" id="biggerBtn">Bigger</button>
       <button class="ghost" id="rotLBtn" title="rotate left">⟲</button>
@@ -175,9 +196,11 @@
     <div class="board" style="margin-top:.8rem;">
       <canvas class="work" id="editCanvas" width="720" height="540"></canvas>
     </div>
-    <p class="note">It’s yours. What will you do with it?</p>
+    <p class="note">Colour it in: choose Fill, then touch inside a shape —
+       or touch the line itself to colour the line. It stays your drawing.</p>
     <div class="row">
-      <button id="downloadBtn">Download PNG</button>
+      <button id="downloadBtn">Current PNG</button>
+      <button class="ghost" id="downloadOriginalBtn">Original PNG</button>
       <button class="ghost" id="downloadCreationBtn">Download Creation</button>
       <button class="ghost" id="anotherBtn">Make another claim</button>
       <button class="ghost" id="aliveNewPhoto">New photo</button>
@@ -196,18 +219,22 @@
         <div class="duo" style="margin-top:10px;">
           <figure><figcaption>Layer · original</figcaption>
             <canvas id="devLayerOriginal" width="300" height="240"></canvas></figure>
-          <figure><figcaption>Layer · paint</figcaption>
+          <figure><figcaption>Layer · pencil &amp; paint</figcaption>
             <canvas id="devLayerPaint" width="300" height="240"></canvas></figure>
-          <figure><figcaption>Layer · erase mask</figcaption>
-            <canvas id="devLayerErase" width="300" height="240"></canvas></figure>
+          <figure><figcaption>Layer · fills (under the lines)</figcaption>
+            <canvas id="devLayerFills" width="300" height="240"></canvas></figure>
         </div>
         <p class="note" id="devOps"></p>
         <p class="note" id="devStats"></p>
         <p class="note">Deskew is measured and declined, with the reason in the log below —
            the photographed page is the source, untouched. Lighting is flattened on a
            decision copy only; the export path reads original pixels exclusively.
-           “Download PNG” is a RENDER of the current view; the creation itself is
-           the JSON, which stays editable.</p>
+           Regions are DERIVED from the raw mask (never stored): closed areas get
+           independently editable fill and line; line colour is a tint of the child’s
+           own ink, line weight is compose-time morphology — no pixel of the original
+           is ever rewritten. “Current PNG” is a RENDER of the current view;
+           “Original PNG” renders the untouched layer; the creation itself is the
+           JSON, which stays editable.</p>
       </div>
     </details>
   </section>
@@ -221,6 +248,7 @@
 <script src="js/segment.js"></script>
 <script src="js/refine.js"></script>
 <script src="js/extract.js"></script>
+<script src="js/regions.js"></script>
 <script src="js/creation.js"></script>
 <script src="js/editor.js"></script>
 <script src="js/preview.js"></script>
