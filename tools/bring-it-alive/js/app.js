@@ -247,31 +247,56 @@
   });
 
   // ---- make it yours -------------------------------------------------------
-  // The developer strip's layer stack: original / paint / erase-mask, and
-  // the op history count. Refreshed on every edit through the editor's
+  // The developer strip's layer stack: original / pencil & paint / fills,
+  // and the op history count. Refreshed on every edit through the editor's
   // onChange — the strip is a window on the creation, never a copy of it.
   function updateLayerStrip() {
     const c = state.creation;
     if (!c) return;
     const w = c.original.width, h = c.original.height;
-    const oc = document.createElement('canvas');
-    oc.width = w; oc.height = h;
-    oc.getContext('2d').putImageData(c.original, 0, 0);
-    BIAPreview.layer($('devLayerOriginal'), oc);
+    BIAPreview.layer($('devLayerOriginal'), c.originalCanvas());
     BIAPreview.layer($('devLayerPaint'), c.paintCanvas);
-    BIAPreview.plane($('devLayerErase'), c.eraseMask, w, h);
-    let hidden = 0;
-    for (let i = 0; i < c.eraseMask.length; i++) if (c.eraseMask[i]) hidden++;
+    const fc = document.createElement('canvas');
+    fc.width = w; fc.height = h;
+    fc.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(c.fillPlane), w, h), 0, 0);
+    BIAPreview.layer($('devLayerFills'), fc);
+    let fills = 0;
+    for (let i = 3; i < c.fillPlane.length; i += 4) if (c.fillPlane[i]) fills++;
+    const lines = Object.keys(c._lines).length;
+    const regionInfo = c._regions
+      ? (c._regions.none ? 'none found' : c._regions.count + ' found') : 'not yet asked';
     $('devOps').textContent =
-      'layers: original ' + w + '×' + h + ' (never written) · paint (ops) · erase mask ' +
-      hidden + ' px hidden, 0 destroyed · history ' + c.cursor + '/' + c.ops.length +
+      'layers: original ' + w + '×' + h + ' (never written) · pencil & paint (ops) · fills ' +
+      fills + ' px under the lines · line edits on ' + lines + ' area(s) · regions ' +
+      regionInfo + ' · history ' + c.cursor + '/' + c.ops.length +
       ' ops · transform x' + c.transform.x + ' y' + c.transform.y +
       ' scale ' + c.transform.scale.toFixed(2) + ' rot ' + c.transform.rotation + '°';
+    updateLineButtons();
   }
+
+  // The Lines row reflects the last shape the child touched.
+  function updateLineButtons() {
+    const r = BIAEditor.state.lastRegion;
+    const st = (r && state.creation) ? state.creation.lineStateOf(r)
+                                     : { width: 'original' };
+    $('lineThinBtn').classList.toggle('on', st.width === 'thin');
+    $('lineOriginalBtn').classList.toggle('on', st.width === 'original');
+    $('lineThickBtn').classList.toggle('on', st.width === 'thick');
+  }
+
+  function setView(mode) {
+    BIAEditor.setView(mode);
+    $('viewOriginalBtn').classList.toggle('on', mode === 'original');
+    $('viewMineBtn').classList.toggle('on', mode === 'mine');
+  }
+  $('viewOriginalBtn').addEventListener('click', () => setView('original'));
+  $('viewMineBtn').addEventListener('click', () => setView('mine'));
 
   function openCreation(creation, viaExtraction) {
     state.creation = creation;
-    BIAEditor.mount($('editCanvas'), creation, updateLayerStrip);
+    BIAEditor.mount($('editCanvas'), creation, updateLayerStrip, log);
+    setView('mine');
+    setTool('pencil');
     // A creation reopened from JSON has no photograph or claim behind it,
     // so "Make another claim" has nowhere honest to go.
     $('anotherBtn').style.display = viaExtraction ? '' : 'none';
@@ -325,28 +350,42 @@
   // ---- the toolbar ----------------------------------------------------------
   function setTool(tool) {
     BIAEditor.setTool(tool);
-    for (const [id, t] of [['toolPaint', 'paint'], ['toolErase', 'erase'], ['toolMove', 'move']]) {
+    for (const [id, t] of [['toolPencil', 'pencil'], ['toolFill', 'fill'],
+                           ['toolErase', 'erase'], ['toolMove', 'move']]) {
       $(id).classList.toggle('on', t === tool);
     }
   }
-  $('toolPaint').addEventListener('click', () => setTool('paint'));
+  $('toolPencil').addEventListener('click', () => setTool('pencil'));
+  $('toolFill').addEventListener('click', () => setTool('fill'));
   $('toolErase').addEventListener('click', () => setTool('erase'));
   $('toolMove').addEventListener('click', () => setTool('move'));
   for (const b of document.querySelectorAll('.swatch')) {
     b.addEventListener('click', () => {
       BIAEditor.setColor(b.dataset.color);
       for (const o of document.querySelectorAll('.swatch')) o.classList.toggle('on', o === b);
-      setTool('paint'); // choosing a colour means "I want to paint"
+      // Choosing a colour means "I want to make a mark" — but never steals
+      // the Fill tool: pick blue, then tap the shape.
+      const t = BIAEditor.state.tool;
+      if (t !== 'pencil' && t !== 'fill') setTool('pencil');
     });
   }
   for (const b of document.querySelectorAll('.brush')) {
     b.addEventListener('click', () => {
-      BIAEditor.setBrush(Number(b.dataset.size));
+      BIAEditor.setSize(b.dataset.size);
       for (const o of document.querySelectorAll('.brush')) o.classList.toggle('on', o === b);
     });
   }
+  function lineWidth(width) {
+    if (!BIAEditor.setLineWidth(width)) {
+      log('lines: touch a shape first (Fill, then tap inside or on its line)');
+    }
+  }
+  $('lineThinBtn').addEventListener('click', () => lineWidth('thin'));
+  $('lineOriginalBtn').addEventListener('click', () => lineWidth('original'));
+  $('lineThickBtn').addEventListener('click', () => lineWidth('thick'));
   $('undoBtn').addEventListener('click', () => BIAEditor.undo());
   $('redoBtn').addEventListener('click', () => BIAEditor.redo());
+  $('resetBtn').addEventListener('click', () => BIAEditor.reset());
   $('biggerBtn').addEventListener('click', () => BIAEditor.scaleBy(1.15));
   $('smallerBtn').addEventListener('click', () => BIAEditor.scaleBy(1 / 1.15));
   $('rotLBtn').addEventListener('click', () => BIAEditor.rotateBy(-15));
@@ -362,13 +401,20 @@
   }
   const stem = () => ((state.creation && state.creation.source && state.creation.source.filename) ||
     (state.photo && state.photo.filename) || 'drawing').replace(/\.[^.]+$/, '');
-  // Download PNG is a RENDER of the current view — original + edits +
-  // transform, over transparency. The canonical creation is the JSON.
+  // Current PNG is a RENDER of the current view — original + edits +
+  // transform, over transparency. Original PNG renders the untouched
+  // ORIGINAL layer. The canonical creation is the JSON.
   $('downloadBtn').addEventListener('click', () => {
     const r = state.creation.render();
     r.canvas.toBlob((b) => {
       if (!b) { fail(new Error('render: toBlob returned null')); return; }
       download(stem() + '-yours.png', b);
+    }, 'image/png');
+  });
+  $('downloadOriginalBtn').addEventListener('click', () => {
+    state.creation.originalCanvas().toBlob((b) => {
+      if (!b) { fail(new Error('render: toBlob returned null')); return; }
+      download(stem() + '-original.png', b);
     }, 'image/png');
   });
   $('downloadCreationBtn').addEventListener('click', () =>
