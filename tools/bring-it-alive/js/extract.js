@@ -17,19 +17,34 @@
  *     only on that ring. Fully-opaque pixels are untouched by
  *     construction, which is what the suite's zero-tolerance walk checks.
  *
+ * THE PAPER HALO, and its v0.2 fix. Unconditional dilation grows every
+ * stroke into whatever is next to it — which on paper is paper, so every
+ * stroke shipped wearing a 2px rim of fully-opaque paper. The sprint
+ * reclassified that rim as a capture artefact, so dilation is now GATED:
+ * when the caller supplies a `support` plane (pixels that are at least
+ * faintly darker than their local paper — a stroke's anti-aliased skirt),
+ * a pixel may join by dilation only if the plane vouches for it. Flat
+ * paper never qualifies, so the mask hugs real ink. This changes only
+ * WHICH pixels are opaque, never any pixel's value — the preservation
+ * rule is untouched. Without `support` the v0.1 behaviour is preserved
+ * exactly, which is also how the suite measures the halo drop honestly
+ * (both extractions of the same claim, same run).
+ *
  * The crop is a bounding box at source resolution — never a rescale.
  */
 (function () {
   'use strict';
 
   /**
-   * extract(image, mask) -> asset | null
+   * extract(image, mask, support?) -> asset | null
    * `image` is the photo object from capture(); `mask` a Uint8Array over
-   * its pixels. Returns null when the mask holds too little ink to be a
-   * drawing — the caller must treat that as "we found nothing" and say
-   * so, never as a tiny successful asset.
+   * its pixels; `support` an optional Uint8Array over the same pixels
+   * marking which pixels dilation is allowed to add (see header). Returns
+   * null when the mask holds too little ink to be a drawing — the caller
+   * must treat that as "we found nothing" and say so, never as a tiny
+   * successful asset.
    */
-  function extract(photo, mask) {
+  function extract(photo, mask, support) {
     const w = photo.width, h = photo.height;
 
     let count = 0, minX = w, minY = h, maxX = -1, maxY = -1;
@@ -49,18 +64,23 @@
     const cw = Math.min(w - 1, maxX + pad) - cx + 1;
     const ch = Math.min(h - 1, maxY + pad) - cy + 1;
 
-    // Local binary mask in crop space.
+    // Local binary mask in crop space — and a snapshot of it, because the
+    // raw (pre-dilation) segmentation mask is part of the layered creation
+    // document and must travel with the pixels it selected.
     let local = new Uint8Array(cw * ch);
     for (let y = 0; y < ch; y++) {
       const row = (cy + y) * w + cx;
       for (let x = 0; x < cw; x++) local[y * cw + x] = mask[row + x];
     }
+    const rawLocal = new Uint8Array(local);
 
     // Dilate twice with the 8-neighbourhood (Chebyshev radius 2 ≈ "~2px").
+    // With a support plane, only vouched-for pixels may join (the halo fix).
     for (let pass = 0; pass < 2; pass++) {
       const out = new Uint8Array(local);
       for (let y = 0; y < ch; y++) for (let x = 0; x < cw; x++) {
         if (local[y * cw + x]) continue;
+        if (support && !support[(cy + y) * w + (cx + x)]) continue;
         let hit = false;
         for (let dy = -1; dy <= 1 && !hit; dy++) {
           const yy = y + dy; if (yy < 0 || yy >= ch) continue;
@@ -115,6 +135,7 @@
       imageData: out,
       crop: { x: cx, y: cy, w: cw, h: ch },
       maskPixels: count,
+      maskLocal: rawLocal,   // the raw crop-local segmentation mask, for the creation document
       opaquePixels: opaque,
       photo: photo
     };

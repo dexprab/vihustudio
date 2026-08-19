@@ -5,12 +5,14 @@
  * preview is a picture of the asset, not the asset — the exported PNG
  * never passes through this module.
  *
- * The night-sky preview exists for one product reason: over a checkerboard
- * a cutout still reads as an image-editor artefact; over a quiet dark sky
- * the child sees THEIR drawing, exactly as photographed, living somewhere
- * — which is the whole claim of "Bring It Alive". The sky is procedural
- * (seeded), in the spirit of VihuPlanet's own "behaviour, not
- * illustration" rule, but it integrates with nothing.
+ * v0.1's night-sky preview is GONE, removed by the sprint's correction:
+ * the output of this tool is not an Ether scene, it is an editable
+ * VihuPlanet creation, and the child decides later where it belongs. The
+ * final step's surface now lives in editor.js (a light checkerboard —
+ * transparency shown honestly). What remains here is the developer strip:
+ * the original-vs-asset comparison and views of each layer of the
+ * creation document, so a human can SEE that original / paint / erase-mask
+ * are separate things.
  */
 (function () {
   'use strict';
@@ -25,40 +27,6 @@
     c.width = asset.imageData.width; c.height = asset.imageData.height;
     c.getContext('2d').putImageData(asset.imageData, 0, 0);
     return c;
-  }
-
-  function checkerboard(canvas, asset) {
-    const ctx = canvas.getContext('2d');
-    const w = canvas.width, h = canvas.height;
-    for (let y = 0; y < h; y += 12) for (let x = 0; x < w; x += 12) {
-      ctx.fillStyle = ((x / 12 + y / 12) % 2) ? '#3a4157' : '#2b3147';
-      ctx.fillRect(x, y, 12, 12);
-    }
-    const src = assetCanvas(asset);
-    const f = fit(src.width, src.height, w - 24, h - 24);
-    ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(src, (w - f.w) / 2, (h - f.h) / 2, f.w, f.h);
-  }
-
-  function nightSky(canvas, asset) {
-    const ctx = canvas.getContext('2d');
-    const w = canvas.width, h = canvas.height;
-    const g = ctx.createLinearGradient(0, 0, 0, h);
-    g.addColorStop(0, '#0a0f1e'); g.addColorStop(0.6, '#101830'); g.addColorStop(1, '#141b30');
-    ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
-    // Seeded stars — the same modest sky every time; this is a preview
-    // background, not a place, so it earns no randomness of its own.
-    let s = 77;
-    const rnd = () => { s = (s * 16807) % 2147483647; return s / 2147483647; };
-    for (let i = 0; i < 90; i++) {
-      const x = rnd() * w, y = rnd() * h, r = rnd() * 1.3 + 0.3;
-      ctx.fillStyle = 'rgba(231,234,243,' + (0.25 + rnd() * 0.55).toFixed(2) + ')';
-      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
-    }
-    const src = assetCanvas(asset);
-    const f = fit(src.width, src.height, w * 0.72, h * 0.72);
-    ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(src, (w - f.w) / 2, (h - f.h) / 2, f.w, f.h);
   }
 
   /* Developer side-by-side: the original photograph's crop next to the
@@ -79,9 +47,8 @@
       (canvasAsset.width - f.w) / 2, (canvasAsset.height - f.h) / 2, f.w, f.h);
   }
 
-  /* Raw mask view: white = in the mask, black = out. */
-  function maskView(canvas, seg) {
-    const w = seg.width, h = seg.height;
+  /* A binary plane (mask / erase-mask), white = set. */
+  function plane(canvas, bits, w, h) {
     const small = document.createElement('canvas');
     // Render at reduced size — a 16MP boolean image does not need 16MP.
     const f = fit(w, h, canvas.width, canvas.height);
@@ -91,7 +58,7 @@
       const sy = Math.min(h - 1, Math.round(y * h / f.h));
       for (let x = 0; x < f.w; x++) {
         const sx = Math.min(w - 1, Math.round(x * w / f.w));
-        const v = seg.mask[sy * w + sx] ? 255 : 0;
+        const v = bits[sy * w + sx] ? 255 : 0;
         const di = (y * f.w + x) * 4;
         id.data[di] = id.data[di + 1] = id.data[di + 2] = v; id.data[di + 3] = 255;
       }
@@ -103,5 +70,18 @@
     ctx.drawImage(small, (canvas.width - f.w) / 2, (canvas.height - f.h) / 2);
   }
 
-  window.BIAPreview = { checkerboard, nightSky, devCompare, maskView, fit };
+  /* Raw segmentation mask view, kept from v0.1. */
+  function maskView(canvas, seg) { plane(canvas, seg.mask, seg.width, seg.height); }
+
+  /* An RGBA layer (a canvas — the creation's original or paint layer),
+   * scaled onto a dark neutral so transparent regions read as empty. */
+  function layer(canvas, srcCanvas) {
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#0f1526'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const f = fit(srcCanvas.width, srcCanvas.height, canvas.width, canvas.height);
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(srcCanvas, (canvas.width - f.w) / 2, (canvas.height - f.h) / 2, f.w, f.h);
+  }
+
+  window.BIAPreview = { devCompare, maskView, plane, layer, fit };
 })();

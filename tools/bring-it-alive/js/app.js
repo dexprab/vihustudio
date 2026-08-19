@@ -1,6 +1,6 @@
 /* APP — UI state and wiring. All pixel truth lives in the modules; this
- * file moves the child through the four marks (Capture → Claim → Refine →
- * Bring It Alive) and never touches an exported byte itself.
+ * file moves the child through the four marks (Photograph → Claim → We
+ * Found This → Make It Yours) and never touches an exported byte itself.
  *
  * window.__bia is the developer seam: the suite (test/run-tests.js) and a
  * human in devtools read pipeline state through it. It is instrumentation
@@ -12,7 +12,7 @@
 
   const $ = (id) => document.getElementById(id);
   const state = {
-    photo: null, claim: null, seg: null, asset: null,
+    photo: null, claim: null, seg: null, asset: null, creation: null,
     marks: [], mode: 'keep', lastExport: null, exports: [],
     displayScale: 1, testCaseId: null
   };
@@ -62,10 +62,12 @@
     try {
       state.photo = await BIACapture.capture(source);
       state.testCaseId = testCaseId || null;
-      state.claim = null; state.seg = null; state.asset = null; state.marks = [];
+      state.claim = null; state.seg = null; state.asset = null;
+      state.creation = null; state.marks = [];
       log('capture: ' + state.photo.filename + ' ' +
           state.photo.width + 'x' + state.photo.height +
           (testCaseId ? ' (' + testCaseId + ')' : ''));
+      for (const n of state.photo.notes || []) log(n);
       drawClaimBase();
       go('stepClaim');
     } catch (e) { fail(e); }
@@ -244,10 +246,43 @@
     drawClaimBase(); go('stepClaim');
   });
 
-  // ---- bring it alive ----------------------------------------------------
+  // ---- make it yours -------------------------------------------------------
+  // The developer strip's layer stack: original / paint / erase-mask, and
+  // the op history count. Refreshed on every edit through the editor's
+  // onChange — the strip is a window on the creation, never a copy of it.
+  function updateLayerStrip() {
+    const c = state.creation;
+    if (!c) return;
+    const w = c.original.width, h = c.original.height;
+    const oc = document.createElement('canvas');
+    oc.width = w; oc.height = h;
+    oc.getContext('2d').putImageData(c.original, 0, 0);
+    BIAPreview.layer($('devLayerOriginal'), oc);
+    BIAPreview.layer($('devLayerPaint'), c.paintCanvas);
+    BIAPreview.plane($('devLayerErase'), c.eraseMask, w, h);
+    let hidden = 0;
+    for (let i = 0; i < c.eraseMask.length; i++) if (c.eraseMask[i]) hidden++;
+    $('devOps').textContent =
+      'layers: original ' + w + '×' + h + ' (never written) · paint (ops) · erase mask ' +
+      hidden + ' px hidden, 0 destroyed · history ' + c.cursor + '/' + c.ops.length +
+      ' ops · transform x' + c.transform.x + ' y' + c.transform.y +
+      ' scale ' + c.transform.scale.toFixed(2) + ' rot ' + c.transform.rotation + '°';
+  }
+
+  function openCreation(creation, viaExtraction) {
+    state.creation = creation;
+    BIAEditor.mount($('editCanvas'), creation, updateLayerStrip);
+    // A creation reopened from JSON has no photograph or claim behind it,
+    // so "Make another claim" has nowhere honest to go.
+    $('anotherBtn').style.display = viaExtraction ? '' : 'none';
+    updateLayerStrip();
+    go('stepAlive');
+  }
+
   $('aliveBtn').addEventListener('click', async () => {
     try {
-      const asset = BIAExtract.extract(state.photo, state.seg.mask);
+      const asset = BIAExtract.extract(state.photo, state.seg.mask,
+        BIASegment.skirt(state.seg));
       if (!asset) {
         go('stepClaim'); drawClaimBase();
         quiet('There isn’t enough drawing left in the claim to bring alive.');
@@ -255,6 +290,9 @@
         return;
       }
       state.asset = asset;
+      // The baseline export still runs here — not to be downloaded, but
+      // because its verification walk is the loud preservation check, and
+      // it must fire BEFORE the child is told the drawing is theirs.
       const exp = await BIAExportAsset.exportAsset(asset, {
         filename: state.photo.filename,
         testCaseId: state.testCaseId,
@@ -266,19 +304,55 @@
           asset.crop.x + ',' + asset.crop.y + '), ' + exp.verified +
           ' opaque px verified byte-identical, PNG ' + exp.blob.size + ' bytes');
 
-      BIAPreview.checkerboard($('checkerCanvas'), asset);
-      BIAPreview.nightSky($('skyCanvas'), asset);
+      const creation = BIACreation.create(
+        { imageData: asset.imageData, crop: asset.crop, maskPixels: asset.maskLocal },
+        { source: { filename: state.photo.filename,
+                    width: state.photo.width, height: state.photo.height } });
+      log('creation: layered document — original ' + asset.crop.w + '×' + asset.crop.h +
+          ' + edits + transform');
+
       BIAPreview.devCompare($('devOrig'), $('devAsset'), state.photo, asset);
       BIAPreview.maskView($('devMask'), state.seg);
       $('devStats').textContent =
         'crop ' + asset.crop.w + '×' + asset.crop.h + ' at (' + asset.crop.x + ',' + asset.crop.y +
         ') · mask ' + asset.maskPixels + ' px · ' + asset.opaquePixels +
-        ' opaque px, every one byte-identical to the photograph · PNG ' +
+        ' opaque px, every one byte-identical to the photograph · baseline PNG ' +
         exp.blob.size + ' bytes at source resolution';
-      go('stepAlive');
+      openCreation(creation, true);
     } catch (e) { fail(e); }
   });
 
+  // ---- the toolbar ----------------------------------------------------------
+  function setTool(tool) {
+    BIAEditor.setTool(tool);
+    for (const [id, t] of [['toolPaint', 'paint'], ['toolErase', 'erase'], ['toolMove', 'move']]) {
+      $(id).classList.toggle('on', t === tool);
+    }
+  }
+  $('toolPaint').addEventListener('click', () => setTool('paint'));
+  $('toolErase').addEventListener('click', () => setTool('erase'));
+  $('toolMove').addEventListener('click', () => setTool('move'));
+  for (const b of document.querySelectorAll('.swatch')) {
+    b.addEventListener('click', () => {
+      BIAEditor.setColor(b.dataset.color);
+      for (const o of document.querySelectorAll('.swatch')) o.classList.toggle('on', o === b);
+      setTool('paint'); // choosing a colour means "I want to paint"
+    });
+  }
+  for (const b of document.querySelectorAll('.brush')) {
+    b.addEventListener('click', () => {
+      BIAEditor.setBrush(Number(b.dataset.size));
+      for (const o of document.querySelectorAll('.brush')) o.classList.toggle('on', o === b);
+    });
+  }
+  $('undoBtn').addEventListener('click', () => BIAEditor.undo());
+  $('redoBtn').addEventListener('click', () => BIAEditor.redo());
+  $('biggerBtn').addEventListener('click', () => BIAEditor.scaleBy(1.15));
+  $('smallerBtn').addEventListener('click', () => BIAEditor.scaleBy(1 / 1.15));
+  $('rotLBtn').addEventListener('click', () => BIAEditor.rotateBy(-15));
+  $('rotRBtn').addEventListener('click', () => BIAEditor.rotateBy(15));
+
+  // ---- downloads -------------------------------------------------------------
   function download(name, blob) {
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -286,15 +360,38 @@
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 5000);
   }
-  const stem = () => (state.photo.filename || 'drawing').replace(/\.[^.]+$/, '');
-  $('downloadBtn').addEventListener('click', () =>
-    download(stem() + '-alive.png', state.lastExport.blob));
-  $('downloadJsonBtn').addEventListener('click', () =>
-    download(stem() + '-alive.json',
-      new Blob([JSON.stringify(state.lastExport.sidecar, null, 2)], { type: 'application/json' })));
+  const stem = () => ((state.creation && state.creation.source && state.creation.source.filename) ||
+    (state.photo && state.photo.filename) || 'drawing').replace(/\.[^.]+$/, '');
+  // Download PNG is a RENDER of the current view — original + edits +
+  // transform, over transparency. The canonical creation is the JSON.
+  $('downloadBtn').addEventListener('click', () => {
+    const r = state.creation.render();
+    r.canvas.toBlob((b) => {
+      if (!b) { fail(new Error('render: toBlob returned null')); return; }
+      download(stem() + '-yours.png', b);
+    }, 'image/png');
+  });
+  $('downloadCreationBtn').addEventListener('click', () =>
+    download(stem() + '.vihu-creation.json',
+      new Blob([state.creation.toJSONString()], { type: 'application/json' })));
+
+  // ---- reopening a creation ---------------------------------------------------
+  $('openCreationBtn').addEventListener('click', () => $('creationInput').click());
+  $('creationInput').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    try {
+      const creation = await BIACreation.fromJSON(await file.text());
+      log('creation: reopened ' + file.name + ' — ' + creation.cursor + '/' +
+          creation.ops.length + ' ops, crop ' + creation.crop.w + '×' + creation.crop.h);
+      openCreation(creation, false);
+    } catch (err) { fail(err); }
+  });
 
   $('anotherBtn').addEventListener('click', () => {
-    state.claim = null; state.seg = null; state.asset = null; state.marks = [];
+    state.claim = null; state.seg = null; state.asset = null;
+    state.creation = null; state.marks = [];
     drawClaimBase(); go('stepClaim');
   });
   $('aliveNewPhoto').addEventListener('click', () => go('stepCapture'));
@@ -303,5 +400,5 @@
   window.addEventListener('error', (e) => fail(e.error || e.message));
   window.addEventListener('unhandledrejection', (e) => fail(e.reason));
 
-  log('bring-it-alive v0.1 ready');
+  log('bring-it-alive v0.2 ready');
 })();

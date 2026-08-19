@@ -80,6 +80,25 @@
     return seg._refine;
   }
 
+  // The v0.2 halo tightening for Keep: a RELAXED pixel (half-margin — the
+  // stroke's faint neighbourhood) may join the mask only within a short
+  // distance of a strictly-detected ink pixel. Without this, a Keep stroke
+  // over faint pencil also collected free-standing patches of paper shading
+  // that then shipped opaque. Strict ink under the brush is untouched by
+  // this gate — the child pointing at real ink always wins.
+  const NEAR_INK = 3; // Chebyshev radius
+  function nearStrictInk(seg, i) {
+    const w = seg.width, h = seg.height;
+    const x = i % w, y = (i / w) | 0;
+    const y0 = Math.max(0, y - NEAR_INK), y1 = Math.min(h - 1, y + NEAR_INK);
+    const x0 = Math.max(0, x - NEAR_INK), x1 = Math.min(w - 1, x + NEAR_INK);
+    for (let yy = y0; yy <= y1; yy++) {
+      const row = yy * w;
+      for (let xx = x0; xx <= x1; xx++) if (seg.ink[row + xx]) return true;
+    }
+    return false;
+  }
+
   function applyKeep(seg, mark) {
     const st = ensureState(seg);
     const w = seg.width, h = seg.height;
@@ -90,7 +109,8 @@
     const smallTouched = new Set();
     for (let k = 0; k < brushed.length; k++) {
       const i = brushed[k];
-      if (window.BIASegment.relaxedInkAt(seg, i)) {
+      if (seg.ink[i] ||
+          (window.BIASegment.relaxedInkAt(seg, i) && nearStrictInk(seg, i))) {
         if (!seg.mask[i]) { seg.mask[i] = 1; seg.maskCount++; }
         st.keepMap[i] = 1;
         seeds.push(i);
