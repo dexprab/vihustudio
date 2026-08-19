@@ -3829,3 +3829,49 @@ colour keeps the mark live; each tried colour is one history entry; a
 mark doesn't survive leaving the Mark tool; a loop that catches nothing
 says so only in the developer log. Demo:
 `screenshots/7-mark-a-portion.png`.
+
+## Bring It Alive — Camera Capture, Beside the Photo Picker
+
+Asked for by the product owner (*"add the camera on the bring it alive
+tool first. would like to check its effectiveness against uploading
+picture. keep both options"*). Built in a worker worktree;
+independently re-verified before merging — the 152-check suite (133
+existing + 19 camera) reproduced fresh with the camera fixture deleted
+and regenerated, commits confined to `tools/bring-it-alive/`.
+
+**"Use the camera" beside "Choose a photo"**, both first-class
+(`js/camera.js`). Live preview with the Magic Card camera's manners —
+no brackets, no reticle, no sweep, nothing that looks like scanning.
+One tap draws the frame at native `videoWidth×videoHeight` and stops
+every track immediately (light off while the child decides), then Use
+this one / Take it again. The confirmed frame becomes
+`camera-<ts>.png` fed into the SAME `BIACapture.capture()` as an
+upload — zero downstream branches. The button appears only when the
+API exists; refusal/no camera ends in *"I can't see through the camera
+here — you can still choose a photo of your drawing,"* with the honest
+reason in the dev log only. Tracks also stop on Never mind, page hide,
+and leaving the step by any route.
+
+**Verified END TO END against the real drawing**: the suite launches a
+second Chromium with a fake camera fed a y4m of the burnt-cake page at
+1280×960 (`test/make-camera-feed.js` generates it on demand — Chromium
+decodes the JPEG, Node converts RGB→YUV420; gitignored, regenerated
+each run, byte-deterministic). Preview → take → claim the left
+character → extraction verified byte-identical, plus refused-permission
+wording scanned against blame words, and the no-API context leaving
+upload exactly as before.
+
+**Effectiveness, measured (the product owner's actual question):** the
+same claim extracts 105,635 opaque px from the 3472×4624 upload and
+4,602 from a whole-page 1280×960 camera frame — 4.36%, almost exactly
+the 4.31% pure area scaling predicts, so **detection survives and
+resolution is the whole cost**: the asset is 4.7× smaller linearly and
+goes soft when scaled up on a page. The faint ground line survives
+proportionally BETTER than area scaling (downscale averaging darkens
+thin faint strokes); the paper-halo fraction is ~2.7× worse (0.85% vs
+0.31%). Bringing the drawing close to the camera recovered ~18.5% of
+the upload's pixels in a close-up experiment. Disclosed: the fake feed
+is the ideal case — perfect focus, no motion blur, no exposure hunting
+— a real webcam does worse, never better. **Where it still breaks for a
+child:** a whole-page webcam extraction is honest but small and goes
+blurry when grown; nothing yet says "bring it closer".
