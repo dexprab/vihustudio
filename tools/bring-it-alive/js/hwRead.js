@@ -76,7 +76,20 @@
     WIDE_JOIN: 1.2,       // "a word-gap away" (× unit)
     ACCEPT_COST: 1.5,     // accept a 1:1 match only under this local cost
     ACCEPT_RATIO_LO: 0.45,
-    ACCEPT_RATIO_HI: 2.1
+    ACCEPT_RATIO_HI: 2.1,
+    // "This looks joined-up" — when touching-refusals DOMINATE a line it
+    // is a writing STYLE (the letters hold hands), not a messy line, and
+    // the child deserves to be told what happened rather than a generic
+    // retake. Thresholds measured against the suite's fixtures: a line
+    // whose words are all welded measures 22/30 touching-refused with 0
+    // accepted; a line with two touching pairs measures 2/33 touching
+    // (6%) with the rest accepted. Halfway (50%) sits far from both.
+    JOINED_TOUCH_FRAC: 0.5,   // touching ≥ this × expected → joined-up
+    // Secondary net for partial welds the DP labels as a mix of touching
+    // and stray/missing: almost nothing accepted AND a solid third
+    // touching is still a style, not a smudge.
+    JOINED_ACCEPT_FRAC: 0.2,
+    JOINED_TOUCH_FRAC_LO: 0.35
   };
 
   // Expected RELATIVE ink widths (advance-ish) per character. Only used
@@ -594,13 +607,21 @@
       }
       const expected = letters.length;
       const got = letters.filter((l) => l.accepted).length;
+      const touching = letters.filter((l) => l.kind === 'touching').length;
+      // Joined-up: touching-refusals dominate → the letters held hands.
+      // A merely messy line (a couple of touching pairs, the rest read)
+      // stays below both gates and keeps the generic retake.
+      const joined = expected > 0 &&
+        (touching >= P.JOINED_TOUCH_FRAC * expected ||
+         (got <= P.JOINED_ACCEPT_FRAC * expected &&
+          touching >= P.JOINED_TOUCH_FRAC_LO * expected));
       log('hw: line ' + (i + 1) + ' — ' + comps.length + ' blobs vs ' + expected +
           ' letters: ' + got + ' accepted, ' +
-          letters.filter((l) => l.kind === 'touching').length + ' touching-refused, ' +
+          touching + ' touching-refused, ' +
           letters.filter((l) => l.kind === 'missing').length + ' missing (unit ' +
-          Math.round(al.unit) + 'px)');
+          Math.round(al.unit) + 'px)' + (joined ? ' — READS AS JOINED-UP' : ''));
       lines.push({ index: i, text, found: true, rule,
-                   letters, expected, accepted: got, blobs,
+                   letters, expected, accepted: got, touching, joined, blobs,
                    unit: al.unit, gapsIntra, gapsWord });
     }
 
