@@ -2170,6 +2170,227 @@ function check(name, cond, detail) {
     'upload ' + upNumbers.opaque + ' vs camera ' + camNumbers.opaque + ' opaque px');
   check('C8 camera zero page errors', camErrors.length === 0,
     camErrors.slice(0, 3).join(' | '));
+
+  // ---- C9: the frame has two shapes — Tall page ⇄ Wide page -----------------
+  // The fixture is a LANDSCAPE 1280×960 feed, i.e. hardware that cannot
+  // turn (a laptop webcam), so tall must be the centred crop to the
+  // writing sheet's own aspect — preview and capture alike, capture at
+  // NATIVE stream resolution. Wide must stay byte-identical to what the
+  // camera always did.
+  console.log('\n-- C9: Tall page ⇄ Wide page — the shape button');
+  await cam.click('#aliveNewPhoto');
+  await cam.click('#cameraBtn');
+  await cam.waitForFunction(() => {
+    const v = document.getElementById('cameraLive');
+    return document.getElementById('cameraPanel').style.display === 'block' &&
+           v.videoWidth > 0;
+  }, null, { timeout: 30000 });
+  const c9a = await cam.evaluate(() => {
+    const btn = document.querySelector('#cameraPanel .bia-camera-shape');
+    const v = document.getElementById('cameraLive');
+    return { btn: !!btn && !!btn.offsetParent,
+             label: btn ? btn.textContent : '(missing)',
+             panelText: document.getElementById('cameraPanel').textContent,
+             wide: v.clientWidth > v.clientHeight };
+  });
+  check('C9 the shape button is on the live preview, and the frame opens wide',
+    c9a.btn && c9a.wide, JSON.stringify(c9a.label));
+  check('C9 the panel speaks no jargon — child-facing words only',
+    !/portrait|landscape|orientation|constraint|error|failed/i.test(c9a.panelText),
+    JSON.stringify(c9a.label));
+  await cam.waitForTimeout(400);
+  await cam.locator('#cameraPanel').scrollIntoViewIfNeeded();
+  await cam.screenshot({ path: path.join(SHOTS, '11-camera-wide-toggle.png') });
+  // The wide baseline: a full-frame native capture, kept for byte
+  // comparison after the round trip through tall and back.
+  await cam.waitForTimeout(300);
+  await cam.click('#cameraTakeBtn');
+  await cam.waitForFunction(() =>
+    document.getElementById('cameraShot').style.display === 'block');
+  const c9w = await cam.evaluate(() => {
+    const c = document.getElementById('cameraShot');
+    window.__c9wide = c.getContext('2d').getImageData(0, 0, c.width, c.height);
+    const btn = document.querySelector('#cameraPanel .bia-camera-shape');
+    return { w: c.width, h: c.height, btnHidden: !btn.offsetParent };
+  });
+  check('C9 the wide baseline is the full native frame (and the shape button ' +
+        'rests while the child decides)',
+    c9w.w === feed.W && c9w.h === feed.H && c9w.btnHidden, c9w.w + 'x' + c9w.h);
+  // Switch to tall: every old track ends (the light-off discipline), a new
+  // stream arrives, and the preview goes tall.
+  await cam.click('#cameraRetakeBtn');
+  await cam.waitForFunction(() => {
+    const v = document.getElementById('cameraLive');
+    return v.style.display === 'block' && v.videoWidth > 0 &&
+           v.srcObject.getTracks().every((t) => t.readyState === 'live');
+  }, null, { timeout: 30000 });
+  await cam.evaluate(() => {
+    window.__c9tracks = document.getElementById('cameraLive').srcObject.getTracks();
+  });
+  await cam.click('#cameraPanel .bia-camera-shape');
+  await cam.waitForFunction(() => {
+    const v = document.getElementById('cameraLive');
+    return v.videoWidth > 0 && v.srcObject &&
+           v.srcObject.getTracks().length > 0 &&
+           v.srcObject.getTracks().every((t) => t.readyState === 'live') &&
+           window.__c9tracks.every((t) => t.readyState === 'ended') &&
+           v.clientHeight > v.clientWidth;
+  }, null, { timeout: 30000 });
+  const c9s = await cam.evaluate(() => {
+    const v = document.getElementById('cameraLive');
+    const btn = document.querySelector('#cameraPanel .bia-camera-shape');
+    return { ended: window.__c9tracks.map((t) => t.readyState).join(','),
+             label: btn.textContent,
+             tall: v.clientHeight > v.clientWidth,
+             fit: getComputedStyle(v).objectFit };
+  });
+  check('C9 switching stops every old track and the preview goes tall',
+    c9s.ended === 'ended' && c9s.tall && c9s.fit === 'cover',
+    c9s.ended + ' · ' + JSON.stringify(c9s.label));
+  await cam.waitForTimeout(400);
+  await cam.locator('#cameraPanel').scrollIntoViewIfNeeded();
+  await cam.screenshot({ path: path.join(SHOTS, '12-camera-tall.png') });
+  // The tall picture: the centred crop of the native frame, at native
+  // resolution, every pixel byte-identical to the wide baseline at the
+  // centred offset — which proves region, centring and resolution at once.
+  await cam.click('#cameraTakeBtn');
+  await cam.waitForFunction(() =>
+    document.getElementById('cameraShot').style.display === 'block');
+  const c9t = await cam.evaluate(() => {
+    const c = document.getElementById('cameraShot');
+    const wide = window.__c9wide;
+    const a = (window.HWSheet && HWSheet.GEOM && HWSheet.GEOM.aspect)
+      ? 1 / HWSheet.GEOM.aspect : 1 / Math.SQRT2;
+    const expW = Math.round(wide.height * a);            // landscape feed → full height
+    const expX = Math.round((wide.width - expW) / 2);
+    const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+    const wd = wide.data;
+    let mismatch = -1;
+    if (c.width === expW && c.height === wide.height) {
+      mismatch = 0;
+      for (let y = 0; y < c.height; y++) {
+        for (let x = 0; x < c.width; x++) {
+          const p = (y * c.width + x) * 4, q = (y * wide.width + (x + expX)) * 4;
+          if (d[p] !== wd[q] || d[p + 1] !== wd[q + 1] || d[p + 2] !== wd[q + 2]) mismatch++;
+        }
+      }
+    }
+    // The centre of the crop is the middle of the page — bright paper,
+    // nothing like the dim room (#232028).
+    const mid = ((c.height >> 1) * c.width + (c.width >> 1)) * 4;
+    return { w: c.width, h: c.height, expW, expX, mismatch,
+             midSum: d[mid] + d[mid + 1] + d[mid + 2],
+             log: document.querySelector('#devLog').textContent };
+  });
+  check('C9 the tall picture is the sheet-aspect crop at NATIVE resolution',
+    c9t.w === c9t.expW && c9t.h === feed.H, c9t.w + 'x' + c9t.h +
+    ' (expected ' + c9t.expW + 'x' + feed.H + ')');
+  check('C9 the crop is centred — byte-identical to the wide frame at the ' +
+        'centred offset',
+    c9t.mismatch === 0, 'mismatch ' + c9t.mismatch + ' at offset x=' + c9t.expX);
+  // Against the fixture's own documented geometry: the page pillar-boxes
+  // at [OFFSET_X, OFFSET_X + round(3472·SCALE)), and the centred crop must
+  // land wholly INSIDE it — not one column of the dim room comes along —
+  // with bright paper at its centre.
+  const pageR = feed.OFFSET_X + Math.round(3472 * feed.SCALE);
+  check('C9 the crop shows the page, not the room beside it (fixture x-offset)',
+    c9t.expX >= feed.OFFSET_X && c9t.expX + c9t.w <= pageR && c9t.midSum > 350,
+    'crop x ' + c9t.expX + '..' + (c9t.expX + c9t.w) + ' inside page ' +
+    feed.OFFSET_X + '..' + pageR + ', centre rgb sum ' + c9t.midSum);
+  check('C9 the honest crop facts went to the developer log',
+    /camera: picture taken at native \d+x\d+ \(the middle of \d+x\d+\)/.test(c9t.log));
+  // And back to wide: the capture is byte-comparable to the pre-toggle
+  // behaviour — the exact full frame, nothing remembered from tall.
+  await cam.click('#cameraRetakeBtn');
+  await cam.waitForFunction(() => {
+    const v = document.getElementById('cameraLive');
+    return v.style.display === 'block' && v.videoWidth > 0;
+  }, null, { timeout: 30000 });
+  await cam.click('#cameraPanel .bia-camera-shape');
+  await cam.waitForFunction(() => {
+    const v = document.getElementById('cameraLive');
+    return v.videoWidth > 0 && v.clientWidth > v.clientHeight &&
+           v.srcObject.getTracks().every((t) => t.readyState === 'live');
+  }, null, { timeout: 30000 });
+  await cam.waitForTimeout(300);
+  await cam.click('#cameraTakeBtn');
+  await cam.waitForFunction(() =>
+    document.getElementById('cameraShot').style.display === 'block');
+  const c9b = await cam.evaluate(() => {
+    const c = document.getElementById('cameraShot');
+    const wide = window.__c9wide;
+    const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+    let mismatch = -1;
+    if (c.width === wide.width && c.height === wide.height) {
+      mismatch = 0;
+      for (let i = 0; i < d.length; i += 4) {
+        if (d[i] !== wide.data[i] || d[i + 1] !== wide.data[i + 1] ||
+            d[i + 2] !== wide.data[i + 2]) mismatch++;
+      }
+    }
+    return { w: c.width, h: c.height, mismatch };
+  });
+  check('C9 back to wide: full-frame capture byte-comparable to the ' +
+        'pre-toggle behaviour',
+    c9b.w === feed.W && c9b.h === feed.H && c9b.mismatch === 0,
+    c9b.w + 'x' + c9b.h + ', mismatch ' + c9b.mismatch);
+  // The child chose wide with their own press — a journey's stated
+  // preference must not override that for the rest of the session.
+  await cam.click('#cameraCloseBtn');
+  await cam.evaluate(() => BIACamera.setPreferredShape('tall'));
+  await cam.click('#cameraBtn');
+  await cam.waitForFunction(() => {
+    const v = document.getElementById('cameraLive');
+    return document.getElementById('cameraPanel').style.display === 'block' &&
+           v.videoWidth > 0;
+  }, null, { timeout: 30000 });
+  const c9p = await cam.evaluate(() => {
+    const v = document.getElementById('cameraLive');
+    return { wide: v.clientWidth > v.clientHeight };
+  });
+  check('C9 the child\'s own choice wins — a journey preference never ' +
+        'overrides it', c9p.wide);
+  await cam.click('#cameraCloseBtn');
+
+  // ---- C10: My Handwriting opens the camera tall, untouched -----------------
+  // A fresh page (nobody has pressed the shape button): arming the
+  // handwriting journey makes the camera open TALL by default, and the
+  // button still stands to go wide. The drawing journey's wide default is
+  // C4/C5's own assertion, unchanged above.
+  console.log('\n-- C10: My Handwriting opens the camera tall by default');
+  const hwCam = await camBrowser.newPage({ viewport: { width: 1100, height: 840 } });
+  const hwCamErrors = [];
+  hwCam.on('pageerror', (e) => hwCamErrors.push(String(e)));
+  hwCam.on('console', (m) => { if (m.type() === 'error') hwCamErrors.push(m.text()); });
+  await hwCam.goto(BASE);
+  await hwCam.waitForFunction(() => window.__bia && window.__hw);
+  await hwCam.click('#hwEntryBtn');
+  await hwCam.click('#hwWroteBtn');           // arms the journey
+  await hwCam.click('#cameraBtn');
+  await hwCam.waitForFunction(() => {
+    const v = document.getElementById('cameraLive');
+    return document.getElementById('cameraPanel').style.display === 'block' &&
+           v.videoWidth > 0;
+  }, null, { timeout: 30000 });
+  const c10 = await hwCam.evaluate(() => {
+    const v = document.getElementById('cameraLive');
+    const btn = document.querySelector('#cameraPanel .bia-camera-shape');
+    return { tall: v.clientHeight > v.clientWidth,
+             label: btn ? btn.textContent : '(missing)',
+             armed: window.__hw.armed === true };
+  });
+  check('C10 armed for handwriting, the camera opens TALL with nothing pressed',
+    c10.armed && c10.tall && /Wide page/.test(c10.label), JSON.stringify(c10.label));
+  await hwCam.click('#cameraPanel .bia-camera-shape');
+  await hwCam.waitForFunction(() => {
+    const v = document.getElementById('cameraLive');
+    return v.videoWidth > 0 && v.clientWidth > v.clientHeight;
+  }, null, { timeout: 30000 });
+  check('C10 the button still stands in the handwriting journey — one press ' +
+        'goes wide', true);
+  check('C10 zero page errors through the handwriting arm + tall camera',
+    hwCamErrors.length === 0, hwCamErrors.slice(0, 2).join(' | '));
+  await hwCam.close();
   await camBrowser.close();
 
   // ---- hygiene -------------------------------------------------------------
