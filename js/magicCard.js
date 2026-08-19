@@ -706,6 +706,15 @@ const MagicCard=(function(){
         CreatorProjectStore.claimUnowned(card.id);
       }
     }catch(e){}
+    // …and so are the characters they saved to My Library before they
+    // had a card — the exact sibling sweep, for the exact reason above
+    // (js/creatorLibrary.js's claimUnowned only ever takes unowned
+    // records, never another Creator's).
+    try{
+      if(typeof CreatorLibrary!=='undefined' && CreatorLibrary.claimUnowned){
+        CreatorLibrary.claimUnowned(card.id);
+      }
+    }catch(e){}
     // A one-time event, not a rapid-succession edit stream -- pushed
     // immediately rather than debounced, unlike touch()/rename() below.
     // THE MOMENT A WAITING SKY CAN FINALLY BE POSTED.
