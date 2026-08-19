@@ -7896,6 +7896,61 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   text-overflow:ellipsis;
 }
 
+/* My Library (js/contextPanel.js's _showLibraryPicker) — tiles reuse
+   .context-collection-tile's chrome inside a positioned cell so each
+   card can carry a small quiet remove, revealed on hover/focus only.
+   The empty state is an invitation (a link to Bring It Alive in a new
+   tab), never a broken grid. */
+.context-library-cell{ position:relative; display:flex; }
+.context-library-cell .context-collection-tile{ flex:1; }
+.context-library-remove{
+  position:absolute;
+  top:4px;
+  right:4px;
+  width:20px;
+  height:20px;
+  padding:0;
+  border:none;
+  border-radius:50%;
+  background:rgba(24,28,40,0.62);
+  color:#fff;
+  font-size:11px;
+  line-height:20px;
+  text-align:center;
+  cursor:pointer;
+  opacity:0;
+  transition:opacity .15s ease;
+}
+.context-library-cell:hover .context-library-remove,
+.context-library-remove:focus-visible,
+.context-library-cell:focus-within .context-library-remove{ opacity:1; }
+.context-library-remove:hover{ background:rgba(24,28,40,0.85); }
+.context-library-empty{
+  border:1px dashed var(--line);
+  border-radius:12px;
+  padding:16px 14px;
+  margin-bottom:14px;
+  text-align:center;
+}
+.context-library-empty-line{
+  font-size:12.5px;
+  font-weight:600;
+  color:var(--text-secondary);
+  line-height:1.5;
+  margin-bottom:10px;
+}
+.context-library-empty-link{
+  display:inline-block;
+  font-size:12.5px;
+  font-weight:800;
+  color:var(--text);
+  text-decoration:none;
+  border:1px solid var(--line);
+  border-radius:999px;
+  padding:6px 14px;
+}
+.context-library-empty-link:hover{ border-color:var(--gold); background:rgba(255,203,69,0.10); }
+
 /* Family Photos — shared Google Photos album picker + parent-facing
    album manager (js/contextPanel.js's _showFamilyPhotosPicker /
    _showFamilyAlbumManager). Photo tiles reuse the Collection tile
