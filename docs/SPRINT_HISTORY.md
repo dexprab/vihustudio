@@ -3789,3 +3789,43 @@ walks byte-identical against the photograph, and one undo restores the
 view byte-for-byte. This also returns v1 creation files to their
 original erase meaning. Suite updated to measure the new truths
 (checkerboard alternation, hide-and-recover), 105/105.
+
+## Bring It Alive — Mark a Portion, and Its Lines Change Colour
+
+Asked for by the product owner (*"can i select a portion of image by
+marking it and push a button to change its outline?"* — and the earlier
+*"can the extracted image outline not be black"*). Built in a worker
+worktree; independently re-verified before merging: the 133-check suite
+reproduced fresh (105 existing, zero retirements, plus 28 new), the tint
+contract pinned independently inside the test, commits confined to
+`tools/bring-it-alive/`, demo screenshot confirmed.
+
+**The Mark tool** sits between Fill and Erase: the child draws the
+Claim's own loose loop on the editing canvas (soft gold, no marching
+ants), the ink inside is marked, and pushing a colour swatch changes
+those lines — one arm green, the rest untouched. The mark stays live so
+another colour can be tried; switching tools or tapping empty space lets
+it go. **The op is `{t:'inkTint', color, loop}`**: the polygon travels
+in the op (decimated document coordinates) and the pixel set is
+re-derived on every replay by a hand-rolled even-odd scanline fill —
+arithmetic, not the canvas antialiaser, because the JSON round trip's
+byte equality stands on deterministic replay, and even-odd parity means
+a six-year-old's self-crossing loop still means "inside". It uses the
+SAME replacement tint as line colour — no second colour mapping exists.
+Alpha untouched, ORIGINAL never written, later ops win overlaps, erased
+stays hidden in both orders. **A loop around everything IS "colour all
+the lines"**: when the loop holds every ink pixel the op normalises to
+`loop:null` — one gesture scales from an arm to the whole drawing, and
+the toolbar gains exactly one control. `VERSION` stays 2 (every existing
+file loads byte-identically; an older build skips the unknown op, the
+format's standing tolerance).
+
+**Disclosed:** thick-weight extra pixels follow the region's own line
+colour, not an overlapping Mark; whole-drawing normalisation needs the
+loop to hold every ink pixel (a missed stray dot stores the polygon —
+visually near-identical). **Where it still breaks for a child:** the
+marked ink itself doesn't shimmer (only the loop shows); undo of a
+colour keeps the mark live; each tried colour is one history entry; a
+mark doesn't survive leaving the Mark tool; a loop that catches nothing
+says so only in the developer log. Demo:
+`screenshots/7-mark-a-portion.png`.
