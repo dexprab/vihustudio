@@ -3594,3 +3594,60 @@ glow with it, and the reduced-motion split. One assertion corrected
 rather than loosened: the no-UI check grepped raw CSS and failed on its
 own comment saying "no bubble" — it now strips comments and checks
 rules, which is what the requirement actually is.
+
+## Bring It Alive v0.1 — the drawing on the paper, claimed and kept
+
+**Standalone utility at `tools/bring-it-alive/`** (built in a worker
+worktree, reviewed and independently re-verified before merging;
+integrates with nothing and is deletable whole). A child photographs a
+drawing, draws ONE loose loop around the thing they made (the **Claim**
+— never called Trace), the system proposes a cutout, Keep/Remove strokes
+correct it, and the output is a transparent PNG of the ORIGINAL pixels.
+`capture / claim / segment / refine / extract / exportAsset` modules
+behind one small page.
+
+**Preservation is enforced, not promised.** `exportAsset` decodes its own
+PNG back and walks every fully-opaque pixel against the source,
+throwing loudly on the first mismatched byte — and the suite repeats the
+walk independently. Across seven exports on the real photograph, ~1.06M
+opaque pixels, zero mismatches. Illumination is flattened on a DECISION
+copy only (local paper estimate; a pixel is ink when darker than its own
+paper or chromatic ON paper — the "on paper" guard is what keeps the red
+fabric out); the export path reads original pixels exclusively.
+
+**Test Case 001 became real mid-sprint**: the product owner uploaded the
+actual photographs to `tools/imagebed/` (the burnt-cake page — two
+characters, the cake on its table between them, faint pencil, creases,
+red cloth surround, the next page intruding). The worker was redirected
+in flight; the suite drives the REAL page with pointer events, and the
+demo screenshots are the real photograph.
+
+**The product question, answered on this evidence: one loose loop
+usually suffices.** 97.1% / 97.3% / 98.0% of the detected ink captured
+for the left character, right character and cake-table, with 0.00%
+cross-contamination and zero refine strokes — creases, handwriting, red
+cloth and the intruding page all stayed out. Three honest breaks,
+reported rather than hidden: (1) **connected ambiguity is real** — the
+ground line under the figures ships with any loose claim until one
+Remove stroke clears it (7095→0 px, character intact), one Keep brings
+it back: exactly Test 001D, and the brushes are the answer; (2) **faint
+pencil sits at the threshold** — the Keep brush's relaxed second look
+recovers it but grabs a paper-coloured halo with it (nothing invented,
+but the roughest edge of v0.1); (3) **paper grain at 16MP** freckled the
+first asset with ~48k texture specks until the speck cut was scaled with
+resolution. Perspective is deliberately NOT corrected — a warp resamples
+every pixel, so the skewed page IS the source, disclosed in the UI.
+
+**SAM 2 disclosure:** not testable in this offline sandbox (no weights,
+no ONNX, no CDN). The classical baseline is what the brief's fallback
+asked for, and on pencil-on-paper it went further than expected — but it
+has no notion of objectness: only the claim, connectivity and the
+child's strokes turn "ink darker than paper" into "the thing I made".
+
+**41/41, zero page errors** — surrogate fixtures (seeded, per-element
+ground truth) plus the real photograph: 001A/B/B2/C/D, blank-image
+honesty ("found nothing", no asset), and zero-tolerance preservation
+throughout. One test-side correction disclosed as genuinely the test's
+fault: a Keep stroke that ended ON the house wall paints the wall, so
+the stroke now stops short — the assertion itself was right and
+unchanged.
