@@ -117,10 +117,32 @@
       Drop a photograph of your drawing here
       <div class="row" style="justify-content:center; margin-top:1rem;">
         <button id="pickBtn">Choose a photo</button>
+        <button id="cameraBtn" style="display:none">Use the camera</button>
         <button class="ghost" id="testBtn">Use test page</button>
       </div>
       <input type="file" id="fileInput" accept="image/*" style="display:none">
     </div>
+    <!-- CAMERA (v0.3) — the second way in, beside the picker, never instead
+         of it. Deliberately plain: the live picture and one big button — no
+         corner brackets, no reticle, no sweeping line, nothing that looks
+         like scanning. The button appears only where the camera API exists;
+         everywhere else this step is exactly as it was. -->
+    <div id="cameraPanel" style="display:none; margin-top:.8rem;">
+      <div class="board">
+        <video id="cameraLive" autoplay playsinline muted
+               style="display:block; width:640px; max-width:100%; border-radius:6px;"></video>
+        <canvas id="cameraShot"
+               style="display:none; width:640px; max-width:100%; border-radius:6px;"></canvas>
+      </div>
+      <div class="row">
+        <button id="cameraTakeBtn">Take the picture</button>
+        <button id="cameraUseBtn" style="display:none">Use this one</button>
+        <button class="ghost" id="cameraRetakeBtn" style="display:none">Take it again</button>
+        <button class="ghost" id="cameraCloseBtn">Never mind</button>
+      </div>
+      <p class="note">Hold your drawing up so the whole page is in the picture.</p>
+    </div>
+    <div class="quiet" id="cameraQuiet"></div>
     <div class="row">
       <button class="ghost" id="openCreationBtn">Open a creation (JSON)</button>
       <input type="file" id="creationInput" accept="application/json,.json" style="display:none">
@@ -253,6 +275,7 @@
 </div>
 
 <script src="js/capture.js"></script>
+<script src="js/camera.js"></script>
 <script src="js/claim.js"></script>
 <script src="js/segment.js"></script>
 <script src="js/refine.js"></script>

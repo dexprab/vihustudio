@@ -73,6 +73,10 @@
     } catch (e) { fail(e); }
   }
 
+  // The camera is the second way a photograph arrives (v0.3) — it hands a
+  // File into the exact same loadPhoto as the picker; one pipeline.
+  BIACamera.mount({ onPicture: (file) => loadPhoto(file), log });
+
   $('pickBtn').addEventListener('click', () => $('fileInput').click());
   $('fileInput').addEventListener('change', (e) => {
     if (e.target.files[0]) loadPhoto(e.target.files[0]);
