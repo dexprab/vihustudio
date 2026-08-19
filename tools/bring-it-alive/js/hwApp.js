@@ -42,12 +42,20 @@
     'meet letters written on their own — try the sheet again, giving ' +
     'each letter a little space of its own.';
 
+  // Child-facing words for a photo taken too far away (hwRead's capture
+  // facts said the letters landed under the coarse floor). Everything
+  // readable is still kept — this is an invitation, never a refusal.
+  const COARSE_MSG = 'This photo is a little far away, so your letters ' +
+    'look tiny to me — I kept every one I could read. Come a bit closer, ' +
+    'or use a photo from a phone, and I’ll see every curve.';
+
   const state = {
     stage: 'idle',      // idle · sheet · armed · reading · alphabet · test
     armed: false,
     retakeLine: null,
     lines: null,        // the kept per-line read results (merged across retakes)
     samples: null,      // Map ch → best sample
+    capture: null,      // hwRead's capture facts (anchors, tilts, x-height)
     font: null,         // {buffer, report}
     builds: 0,
     sheetDrawn: null
@@ -138,6 +146,7 @@
         go('stepHwSheet');
         return;
       }
+      state.capture = res.capture || null;
       if (retake != null && state.lines) {
         if (res.lines[retake] && res.lines[retake].found) {
           state.lines[retake] = res.lines[retake];
@@ -242,6 +251,11 @@
     joinedNote.textContent = JOINED_SHEET_MSG;
     joinedNote.style.display = sheetJoined ? 'block' : 'none';
 
+    // Coarse photo: the letters read, but honestly small on the camera.
+    const coarseNote = $('hwCoarseNote');
+    coarseNote.textContent = COARSE_MSG;
+    coarseNote.style.display = state.capture && state.capture.coarse ? 'block' : 'none';
+
     const list = $('hwLineList');
     list.innerHTML = '';
     for (const ln of state.lines) {
@@ -271,7 +285,8 @@
   }
 
   $('hwNewSheetBtn').addEventListener('click', () => {
-    state.lines = null; state.samples = null; state.font = null; state.builds = 0;
+    state.lines = null; state.samples = null; state.capture = null;
+    state.font = null; state.builds = 0;
     if (previewFace) { document.fonts.delete(previewFace); previewFace = null; }
     showSheet();
   });
