@@ -2534,6 +2534,84 @@ const ContextPanel=(function(){
     }
   }
 
+  // ---------- My Library (kept characters from Bring It Alive) ----------
+  // "lets introduce the concept of my library in studio where kid can
+  // save their characters of these extractions... can be edited like
+  // any other object when used on scene. can be deleted from library
+  // when needed" — the product owner. The store is js/creatorLibrary.js
+  // (local-first, cloud after); this panel only browses it. Placing
+  // goes through _addImageStickerFromDataURL's existing tail, so the
+  // PLACED object gets its own ordinary per-project vihu-asset: copy —
+  // publish hydration, the Object Strip, drag/resize/rotate and the
+  // Refine panel all work unchanged by construction, and removing a
+  // library item can never touch a page. Follows _showCollectionPicker's
+  // full-panel pattern exactly (the wrapping grid — the horizontal
+  // strip was tried and rejected for Collections, see above).
+  function _buildLibraryTile(item){
+    const cell=_el('div','context-library-cell');
+    const tile=_el('button','context-collection-tile');
+    tile.type='button';
+    const thumb=_el('span','context-collection-tile-thumb');
+    const img=document.createElement('img');
+    img.src=item.thumbnail||item.png||'';
+    img.alt=item.name||'My Character';
+    thumb.appendChild(img);
+    tile.appendChild(thumb);
+    tile.appendChild(_el('span','context-collection-tile-label',item.name||'My Character'));
+    tile.addEventListener('click',function(){
+      _addImageStickerFromDataURL(item.png,'library.'+item.id);
+    });
+    cell.appendChild(tile);
+    // A small quiet remove, revealed on hover/focus — one gentle
+    // confirm in the child's own words, never "delete permanently",
+    // never blame. Pages are explicitly safe: a placed character owns
+    // its own copy.
+    const remove=_el('button','context-library-remove','✕');
+    remove.type='button';
+    remove.title='Take out of My Library';
+    remove.setAttribute('aria-label','Take “'+(item.name||'My Character')+'” out of My Library');
+    remove.addEventListener('click',function(ev){
+      ev.stopPropagation();
+      if(!window.confirm('Take “'+(item.name||'My Character')+'” out of My Library? Anything already on your pages stays right where it is.')) return;
+      try{ if(typeof CreatorLibrary!=='undefined') CreatorLibrary.remove(item.id); }catch(e){}
+      _showLibraryPicker();
+    });
+    cell.appendChild(remove);
+    return cell;
+  }
+  function _showLibraryPicker(){
+    stickerStudioOpen=true;
+    panelRoot.innerHTML='';
+    panelRoot.classList.remove('is-empty');
+    panelRoot.appendChild(_el('div','context-collection-picker-heading','📚 My Library'));
+
+    const items=(typeof CreatorLibrary!=='undefined' && CreatorLibrary.list) ? CreatorLibrary.list() : [];
+    if(items.length){
+      const grid=_el('div','context-collection-picker-grid');
+      items.forEach(function(item){ grid.appendChild(_buildLibraryTile(item)); });
+      panelRoot.appendChild(grid);
+    }else{
+      // Empty is an invitation, not a dead end. Bring It Alive opens in
+      // a NEW TAB on purpose: the Studio must never navigate away —
+      // Decision 23's entry gate would send the return trip home.
+      const empty=_el('div','context-library-empty');
+      empty.appendChild(_el('div','context-library-empty-line','Nothing here yet — bring one of your paper drawings to life, and keep it in My Library.'));
+      const link=document.createElement('a');
+      link.className='context-library-empty-link';
+      link.href='tools/bring-it-alive/';
+      link.target='_blank';
+      link.rel='noopener';
+      link.textContent='✨ Bring a drawing to life';
+      empty.appendChild(link);
+      panelRoot.appendChild(empty);
+    }
+
+    const btn=_el('button','context-btn','← Done Browsing');
+    btn.type='button';
+    btn.addEventListener('click',function(){ refresh(); });
+    panelRoot.appendChild(btn);
+  }
+
   // ---------- Voice (per-page narration) ----------
   // Locked Product Decision #4 (Audio Studio) MVP: one narration clip
   // per page — the kid tells THIS page's story in their own voice —
@@ -3331,6 +3409,13 @@ const ContextPanel=(function(){
       {id:'doodle',icon:'✏️',label:'Doodle',onClick:function(){ _addDoodleObject(); }},
       {id:'photo',icon:'🖼️',label:'Photo',onClick:function(){ _addImageObject(); }}
     ];
+    // My Library — the characters a child kept from Bring It Alive
+    // (js/creatorLibrary.js). Shown whenever the store module loaded at
+    // all: an empty library is an invitation (the picker's own empty
+    // state links to bringing a drawing to life), never a dead end.
+    if(typeof CreatorLibrary!=='undefined'){
+      items.push({id:'library',icon:'📚',label:'My Library',onClick:function(){ _showLibraryPicker(); }});
+    }
     // Family Photos — shown whenever the repository layer is configured
     // at all (an unconfigured deployment can never have albums, so the
     // row would be a dead end there — same conditional-presence
@@ -3362,6 +3447,7 @@ const ContextPanel=(function(){
     text:'<svg viewBox="0 0 32 32" width="30" height="30"><rect x="4" y="4" width="24" height="24" rx="7" fill="#FFFFFF"/><path d="M16 8.5l6 15h-3.1l-1.3-3.6h-6.2L10.1 23.5H7zm0 4.6l-2.1 5.4h4.2z" fill="#F2506A"/></svg>',
     doodle:'<svg viewBox="0 0 32 32" width="30" height="30"><path d="M7 25l1.6-5 12-12 3.4 3.4-12 12z" fill="#FFD84D"/><path d="M20.6 8l3.4 3.4 2.2-2.2a2.4 2.4 0 00-3.4-3.4z" fill="#F4A0B6"/><path d="M7 25l1.6-5 1.7 1.7z" fill="#4A5578"/></svg>',
     photo:'<svg viewBox="0 0 32 32" width="30" height="30"><rect x="4" y="7" width="24" height="18" rx="4" fill="#FFFFFF" stroke="#C6D2EC" stroke-width="1.6"/><circle cx="11" cy="13" r="2.6" fill="#FFD84D"/><path d="M7 23.4l6.4-7.4 4.6 5.4 3.4-3.4 4.6 5.4z" fill="#5BBE97"/></svg>',
+    library:'<svg viewBox="0 0 32 32" width="30" height="30"><rect x="5" y="6" width="6.4" height="20" rx="1.6" fill="#5B9CF8"/><rect x="12.6" y="6" width="6.4" height="20" rx="1.6" fill="#FFD84D"/><rect x="20" y="7.4" width="6.4" height="19" rx="1.6" fill="#F26D8B" transform="rotate(9 23.2 17)"/><path d="M15.8 12.4l.8 1.7 1.8.3-1.3 1.3.3 1.8-1.6-.9-1.6.9.3-1.8-1.3-1.3 1.8-.3z" fill="#7A5C00"/></svg>',
     family:'<svg viewBox="0 0 32 32" width="30" height="30"><rect x="3" y="9" width="26" height="16" rx="4.5" fill="#33477E"/><path d="M11.5 9l1.8-2.6h5.4L20.5 9z" fill="#33477E"/><circle cx="16" cy="17" r="5.4" fill="#8FB6F5"/><circle cx="16" cy="17" r="2.4" fill="#FFFFFF" opacity=".85"/></svg>',
     fromWorld:'<svg viewBox="0 0 32 32" width="30" height="30"><rect x="4" y="13" width="24" height="15" rx="3" fill="#F2506A"/><rect x="3" y="9" width="26" height="6" rx="2.4" fill="#FF7B90"/><rect x="13.6" y="9" width="4.8" height="19" fill="#FFD84D"/><path d="M16 9c-3-4-8-1-4 2M16 9c3-4 8-1 4 2" fill="none" stroke="#FFD84D" stroke-width="2.4" stroke-linecap="round"/></svg>',
     voice:'<svg viewBox="0 0 32 32" width="30" height="30"><rect x="12" y="4" width="8" height="14" rx="4" fill="#33477E"/><path d="M8.5 15a7.5 7.5 0 0015 0" fill="none" stroke="#33477E" stroke-width="2.4" stroke-linecap="round"/><path d="M16 22.5V27M12 27h8" stroke="#33477E" stroke-width="2.4" stroke-linecap="round"/></svg>'
