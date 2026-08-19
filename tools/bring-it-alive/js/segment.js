@@ -220,5 +220,24 @@
            seg.lum[i] < seg.paper[i] - 8;
   }
 
-  window.BIASegment = { segment, relaxedInkAt, PARAMS: P };
+  /* The stroke-skirt plane, for extract.js's gated dilation (the v0.2 halo
+   * fix). A pixel is "skirt" when it is at least FAINTLY darker than its
+   * local paper (the anti-aliased edge of a stroke) or faintly coloured on
+   * paper — the pixels dilation exists to collect. Flat paper is neither,
+   * so a mask grown only through this plane cannot grow a paper rim. The
+   * margin (8) is deliberately far below MARGIN (25): this plane never
+   * ADDS pixels by itself, it only permits growth next to detected ink. */
+  function skirt(seg) {
+    const n = seg.width * seg.height;
+    const out = new Uint8Array(n);
+    const d = seg.photo.imageData.data;
+    for (let i = 0; i < n; i++) {
+      if (seg.ink[i] || seg.paper[i] - seg.lum[i] > 8) { out[i] = 1; continue; }
+      if (chromaOf(d, i * 4) > P.CHROMA * 0.5 && seg.paper[i] > 150 &&
+          seg.lum[i] < seg.paper[i] - 4) out[i] = 1;
+    }
+    return out;
+  }
+
+  window.BIASegment = { segment, relaxedInkAt, skirt, PARAMS: P };
 })();
