@@ -1792,6 +1792,118 @@ function check(name, cond, detail) {
   check('K7 ORIGINAL layer byte-identical through every erase/mark order',
     k7b.walk.mismatches === 0);
 
+  // ---- L: MY LIBRARY ---------------------------------------------------------
+  // The character, kept: the Save row on MAKE IT YOURS lands the record
+  // in the local library store (js/creatorLibrary.js — this tool's first
+  // outside link) with NO platform configured, and the record
+  // round-trips: the creation JSON reopens, the placement PNG decodes.
+  // The store's sync is gated on an active Magic Card, so this whole
+  // section must also stay network-silent — asserted, not assumed.
+  console.log('\n-- L: My Library — keep the character, no platform needed');
+  const crossOriginRequests = [];
+  page.on('request', (req) => {
+    try {
+      const u = new URL(req.url());
+      if (u.hostname !== '127.0.0.1' && u.hostname !== 'localhost') crossOriginRequests.push(req.url());
+    } catch (e) {}
+  });
+  const lRow = await page.evaluate(() => ({
+    loaded: !!window.CreatorLibrary,
+    visible: document.getElementById('libraryRow').style.display !== 'none',
+    name: document.getElementById('libraryName').value,
+    btn: !!document.getElementById('libraryBtn')
+  }));
+  check('L1 the store module loaded and the Save row is on MAKE IT YOURS',
+    lRow.loaded && lRow.visible && lRow.btn);
+  check('L1 the name is pre-filled from the photo\'s own filename stem',
+    lRow.name === '1000299474', JSON.stringify(lRow.name));
+  await page.fill('#libraryName', 'Test Character');
+  await page.click('#libraryBtn');
+  await page.waitForFunction(() =>
+    document.getElementById('libraryStatus').textContent.indexOf('Saved to My Library') === 0);
+  const l2 = await page.evaluate(() => {
+    const items = window.CreatorLibrary.list();
+    const r = items[0] || null;
+    return {
+      count: items.length,
+      name: r && r.name,
+      hasId: !!(r && /^lib_/.test(r.id)),
+      hasCreatedAt: !!(r && r.createdAt),
+      unowned: !!r && !r.cardId,          // no Magic Card in this profile
+      pngIsDataURL: !!(r && typeof r.png === 'string' && r.png.indexOf('data:image/png') === 0),
+      thumbIsDataURL: !!(r && typeof r.thumbnail === 'string' && r.thumbnail.indexOf('data:image/') === 0),
+      creationFormat: r && r.creation && r.creation.format,
+      creationVersion: r && r.creation && r.creation.version
+    };
+  });
+  check('L2 saving with no platform configured lands ONE record in the local store',
+    l2.count === 1 && l2.hasId && l2.hasCreatedAt, JSON.stringify({ count: l2.count }));
+  check('L2 the record carries the child\'s own name for it', l2.name === 'Test Character');
+  check('L2 with no Magic Card the record is unowned (a Traveller\'s save, claimable later)',
+    l2.unowned);
+  check('L2 the record is self-contained — placement PNG + thumbnail + creation JSON aboard',
+    l2.pngIsDataURL && l2.thumbIsDataURL &&
+    l2.creationFormat === 'vihu-creation' && l2.creationVersion === 2);
+  // Round trip: the stored creation reopens as a real editable document
+  // whose ORIGINAL layer matches the live one byte for byte on every
+  // fully-opaque pixel (the same preservation standard as K6), and the
+  // stored PNG decodes at the render's own dimensions.
+  const l3 = await page.evaluate(async () => {
+    const r = window.CreatorLibrary.list()[0];
+    const live = window.__bia.creation;
+    const reopened = await BIACreation.fromJSON(JSON.stringify(r.creation));
+    const a = live.original.data, b = reopened.original.data;
+    let opaqueMismatch = 0, opaque = 0;
+    for (let p = 0; p < a.length; p += 4) {
+      if (a[p + 3] !== 255) continue;
+      opaque++;
+      if (a[p] !== b[p] || a[p + 1] !== b[p + 1] || a[p + 2] !== b[p + 2]) opaqueMismatch++;
+    }
+    const bmp = await createImageBitmap(await (await fetch(r.png)).blob());
+    const tbmp = await createImageBitmap(await (await fetch(r.thumbnail)).blob());
+    const render = live.render();
+    return {
+      ops: reopened.ops.length === live.ops.length && reopened.cursor === live.cursor,
+      opaque, opaqueMismatch,
+      pngW: bmp.width, pngH: bmp.height,
+      renderW: render.canvas.width, renderH: render.canvas.height,
+      thumbMax: Math.max(tbmp.width, tbmp.height)
+    };
+  });
+  check('L3 the stored creation reopens — same history, ORIGINAL byte-identical (opaque px)',
+    l3.ops && l3.opaque > 10000 && l3.opaqueMismatch === 0,
+    l3.opaque + ' opaque px, ' + l3.opaqueMismatch + ' mismatch');
+  check('L3 the stored PNG decodes at the render\'s own size (or its 1600px downscale)',
+    l3.pngW > 0 && (l3.pngW === l3.renderW || Math.max(l3.pngW, l3.pngH) === 1600),
+    l3.pngW + 'x' + l3.pngH + ' vs render ' + l3.renderW + 'x' + l3.renderH);
+  check('L3 the thumbnail is genuinely small (≤256px long edge)', l3.thumbMax <= 256,
+    l3.thumbMax + 'px');
+  // Durability: read the record back from IndexedDB itself, through a
+  // completely fresh connection — never the store's own in-memory map.
+  const l4 = await page.evaluate(() => new Promise((resolve) => {
+    const req = indexedDB.open('vihu-creator-library');
+    req.onerror = () => resolve({ error: 'open failed' });
+    req.onsuccess = () => {
+      const db = req.result;
+      const tx = db.transaction(['items']);
+      const all = tx.objectStore('items').getAll();
+      all.onsuccess = () => resolve({
+        count: all.result.length,
+        name: all.result[0] && all.result[0].name
+      });
+      all.onerror = () => resolve({ error: 'read failed' });
+    };
+  }));
+  check('L4 the record is durable — read back from IndexedDB through a fresh connection',
+    l4.count === 1 && l4.name === 'Test Character', JSON.stringify(l4));
+  // Give the store's own 2s post-save sync debounce time to have fired,
+  // then assert the whole section moved zero cross-origin bytes: with
+  // no Magic Card there is nobody to attribute a cloud row to, so the
+  // gate must hold BEFORE any network is touched.
+  await page.waitForTimeout(2600);
+  check('L5 network-silent: the save + sync window touched no outside host',
+    crossOriginRequests.length === 0, crossOriginRequests.slice(0, 3).join(' | '));
+
   // ---- hygiene -------------------------------------------------------------
   console.log('\n-- hygiene');
   const banner = await page.evaluate(() => document.querySelector('#devError').style.display);

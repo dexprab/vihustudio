@@ -303,6 +303,7 @@
     // A creation reopened from JSON has no photograph or claim behind it,
     // so "Make another claim" has nowhere honest to go.
     $('anotherBtn').style.display = viaExtraction ? '' : 'none';
+    prepareLibraryRow();
     updateLayerStrip();
     go('stepAlive');
   }
@@ -428,6 +429,60 @@
   $('downloadCreationBtn').addEventListener('click', () =>
     download(stem() + '.vihu-creation.json',
       new Blob([state.creation.toJSONString()], { type: 'application/json' })));
+
+  // ---- my library ------------------------------------------------------------
+  // "kid can save their characters of these extractions" — the character
+  // goes to My Library (js/creatorLibrary.js, this tool's first outside
+  // link) and the Studio's Add panel places it on any page. The save is
+  // LOCAL FIRST: it lands in IndexedDB (shared per-origin, so the Studio
+  // sees it immediately) whether or not any platform is configured; the
+  // cloud catches up silently in the store's own background sync. The
+  // row hides entirely when js/creatorLibrary.js didn't load (a bare
+  // copy of the tool), so the tool keeps working standalone.
+  function prepareLibraryRow() {
+    const row = $('libraryRow');
+    if (!window.CreatorLibrary) { row.style.display = 'none'; return; }
+    row.style.display = '';
+    $('libraryStatus').textContent = '';
+    $('libraryBtn').disabled = false;
+    const s = stem();
+    $('libraryName').value = (s && s !== 'drawing') ? s : 'My Character';
+  }
+  $('libraryBtn').addEventListener('click', () => {
+    if (!window.CreatorLibrary || !state.creation) return;
+    const btn = $('libraryBtn'), status = $('libraryStatus');
+    btn.disabled = true;
+    status.textContent = '…';
+    try {
+      // The placement PNG is a RENDER of the current view with the live
+      // transform applied (creation.render()); the record also carries
+      // the still-editable creation JSON itself. Downscale (1600px /
+      // 1.5MB, AssetStore's own discipline) and the ~256px thumbnail
+      // happen inside CreatorLibrary.save().
+      const r = state.creation.render();
+      const png = r.canvas.toDataURL('image/png');
+      const name = ($('libraryName').value || '').trim() || 'My Character';
+      window.CreatorLibrary.save({ name, png, creation: state.creation.toJSON() })
+        .then((res) => {
+          btn.disabled = false;
+          if (res && res.ok) {
+            status.textContent = 'Saved to My Library ✓';
+            log('library: kept "' + name + '" as ' + res.record.id +
+                ' (png ' + png.length + ' chars' +
+                (res.record.png && res.record.png.length !== png.length
+                  ? ', stored ' + res.record.png.length : '') + ')');
+          } else {
+            // Never an error at the child — the honest quiet state.
+            status.textContent = 'Couldn’t keep it just now — try again.';
+            log('library: save did not land (' + ((res && res.error && res.error.message) || res && res.error || 'unknown') + ')');
+          }
+        });
+    } catch (e) {
+      btn.disabled = false;
+      status.textContent = 'Couldn’t keep it just now — try again.';
+      log('library: save threw (' + (e && e.message ? e.message : e) + ')');
+    }
+  });
 
   // ---- reopening a creation ---------------------------------------------------
   $('openCreationBtn').addEventListener('click', () => $('creationInput').click());

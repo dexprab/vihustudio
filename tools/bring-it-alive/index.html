@@ -82,6 +82,10 @@
   .toolgap { width:.6rem; }
   .rowlabel { font:400 .7rem/1.4 var(--mono); letter-spacing:.1em;
               text-transform:uppercase; color:var(--faint); }
+  #libraryName { background:var(--panel); border:1px solid var(--line);
+                 border-radius:6px; color:var(--ink); padding:.45rem .7rem;
+                 font:inherit; width:14rem; }
+  #libraryStatus { color:var(--good); }
 
   .quiet { background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--warn);
            border-radius:8px; padding:.7rem 1rem; color:var(--soft); margin-top:.8rem; display:none; }
@@ -214,6 +218,18 @@
       <button class="ghost" id="anotherBtn">Make another claim</button>
       <button class="ghost" id="aliveNewPhoto">New photo</button>
     </div>
+    <!-- MY LIBRARY — the character, kept. Hidden unless js/creatorLibrary.js
+         (a root Studio module, this tool's first outside link) actually
+         loaded: a bare copy of the tool keeps working with the row
+         simply absent. The save is local-first (IndexedDB, shared
+         per-origin, so the Studio sees it immediately); the cloud
+         catches up silently when it can, and never errors at anybody. -->
+    <div class="row" id="libraryRow" style="display:none">
+      <span class="rowlabel">My Library</span>
+      <input type="text" id="libraryName" maxlength="60">
+      <button id="libraryBtn">Keep in My Library</button>
+      <span class="note" id="libraryStatus" style="margin:0"></span>
+    </div>
     <details id="devStrip">
       <summary>Developer · preservation &amp; layers</summary>
       <div class="inner">
@@ -252,6 +268,14 @@
   <pre id="devLog"></pre>
 </div>
 
+<!-- The tool's FIRST outside links (precedent: tools/world-builder-v2/
+     already loads root js files). js/themeRepositoryClient.js resolves
+     supabase-config.json relative to its own script URL, so it works at
+     this depth; js/creatorLibrary.js needs neither MagicCard nor
+     AssetStore (see its header). A bare copy of the tool where these
+     404 keeps working — the My Library row simply never shows. -->
+<script src="../../js/themeRepositoryClient.js"></script>
+<script src="../../js/creatorLibrary.js"></script>
 <script src="js/capture.js"></script>
 <script src="js/claim.js"></script>
 <script src="js/segment.js"></script>
