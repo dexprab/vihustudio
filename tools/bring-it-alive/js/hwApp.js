@@ -25,7 +25,12 @@
   'use strict';
 
   const $ = (id) => document.getElementById(id);
-  const ALPHABET = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  // Three rows: lowercase, capitals, digits — each group starts a fresh
+  // grid row so the capitals read as their own row of the alphabet.
+  const GROUPS = ['abcdefghijklmnopqrstuvwxyz',
+                  'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+                  '0123456789'];
+  const ALPHABET = GROUPS.join('');
 
   const state = {
     stage: 'idle',      // idle · sheet · armed · reading · alphabet · test
@@ -182,27 +187,34 @@
     const grid = $('hwGrid');
     grid.innerHTML = '';
     let have = 0;
-    for (const ch of ALPHABET) {
-      const slot = document.createElement('div');
-      slot.className = 'hw-slot';
-      slot.dataset.ch = ch;
-      const label = document.createElement('div');
-      label.className = 'hw-slot-label';
-      label.textContent = ch;
-      slot.appendChild(label);
-      const sample = state.samples.get(ch);
-      if (sample) {
-        have++;
-        const c = document.createElement('canvas');
-        drawSample(c, sample);
-        slot.appendChild(c);
-      } else {
-        slot.classList.add('empty');
-        const e = document.createElement('div');
-        e.className = 'hw-slot-empty';
-        slot.appendChild(e);
+    for (const group of GROUPS) {
+      if (group !== GROUPS[0]) {
+        const br = document.createElement('div');
+        br.className = 'hw-grid-break';
+        grid.appendChild(br);
       }
-      grid.appendChild(slot);
+      for (const ch of group) {
+        const slot = document.createElement('div');
+        slot.className = 'hw-slot';
+        slot.dataset.ch = ch;
+        const label = document.createElement('div');
+        label.className = 'hw-slot-label';
+        label.textContent = ch;
+        slot.appendChild(label);
+        const sample = state.samples.get(ch);
+        if (sample) {
+          have++;
+          const c = document.createElement('canvas');
+          drawSample(c, sample);
+          slot.appendChild(c);
+        } else {
+          slot.classList.add('empty');
+          const e = document.createElement('div');
+          e.className = 'hw-slot-empty';
+          slot.appendChild(e);
+        }
+        grid.appendChild(slot);
+      }
     }
     $('hwGridNote').textContent = have === ALPHABET.length
       ? 'Every letter is here — these are all yours.'

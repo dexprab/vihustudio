@@ -18,10 +18,11 @@
  *    re-invents "what is ink"; this module only decides what the ink
  *    MEANS on this particular sheet.
  *
- * 2. RULES. The four ruled baselines are found as long horizontal
- *    darker-than-paper runs, then the four that match the sheet's known
- *    pattern (even pitch, equal length, aligned ends, pitch/length ratio
- *    from HWSheet.GEOM) are chosen by scoring every combination. The
+ * 2. RULES. The ruled baselines (one per model line — HWSheet.LINES is
+ *    the count) are found as long horizontal darker-than-paper runs,
+ *    then the set that matches the sheet's known pattern (even pitch,
+ *    equal length, aligned ends, pitch/length ratio from HWSheet.GEOM)
+ *    is chosen by scoring every combination. The
  *    rules are the sheet's own registration marks: each line's zone is
  *    derived from its rule's measured length, so nothing about the
  *    photograph's scale or position is ever assumed.
@@ -79,9 +80,13 @@
   };
 
   // Expected RELATIVE ink widths (advance-ish) per character. Only used
-  // to align — never to decide what a letter looks like.
+  // to align — never to decide what a letter looks like. Capitals are on
+  // their own line, so only their widths RELATIVE TO EACH OTHER matter
+  // (the line's unit is derived from the line's own ink).
   const WIDTH = { i: 0.40, l: 0.40, j: 0.50, t: 0.62, f: 0.62, r: 0.68,
-                  m: 1.55, w: 1.48, '1': 0.55 };
+                  m: 1.55, w: 1.48, '1': 0.55,
+                  I: 0.45, J: 0.68, L: 0.82, E: 0.88, F: 0.82, T: 0.90,
+                  M: 1.40, W: 1.55 };
   function wt(ch) { return WIDTH[ch] || 1.0; }
   function wcost(w, e) { const d = (w - e) / e; return Math.min(6, 3 * d * d); }
 
@@ -543,7 +548,7 @@
         backstopped++;
       }
     }
-    log('hw: 4 rules fit (page ~' + Math.round(zone.pageW) + 'px wide, rule ' +
+    log('hw: ' + fits.length + ' rules fit (page ~' + Math.round(zone.pageW) + 'px wide, rule ' +
         fits[0].thickness + 'px thick)' + (backstopped
           ? ' — ' + backstopped + ' read as ink and removed by run-length ' +
             '(dim capture; round letter bottoms may split there)'

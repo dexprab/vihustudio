@@ -24,6 +24,8 @@
  *     where the rule crosses each patch);
  *   · x-height — median ink height of the x-class letters, mapped to
  *     500/1000 units;
+ *   · cap-height — median ink height of the child's own capitals
+ *     (ascender fallback only when no capital was captured at all);
  *   · advance — the glyph's own ink width plus the letter gap MEASURED
  *     inside the child's own words;
  *   · space — the median word gap the child actually left.
@@ -39,6 +41,7 @@
 
   const XCLASS = 'acemnorsuvwxz';       // letters whose ink top ≈ x-height
   const DESCENDER = 'gjpqy';            // letters whose ink dips below the rule
+  const CAPS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
   // ---- contour tracing -------------------------------------------------------
   /* Directed pixel-side edges with the ink on the LEFT, chained into
@@ -187,14 +190,20 @@
   /* measure(samples, lines) → the measured coordinate system.
    * samples: Map ch → sample (hwRead's samplePatch output). */
   function measure(samples, lines) {
-    const xTops = [], allTops = [], descents = [];
+    const xTops = [], allTops = [], descents = [], capTops = [];
     for (const [ch, s] of samples) {
       allTops.push(s.topAbove);
       if (XCLASS.includes(ch)) xTops.push(s.topAbove);
       if (DESCENDER.includes(ch)) descents.push(s.belowBase);
+      if (CAPS.includes(ch)) capTops.push(s.topAbove);
     }
     const xHeightPx = median(xTops) || median(allTops) * 0.65 || 1;
     const scale = XHEIGHT_UNITS / xHeightPx;
+    // Cap-height MEASURED from the child's own capitals (median of the
+    // capital ink tops). Only when no capital was captured at all — the
+    // capitals line refused or never written — does it fall back to the
+    // measured-ascender guess it always was.
+    const capHeightPx = capTops.length ? median(capTops) : 0;
     const gapsIntra = [], gapsWord = [];
     for (const ln of lines || []) {
       if (!ln.found) continue;
@@ -205,10 +214,13 @@
     const wordGapPx = median(gapsWord) || xHeightPx * 1.1;
     const ascPx = Math.max.apply(null, allTops.concat([xHeightPx * 1.4]));
     const descPx = descents.length ? Math.max.apply(null, descents) : xHeightPx * 0.35;
+    const ascender = Math.round(ascPx * scale) + 60;
     return {
-      xHeightPx, scale, letterGapPx, wordGapPx,
-      ascender: Math.round(ascPx * scale) + 60,
-      descender: -(Math.round(descPx * scale) + 60)
+      xHeightPx, scale, letterGapPx, wordGapPx, ascender,
+      descender: -(Math.round(descPx * scale) + 60),
+      capHeightPx,
+      capMeasured: capHeightPx > 0,
+      capHeight: capHeightPx > 0 ? Math.round(capHeightPx * scale) : ascender
     };
   }
 
@@ -282,17 +294,23 @@
       unitsPerEm: UPEM,
       xHeightPx: m.xHeightPx, scale: m.scale,
       ascender: m.ascender, descender: m.descender,
+      // OS/2 sCapHeight is measured by the assembler itself from the
+      // first real capital glyph's outline once capitals exist; this is
+      // our own measurement of the same thing, for the report.
+      capHeight: m.capHeight, capMeasured: m.capMeasured,
       letterGapPx: m.letterGapPx, wordGapPx: m.wordGapPx,
       spaceAdvance: Math.round(m.wordGapPx * m.scale),
       perGlyph, bytes: buffer.byteLength
     };
     log('hw: font built — ' + chars.length + ' letters (+space), x-height ' +
         Math.round(m.xHeightPx) + 'px → ' + XHEIGHT_UNITS + '/' + UPEM +
-        ' units, ascender ' + m.ascender + ', descender ' + m.descender +
+        ' units, cap-height ' + m.capHeight +
+        (m.capMeasured ? ' (measured from the capitals)' : ' (no capitals — ascender fallback)') +
+        ', ascender ' + m.ascender + ', descender ' + m.descender +
         ', ' + buffer.byteLength + ' bytes');
     return { buffer, report };
   }
 
   window.HWFont = { trace, traceLoops, simplify, measure, build,
-                    UPEM, XHEIGHT_UNITS, XCLASS, DESCENDER };
+                    UPEM, XHEIGHT_UNITS, XCLASS, DESCENDER, CAPS };
 })();

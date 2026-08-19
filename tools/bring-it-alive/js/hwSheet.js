@@ -13,10 +13,16 @@
  * function), including its correction: the numbers here were MEASURED
  * against the rendered sheet by the suite, not asserted.
  *
- * The model lines are three full pangrams plus a digits line, so every
- * letter a–z appears at least three times and every digit twice — the
- * builder picks the cleanest sample of each. Lowercase first, by the
- * product owner's decision; capitals can be a later line.
+ * The model lines are three full lowercase pangrams, ONE uppercase
+ * pangram, and a digits line: every letter a–z appears at least three
+ * times, every digit twice — the builder picks the cleanest sample of
+ * each — and every capital A–Z at least ONCE. One capitals line, not
+ * two, because the sheet is a child's effort budget: a fifth line of
+ * writing already costs real patience, and a sixth would buy "pick the
+ * cleanest capital" at the price of many children never finishing the
+ * sheet. Disclosed cost: most capitals get a single sample, so a
+ * capital the child fumbled is the capital their font gets (or, if it
+ * is refused, a quiet empty slot and a per-line retake — same as ever).
  *
  * The RULE under each line is the baseline the child writes on, and it
  * is the key font metric. It is printed solid and visible (a child needs
@@ -26,34 +32,53 @@
 (function () {
   'use strict';
 
-  // The model lines. Lines 1–3 are complete pangrams (every letter of
-  // a–z in each); line 4 carries every digit twice in a shuffled order
-  // so neighbouring pairs vary. Child-facing, so the words are friendly.
+  // The model lines. Lines 1–3 are complete lowercase pangrams (every
+  // letter of a–z in each); line 4 is the SAME sentence as line 2 in
+  // capitals — a pangram the child has already met, so the capitals line
+  // reads as "now in big letters" rather than a new sentence to decode,
+  // and it is the shortest of the three (capitals are wide); line 5
+  // carries every digit twice in a shuffled order so neighbouring pairs
+  // vary. Child-facing, so the words are friendly.
   const LINES = [
     { text: 'the quick brown fox jumps over a lazy dog' },
     { text: 'how quickly daft jumping zebras vex' },
     { text: 'the five boxing wizards jump quickly' },
+    { text: 'HOW QUICKLY DAFT JUMPING ZEBRAS VEX' },
     { text: '0 1 2 3 4 5 6 7 8 9 8 6 4 2 0 9 7 5 3 1' }
   ];
+
+  // The no-cursive callout, printed on the sheet where the child writes.
+  // Child words on purpose: no jargon, no blame — joined-up writing is a
+  // real skill, it is just one the reader cannot meet letter by letter.
+  const CALLOUT = 'Write each letter on its own, with a little space — ' +
+    'letters that hold hands are hard for me to see.';
 
   /* All geometry as FRACTIONS — x-values of the sheet width W, y-values
    * of the sheet height H (portrait, H = √2·W, A4 proportions). The
    * reader re-derives H per line from the measured rule length, so these
    * fractions are the whole registration contract. */
+  // Five blocks now instead of four, so every vertical number shrank to
+  // make room: the block pitch and the writing zone are smaller, but the
+  // zone is still ~24mm above the rule on A4 — a child's hand fits. The
+  // reader learns the new count and pitch from these same constants
+  // (HWSheet.LINES.length and GEOM drive its rule-pattern scoring), so
+  // the two cannot drift; a photo whose rules do not match THIS pattern
+  // is still refused.
   const GEOM = {
     aspect: Math.SQRT2,       // H / W
     xLeft: 0.10,              // rule start (of W)
     xRight: 0.94,             // rule end (of W)
     numberX: 0.055,           // line number centre (of W) — outside the zone
-    titleY: 0.052,            // title baseline (of H)
+    titleY: 0.045,            // title baseline (of H)
     titleSize: 0.028,
-    blockTop0: 0.115,         // first line block top (of H)
-    blockStep: 0.205,         // block pitch (of H)
-    modelBaseline: 0.040,     // model text baseline, from block top (of H)
-    modelSize: 0.026,         // model text size (of H); shrunk to fit the span
-    ruleOffset: 0.150,        // rule y, from block top (of H)
-    ascent: 0.095,            // writing zone above the rule (of H)
-    descent: 0.038,           // writing zone below the rule (of H)
+    calloutY: 0.089,          // the no-cursive callout baseline (of H)
+    blockTop0: 0.103,         // first line block top (of H)
+    blockStep: 0.170,         // block pitch (of H)
+    modelBaseline: 0.034,     // model text baseline, from block top (of H)
+    modelSize: 0.023,         // model text size (of H); shrunk to fit the span
+    ruleOffset: 0.128,        // rule y, from block top (of H)
+    ascent: 0.082,            // writing zone above the rule (of H)
+    descent: 0.034,           // writing zone below the rule (of H)
     ruleThickness: 0.0022,    // printed rule thickness (of H)
     footY: 0.975
   };
@@ -105,7 +130,22 @@
     ctx.font = Math.round(GEOM.titleSize * H * 0.5) + 'px sans-serif';
     ctx.fillStyle = '#7a8496';
     ctx.fillText('Copy each line in your own handwriting on the empty line under it.',
-      GEOM.xLeft * W, (GEOM.titleY + 0.024) * H);
+      GEOM.xLeft * W, (GEOM.titleY + 0.022) * H);
+
+    // The no-cursive callout — printed just above the first writing line,
+    // a touch larger and darker than the instruction, because it is the
+    // one thing that decides whether the reader can meet the letters.
+    // Shrunk to the rule span like the model lines, never clipped.
+    let calloutSize = GEOM.titleSize * H * 0.56;
+    ctx.font = Math.round(calloutSize) + 'px sans-serif';
+    const calloutSpan = (GEOM.xRight - GEOM.xLeft) * W;
+    const calloutW = ctx.measureText(CALLOUT).width;
+    if (calloutW > calloutSpan) {
+      calloutSize = calloutSize * calloutSpan / calloutW;
+      ctx.font = Math.round(calloutSize) + 'px sans-serif';
+    }
+    ctx.fillStyle = '#4a5468';
+    ctx.fillText(CALLOUT, GEOM.xLeft * W, GEOM.calloutY * H);
 
     const drawn = { W, H, lines: [] };
     for (let i = 0; i < LINES.length; i++) {
@@ -150,5 +190,5 @@
     return drawn;
   }
 
-  window.HWSheet = { LINES, GEOM, RULE_COLOR, ruleYFrac, lineZoneFor, draw };
+  window.HWSheet = { LINES, GEOM, RULE_COLOR, CALLOUT, ruleYFrac, lineZoneFor, draw };
 })();
