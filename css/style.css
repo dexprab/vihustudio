@@ -7899,8 +7899,8 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
 /* My Library (js/contextPanel.js's _showLibraryPicker) — tiles reuse
    .context-collection-tile's chrome inside a positioned cell so each
    card can carry a small quiet remove, revealed on hover/focus only.
-   The empty state is an invitation (a link to Bring It Alive in a new
-   tab), never a broken grid. */
+   The empty state is an invitation (it opens the Bring It Alive overlay
+   in place — see .context-library-bring below), never a broken grid. */
 .context-library-cell{ position:relative; display:flex; }
 .context-library-cell .context-collection-tile{ flex:1; }
 .context-library-remove{
@@ -7948,6 +7948,13 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   border:1px solid var(--line);
   border-radius:999px;
   padding:6px 14px;
+  /* It is a <button> now (the overlay opens in place — no new tab), so
+     the global full-width button rule must be carved out. */
+  background:var(--bg);
+  cursor:pointer;
+  width:auto !important;
+  height:auto !important;
+  margin:0 !important;
 }
 .context-library-empty-link:hover{ border-color:var(--gold); background:rgba(255,203,69,0.10); }
 
@@ -11828,3 +11835,295 @@ body.light-theme .story-action.is-asleep{ background:rgba(255,255,255,.09); }
 @media (prefers-reduced-motion: reduce){
   .studio-rite-choice.studio-rite-done{ animation:studio-rite-btn-in .45s ease both; }
 }
+
+/* ===========================
+ * Bring It Alive — the Studio host (js/bringItAliveStudio.js).
+ * "the tool need to become part of studio" · "the same tool page ui will
+ * not work in studio" — so this is NOT the tool page restyled: its own
+ * markup, its own classes, the Studio's light visual language. The modal
+ * shell follows Picture Studio's pattern (.picture-studio-modal /
+ * .picture-studio) — the closest existing overlay; the CTA pair and the
+ * gold active state follow Picture Studio's Result view and tiles. The
+ * editing canvas keeps its checkerboard, which BIAEditor paints into the
+ * canvas itself (product-owner decision).
+ * =========================== */
+.bia-studio-modal{
+  position:fixed;
+  inset:0;
+  z-index:200;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:rgba(8,10,16,0.78);
+  backdrop-filter:blur(8px);
+}
+.bia-studio{
+  display:flex;
+  flex-direction:column;
+  background:var(--panel);
+  color:var(--text);
+  width:min(980px,96vw);
+  height:min(720px,94vh);
+  border-radius:18px;
+  box-shadow:0 20px 60px rgba(0,0,0,0.45);
+  overflow:hidden;
+}
+.bia-studio-header{
+  display:grid;
+  grid-template-columns:auto 1fr auto;
+  align-items:center;
+  gap:12px;
+  padding:14px 20px;
+  border-bottom:1px solid var(--line);
+}
+.bia-studio-title{ font-size:16px; font-weight:700; letter-spacing:0.4px; }
+.bia-studio-subtitle{ font-size:13px; color:var(--text-secondary); }
+.bia-studio-close{
+  width:34px !important;
+  height:34px !important;
+  padding:0 !important;
+  margin:0 !important;
+  border-radius:50%;
+  background:transparent;
+  border:none;
+  color:var(--text);
+  font-size:18px;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  transition:background 0.15s;
+}
+.bia-studio-close:hover{ background:rgba(0,0,0,0.08); }
+
+/* One step visible at a time — data-step on the root, exactly the
+   data-view dispatch Picture Studio already uses. */
+.bia-studio-step{
+  display:none;
+  flex:1;
+  min-height:0;
+  flex-direction:column;
+  gap:10px;
+  padding:14px 20px 18px;
+}
+.bia-studio[data-step="photo"] .bia-studio-step-photo,
+.bia-studio[data-step="claim"] .bia-studio-step-claim,
+.bia-studio[data-step="found"] .bia-studio-step-found,
+.bia-studio[data-step="yours"] .bia-studio-step-yours{ display:flex; }
+.bia-studio-step-photo{ overflow-y:auto; justify-content:center; }
+
+.bia-studio-hint{
+  font-size:18px;
+  font-weight:700;
+  text-align:center;
+  color:var(--text);
+}
+.bia-studio-note{
+  font-size:13px;
+  color:var(--text-secondary);
+  text-align:center;
+  margin:0;
+}
+.bia-studio-quiet{
+  display:none;
+  font-size:13px;
+  font-weight:600;
+  color:var(--text);
+  background:rgba(255,203,69,0.12);
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:8px 14px;
+  text-align:center;
+  align-self:center;
+  max-width:80%;
+}
+
+.bia-studio-stage{
+  flex:1;
+  min-height:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  position:relative;
+}
+.bia-studio-canvas{
+  display:block;
+  max-width:100%;
+  max-height:100%;
+  border-radius:10px;
+  touch-action:none;
+  cursor:crosshair;
+  box-shadow:0 4px 18px rgba(0,0,0,0.12);
+}
+
+.bia-studio-actions{
+  display:flex;
+  gap:12px;
+  justify-content:center;
+  align-items:center;
+  flex-wrap:wrap;
+}
+.bia-studio-btn{
+  padding:11px 24px;
+  border-radius:24px;
+  border:1px solid var(--line);
+  background:var(--bg);
+  color:var(--text);
+  font-size:14px;
+  font-weight:600;
+  cursor:pointer;
+  width:auto !important;
+  height:auto !important;
+  margin:0 !important;
+  transition:background 0.15s, border-color 0.15s, transform 0.05s;
+}
+.bia-studio-btn:hover{ background:rgba(0,0,0,0.04); }
+.bia-studio-btn:active{ transform:translateY(1px); }
+.bia-studio-btn-primary{
+  background:var(--gold);
+  border-color:var(--gold);
+  color:var(--navy);
+  font-weight:700;
+}
+.bia-studio-btn-primary:hover{ background:#FFD466; }
+.bia-studio-btn:disabled{ opacity:0.5; cursor:default; }
+
+/* PHOTOGRAPH — one big warm invitation. */
+.bia-studio-invite{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:14px;
+  border:2px dashed var(--line);
+  border-radius:18px;
+  padding:44px 20px;
+  background:var(--bg);
+}
+.bia-studio-invite-art{ font-size:46px; line-height:1; }
+.bia-studio-invite-line{ font-size:17px; font-weight:700; text-align:center; }
+
+.bia-studio-camera{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:10px;
+  margin-top:12px;
+}
+.bia-studio-camera-stage video,
+.bia-studio-camera-stage canvas{
+  display:block;
+  max-width:100%;
+  max-height:min(46vh,380px);
+  border-radius:12px;
+}
+
+/* MAKE IT YOURS — the child essentials only: tools, colours, sizes,
+   undo/redo, one peek at the paper. The grown-up downloads and the
+   developer strip stay on the standalone page. */
+.bia-studio-tools{
+  display:flex;
+  gap:8px;
+  justify-content:center;
+  align-items:center;
+  flex-wrap:wrap;
+}
+.bia-studio-tool{
+  padding:8px 14px;
+  border-radius:12px;
+  border:1px solid var(--line);
+  background:var(--bg);
+  color:var(--text);
+  font-size:13px;
+  font-weight:700;
+  cursor:pointer;
+  width:auto !important;
+  height:auto !important;
+  margin:0 !important;
+  transition:background 0.12s, border-color 0.12s, transform 0.05s;
+}
+.bia-studio-tool:hover{ background:rgba(255,203,69,0.12); border-color:rgba(255,203,69,0.45); }
+.bia-studio-tool:active{ transform:translateY(1px); }
+.bia-studio-tool.active{ background:var(--gold); border-color:var(--gold); color:var(--navy); }
+.bia-studio-toolgap{ width:8px; }
+.bia-studio-swatch{
+  width:26px !important;
+  height:26px !important;
+  padding:0 !important;
+  margin:0 !important;
+  border-radius:50%;
+  border:2px solid var(--line);
+  cursor:pointer;
+}
+.bia-studio-swatch.active{ outline:2px solid var(--gold); outline-offset:2px; }
+.bia-studio-dot{
+  width:30px !important;
+  height:26px !important;
+  padding:0 !important;
+  margin:0 !important;
+  background:var(--bg);
+  border:1px solid var(--line);
+  border-radius:8px;
+  color:var(--text);
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+}
+.bia-studio-dot i{ display:block; border-radius:50%; background:currentColor; }
+.bia-studio-dot.active{ outline:2px solid var(--gold); outline-offset:1px; }
+
+.bia-studio-keep-row{
+  display:flex;
+  gap:10px;
+  justify-content:center;
+  align-items:center;
+  flex-wrap:wrap;
+}
+.bia-studio-name{
+  width:15rem;
+  padding:10px 14px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:var(--bg);
+  color:var(--text);
+  font-size:14px;
+  font-weight:600;
+  font-family:inherit;
+}
+.bia-studio-status{ font-size:13px; font-weight:600; color:var(--text-secondary); }
+
+body.dark-theme .bia-studio-close:hover,
+body.dark-theme .bia-studio-btn:hover{ background:rgba(255,255,255,0.08); }
+
+/* My Library picker — the PERMANENT door to Bring It Alive, above the
+   kept characters, always present (never only when the shelf is empty).
+   It opens the overlay in place; the Studio never navigates away. */
+.context-library-bring{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  width:100%;
+  margin:0 0 12px;
+  padding:12px 14px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:var(--bg);
+  color:var(--text);
+  text-align:left;
+  cursor:pointer;
+}
+.context-library-bring:hover{ border-color:var(--gold); background:rgba(255,203,69,0.10); }
+.context-library-bring-icon{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:34px;
+  height:34px;
+  border-radius:10px;
+  background:var(--gold-soft,rgba(255,203,69,0.16));
+  font-size:18px;
+  flex-shrink:0;
+}
+.context-library-bring-text{ display:flex; flex-direction:column; gap:2px; min-width:0; }
+.context-library-bring-label{ font-size:12.5px; font-weight:800; }
+.context-library-bring-sub{ font-size:11px; font-weight:600; color:var(--text-secondary); line-height:1.35; }

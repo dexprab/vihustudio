@@ -47,7 +47,10 @@
     mark: null,            // live Mark selection {loop, display, all} —
                            // loop is what the op carries (null = everything),
                            // display is always the drawn loop
-    bound: false
+    boundTo: null          // the canvas the gestures are bound to — the
+                           // standalone page mounts one canvas forever;
+                           // the Studio overlay builds a fresh canvas per
+                           // open, and each one needs its own binding
   };
 
   function mount(canvas, creation, onChange, onNote) {
@@ -65,7 +68,7 @@
     // there is room to grow it and somewhere to move it.
     const w = creation.original.width, h = creation.original.height;
     S.ds = Math.min((canvas.width * 0.72) / w, (canvas.height * 0.72) / h, 1);
-    if (!S.bound) { bind(); S.bound = true; }
+    if (S.boundTo !== canvas) { bind(); S.boundTo = canvas; }
     draw();
   }
 

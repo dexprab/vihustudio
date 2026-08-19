@@ -24,7 +24,23 @@
 
   let stream = null;
   let opts = { onPicture: null, log: function () {} };
+  let els = null;      // the mounted host's elements (defaultEls() = this page's ids)
+  let hooked = false;  // page-level listeners attach once, whatever remounts
   const $ = (id) => document.getElementById(id);
+
+  // The standalone page's own elements — the default host. A second host
+  // (the Studio overlay) passes its own map into mount({els}), so ONE
+  // camera implementation serves both and neither page's markup leaks
+  // into the other.
+  function defaultEls() {
+    return {
+      button: $('cameraBtn'), panel: $('cameraPanel'),
+      live: $('cameraLive'), shot: $('cameraShot'),
+      take: $('cameraTakeBtn'), use: $('cameraUseBtn'),
+      retake: $('cameraRetakeBtn'), close: $('cameraCloseBtn'),
+      quiet: $('cameraQuiet'), step: $('stepCapture')
+    };
+  }
 
   function supported() {
     return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
@@ -39,22 +55,22 @@
   }
 
   function showLive(live) {
-    $('cameraLive').style.display = live ? 'block' : 'none';
-    $('cameraShot').style.display = live ? 'none' : 'block';
-    $('cameraTakeBtn').style.display = live ? '' : 'none';
-    $('cameraUseBtn').style.display = live ? 'none' : '';
-    $('cameraRetakeBtn').style.display = live ? 'none' : '';
+    els.live.style.display = live ? 'block' : 'none';
+    els.shot.style.display = live ? 'none' : 'block';
+    els.take.style.display = live ? '' : 'none';
+    els.use.style.display = live ? 'none' : '';
+    els.retake.style.display = live ? 'none' : '';
   }
 
   function closePanel() {
     stopTracks();
-    $('cameraPanel').style.display = 'none';
+    if (els && els.panel) els.panel.style.display = 'none';
   }
 
   // The one gentle line for every way the camera can be unreachable.
   function cannotSee(err) {
     closePanel();
-    const q = $('cameraQuiet');
+    const q = els.quiet;
     q.textContent = 'I can’t see through the camera here — you can ' +
       'still choose a photo of your drawing.';
     q.style.display = 'block';
@@ -62,7 +78,7 @@
   }
 
   async function open() {
-    $('cameraQuiet').style.display = 'none';
+    els.quiet.style.display = 'none';
     let s;
     try {
       // Ask for the back camera and as much resolution as the camera
@@ -74,10 +90,10 @@
       });
     } catch (err) { cannotSee(err); return; }
     stream = s;
-    const v = $('cameraLive');
+    const v = els.live;
     v.srcObject = s;
     try { await v.play(); } catch (e) { /* play() races tab hiding; the frame wait below decides */ }
-    $('cameraPanel').style.display = 'block';
+    els.panel.style.display = 'block';
     showLive(true);
     const started = await new Promise((res) => {
       let waited = 0;
@@ -94,9 +110,9 @@
   }
 
   function take() {
-    const v = $('cameraLive');
+    const v = els.live;
     if (!stream || !v.videoWidth) return;
-    const c = $('cameraShot');
+    const c = els.shot;
     c.width = v.videoWidth;          // NATIVE pixels, never the CSS size
     c.height = v.videoHeight;
     c.getContext('2d').drawImage(v, 0, 0);
@@ -106,7 +122,7 @@
   }
 
   function useIt() {
-    const c = $('cameraShot');
+    const c = els.shot;
     c.toBlob((blob) => {
       closePanel();
       if (!blob || !opts.onPicture) return;
@@ -118,24 +134,33 @@
   function mount(o) {
     opts = Object.assign(opts, o);
     if (!supported()) return;        // no camera API → the step stays exactly as today
-    const btn = $('cameraBtn');
+    els = (o && o.els) || defaultEls();
+    const btn = els.button;
     btn.style.display = '';
     btn.addEventListener('click', open);
-    $('cameraTakeBtn').addEventListener('click', take);
-    $('cameraUseBtn').addEventListener('click', useIt);
-    $('cameraRetakeBtn').addEventListener('click', open);
-    $('cameraCloseBtn').addEventListener('click', closePanel);
-    // Never leave the camera light on behind a hidden page.
-    window.addEventListener('pagehide', stopTracks);
-    document.addEventListener('visibilitychange', () => {
-      if (document.hidden) closePanel();
-    });
+    els.take.addEventListener('click', take);
+    els.use.addEventListener('click', useIt);
+    els.retake.addEventListener('click', open);
+    els.close.addEventListener('click', closePanel);
+    // Never leave the camera light on behind a hidden page — attached
+    // once, however many times a host remounts fresh elements.
+    if (!hooked) {
+      hooked = true;
+      window.addEventListener('pagehide', stopTracks);
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) closePanel();
+      });
+    }
     // …or behind a left step: whatever route leaves Photograph (a picked
-    // file, the test page, a drop, a reopened creation), the light goes off.
-    const step = $('stepCapture');
-    new MutationObserver(() => {
-      if (!step.classList.contains('here')) closePanel();
-    }).observe(step, { attributes: true, attributeFilter: ['class'] });
+    // file, the test page, a drop, a reopened creation), the light goes
+    // off. Only where the host HAS a step element to watch — the Studio
+    // overlay closes the camera through its own step changes and close.
+    if (els.step) {
+      const step = els.step;
+      new MutationObserver(() => {
+        if (!step.classList.contains('here')) closePanel();
+      }).observe(step, { attributes: true, attributeFilter: ['class'] });
+    }
   }
 
   window.BIACamera = { mount, supported, stopTracks, closePanel };
