@@ -3971,3 +3971,55 @@ pre-fills "My Character" (filenames mean nothing to a child); a
 browser refresh mid-overlay loses the un-kept creation (Decision 23's
 accepted cost); the overlay's camera path is wired and offered but the
 fake-camera end-to-end runs only in the standalone suite (C1–C8).
+
+## My Handwriting — a Font of the Child's Own Letters
+
+Queued by the product owner after the design conversation ("yes queue
+the handwriting sprint... first queue the handwriting in the bring it
+alive tool we will check it there"). Built in a worker worktree, in the
+STANDALONE tool only; independently re-verified before merging — the
+existing 163-check suite and the new 34-check handwriting suite both
+reproduced fresh, in the worktree and again on the merged tree; no
+existing module was modified.
+
+**The journey** (`hwSheet.js · hwRead.js · hwFont.js · hwApp.js`):
+Writing Sheet → Photograph → Your Letters → Try Your Font. The
+printable sheet is four lines — three full pangrams (every letter ≥3×)
+plus a digits line (each digit 2×) — each printed above a ruled blank;
+sheet renderer and reader share ONE geometry (Decision 17's lesson).
+Capture reuses the existing entry unchanged. **Reading is alignment,
+never recognition**: the rules themselves are the registration; per
+line, the illumination-flattened ink becomes components (satellites
+merged — i-dots, t-crosses), ordered left-to-right and matched against
+that line's KNOWN text by a DP with merge/split/missing/stray/space
+moves. **Refuse rather than guess** is the acceptance rule and it is
+asserted: a deliberately welded line landed 0 of 30 letters accepted
+(21 touching-refused, 9 missing) with ZERO mislabels anywhere; a match
+beside a missing letter of equal expected width is refused outright as
+ambiguous. Recovery is per line — "Write this line once more"
+re-photographs exactly that line.
+
+**The child is shown their alphabet** before anything is built —
+their own captured letters, empty slots quiet (Decision 18's move) —
+then the font: own contour tracer (marching squares → Douglas-Peucker
+→ quadratic fit), metrics MEASURED from their writing (baseline from
+the sheet's rule, x-height from their letters → 500/1000 units,
+advances from ink width + the median gap inside their own words),
+assembled with vendored `opentype.js` 2.0.0 (MIT, reached via npm
+through the proxy; license verbatim in `vendor/`). Byte-determinism is
+asserted, not hoped — the library's now()-stamped head table is pinned.
+Missing letters are absent from the cmap so text borrows a plain
+letter, never a blank. Type-to-test via FontFace; "My Handwriting.ttf"
+download (an OpenType/CFF container — modern everything reads it, an
+old strict installer might not; disclosed).
+
+**Verified on a deterministic synthetic sheet** (seeded jitter, a
+hygiene check greps the fixture for Math.random): clean sheet 36/36
+characters, 114/114 letters, worst baseline deviation 4px of a 34px
+x-height, rebuild byte-identical. **Not yet verified against real
+child handwriting — deliberately: that test is the product owner's, in
+the tool.** Expected gaps, in order: joined-up/crowded writing refuses
+whole words (designed, may be frequent); printed-rule grey vs home
+printers; faint pencil i-dots; typographic width priors refusing
+unusual letter widths (empty slots, never wrong letters); strong page
+curl refuses the whole photo.
