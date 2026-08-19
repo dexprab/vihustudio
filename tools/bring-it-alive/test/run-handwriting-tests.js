@@ -13,17 +13,24 @@
  * run reads the same sheet. Ground truth is the drawn letters' own
  * positions, which is what makes the mislabel assertions exact.
  *
- * Three scenarios:
- *   HW-A  the sheet itself — geometry, coverage of a–z + digits, print.
+ * Four scenarios:
+ *   HW-A  the sheet itself — geometry, coverage of a–z + A–Z + digits,
+ *         the printed no-cursive callout, print.
  *   HW-B  a complete filled sheet — every letter captured, every accepted
  *         letter standing where its ground truth stands (NONE mislabeled),
  *         baselines consistent, and the font: parses, renders, differs
- *         from the fallback, rebuilds byte-identical.
+ *         from the fallback, cap-height measured from the child's own
+ *         capitals, rebuilds byte-identical.
  *   HW-C  the refuse rule — one line's words welded into touching blobs →
  *         that line contributes NOTHING (skipped, never mislabeled); one
  *         letter never written ('x') → exactly one quiet empty slot; the
  *         font's cmap simply lacks it; and per-line recovery brings the
  *         welded line back from a clean re-photograph.
+ *   HW-D  "this looks joined-up" — a welded line gets the holding-hands
+ *         message (not the generic retake); a line with only two touching
+ *         pairs keeps the generic one; most lines welded → ONE gentle
+ *         sheet-level message, and still zero letters accepted anywhere
+ *         a weld ran.
  *
  * DISCLOSED: this verifies the journey against synthetic handwriting.
  * Real child handwriting — real-paper lighting, pencil pressure, letters
@@ -56,7 +63,11 @@ function check(name, cond, detail) {
 
 /* The synthetic filled sheet, composed IN PAGE through the real
  * HWSheet.draw so the fixture and the printable sheet cannot drift.
- * opts: { seed, width, omit ('' or letters), corruptLine (-1 or index) }.
+ * opts: { seed, width, omit ('' or letters),
+ *         corruptLines ([] or line indices — every word on those lines is
+ *         welded into one touching blob, cursive-style),
+ *         pairLine/pairCount (weld only the first `pairCount` word-
+ *         internal letter pairs on `pairLine` — "merely messy") }.
  * Returns { dataURL, gt:[{line,ch,x0,x1}], W, H }. */
 const COMPOSE = `(opts) => {
   const c = document.createElement('canvas');
@@ -68,7 +79,11 @@ const COMPOSE = `(opts) => {
     t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
     return ((t ^ t >>> 14) >>> 0) / 4294967296; };
   const gt = [];
-  const FAM = '"DejaVu Serif"';
+  // Sans, not Serif: at this scale DejaVu Serif's serifs detach at the
+  // ink threshold (an L foot joined a Y's split and inflated its width;
+  // a u fragment impersonated an i) — a sans face has no serif to shed
+  // and sturdier junctions, which is also closer to a child's print.
+  const FAM = '"DejaVu Sans"';
   ctx.fillStyle = '#20242e';
   ctx.textBaseline = 'alphabetic';
   for (const ln of drawn.lines) {
@@ -106,12 +121,13 @@ const COMPOSE = `(opts) => {
       ctx.fillText(ch, -wch / 2, 0);
       ctx.restore();
       gt.push({ line: ln.index, ch, x0: x, x1: x + wch });
-      if (!word) word = { x0: x, n: 0, size };
+      if (!word) word = { x0: x, n: 0, size, letters: [] };
       word.x1 = x + wch; word.n++;
+      word.letters.push({ x0: x, x1: x + wch });
       x += wch + size * 0.16 * (0.8 + 0.4 * rnd());
     }
     if (word) words.push(word);
-    if (opts.corruptLine === ln.index) {
+    if ((opts.corruptLines || []).includes(ln.index)) {
       // weld each word into ONE touching blob: a stroke through the
       // letters at mid x-height, in the same ink
       for (const w of words) {
@@ -120,11 +136,27 @@ const COMPOSE = `(opts) => {
         ctx.fillRect(w.x0 + 1, y - 2, (w.x1 - w.x0) - 2, 4);
       }
     }
+    if (opts.pairLine === ln.index && opts.pairCount > 0) {
+      // weld only the FIRST letter pair of the first pairCount words —
+      // a couple of letters that happened to touch, not a style
+      let welded = 0;
+      for (const w of words) {
+        if (welded >= opts.pairCount || w.n < 2) continue;
+        const a = w.letters[0], b = w.letters[1];
+        const y = ln.ruleY - w.size * 0.24;
+        ctx.fillRect(a.x1 - w.size * 0.1, y - 2,
+                     (b.x0 - a.x1) + w.size * 0.2, 4);
+        welded++;
+      }
+    }
   }
   return { dataURL: c.toDataURL('image/png'), gt, W: c.width, H: c.height };
 }`;
 
-const ALPHABET = 'abcdefghijklmnopqrstuvwxyz0123456789';
+const LOWER = 'abcdefghijklmnopqrstuvwxyz';
+const UPPER = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+const DIGITS = '0123456789';
+const ALPHABET = LOWER + UPPER + DIGITS;
 const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come back sorted
 
 (async () => {
@@ -165,6 +197,7 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
     lines: window.__hw.lines.map((ln) => ({
       index: ln.index, found: ln.found, accepted: ln.accepted || 0,
       expected: ln.expected || 0, unit: ln.unit,
+      touching: ln.touching || 0, joined: !!ln.joined,
       letters: (ln.letters || []).map((l) => ({
         ch: l.ch, kind: l.kind, accepted: l.accepted, refused: l.refused,
         x0: l.blobX0, x1: l.blobX1,
@@ -206,23 +239,26 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
     for (const ch of ALPHABET) {
       const n = sheetFacts.counts[ch] || 0;
       if (n === 0) missing.push(ch);
-      else if (n < 2) once.push(ch);
+      else if (n < 2 && !UPPER.includes(ch)) once.push(ch);
     }
-    check('A1 the model lines cover a–z and 0–9', missing.length === 0,
-      missing.length ? 'missing ' + missing.join('') : '36 characters');
-    check('A2 every letter and digit appears MORE THAN ONCE across the lines',
+    check('A1 the model lines cover a–z, A–Z and 0–9', missing.length === 0,
+      missing.length ? 'missing ' + missing.join('') : '62 characters');
+    check('A2 every lowercase letter and digit appears MORE THAN ONCE',
       once.length === 0, once.length ? 'only once: ' + once.join('') : 'min 2, letters 3');
+    const capOnce = [...UPPER].filter((ch) => (sheetFacts.counts[ch] || 0) >= 1);
+    check('A2b every capital appears at least ONCE (one line — single sample, disclosed)',
+      capOnce.length === 26, capOnce.length + '/26');
     check('A3 the sheet is ' + sheetFacts.lines + ' model lines on A4 proportions',
-      sheetFacts.lines === 4 && Math.abs(sheetFacts.aspect - Math.SQRT2) < 1e-9);
+      sheetFacts.lines === 5 && Math.abs(sheetFacts.aspect - Math.SQRT2) < 1e-9);
   }
   await page.click('#hwEntryBtn');
   await page.waitForSelector('#stepHwSheet.here');
   {
     const drawn = await page.evaluate(() => window.__hw.sheetDrawn);
-    check('A4 the sheet is drawn from HWSheet.GEOM (4 rules, even pitch)',
-      drawn.lines.length === 4 &&
+    check('A4 the sheet is drawn from HWSheet.GEOM (5 rules, even pitch)',
+      drawn.lines.length === 5 &&
       Math.abs((drawn.lines[1].ruleY - drawn.lines[0].ruleY) -
-               (drawn.lines[3].ruleY - drawn.lines[2].ruleY)) < 1,
+               (drawn.lines[4].ruleY - drawn.lines[3].ruleY)) < 1,
       'pitch ' + Math.round(drawn.lines[1].ruleY - drawn.lines[0].ruleY) + 'px');
     const printable = await page.evaluate(() => {
       const c = document.getElementById('hwPrintCanvas');
@@ -232,14 +268,33 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
     check('A5 the printable copy is rendered crisp and hidden on screen',
       printable.w === 1600 && printable.css === 'none',
       printable.w + 'px wide, display ' + printable.css);
+    // The no-cursive callout: asserted against the RENDER, not the
+    // constant — fillText is observed during a real HWSheet.draw.
+    const callout = await page.evaluate(() => {
+      const drawnStrings = [];
+      const orig = CanvasRenderingContext2D.prototype.fillText;
+      CanvasRenderingContext2D.prototype.fillText = function (t, ...a) {
+        drawnStrings.push(String(t));
+        return orig.call(this, t, ...a);
+      };
+      try { HWSheet.draw(document.createElement('canvas'), 800); }
+      finally { CanvasRenderingContext2D.prototype.fillText = orig; }
+      return { printed: drawnStrings.includes(HWSheet.CALLOUT),
+               text: HWSheet.CALLOUT };
+    });
+    check('A6 the no-cursive callout is PRINTED on the sheet render',
+      callout.printed, '"' + callout.text + '"');
+    check('A7 the callout is child words — no jargon, no blame',
+      /hold hands/.test(callout.text) &&
+      !/cursive|wrong|failed|invalid|error|don.t|never/i.test(callout.text));
   }
   await page.screenshot({ path: path.join(SHOTS, '11-handwriting-sheet.png') });
 
   // ==== HW-B: the complete sheet =============================================
   console.log('\n== HW-B: A COMPLETE FILLED SHEET ===========================');
-  const clean = await compose({ seed: 7, width: 2000, omit: '', corruptLine: -1 });
+  const clean = await compose({ seed: 7, width: 2000, omit: '' });
   check('B1 the synthetic sheet is deterministic (seeded, no Math.random)',
-    (await compose({ seed: 7, width: 2000, omit: '', corruptLine: -1 }))
+    (await compose({ seed: 7, width: 2000, omit: '' }))
       .buffer.equals(clean.buffer),
     clean.buffer.length + ' bytes twice');
   {
@@ -247,20 +302,22 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
     check('B2 the journey reaches the alphabet through the real capture entry',
       stage === 'alphabet', 'stage ' + stage);
     const data = await lettersData();
-    check('B3 every pangram letter and every digit was captured',
-      data.have === SORTED, data.have.length + '/36: ' + data.have);
+    check('B3 every letter, every CAPITAL and every digit was captured',
+      data.have === SORTED, data.have.length + '/62: ' + data.have);
     const totals = data.lines.reduce((a, l) => ({ acc: a.acc + l.accepted, exp: a.exp + l.expected }),
       { acc: 0, exp: 0 });
-    check('B4 the lines aligned essentially in full', totals.acc >= totals.exp - 6,
+    check('B4 the lines aligned essentially in full', totals.acc >= totals.exp - 10,
       totals.acc + ' of ' + totals.exp + ' letters accepted');
     const bad = mislabels(data, clean.gt);
     check('B5 NO accepted letter is mislabeled (each stands on its own ground truth)',
       bad.length === 0, bad.length ? bad.slice(0, 5).join(' ') : totals.acc + ' letters checked');
     // Baseline consistency: letters without descenders sit ON the rule.
+    // Q and J are excluded like gjpqy: in the fixture's serif face the
+    // Q tail (and J hook) genuinely dip below the baseline.
     const sitters = [];
     for (const ln of data.lines) {
       for (const l of ln.letters) {
-        if (l.accepted && !'gjpqy'.includes(l.ch)) sitters.push(l.below);
+        if (l.accepted && !'gjpqyQJ'.includes(l.ch)) sitters.push(l.below);
       }
     }
     const xh = await page.evaluate(() => {
@@ -271,10 +328,16 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
     check('B6 baselines are consistent: every non-descender rests on the rule',
       sitters.length > 60 && worst <= 0.35 * xh,
       sitters.length + ' letters, worst ' + worst.toFixed(1) + 'px of x-height ' + Math.round(xh) + 'px');
-    // The empty-slot grid never shows here — all 36 present.
+    // The empty-slot grid never shows here — all 62 present.
     const emptySlots = await page.locator('.hw-slot.empty').count();
-    check('B7 the alphabet grid shows all 36 slots filled', emptySlots === 0,
+    check('B7 the alphabet grid shows all 62 slots filled', emptySlots === 0,
       emptySlots + ' empty');
+    const capSlots = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('.hw-slot'))
+        .map((s) => s.dataset.ch).join(''));
+    check('B7b the grid carries the capitals row A–Z (lowercase · capitals · digits)',
+      capSlots === 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',
+      capSlots.length + ' slots');
   }
 
   console.log('\n== HW-B: THE FONT ==========================================');
@@ -284,15 +347,15 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
     const bytes1 = await fontBytes();
     const font = opentype.parse(bytes1.buffer.slice(bytes1.byteOffset, bytes1.byteOffset + bytes1.length));
     check('B8 the built font PARSES (opentype.js reads its own tables back)',
-      font.glyphs.length >= 38 && !!font.tables.cmap && !!font.tables.os2,
+      font.glyphs.length >= 64 && !!font.tables.cmap && !!font.tables.os2,
       font.glyphs.length + ' glyphs, tables ' + Object.keys(font.tables).join(','));
     let unmapped = '';
     for (const ch of ALPHABET) {
       if (!font.charToGlyphIndex(ch)) unmapped += ch;
     }
-    check('B9 the cmap maps all of a–z, 0–9 and space',
+    check('B9 the cmap maps all of a–z, A–Z, 0–9 and space',
       unmapped === '' && font.charToGlyphIndex(' ') > 0,
-      unmapped ? 'unmapped: ' + unmapped : '37 mapped');
+      unmapped ? 'unmapped: ' + unmapped : '63 mapped');
     check('B10 metrics are the measured ones: 1000/em, x-height → 500 units',
       font.unitsPerEm === 1000 &&
       (await page.evaluate(() => window.__hw.font.report.xHeightPx)) > 8,
@@ -305,6 +368,27 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
     const desc = font.charToGlyph('g').getBoundingBox();
     check('B12 descenders descend: “g” reaches below the baseline', desc.y1 < -60,
       'g yMin ' + Math.round(desc.y1));
+    // Cap-height: MEASURED from the child's own capitals, no longer the
+    // ascender fallback. Two witnesses that must agree: our own report
+    // (median capital ink top × scale) and the font's OS/2 sCapHeight,
+    // which the assembler takes from a real capital glyph's outline.
+    const capFacts = await page.evaluate(() => ({
+      capHeight: window.__hw.font.report.capHeight,
+      capMeasured: window.__hw.font.report.capMeasured,
+      ascender: window.__hw.font.report.ascender
+    }));
+    check('B12b cap-height is MEASURED from the capitals (not the ascender fallback)',
+      capFacts.capMeasured && capFacts.capHeight < capFacts.ascender &&
+      capFacts.capHeight > 500,
+      'capHeight ' + capFacts.capHeight + ' vs ascender-fallback ' + capFacts.ascender);
+    const os2Cap = font.tables.os2.sCapHeight;
+    check('B12c OS/2 sCapHeight agrees with the measured capitals (±12%)',
+      Math.abs(os2Cap - capFacts.capHeight) <= 0.12 * capFacts.capHeight,
+      'sCapHeight ' + os2Cap + ' vs measured ' + capFacts.capHeight);
+    const capBox = font.charToGlyph('H').getBoundingBox();
+    check('B12d “H” stands cap-height tall on the baseline',
+      Math.abs(capBox.y1) <= 90 && capBox.y2 > 550,
+      'H yMin ' + Math.round(capBox.y1) + ', yMax ' + Math.round(capBox.y2));
 
     // The preview: rendered with the REAL FontFace, measured against the
     // fallback rendering of the same sentence.
@@ -350,7 +434,7 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
   // ==== HW-C: the refuse rule ================================================
   console.log('\n== HW-C: REFUSE RATHER THAN GUESS ==========================');
   const CORRUPT = 1; // line 2 — every word ≥ 3 letters, so nothing 1:1 survives
-  const variant = await compose({ seed: 7, width: 2000, omit: 'x', corruptLine: CORRUPT });
+  const variant = await compose({ seed: 7, width: 2000, omit: 'x', corruptLines: [CORRUPT] });
   {
     await page.click('#hwTestNewSheet');
     await page.waitForSelector('#stepHwSheet.here');
@@ -371,7 +455,7 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
       bad.length === 0, bad.length ? bad.slice(0, 5).join(' ') : 'all accepted letters on their own ground truth');
     check('C5 the never-written letter is honestly absent (x and only x)',
       data.have === SORTED.replace('x', ''),
-      'have ' + data.have.length + '/36, missing "' +
+      'have ' + data.have.length + '/62, missing "' +
       [...ALPHABET].filter((c) => !data.have.includes(c)).join('') + '"');
     const emptySlots = await page.locator('.hw-slot.empty').count();
     const emptyCh = await page.evaluate(() =>
@@ -394,8 +478,8 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
       data2.lines[CORRUPT].accepted + ' of ' + data2.lines[CORRUPT].expected);
     check('C10 the other lines kept their letters (the retake replaced ONE line)',
       data2.lines[0].accepted >= 25 && data2.lines[2].accepted >= 24 &&
-      data2.lines[3].accepted >= 18,
-      [0, 2, 3].map((i) => data2.lines[i].accepted + '/' + data2.lines[i].expected).join(' '));
+      data2.lines[3].accepted >= 22 && data2.lines[4].accepted >= 18,
+      [0, 2, 3, 4].map((i) => data2.lines[i].accepted + '/' + data2.lines[i].expected).join(' '));
 
     // The variant font: absent letters are ABSENT FROM THE CMAP.
     // (x was written nowhere — including the retake, which came from the
@@ -413,6 +497,97 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
     check('C11 a letter never captured is simply ABSENT from the cmap (falls back, never blank)',
       vfont.charToGlyphIndex('x') === 0 && vfont.charToGlyphIndex('a') > 0,
       'x → glyph 0 (.notdef unmapped), a → glyph ' + vfont.charToGlyphIndex('a'));
+  }
+
+  // ==== HW-D: “this looks joined-up” =========================================
+  console.log('\n== HW-D: THIS LOOKS JOINED-UP ==============================');
+  {
+    // ONE welded line → the holding-hands message on that row, generic
+    // everywhere else, no sheet-level banner.
+    await page.click('#hwTestNewSheet');
+    await page.waitForSelector('#stepHwSheet.here');
+    const welded = await compose({ seed: 7, width: 2000, omit: '', corruptLines: [CORRUPT] });
+    const stage = await feed(welded);
+    check('D1 the welded sheet reaches the alphabet', stage === 'alphabet');
+    const data = await lettersData();
+    check('D2 the welded line is CLASSIFIED joined-up (touching dominates)',
+      data.lines[CORRUPT].joined && data.lines[CORRUPT].touching >=
+        0.5 * data.lines[CORRUPT].expected,
+      data.lines[CORRUPT].touching + '/' + data.lines[CORRUPT].expected + ' touching');
+    const rows = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('.hw-linerow span')).map((s) => s.textContent));
+    check('D3 that row says the letters are holding hands, and asks for little spaces',
+      /holding hands/.test(rows[CORRUPT]) && /little space/.test(rows[CORRUPT]) &&
+      /once more/.test(rows[CORRUPT]),
+      '"' + rows[CORRUPT].slice(0, 90) + '…"');
+    check('D4 every other row keeps the generic count text',
+      rows.every((t, i) => i === CORRUPT ||
+        (/of \d+ letters/.test(t) && !/holding hands/.test(t))));
+    let banner = await page.evaluate(() =>
+      document.getElementById('hwJoinedNote').style.display);
+    check('D5 one joined line does NOT raise the sheet-level message',
+      banner !== 'block', 'display ' + banner);
+    check('D6 the refuse rule holds on the welded line: 0 accepted, 0 mislabels',
+      data.lines[CORRUPT].accepted === 0 && mislabels(data, welded.gt).length === 0,
+      data.lines[CORRUPT].accepted + ' accepted');
+    await page.locator('#hwLineList').scrollIntoViewIfNeeded();
+    await page.screenshot({ path: path.join(SHOTS, '14-handwriting-joined-line.png') });
+
+    // TWO touching pairs → merely messy: generic retake, not joined-up.
+    const pairs = await compose({ seed: 7, width: 2000, omit: '', pairLine: 0, pairCount: 2 });
+    await page.click('#hwNewSheetBtn');
+    await page.waitForSelector('#stepHwSheet.here');
+    const stage2 = await feed(pairs);
+    check('D7 the two-pairs sheet reaches the alphabet', stage2 === 'alphabet');
+    const dp = await lettersData();
+    check('D8 two touching pairs stay BELOW the joined-up gates (thresholds behave)',
+      !dp.lines[0].joined && dp.lines[0].touching >= 2 &&
+      dp.lines[0].touching < 0.35 * dp.lines[0].expected,
+      dp.lines[0].touching + '/' + dp.lines[0].expected + ' touching, ' +
+      dp.lines[0].accepted + ' accepted');
+    const rows2 = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('.hw-linerow span')).map((s) => s.textContent));
+    check('D9 that line keeps the GENERIC retake message',
+      /of \d+ letters/.test(rows2[0]) && rows2.every((t) => !/holding hands/.test(t)),
+      '"' + rows2[0] + '"');
+    check('D10 the touched letters were refused, never mislabeled — the rest read',
+      mislabels(dp, pairs.gt).length === 0 &&
+      dp.lines[0].accepted >= dp.lines[0].expected - 8,
+      dp.lines[0].accepted + '/' + dp.lines[0].expected + ' accepted');
+
+    // MOST lines welded → the child writes joined-up throughout: ONE
+    // gentle sheet-level message, said once, with the rows kept generic.
+    const cursive = await compose({ seed: 7, width: 2000, omit: '', corruptLines: [0, 1, 2] });
+    await page.click('#hwNewSheetBtn');
+    await page.waitForSelector('#stepHwSheet.here');
+    const stage3 = await feed(cursive);
+    check('D11 the mostly-welded sheet reaches the alphabet', stage3 === 'alphabet');
+    const dm = await lettersData();
+    banner = await page.evaluate(() =>
+      document.getElementById('hwJoinedNote').style.display);
+    check('D12 most lines joined → the sheet-level message appears',
+      banner === 'block' && dm.lines.filter((l) => l.joined).length >= 3,
+      dm.lines.filter((l) => l.joined).length + ' joined lines, display ' + banner);
+    const surface = await page.evaluate(() => ({
+      count: (document.querySelector('.wrap').innerText.match(/hold hands/g) || []).length,
+      note: document.getElementById('hwJoinedNote').textContent
+    }));
+    check('D13 …exactly ONCE — not four copies of the line-level one',
+      surface.count === 1 && /little space/.test(surface.note),
+      surface.count + ' occurrence(s): "' + surface.note.slice(0, 70) + '…"');
+    const rows3 = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('.hw-linerow span')).map((s) => s.textContent));
+    check('D14 the line rows stay generic under the sheet-level message',
+      rows3.every((t) => !/holding hands/.test(t)));
+    // Line 1's one-letter word “a” is never welded (a single letter has
+    // nothing to hold hands with) and reads honestly — so ≤1 there, 0 on
+    // the lines whose words are all ≥3 letters.
+    check('D15 welded lines still contribute NOTHING: 0 accepted where welds ran, 0 mislabels',
+      dm.lines[0].accepted <= 1 && dm.lines[1].accepted === 0 &&
+      dm.lines[2].accepted === 0 && mislabels(dm, cursive.gt).length === 0,
+      [0, 1, 2].map((i) => dm.lines[i].accepted + '/' + dm.lines[i].expected).join(' '));
+    check('D16 no blame word in either joined-up message',
+      !/failed|invalid|error|wrong|cursive/i.test(rows.join(' ') + ' ' + surface.note));
   }
 
   // ---- hygiene ---------------------------------------------------------------

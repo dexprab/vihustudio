@@ -25,7 +25,22 @@
   'use strict';
 
   const $ = (id) => document.getElementById(id);
-  const ALPHABET = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  // Three rows: lowercase, capitals, digits — each group starts a fresh
+  // grid row so the capitals read as their own row of the alphabet.
+  const GROUPS = ['abcdefghijklmnopqrstuvwxyz',
+                  'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+                  '0123456789'];
+  const ALPHABET = GROUPS.join('');
+
+  // Child-facing words for a line whose letters held hands (touching-
+  // refusals dominated — hwRead's `joined`). Never blame words; the
+  // generic retake stays for lines that are merely messy.
+  const JOINED_LINE_MSG = 'these letters are holding hands — write this ' +
+    'line once more with a little space between each letter, and I’ll ' +
+    'meet them all';
+  const JOINED_SHEET_MSG = 'Your letters like to hold hands! I can only ' +
+    'meet letters written on their own — try the sheet again, giving ' +
+    'each letter a little space of its own.';
 
   const state = {
     stage: 'idle',      // idle · sheet · armed · reading · alphabet · test
@@ -182,31 +197,50 @@
     const grid = $('hwGrid');
     grid.innerHTML = '';
     let have = 0;
-    for (const ch of ALPHABET) {
-      const slot = document.createElement('div');
-      slot.className = 'hw-slot';
-      slot.dataset.ch = ch;
-      const label = document.createElement('div');
-      label.className = 'hw-slot-label';
-      label.textContent = ch;
-      slot.appendChild(label);
-      const sample = state.samples.get(ch);
-      if (sample) {
-        have++;
-        const c = document.createElement('canvas');
-        drawSample(c, sample);
-        slot.appendChild(c);
-      } else {
-        slot.classList.add('empty');
-        const e = document.createElement('div');
-        e.className = 'hw-slot-empty';
-        slot.appendChild(e);
+    for (const group of GROUPS) {
+      if (group !== GROUPS[0]) {
+        const br = document.createElement('div');
+        br.className = 'hw-grid-break';
+        grid.appendChild(br);
       }
-      grid.appendChild(slot);
+      for (const ch of group) {
+        const slot = document.createElement('div');
+        slot.className = 'hw-slot';
+        slot.dataset.ch = ch;
+        const label = document.createElement('div');
+        label.className = 'hw-slot-label';
+        label.textContent = ch;
+        slot.appendChild(label);
+        const sample = state.samples.get(ch);
+        if (sample) {
+          have++;
+          const c = document.createElement('canvas');
+          drawSample(c, sample);
+          slot.appendChild(c);
+        } else {
+          slot.classList.add('empty');
+          const e = document.createElement('div');
+          e.className = 'hw-slot-empty';
+          slot.appendChild(e);
+        }
+        grid.appendChild(slot);
+      }
     }
     $('hwGridNote').textContent = have === ALPHABET.length
       ? 'Every letter is here — these are all yours.'
       : 'An empty box is a letter I haven’t met yet. You can write its line once more, or build the font without it — words will borrow a plain letter there.';
+
+    // Sheet-level joined-up: when MOST read lines look joined the child
+    // writes joined-up throughout, so say it ONCE, gently, up front —
+    // and keep the per-line rows generic rather than four copies of the
+    // same sentence.
+    const found = state.lines.filter((ln) => ln.found);
+    const joinedLines = found.filter((ln) => ln.joined);
+    const sheetJoined = found.length > 0 &&
+      joinedLines.length >= Math.max(2, Math.ceil(found.length * 0.6));
+    const joinedNote = $('hwJoinedNote');
+    joinedNote.textContent = JOINED_SHEET_MSG;
+    joinedNote.style.display = sheetJoined ? 'block' : 'none';
 
     const list = $('hwLineList');
     list.innerHTML = '';
@@ -214,7 +248,11 @@
       const row = document.createElement('div');
       row.className = 'hw-linerow';
       const txt = document.createElement('span');
-      if (ln.found) {
+      if (ln.found && ln.joined && !sheetJoined) {
+        row.classList.add('joined');
+        txt.textContent = 'Line ' + (ln.index + 1) + ' · “' + ln.text + '” · ' +
+          JOINED_LINE_MSG;
+      } else if (ln.found) {
         txt.textContent = 'Line ' + (ln.index + 1) + ' · “' + ln.text + '” · ' +
           ln.accepted + ' of ' + ln.expected + ' letters';
       } else {

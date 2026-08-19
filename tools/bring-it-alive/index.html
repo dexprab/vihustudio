@@ -102,6 +102,7 @@
   .hw-slot canvas { display:block; margin:0 auto; }
   .hw-slot.empty { border-style:dashed; }
   .hw-slot-empty { width:56px; height:56px; margin:0 auto; }
+  .hw-grid-break { grid-column:1 / -1; height:2px; }
   .hw-linerow { display:flex; gap:.8rem; align-items:center; justify-content:space-between;
                 border:1px solid var(--line); border-radius:8px; background:var(--panel);
                 padding:.5rem .8rem; margin-top:.5rem; font-size:.86rem; color:var(--soft); }
@@ -351,6 +352,7 @@
   <!-- THE ALPHABET -->
   <section class="step" id="stepHwLetters">
     <h2>Your letters</h2>
+    <div class="quiet" id="hwJoinedNote"></div>
     <p class="note" id="hwGridNote"></p>
     <div class="hw-grid" id="hwGrid"></div>
     <div id="hwLineList"></div>

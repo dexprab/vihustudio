@@ -18,10 +18,11 @@
  *    re-invents "what is ink"; this module only decides what the ink
  *    MEANS on this particular sheet.
  *
- * 2. RULES. The four ruled baselines are found as long horizontal
- *    darker-than-paper runs, then the four that match the sheet's known
- *    pattern (even pitch, equal length, aligned ends, pitch/length ratio
- *    from HWSheet.GEOM) are chosen by scoring every combination. The
+ * 2. RULES. The ruled baselines (one per model line — HWSheet.LINES is
+ *    the count) are found as long horizontal darker-than-paper runs,
+ *    then the set that matches the sheet's known pattern (even pitch,
+ *    equal length, aligned ends, pitch/length ratio from HWSheet.GEOM)
+ *    is chosen by scoring every combination. The
  *    rules are the sheet's own registration marks: each line's zone is
  *    derived from its rule's measured length, so nothing about the
  *    photograph's scale or position is ever assumed.
@@ -75,13 +76,30 @@
     WIDE_JOIN: 1.2,       // "a word-gap away" (× unit)
     ACCEPT_COST: 1.5,     // accept a 1:1 match only under this local cost
     ACCEPT_RATIO_LO: 0.45,
-    ACCEPT_RATIO_HI: 2.1
+    ACCEPT_RATIO_HI: 2.1,
+    // "This looks joined-up" — when touching-refusals DOMINATE a line it
+    // is a writing STYLE (the letters hold hands), not a messy line, and
+    // the child deserves to be told what happened rather than a generic
+    // retake. Thresholds measured against the suite's fixtures: a line
+    // whose words are all welded measures 22/30 touching-refused with 0
+    // accepted; a line with two touching pairs measures 2/33 touching
+    // (6%) with the rest accepted. Halfway (50%) sits far from both.
+    JOINED_TOUCH_FRAC: 0.5,   // touching ≥ this × expected → joined-up
+    // Secondary net for partial welds the DP labels as a mix of touching
+    // and stray/missing: almost nothing accepted AND a solid third
+    // touching is still a style, not a smudge.
+    JOINED_ACCEPT_FRAC: 0.2,
+    JOINED_TOUCH_FRAC_LO: 0.35
   };
 
   // Expected RELATIVE ink widths (advance-ish) per character. Only used
-  // to align — never to decide what a letter looks like.
+  // to align — never to decide what a letter looks like. Capitals are on
+  // their own line, so only their widths RELATIVE TO EACH OTHER matter
+  // (the line's unit is derived from the line's own ink).
   const WIDTH = { i: 0.40, l: 0.40, j: 0.50, t: 0.62, f: 0.62, r: 0.68,
-                  m: 1.55, w: 1.48, '1': 0.55 };
+                  m: 1.55, w: 1.48, '1': 0.55,
+                  I: 0.45, J: 0.68, L: 0.82, E: 0.88, F: 0.82, T: 0.90,
+                  M: 1.40, W: 1.55 };
   function wt(ch) { return WIDTH[ch] || 1.0; }
   function wcost(w, e) { const d = (w - e) / e; return Math.min(6, 3 * d * d); }
 
@@ -169,19 +187,27 @@
   }
 
   // Least-squares fit of one rule: y = a + b·x, plus measured thickness.
+  // Per column, only the dark run CONTAINING the band's own row counts —
+  // first-dark-to-last-dark across the whole window let ink hovering
+  // above the rule (a joined-up child's welded strokes, a low descender)
+  // drag the fitted centre off the printed line, measured at three
+  // quarters of a rule thickness.
   function fitRule(seg, band) {
     const w = seg.width, h = seg.height;
     const yPad = Math.max(3, (band.y1 - band.y0 + 1) * 2);
+    const dark = (x, y) => seg.paper[y * w + x] - seg.lum[y * w + x] > P.RULE_DARK;
+    const yMid = Math.round((band.y0 + band.y1) / 2);
     const xs = [], ys = [], ts = [];
     for (let x = band.x0; x <= band.x1; x += 4) {
-      let y0 = -1, y1 = -1;
-      for (let y = Math.max(0, band.y0 - yPad); y <= Math.min(h - 1, band.y1 + yPad); y++) {
-        if (seg.paper[y * w + x] - seg.lum[y * w + x] > P.RULE_DARK) {
-          if (y0 < 0) y0 = y;
-          y1 = y;
-        }
+      let seed = -1;
+      for (let dy = 0; dy <= 2 && seed < 0; dy++) {
+        if (yMid - dy >= 0 && dark(x, yMid - dy)) seed = yMid - dy;
+        else if (yMid + dy <= h - 1 && dark(x, yMid + dy)) seed = yMid + dy;
       }
-      if (y0 < 0) continue;
+      if (seed < 0) continue;
+      const yLo = Math.max(0, band.y0 - yPad), yHi = Math.min(h - 1, band.y1 + yPad);
+      let y0 = seed; while (y0 > yLo && dark(x, y0 - 1)) y0--;
+      let y1 = seed; while (y1 < yHi && dark(x, y1 + 1)) y1++;
       xs.push(x); ys.push((y0 + y1) / 2); ts.push(y1 - y0 + 1);
     }
     if (xs.length < 8) return null;
@@ -203,16 +229,30 @@
   // construction (hwSheet.js), so normally none of it is ink and there is
   // nothing to remove — this runs only when a dim capture pushed the rule
   // over the margin, and says so in the log.
+  //
+  // Only BARE stretches of the rule — no ink standing just above — may
+  // testify. A child pressing firmly puts ink at the rule's own row at
+  // every letter foot, and counting those said "the rule is ink" about
+  // handwriting (measured: flat sans-like letter bottoms alone crossed
+  // the 30% gate), which sent the run-length remover through the child's
+  // letter bottoms on a perfectly bright capture.
   function ruleReadsAsInk(seg, rule) {
     const w = seg.width;
+    const t = Math.max(2, rule.thickness);
     let on = 0, total = 0;
     for (let x = rule.x0; x <= rule.x1; x += 3) {
       const y = Math.round(rule.yAt(x));
       if (y < 0 || y >= seg.height) continue;
+      let letterAbove = false;
+      for (let dy = t + 2; dy <= t + 6; dy++) {
+        const yy = y - dy;
+        if (yy >= 0 && seg.ink[yy * w + x]) { letterAbove = true; break; }
+      }
+      if (letterAbove) continue; // a letter stands here — its foot is not the rule
       total++;
       if (seg.ink[y * w + x]) on++;
     }
-    return total > 0 && on / total > 0.3;
+    return total > 8 && on / total > 0.3;
   }
 
   function removeRule(cleaned, seg, rule, pad) {
@@ -543,7 +583,7 @@
         backstopped++;
       }
     }
-    log('hw: 4 rules fit (page ~' + Math.round(zone.pageW) + 'px wide, rule ' +
+    log('hw: ' + fits.length + ' rules fit (page ~' + Math.round(zone.pageW) + 'px wide, rule ' +
         fits[0].thickness + 'px thick)' + (backstopped
           ? ' — ' + backstopped + ' read as ink and removed by run-length ' +
             '(dim capture; round letter bottoms may split there)'
@@ -589,13 +629,21 @@
       }
       const expected = letters.length;
       const got = letters.filter((l) => l.accepted).length;
+      const touching = letters.filter((l) => l.kind === 'touching').length;
+      // Joined-up: touching-refusals dominate → the letters held hands.
+      // A merely messy line (a couple of touching pairs, the rest read)
+      // stays below both gates and keeps the generic retake.
+      const joined = expected > 0 &&
+        (touching >= P.JOINED_TOUCH_FRAC * expected ||
+         (got <= P.JOINED_ACCEPT_FRAC * expected &&
+          touching >= P.JOINED_TOUCH_FRAC_LO * expected));
       log('hw: line ' + (i + 1) + ' — ' + comps.length + ' blobs vs ' + expected +
           ' letters: ' + got + ' accepted, ' +
-          letters.filter((l) => l.kind === 'touching').length + ' touching-refused, ' +
+          touching + ' touching-refused, ' +
           letters.filter((l) => l.kind === 'missing').length + ' missing (unit ' +
-          Math.round(al.unit) + 'px)');
+          Math.round(al.unit) + 'px)' + (joined ? ' — READS AS JOINED-UP' : ''));
       lines.push({ index: i, text, found: true, rule,
-                   letters, expected, accepted: got, blobs,
+                   letters, expected, accepted: got, touching, joined, blobs,
                    unit: al.unit, gapsIntra, gapsWord });
     }
 
