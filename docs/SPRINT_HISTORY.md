@@ -3927,3 +3927,47 @@ page back to the capture step; the Studio walk's 404 gate excludes
 companion pose art a pack declares but never shipped (Decision 24's
 known unevenness), which run-to-run bonding surfaces
 nondeterministically.
+
+## Bring It Alive Becomes Part of the Studio
+
+Decided by the product owner (*"the tool need to become part of
+studio"*), with a mid-sprint design directive taken as a hard
+requirement: *"the same tool page ui will not work in studio."* Built
+in a worker worktree; independently re-verified before merging — the
+standalone suite at 163/163 (camera fixture regenerated from scratch)
+and a 37-check Playwright walk of the real Studio, both reproduced on
+the merged tree. Two verification timeouts along the way were stale
+browser processes from back-to-back runs, disclosed as harness, not
+product.
+
+**One flow, two hosts.** `tools/bring-it-alive/js/flow.js` (`BIAFlow`)
+now holds everything whose duplication could let hosts drift: pipeline
+order, the honest-failure thresholds and their child-facing words,
+display geometry, the claim/refine canvas painting, brush radii. The
+standalone page keeps its ids, dev chrome, downloads and `window.__bia`
+untouched — the suite needed zero changes, which is the proof of the
+seam. `js/bringItAliveStudio.js` is the second host: a light,
+Studio-native overlay on Picture Studio's modal pattern, one warm
+headline per screen — *Show me a drawing you made on paper* → *Draw a
+circle around what you made* → *We found this* (Keep/Remove as two
+friendly brushes) → *It's yours! Colour it in — or keep it just as it
+is* (the Original view is "Peek at the paper") → 🌟 **Keep in My
+Library**. No dev log, no downloads, no technical words (asserted by
+scan at every step); camera offered only when the API exists; Escape
+and ✕ discard cleanly, tracks stopped, and reopening starts fresh.
+
+**The doors:** a permanent *✨ Bring a drawing to life* at the top of
+the My Library picker — always present, not only when empty — and the
+empty-state invitation now opens the same overlay; the old new-tab
+link is gone. Keeping a character closes the overlay into the picker
+with the character one tap from the page. The whole journey verified
+at 1024×768, the Studio's own minimum (editing canvas ~560×380 there —
+usable, not generous, disclosed).
+
+**Disclosed:** the refine step's unclaimed ghost is the flow's shared
+dark-navy truth — the one dark moment in a light overlay, a look
+decision if it ever bothers anyone; the Studio name field always
+pre-fills "My Character" (filenames mean nothing to a child); a
+browser refresh mid-overlay loses the un-kept creation (Decision 23's
+accepted cost); the overlay's camera path is wired and offered but the
+fake-camera end-to-end runs only in the standalone suite (C1–C8).
