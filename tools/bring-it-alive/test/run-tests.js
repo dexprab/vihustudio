@@ -27,13 +27,13 @@
  *
  * v0.2 "editable creation" adds the MARK 3.5 section: the region structure
  * (fills under the lines, line colour as a tint of the child's own ink,
- * Thin/Original/Thick line weight, the fine pencil, edits-only erase,
+ * Thin/Original/Thick line weight, the fine pencil, erase-anything,
  * Original|My Version, Reset) — the product owner's A–L acceptance list,
  * on the real photograph, ending in the ORIGINAL | MY VERSION side-by-side.
- * ONE v0.2 behaviour was retired BY THE BRIEF, not by regression: erase no
- * longer hides original pixels — the child's eraser touches the child's
- * edits only, so the old Y5 hide-original checks are replaced by their
- * successors ("erase over the original is a no-op").
+ * Erase semantics settled by the product owner ("allow me to erase
+ * whatsoever i want"): erase clears edits where edits are and HIDES the
+ * original where they are not — a replayed plane, never a write, so undo,
+ * Reset and the Original view recover every hidden pixel exactly (Y5).
  *
  * Run:
  *   node test/serve.js 8765 &
@@ -693,20 +693,23 @@ function check(name, cond, detail) {
   check('Y1 developer strip shows the layer stack and op history',
     y1.opsLine.includes('original') && y1.opsLine.includes('fills') &&
     /history 0\/0 ops/.test(y1.opsLine), JSON.stringify(y1.opsLine.slice(0, 80)));
-  // The working surface: a quiet warm paper-grey, not a checkerboard (a
-  // checkerboard is a developer's transparency indicator) and not a sky.
+  // The working surface: a soft light checkerboard — restored by the
+  // product owner over the v0.2 brief's flat paper-grey ("make the
+  // background transparent again. that was actually better."). Sampled at
+  // cell size 14: neighbouring cells differ, cells two apart match, and
+  // both tones are light and warm — never a dark sky, never a place.
   const surf = await page.evaluate(() => {
     const c = document.getElementById('editCanvas');
     const x = c.getContext('2d');
     const px = (a, b) => Array.from(x.getImageData(a, b, 1, 1).data);
-    return { a: px(3, 3), b: px(3 + 14, 3), c: px(c.width - 4, 3) };
+    return { a: px(3, 3), b: px(3 + 14, 3), c: px(3 + 28, 3) };
   });
-  check('Y1 the surface is ONE quiet colour — no checkerboard cells',
-    surf.a.join() === surf.b.join() && surf.a.join() === surf.c.join(),
-    surf.a.join() + ' / ' + surf.b.join());
-  check('Y1 the surface is warm paper-grey, not dark, not white',
-    surf.a[0] >= 215 && surf.a[0] <= 248 && surf.a[0] >= surf.a[2] && surf.a[3] === 255,
-    'rgb(' + surf.a.slice(0, 3).join(',') + ')');
+  check('Y1 the surface is a checkerboard — neighbouring cells differ, alternating cells match',
+    surf.a.join() !== surf.b.join() && surf.a.join() === surf.c.join(),
+    surf.a.join() + ' / ' + surf.b.join() + ' / ' + surf.c.join());
+  check('Y1 both surface tones are light and warm, not dark, not a sky',
+    [surf.a, surf.b].every(p => p[0] >= 215 && p[0] >= p[2] && p[3] === 255),
+    'rgb(' + surf.a.slice(0, 3).join(',') + ') / rgb(' + surf.b.slice(0, 3).join(',') + ')');
 
   // ---- Y2: the ghost check ---------------------------------------------------
   // The initial view must BE the original extraction — full pencil darkness,
@@ -792,12 +795,13 @@ function check(name, cond, detail) {
     y4c.png.dimsMatch && y4c.png.opaqueMismatch === 0 && y4c.png.farMismatch === 0,
     'png ' + y4c.png.pngBytes + ' bytes, opaque exact, feather ±2');
 
-  // ---- Y5: the eraser touches the child's edits ONLY -------------------------
-  // SUPERSEDES the old Y5 (erase hides original pixels, recoverably): the
-  // product owner's new brief says erase must not damage the protected
-  // original artwork, so erase over bare drawing is now a visual NO-OP —
-  // asserted as byte equality, plus the original walk.
-  console.log('\n-- Y5: the eraser cannot touch the original drawing');
+  // ---- Y5: the eraser reaches everything, and destroys nothing ---------------
+  // RESTORED by the product owner ("allow me to erase whatsoever i want"),
+  // superseding the brief's edits-only erase: erase over the bare drawing
+  // HIDES those pixels (alpha 0 in the view) while the ORIGINAL layer stays
+  // byte-identical — hiding is a replayed plane, never a write — so undo
+  // brings every pixel back exactly, asserted as byte equality.
+  console.log('\n-- Y5: the eraser hides the original, recoverably — never destroys it');
   await page.evaluate(() => { BIAEditor.undo(); BIAEditor.undo(); }); // back to pencil-only, identity transform
   const spot = await page.evaluate(() => {
     const c = window.__bia.creation;
@@ -830,13 +834,17 @@ function check(name, cond, detail) {
     cmp: window.__test.cmpView('v5pre'),
     walk: await window.__test.originalWalk('/tools/imagebed/1000299474.jpg')
   }), spot);
-  check('Y5 erase over the bare original changes NOTHING in the view (byte equality)',
-    y5.cmp.mismatches === 0 && y5.cmp.transformSame,
-    y5.cmp.mismatches + ' bytes differ');
-  check('Y5 the original pixel is still there at full alpha', y5.at[3] === 255,
-    'rgba(' + y5.at.join(',') + ')');
-  check('Y5 ORIGINAL layer byte-identical after the erase', y5.walk.mismatches === 0);
-  await page.evaluate(() => BIAEditor.undo());   // the no-op erase op leaves the history
+  check('Y5 erase over the bare original HIDES it — the view pixel is transparent now',
+    y5.at[3] === 0 && y5.cmp.mismatches > 0,
+    'rgba(' + y5.at.join(',') + '), ' + y5.cmp.mismatches + ' bytes differ');
+  check('Y5 ORIGINAL layer byte-identical after the erase — hidden, never written',
+    y5.walk.mismatches === 0);
+  const y5u = await page.evaluate(() => {
+    BIAEditor.undo();
+    return window.__test.cmpView('v5pre');
+  });
+  check('Y5 undo restores every hidden pixel byte-exactly — nothing was destroyed',
+    y5u.mismatches === 0 && y5u.transformSame, y5u.mismatches + ' bytes differ');
 
   // ---- Y6: erasing PAINT removes paint, and only paint ------------------------
   console.log('\n-- Y6: erasing paint removes paint, not the drawing');
@@ -1253,7 +1261,9 @@ function check(name, cond, detail) {
   check('M5 fine IS fine — the mark is a few pixels tall, not a paintbrush band',
     m5.markHeight >= 2 && m5.markHeight <= 9, m5.markHeight + ' px tall');
 
-  // ---- M6 (I): erase the detail — edits only ---------------------------------
+  // ---- M6 (I): erase the detail ------------------------------------------------
+  // The detail sits in space clear of the original, so this erase touches
+  // only the pencil mark — the hide-original path is Y5's subject.
   console.log('\n-- M6 (I): erase the detail — back to before it, byte for byte');
   await page.locator('button.brush[data-size="medium"]').click();
   await editStroke('toolErase', [[m5spot[0] - 16, m5spot[1]], [m5spot[0] + 16, m5spot[1]]]);
@@ -1328,8 +1338,9 @@ function check(name, cond, detail) {
       .getImageData(Math.round(px), Math.round(py), 1, 1).data;
     return Array.from(d);
   }, m1);
-  check('M9 Original shows the untouched drawing — the filled spot is bare paper-grey there',
-    Math.abs(m9a[0] - 236) <= 4 && Math.abs(m9a[1] - 234) <= 4 && Math.abs(m9a[2] - 228) <= 4,
+  check('M9 Original shows the untouched drawing — the filled spot is bare surface there',
+    ((Math.abs(m9a[0] - 247) <= 4 && Math.abs(m9a[1] - 244) <= 4 && Math.abs(m9a[2] - 238) <= 4) ||
+     (Math.abs(m9a[0] - 236) <= 4 && Math.abs(m9a[1] - 231) <= 4 && Math.abs(m9a[2] - 221) <= 4)),
     'rgb(' + m9a.slice(0, 3).join(',') + ')');
   check('M9 My Version shows the fill at the same spot — one creation, two views',
     m9b[2] > 150 && m9b[2] > m9b[0] && m9b[3] === 255,

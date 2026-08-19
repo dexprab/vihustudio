@@ -17,12 +17,15 @@
  *   │                    replicated boundary pixels at compose time, the
  *   │                    original bytes untouched)
  *   │                  · pencil strokes (point paths, rendered on demand)
- *   │                  · erase — CHILD EDITS ONLY. The eraser clears paint,
- *   │                    pencil and fill pixels under it and can never touch
- *   │                    the original drawing. (v0.2's earlier erase also
- *   │                    HID original pixels; the product owner's new brief
- *   │                    supersedes that: the original is protected from
- *   │                    the child's own eraser.)
+ *   │                  · erase — WHATEVER IS UNDER IT, non-destructively.
+ *   │                    Per pixel: paint/pencil and fill are cleared where
+ *   │                    they exist; where only the original drawing is,
+ *   │                    the eraser HIDES it (a bit in a replayed plane,
+ *   │                    never a write to the layer). Restored by the
+ *   │                    product owner ("allow me to erase whatsoever i
+ *   │                    want") over the brief's edits-only erase. Undo,
+ *   │                    Reset and the Original view all still show every
+ *   │                    hidden pixel, because nothing was destroyed.
  *   └── TRANSFORM  — position, scale, rotation (ops too — one undo stack)
  *
  * CURRENT VIEW = fills, UNDER the original (its lines stay on top), with
@@ -173,6 +176,7 @@
     this.paintCanvas.width = w; this.paintCanvas.height = h;
     this.paintCtx = this.paintCanvas.getContext('2d', { willReadFrequently: true });
     this.fillPlane = new Uint8ClampedArray(w * h * 4);
+    this.erasePlane = new Uint8Array(w * h); // 1 = original hidden by the eraser
     this._lines = {};                      // regionId -> {color, width}
     this._lineMods = null;                 // cache keyed by _lines state
 
@@ -252,15 +256,21 @@
       const st = this._lines[op.region] || (this._lines[op.region] = { color: null, width: 'original' });
       st.width = op.width;
     } else if (op.t === 'erase') {
-      // EDITS ONLY: paint/pencil pixels and fill pixels under the stamp are
-      // cleared. The ORIGINAL is not reachable from here, by construction —
-      // this branch never reads or writes it.
+      // WHATEVER IS UNDER IT, per pixel: paint/pencil and fill are cleared
+      // where they exist; where only the original drawing is, a bit is set
+      // in the erase plane and compose hides that pixel. The ORIGINAL layer
+      // is READ here and never written — hiding is the whole mechanism,
+      // which is why undo, Reset and the Original view all bring every
+      // hidden pixel back exactly.
       const pd = this.paintCtx.getImageData(0, 0, w, h);
-      const d = pd.data, fp = this.fillPlane;
+      const d = pd.data, fp = this.fillPlane, od = this.original.data;
+      const ep = this.erasePlane;
       stampStroke(op.points, op.radius, w, h, (i) => {
         const p = i * 4;
+        const hadEdit = d[p + 3] > 0 || fp[p + 3] > 0;
         if (d[p + 3] > 0) { d[p] = 0; d[p + 1] = 0; d[p + 2] = 0; d[p + 3] = 0; }
         if (fp[p + 3] > 0) { fp[p] = 0; fp[p + 1] = 0; fp[p + 2] = 0; fp[p + 3] = 0; }
+        if (!hadEdit && od[p + 3] > 0) ep[i] = 1;
       });
       this.paintCtx.putImageData(pd, 0, 0);
     } else if (op.t === 'move') {
@@ -398,6 +408,7 @@
     const w = this.original.width, h = this.original.height, n = w * h;
     this.paintCtx.clearRect(0, 0, w, h);
     this.fillPlane.fill(0);
+    this.erasePlane.fill(0);
     this._lines = {};
     this.transform = { x: 0, y: 0, scale: 1, rotation: 0 };
     for (let k = 0; k < this.cursor; k++) this._replayOp(this.ops[k]);
@@ -407,11 +418,11 @@
     const out = new ImageData(new Uint8ClampedArray(this.original.data), w, h);
     const d = out.data, od = this.original.data, fp = this.fillPlane;
     const mods = this._computeLineMods();
-    const hide = mods.hide, tintMap = mods.tintMap;
+    const hide = mods.hide, tintMap = mods.tintMap, ep = this.erasePlane;
     for (let i = 0; i < n; i++) {
       const p = i * 4;
       const fa = fp[p + 3];
-      const hid = hide && hide[i];
+      const hid = (hide && hide[i]) || ep[i];
       const tv = tintMap ? tintMap[i] : 0;
       if (!fa && !hid && !tv) continue;    // untouched pixel: original bytes stand
       let oa = hid ? 0 : od[p + 3];
@@ -580,10 +591,10 @@
   Creation.prototype.toJSONString = function () { return JSON.stringify(this.toJSON()); };
 
   /* Version 1 files still open: same layer shape, older op vocabulary
-   * ('paint' strokes replay exactly as they did). One disclosed semantic
-   * change rides along: a v1 'erase' op now erases EDITS only — the
-   * product owner's new brief protects the original from the eraser, so
-   * a v1 file whose erase had hidden original pixels shows them again. */
+   * ('paint' strokes replay exactly as they did). A v1 'erase' op means
+   * what it meant when it was made: clear edits where edits are, hide
+   * the original where they are not — the semantics the product owner
+   * restored ("allow me to erase whatsoever i want"). */
   async function fromJSON(json) {
     const doc = typeof json === 'string' ? JSON.parse(json) : json;
     if (doc.format !== FORMAT) throw new Error('creation: not a ' + FORMAT + ' document');

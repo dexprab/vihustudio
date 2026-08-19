@@ -6,12 +6,13 @@
  * split is the same one the rest of the tool already lives by: preview.js
  * shows and never touches, and this module gestures and never composes.
  *
- * The working surface is a plain warm paper-grey — not a checkerboard
- * (that reads as a developer surface), not a sky, not a place. The
- * artwork sits on it at full visual weight: no ghosting, no glow, no
- * halo — whatever the view's bytes say, scaled for display and nothing
- * else. Transparency stays real in the document; the surface just
- * doesn't announce it.
+ * The working surface is a soft light checkerboard — restored by the
+ * product owner after seeing both ("make the background transparent
+ * again. that was actually better."), overriding the v0.2 brief's
+ * paper-grey. It shows transparency honestly; it is still not a sky
+ * and not a place. The artwork sits on it at full visual weight: no
+ * ghosting, no glow, no halo — whatever the view's bytes say, scaled
+ * for display and nothing else.
  *
  * Two views of the SAME creation: ORIGINAL (exactly what came from
  * paper — the untouched layer, shown plain) and MY VERSION (original +
@@ -20,7 +21,8 @@
  *
  * Tools: Pencil (Fine/Medium/Thick point-path strokes) · Fill (tap
  * inside a shape to colour it under the lines; tap the line itself to
- * colour the line) · Erase (the child's own edits only) · Move. Line
+ * colour the line) · Erase (anything under it — edits are cleared, the
+ * original is hidden recoverably, never destroyed) · Move. Line
  * weight (Thin/Original/Thick) applies to the last shape touched.
  *
  * One display scale (ds) maps document space to screen; the creation's
@@ -88,10 +90,13 @@
 
   // ---- drawing -----------------------------------------------------------------
   function surface(ctx, w, h) {
-    // A quiet warm paper-grey. Deliberately NOT a checkerboard: that is a
-    // developer's transparency indicator, and this canvas faces a child.
-    ctx.fillStyle = '#eceae4';
-    ctx.fillRect(0, 0, w, h);
+    // A soft light checkerboard: transparency shown honestly. The product
+    // owner chose this over the flat paper-grey after seeing both.
+    const T = 14;
+    for (let y = 0; y < h; y += T) for (let x = 0; x < w; x += T) {
+      ctx.fillStyle = ((x / T + y / T) % 2) ? '#ece7dd' : '#f7f4ee';
+      ctx.fillRect(x, y, T, T);
+    }
   }
 
   function draw() {

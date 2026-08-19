@@ -3771,3 +3771,21 @@ round trip may drift ±4 on the tinted 1px feather ring (fully-opaque
 and fully-transparent pixels byte-exact, asserted). SAM 2 / hosted
 segmentation remains untestable from this sandbox; the
 `segment(image, claim)` seam is unchanged and replaceable.
+
+## Bring It Alive v0.2 — two corrections from the product owner, after use
+
+Both supersede clauses of the v0.2 brief, decided by the product owner
+looking at the running tool. **The surface is the checkerboard again**
+("make the background transparent again. that was actually better.") —
+the soft light checkerboard shows transparency honestly and replaces the
+brief's flat paper-grey; still not a sky, still no ghost. **The eraser
+reaches everything** ("allow me to erase whatsoever i want") — per pixel
+it clears paint/pencil/fill where they exist and HIDES the original
+drawing where they do not. Hiding is a replayed plane (`erasePlane`),
+never a write to the ORIGINAL layer, so undo, Reset and the Original
+view recover every hidden pixel byte-exactly — asserted: after an erase
+over bare drawing the view pixel is transparent, the ORIGINAL layer
+walks byte-identical against the photograph, and one undo restores the
+view byte-for-byte. This also returns v1 creation files to their
+original erase meaning. Suite updated to measure the new truths
+(checkerboard alternation, hide-and-recover), 105/105.
