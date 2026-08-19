@@ -70,6 +70,20 @@
   // File into the exact same loadPhoto as the picker; one pipeline.
   BIACamera.mount({ onPicture: (file) => loadPhoto(file), log });
 
+  // My Handwriting photographs a TALL written sheet, so while that journey
+  // is armed the camera opens tall by default. Watched off the arm banner
+  // hwApp.js already shows and hides, so the handwriting files are
+  // untouched; the seam (BIACamera.setPreferredShape) never overrides a
+  // shape the child chose themselves. The drawing journey keeps its wide
+  // default — the banner hiding puts the preference back.
+  const hwArmedBanner = $('hwArmed');
+  if (hwArmedBanner && BIACamera.setPreferredShape) {
+    new MutationObserver(() => {
+      BIACamera.setPreferredShape(
+        hwArmedBanner.style.display === 'block' ? 'tall' : 'wide');
+    }).observe(hwArmedBanner, { attributes: true, attributeFilter: ['style'] });
+  }
+
   $('pickBtn').addEventListener('click', () => $('fileInput').click());
   $('fileInput').addEventListener('change', (e) => {
     if (e.target.files[0]) loadPhoto(e.target.files[0]);
