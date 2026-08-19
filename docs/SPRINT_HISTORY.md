@@ -3651,3 +3651,64 @@ throughout. One test-side correction disclosed as genuinely the test's
 fault: a Keep stroke that ended ON the house wall paints the wall, so
 the stroke now stops short — the assertion itself was right and
 unchanged.
+
+## Bring It Alive v0.2 — Make It Yours (an editable creation, not a picture)
+
+Built in a worker worktree from the product owner's sprint update, which
+corrected Step 4: the output of Bring It Alive is not an Ether scene —
+the night-sky preview is **removed** — it is an **editable VihuPlanet
+creation** on a light checkerboard, at full pencil weight, with *"It's
+yours. What will you do with it?"*. Independently re-verified before
+merging: the 71-check suite reproduced under a fresh invocation (and
+again on the merged tree), the `originalWalk` instrument confirmed to be
+a real independent decode-and-walk of the photograph rather than a mock,
+and the four commits touch nothing outside `tools/bring-it-alive/`.
+
+**The creation is a layered document** (`js/creation.js`): ORIGINAL
+(source ref, raw mask, extracted pixels — written once at construction
+and never again), EDITS (paint layer + erase mask, both rebuilt by
+replaying an op history), TRANSFORM (position/scale/rotation, ops like
+everything else, so one undo stack serves the whole session). The
+current view is composed in typed arrays, not through canvas, so the
+untouched view is BYTE-IDENTICAL to the original layer and "no ghost" is
+asserted as an equality. **Erase never destroys**: a stamp removes paint
+where paint is and *hides* original pixels where it is not — undo brings
+a hidden pixel back exactly because it never went anywhere. The
+non-negotiable proven on the real photograph: extract the left
+character, paint over it, move it, resize it, undo — and the ORIGINAL
+layer walks byte-identical against an independently decoded copy of the
+source (105,635 opaque pixels, zero mismatches). `js/editor.js` is
+gesture and presentation only. Download PNG is a render; **Download
+Creation is the canonical JSON** (`{format:'vihu-creation', version:1}`
+— pixels as PNG data URL, mask as RLE, ops, cursor, transform),
+reopenable from the first screen with its history still undoable.
+
+**Two v0.1 defects fixed at the level the sprint named.** The paper halo
+was capture artefact shipped as ink: dilation was unconditional, so
+every stroke grew a fully-opaque paper rim. Dilation is now
+support-gated (`BIASegment.skirt()` — pixels at least faintly darker
+than their own local paper), and the Keep brush's relaxed pass is held
+within Chebyshev-3 of strict ink. Measured old-vs-new in one suite run:
+paper-bright opaque pixels **8.27% → 0.31% (~27×)**. And MARK 1 now
+**measures the page and declines the warp out loud**: Otsu page find,
+71% of frame, max skew 1.7° on Test Case 001 — correction is a disclosed
+no-op because a homography assumes a flat plane and a notebook page on
+fabric curls, and any resample would make byte-preservation unverifiable
+against the child's actual photograph. The numbers land in `photo.notes`
+so a future honest correction starts with them waiting.
+
+**71/71, zero page errors, nothing retired.** All 41 v0.1 checks stand
+unchanged as regression (nothing ever asserted the night sky); thirty
+new checks drive the real editing canvas with pointer events — erase/
+undo exactness, erasing paint removes paint and nothing else, a five-op
+mixed history undone to zero and redone to the top byte-for-byte, JSON
+round-trip in-page and through the real file input, and the halo
+measurement. Demo is five shots on the real photograph: BEFORE · CLAIM
+· EXTRACTED · PAINTED · ORIGINAL-RECOVERED.
+
+**Where it still breaks for a child, disclosed:** the tilted page stays
+tilted (deskew measured, declined); the PNG-data-URL round trip may
+round the 1px feather ring by ±1 (the same exemption the preservation
+rule has stated since v0.1); very light pencil at the claim threshold
+remains v0.1's roughest edge; and this is still a standalone tool —
+nothing yet carries a creation into the Studio or the Ether.
