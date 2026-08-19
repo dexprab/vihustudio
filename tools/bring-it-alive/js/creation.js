@@ -13,6 +13,12 @@
  *   │                  · fills (colour under the pencil lines, per region)
  *   │                  · line colour (a TINT of the region's own boundary
  *   │                    ink — texture preserved, never a flat repaint)
+ *   │                  · ink tint (Mark: a loose loop travels in the op;
+ *   │                    every original ink pixel inside takes the SAME
+ *   │                    replacement tint, alpha untouched. loop:null
+ *   │                    means the whole drawing. The pixel set is
+ *   │                    re-derived from the loop on every replay —
+ *   │                    never stored)
  *   │                  · line weight (Thin / Original / Thick — hidden or
  *   │                    replicated boundary pixels at compose time, the
  *   │                    original bytes untouched)
@@ -84,6 +90,40 @@
     return [Math.round(t[0] + (255 - t[0]) * f),
             Math.round(t[1] + (255 - t[1]) * f),
             Math.round(t[2] + (255 - t[2]) * f)];
+  }
+
+  /* Deterministic even-odd scanline rasteriser for the Mark loop. The
+   * browser's canvas fill (claim.js) is exact enough for a mask that is
+   * then STORED, but the Mark loop is re-derived into pixels on every
+   * replay, and the suite's buffer-equality round trips stand on the same
+   * ops always producing the same bytes — so the polygon is filled by
+   * arithmetic, not by an antialiaser. Pixel centres (x+0.5, y+0.5);
+   * even-odd parity, so the self-crossing loops a six-year-old actually
+   * draws still mean "inside". The loop closes itself (last → first). */
+  function rasterLoop(loop, w, h) {
+    const inside = new Uint8Array(w * h);
+    const n = loop.length;
+    if (n < 3) return inside;
+    let minY = Infinity, maxY = -Infinity;
+    for (const p of loop) { if (p[1] < minY) minY = p[1]; if (p[1] > maxY) maxY = p[1]; }
+    const y0 = Math.max(0, Math.floor(minY)), y1 = Math.min(h - 1, Math.ceil(maxY));
+    const xs = [];
+    for (let y = y0; y <= y1; y++) {
+      const yc = y + 0.5;
+      xs.length = 0;
+      for (let i = 0; i < n; i++) {
+        const a = loop[i], b = loop[(i + 1) % n];
+        if ((a[1] <= yc) === (b[1] <= yc)) continue;      // edge doesn't cross this row
+        xs.push(a[0] + (b[0] - a[0]) * (yc - a[1]) / (b[1] - a[1]));
+      }
+      xs.sort((p, q) => p - q);
+      for (let k = 0; k + 1 < xs.length; k += 2) {
+        const xa = Math.max(0, Math.ceil(xs[k] - 0.5));
+        const xb = Math.min(w - 1, Math.floor(xs[k + 1] - 0.5));
+        for (let x = xa; x <= xb; x++) inside[y * w + x] = 1;
+      }
+    }
+    return inside;
   }
 
   // ---- stroke stamping (erase) ----------------------------------------------
@@ -187,6 +227,13 @@
     this.erasePlane = new Uint8Array(w * h); // 1 = original hidden by the eraser
     this._lines = {};                      // regionId -> {color, width}
     this._lineMods = null;                 // cache keyed by _lines state
+    // Mark's ink tint, rebuilt from inkTint ops on every recompose:
+    // packed (rgb+1) per tinted ink pixel, and the replay index (+1) that
+    // wrote it — so "the LAST op applied to a pixel wins" is decidable
+    // against a later lineColor on the same ink. Allocated lazily; null
+    // until the history holds an inkTint op.
+    this.inkTintPlane = null;              // Int32Array | null
+    this.inkTintSeq = null;                // Int32Array | null
 
     // TRANSFORM — also rebuilt from ops.
     this.transform = { x: 0, y: 0, scale: 1, rotation: 0 };
@@ -226,7 +273,24 @@
     return size === 'thick' ? fine * 4 : size === 'medium' ? fine * 2.2 : fine;
   };
 
-  Creation.prototype._replayOp = function (op) {
+  /* What did a Mark loop catch? Counted against the ORIGINAL layer's own
+   * ink (alpha > 0) — the editor uses this to say honestly what a loop
+   * holds, and to recognise "everything" (a loop around the whole
+   * drawing IS the colour-all-lines case, stored as loop:null). */
+  Creation.prototype.markInfo = function (loop) {
+    const w = this.original.width, h = this.original.height;
+    const od = this.original.data;
+    const inside = rasterLoop(loop, w, h);
+    let inkInside = 0, inkTotal = 0;
+    for (let i = 0; i < w * h; i++) {
+      if (!od[i * 4 + 3]) continue;
+      inkTotal++;
+      if (inside[i]) inkInside++;
+    }
+    return { inkInside, inkTotal };
+  };
+
+  Creation.prototype._replayOp = function (op, seq) {
     const w = this.original.width, h = this.original.height;
     if (op.t === 'paint') {
       // v1 op type — kept replayable so version-1 files still open.
@@ -260,6 +324,29 @@
     } else if (op.t === 'lineColor') {
       const st = this._lines[op.region] || (this._lines[op.region] = { color: null, width: 'original' });
       st.color = op.color;
+      st.colorSeq = (seq | 0) + 1;   // replay order decides against inkTint
+    } else if (op.t === 'inkTint') {
+      // Mark: the loop travels in the op; the pixels are derived here,
+      // every replay, never stored. Every original ink pixel inside takes
+      // the SAME replacement tint the line colour uses — alpha untouched.
+      // Later ops overwrite earlier ones where they overlap, and the seq
+      // plane lets compose arbitrate against a region lineColor.
+      const n2 = w * h;
+      if (!this.inkTintPlane) {
+        this.inkTintPlane = new Int32Array(n2);
+        this.inkTintSeq = new Int32Array(n2);
+      }
+      const target = hexRGB(op.color), od = this.original.data;
+      const inside = op.loop ? rasterLoop(op.loop, w, h) : null;  // null = the whole drawing
+      const s = (seq | 0) + 1;
+      for (let i = 0; i < n2; i++) {
+        if (inside && !inside[i]) continue;
+        const p = i * 4;
+        if (!od[p + 3]) continue;
+        const [r, g, b] = tint(od[p], od[p + 1], od[p + 2], target);
+        this.inkTintPlane[i] = ((r << 16) | (g << 8) | b) + 1;
+        this.inkTintSeq[i] = s;
+      }
     } else if (op.t === 'lineWidth') {
       const st = this._lines[op.region] || (this._lines[op.region] = { color: null, width: 'original' });
       st.width = op.width;
@@ -299,7 +386,7 @@
     const key = JSON.stringify(this._lines);
     if (this._lineMods && this._lineMods.key === key) return this._lineMods;
     const w = this.original.width, h = this.original.height, n = w * h;
-    const mods = { key, hide: null, tintMap: null, extras: null };
+    const mods = { key, hide: null, tintMap: null, tintSeq: null, extras: null };
     const ids = Object.keys(this._lines);
     if (!ids.length) { this._lineMods = mods; return mods; }
     const R = this.regions();
@@ -353,12 +440,14 @@
         }
       }
       if (target) {
-        if (!mods.tintMap) mods.tintMap = new Int32Array(n);
+        if (!mods.tintMap) { mods.tintMap = new Int32Array(n); mods.tintSeq = new Int32Array(n); }
+        const cSeq = st.colorSeq || 0;
         const paintTint = (i) => {
           const p = i * 4;
           if (!od[p + 3]) return;
           const [r, g, b] = tint(od[p], od[p + 1], od[p + 2], target);
           mods.tintMap[i] = ((r << 16) | (g << 8) | b) + 1;
+          mods.tintSeq[i] = cSeq;
         };
         for (const i of B) paintTint(i);
         for (const j of skirt) paintTint(j);
@@ -418,20 +507,27 @@
     this.fillPlane.fill(0);
     this.erasePlane.fill(0);
     this._lines = {};
+    this.inkTintPlane = null;
+    this.inkTintSeq = null;
     this.transform = { x: 0, y: 0, scale: 1, rotation: 0 };
-    for (let k = 0; k < this.cursor; k++) this._replayOp(this.ops[k]);
+    for (let k = 0; k < this.cursor; k++) this._replayOp(this.ops[k], k);
 
     // CURRENT VIEW = fills UNDER the original (lines stay on top, tinted /
     // thinned / thickened at compose time), plus pencil & paint on top.
     const out = new ImageData(new Uint8ClampedArray(this.original.data), w, h);
     const d = out.data, od = this.original.data, fp = this.fillPlane;
     const mods = this._computeLineMods();
-    const hide = mods.hide, tintMap = mods.tintMap, ep = this.erasePlane;
+    const hide = mods.hide, tintMap = mods.tintMap, lineSeq = mods.tintSeq, ep = this.erasePlane;
+    const inkT = this.inkTintPlane, inkSeq = this.inkTintSeq;
     for (let i = 0; i < n; i++) {
       const p = i * 4;
       const fa = fp[p + 3];
       const hid = (hide && hide[i]) || ep[i];
-      const tv = tintMap ? tintMap[i] : 0;
+      // Two ways ink takes a colour — a region lineColor and a Mark
+      // inkTint. Where both touch a pixel, the LATER op wins (the seq is
+      // the replay index, so replay order decides — the brief's rule).
+      let tv = tintMap ? tintMap[i] : 0;
+      if (inkT && inkT[i] && (!tv || inkSeq[i] >= lineSeq[i])) tv = inkT[i];
       if (!fa && !hid && !tv) continue;    // untouched pixel: original bytes stand
       let oa = hid ? 0 : od[p + 3];
       let orr = od[p], org = od[p + 1], orb = od[p + 2];

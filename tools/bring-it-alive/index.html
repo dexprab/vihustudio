@@ -26,6 +26,8 @@
      child draws with a real pencil, FILLS enclosed shapes under their
      own lines, colours and re-weights those lines (a tint and a
      compose-time morphology of their own ink — never a redrawn vector),
+     MARKS a portion with a loose loop and pushes a colour to change
+     the marked lines (a loop around everything colours all the lines),
      erases anything (edits are cleared; the original is only ever
      HIDDEN, recoverably), moves, resizes,
      rotates, toggles Original|My Version, resets — and the original
@@ -167,6 +169,7 @@
     <div class="row" id="yoursTools">
       <button class="ghost on" id="toolPencil">Pencil</button>
       <button class="ghost" id="toolFill">Fill</button>
+      <button class="ghost" id="toolMark">Mark</button>
       <button class="ghost" id="toolErase">Erase</button>
       <button class="ghost" id="toolMove">Move</button>
       <span class="toolgap"></span>
@@ -200,7 +203,10 @@
       <canvas class="work" id="editCanvas" width="720" height="540"></canvas>
     </div>
     <p class="note">Colour it in: choose Fill, then touch inside a shape —
-       or touch the line itself to colour the line. It stays your drawing.</p>
+       or touch the line itself to colour the line. Or choose Mark, draw a
+       loose loop around a part of your drawing, and push a colour — the
+       lines you marked take it. Loop around everything to colour all the
+       lines. It stays your drawing.</p>
     <div class="row">
       <button id="downloadBtn">Current PNG</button>
       <button class="ghost" id="downloadOriginalBtn">Original PNG</button>
