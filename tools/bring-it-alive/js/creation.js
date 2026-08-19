@@ -66,16 +66,24 @@
             Math.round(p0[1] * 19349663)) | 0;
   }
 
-  /* The line tint: the target colour scaled by the pixel's own darkness,
-   * so a red line is red where the pencil pressed light and deep red where
-   * it pressed hard — the stroke's texture survives, and luminance ORDER
-   * is preserved (the map is monotone in the source luminance). Alpha is
-   * never touched. */
+  /* The line colour is a REPLACEMENT, not a wash. Corrected by the product
+   * owner after seeing the first mapping on a real drawing ("it filled
+   * green on top of black... i was looking for replacement"): that mapping
+   * MULTIPLIED the chosen colour by the ink's darkness, so on a near-black
+   * outline every colour came out near-black — the colour never showed.
+   * Now the chosen colour IS the line, and the ink's own darkness decides
+   * how strongly it is laid down: hard pressure → the colour itself, light
+   * pencil → a paler version (blended toward white). The stroke's texture
+   * survives, luminance ORDER is still preserved (the map is monotone in
+   * the source luminance), and alpha is never touched. */
   const TINT_REF = 230;
+  const TINT_PALE = 0.75;   // how far the lightest pencil drifts toward pale
   function tint(r, g, b, t) {
     const v = (r * 77 + g * 150 + b * 29) >> 8;
-    const f = Math.min(1, v / TINT_REF);
-    return [Math.round(t[0] * f), Math.round(t[1] * f), Math.round(t[2] * f)];
+    const f = Math.min(1, v / TINT_REF) * TINT_PALE;
+    return [Math.round(t[0] + (255 - t[0]) * f),
+            Math.round(t[1] + (255 - t[1]) * f),
+            Math.round(t[2] + (255 - t[2]) * f)];
   }
 
   // ---- stroke stamping (erase) ----------------------------------------------

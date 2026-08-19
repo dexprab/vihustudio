@@ -1079,8 +1079,12 @@ function check(name, cond, detail) {
     !!m1.interior && !!m1.inkPt,
     JSON.stringify({ interior: m1.interior, ink: m1.inkPt }));
 
-  // Boundary-visibility measure for Thin/Original/Thick: dark visible line
-  // pixels in the boundary band (fills are excluded by exact colour).
+  // Boundary-visibility measure for Thin/Original/Thick: visibly inked
+  // pixels in the boundary band (fills are excluded by exact colour,
+  // transparency by alpha). The gate is L < 235, not "dark": since line
+  // colour became a REPLACEMENT, a tinted line is bright — a red line is
+  // red, not dark red — and a darkness gate would count the line's own
+  // colour against it.
   await page.evaluate(() => {
     window.__test.lineVisibility = function (regionId, fillHex) {
       const c = window.__bia.creation, R2 = c.regions(), w = c.original.width;
@@ -1100,7 +1104,7 @@ function check(name, cond, detail) {
           if (d[p + 3] === 0) continue;
           if (fill && d[p] === fill[0] && d[p + 1] === fill[1] && d[p + 2] === fill[2]) continue;
           const L = (d[p] * 77 + d[p + 1] * 150 + d[p + 2] * 29) >> 8;
-          if (L < 150) vis++;
+          if (L < 235) vis++;
         }
       }
       return vis;
