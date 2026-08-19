@@ -2579,11 +2579,37 @@ const ContextPanel=(function(){
     cell.appendChild(remove);
     return cell;
   }
+  // The door to Bring It Alive — the full-screen Studio overlay
+  // (js/bringItAliveStudio.js), opened IN PLACE. "the tool need to
+  // become part of studio" — the product owner — so this replaced the
+  // old new-tab link to the standalone tool page (which was also only
+  // reachable while the library was empty). When the child keeps a
+  // character, the overlay closes itself and this picker reopens with
+  // the new character on the shelf — one tap from the page.
+  function _openBringItAlive(){
+    if(typeof BringItAliveStudio==='undefined') return;
+    BringItAliveStudio.open({ onKept:function(){ _showLibraryPicker(); } });
+  }
   function _showLibraryPicker(){
     stickerStudioOpen=true;
     panelRoot.innerHTML='';
     panelRoot.classList.remove('is-empty');
     panelRoot.appendChild(_el('div','context-collection-picker-heading','📚 My Library'));
+
+    // The PERMANENT entry, above the kept characters — always present,
+    // never only when the shelf is empty (a child with ten characters
+    // still has drawings on paper).
+    if(typeof BringItAliveStudio!=='undefined'){
+      const bring=_el('button','context-library-bring');
+      bring.type='button';
+      bring.appendChild(_el('span','context-library-bring-icon','✨'));
+      const txt=_el('span','context-library-bring-text');
+      txt.appendChild(_el('span','context-library-bring-label','Bring a drawing to life'));
+      txt.appendChild(_el('span','context-library-bring-sub','A drawing on paper becomes yours to use.'));
+      bring.appendChild(txt);
+      bring.addEventListener('click',_openBringItAlive);
+      panelRoot.appendChild(bring);
+    }
 
     const items=(typeof CreatorLibrary!=='undefined' && CreatorLibrary.list) ? CreatorLibrary.list() : [];
     if(items.length){
@@ -2591,18 +2617,15 @@ const ContextPanel=(function(){
       items.forEach(function(item){ grid.appendChild(_buildLibraryTile(item)); });
       panelRoot.appendChild(grid);
     }else{
-      // Empty is an invitation, not a dead end. Bring It Alive opens in
-      // a NEW TAB on purpose: the Studio must never navigate away —
-      // Decision 23's entry gate would send the return trip home.
+      // Empty is still an invitation, not a dead end — and it opens the
+      // same overlay in place. Nothing navigates away, so Decision 23's
+      // entry gate never enters into it.
       const empty=_el('div','context-library-empty');
       empty.appendChild(_el('div','context-library-empty-line','Nothing here yet — bring one of your paper drawings to life, and keep it in My Library.'));
-      const link=document.createElement('a');
-      link.className='context-library-empty-link';
-      link.href='tools/bring-it-alive/';
-      link.target='_blank';
-      link.rel='noopener';
-      link.textContent='✨ Bring a drawing to life';
-      empty.appendChild(link);
+      const invite=_el('button','context-library-empty-link','✨ Bring a drawing to life');
+      invite.type='button';
+      invite.addEventListener('click',_openBringItAlive);
+      empty.appendChild(invite);
       panelRoot.appendChild(empty);
     }
 
