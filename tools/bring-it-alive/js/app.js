@@ -1,6 +1,10 @@
-/* APP — UI state and wiring. All pixel truth lives in the modules; this
- * file moves the child through the four marks (Photograph → Claim → We
- * Found This → Make It Yours) and never touches an exported byte itself.
+/* APP — the STANDALONE host's UI state and wiring. All pixel truth lives
+ * in the modules; the flow's own decisions (pipeline order, honest-failure
+ * thresholds and their words, what the claim/refine canvases show) live in
+ * js/flow.js — shared with the Studio host (js/bringItAliveStudio.js) so
+ * the two can never drift. This file moves the child through the four
+ * marks (Photograph → Claim → We Found This → Make It Yours) and never
+ * touches an exported byte itself.
  *
  * window.__bia is the developer seam: the suite (test/run-tests.js) and a
  * human in devtools read pipeline state through it. It is instrumentation
@@ -39,22 +43,11 @@
   }
 
   // ---- display geometry --------------------------------------------------
-  // One display scale for both interactive canvases. The photograph is
-  // worked on at full resolution; only its picture on screen is scaled.
+  // One display scale for both interactive canvases (BIAFlow owns the
+  // geometry; this host only remembers the scale the flow chose).
   const MAXW = 860, MAXH = 620;
-  function setupCanvas(canvas) {
-    const s = Math.min(MAXW / state.photo.width, MAXH / state.photo.height, 1);
-    state.displayScale = s;
-    canvas.width = Math.round(state.photo.width * s);
-    canvas.height = Math.round(state.photo.height * s);
-    return canvas.getContext('2d');
-  }
   function toImage(canvas, ev) {
-    const r = canvas.getBoundingClientRect();
-    return [
-      (ev.clientX - r.left) * (canvas.width / r.width) / state.displayScale,
-      (ev.clientY - r.top) * (canvas.height / r.height) / state.displayScale
-    ];
+    return BIAFlow.toImage(canvas, ev, state.displayScale);
   }
 
   // ---- capture -----------------------------------------------------------
@@ -97,17 +90,8 @@
   let looping = false;
 
   function drawClaimBase() {
-    const c = $('claimCanvas');
-    const ctx = setupCanvas(c);
-    ctx.drawImage(state.photo.canvas, 0, 0, c.width, c.height);
-    if (loop.length > 1) {
-      ctx.strokeStyle = '#dfb169'; ctx.lineWidth = 3; ctx.lineJoin = 'round';
-      ctx.beginPath();
-      const s = state.displayScale;
-      ctx.moveTo(loop[0][0] * s, loop[0][1] * s);
-      for (const p of loop) ctx.lineTo(p[0] * s, p[1] * s);
-      ctx.stroke();
-    }
+    state.displayScale =
+      BIAFlow.drawClaimBase($('claimCanvas'), state.photo, loop, MAXW, MAXH);
   }
 
   const claimCanvas = $('claimCanvas');
@@ -129,31 +113,20 @@
 
   function closeClaim() {
     try {
-      const cl = BIAClaim.claim(loop, state.photo.width, state.photo.height);
+      // The pipeline and both honest-failure outcomes live in BIAFlow —
+      // FOUND NOTHING is a first-class honest outcome there, never an
+      // empty asset dressed as success.
+      const res = BIAFlow.claimAndSegment(state.photo, loop, log);
       loop = [];
-      if (!cl) {
-        drawClaimBase();
-        quiet('That loop was too small to hold a drawing — try circling the whole thing.');
-        log('claim: degenerate loop rejected');
-        return;
-      }
-      state.claim = cl;
-      log('claim: ' + cl.points.length + ' points, area ' + cl.area + ' px');
-      const t0 = performance.now();
-      state.seg = BIASegment.segment(state.photo, cl);
-      state.marks = [];
-      log('segment: ' + state.seg.compCount + ' ink components, mask ' +
-          state.seg.maskCount + ' px (' + Math.round(performance.now() - t0) + 'ms)');
-      if (state.seg.maskCount < 30) {
-        // FOUND NOTHING is a first-class honest outcome — never an empty
-        // asset dressed as success.
+      if (!res.ok) {
         state.seg = null; state.claim = null;
         drawClaimBase();
-        quiet('We looked inside your loop and couldn’t find a drawing there. ' +
-              'Try circling closer around your drawing.');
-        log('segment: NOTHING FOUND inside claim — no asset will be produced');
+        quiet(res.message);
         return;
       }
+      state.claim = res.claim;
+      state.seg = res.seg;
+      state.marks = [];
       drawRefine();
       go('stepRefine');
     } catch (e) { fail(e); }
@@ -171,30 +144,8 @@
   // The proposal, live: masked pixels in full colour on white; the rest of
   // the photograph ghosted, so "what comes with me" is unmistakable.
   function drawRefine() {
-    const c = $('refineCanvas');
-    const ctx = setupCanvas(c);
-    const w = c.width, h = c.height;
-    const seg = state.seg;
-    const out = ctx.createImageData(w, h);
-    const src = state.photo.imageData.data;
-    const iw = state.photo.width, ih = state.photo.height;
-    for (let y = 0; y < h; y++) {
-      const sy = Math.min(ih - 1, Math.round(y / state.displayScale));
-      for (let x = 0; x < w; x++) {
-        const sx = Math.min(iw - 1, Math.round(x / state.displayScale));
-        const si = (sy * iw + sx), s4 = si * 4, d4 = (y * w + x) * 4;
-        if (seg.mask[si]) {
-          out.data[d4] = src[s4]; out.data[d4 + 1] = src[s4 + 1]; out.data[d4 + 2] = src[s4 + 2];
-        } else {
-          // ghost: darkened, desaturated original
-          const g = (src[s4] * 77 + src[s4 + 1] * 150 + src[s4 + 2] * 29) >> 8;
-          out.data[d4] = out.data[d4 + 1] = (g * 0.25 + 20) | 0;
-          out.data[d4 + 2] = (g * 0.25 + 34) | 0;
-        }
-        out.data[d4 + 3] = 255;
-      }
-    }
-    ctx.putImageData(out, 0, 0);
+    state.displayScale =
+      BIAFlow.drawRefine($('refineCanvas'), state.photo, state.seg, MAXW, MAXH);
   }
 
   function setMode(mode) {
@@ -209,8 +160,9 @@
   let stroke = null;
   function brushRadius() {
     // ~12 on-screen pixels of brush, expressed in image pixels — a finger-
-    // sized correction whatever the photograph's resolution.
-    return Math.max(10, Math.round(12 / state.displayScale));
+    // sized correction whatever the photograph's resolution (BIAFlow owns
+    // the number).
+    return BIAFlow.brushRadius(state.displayScale);
   }
   refineCanvas.addEventListener('pointerdown', (e) => {
     stroke = { type: state.mode, points: [toImage(refineCanvas, e)],
@@ -314,35 +266,21 @@
 
   $('aliveBtn').addEventListener('click', async () => {
     try {
-      const asset = BIAExtract.extract(state.photo, state.seg.mask,
-        BIASegment.skirt(state.seg));
-      if (!asset) {
+      // Extract → verified baseline export → the layered creation, all in
+      // BIAFlow (the export's verification walk is the loud preservation
+      // check, and the flow fires it BEFORE the child is told the drawing
+      // is theirs).
+      const res = await BIAFlow.bringAlive(state.photo, state.seg, state.claim,
+        { testCaseId: state.testCaseId, log });
+      if (!res.ok) {
         go('stepClaim'); drawClaimBase();
-        quiet('There isn’t enough drawing left in the claim to bring alive.');
-        log('extract: NOTHING FOUND — mask too small, no asset produced');
+        quiet(res.message);
         return;
       }
+      const asset = res.asset, exp = res.exp, creation = res.creation;
       state.asset = asset;
-      // The baseline export still runs here — not to be downloaded, but
-      // because its verification walk is the loud preservation check, and
-      // it must fire BEFORE the child is told the drawing is theirs.
-      const exp = await BIAExportAsset.exportAsset(asset, {
-        filename: state.photo.filename,
-        testCaseId: state.testCaseId,
-        claimPoints: state.claim.points
-      });
       state.lastExport = exp;
       state.exports.push(exp);
-      log('alive: asset ' + asset.crop.w + 'x' + asset.crop.h + ' @(' +
-          asset.crop.x + ',' + asset.crop.y + '), ' + exp.verified +
-          ' opaque px verified byte-identical, PNG ' + exp.blob.size + ' bytes');
-
-      const creation = BIACreation.create(
-        { imageData: asset.imageData, crop: asset.crop, maskPixels: asset.maskLocal },
-        { source: { filename: state.photo.filename,
-                    width: state.photo.width, height: state.photo.height } });
-      log('creation: layered document — original ' + asset.crop.w + '×' + asset.crop.h +
-          ' + edits + transform');
 
       BIAPreview.devCompare($('devOrig'), $('devAsset'), state.photo, asset);
       BIAPreview.maskView($('devMask'), state.seg);
