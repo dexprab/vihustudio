@@ -28,6 +28,23 @@
  * is the key font metric. It is printed solid and visible (a child needs
  * a real line to sit letters on), and the reader removes it from the ink
  * by vertical run-length before letters are cut apart (hwRead.js).
+ *
+ * END-MARKS (the camera fix). A real webcam photo of a printed sheet
+ * refused: the rule is printed deliberately FAINT (below the ink
+ * detector's margin, so letters never weld to it), and at 720p + real
+ * lighting + JPEG that faint line all but vanished — 1 of 5 rules found
+ * — while ~20° of perspective broke the even-pitch pattern match anyway.
+ * Decision 17 already solved this exact problem for the Magic Card:
+ * printed anchors at known coordinates give the registration outright,
+ * and everything after is arithmetic rather than search. So every rule
+ * now carries a small SOLID-INK five-point star at BOTH ends — outside
+ * the writing zone, beyond where the rule starts and ends, so a child's
+ * letters can never touch them. To a child they are ten little stars
+ * holding the lines; to the reader they are the ladder that registers
+ * each line from ITS OWN pair, which is what absorbs perspective. The
+ * line numbers were LIGHTENED at the same time: they live in the same
+ * margin, and they must sit below the reader's mark-darkness gate so a
+ * number can never impersonate an end-mark.
  */
 (function () {
   'use strict';
@@ -39,8 +56,16 @@
   // and it is the shortest of the three (capitals are wide); line 5
   // carries every digit twice in a shuffled order so neighbouring pairs
   // vary. Child-facing, so the words are friendly.
+  //
+  // Line 1 was "the quick brown fox jumps over a lazy dog" — at 43
+  // characters ~20% longer than its neighbours, and the product owner
+  // reported a real child's hand running out of room on it. Replaced by
+  // a 37-character pangram (verified a–z programmatically by the suite,
+  // never by eye) rather than by shrinking anything: the child's hand
+  // needs the room, not the print. All three lowercase lines are still
+  // full pangrams, so every letter still appears at least three times.
   const LINES = [
-    { text: 'the quick brown fox jumps over a lazy dog' },
+    { text: 'jackdaws love my big sphinx of quartz' },
     { text: 'how quickly daft jumping zebras vex' },
     { text: 'the five boxing wizards jump quickly' },
     { text: 'HOW QUICKLY DAFT JUMPING ZEBRAS VEX' },
@@ -64,11 +89,21 @@
   // (HWSheet.LINES.length and GEOM drive its rule-pattern scoring), so
   // the two cannot drift; a photo whose rules do not match THIS pattern
   // is still refused.
+  // The side margins were narrowed on a field report ("the first sentence
+  // is little big to fit") — everything the end-marks and the line number
+  // do not strictly need went to the ruled line. The stack on the left is
+  // page edge · end-mark (0.011–0.031) · number (~0.041–0.055) · rule at
+  // 0.070, each gap wide enough that the reader's isolation ring around a
+  // mark (0.35 × its own diagonal) never touches a neighbour; the right
+  // is just edge · end-mark · rule. Writing span 0.885 of W, up from 0.84.
   const GEOM = {
     aspect: Math.SQRT2,       // H / W
-    xLeft: 0.10,              // rule start (of W)
-    xRight: 0.94,             // rule end (of W)
-    numberX: 0.055,           // line number centre (of W) — outside the zone
+    xLeft: 0.070,             // rule start (of W)
+    xRight: 0.955,            // rule end (of W)
+    anchorXLeft: 0.021,       // end-mark centres (of W) — beyond the rule ends
+    anchorXRight: 0.979,
+    anchorRadius: 0.010,      // end-mark star outer radius (of W)
+    numberX: 0.048,           // line number centre (of W) — outside the zone
     titleY: 0.045,            // title baseline (of H)
     titleSize: 0.028,
     calloutY: 0.089,          // the no-cursive callout baseline (of H)
@@ -83,33 +118,78 @@
     footY: 0.975
   };
 
-  // Rule grey — DRAWN TO BE READ (Decision 17's lesson applied to paper).
-  // Deliberately printed BELOW the ink detector's margin (BIASegment
-  // flags ink at local-paper − luminance > 25; this grey sits at ~22), so
-  // a child's letters SITTING ON the rule never weld to it: to the
-  // detector the rule is not ink at all, while the reader's own gentler
-  // test (paper − lum > 12) still finds it as the registration line it
-  // is. If a dim capture pushes it over the margin anyway, hwRead's
-  // run-length backstop removes it — with the disclosed cost that round
-  // letter bottoms can split there.
+  // Rule grey. Deliberately printed BELOW the ink detector's margin
+  // (BIASegment flags ink at local-paper − luminance > 25; this grey sits
+  // at ~22), so a child's letters SITTING ON the rule never weld to it:
+  // to the detector the rule is not ink at all. Since the end-marks
+  // arrived the rule is a visual guide for the child, not the
+  // registration — the reader's gentler test (paper − lum > 12) still
+  // finds it, but only as the FALLBACK for sheets printed before the
+  // marks existed, square-on. A real camera at 720p loses this grey
+  // almost entirely (measured in the field: 1 of 5 rules found), which
+  // is exactly why registration moved to the marks. If a dim capture
+  // pushes the rule over the ink margin anyway, hwRead's run-length
+  // backstop removes it — with the disclosed cost that round letter
+  // bottoms can split there.
   const RULE_COLOR = '#e6e9ee';
   const INK = '#141a26';
+  // The line numbers: deliberately LIGHT. They share the margin with the
+  // end-marks, and the reader admits a mark as a possible end-mark only
+  // when it is nearly as dark as the darkest marks in the photo — a
+  // number this light (paper − lum ≈ 66, vs ≈ 229 for solid ink) sits far
+  // below that gate at any exposure, so it can never fake an anchor.
+  const NUMBER_COLOR = '#b9c0cc';
 
   function ruleYFrac(i) { return GEOM.blockTop0 + i * GEOM.blockStep + GEOM.ruleOffset; }
 
-  /* Per-line pixel geometry for a sheet whose rules were measured at
-   * (x0, x1) — the reader's entry point. Everything hangs off the rule's
-   * own length, so a photograph's scale never has to be guessed. */
-  function lineZoneFor(ruleLenPx) {
+  // Ink area of one printed end-mark for a page measured at pageWpx wide:
+  // a five-point star with inner radius 0.42R has area 5·R·(0.42R)·sin36°
+  // = 1.2344·R². The reader checks candidate marks against THIS number
+  // (scaled by the measured vertical squash), which is what stops a
+  // column of letters — several times an end-mark's size — from
+  // impersonating the ladder. One geometry, two consumers.
+  function anchorAreaPx(pageWpx) {
+    const R = GEOM.anchorRadius * pageWpx;
+    return 1.2344 * R * R;
+  }
+
+  /* Per-line pixel geometry for a sheet whose rule was measured at
+   * ruleLenPx long — the reader's entry point. Everything hangs off the
+   * rule's own length, so a photograph's scale never has to be guessed.
+   * pitchPx (optional) is the MEASURED distance to the neighbouring
+   * rules: a webcam looking down at a sheet foreshortens the page
+   * vertically, so vertical quantities (ascent, descent, thickness) must
+   * come from a vertical measurement, not from the width times the paper
+   * aspect. Omitted (an old flat capture), the isotropic assumption
+   * stands exactly as before. `anis` is the measured vertical scale
+   * relative to the horizontal one (1 = square pixels). */
+  function lineZoneFor(ruleLenPx, pitchPx) {
     const W = ruleLenPx / (GEOM.xRight - GEOM.xLeft);
-    const H = W * GEOM.aspect;
+    const isoH = W * GEOM.aspect;
+    const H = pitchPx != null ? pitchPx / GEOM.blockStep : isoH;
     return {
       pageW: W, pageH: H,
       ascentPx: GEOM.ascent * H,
       descentPx: GEOM.descent * H,
       blockStepPx: GEOM.blockStep * H,
-      ruleThicknessPx: GEOM.ruleThickness * H
+      ruleThicknessPx: GEOM.ruleThickness * H,
+      anis: H / isoH
     };
+  }
+
+  // A small five-point star, point up — the same shape the Magic Card
+  // draws its stars with, so nothing about the sheet announces a machine.
+  function drawStar(ctx, cx, cy, R) {
+    const r = R * 0.42;
+    ctx.beginPath();
+    for (let k = 0; k < 10; k++) {
+      const rad = k % 2 === 0 ? R : r;
+      const a = -Math.PI / 2 + k * Math.PI / 5;
+      const x = cx + rad * Math.cos(a), y = cy + rad * Math.sin(a);
+      if (k === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.fill();
   }
 
   /* Draw the sheet at widthPx. Returns the pixel geometry it drew with
@@ -166,8 +246,9 @@
       ctx.fillText(LINES[i].text, x0, top + GEOM.modelBaseline * H);
 
       // The line number, left of the writing zone so it can never be
-      // mistaken for the child's ink.
-      ctx.fillStyle = '#7a8496';
+      // mistaken for the child's ink — and printed LIGHT so it can never
+      // be mistaken for an end-mark (see NUMBER_COLOR).
+      ctx.fillStyle = NUMBER_COLOR;
       ctx.font = Math.round(GEOM.modelSize * H * 0.8) + 'px sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText(String(i + 1), GEOM.numberX * W, ruleY);
@@ -177,6 +258,12 @@
       ctx.fillStyle = RULE_COLOR;
       const t = Math.max(1, Math.round(GEOM.ruleThickness * H));
       ctx.fillRect(x0, Math.round(ruleY - t / 2), x1 - x0, t);
+
+      // The end-marks — solid ink, at both ends of the rule, beyond where
+      // a child's letters can reach. The reader registers on these.
+      ctx.fillStyle = INK;
+      drawStar(ctx, GEOM.anchorXLeft * W, ruleY, GEOM.anchorRadius * W);
+      drawStar(ctx, GEOM.anchorXRight * W, ruleY, GEOM.anchorRadius * W);
 
       drawn.lines.push({ index: i, text: LINES[i].text, ruleY, x0, x1,
                          zoneTop: ruleY - GEOM.ascent * H,
@@ -190,5 +277,6 @@
     return drawn;
   }
 
-  window.HWSheet = { LINES, GEOM, RULE_COLOR, CALLOUT, ruleYFrac, lineZoneFor, draw };
+  window.HWSheet = { LINES, GEOM, RULE_COLOR, NUMBER_COLOR, CALLOUT,
+                     ruleYFrac, lineZoneFor, anchorAreaPx, draw };
 })();

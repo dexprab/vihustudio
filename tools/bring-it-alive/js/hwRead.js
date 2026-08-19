@@ -18,14 +18,32 @@
  *    re-invents "what is ink"; this module only decides what the ink
  *    MEANS on this particular sheet.
  *
- * 2. RULES. The ruled baselines (one per model line — HWSheet.LINES is
- *    the count) are found as long horizontal darker-than-paper runs,
- *    then the set that matches the sheet's known pattern (even pitch,
+ * 2. REGISTRATION — end-marks first, printed rules second (the Magic
+ *    Card reader's exact fall-through shape, Decision 17).
+ *
+ *    2a. ANCHORS. The sheet prints a solid-ink star at both ends of
+ *    every rule (hwSheet.js). The reader finds dark compact marks,
+ *    matches them to the sheet's known ladder AS A WHOLE — five pairs;
+ *    each column exactly collinear (anchors sit on a straight sheet
+ *    line, and a projective transform keeps straight lines straight);
+ *    pitch and rung length varying only smoothly; every mark the size
+ *    the ladder itself implies; almost every mark isolated in clear
+ *    margin — and each line's writing band then derives from ITS OWN
+ *    pair: position, tilt, length, and (from the measured pitch) the
+ *    vertical scale, so a webcam's foreshortening is absorbed per line
+ *    with no flat-plane assumption and no global even-pitch requirement.
+ *    A partial or fake ladder matches nothing: the pattern is accepted
+ *    whole or not at all, so a mark-like blob in a wrong place cannot
+ *    invent a registration. A ladder found upside down flips the photo
+ *    and reads again; one whose way up cannot be told is refused.
+ *
+ *    2b. RULES (fallback — sheets printed before the marks existed).
+ *    The ruled baselines are found as long horizontal darker-than-paper
+ *    runs, then the set matching the sheet's known pattern (even pitch,
  *    equal length, aligned ends, pitch/length ratio from HWSheet.GEOM)
- *    is chosen by scoring every combination. The
- *    rules are the sheet's own registration marks: each line's zone is
- *    derived from its rule's measured length, so nothing about the
- *    photograph's scale or position is ever assumed.
+ *    is chosen by scoring every combination. This is the path the field
+ *    proved too faint for a real camera — it remains for old printouts
+ *    held square-on, and refuses honestly everywhere else.
  *
  * 3. RULE REMOVAL. The printed rule is ink to the detector, and a child's
  *    letters SIT on it — left in place it would weld a whole line into
@@ -89,7 +107,41 @@
     // and stray/missing: almost nothing accepted AND a solid third
     // touching is still a style, not a smudge.
     JOINED_ACCEPT_FRAC: 0.2,
-    JOINED_TOUCH_FRAC_LO: 0.35
+    JOINED_TOUCH_FRAC_LO: 0.35,
+    // ---- end-mark (anchor) registration — stage 2a ----
+    A_MIN_PX: 4,           // smallest credible mark, px of ink
+    A_BBOX_FRAC: 0.035,    // mark bbox side ≤ this × frame width
+    A_ASPECT_LO: 0.3,      // bbox height/width — squash makes marks flat
+    A_ASPECT_HI: 3.2,
+    A_FILL: 0.22,          // ink fill of own bbox ≥ this (a star is ~0.31)
+    A_DARK_REL: 0.45,      // candidate ≥ this × the darkest mark's darkness
+    A_CAP: 400,            // at most this many candidates (darkest kept)
+    A_COL_TOL_FRAC: 0.0035,// column collinearity tolerance × frame width
+    A_COL_MIN_DY: 0.10,    // column seed pairs ≥ this × frame height apart
+    A_COL_MAX: 12,         // a "column" with more inliers is the letter mass
+    A_SPAN_MIN: 0.22,      // rung ≥ this × frame width
+    A_RUNG_TILT: 0.4,      // rung |dy| ≤ this × dx (≈ 22°)
+    A_TILT_SPREAD: 0.18,   // rung slopes within this of their median (≈ 10°)
+    A_GAP_VAR: 1.6,        // rung pitch max/min — perspective, never chaos
+    A_GAP_STEP: 1.45,      // …and consecutive pitch ratio bound
+    A_LEN_VAR: 1.7,        // rung length max/min
+    A_LEN_STEP: 1.35,
+    A_RATIO_LO: 2.6,       // span/pitch — open because a webcam looking down
+    A_RATIO_HI: 12,        //   foreshortens the page vertically
+    A_SIZE_LO: 0.25,       // mark area vs the ladder's own implied mark size
+    A_SIZE_HI: 3.5,
+    A_ISO_RING: 0.35,      // isolation ring × the mark's own bbox diagonal
+    A_ISO_MIN: 8,          // ≥ this many of the 10 marks in clear margin
+    ORIENT_RATIO: 2.5,     // which-way-up: winning band ≥ this × the other…
+    ORIENT_MIN: 0.015,     // …and at least this ink-dense (the title block)
+    COARSE_XH: 14,         // px x-height under which glyphs are honestly coarse
+    // The whole aligner runs on WIDTH evidence, and under ~5 camera
+    // pixels of unit width there is none: measured at 640×360, the two
+    // lines whose strokes shattered derived units of 2–3.7px and the DP
+    // then "confidently" accepted 18 wrong letters, while every line with
+    // unit ≥ 6px stayed at zero mislabels. Below this floor a line
+    // refuses everything — refuse-rather-than-guess is absolute.
+    MIN_UNIT_PX: 5
   };
 
   // Expected RELATIVE ink widths (advance-ish) per character. Only used
@@ -103,7 +155,315 @@
   function wt(ch) { return WIDTH[ch] || 1.0; }
   function wcost(w, e) { const d = (w - e) / e; return Math.min(6, 3 * d * d); }
 
-  // ---- 2. RULES --------------------------------------------------------------
+  function median(arr) {
+    if (!arr.length) return 0;
+    const s = arr.slice().sort((a, b) => a - b);
+    return s[(s.length / 2) | 0];
+  }
+
+  // ---- 2a. ANCHORS -----------------------------------------------------------
+  /* Candidate end-marks: compact, well-filled, and nearly as dark as the
+   * darkest ink in the photo. Reuses the labelling BIASegment already did
+   * — this only measures each component once. The darkness gate is
+   * RELATIVE (0.45 × the darkest mark), so a dim capture keeps working:
+   * the printed marks are solid ink and set the maximum themselves, while
+   * the sheet's own light-grey line numbers sit at ~0.29 by construction
+   * (hwSheet.js NUMBER_COLOR) and can never qualify. */
+  function collectMarks(seg) {
+    const w = seg.width, h = seg.height, n = w * h;
+    const N = seg.compCount;
+    const sx = new Float64Array(N + 1), sy = new Float64Array(N + 1);
+    const dk = new Float64Array(N + 1);
+    const bx0 = new Int32Array(N + 1).fill(w), bx1 = new Int32Array(N + 1).fill(-1);
+    const by0 = new Int32Array(N + 1).fill(h), by1 = new Int32Array(N + 1).fill(-1);
+    for (let i = 0; i < n; i++) {
+      const c = seg.labels[i];
+      if (!c) continue;
+      const x = i % w, y = (i / w) | 0;
+      sx[c] += x; sy[c] += y; dk[c] += seg.paper[i] - seg.lum[i];
+      if (x < bx0[c]) bx0[c] = x; if (x > bx1[c]) bx1[c] = x;
+      if (y < by0[c]) by0[c] = y; if (y > by1[c]) by1[c] = y;
+    }
+    const maxB = P.A_BBOX_FRAC * w;
+    let marks = [];
+    for (let c = 1; c <= N; c++) {
+      const size = seg.compSize[c];
+      if (size < P.A_MIN_PX) continue;
+      const bw = bx1[c] - bx0[c] + 1, bh = by1[c] - by0[c] + 1;
+      if (bw > maxB || bh > maxB) continue;
+      const asp = bh / bw;
+      if (asp < P.A_ASPECT_LO || asp > P.A_ASPECT_HI) continue;
+      if (size / (bw * bh) < P.A_FILL) continue;
+      marks.push({ label: c, size, cx: sx[c] / size, cy: sy[c] / size,
+                   x0: bx0[c], x1: bx1[c], y0: by0[c], y1: by1[c],
+                   dark: dk[c] / size });
+    }
+    if (!marks.length) return { marks, darkGate: 0 };
+    let dmax = 0;
+    for (const m of marks) if (m.dark > dmax) dmax = m.dark;
+    const darkGate = P.A_DARK_REL * dmax;
+    marks = marks.filter((m) => m.dark >= darkGate);
+    marks.sort((a, b) => b.dark - a.dark);
+    if (marks.length > P.A_CAP) marks.length = P.A_CAP;
+    return { marks, darkGate };
+  }
+
+  /* A printed end-mark stands in clear margin; a letter has neighbours.
+   * "Isolated" = no DARK ink of another component within a ring scaled by
+   * the mark's own bbox — dark, so the sheet's own light number and the
+   * faint rule never count against a real mark. */
+  function isIsolated(seg, m, darkGate) {
+    const w = seg.width, h = seg.height;
+    const bw = m.x1 - m.x0 + 1, bh = m.y1 - m.y0 + 1;
+    const ring = Math.max(2, Math.round(P.A_ISO_RING * Math.hypot(bw, bh)));
+    const X0 = Math.max(0, m.x0 - ring), X1 = Math.min(w - 1, m.x1 + ring);
+    const Y0 = Math.max(0, m.y0 - ring), Y1 = Math.min(h - 1, m.y1 + ring);
+    for (let y = Y0; y <= Y1; y++) {
+      const row = y * w;
+      for (let x = X0; x <= X1; x++) {
+        const c = seg.labels[row + x];
+        if (!c || c === m.label) continue;
+        if (seg.paper[row + x] - seg.lum[row + x] >= darkGate) return false;
+      }
+    }
+    return true;
+  }
+
+  function eachSubset5(arr, fn) {
+    const n = arr.length, sel = new Array(5);
+    (function pick(k, from) {
+      if (k === 5) { fn(sel.slice()); return; }
+      for (let i = from; i <= n - (5 - k); i++) { sel[k] = arr[i]; pick(k + 1, i + 1); }
+    })(0, 0);
+  }
+
+  /* Score five rungs as THE ladder, or reject them. Every gate is a fact
+   * about the printed sheet under a projective camera: smooth pitch,
+   * smooth lengths, near-parallel rungs, and — the decisive one against
+   * ink lookalikes — every mark the SIZE the ladder itself implies for a
+   * printed star at that page scale. Returns null unless the whole
+   * pattern holds. */
+  function scoreLadder(sel, W, H, iso) {
+    const G = HWSheet.GEOM;
+    const aSpan = G.anchorXRight - G.anchorXLeft;
+    const gaps = [], lens = [], tilts = [];
+    for (let i = 0; i < sel.length; i++) {
+      const dx = sel[i].R.cx - sel[i].L.cx;
+      lens.push(dx);
+      tilts.push((sel[i].R.cy - sel[i].L.cy) / dx);
+      if (i) gaps.push(sel[i].y - sel[i - 1].y);
+    }
+    let gMin = Infinity, gMax = 0;
+    for (const g of gaps) { if (g < gMin) gMin = g; if (g > gMax) gMax = g; }
+    if (gMin <= 0.02 * H) return null;
+    if (gMax / gMin > P.A_GAP_VAR) return null;
+    for (let i = 1; i < gaps.length; i++) {
+      const r = gaps[i] / gaps[i - 1];
+      if (r > P.A_GAP_STEP || r < 1 / P.A_GAP_STEP) return null;
+    }
+    let lMin = Infinity, lMax = 0;
+    for (const l of lens) { if (l < lMin) lMin = l; if (l > lMax) lMax = l; }
+    if (lMax / lMin > P.A_LEN_VAR) return null;
+    for (let i = 1; i < lens.length; i++) {
+      const r = lens[i] / lens[i - 1];
+      if (r > P.A_LEN_STEP || r < 1 / P.A_LEN_STEP) return null;
+    }
+    const meanGap = gaps.reduce((a, b) => a + b, 0) / gaps.length;
+    const meanLen = lens.reduce((a, b) => a + b, 0) / lens.length;
+    const ratio = meanLen / meanGap;
+    if (ratio < P.A_RATIO_LO || ratio > P.A_RATIO_HI) return null;
+    const ts = tilts.slice().sort((a, b) => a - b);
+    const tMed = ts[2];
+    let tSpread = 0;
+    for (const t of tilts) tSpread = Math.max(tSpread, Math.abs(t - tMed));
+    if (tSpread > P.A_TILT_SPREAD) return null;
+    // vertical scale relative to horizontal, from the ladder's own numbers
+    const anis = (meanGap / G.blockStep) / ((meanLen / aSpan) * G.aspect);
+    let sizePenalty = 0;
+    for (const r of sel) {
+      const pageW = (r.R.cx - r.L.cx) / aSpan;
+      const exp = HWSheet.anchorAreaPx(pageW) *
+                  Math.min(1.6, Math.max(0.25, anis));
+      for (const m of [r.L, r.R]) {
+        const q = m.size / exp;
+        if (q < P.A_SIZE_LO || q > P.A_SIZE_HI) return null;
+        sizePenalty += Math.abs(Math.log(q));
+      }
+    }
+    let isolated = 0;
+    for (const r of sel) { if (iso(r.L)) isolated++; if (iso(r.R)) isolated++; }
+    if (isolated < P.A_ISO_MIN) return null;
+    const score = (gMax / gMin - 1) + (lMax / lMin - 1) + 2 * tSpread +
+                  0.25 * sizePenalty + 0.3 * (10 - isolated);
+    return { score, anis, isolated, meanGap, meanLen };
+  }
+
+  /* Find the ten end-marks. Columns are found by RANSAC over mark pairs
+   * (each column is exactly collinear under any projective camera), then
+   * column pairs are matched into rungs and every 5-rung subset is held
+   * to the whole pattern. Returns the best ladder or null. */
+  function findLadder(seg, log) {
+    const { marks, darkGate } = collectMarks(seg);
+    if (marks.length < 10) return null;
+    const W = seg.width, H = seg.height;
+    const tol = Math.max(2.5, P.A_COL_TOL_FRAC * W);
+    const isoCache = new Map();
+    const iso = (m) => {
+      let v = isoCache.get(m.label);
+      if (v === undefined) { v = isIsolated(seg, m, darkGate); isoCache.set(m.label, v); }
+      return v;
+    };
+    // Only ISOLATED marks may seed a column line: a printed end-mark
+    // stands in clear margin by construction, while almost every ink
+    // lookalike has neighbours — this is a pure speed cut (from ~400²
+    // seed pairs to a few thousand), not a new gate, because a real
+    // column needs only two of its five marks isolated to be seeded and
+    // the ladder itself already requires 8 of 10.
+    const seeds = marks.filter((m) => iso(m));
+    const cols = new Map();
+    for (let i = 0; i < seeds.length; i++) {
+      for (let j = i + 1; j < seeds.length; j++) {
+        const dy = seeds[j].cy - seeds[i].cy;
+        if (Math.abs(dy) < P.A_COL_MIN_DY * H) continue;
+        const dx = seeds[j].cx - seeds[i].cx;
+        if (Math.abs(dx) > 1.2 * Math.abs(dy)) continue;
+        const b = dx / dy, a = seeds[i].cx - b * seeds[i].cy;
+        const inl = [];
+        for (const m of marks) {
+          if (Math.abs(m.cx - (a + b * m.cy)) <= tol) inl.push(m);
+        }
+        if (inl.length < 5 || inl.length > P.A_COL_MAX) continue;
+        inl.sort((p, q) => p.cy - q.cy);
+        const key = inl.map((m) => m.label).join(',');
+        if (!cols.has(key)) {
+          cols.set(key, { inl, mx: inl.reduce((s, m) => s + m.cx, 0) / inl.length });
+        }
+      }
+    }
+    let best = null;
+    const colList = Array.from(cols.values());
+    for (const A of colList) {
+      for (const B of colList) {
+        if (B.mx - A.mx < P.A_SPAN_MIN * W) continue;
+        // greedy nearest-in-y pairing, left column driving
+        const usedB = new Set();
+        const rungs = [];
+        for (const a of A.inl) {
+          let pick = null, bd = Infinity;
+          for (const b of B.inl) {
+            if (usedB.has(b.label) || b.label === a.label) continue;
+            const d = Math.abs(b.cy - a.cy);
+            if (d < bd) { bd = d; pick = b; }
+          }
+          if (!pick) continue;
+          const dx = pick.cx - a.cx;
+          if (dx < P.A_SPAN_MIN * W) continue;
+          if (Math.abs(pick.cy - a.cy) > P.A_RUNG_TILT * dx) continue;
+          const s = Math.max(a.size, pick.size) / Math.min(a.size, pick.size);
+          if (s > 4) continue;
+          usedB.add(pick.label);
+          rungs.push({ L: a, R: pick, y: (a.cy + pick.cy) / 2 });
+        }
+        if (rungs.length < 5 || rungs.length > 10) continue;
+        rungs.sort((p, q) => p.y - q.y);
+        eachSubset5(rungs, (sel) => {
+          const sc = scoreLadder(sel, W, H, iso);
+          if (sc && (!best || sc.score < best.score)) {
+            best = Object.assign({ rungs: sel }, sc);
+          }
+        });
+      }
+    }
+    if (best) {
+      log('hw: anchor ladder — 10 of 10 end-marks (score ' + best.score.toFixed(3) +
+          ', ' + best.isolated + '/10 in clear margin, vertical scale ' +
+          best.anis.toFixed(2) + '× the horizontal)');
+    }
+    return best;
+  }
+
+  /* Each line's registration from ITS OWN pair of end-marks: the writing
+   * span's endpoints are interpolated along the rung (the marks sit at
+   * known sheet fractions), the baseline is the segment between them, and
+   * the vertical scale comes from the measured pitch to the neighbouring
+   * rungs — no flat-plane assumption anywhere. */
+  function anchorFits(ladder) {
+    const G = HWSheet.GEOM;
+    const span = G.anchorXRight - G.anchorXLeft;
+    const t0 = (G.xLeft - G.anchorXLeft) / span;
+    const t1 = (G.xRight - G.anchorXLeft) / span;
+    const mids = ladder.rungs.map((r) => (r.L.cy + r.R.cy) / 2);
+    const gaps = [];
+    for (let i = 1; i < mids.length; i++) gaps.push(mids[i] - mids[i - 1]);
+    const fits = [], zones = [];
+    for (let i = 0; i < ladder.rungs.length; i++) {
+      const L = ladder.rungs[i].L, R = ladder.rungs[i].R;
+      const x0 = L.cx + t0 * (R.cx - L.cx), y0 = L.cy + t0 * (R.cy - L.cy);
+      const x1 = L.cx + t1 * (R.cx - L.cx), y1 = L.cy + t1 * (R.cy - L.cy);
+      const b = (y1 - y0) / Math.max(1e-6, x1 - x0);
+      const a = y0 - b * x0;
+      const pitch = i === 0 ? gaps[0]
+        : i === ladder.rungs.length - 1 ? gaps[gaps.length - 1]
+        : (gaps[i - 1] + gaps[i]) / 2;
+      const zone = HWSheet.lineZoneFor(x1 - x0 + 1, pitch);
+      zones.push(zone);
+      fits.push({ a, b, x0: Math.round(x0), x1: Math.round(x1),
+                  len: x1 - x0 + 1,
+                  thickness: Math.max(1, Math.round(zone.ruleThicknessPx)),
+                  yAt(x) { return this.a + this.b * x; } });
+    }
+    return { fits, zones, gaps };
+  }
+
+  /* Which way up? The ladder alone is top-bottom symmetric, so ask the
+   * sheet: the title/instruction/callout block lives 0.8–1.2 pitches
+   * ABOVE the first rule, and beyond the last rule the page simply ends.
+   * Upside down, those two bands swap. A clear winner decides; no clear
+   * winner refuses — an inverted sheet fed onward could let the aligner
+   * accept wrong letters, and refuse-rather-than-guess is absolute. */
+  function whichWayUp(seg, fits, gaps) {
+    const w = seg.width, h = seg.height;
+    const bandInk = (fit, pitch, sign) => {
+      let on = 0, total = 0;
+      const xa = Math.round(fit.x0 + 0.25 * (fit.x1 - fit.x0));
+      const xb = Math.round(fit.x0 + 0.75 * (fit.x1 - fit.x0));
+      for (let x = xa; x <= xb; x += 2) {
+        if (x < 0 || x >= w) continue;
+        const yr = fit.yAt(x);
+        const ya = Math.round(yr + sign * 0.8 * pitch);
+        const yb = Math.round(yr + sign * 1.2 * pitch);
+        const y0 = Math.min(ya, yb), y1 = Math.max(ya, yb);
+        for (let y = y0; y <= y1; y += 2) {
+          if (y < 0 || y >= h) continue;
+          total++;
+          if (seg.ink[y * w + x]) on++;
+        }
+      }
+      return total >= 40 ? on / total : 0;
+    };
+    const above = bandInk(fits[0], gaps[0], -1);
+    const below = bandInk(fits[fits.length - 1], gaps[gaps.length - 1], +1);
+    if (above >= P.ORIENT_MIN && above >= P.ORIENT_RATIO * below) return 'upright';
+    if (below >= P.ORIENT_MIN && below >= P.ORIENT_RATIO * above) return 'inverted';
+    return 'unclear';
+  }
+
+  // Exact pixel permutation — rotating twice reproduces the original
+  // bytes, so a flipped read is the same read the right way up.
+  function rotate180(photo) {
+    const w = photo.width, h = photo.height, n = w * h;
+    const src = photo.imageData.data;
+    const out = new ImageData(w, h);
+    const d = out.data;
+    for (let i = 0; i < n; i++) {
+      const j = (n - 1 - i) * 4, k = i * 4;
+      d[k] = src[j]; d[k + 1] = src[j + 1];
+      d[k + 2] = src[j + 2]; d[k + 3] = src[j + 3];
+    }
+    return { width: w, height: h, imageData: out, filename: photo.filename };
+  }
+
+  // ---- 2b. RULES (fallback) --------------------------------------------------
   // Longest bridged horizontal darker-than-paper run per row.
   function rowRuns(seg) {
     const w = seg.width, h = seg.height;
@@ -515,7 +875,13 @@
   }
 
   // Cut an accepted letter's pixels out as a standalone mask patch.
-  function samplePatch(pieces, seg, rule) {
+  // `anis` is the line's measured vertical scale relative to horizontal
+  // (zone.anis): a webcam looking down photographs letters vertically
+  // squashed, and a font traced from squashed masks would be squashed
+  // forever. The ladder measured the squash exactly, so the patch is
+  // resampled back to square pixels — arithmetic, not guessing. A flat
+  // capture (anis ≈ 1) is returned byte-identical to before.
+  function samplePatch(pieces, seg, rule, anis) {
     const w = seg.width;
     let x0 = Infinity, x1 = -1, y0 = Infinity, y1 = -1;
     for (const c of pieces) {
@@ -523,7 +889,7 @@
       y0 = Math.min(y0, c.y0); y1 = Math.max(y1, c.y1);
     }
     const pw = x1 - x0 + 1, ph = y1 - y0 + 1;
-    const mask = new Uint8Array(pw * ph);
+    let mask = new Uint8Array(pw * ph);
     for (const src of pieces) {
       for (const p of src.px) {
         const px = p % w, py = (p / w) | 0;
@@ -532,10 +898,23 @@
     }
     const cx = (x0 + x1) / 2;
     const ruleY = rule.yAt(cx);
-    return { mask, w: pw, h: ph, x0, y0,
-             baselineRow: ruleY - y0,        // where the rule crosses the patch
-             topAbove: ruleY - y0,           // px of letter above the baseline
-             belowBase: y1 - ruleY,          // px below (descender or contact foot)
+    const rawTop = ruleY - y0;               // camera pixels — the capture fact
+    let outH = ph, k = 1;
+    if (anis && Math.abs(anis - 1) > 0.05) {
+      k = 1 / Math.max(0.2, Math.min(3, anis));
+      outH = Math.max(1, Math.round(ph * k));
+      const stretched = new Uint8Array(pw * outH);
+      for (let y = 0; y < outH; y++) {
+        const sy = Math.min(ph - 1, Math.floor(y / k));
+        stretched.set(mask.subarray(sy * pw, sy * pw + pw), y * pw);
+      }
+      mask = stretched;
+    }
+    return { mask, w: pw, h: outH, x0, y0,
+             baselineRow: rawTop * k,        // where the rule crosses the patch
+             topAbove: rawTop * k,           // px of letter above the baseline
+             belowBase: (y1 - ruleY) * k,    // px below (descender or contact foot)
+             rawTop,                         // uncorrected, for capture honesty
              inkWidth: pw, cx };
   }
 
@@ -555,41 +934,77 @@
     log('hw: ink plane ready — ' + seg.compCount + ' raw components (' +
         Math.round(performance.now() - t0) + 'ms)');
 
-    const runs = rowRuns(seg);
-    let bands = candidateBands(runs, seg.width, seg.height, P.RUN_FRAC);
-    let rules = chooseRules(bands, log);
-    if (!rules) {
-      bands = candidateBands(runs, seg.width, seg.height, P.RUN_FRAC_RETRY);
-      rules = chooseRules(bands, log);
-    }
-    if (!rules) {
-      log('hw: REFUSED — the sheet\'s ruled lines were not found (' +
-          bands.length + ' candidate bands, none matching the sheet pattern)');
-      return { ok: false, reason: 'lines' };
+    // ---- registration: end-marks first, printed rules second ---------------
+    let fits = null, zones = null, viaAnchors = false, anis = 1;
+    const ladder = findLadder(seg, log);
+    if (ladder) {
+      const reg = anchorFits(ladder);
+      const up = whichWayUp(seg, reg.fits, reg.gaps);
+      if (up === 'inverted' && !opts._flipped) {
+        log('hw: the end-marks read upside down — turning the photograph around and reading again');
+        return read(rotate180(photo), Object.assign({}, opts, { _flipped: true }));
+      }
+      if (up !== 'upright') {
+        log('hw: REFUSED — end-marks found, but I could not tell which way up the sheet is (' +
+            up + '; the title block was not where either way up puts it)');
+        return { ok: false, reason: 'lines' };
+      }
+      fits = reg.fits; zones = reg.zones; viaAnchors = true; anis = ladder.anis;
+    } else {
+      log('hw: no anchor end-marks found — trying the printed rules themselves ' +
+          '(an older sheet, square-on)');
+      const runs = rowRuns(seg);
+      let bands = candidateBands(runs, seg.width, seg.height, P.RUN_FRAC);
+      let rules = chooseRules(bands, log);
+      if (!rules) {
+        bands = candidateBands(runs, seg.width, seg.height, P.RUN_FRAC_RETRY);
+        rules = chooseRules(bands, log);
+      }
+      if (!rules) {
+        log('hw: REFUSED — the sheet\'s end-marks and ruled lines were not found (' +
+            bands.length + ' candidate bands, none matching the sheet pattern)');
+        return { ok: false, reason: 'lines' };
+      }
+      fits = [];
+      for (const band of rules) {
+        const fit = fitRule(seg, band);
+        if (!fit) { log('hw: REFUSED — a rule band would not fit a line'); return { ok: false, reason: 'lines' }; }
+        fits.push(fit);
+      }
+      // Per-line zones from measured length AND measured pitch, exactly as
+      // the anchor path derives them — a flat capture measures anis ≈ 1
+      // and everything downstream behaves as it always did.
+      const mids = fits.map((f) => f.yAt((f.x0 + f.x1) / 2));
+      const gaps = [];
+      for (let i = 1; i < mids.length; i++) gaps.push(mids[i] - mids[i - 1]);
+      zones = fits.map((f, i) => {
+        const pitch = i === 0 ? gaps[0]
+          : i === fits.length - 1 ? gaps[gaps.length - 1]
+          : (gaps[i - 1] + gaps[i]) / 2;
+        return HWSheet.lineZoneFor(f.len, pitch);
+      });
+      anis = zones.reduce((a, z) => a + z.anis, 0) / zones.length;
     }
 
     const cleaned = Uint8Array.from(seg.ink);
-    const fits = [];
-    for (const band of rules) {
-      const fit = fitRule(seg, band);
-      if (!fit) { log('hw: REFUSED — a rule band would not fit a line'); return { ok: false, reason: 'lines' }; }
-      fits.push(fit);
-    }
-    const zone = HWSheet.lineZoneFor(fits.reduce((a, f) => a + f.len, 0) / fits.length);
+    const meanW = zones.reduce((a, z) => a + z.pageW, 0) / zones.length;
     let backstopped = 0;
-    for (const fit of fits) {
-      if (ruleReadsAsInk(seg, fit)) {
-        removeRule(cleaned, seg, fit, Math.round(0.012 * zone.pageW));
+    for (let i = 0; i < fits.length; i++) {
+      if (ruleReadsAsInk(seg, fits[i])) {
+        removeRule(cleaned, seg, fits[i], Math.round(0.012 * zones[i].pageW));
         backstopped++;
       }
     }
-    log('hw: ' + fits.length + ' rules fit (page ~' + Math.round(zone.pageW) + 'px wide, rule ' +
-        fits[0].thickness + 'px thick)' + (backstopped
+    log('hw: ' + fits.length + ' rules fit (page ~' + Math.round(meanW) + 'px wide, rule ' +
+        fits[0].thickness + 'px thick, registered by ' +
+        (viaAnchors ? 'end-marks' : 'the rules themselves') + ')' + (backstopped
           ? ' — ' + backstopped + ' read as ink and removed by run-length ' +
             '(dim capture; round letter bottoms may split there)'
           : ' — none read as ink, nothing removed'));
 
     const lines = [];
+    const xTops = []; // raw camera-pixel ink heights of accepted x-class letters
+    const XC = (window.HWFont && HWFont.XCLASS) || 'acemnorsuvwxz';
     for (let i = 0; i < HWSheet.LINES.length; i++) {
       const text = HWSheet.LINES[i].text;
       if (opts.onlyLine != null && opts.onlyLine !== i) {
@@ -597,9 +1012,13 @@
         continue;
       }
       const rule = fits[i];
+      const zone = zones[i];
       let comps = lineComponents(cleaned, seg, rule, zone);
       comps = mergeSatellites(comps, zone);
       const al = align(text, comps);
+      // Under MIN_UNIT_PX of unit width the aligner's only evidence is
+      // gone — nothing on this line may be accepted (see P.MIN_UNIT_PX).
+      const unitTooSmall = comps.length > 0 && al.unit > 0 && al.unit < P.MIN_UNIT_PX;
       const blobs = comps.map((c) => ({ x0: c.x0, x1: c.x1, y0: c.y0, y1: c.y1, n: c.px.length }));
       const letters = [];
       const gapsIntra = [], gapsWord = [];
@@ -607,13 +1026,17 @@
       for (let t = 0; t < al.tokens.length; t++) {
         const tok = al.tokens[t];
         if (tok.ch === ' ') { prevSpace = true; continue; }
-        const ok = accept(tok, comps, al.unit);
+        const ok = !unitTooSmall && accept(tok, comps, al.unit);
+        if (unitTooSmall && (tok.kind === 'match' || tok.kind === 'split')) {
+          tok.refused = 'coarse';
+        }
         const entry = { ch: tok.ch, kind: tok.kind, accepted: ok,
                         refused: tok.refused || (ok ? null : tok.kind), cost: tok.cost,
                         blobIndex: tok.blob != null ? tok.blob : null };
         if (ok) {
           const pieces = (tok.kind === 'split' ? tok.blobs : [tok.blob]).map((b) => comps[b]);
-          entry.sample = samplePatch(pieces, seg, rule);
+          entry.sample = samplePatch(pieces, seg, rule, zone.anis);
+          if (XC.includes(tok.ch)) xTops.push(entry.sample.rawTop);
           entry.blobX0 = entry.sample.x0;
           entry.blobX1 = entry.sample.x0 + entry.sample.w - 1;
           if (prevMatch != null) {
@@ -633,7 +1056,9 @@
       // Joined-up: touching-refusals dominate → the letters held hands.
       // A merely messy line (a couple of touching pairs, the rest read)
       // stays below both gates and keeps the generic retake.
-      const joined = expected > 0 &&
+      // A line whose unit collapsed is a resolution problem, never a
+      // writing-style diagnosis — it must not claim "joined-up".
+      const joined = !unitTooSmall && expected > 0 &&
         (touching >= P.JOINED_TOUCH_FRAC * expected ||
          (got <= P.JOINED_ACCEPT_FRAC * expected &&
           touching >= P.JOINED_TOUCH_FRAC_LO * expected));
@@ -641,15 +1066,37 @@
           ' letters: ' + got + ' accepted, ' +
           touching + ' touching-refused, ' +
           letters.filter((l) => l.kind === 'missing').length + ' missing (unit ' +
-          Math.round(al.unit) + 'px)' + (joined ? ' — READS AS JOINED-UP' : ''));
+          Math.round(al.unit) + 'px)' + (joined ? ' — READS AS JOINED-UP' : '') +
+          (unitTooSmall ? ' — UNIT UNDER ' + P.MIN_UNIT_PX +
+            'px: too coarse to verify, everything refused' : ''));
       lines.push({ index: i, text, found: true, rule,
                    letters, expected, accepted: got, touching, joined, blobs,
                    unit: al.unit, gapsIntra, gapsWord });
     }
 
+    // Honest capture facts: how the photo registered, how tilted each
+    // line sat, and how many camera pixels tall the child's letters
+    // actually were — measured from the accepted x-class letters, or
+    // estimated from the sheet's own measured vertical scale when a
+    // coarse photo accepted none of them. Below COARSE_XH the traced
+    // glyphs are honestly blocky, so the app tells the child kindly and
+    // still keeps everything that read.
+    const tilts = fits.map((f) => Math.atan(f.b) * 180 / Math.PI);
+    const meanAscent = zones.reduce((a, z) => a + z.ascentPx, 0) / zones.length;
+    const xhMeasured = median(xTops);
+    const xHeightPx = xhMeasured || 0.4 * meanAscent;
+    const coarse = xHeightPx < P.COARSE_XH;
+    log('hw: capture — ' + (viaAnchors ? 'anchors 10 of 10' : 'no anchors (rule fallback)') +
+        '; line tilt ' + tilts.map((t) => t.toFixed(1) + '°').join(' ') +
+        '; x-height ~' + Math.round(xHeightPx) + 'px ' +
+        (xhMeasured ? '(measured)' : '(estimated — no x-class letter accepted)') +
+        (coarse ? ' — under the ' + P.COARSE_XH + 'px floor: glyphs honestly coarse' : ''));
     log('hw: sheet read in ' + Math.round(performance.now() - t0) + 'ms');
-    return { ok: true, lines, zone, pageW: zone.pageW };
+    return { ok: true, lines, zones, pageW: meanW,
+             capture: { anchors: viaAnchors ? 10 : 0, viaAnchors, tilts,
+                        xHeightPx, xHeightMeasured: !!xhMeasured, coarse, anis,
+                        flipped: !!opts._flipped } };
   }
 
-  window.HWRead = { read, PARAMS: P, wt };
+  window.HWRead = { read, PARAMS: P, wt, collectMarks, findLadder };
 })();
