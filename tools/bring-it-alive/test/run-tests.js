@@ -35,6 +35,13 @@
  * original where they are not — a replayed plane, never a write, so undo,
  * Reset and the Original view recover every hidden pixel exactly (Y5).
  *
+ * The MARK section (K1–K7): mark a portion with a loose loop, push a
+ * colour, the marked ink takes the replacement tint; the mark stays live
+ * for another colour; later ops win where marks overlap; a loop around
+ * everything is the whole-drawing case and travels as loop:null; JSON
+ * round trip; erase in both orders. Asserted against an independently
+ * pinned copy of the tint contract, pixel by pixel.
+ *
  * Run:
  *   node test/serve.js 8765 &
  *   NODE_PATH=/opt/node22/lib/node_modules node test/run-tests.js
@@ -1435,6 +1442,355 @@ function check(name, cond, detail) {
   await page.locator('#sideBySide').screenshot({
     path: path.join(SHOTS, '6-original-vs-my-version.png') });
   await page.evaluate(() => document.getElementById('sideBySide').remove());
+
+  // ==========================================================================
+  // MARK — mark a portion, colour its lines (and colour ALL the lines).
+  // Product owner: "can i select a portion of image by marking it and push
+  // a button to change its outline?" The child loops a part of the drawing
+  // (the Claim's own gesture), pushes a colour, and the marked ink takes the
+  // SAME replacement tint line colour uses. A loop around everything IS the
+  // whole-drawing case — the op travels as loop:null. Driven with real
+  // pointer loops on the REAL photograph; every equality a pixel-buffer
+  // comparison against an independently pinned copy of the tint contract.
+  console.log('\n== MARK — mark a portion, colour its lines =================');
+  await anotherClaim();
+  await drawLoop(R.leftClaim);
+  await bringAlive();
+  await page.locator('#yoursTools').scrollIntoViewIfNeeded();
+
+  // A Mark loop on the real editing canvas: document-space points driven
+  // as one pointer stroke; the editor closes it into a live mark on
+  // release. Marking is NOT an op — only pushing a colour is.
+  async function markLoopOn(docPoints) {
+    await page.click('#toolMark');
+    await page.evaluate(() => { BIAEditor.state.mark = null; });
+    const eb = await page.locator('#editCanvas').boundingBox();
+    const pts = await page.evaluate((dp) =>
+      dp.map((p) => BIAEditor.docToScreen(p[0], p[1])), docPoints);
+    await page.mouse.move(eb.x + pts[0][0], eb.y + pts[0][1]);
+    await page.mouse.down();
+    for (const p of pts) await page.mouse.move(eb.x + p[0], eb.y + p[1]);
+    await page.mouse.up();
+    await page.waitForFunction(() => !!BIAEditor.state.mark);
+  }
+  async function pushColour(hex) {
+    const before = await page.evaluate(() => window.__bia.creation.cursor);
+    await page.locator('button.swatch[data-color="' + hex + '"]').click();
+    await page.waitForFunction((n) => window.__bia.creation.cursor > n, before);
+  }
+  const rectLoop = (r) => [
+    [r.x0, r.y0], [(r.x0 + r.x1) / 2, r.y0], [r.x1, r.y0], [r.x1, (r.y0 + r.y1) / 2],
+    [r.x1, r.y1], [(r.x0 + r.x1) / 2, r.y1], [r.x0, r.y1], [r.x0, (r.y0 + r.y1) / 2]];
+
+  // The tint contract, pinned INDEPENDENTLY in the test (dark ink → the
+  // colour itself, light pencil → paler toward white, alpha untouched),
+  // and a rectangle audit with a guard band so rasterisation edges are
+  // never contested.
+  await page.evaluate(() => {
+    window.__test.tintRef = (r, g, b, t) => {
+      const v = (r * 77 + g * 150 + b * 29) >> 8;
+      const f = Math.min(1, v / 230) * 0.75;
+      return [Math.round(t[0] + (255 - t[0]) * f),
+              Math.round(t[1] + (255 - t[1]) * f),
+              Math.round(t[2] + (255 - t[2]) * f)];
+    };
+    window.__test.hex = (hx) => [parseInt(hx.slice(1, 3), 16),
+      parseInt(hx.slice(3, 5), 16), parseInt(hx.slice(5, 7), 16)];
+    window.__test.markAudit = (rect, hx, guard) => {
+      const c = window.__bia.creation, w = c.original.width, h = c.original.height;
+      const od = c.original.data, d = c.view().data, t = window.__test.hex(hx);
+      let insideInk = 0, insideWrong = 0, alphaWrong = 0, outsideInk = 0, outsideChanged = 0;
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+        const p = (y * w + x) * 4;
+        if (!od[p + 3]) continue;
+        const inIn = x >= rect.x0 + guard && x <= rect.x1 - guard &&
+                     y >= rect.y0 + guard && y <= rect.y1 - guard;
+        const outOut = x < rect.x0 - guard || x > rect.x1 + guard ||
+                       y < rect.y0 - guard || y > rect.y1 + guard;
+        if (inIn) {
+          insideInk++;
+          const e = window.__test.tintRef(od[p], od[p + 1], od[p + 2], t);
+          if (d[p] !== e[0] || d[p + 1] !== e[1] || d[p + 2] !== e[2]) insideWrong++;
+          if (d[p + 3] !== od[p + 3]) alphaWrong++;
+        } else if (outOut) {
+          outsideInk++;
+          if (d[p] !== od[p] || d[p + 1] !== od[p + 1] ||
+              d[p + 2] !== od[p + 2] || d[p + 3] !== od[p + 3]) outsideChanged++;
+        }
+      }
+      return { insideInk, insideWrong, alphaWrong, outsideInk, outsideChanged };
+    };
+  });
+
+  const mkDims = await page.evaluate(() => {
+    const c = window.__bia.creation, w = c.original.width, h = c.original.height;
+    const od = c.original.data;
+    let minX = 1e9, minY = 1e9, maxX = -1, maxY = -1;
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      if (!od[(y * w + x) * 4 + 3]) continue;
+      if (x < minX) minX = x; if (x > maxX) maxX = x;
+      if (y < minY) minY = y; if (y > maxY) maxY = y;
+    }
+    return { w, h, minX, minY, maxX, maxY };
+  });
+  const IW = mkDims.maxX - mkDims.minX, IH = mkDims.maxY - mkDims.minY;
+  // "one arm": a portion on the character's left side, mid-height.
+  const rectA = { x0: Math.round(mkDims.minX), y0: Math.round(mkDims.minY + IH * 0.28),
+                  x1: Math.round(mkDims.minX + IW * 0.40), y1: Math.round(mkDims.minY + IH * 0.78) };
+
+  // ---- K1: mark a portion, push green — ONLY the marked ink changes ---------
+  console.log('\n-- K1: mark a loop around a portion → push green');
+  await page.evaluate(() => window.__test.snapView('mk0'));
+  await markLoopOn(rectLoop(rectA));
+  const k1sel = await page.evaluate(() => ({
+    live: !!BIAEditor.state.mark,
+    all: !!(BIAEditor.state.mark && BIAEditor.state.mark.all),
+    cursor: window.__bia.creation.cursor
+  }));
+  check('K1 the loop closes into a live mark, and marking alone is not an op',
+    k1sel.live && !k1sel.all && k1sel.cursor === 0, JSON.stringify(k1sel));
+  await pushColour('#30a46c');
+  const k1 = await page.evaluate(async (rect) => {
+    const c = window.__bia.creation, last = c.ops[c.cursor - 1];
+    return {
+      op: last.t, color: last.color,
+      loopIsPolygon: Array.isArray(last.loop) && last.loop.length >= 3 &&
+        last.loop.every((p) => Array.isArray(p) && p.length === 2 &&
+          Number.isInteger(p[0]) && Number.isInteger(p[1])),
+      audit: window.__test.markAudit(rect, '#30a46c', 3),
+      walk: await window.__test.originalWalk('/tools/imagebed/1000299474.jpg')
+    };
+  }, rectA);
+  check('K1 the colour push lands as ONE inkTint op carrying the loop polygon',
+    k1.op === 'inkTint' && k1.color === '#30a46c' && k1.loopIsPolygon,
+    k1.op + ' ' + k1.color);
+  check('K1 every marked ink pixel shows the replacement tint, alpha preserved',
+    k1.audit.insideInk > 500 && k1.audit.insideWrong === 0 && k1.audit.alphaWrong === 0,
+    k1.audit.insideInk + ' ink px inside the loop, ' + k1.audit.insideWrong + ' wrong');
+  check('K1 ink outside the loop is byte-unchanged',
+    k1.audit.outsideInk > 1000 && k1.audit.outsideChanged === 0,
+    k1.audit.outsideInk + ' ink px outside, ' + k1.audit.outsideChanged + ' changed');
+  check('K1 ORIGINAL layer byte-identical to the photograph after the mark tint',
+    k1.walk.mismatches === 0, k1.walk.opaque + ' opaque px walked');
+  await page.screenshot({ path: path.join(SHOTS, '7-mark-a-portion.png') });
+
+  // ---- K2: a second colour with the mark still live — replaces, no mixing ---
+  console.log('\n-- K2: push a second colour with the mark still live');
+  const k2live = await page.evaluate(() => !!BIAEditor.state.mark);
+  check('K2 the mark stays live after a colour (so another can be tried)', k2live);
+  await pushColour('#e5484d');
+  const k2 = await page.evaluate((rect) => ({
+    audit: window.__test.markAudit(rect, '#e5484d', 3),
+    cursor: window.__bia.creation.cursor
+  }), rectA);
+  check('K2 the second colour REPLACES the first everywhere in the mark — no mixing',
+    k2.audit.insideWrong === 0 && k2.audit.alphaWrong === 0 && k2.cursor === 2,
+    k2.audit.insideInk + ' ink px all red-tinted, ' + k2.cursor + ' ops');
+  check('K2 ink outside the mark still byte-unchanged', k2.audit.outsideChanged === 0);
+
+  // ---- K3: overlapping marks — the LATER op wins where they overlap ---------
+  console.log('\n-- K3: a second overlapping mark — later op wins in the overlap');
+  const rectB = { x0: Math.round((rectA.x0 + rectA.x1) / 2), y0: rectA.y0,
+                  x1: Math.round(rectA.x1 + IW * 0.25), y1: rectA.y1 };
+  await markLoopOn(rectLoop(rectB));
+  await pushColour('#3e63dd');
+  const k3 = await page.evaluate(([ra, rb]) => {
+    const c = window.__bia.creation, w = c.original.width;
+    const od = c.original.data, d = c.view().data;
+    const red = window.__test.hex('#e5484d'), blue = window.__test.hex('#3e63dd');
+    const g = 3;
+    let aOnly = 0, aWrong = 0, both = 0, bothWrong = 0;
+    for (let y = ra.y0 + g; y <= ra.y1 - g; y++) for (let x = ra.x0 + g; x <= ra.x1 - g; x++) {
+      const p = (y * w + x) * 4;
+      if (!od[p + 3]) continue;
+      const inB = x >= rb.x0 + g && x <= rb.x1 - g;
+      const outB = x < rb.x0 - g || x > rb.x1 + g;
+      const eR = window.__test.tintRef(od[p], od[p + 1], od[p + 2], red);
+      const eB = window.__test.tintRef(od[p], od[p + 1], od[p + 2], blue);
+      if (inB) { both++; if (d[p] !== eB[0] || d[p + 1] !== eB[1] || d[p + 2] !== eB[2]) bothWrong++; }
+      else if (outB) { aOnly++; if (d[p] !== eR[0] || d[p + 1] !== eR[1] || d[p + 2] !== eR[2]) aWrong++; }
+    }
+    return { aOnly, aWrong, both, bothWrong };
+  }, [rectA, rectB]);
+  check('K3 the overlap took the LATER colour (blue over red)',
+    k3.both > 100 && k3.bothWrong === 0, k3.both + ' overlap ink px');
+  check('K3 the non-overlapped part of the first mark kept its red',
+    k3.aOnly > 100 && k3.aWrong === 0, k3.aOnly + ' ink px');
+
+  // ---- K4: undo to before any mark, redo back — byte-exact both ways --------
+  console.log('\n-- K4: undo through all three mark tints, redo back');
+  await page.evaluate(() => window.__test.snapView('mkTop'));
+  await page.evaluate(() => { BIAEditor.undo(); BIAEditor.undo(); BIAEditor.undo(); });
+  const k4a = await page.evaluate(async () => ({
+    cmp: window.__test.cmpView('mk0'),
+    vsOrig: window.__test.viewVsOriginal(),
+    walk: await window.__test.originalWalk('/tools/imagebed/1000299474.jpg')
+  }));
+  check('K4 undo lands on the pre-mark view exactly — untouched original',
+    k4a.cmp.mismatches === 0 && k4a.vsOrig === 0 && k4a.walk.mismatches === 0,
+    k4a.cmp.mismatches + ' bytes differ');
+  await page.evaluate(() => { BIAEditor.redo(); BIAEditor.redo(); BIAEditor.redo(); });
+  const k4b = await page.evaluate(() => window.__test.cmpView('mkTop'));
+  check('K4 redo reproduces the marked state byte for byte',
+    k4b.mismatches === 0 && k4b.transformSame, k4b.mismatches + ' bytes differ');
+
+  // ---- K5: a fill, then a loop around EVERYTHING → all the lines, one op ----
+  console.log('\n-- K5: fill a shape, then loop around everything → all lines take one colour');
+  const k5interior = await page.evaluate(() => {
+    const c = window.__bia.creation, R2 = c.regions();
+    if (R2.none) return null;
+    const w = c.original.width, h = c.original.height, od = c.original.data;
+    let best = 0, bestA = 0;
+    for (let id = 1; id < R2.areas.length; id++) {
+      if (R2.areas[id] > bestA) { bestA = R2.areas[id]; best = id; }
+    }
+    const cl = Math.max(3, R2.halfWidth) + 3;
+    for (let y = cl; y < h - cl; y += 2) for (let x = cl; x < w - cl; x += 2) {
+      const i = y * w + x;
+      if (R2.labels[i] !== best || od[i * 4 + 3] !== 0) continue;
+      let ok = true;
+      for (let dy = -cl; dy <= cl && ok; dy += 2) for (let dx = -cl; dx <= cl; dx++) {
+        const j = (y + dy) * w + (x + dx);
+        if (R2.labels[j] !== best || od[j * 4 + 3] !== 0 || c.mask[j]) { ok = false; break; }
+      }
+      if (ok) return [x, y];
+    }
+    return null;
+  });
+  check('K5 found an interior spot to fill first', !!k5interior, JSON.stringify(k5interior));
+  await page.click('#toolFill');
+  await page.locator('button.swatch[data-color="#f5a524"]').click();
+  await editTap(k5interior[0], k5interior[1]);
+  const k5fill = await page.evaluate((s) => window.__test.viewAt(s[0], s[1]), k5interior);
+  check('K5 the fill landed — the interior is exactly the fill colour',
+    k5fill[0] === 245 && k5fill[1] === 165 && k5fill[2] === 36 && k5fill[3] === 255,
+    'rgba(' + k5fill.join(',') + ')');
+  const whole = { x0: -8, y0: -8, x1: mkDims.w + 8, y1: mkDims.h + 8 };
+  await markLoopOn(rectLoop(whole));
+  const k5sel = await page.evaluate(() => ({
+    live: !!BIAEditor.state.mark,
+    all: !!(BIAEditor.state.mark && BIAEditor.state.mark.all),
+    loop: BIAEditor.state.mark ? BIAEditor.state.mark.loop : 'none'
+  }));
+  check('K5 a loop around everything IS "all the lines" — normalised to loop:null',
+    k5sel.live && k5sel.all && k5sel.loop === null, JSON.stringify(k5sel.all));
+  await pushColour('#8e4ec6');
+  const k5 = await page.evaluate(async (fillSpot) => {
+    const c = window.__bia.creation, w = c.original.width, h = c.original.height;
+    const od = c.original.data, d = c.view().data, fp = c.fillPlane;
+    const purple = window.__test.hex('#8e4ec6');
+    const last = c.ops[c.cursor - 1];
+    let opaqueInk = 0, wrong = 0, alphaWrongNoFill = 0, checkedAlpha = 0;
+    for (let i = 0; i < w * h; i++) {
+      const p = i * 4;
+      if (!od[p + 3]) continue;
+      if (od[p + 3] === 255) {
+        opaqueInk++;
+        const e = window.__test.tintRef(od[p], od[p + 1], od[p + 2], purple);
+        if (d[p] !== e[0] || d[p + 1] !== e[1] || d[p + 2] !== e[2] || d[p + 3] !== 255) wrong++;
+      }
+      if (!fp[p + 3]) {   // off the fill, the view's alpha must be the original's
+        checkedAlpha++;
+        if (d[p + 3] !== od[p + 3]) alphaWrongNoFill++;
+      }
+    }
+    const fs = (fillSpot[1] * w + fillSpot[0]) * 4;
+    return { op: last.t, opLoop: last.loop === null ? null : 'polygon',
+             opaqueInk, wrong, alphaWrongNoFill, checkedAlpha,
+             fillStill: d[fs] === 245 && d[fs + 1] === 165 && d[fs + 2] === 36 && d[fs + 3] === 255,
+             walk: await window.__test.originalWalk('/tools/imagebed/1000299474.jpg') };
+  }, k5interior);
+  check('K5 the whole-drawing case is the SAME op, travelling as loop:null',
+    k5.op === 'inkTint' && k5.opLoop === null);
+  check('K5 every fully-opaque ink pixel shows the tint — the whole drawing recoloured',
+    k5.opaqueInk > 10000 && k5.wrong === 0, k5.opaqueInk + ' opaque ink px, ' + k5.wrong + ' wrong');
+  check('K5 ink alpha untouched everywhere (measured off the fill)',
+    k5.alphaWrongNoFill === 0, k5.checkedAlpha + ' ink px checked');
+  check('K5 the fill stays under the recoloured lines', k5.fillStill);
+  check('K5 ORIGINAL layer byte-identical after colouring all the lines',
+    k5.walk.mismatches === 0);
+
+  // ---- K6: the creation with inkTint ops round-trips as JSON ----------------
+  console.log('\n-- K6: JSON round trip with polygon loops AND loop:null in the history');
+  const k6 = await page.evaluate(async () => {
+    const c = window.__bia.creation, od = c.original.data;
+    const s = c.toJSONString();
+    const doc = JSON.parse(s);
+    const c2 = await BIACreation.fromJSON(s);
+    const a = c.view().data, b = c2.view().data;
+    let hardMismatch = 0, featherFar = 0;
+    for (let p = 0; p < a.length; p += 4) {
+      let dd = 0;
+      for (let k = 0; k < 4; k++) dd = Math.max(dd, Math.abs(a[p + k] - b[p + k]));
+      if (!dd) continue;
+      const oa = od[p + 3];
+      if (oa === 0 || oa === 255) hardMismatch++;
+      else if (dd > 4) featherFar++;
+    }
+    const tints = doc.edits.ops.filter((o) => o.t === 'inkTint');
+    return { version: doc.version, hardMismatch, featherFar, tints: tints.length,
+             hasPolygonLoop: tints.some((o) => Array.isArray(o.loop)),
+             hasNullLoop: tints.some((o) => o.loop === null), bytes: s.length };
+  });
+  check('K6 the JSON stays v2 and carries inkTint ops — polygon loops and loop:null',
+    k6.version === 2 && k6.tints === 4 && k6.hasPolygonLoop && k6.hasNullLoop,
+    k6.tints + ' inkTint ops, ' + k6.bytes + ' bytes');
+  check('K6 a fresh reload replays the marks to identical bytes',
+    k6.hardMismatch === 0 && k6.featherFar === 0,
+    'opaque & transparent exact; feather within ±4 (the stated exemption)');
+
+  // ---- K7: erase and mark, in both orders — erased stays hidden -------------
+  console.log('\n-- K7: erase and mark, both orders');
+  const k7spot = await page.evaluate(() => window.__test.findSpot('ink'));
+  check('K7 found a fully-opaque ink spot', !!k7spot, JSON.stringify(k7spot));
+  await page.evaluate(() => window.__test.snapView('k7pre'));
+  await editStroke('toolErase', [[k7spot[0] - 10, k7spot[1]], [k7spot[0] + 10, k7spot[1]]]);
+  const k7a = await page.evaluate(async (s) => ({
+    at: window.__test.viewAt(s[0], s[1]),
+    walk: await window.__test.originalWalk('/tools/imagebed/1000299474.jpg')
+  }), k7spot);
+  check('K7 mark-then-erase: the erased pixel is hidden even though it was tinted',
+    k7a.at[3] === 0 && k7a.walk.mismatches === 0, 'rgba(' + k7a.at.join(',') + ')');
+  const k7undo = await page.evaluate((s) => {
+    BIAEditor.undo();
+    return { cmp: window.__test.cmpView('k7pre'), at: window.__test.viewAt(s[0], s[1]) };
+  }, k7spot);
+  check('K7 undoing the erase brings the tinted pixel back byte-exactly',
+    k7undo.cmp.mismatches === 0 && k7undo.at[3] === 255,
+    k7undo.cmp.mismatches + ' bytes differ, rgba(' + k7undo.at.join(',') + ')');
+  await editStroke('toolErase', [[k7spot[0] - 10, k7spot[1]], [k7spot[0] + 10, k7spot[1]]]);
+  const k7rect = { x0: k7spot[0] - 80, y0: k7spot[1] - 80,
+                   x1: k7spot[0] + 80, y1: k7spot[1] + 80 };
+  await markLoopOn(rectLoop(k7rect));
+  await pushColour('#30a46c');
+  const k7b = await page.evaluate(async ([s, rect]) => {
+    const c = window.__bia.creation, w = c.original.width;
+    const od = c.original.data, d = c.view().data;
+    const green = window.__test.hex('#30a46c');
+    // a neighbour: opaque ink inside the loop, well clear of the erase disc
+    let neighbour = null;
+    for (let y = rect.y0 + 4; y <= rect.y1 - 4 && !neighbour; y++) {
+      for (let x = rect.x0 + 4; x <= rect.x1 - 4; x++) {
+        if (Math.abs(y - s[1]) < 34 && Math.abs(x - s[0]) < 46) continue;
+        const p = (y * w + x) * 4;
+        if (od[p + 3] === 255) { neighbour = [x, y]; break; }
+      }
+    }
+    let nOk = false;
+    if (neighbour) {
+      const p = (neighbour[1] * w + neighbour[0]) * 4;
+      const e = window.__test.tintRef(od[p], od[p + 1], od[p + 2], green);
+      nOk = d[p] === e[0] && d[p + 1] === e[1] && d[p + 2] === e[2] && d[p + 3] === 255;
+    }
+    return { at: window.__test.viewAt(s[0], s[1]), neighbour, nOk,
+             walk: await window.__test.originalWalk('/tools/imagebed/1000299474.jpg') };
+  }, [k7spot, k7rect]);
+  check('K7 erase-then-mark: the erased pixel STAYS hidden through the new colour',
+    k7b.at[3] === 0, 'rgba(' + k7b.at.join(',') + ')');
+  check('K7 …while unerased ink inside the same loop takes the colour',
+    !!k7b.neighbour && k7b.nOk, JSON.stringify(k7b.neighbour));
+  check('K7 ORIGINAL layer byte-identical through every erase/mark order',
+    k7b.walk.mismatches === 0);
 
   // ---- hygiene -------------------------------------------------------------
   console.log('\n-- hygiene');
