@@ -90,7 +90,13 @@ const EtherHost = (function () {
     welcome:   ['wave', 'happy', 'hero', 'idle'],
     presence:  ['idle'],
     reaction:  ['curious', 'think', 'surprised', 'idle'],
-    celebrate: ['celebrate', 'happy', 'hero', 'idle']
+    celebrate: ['celebrate', 'happy', 'hero', 'idle'],
+    // Worn while a line is being said. Lumo's package declares `talk`;
+    // the Companions do not, so theirs degrades to the liveliest face
+    // they have — which is right, because the point of this pose is
+    // only that the figure does not stand in idle while its own voice
+    // is heard.
+    speaking:  ['talk', 'happy', 'curious', 'idle']
   };
 
   // ---------------------------------------------------------------
@@ -370,11 +376,32 @@ const EtherHost = (function () {
    * platform, no network, a browser refusing audio — each ends with the
    * line unspoken and the Story exactly as it was (§16).
    */
+  // True exactly while a line is being said. The pose timers elsewhere
+  // consult it so that a scheduled return-to-presence (the welcome's,
+  // the celebrate's) cannot put the figure back in idle in the middle
+  // of its own sentence — which is precisely what made the voice read
+  // as coming from nowhere.
+  let talking = false;
+
   function _say(line) {
     if (!line || !who) return Promise.resolve(false);
     if (typeof VihuVoice === 'undefined' || !VihuVoice.speak) return Promise.resolve(false);
     try { if (window.AudioManager) AudioManager.duckFor(DUCK_LEVEL); } catch (e) {}
+
+    // THE FIGURE VISIBLY SPEAKS (reported: "its not getting registered
+    // that this is the voice of companion or that image on right spoke
+    // this"). A speaking pose plus the is-speaking glow, worn for
+    // exactly the duration of the words — the synchrony IS the
+    // attribution, the way a moving mouth is. Still not UI: no bubble,
+    // no text, nothing to tap (AC7).
+    talking = true;
+    _pose('speaking');
+    if (root) root.classList.add('is-speaking');
+
     const release = function () {
+      talking = false;
+      if (root) root.classList.remove('is-speaking');
+      if (poses) _pose('presence');
       try { if (window.AudioManager) AudioManager.releaseDuck(); } catch (e) {}
     };
     // Resolves when the words have actually finished (or could not be
@@ -426,7 +453,7 @@ const EtherHost = (function () {
           // the exact moment the child is looking at the first page.
           _later(function () {
             _pose('welcome');
-            _later(function () { _pose('presence'); }, WELCOME_HOLD_MS);
+            _later(function () { if (!talking) _pose('presence'); }, WELCOME_HOLD_MS);
             // The wave first, then the words — the Companion notices the
             // Traveller before it says anything to them. Roughly 1.2s
             // into the portal, which sits inside the brief's 3-5s
@@ -492,7 +519,7 @@ const EtherHost = (function () {
     if (total > 1 && index >= total - 1 && !celebrated) {
       celebrated = true;
       _pose('celebrate');
-      _later(function () { _pose('presence'); }, CELEBRATE_HOLD_MS);
+      _later(function () { if (!talking) _pose('presence'); }, CELEBRATE_HOLD_MS);
       // THE GOODBYE. React, breathe, then speak — a farewell that lands
       // on top of its own flourish is a notification, and this is meant
       // to be somebody seeing a visitor out.
@@ -520,7 +547,7 @@ const EtherHost = (function () {
     if (now - lastReactionAt < REACTION_QUIET_MS) return;
     lastReactionAt = now;
     _pose('reaction');
-    _later(function () { _pose('presence'); }, REACTION_HOLD_MS);
+    _later(function () { if (!talking) _pose('presence'); }, REACTION_HOLD_MS);
   }
 
   /** The portal is closing. The host leaves with it. */
@@ -545,8 +572,10 @@ const EtherHost = (function () {
     celebrated = false;
     lastReactionAt = 0;
     if (!root && !_els()) return;
+    talking = false;
     if (root) {
       root.classList.remove('is-here');
+      root.classList.remove('is-speaking');
       root.hidden = true;
     }
     if (foot) foot.classList.remove('has-host');

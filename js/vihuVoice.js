@@ -632,6 +632,12 @@
     var a = _current;
     _current = null;
     try { a.pause(); a.currentTime = 0; } catch (e) {}
+    // A paused element never fires `ended`, so without this the
+    // speak() promise of a stopped line hung until its caller's own
+    // timeout — and anything riding on that promise (the host's
+    // speaking glow, a narration hold) hung with it. A stopped line
+    // resolves NOW, as "not heard".
+    try { if (a.__vvSettle) a.__vvSettle(); } catch (e) {}
   }
 
   /** Stops whatever is speaking, including a recorded line. */
@@ -654,8 +660,12 @@
       _current = audio;
       var done = function (ok) {
         if (_current === audio) _current = null;
+        audio.__vvSettle = null;
         resolve(ok);
       };
+      // For _stopCurrent: a stopped line settles its promise instead of
+      // leaving the caller waiting on an `ended` that cannot come.
+      audio.__vvSettle = function () { done(false); };
       audio.addEventListener('ended', function () { done(true); }, { once: true });
       audio.addEventListener('error', function () { done(false); }, { once: true });
       var p;

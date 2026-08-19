@@ -526,6 +526,33 @@ html, body {
   animation: vp-host-breathe 5.4s ease-in-out infinite;
 }
 
+/* WHILE THE HOST IS SPEAKING (Decision 26). Reported from a real
+   reading: the welcome and farewell played, and nothing on screen said
+   the little figure was the one talking — a voice from nowhere, easily
+   taken for more narration. So while a line plays the figure visibly
+   speaks: it comes forward a little, brightens to full, and a soft warm
+   light sits behind it — the same warm register Cheer already uses for
+   "starlight somebody gave", so it reads as life, not as a highlight.
+
+   Still not UI (AC7): no bubble, no text, no nameplate, nothing to tap.
+   The class is worn exactly while the words play and not a moment
+   longer, which is itself the attribution — the glow IS the mouth
+   moving. Calm before spectacle: a lift of two pixels and a light that
+   would embarrass nobody, not a pulse or a bounce. */
+.ether-portal-host.is-speaking {
+  opacity: 1;
+  transform: translateY(-2px) scale(1.06);
+  transition: opacity 260ms ease, transform 260ms ease;
+}
+
+.ether-portal-host.is-speaking .ether-portal-host-img {
+  filter:
+    drop-shadow(0 6px 16px rgba(6, 9, 20, 0.55))
+    drop-shadow(0 0 14px rgba(232, 184, 113, 0.55))
+    drop-shadow(0 0 30px rgba(232, 184, 113, 0.28));
+  transition: filter 320ms ease;
+}
+
 @media (max-width: 640px) {
   .ether-portal-inner { --vp-host-opacity: 0.72; }
 }
@@ -538,6 +565,10 @@ html, body {
     transform: none;
   }
   .ether-portal-host.is-here .ether-portal-host-img { animation: none; }
+  /* The glow stays — it is light, not movement, and it is the whole of
+     the attribution for a child who asked for less motion. Only the
+     lift is dropped. */
+  .ether-portal-host.is-speaking { transform: none; }
 }
 
 @media (max-width: 640px) {

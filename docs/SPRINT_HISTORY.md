@@ -3557,3 +3557,40 @@ Lumo first, the page after his line.** The instrument is an
 `Audio.prototype.play` stamp that tells narration (data: URI) from the
 host's line (blob: URL), so the ordering is measured rather than listened
 for.
+
+**The figure visibly speaks** (build 0589). Reported after the ordering
+fix landed: *"they are speaking but its not getting registered that this
+is the voice of companion or that image on right spoke this."* The voice
+worked; the attribution did not — a little figure standing in idle while
+a disembodied voice plays reads as more narration from nowhere.
+
+**The fix is behaviour, not UI, which is what keeps it inside Decision
+26.** While a line plays the host wears `is-speaking`: a speaking pose
+(Lumo's package declares `talk`; the Companions degrade to the liveliest
+face they ship), a two-pixel lift, full opacity, and a soft warm light
+behind the figure — the same warm register Cheer already uses for
+starlight, so it reads as life rather than as a highlight. **The class is
+worn for exactly the duration of the words and not a moment longer — the
+synchrony IS the attribution, the way a moving mouth is.** No bubble, no
+text, no nameplate, nothing to tap (AC7). Under `prefers-reduced-motion`
+the lift is dropped and the glow stays: light is not movement, and it is
+the whole of the attribution for a child who asked for less.
+
+The welcome's and celebrate's own return-to-presence timers now consult a
+`talking` flag, because both could land mid-sentence and put the figure
+back in idle while its own voice was still heard — precisely the
+disembodiment being fixed.
+
+**And a real wart in VihuVoice this exposed:** `stop()` paused the
+element, but a paused element never fires `ended`, so the speak()
+promise of a stopped line hung until its caller's 15-second belt — and
+now the glow and the narration hold would have hung with it. A stopped
+line settles its promise immediately, as "not heard".
+
+**Verified 63/63, zero page errors**: not yet glowing while only waving,
+glowing while the words play, off the moment they end, a speaking face
+rather than idle during the line, a mid-sentence page turn taking the
+glow with it, and the reduced-motion split. One assertion corrected
+rather than loosened: the no-UI check grepped raw CSS and failed on its
+own comment saying "no bubble" — it now strips comments and checks
+rules, which is what the requirement actually is.
