@@ -357,20 +357,60 @@
         if (glyph.mask[y * glyph.w + x]) mask[(y + pad) * w + (x + pad)] = 1;
       }
     }
-    state.check = { ch, mask, w, h, tool: 'pencil',
-                    brush: Math.max(3, Math.round(Math.max(glyph.w, glyph.h) / 45)),
-                    edits: 0 };
+    // THE PENCIL DRAWS AT THE LETTER'S OWN STROKE WIDTH (field report:
+    // "pencil stroke needs to be thin" — the old dim/45 dab sat far
+    // fatter than the child's own pen). The width is MEASURED from the
+    // captured ink (HWLetter.strokeWidthOf — median min-run through
+    // the mask), and the pencil's radius is half of it, so a repaired
+    // stroke lands at the thickness the child actually writes.
+    // Clamped [2, 40]: below radius 2 a touch leaves near-nothing;
+    // above 40 nothing honest remains (an 80px stroke at capture
+    // resolution is wider than any letter fixture measures).
+    // THE ERASER stays LARGER than the pencil — erasing a smudge wants
+    // area, not calligraphy: its radius is the letter-proportional size
+    // it always had (≈3.6% of the letter's dimension) or 1.6× the
+    // pencil, whichever is more, so what the pencil can draw the eraser
+    // can always take back. It cannot gouge more than intended: it only
+    // acts where it is dragged, and the suite proves a stray blob comes
+    // off while the letter's own ink stays untouched.
+    const strokeW = HWLetter.strokeWidthOf(mask, w, h);
+    const brush = Math.max(2, Math.min(40, Math.round(strokeW / 2)));
+    state.check = { ch, mask, w, h, tool: 'pencil', brush,
+                    wipe: Math.max(
+                      Math.round(Math.max(3, Math.round(
+                        Math.max(glyph.w, glyph.h) / 45)) * 1.6),
+                      Math.round(1.6 * brush)),
+                    sel: null, edits: 0 };
     state.letter = ch;
     $('hwCheckRef').textContent = ch;
     $('hwCheckWords').textContent = 'Here’s your ' + ch +
       ' — does it look right? Pencil draws a missing bit back in, the ' +
-      'eraser cleans a smudge away.';
+      'eraser cleans a smudge away, and Move slides a piece to a ' +
+      'better spot.';
     $('hwCheckQuiet').style.display = 'none';
     setTool('pencil');
     paintCheck();
     paintPreview();
     state.stage = 'check';
     go('stepHwCheck');
+  }
+
+  // The working ink WITH a held Move selection stamped at its current
+  // offset — what the child is looking at, and what the preview draws
+  // while a piece floats. With no selection it IS the mask.
+  function effectiveMask() {
+    const k = state.check;
+    if (!k.sel) return k.mask;
+    const m = k.mask.slice();
+    const s = k.sel;
+    for (let y = s.y0; y <= s.y1; y++) {
+      for (let x = s.x0; x <= s.x1; x++) {
+        if (!s.mask[y * k.w + x]) continue;
+        const yy = y + s.dy, xx = x + s.dx;
+        if (yy >= 0 && yy < k.h && xx >= 0 && xx < k.w) m[yy * k.w + xx] = 1;
+      }
+    }
+    return m;
   }
 
   function paintCheck() {
@@ -388,15 +428,43 @@
       }
       img.data[d + 3] = 255;
     }
+    // A held selection floats over the base ink in a warm blue, so the
+    // child can see WHAT is in their hand while they slide it.
+    if (k.sel) {
+      const s = k.sel;
+      for (let y = s.y0; y <= s.y1; y++) {
+        for (let x = s.x0; x <= s.x1; x++) {
+          if (!s.mask[y * k.w + x]) continue;
+          const yy = y + s.dy, xx = x + s.dx;
+          if (yy < 0 || yy >= k.h || xx < 0 || xx >= k.w) continue;
+          const d = (yy * k.w + xx) * 4;
+          img.data[d] = 43; img.data[d + 1] = 86; img.data[d + 2] = 176;
+        }
+      }
+    }
     ctx.putImageData(img, 0, 0);
+    ctx.setLineDash([6, 4]);
+    ctx.strokeStyle = '#4b6fbf';
+    ctx.lineWidth = 2;
+    if (k.sel) {
+      const s = k.sel;
+      ctx.strokeRect(s.x0 + s.dx - 3.5, s.y0 + s.dy - 3.5,
+                     (s.x1 - s.x0 + 1) + 7, (s.y1 - s.y0 + 1) + 7);
+    } else if (k.band) {
+      const b = k.band;
+      ctx.strokeRect(Math.min(b.x0, b.x1), Math.min(b.y0, b.y1),
+                     Math.abs(b.x1 - b.x0), Math.abs(b.y1 - b.y0));
+    }
+    ctx.setLineDash([]);
   }
 
   function trimmed() {
     const k = state.check;
+    const em = effectiveMask();
     let x0 = k.w, x1 = -1, y0 = k.h, y1 = -1;
     for (let y = 0; y < k.h; y++) {
       for (let x = 0; x < k.w; x++) {
-        if (k.mask[y * k.w + x]) {
+        if (em[y * k.w + x]) {
           if (x < x0) x0 = x; if (x > x1) x1 = x;
           if (y < y0) y0 = y; if (y > y1) y1 = y;
         }
@@ -407,7 +475,7 @@
     const mask = new Uint8Array(w * h);
     for (let y = 0; y < h; y++) {
       for (let x = 0; x < w; x++) {
-        mask[y * w + x] = k.mask[(y + y0) * k.w + (x + x0)];
+        mask[y * w + x] = em[(y + y0) * k.w + (x + x0)];
       }
     }
     return { mask, w, h };
@@ -431,14 +499,55 @@
     drawInk(c, s.mask, s.w, s.h, 56);
   }
 
+  // ---- MOVE: one drag picks a piece up, the next drag slides it -------------
+  // (field report: "allow selecting and moving so that i can center the
+  // tile"). Child-simple on mouse and touch alike: with Move on, the
+  // first drag draws a soft box around some ink — that ink is now in
+  // your hand — and the next drag slides it; letting go puts it down.
+  // Move only: no handles, no turning, no stretching.
+  function makeSelection(b) {
+    const k = state.check;
+    const x0 = Math.max(0, Math.round(Math.min(b.x0, b.x1)));
+    const x1 = Math.min(k.w - 1, Math.round(Math.max(b.x0, b.x1)));
+    const y0 = Math.max(0, Math.round(Math.min(b.y0, b.y1)));
+    const y1 = Math.min(k.h - 1, Math.round(Math.max(b.y0, b.y1)));
+    const mask = new Uint8Array(k.w * k.h);
+    let sx0 = k.w, sx1 = -1, sy0 = k.h, sy1 = -1, got = 0;
+    for (let y = y0; y <= y1; y++) {
+      for (let x = x0; x <= x1; x++) {
+        if (!k.mask[y * k.w + x]) continue;
+        mask[y * k.w + x] = 1;
+        got++;
+        if (x < sx0) sx0 = x; if (x > sx1) sx1 = x;
+        if (y < sy0) sy0 = y; if (y > sy1) sy1 = y;
+      }
+    }
+    if (!got) return;                       // an empty box holds nothing
+    for (let i = 0; i < mask.length; i++) if (mask[i]) k.mask[i] = 0;
+    k.sel = { mask, x0: sx0, x1: sx1, y0: sy0, y1: sy1, dx: 0, dy: 0 };
+  }
+  function commitSel() {
+    const k = state.check;
+    if (!k || !k.sel) return;
+    k.mask = effectiveMask();               // the piece is put down here
+    k.sel = null;
+    k.edits++;
+  }
+
   function setTool(tool) {
     if (!state.check) return;
+    if (state.check.tool === 'move' && tool !== 'move') commitSel();
     state.check.tool = tool;
+    state.check.band = null;
     $('hwFixPencil').classList.toggle('on', tool === 'pencil');
     $('hwFixEraser').classList.toggle('on', tool === 'eraser');
+    $('hwFixMove').classList.toggle('on', tool === 'move');
+    $('hwCheckCanvas').style.cursor = tool === 'move' ? 'move' : 'crosshair';
+    paintCheck();
   }
   $('hwFixPencil').addEventListener('click', () => setTool('pencil'));
   $('hwFixEraser').addEventListener('click', () => setTool('eraser'));
+  $('hwFixMove').addEventListener('click', () => setTool('move'));
 
   function checkPoint(ev) {
     const c = $('hwCheckCanvas');
@@ -449,7 +558,9 @@
   function daub(x, y) {
     const k = state.check;
     const on = k.tool === 'pencil' ? 1 : 0;
-    const r = k.tool === 'pencil' ? k.brush : Math.round(k.brush * 1.6);
+    // The pencil draws at the letter's own measured stroke width; the
+    // eraser keeps its larger disc — cleaning a smudge wants area.
+    const r = k.tool === 'pencil' ? k.brush : k.wipe;
     const r2 = r * r;
     for (let dy = -r; dy <= r; dy++) {
       const yy = Math.round(y) + dy;
@@ -464,21 +575,62 @@
   }
   let fixing = false;
   let lastPt = null;
+  let moving = null;      // a Move drag in flight: pointer start + start offset
+  let banding = null;     // a select drag in flight: the rubber-band box
+  let previewSoon = false;
+  function schedulePreview() {
+    if (previewSoon) return;
+    previewSoon = true;
+    requestAnimationFrame(() => {
+      previewSoon = false;
+      if (state.check) paintPreview();
+    });
+  }
   $('hwCheckCanvas').addEventListener('pointerdown', (ev) => {
     if (state.stage !== 'check') return;
-    fixing = true;
-    state.check.edits++;
+    const k = state.check;
+    const p = checkPoint(ev);
     $('hwCheckCanvas').setPointerCapture(ev.pointerId);
-    lastPt = checkPoint(ev);
+    if (k.tool === 'move') {
+      if (k.sel) {
+        moving = { x: p.x, y: p.y, dx0: k.sel.dx, dy0: k.sel.dy };
+      } else {
+        banding = { x0: p.x, y0: p.y, x1: p.x, y1: p.y };
+        k.band = banding;
+        paintCheck();
+      }
+      return;
+    }
+    fixing = true;
+    k.edits++;
+    lastPt = p;
     daub(lastPt.x, lastPt.y);
     paintCheck();
   });
   $('hwCheckCanvas').addEventListener('pointermove', (ev) => {
+    const k = state.check;
+    const p = k ? checkPoint(ev) : null;
+    if (moving && k && k.sel) {
+      const s = k.sel;
+      // the piece stays on the paper: the slide is clamped to the canvas
+      s.dx = Math.max(-s.x0, Math.min(k.w - 1 - s.x1,
+        Math.round(moving.dx0 + p.x - moving.x)));
+      s.dy = Math.max(-s.y0, Math.min(k.h - 1 - s.y1,
+        Math.round(moving.dy0 + p.y - moving.y)));
+      paintCheck();
+      schedulePreview();     // the tile preview follows the ink live
+      return;
+    }
+    if (banding && k) {
+      banding.x1 = p.x; banding.y1 = p.y;
+      paintCheck();
+      return;
+    }
     if (!fixing) return;
-    const p = checkPoint(ev);
     // walk the segment so a fast stroke leaves no gaps
+    const r = k.tool === 'pencil' ? k.brush : k.wipe;
     const steps = Math.max(1, Math.ceil(Math.hypot(p.x - lastPt.x, p.y - lastPt.y) /
-                                        Math.max(1, state.check.brush / 2)));
+                                        Math.max(1, r / 2)));
     for (let i = 1; i <= steps; i++) {
       daub(lastPt.x + (p.x - lastPt.x) * i / steps,
            lastPt.y + (p.y - lastPt.y) * i / steps);
@@ -487,6 +639,20 @@
     paintCheck();
   });
   const endFix = () => {
+    if (moving) {
+      moving = null;
+      commitSel();           // the piece is put down where it was left
+      paintCheck();
+      paintPreview();
+      return;
+    }
+    if (banding) {
+      const k = state.check;
+      if (k) { k.band = null; makeSelection(banding); }
+      banding = null;
+      paintCheck();
+      return;
+    }
     if (!fixing) return;
     fixing = false;
     lastPt = null;
@@ -497,6 +663,7 @@
 
   $('hwKeepBtn').addEventListener('click', () => {
     const k = state.check;
+    commitSel();             // a piece still in hand is put down first
     const t = trimmed();
     if (!t) {
       const q = $('hwCheckQuiet');
