@@ -61,12 +61,19 @@ const W = 1280, H = 960;
 // 5 = the letter-grid redesign: single-letter fixtures replace the
 // card fixtures wholesale. 6 = hw-letter-then-gone (the hand-off).
 // 7 = hw-letter-tremor (a held letter with honest hand tremor).
+// 8 = SENSOR NOISE on every frame, and no frame repeated: a real
+// camera's consecutive frames always differ by sensor noise, and the
+// live loop now refuses to count a byte-identical repeated frame
+// toward the steady beat (a stalled feed is the same moment read
+// twice — the rule the moving fixture's loop-seam capture forced).
+// Static fixtures are three noisy takes of the same scene; every
+// frame everywhere gets its own seeded noise.
 // (A slow-carry y4m was tried for the net-displacement guard and
 // dropped: Chromium's fake capture holds a frame across the file's
-// loop seam, and a frame held >500ms IS a pause, not a carry — the
-// slow carry is driven deterministically through HWLetterLive.verdict
-// in the suite instead.)
-const VERSION = 7;
+// loop seam — the held frame is now refused as a repeat, but a seam
+// hold is still a pause, not a carry, so the slow carry is driven
+// deterministically through HWLetterLive.verdict in the suite.)
+const VERSION = 8;
 const CHROME = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
 const META = path.join(__dirname, 'hw-feeds.json');
 
@@ -116,7 +123,11 @@ function y4mOf(frames, fps) {
 }
 
 // Page-side: compose one letter frame and hand back raw RGBA (base64).
-const FRAME = `(o) => {
+// noiseSeed adds this frame's own SENSOR NOISE (seeded, ±2 per pixel,
+// applied equally to R/G/B so it survives the RGB→Y conversion): a
+// real camera never sends the same bytes twice, and the live loop's
+// repeated-frame rule depends on exactly that.
+const FRAME = `(o, noiseSeed) => {
   const made = (${COMPOSE})(o);
   return new Promise((resolve) => {
     const img = new Image();
@@ -125,7 +136,19 @@ const FRAME = `(o) => {
       c.width = ${W}; c.height = ${H};
       const x = c.getContext('2d', { willReadFrequently: true });
       x.drawImage(img, 0, 0);
-      const d = x.getImageData(0, 0, ${W}, ${H}).data;
+      const im = x.getImageData(0, 0, ${W}, ${H});
+      const d = im.data;
+      if (noiseSeed != null) {
+        let s = noiseSeed | 0;
+        const rnd = () => { s |= 0; s = (s + 0x6D2B79F5) | 0;
+          let t = Math.imul(s ^ (s >>> 15), 1 | s);
+          t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+        for (let i = 0; i < d.length; i += 4) {
+          const n = ((rnd() * 5) | 0) - 2;
+          d[i] += n; d[i + 1] += n; d[i + 2] += n;
+        }
+      }
       let s2 = '';
       const CHUNK = 0x8000;
       for (let i = 0; i < d.length; i += CHUNK) {
@@ -257,15 +280,24 @@ async function generate(base) {
   await page.waitForFunction(() => window.__hw && window.__bia);
 
   const meta = { version: VERSION, W, H, fixtures: {} };
+  let noiseAt = 9000;                      // every frame's own noise seed
   for (const [name, fix] of Object.entries(FIXTURES)) {
     const frames = [];
     const geoms = [];
-    for (const opts of fix.frames) {
-      const r = await page.evaluate(`(${FRAME})(${JSON.stringify(opts)})`);
+    // A one-scene fixture is FIVE noisy takes of that scene — the same
+    // held-up letter through a real sensor, never the same bytes
+    // twice (five, so the 167ms cycle at 30fps shares no multiple
+    // with any read spacing the measured 17–96ms analysis costs can
+    // produce); a multi-frame fixture gets fresh noise per frame.
+    const takes = fix.frames.length === 1
+      ? Array.from({ length: 5 }, () => fix.frames[0])
+      : fix.frames;
+    for (const opts of takes) {
+      const r = await page.evaluate(
+        `(${FRAME})(${JSON.stringify(opts)}, ${noiseAt++})`);
       frames.push(Buffer.from(r.b64, 'base64'));
       geoms.push({ letters: r.letters, size: r.size });
     }
-    if (frames.length === 1) frames.push(frames[0]);   // ≥2 frames per file
     fs.writeFileSync(FILE[name], y4mOf(frames, fix.fps));
     meta.fixtures[name] = { file: name + '.y4m', fps: fix.fps, geoms };
   }

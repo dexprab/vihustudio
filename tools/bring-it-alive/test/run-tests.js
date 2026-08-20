@@ -2028,7 +2028,7 @@ function check(name, cond, detail) {
 
   // ---- C4–C8: the real drawing through a real camera frame -----------------
   console.log('\n-- C4: the fake camera serves the real drawing');
-  if (!fs.existsSync(Y4M)) {
+  if (!fs.existsSync(Y4M) || !fs.existsSync(feed.OUT2)) {
     console.log('     (generating ' + path.basename(Y4M) + ' — first run)');
     await feed.generate(Y4M);
   }
@@ -2639,8 +2639,18 @@ function check(name, cond, detail) {
   // panel, no second picture. (The drawing feed reads as one ink
   // cluster, so the auto-capture genuinely fires here — identity is
   // the tap, and the check screen is where a child would say no.)
+  // This scenario serves camera-feed-002 — the SAME scene as a live
+  // camera delivers it, every frame carrying its own sensor noise —
+  // because the steady beat requires a new frame to be a NEW frame:
+  // feed-001's byte-identical frames are a stalled feed to the letter
+  // loop, and it now correctly refuses to auto-capture from one.
   console.log('\n-- C11: the count and the letter loop share the camera');
-  const hw2 = await camBrowser.newPage({ viewport: { width: 1100, height: 840 } });
+  const camBrowser2 = await chromium.launch({ executablePath: CHROME, args: [
+    '--use-fake-ui-for-media-stream',
+    '--use-fake-device-for-media-stream',
+    '--use-file-for-fake-video-capture=' + feed.OUT2
+  ]});
+  const hw2 = await camBrowser2.newPage({ viewport: { width: 1100, height: 840 } });
   const hw2Errors = [];
   hw2.on('pageerror', (e) => hw2Errors.push(String(e)));
   hw2.on('console', (m) => { if (m.type() === 'error') hw2Errors.push(m.text()); });
@@ -2680,6 +2690,7 @@ function check(name, cond, detail) {
   check('C11 zero page errors through the count-and-capture camera',
     hw2Errors.length === 0, hw2Errors.slice(0, 2).join(' | '));
   await hw2.close();
+  await camBrowser2.close();
   check('C11 zero page errors through the waited captures',
     camErrors.length === 0, camErrors.slice(0, 3).join(' | '));
   await camBrowser.close();

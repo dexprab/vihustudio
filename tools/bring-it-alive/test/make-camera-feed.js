@@ -21,6 +21,18 @@
  * RGBA comes back raw, and the RGB→YUV arithmetic lives here in Node where
  * it is auditable.
  *
+ * TWO files come out of one composition:
+ *   camera-feed-001.y4m — two IDENTICAL frames. The still-life the
+ *     byte-comparison checks depend on (a capture now and a capture
+ *     later must match to the byte).
+ *   camera-feed-002.y4m — the same scene through a REAL camera's eyes:
+ *     three frames, each with its own seeded ±2 sensor noise on the Y
+ *     plane, so no two frames are ever byte-identical. The letter
+ *     loop's steady beat requires a new frame to be a NEW frame (a
+ *     repeated identical frame is a stalled feed and never counts), so
+ *     any scenario that needs the AUTO-CAPTURE to fire from this scene
+ *     must serve this file, not 001.
+ *
  * Standalone: NODE_PATH=/opt/node22/lib/node_modules node test/make-camera-feed.js
  * The suite requires this module and generates the file if it is missing.
  */
@@ -34,6 +46,8 @@ const SRC = path.resolve(__dirname, '..', '..', 'imagebed', '1000299474.jpg');
 const OUT = path.join(__dirname, 'camera-feed-001.y4m');
 
 // Source photograph is 3472×4624; fitted by height into the 4:3 frame.
+const OUT2 = path.join(__dirname, 'camera-feed-002.y4m');
+
 const SCALE = H / 4624;                             // 0.207612…
 const PAGE_W = Math.round(3472 * SCALE);            // 721
 const OFFSET_X = Math.round((W - PAGE_W) / 2);      // 280
@@ -97,10 +111,29 @@ async function generate(outPath) {
   const frameMark = Buffer.from('FRAME\n', 'ascii');
   const frame = Buffer.concat([frameMark, Y, U, V]);
   fs.writeFileSync(out, Buffer.concat([header, frame, frame])); // 2 frames; Chromium loops
+
+  // camera-feed-002: the same scene, live — three frames, each with its
+  // own seeded ±2 sensor noise on the Y plane (mulberry32; Math.random
+  // appears nowhere), so no frame ever repeats byte-for-byte.
+  const noisy = [header];
+  for (let f = 0; f < 3; f++) {
+    let s = 4200 + f;
+    const rnd = () => { s |= 0; s = (s + 0x6D2B79F5) | 0;
+      let t = Math.imul(s ^ (s >>> 15), 1 | s);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+    const Yn = Buffer.from(Y);
+    for (let i = 0; i < Yn.length; i++) {
+      const n = ((rnd() * 5) | 0) - 2;
+      Yn[i] = Math.max(16, Math.min(235, Yn[i] + n));
+    }
+    noisy.push(frameMark, Yn, U, V);
+  }
+  fs.writeFileSync(OUT2, Buffer.concat(noisy));
   return out;
 }
 
-module.exports = { generate, toFrame, W, H, SCALE, OFFSET_X, OUT };
+module.exports = { generate, toFrame, W, H, SCALE, OFFSET_X, OUT, OUT2 };
 
 if (require.main === module) {
   generate().then((f) => {

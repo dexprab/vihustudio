@@ -24,9 +24,29 @@
 self.window = self;   // the modules attach their exports to `window`
 importScripts('segment.js', 'hwLetter.js');
 
+/* A cheap signature of the frame's own pixels (FNV-1a over ~4096
+ * strided bytes). Two verdicts carrying the SAME signature are two
+ * reads of one frame — a camera stall, a frozen virtual feed, a fake
+ * capture holding a frame across its file's loop seam — and the live
+ * loop refuses to count the second toward the steady beat: the same
+ * moment read twice is no new evidence. A real sensor's noise makes
+ * consecutive frames differ every time, so an honest hold is never
+ * slowed by this. */
+function sigOf(buf) {
+  const b = new Uint8Array(buf);
+  const step = Math.max(1, (b.length / 4096) | 0);
+  let h = 0x811c9dc5;
+  for (let i = 0; i < b.length; i += step) {
+    h ^= b[i];
+    h = Math.imul(h, 0x01000193);
+  }
+  return h >>> 0;
+}
+
 self.onmessage = (e) => {
   const m = e.data;
   const t0 = performance.now();
+  const sig = sigOf(m.buf);
   const logs = [];
   const log = (line) => { logs.push(line); };
   let reply, transfer = [];
@@ -43,11 +63,12 @@ self.onmessage = (e) => {
     if (out.kind === 'nothing' && (out.why === 'busy' || out.why === 'time')) {
       skipped = out.why;
     }
-    reply = { gen: m.gen, out, skipped };
+    reply = { gen: m.gen, out, sig, skipped };
     if (out.kind === 'letter') transfer = [out.glyph.mask.buffer];
   } catch (err) {
     log('hw letter: frame skipped (' + ((err && err.message) || err) + ')');
-    reply = { gen: m.gen, out: { kind: 'nothing', why: 'blank' }, skipped: null };
+    reply = { gen: m.gen, out: { kind: 'nothing', why: 'blank' }, sig,
+              skipped: null };
   }
   reply.cost = performance.now() - t0;
   reply.logs = logs;

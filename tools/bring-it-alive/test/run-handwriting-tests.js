@@ -50,7 +50,9 @@
  *         fallback. TREMBLE IS NOT TRAVEL: a big letter held with
  *         honest hand tremor captures in about a second, a slow carry
  *         (steps inside the wobble bar, travelling) never captures,
- *         and no beat under MIN_BEAT_MS can complete.
+ *         no beat under MIN_BEAT_MS can complete, and a REPEATED
+ *         identical frame (stalled feed, loop-seam hold) never counts
+ *         toward the beat at all.
  *   HW-L  the readiness light — re-aimed at the one-letter reader:
  *         green ⇔ this very view would capture (asserted across the
  *         fixture ladder with zero disagreements), red otherwise;
@@ -1065,19 +1067,29 @@ const BLAME = /error|failed|invalid|wrong|incorrect|scan|detect|process|percent|
   }
 
   // A letter CARRIED ACROSS the frame is never snapped mid-motion.
+  // The watch runs past 12 reads (~7s — beyond the fixture's own 4s
+  // loop), so it crosses the file's loop seam at least once: the seam
+  // HOLDS a frame, and before the repeated-frame rule that hold read
+  // as a stationary letter and completed the beat (reproduced: three
+  // 40s watches, three captures). Now a repeated frame is refused as
+  // the same moment read twice, so every read is accounted for: it
+  // broke the beat, or it was a repeat — and nothing ever captures.
   {
     const { browser: b, p, errors } = await camPage('hw-letter-moving.y4m');
     await armAndOpenCamera(p, 'R');
-    await p.waitForFunction(() => window.__hw.live.reads >= 8,
+    await p.waitForFunction(() => window.__hw.live.reads >= 12,
       null, { timeout: 90000 });
     const mov = await p.evaluate(() => ({
       stage: window.__hw.stage, reads: window.__hw.live.reads,
-      unsteady: window.__hw.live.unsteady, captured: !!window.__hw.live.captured,
+      unsteady: window.__hw.live.unsteady, repeats: window.__hw.live.repeats,
+      captured: !!window.__hw.live.captured,
       running: window.__hw.live.running }));
     check('C7 a letter passing through the frame NEVER snaps mid-motion — the steady beat is the guard',
       mov.stage === 'armed' && !mov.captured && mov.running &&
-      mov.unsteady >= Math.max(1, mov.reads - 3),
-      mov.reads + ' reading verdicts, ' + mov.unsteady + ' broke the beat, 0 captures');
+      mov.unsteady + mov.repeats >= mov.reads - 2,
+      mov.reads + ' reads, ' + mov.unsteady + ' broke the beat, ' +
+      mov.repeats + ' repeated frame(s) refused, stage ' + mov.stage +
+      ', captured ' + mov.captured + ', running ' + mov.running);
     check('C7b zero page errors across the moving sweep', errors.length === 0);
     await b.close();
   }
@@ -1223,11 +1235,11 @@ const BLAME = /error|failed|invalid|wrong|incorrect|scan|detect|process|percent|
         L.verdict({ kind: 'letter',
           glyph: { cx: r.cx, cy: r.cy, w: r.dim || 300, h: r.dim || 300,
                    mask: new Uint8Array(1), x0: 0, y0: 0, ink: 1, parts: 1 },
-          facts: { frameW: 1280, frameH: 960 } });
+          facts: { frameW: 1280, frameH: 960 } }, r.sig);
       }
       const out = { took, steady: L.state.steady,
                     unsteady: L.state.unsteady, wobbles: L.state.wobbles,
-                    beatSpan: L.state.beatSpan };
+                    repeats: L.state.repeats, beatSpan: L.state.beatSpan };
       L.stop(); L.reset();
       return out;
     })`;
@@ -1268,6 +1280,25 @@ const BLAME = /error|failed|invalid|wrong|incorrect|scan|detect|process|percent|
           'held on past the floor, the same view captures',
       blink.took === 0 && held.took === 1 && held.beatSpan >= 500,
       'blink 0 captures; held captured after ' + held.beatSpan + 'ms of beat');
+
+    // A FRAME MUST BE A NEW FRAME: a verdict whose frame is
+    // byte-identical to the previous read's (same signature — a
+    // stalled camera, a frozen feed, the fake capture holding a frame
+    // across a y4m loop seam) is the same moment read twice and never
+    // advances the beat, however long it is held; fresh frames of the
+    // same steady view still capture exactly as before.
+    const stalled = await drive([
+      { cx: 640, cy: 480, sig: 7 },
+      { cx: 640, cy: 480, sig: 7, wait: 550 },
+      { cx: 640, cy: 480, sig: 7, wait: 550 },
+      { cx: 640, cy: 480, sig: 7, wait: 550 }]);
+    const fresh = await drive([
+      { cx: 640, cy: 480, sig: 7 },
+      { cx: 641, cy: 480, sig: 8, wait: 550 }]);
+    check('C18 a REPEATED frame (stalled feed, loop-seam hold) never advances the ' +
+          'beat — the same moment read twice is no new evidence',
+      stalled.took === 0 && stalled.repeats === 3 && fresh.took === 1,
+      'held frame: 0 captures across 3 repeats; fresh frames: captured');
   }
 
   // ==== HW-L: the readiness light ============================================

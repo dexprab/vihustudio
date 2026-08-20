@@ -44,6 +44,17 @@
  * letter-widths (the carried fixture: ≥190px) between verdicts and
  * fails even the wobble bar outright, exactly as before.
  *
+ * AND A FRAME MUST BE A NEW FRAME. Each verdict carries a signature of
+ * the very pixels it read (the worker's sigOf); a verdict whose frame
+ * is byte-identical to the previous read's is the SAME MOMENT read
+ * twice — a stalled camera, a frozen virtual feed, or (measured, and
+ * how this rule was found) Chromium's fake capture holding a frame
+ * across a fixture file's loop seam, which made a CARRIED letter
+ * geometrically stationary for >MIN_BEAT_MS and completed the beat.
+ * A repeated frame is no new evidence: it neither advances nor breaks
+ * the beat. A real sensor's noise makes every consecutive frame
+ * differ, so an honest hold never pays for this rule.
+ *
  * ONE capture per arming: the moment the beat completes, the loop stops
  * itself and hands the glyph over — the camera does not keep snapping
  * while the child still holds the letter up. Re-arming is the caller's
@@ -85,6 +96,7 @@
     steady: 0,             // current consecutive qualifying reads
     unsteady: 0,           // reads that broke the beat (dev seam: motion)
     wobbles: 0,            // wobble steps ridden through (dev seam: tremor)
+    repeats: 0,            // reads of a frame already read (stall / seam)
     beatSpan: 0,           // ms the capturing beat spanned, first→last read
     many: false,           // the CURRENT view holds more than one letter
     manySeen: 0,
@@ -181,7 +193,7 @@
     for (const line of m.logs || []) log(line);
     state.lastCost = m.cost || 0;
     if (m.skipped) state.skipped++;
-    if (state.running && m.out) handle(m.out);
+    if (state.running && m.out) handle(m.out, m.sig);
     if (!state.running) return;              // handle() may have completed
     schedule(Math.max(INTERVAL, 2 * state.lastCost));
   }
@@ -193,7 +205,7 @@
     if (opts.onMany) opts.onMany(on);
   }
 
-  function handle(out) {
+  function handle(out, sig) {
     state.verdicts++;
     // The per-frame verdict, surfaced as-is: the readiness light reads
     // what the worker just decided — same seam the card sweep had.
@@ -208,6 +220,14 @@
     }
     state.reads++;
     const g = out.glyph;
+    // The same frame again — a stalled feed, or a fixture's loop seam
+    // holding one frame — is the same moment read twice. No new
+    // evidence: it neither advances the beat nor breaks it. (The light
+    // already got the verdict: the VIEW still reads.)
+    if (sig !== undefined && lastRead && lastRead.sig === sig) {
+      state.repeats++;
+      return;
+    }
     const now = performance.now();
     const dim = Math.max(g.w, g.h);
     const frameW = out.facts.frameW || 1;
@@ -241,7 +261,7 @@
       beatStart = { cx: g.cx, cy: g.cy, at: now };
       beatWobbly = false;
     }
-    lastRead = { cx: g.cx, cy: g.cy, dim };
+    lastRead = { cx: g.cx, cy: g.cy, dim, sig };
     const needed = beatWobbly ? STEADY_READS + 1 : STEADY_READS;
     if (state.steady >= needed && now - beatStart.at >= MIN_BEAT_MS) {
       // The beat is complete: this very frame's glyph IS the picture.
@@ -287,6 +307,7 @@
     state.steady = 0;
     state.unsteady = 0;
     state.wobbles = 0;
+    state.repeats = 0;
     state.beatSpan = 0;
     state.many = false;
     state.manySeen = 0;
