@@ -4275,3 +4275,30 @@ cards) read with rule ends inferred ~0.5% off-span; markless sheets
 still read square-on via the fallback; a card cut through its own
 stars refuses; real pencil, lighting and scissors wobble remain the
 product owner's field test.
+
+## The Camera Waits: a Self-Timer, Counted on the Picture Itself
+
+Asked for by the product owner (*"for take photo button i need 5sec and
+10 sec timer"* · *"show the count down on the camera itself"*) so a
+child presses Take and then has both hands free to hold the page up.
+Built in a worker worktree in parallel with the card-layout sprint,
+fenced to camera files; independently re-verified — base **191/191**
+(177 existing untouched + 14 new) and handwriting 130/130, fresh and on
+the merged tree.
+
+A three-choice clock group beside Take the picture — **Now · 🕔 5 ·
+🕙 10** — created by camera.js inside its own panel, so the standalone
+page and the Studio overlay inherit one implementation. With a timer
+set, Take starts **big soft numerals drawn ON the live video** (an
+inert overlay tracking the video's rect every animation frame, centred
+within 1px — asserted), and at zero the numeral leaves first and the
+frame is captured through the unchanged existing path (native
+resolution, tall-crop respected, same Use/Retake). Take reads **Stop**
+while counting; Stop, Never mind, leaving the step, switching shape or
+hiding the page all cancel cleanly with no photo. No sound, no jargon,
+no blame words (scan extended). The handwriting live sweep keeps
+sampling straight through a count (asserted). The real 5-second path
+is measured in-suite at 5023ms; **disclosed:** the 10-second path runs
+end-to-end only time-compressed via an unadvertised test seam (real
+pace proved on the 5), and the Studio overlay inherits the control by
+construction without a Studio harness driving it.
