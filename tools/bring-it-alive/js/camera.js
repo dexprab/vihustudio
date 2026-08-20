@@ -35,6 +35,20 @@
  * CSS-sized redraw. Journeys may state a preferred shape through
  * setPreferredShape() (My Handwriting photographs a tall written
  * sheet); the child's own toggle choice wins over it for the session.
+ *
+ * THE PICTURE CAN WAIT (product owner: "for take photo button i need
+ * 5sec and 10 sec timer"). A small three-choice control beside Take —
+ * Now · 🕔 5 · 🕙 10 — so a child can press the button and then have
+ * both hands free to hold the page up. With a wait chosen, Take starts
+ * a big soft count drawn ON the live picture itself (product owner:
+ * "show the count down on the camera itself" — the child is looking AT
+ * the camera view, so the number lives there, centred over the video,
+ * never beside it). No beeps, no flashing; the frame is captured at
+ * zero through the exact same capture path, native resolution and
+ * tall-crop respected. Take reads Stop while counting, and pressing it
+ * — or Never mind, or leaving the step — ends the count with no
+ * picture and no light left on. The choice is remembered for the
+ * session and both hosts inherit all of it from this one file.
  */
 (function () {
   'use strict';
@@ -48,7 +62,22 @@
   let savedLiveStyle = '';  // the host's own inline styles, restored on wide
   let savedShotStyle = '';
   const PREVIEW_H = 380;    // tall preview height budget — fits both hosts
+  let timerSeconds = 0;     // 0 · 5 · 10 — the child's choice, kept for the session
+  let counting = null;      // { endAt, overlay, label, shown, raf } while the count runs
+  let timeScale = 1;        // test seam (_setTimeScale) — the product always runs at 1
   const $ = (id) => document.getElementById(id);
+
+  // The three choices for WHEN the picture is taken. Words a child can
+  // read: right away, or after a little clock's count — never a
+  // technical word for it.
+  const TIMER_CHOICES = [
+    { s: 0,  words: 'Now',
+      hint: 'The picture is taken right away' },
+    { s: 5,  words: '🕔 5',
+      hint: 'The picture waits 5 seconds — time to hold your page up' },
+    { s: 10, words: '🕙 10',
+      hint: 'The picture waits 10 seconds — time to hold your page up' }
+  ];
 
   // The standalone page's own elements — the default host. A second host
   // (the Studio overlay) passes its own map into mount({els}), so ONE
@@ -154,6 +183,7 @@
   }
 
   function stopTracks() {
+    cancelCountdown();     // a count never outlives its live preview
     if (!stream) return;
     for (const t of stream.getTracks()) t.stop();
     stream = null;
@@ -170,6 +200,9 @@
     // The shape button belongs to the live preview only — while the child
     // is deciding about a taken picture, changing shape means retaking.
     if (els.shapeBtn) els.shapeBtn.style.display = live ? '' : 'none';
+    // …and so does the little clock: it says when the NEXT picture
+    // happens, which only means something while the camera is live.
+    if (els.timerWrap) els.timerWrap.style.display = live ? 'inline-flex' : 'none';
   }
 
   function closePanel() {
@@ -231,7 +264,92 @@
     return true;
   }
 
+  // ---- the picture can wait -----------------------------------------------
+  // The count is drawn ON the live picture itself — a big soft numeral
+  // centred over the video, where the child holding a page up is already
+  // looking. It is not a control (pointer-events: none, aria-hidden),
+  // and it is fixed-positioned to the video's own box, re-measured every
+  // frame, so it stays on the picture in both hosts whatever their
+  // layout does.
+  function countdownOverlay() {
+    const o = document.createElement('div');
+    o.className = 'bia-camera-count';
+    o.setAttribute('aria-hidden', 'true');
+    Object.assign(o.style, {
+      position: 'fixed', display: 'flex', alignItems: 'center',
+      justifyContent: 'center', pointerEvents: 'none', zIndex: '9999',
+      color: 'rgba(255,255,255,.94)', fontWeight: '700', lineHeight: '1',
+      textShadow: '0 2px 26px rgba(0,0,0,.6), 0 0 8px rgba(0,0,0,.35)',
+      transition: 'transform .3s ease'
+    });
+    document.body.appendChild(o);
+    return o;
+  }
+
+  function placeCount() {
+    if (!counting) return;
+    const r = els.live.getBoundingClientRect();
+    const o = counting.overlay;
+    o.style.left = r.left + 'px';
+    o.style.top = r.top + 'px';
+    o.style.width = r.width + 'px';
+    o.style.height = r.height + 'px';
+    o.style.fontSize = Math.round(Math.min(r.width, r.height) * 0.5) + 'px';
+  }
+
+  // Ends the count with no picture. quiet=true is the count reaching
+  // zero on its own — the capture that follows tells its own story.
+  function cancelCountdown(quiet) {
+    if (!counting) return;
+    cancelAnimationFrame(counting.raf);
+    counting.overlay.remove();
+    els.take.textContent = counting.label;
+    counting = null;
+    if (!quiet) opts.log('camera: the count stopped — no picture taken');
+  }
+
+  function startCountdown() {
+    const secs = timerSeconds;
+    counting = { endAt: performance.now() + secs * 1000 * timeScale,
+                 overlay: countdownOverlay(),
+                 label: els.take.textContent, shown: 0, raf: 0 };
+    els.take.textContent = 'Stop';
+    opts.log('camera: taking the picture in ' + secs + ' seconds');
+    const tick = () => {
+      if (!counting) return;
+      const left = counting.endAt - performance.now();
+      if (left <= 0 || !stream) {
+        const ready = !!stream;
+        cancelCountdown(ready);          // the numeral leaves the picture…
+        if (ready) capture();            // …then the exact existing capture
+        return;
+      }
+      placeCount();                      // stay on the video, every frame
+      const n = Math.ceil(left / (1000 * timeScale));
+      if (n !== counting.shown) {
+        counting.shown = n;
+        counting.overlay.textContent = String(n);
+        counting.overlay.style.transform = 'scale(1.14)';   // a soft breath
+        requestAnimationFrame(() => {
+          if (counting) counting.overlay.style.transform = 'scale(1)';
+        });
+      }
+      counting.raf = requestAnimationFrame(tick);
+    };
+    tick();
+  }
+
+  // Take the picture — or, while a count runs, stop it; or, with a wait
+  // chosen, start one. With the clock on Now this is byte-for-byte the
+  // capture the button always did.
   function take() {
+    if (counting) { cancelCountdown(); return; }
+    if (!stream || !els.live.videoWidth) return;
+    if (timerSeconds > 0) { startCountdown(); return; }
+    capture();
+  }
+
+  function capture() {
     const v = els.live;
     if (!stream || !v.videoWidth) return;
     const c = els.shot;
@@ -282,6 +400,46 @@
     updateToggle();
   }
 
+  // The little clock lives right beside Take the picture, created here
+  // for the same reason the shape button is: one implementation, both
+  // hosts. Three choices — Now, 🕔 5, 🕙 10 — one of them always chosen,
+  // and the choice stands for the session.
+  function ensureTimer() {
+    let wrap = els.panel.querySelector('.bia-camera-timer');
+    if (!wrap) {
+      wrap = document.createElement('span');
+      wrap.className = 'bia-camera-timer';
+      wrap.setAttribute('role', 'group');
+      wrap.setAttribute('aria-label', 'When the picture is taken');
+      Object.assign(wrap.style,
+        { display: 'inline-flex', gap: '.35rem', alignItems: 'center' });
+      for (const c of TIMER_CHOICES) {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'ghost bia-studio-btn bia-camera-timer-choice';
+        b.dataset.seconds = String(c.s);
+        b.textContent = c.words;
+        b.title = c.hint;
+        b.addEventListener('click', () => { timerSeconds = c.s; updateTimer(); });
+        wrap.appendChild(b);
+      }
+      els.take.parentNode.insertBefore(wrap, els.take.nextSibling);
+    }
+    els.timerWrap = wrap;
+    updateTimer();
+  }
+
+  function updateTimer() {
+    if (!els || !els.timerWrap) return;
+    for (const b of els.timerWrap.children) {
+      const on = Number(b.dataset.seconds) === timerSeconds;
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      b.style.fontWeight = on ? '700' : '';
+      b.style.opacity = on ? '1' : '.55';
+      b.style.boxShadow = on ? 'inset 0 0 0 2px currentColor' : '';
+    }
+  }
+
   function mount(o) {
     opts = Object.assign(opts, o);
     if (!supported()) return;        // no camera API → the step stays exactly as today
@@ -289,6 +447,7 @@
     savedLiveStyle = els.live.getAttribute('style') || '';
     savedShotStyle = els.shot.getAttribute('style') || '';
     ensureToggle();
+    ensureTimer();
     const btn = els.button;
     btn.style.display = '';
     btn.addEventListener('click', open);
@@ -317,6 +476,10 @@
     }
   }
 
+  // _setTimeScale is a TEST seam only: it compresses the count so a suite
+  // can walk the 10-second path without waiting ten seconds. The product
+  // never calls it and the real pace is also exercised for real.
   window.BIACamera = { mount, supported, stopTracks, closePanel,
-                       setPreferredShape, tallAspect };
+                       setPreferredShape, tallAspect,
+                       _setTimeScale: (s) => { timeScale = (s > 0 ? s : 1); } };
 })();
