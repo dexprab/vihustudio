@@ -2365,14 +2365,17 @@ function check(name, cond, detail) {
         'overrides it', c9p.wide);
   await cam.click('#cameraCloseBtn');
 
-  // ---- C10: My Handwriting opens the camera WIDE — a letter is square-ish ---
-  // A fresh page (nobody has pressed the shape button): arming the
-  // letters journey (tapping a tile) keeps the camera WIDE — a single
-  // letter is roughly square, wide keeps every native pixel, and the
-  // spare width is aiming room (identity is the tap, not the framing).
-  // The child's own toggle still stands to go tall. The drawing
-  // journey's wide default is C4/C5's own assertion, unchanged above.
-  console.log('\n-- C10: My Handwriting keeps the camera wide — a letter is square-ish');
+  // ---- C10: My Handwriting opens the SMALL LETTER WINDOW ---------------------
+  // The product owner: "we should minimize the camera view. we are
+  // showing single letters so it does not need a wide view." A fresh
+  // page (nobody has pressed the shape button): arming the letters
+  // journey (tapping a tile) makes the camera a compact, square centre
+  // crop through the preferred-shape seam — camera.js grows no flow
+  // branch. The Tall/Wide toggle has no job in a square window (a
+  // letter fits square either way round) and stays away in THIS flow
+  // only; disarmed, the drawing journey's wide camera and its toggle
+  // return untouched.
+  console.log('\n-- C10: My Handwriting opens the small letter window');
   const hwCam = await camBrowser.newPage({ viewport: { width: 1100, height: 840 } });
   const hwCamErrors = [];
   hwCam.on('pageerror', (e) => hwCamErrors.push(String(e)));
@@ -2392,12 +2395,22 @@ function check(name, cond, detail) {
   const c10 = await hwCam.evaluate(() => {
     const v = document.getElementById('cameraLive');
     const btn = document.querySelector('#cameraPanel .bia-camera-shape');
-    return { wide: v.clientWidth > v.clientHeight,
-             label: btn ? btn.textContent : '(missing)',
+    const r = BIACamera.analysisRect(v);
+    return { boxW: v.clientWidth, boxH: v.clientHeight,
+             native: { w: v.videoWidth, h: v.videoHeight },
+             rect: r,
+             toggleHidden: !btn || btn.hidden || !btn.offsetParent,
              armed: window.__hw.armed === true };
   });
-  check('C10 armed for a letter, the camera opens WIDE with nothing pressed — full native frame, aiming room free',
-    c10.armed && c10.wide && /Tall page/.test(c10.label), JSON.stringify(c10.label));
+  check('C10 armed for a letter, the camera opens as the SMALL SQUARE WINDOW — a compact centre crop, nothing pressed',
+    c10.armed && c10.boxW === c10.boxH && c10.boxW <= 340 &&
+    c10.rect && c10.rect.w === c10.rect.h &&
+    c10.rect.w === Math.min(c10.native.w, c10.native.h) &&
+    c10.rect.x === Math.round((c10.native.w - c10.rect.w) / 2),
+    c10.boxW + 'px box, crop ' + JSON.stringify(c10.rect) +
+    ' of ' + c10.native.w + 'x' + c10.native.h);
+  check('C10 the Tall/Wide toggle has no job in the square window and stays away — in THIS flow only',
+    c10.toggleHidden, 'toggle hidden while armed');
   // The toggle is exercised UNARMED (same session, same preference):
   // armed, the live loop would auto-capture this view mid-assertion —
   // that path is the handwriting suite's own C-scenario.
@@ -2636,19 +2649,19 @@ function check(name, cond, detail) {
   // in the armed journey the loop keeps sampling — and when steady
   // green completes mid-count, the auto-capture wins the camera
   // CLEANLY: the check screen opens, the count stands down with the
-  // panel, no second picture. (The drawing feed reads as one ink
-  // cluster, so the auto-capture genuinely fires here — identity is
-  // the tap, and the check screen is where a child would say no.)
-  // This scenario serves camera-feed-002 — the SAME scene as a live
-  // camera delivers it, every frame carrying its own sensor noise —
-  // because the steady beat requires a new frame to be a NEW frame:
-  // feed-001's byte-identical frames are a stalled feed to the letter
-  // loop, and it now correctly refuses to auto-capture from one.
+  // panel, no second picture. The scene must genuinely READ, so this
+  // serves the handwriting suite's own hw-letter-R fixture (the old
+  // stand-in — the drawing scene of feed-002 — no longer reads: the
+  // quality gates refuse a many-part sketch as a letter, which is the
+  // face-capture fix behaving). The 10-second count at true pace
+  // guarantees the auto-capture (~1s) wins the race, deterministically.
   console.log('\n-- C11: the count and the letter loop share the camera');
+  const hwFeeds = require(path.join(__dirname, 'make-hw-feeds.js'));
+  if (!hwFeeds.allPresent()) await hwFeeds.generate(BASE);
   const camBrowser2 = await chromium.launch({ executablePath: CHROME, args: [
     '--use-fake-ui-for-media-stream',
     '--use-fake-device-for-media-stream',
-    '--use-file-for-fake-video-capture=' + feed.OUT2
+    '--use-file-for-fake-video-capture=' + hwFeeds.FILE['hw-letter-R']
   ]});
   const hw2 = await camBrowser2.newPage({ viewport: { width: 1100, height: 840 } });
   const hw2Errors = [];
@@ -2656,6 +2669,17 @@ function check(name, cond, detail) {
   hw2.on('console', (m) => { if (m.type() === 'error') hw2Errors.push(m.text()); });
   await hw2.goto(BASE);
   await hw2.waitForFunction(() => window.__bia && window.__hw);
+  // The timer choice is made on the DRAWING camera first (state stands
+  // for the session), so the armed camera needs exactly one click —
+  // pressed well inside the ~1s the steady beat needs, race-free.
+  await hw2.click('#cameraBtn');
+  await hw2.waitForFunction(() => {
+    const v = document.getElementById('cameraLive');
+    return document.getElementById('cameraPanel').style.display === 'block' &&
+           v.videoWidth > 0;
+  }, null, { timeout: 30000 });
+  await hw2.click('#cameraPanel .bia-camera-timer-choice[data-seconds="10"]');
+  await hw2.click('#cameraCloseBtn');
   await hw2.click('#hwEntryBtn');
   await hw2.waitForSelector('#stepHwGrid.here');
   await hw2.click('#hwGrid .hw-slot[data-ch="R"]');   // arms the journey
@@ -2666,14 +2690,12 @@ function check(name, cond, detail) {
     return document.getElementById('cameraPanel').style.display === 'block' &&
            v.videoWidth > 0 && window.HWLetterLive && HWLetterLive.state.running;
   }, null, { timeout: 30000 });
-  await hw2.evaluate(() => BIACamera._setTimeScale(0.5));   // a 2.5s five-count
-  await hw2.click('#cameraPanel .bia-camera-timer-choice[data-seconds="5"]');
   const sweepBefore = await hw2.evaluate(() => HWLetterLive.state.samples);
-  await hw2.click('#cameraTakeBtn');
+  await hw2.click('#cameraTakeBtn');                  // starts the 10s count
   await hw2.waitForFunction(() => !!document.querySelector('.bia-camera-count'));
   const c11i = await hw2.evaluate((before) => ({
     counting: !!document.querySelector('.bia-camera-count'),
-    running: HWLetterLive.state.running,
+    alive: HWLetterLive.state.running || !!HWLetterLive.state.captured,
     sampling: HWLetterLive.state.samples >= before
   }), sweepBefore);
   await hw2.waitForFunction(() => window.__hw.stage === 'check',
@@ -2681,11 +2703,12 @@ function check(name, cond, detail) {
   const c11o = await hw2.evaluate(() => ({
     countGone: !document.querySelector('.bia-camera-count'),
     panel: document.getElementById('cameraPanel').style.display,
-    running: HWLetterLive.state.running
+    running: HWLetterLive.state.running,
+    captured: !!HWLetterLive.state.captured
   }));
   check('C11 mid-count the loop keeps reading — and steady green wins the camera cleanly: check screen open, count stood down, panel closed',
-    c11i.counting && c11i.running && c11i.sampling &&
-    c11o.countGone && c11o.panel === 'none' && !c11o.running,
+    c11i.counting && c11i.alive && c11i.sampling &&
+    c11o.countGone && c11o.panel === 'none' && !c11o.running && c11o.captured,
     JSON.stringify({ midCount: c11i, after: c11o }));
   check('C11 zero page errors through the count-and-capture camera',
     hw2Errors.length === 0, hw2Errors.slice(0, 2).join(' | '));

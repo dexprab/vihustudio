@@ -73,14 +73,22 @@ const W = 1280, H = 960;
 // loop seam — the held frame is now refused as a repeat, but a seam
 // hold is still a pause, not a carry, so the slow carry is driven
 // deterministically through HWLetterLive.verdict in the suite.)
-const VERSION = 8;
+// 9 = the field-report fixtures: hw-face (a procedural face-like mass
+// against a wall with a doorframe, NO paper — must refuse, red, zero
+// captures) and hw-letter-fingers (a hand gripping the held page from
+// the frame's bottom edge, a curtain on the left, one BLUE-ink 'd' —
+// must read, the fingers rejected as background). Every letter
+// geometry checked to sit inside the small letter window's centred
+// square crop (side = the frame's short edge, 960 of 1280×960).
+const VERSION = 9;
 const CHROME = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
 const META = path.join(__dirname, 'hw-feeds.json');
 
 const NAMES = ['hw-letter-R', 'hw-letter-i', 'hw-letter-two',
                'hw-letter-small', 'hw-letter-ruled', 'hw-letter-specks',
                'hw-letter-blank', 'hw-letter-moving',
-               'hw-letter-then-gone', 'hw-letter-tremor', 'hw-noisy'];
+               'hw-letter-then-gone', 'hw-letter-tremor', 'hw-noisy',
+               'hw-face', 'hw-letter-fingers'];
 const FILE = {};
 for (const n of NAMES) FILE[n] = path.join(__dirname, n + '.y4m');
 
@@ -269,7 +277,24 @@ const FIXTURES = {
         ({ seed: 30 + i, size: 430, letters: [{ ch: 'R', cx, cy: 480 }] }))
       .concat([0, 1, 2, 3].map((i) =>
         ({ seed: 40 + i, letters: [], noPaper: true }))) },
-  'hw-letter-tremor': { fps: 2, frames: tremorFrames() }
+  'hw-letter-tremor': { fps: 2, frames: tremorFrames() },
+  // The field reports, reproduced: a face-like mass (procedural — an
+  // irregular blob with hair spikes, interior holes and a body running
+  // off the frame; no face imagery of any kind) against a bright wall
+  // with a doorframe, and NO paper anywhere — the letter flow must
+  // stay red and never capture.
+  'hw-face':          { fps: 30, frames: [{ seed: 44, letters: [],
+                          noPaper: true, deskColor: '#d8d2c4',
+                          doorframe: true,
+                          blob: { cx: 620, cy: 400, r: 150 } }] },
+  // …and the canonical held page: fingers and a thumb gripping the
+  // paper from the frame's bottom edge (always CROSSING the paper's
+  // edge), a curtain on the left, one clear BLUE-ink 'd' — it must
+  // read, fingers and curtain rejected as background, and auto-capture
+  // must fire.
+  'hw-letter-fingers': { fps: 30, frames: [{ ch: 'd', seed: 42,
+                          size: 430, inkColor: '#2038a8',
+                          curtain: true, fingers: true }] }
 };
 
 async function generate(base) {

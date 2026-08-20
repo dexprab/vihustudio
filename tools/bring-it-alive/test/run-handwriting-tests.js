@@ -36,6 +36,24 @@
  *         piece up with one drag and slides it with the next, the
  *         preview following; and a far speck cannot steer the tile —
  *         normalize is speck-immune while i/j dots still count.
+ *   HW-F  THE FIELD SCENES — the three log-confirmed field reports as
+ *         seeded procedural fixtures: the face-capture scene (the 'e'
+ *         reads, zero background pixels kept), the gripped page (the
+ *         blue 'd' reads, fingers are background by the border-crossing
+ *         rule; fingers COVERING the stroke refuse), and blue ink on
+ *         dim grey paper (whole and stable where the luminance margin
+ *         shattered it into 136–235 parts). Plus the stroke gates'
+ *         measured separation (letters vs crayon-fill vs face-like
+ *         blob), the sliver rule, and the faint (darker-pen) refusal.
+ *   HW-M  ANY PAPER, ANY INK — the governing principle's colour
+ *         matrix: 7 papers × 5 inks × bright/dim; every honestly
+ *         contrasting pair reads at 1–3 parts, near-equal pairs refuse
+ *         kindly, and the contrast floor is measured and reported.
+ *   HW-W  THE SMALL LETTER WINDOW — the letter journey's camera is a
+ *         compact square centre crop (the preferred-shape seam, never a
+ *         camera.js flow branch): geometry, the countdown and light
+ *         riding the small rect ≤1px, the toggle stood down in this
+ *         flow only, and the measured analysis-cost win.
  *   HW-B  the whole alphabet and the font — a partial set builds (the
  *         missing letters absent from the cmap), all 62 letters feed
  *         through the real journey, HONEST PROPORTIONS measured in the
@@ -155,7 +173,10 @@ const BLAME = /error|failed|invalid|wrong|incorrect|scan|detect|process|percent|
   const sampleKeys = () => page.evaluate(() =>
     Array.from(window.__hw.samples.keys()).sort().join(''));
   // Direct read (measurement checks): compose in page, run HWLetter.read.
-  const READ_DIRECT = `(async (opts) => {
+  // `ch` is the tapped identity (the sliver rule's class); `cropSquare`
+  // reads the frame the way the small letter window would — the centred
+  // square crop.
+  const READ_DIRECT = `(async (opts, ch, cropSquare) => {
     const made = (${COMPOSE})(opts);
     const img = new Image();
     await new Promise((r) => { img.onload = r; img.src = made.dataURL; });
@@ -163,17 +184,27 @@ const BLAME = /error|failed|invalid|wrong|incorrect|scan|detect|process|percent|
     c.width = img.width; c.height = img.height;
     const x = c.getContext('2d', { willReadFrequently: true });
     x.drawImage(img, 0, 0);
+    let px = 0, py = 0, pw = c.width, ph = c.height;
+    if (cropSquare) {
+      const s = Math.min(c.width, c.height);
+      px = Math.round((c.width - s) / 2);
+      py = Math.round((c.height - s) / 2);
+      pw = s; ph = s;
+    }
     const t0 = performance.now();
-    const r = HWLetter.read({ width: c.width, height: c.height,
-      imageData: x.getImageData(0, 0, c.width, c.height), filename: 'fx' },
-      { log: () => {} });
+    const r = HWLetter.read({ width: pw, height: ph,
+      imageData: x.getImageData(px, py, pw, ph), filename: 'fx' },
+      { log: () => {}, ch: ch || null });
     return { kind: r.kind, why: r.why || null, facts: r.facts,
+             crop: { x: px, y: py, w: pw, h: ph },
              cost: Math.round(performance.now() - t0),
              glyph: r.glyph ? { w: r.glyph.w, h: r.glyph.h, parts: r.glyph.parts,
+               x0: r.glyph.x0, y0: r.glyph.y0,
                cx: Math.round(r.glyph.cx), cy: Math.round(r.glyph.cy) } : null };
   })`;
-  const readDirect = (opts) =>
-    page.evaluate(`(${READ_DIRECT})(${JSON.stringify(opts)})`);
+  const readDirect = (opts, ch, cropSquare) =>
+    page.evaluate(`(${READ_DIRECT})(${JSON.stringify(opts)}, ` +
+      `${JSON.stringify(ch || null)}, ${!!cropSquare})`);
 
   // ==== HW-N: two journeys, two blocks =======================================
   console.log('\n== HW-N: TWO JOURNEYS, TWO BLOCKS ==========================');
@@ -425,6 +456,278 @@ const BLAME = /error|failed|invalid|wrong|incorrect|scan|detect|process|percent|
     const desk = await readDirect({ seed: 3, letters: [], noPaper: true });
     check('D10b no paper in view reads NOTHING — the paper fence refuses the bare desk',
       desk.kind === 'nothing', desk.kind + '/' + desk.why);
+  }
+
+  // ==== HW-F: THE FIELD SCENES — background is rejected before dominance =====
+  // Three log-confirmed field reports, reproduced as seeded procedural
+  // fixtures and read through the REAL reader. The governing principle
+  // (the product owner: "the kid might write on any kind of paper of
+  // any color, with any color — its our job to figure that out") is
+  // what fixes all three: the page is the large UNIFORM region, ink is
+  // colour distance from the page's own colour, and background is
+  // whatever crosses the page's edge.
+  console.log('\n== HW-F: THE FIELD SCENES ==================================');
+  {
+    // FIELD 1 — "its detecting faces and other things": a face-like
+    // mass (procedural blob: irregular boundary, hair spikes, interior
+    // holes, a body running off the frame — NO face imagery) against a
+    // bright wall with a doorframe, the paper held to the right with a
+    // small 'e'. Reproduced pre-fix: the luminance fence admitted the
+    // wall (thr 199 < wall 210), and the kept "letter" was a 456×586px
+    // 5-part chunk of background. Now: the 'e' reads, and nothing
+    // outside the paper is in the kept ink.
+    const face = { seed: 41, deskColor: '#d8d2c4', doorframe: true,
+      blob: { cx: 360, cy: 360, r: 150 },
+      paperX: 680, paperY: 230, paperW: 420, paperH: 560,
+      size: 210, letters: [{ ch: 'e', cx: 890, cy: 500 }] };
+    const f1 = await readDirect(face, 'e');
+    check('F1 the kid-in-frame scene READS: face in view, paper held up, the small e is the letter',
+      f1.kind === 'letter' && Math.abs(f1.glyph.cx - 890) < 40 &&
+      Math.abs(f1.glyph.cy - 500) < 40 && f1.glyph.parts <= 3,
+      'glyph ' + f1.glyph.w + 'x' + f1.glyph.h + ' @(' + f1.glyph.cx + ',' +
+      f1.glyph.cy + '), ' + f1.glyph.parts + ' part(s)');
+    check('F1b zero background pixels in the kept ink: the glyph sits wholly inside the paper — never the face, never the doorframe',
+      f1.glyph.x0 >= 680 && f1.glyph.x0 + f1.glyph.w <= 680 + 420 &&
+      f1.glyph.y0 >= 230 && f1.glyph.y0 + f1.glyph.h <= 230 + 560,
+      'bbox (' + f1.glyph.x0 + ',' + f1.glyph.y0 + ')+' + f1.glyph.w + 'x' +
+      f1.glyph.h + ' inside paper (680,230)+420x560');
+    // …and the same scene through the SMALL LETTER WINDOW: the crop
+    // removes a quarter of the sensor before the reader even looks.
+    const f1w = await readDirect(face, 'e', true);
+    check('F1c the field scene reads through the small letter window too',
+      f1w.kind === 'letter' && Math.abs((f1w.glyph.cx + f1w.crop.x) - 890) < 40,
+      'glyph @(' + f1w.glyph.cx + ',' + f1w.glyph.cy + ') in the ' +
+      f1w.crop.w + ' square crop');
+    // …and the window removed a measured share of the scene's
+    // background before the reader even looked: a quarter of the
+    // sensor, including the face's own left flank and both doorframe
+    // margins' worth of room.
+    {
+      const s = Math.min(1280, 960);
+      const cropX2 = (1280 - s) / 2;
+      const removedFrac = 1 - (s * s) / (1280 * 960);
+      // The doorframe's second upright (x 0.74·1280 + 0.15·1280 = 1139
+      // wide 28) stands wholly beyond the crop's right edge — one of
+      // the field scene's background objects never enters the window
+      // at all, and both flanks of wall leave with it.
+      const bar2x = Math.round(0.74 * 1280) + Math.round(0.15 * 1280);
+      check('F1d the crop removes 25% of the sensor before the reader looks — on this scene the doorframe\'s far upright never even enters the window',
+        removedFrac > 0.24 && removedFrac < 0.26 && bar2x >= cropX2 + s,
+        Math.round(100 * removedFrac) + '% of pixels gone; upright at x ' +
+        bar2x + ' vs crop ending at ' + (cropX2 + s));
+    }
+
+    // The face ALONE (no paper): the fence lands on the wall, and the
+    // face's own body crosses the fence rim — background by definition.
+    const f2 = await readDirect({ seed: 44, deskColor: '#d8d2c4',
+      doorframe: true, blob: { cx: 620, cy: 400, r: 150 },
+      noPaper: true, letters: [] }, 'e');
+    check('F2 a face-only view refuses quietly — never a letter',
+      f2.kind !== 'letter', f2.kind + '/' + (f2.why || '') +
+      ', rim dropped ' + (f2.facts.rimDropped || 0) + ' component(s)');
+    const f3 = await readDirect({ seed: 45, deskColor: '#d8d2c4',
+      doorframe: true, noPaper: true, letters: [] }, 'e');
+    check('F2b a doorframe-only view refuses too',
+      f3.kind !== 'letter', f3.kind + '/' + (f3.why || ''));
+
+    // THE STROKE GATES, measured. A blob wholly INSIDE the page (it
+    // crosses no edge, so only the gates can refuse it): a letter is
+    // strokes — stroke width small against its own size — or a smooth
+    // solid fill; the face-like blob is neither.
+    const P = await page.evaluate(() => HWLetter.PARAMS);
+    const blobAlone = await readDirect({ seed: 75, letters: [],
+      blob: { cx: 640, cy: 460, r: 150, anchored: false, over: true } });
+    check('F3 a face-like blob inside the page fails BOTH stroke gates and never stands as a letter',
+      blobAlone.kind !== 'letter' &&
+      blobAlone.facts.gate.ratio > P.SR_MAX &&
+      blobAlone.facts.gate.compact > P.C_SOLID,
+      'blob ratio ' + blobAlone.facts.gate.ratio + ' (gate ' + P.SR_MAX +
+      '), compact ' + blobAlone.facts.gate.compact + ' (gate ' + P.C_SOLID + ')');
+    const thinL = await readDirect({ ch: 'v', seed: 31, size: 260 }, 'v');
+    const thickL = await readDirect({ ch: 'D', seed: 32, size: 600 }, 'D');
+    check('F3b thin and thick letters pass the stroke gate with real margin — measured separation, wide side toward letters',
+      thinL.kind === 'letter' && thickL.kind === 'letter' &&
+      thinL.facts.gate.ratio <= P.SR_MAX * 0.75 &&
+      thickL.facts.gate.ratio <= P.SR_MAX * 0.75,
+      'letters ' + thinL.facts.gate.ratio + ' / ' + thickL.facts.gate.ratio +
+      ' vs blob ' + blobAlone.facts.gate.ratio + ', gate ' + P.SR_MAX);
+    const crayO = await readDirect({ ch: 'o', seed: 71, size: 400, crayon: true }, 'o');
+    const crayR = await readDirect({ ch: 'R', seed: 70, size: 430, crayon: true }, 'R');
+    check('F3c a SOLID crayon-filled letter still passes — the smooth-fill gate, disclosed surviving case',
+      crayO.kind === 'letter' && crayR.kind === 'letter' &&
+      crayO.facts.gate.compact <= P.C_SOLID &&
+      crayR.facts.gate.compact <= P.C_SOLID &&
+      crayO.facts.gate.ratio > P.SR_MAX,
+      'crayon compact ' + crayO.facts.gate.compact + ' / ' +
+      crayR.facts.gate.compact + ' (gate ' + P.C_SOLID + ') vs blob ' +
+      blobAlone.facts.gate.compact);
+    check('F3d …and the blob beside a real letter never outranks it: the e wins',
+      await readDirect({ seed: 73, size: 260,
+        letters: [{ ch: 'e', cx: 900, cy: 480 }],
+        blob: { cx: 420, cy: 460, r: 130, anchored: false, over: true } }, 'e')
+        .then((r) => r.kind === 'letter' && Math.abs(r.glyph.cx - 900) < 40));
+
+    // FIELD 2 — "it does not look like the size issue its something
+    // else": fingers and a thumb gripping the held page from the
+    // frame's bottom edge, a curtain filling the left, one BLUE-ink
+    // 'd'. Fingers gripping a page always CROSS the paper's edge; pen
+    // strokes never do — so the fingers are background by definition
+    // and the 'd' reads. Reproduced pre-fix: the finger mass merged
+    // into the kept ink (a 254×551px "letter" centred on the hand).
+    const grip = { seed: 42, curtain: true, inkColor: '#2038a8',
+                   ch: 'd', size: 430, fingers: true };
+    const g1 = await readDirect(grip, 'd');
+    check('F4 the canonical held page reads: the blue d, with the fingers and the curtain rejected as background',
+      g1.kind === 'letter' && Math.abs(g1.glyph.cx - 640) < 40 &&
+      g1.glyph.h > 250 && g1.glyph.h < 420 && g1.glyph.parts <= 3 &&
+      g1.facts.rimDropped >= 2,
+      'glyph ' + g1.glyph.w + 'x' + g1.glyph.h + ' @(' + g1.glyph.cx + ',' +
+      g1.glyph.cy + '), ' + g1.facts.rimDropped + ' border-crossing component(s) dropped');
+    check('F4b zero finger pixels in the kept ink: the glyph clears the hand\'s own ground',
+      g1.glyph.y0 + g1.glyph.h < 700,
+      'glyph bottom ' + (g1.glyph.y0 + g1.glyph.h) + ' vs fingers from ~700');
+    const g2 = await readDirect({ seed: 43, curtain: true,
+      inkColor: '#2038a8', ch: 'd', size: 430,
+      fingers: { cover: true } }, 'd');
+    check('F5 fingers COVERING the stroke refuse quietly — a finger-broken glyph is never read as complete',
+      g2.kind === 'nothing',
+      g2.kind + '/' + (g2.why || '') + ' — the covered d is background-joined');
+
+    // FIELD 3 — "cant get bigger than this": blue ink on dim grey
+    // paper (the whole frame grey-lavender, darker corner vignette,
+    // real sensor noise). THE OWNER'S LOG CONFIRMED the old mechanism:
+    // luminance-margin shatter — reproduced pre-fix at 136–235 parts
+    // with capture firing on the shards. Colour distance reads the
+    // same frames whole and STABLE.
+    const dims = [];
+    for (const seed of [60, 61, 62]) {
+      dims.push(await readDirect({ seed, paperColor: '#9a9aa2',
+        inkColor: '#6c80ac', noise: 10, vignette: 0.18,
+        ch: 'd', size: 500 }, 'd'));
+    }
+    check('F6 blue ink on dim grey paper reads at 1–3 parts (was 136–235 shattered fragments before the colour fix)',
+      dims.every((r) => r.kind === 'letter' && r.glyph.parts >= 1 &&
+                        r.glyph.parts <= 3),
+      dims.map((r) => r.glyph.parts + ' part(s)').join(', '));
+    check('F6b …and STABLE frame to frame: the same letter, the same place, no flapping',
+      dims.every((r) => Math.abs(r.glyph.cx - dims[0].glyph.cx) <= 10 &&
+                        Math.abs(r.glyph.cy - dims[0].glyph.cy) <= 16 &&
+                        Math.abs(r.glyph.h - dims[0].glyph.h) <= 12),
+      dims.map((r) => r.glyph.w + 'x' + r.glyph.h + '@' + r.glyph.cx).join(' · '));
+
+    // SHAPE SANITY — the log's own sliver: "one letter stands — ink
+    // 16x102px". A letter is never a hairline sliver relative to its
+    // class: a bare bar shown for a 'd' refuses; the same bar IS an
+    // honest 'l' and still reads for 'l'.
+    const barD = await readDirect({ seed: 74, size: 430,
+      letters: [{ ch: 'l', cx: 640, cy: 480 }] }, 'd');
+    const barL = await readDirect({ seed: 74, size: 430,
+      letters: [{ ch: 'l', cx: 640, cy: 480 }] }, 'l');
+    check('F7 a hairline sliver never stands as a letter of a wide class — and the same stroke is still an honest l',
+      barD.kind === 'nothing' && barD.why === 'shape' && barL.kind === 'letter',
+      'as d: ' + barD.kind + '/' + barD.why + ' · as l: ' + barL.kind);
+
+    // THE FAINT REFUSAL — genuinely low contrast, told apart from "no
+    // letter": sub-margin ink evidence earns the one gentle nudge a
+    // pen can act on. Never a technical word.
+    const faint = await readDirect({ ch: 'e', seed: 81, size: 400,
+      inkColor: '#f6f0dc' }, 'e');
+    check('F8 genuinely low contrast refuses as FAINT — the pen was too light, and the reader can honestly tell',
+      faint.kind === 'nothing' && faint.why === 'faint',
+      faint.kind + '/' + faint.why);
+    // …and through the real journey, the child hears it kindly.
+    const fedFaint = await feedLetter('e', { ch: 'e', seed: 81, size: 400,
+      inkColor: '#f6f0dc' });
+    check('F8b the refusal suggests a darker pen in child words — no jargon, no blame',
+      fedFaint.stage === 'armed' && /darker pen/.test(fedFaint.quiet) &&
+      !BLAME.test(fedFaint.quiet),
+      '"' + fedFaint.quiet + '"');
+    await page.click('#hwDisarmBtn');
+    await page.waitForSelector('#stepHwGrid.here');
+
+    // THE FIELD SCENE THROUGH THE REAL JOURNEY: the same face scene a
+    // child would upload lands on the check screen showing the e.
+    const fedField = await feedLetter('e', face);
+    check('F9 the field scene through the real journey: the e reaches the check screen',
+      fedField.stage === 'check' && !fedField.quiet,
+      'stage ' + fedField.stage);
+    const fieldGlyph = await page.evaluate(() => ({
+      w: window.__hw.check.w, h: window.__hw.check.h }));
+    check('F9b …and the working canvas is the e\'s own size — never the face\'s',
+      fieldGlyph.w < 400 && fieldGlyph.h < 400,
+      fieldGlyph.w + 'x' + fieldGlyph.h + 'px (a face chunk measured 456x586+margins pre-fix)');
+    await page.screenshot({ path: path.join(SHOTS, '30-hw-field-face-scene-reads-e.png') });
+    await keep();
+  }
+
+  // ==== HW-M: ANY PAPER, ANY INK — the colour matrix =========================
+  // The governing principle, measured: every honestly-contrasting
+  // paper×ink pair reads (whatever the colours, whatever the light),
+  // near-equal pairs refuse kindly, and the contrast floor is a
+  // reported number, not a guess. The floor is RGB colour distance
+  // between ink and paper as the camera sees them (after the light).
+  console.log('\n== HW-M: ANY PAPER, ANY INK ================================');
+  {
+    const PAPERS = { white: '#ffffff', cream: '#f5eeda', 'grey-dim': '#9a9aa2',
+                     yellow: '#f0e060', pink: '#f2c4d0', blue: '#b8c8e8',
+                     black: '#16161c' };
+    const INKS = { black: '#1a1e28', blue: '#2038a8', red: '#c02020',
+                   green: '#187830', white: '#f2f2f2' };
+    const hex = (s) => [parseInt(s.slice(1, 3), 16), parseInt(s.slice(3, 5), 16),
+                        parseInt(s.slice(5, 7), 16)];
+    const distOf = (a, b) => {
+      const [r1, g1, b1] = hex(a), [r2, g2, b2] = hex(b);
+      return Math.sqrt((r1 - r2) ** 2 + (g1 - g2) ** 2 + (b1 - b2) ** 2);
+    };
+    const MARGIN = await page.evaluate(() => HWLetter.PARAMS.INK_MARGIN);
+    const MUST_READ = MARGIN * 1.4;      // pairs clearly above the floor
+    let bad = [];
+    let floorRead = Infinity, ceilRefused = 0;
+    let seed = 300;
+    for (const rung of [{ name: 'bright' }, { name: 'dim', dim: 0.55, vignette: 0.2 }]) {
+      for (const [pn, pc] of Object.entries(PAPERS)) {
+        for (const [inName, ic] of Object.entries(INKS)) {
+          const d = distOf(pc, ic) * (rung.dim || 1);
+          const r = await readDirect(Object.assign({ ch: 'e', seed: seed++,
+            size: 400, paperColor: pc, inkColor: ic }, rung.dim
+            ? { dim: rung.dim, vignette: rung.vignette } : {}), 'e');
+          const label = inName + ' ink on ' + pn + ' paper, ' + rung.name +
+            ' (dist ' + Math.round(d) + ')';
+          if (r.kind === 'letter') {
+            floorRead = Math.min(floorRead, d);
+            if (r.glyph.parts < 1 || r.glyph.parts > 3) {
+              bad.push(label + ': read but SHATTERED at ' + r.glyph.parts + ' parts');
+            }
+          } else {
+            ceilRefused = Math.max(ceilRefused, d);
+            if (d >= MUST_READ) bad.push(label + ': refused (' + r.kind + '/' +
+              (r.why || '') + ') though honestly contrasting');
+            if (r.kind === 'many') bad.push(label + ': refused as MANY — a ' +
+              'shatter showing itself');
+          }
+        }
+      }
+    }
+    check('M1 every honestly-contrasting pair reads, at 1–3 parts, bright and dim — the whole 7-paper × 5-ink matrix',
+      bad.length === 0, bad.length ? bad.slice(0, 4).join(' | ')
+        : '70 pair-rungs; every read whole, every refusal below the floor');
+    check('M2 the measured contrast floor is real and reported: reads down to ~' +
+          Math.round(floorRead) + ', refusals only below ' + Math.round(MUST_READ),
+      floorRead >= MARGIN * 0.9 && ceilRefused < MUST_READ,
+      'faintest pair read: dist ' + Math.round(floorRead) +
+      ' · strongest refused: dist ' + Math.round(ceilRefused) +
+      ' · ink margin ' + MARGIN);
+    // White gel pen on black paper reads exactly as black-on-white —
+    // the ANY-DIRECTION clause, asserted by name.
+    const gel = await readDirect({ ch: 'e', seed: 290, size: 400,
+      paperColor: '#16161c', inkColor: '#f2f2f2' }, 'e');
+    const classic = await readDirect({ ch: 'e', seed: 290, size: 400 }, 'e');
+    check('M3 white gel pen on black paper reads exactly as black pen on white',
+      gel.kind === 'letter' && classic.kind === 'letter' &&
+      Math.abs(gel.glyph.w - classic.glyph.w) <= 6 &&
+      Math.abs(gel.glyph.h - classic.glyph.h) <= 6,
+      'gel ' + gel.glyph.w + 'x' + gel.glyph.h + ' vs classic ' +
+      classic.glyph.w + 'x' + classic.glyph.h);
   }
 
   // ==== HW-X: check & fix ====================================================
@@ -1013,6 +1316,11 @@ const BLAME = /error|failed|invalid|wrong|incorrect|scan|detect|process|percent|
                cx: window.__hw.live.captured.cx, cy: window.__hw.live.captured.cy }
     }));
     const gt = feedsMeta.fixtures['hw-letter-R'].geoms[0].letters[0];
+    // The letter journey's camera is the SMALL SQUARE WINDOW: the
+    // analysed frame is the centred square crop, so the fixture's
+    // frame coordinates translate by the crop's own offset.
+    const cropX = Math.round((feedsMeta.W - Math.min(feedsMeta.W, feedsMeta.H)) / 2);
+    const cropY = Math.round((feedsMeta.H - Math.min(feedsMeta.W, feedsMeta.H)) / 2);
     check('C1 steady green fires the capture by itself — no button, and the check screen opens',
       snap.ch === 'R' && snap.steady >= 2 && snap.verdicts >= 2,
       'after ' + ms + 'ms, ' + snap.verdicts + ' verdicts');
@@ -1026,11 +1334,14 @@ const BLAME = /error|failed|invalid|wrong|incorrect|scan|detect|process|percent|
           'MIN_BEAT_MS of held green — and capture stays prompt',
       ms <= 6000 && snap.beatSpan >= 500, ms + 'ms from camera open to ' +
       'check screen; the beat spanned ' + snap.beatSpan + 'ms');
-    check('C2 the picture IS the frame that read: the kept ink stands where the fixture wrote the letter',
-      Math.abs(snap.glyph.cx - gt.cx) < 40 && Math.abs(snap.glyph.cy - gt.cy) < 40 &&
+    check('C2 the picture IS the frame that read: the kept ink stands where the fixture wrote the letter (crop-relative)',
+      Math.abs(snap.glyph.cx - (gt.cx - cropX)) < 40 &&
+      Math.abs(snap.glyph.cy - (gt.cy - cropY)) < 40 &&
       snap.glyph.h > 250 && snap.glyph.h < 420,
       'glyph centre (' + Math.round(snap.glyph.cx) + ',' + Math.round(snap.glyph.cy) +
-      ') vs letter (' + gt.cx + ',' + gt.cy + '), ink ' + snap.glyph.w + 'x' + snap.glyph.h);
+      ') vs letter (' + (gt.cx - cropX) + ',' + (gt.cy - cropY) +
+      ') in the ' + Math.min(feedsMeta.W, feedsMeta.H) + ' square window, ink ' +
+      snap.glyph.w + 'x' + snap.glyph.h);
     check('C3 after the auto-capture the camera is CLOSED and the loop stopped — no re-snapping at a held letter',
       snap.panel === 'none' && snap.tracks === 'ended' && !snap.running,
       'tracks ' + snap.tracks);
@@ -1172,6 +1483,58 @@ const BLAME = /error|failed|invalid|wrong|incorrect|scan|detect|process|percent|
     await b.close();
   }
 
+  // THE FACE-ONLY LIVE FEED — the first field report, live: a person
+  // against a wall with a doorframe, no paper anywhere. The light must
+  // stay RED and the auto-capture must never fire; the face is
+  // background (its own body crosses the region's edge) and what
+  // remains is not strokes. No face detection anywhere — geometry and
+  // ink statistics only.
+  {
+    const { browser: b, p, errors } = await camPage('hw-face.y4m');
+    await armAndOpenCamera(p, 'a');
+    await p.waitForFunction(() => window.__hw.live.verdicts >= 4,
+      null, { timeout: 60000 });
+    const fc = await p.evaluate(() => ({
+      captured: !!window.__hw.live.captured,
+      colour: HWLight.state.colour,
+      everGreen: HWLight.state.history.some((h) => h.to === 'green'),
+      stage: window.__hw.stage }));
+    check('C19 a face in view is NEVER captured: light red, zero auto-captures, zero green across the watch',
+      !fc.captured && fc.colour === 'red' && !fc.everGreen &&
+      fc.stage === 'armed',
+      'light ' + fc.colour + ', captured ' + fc.captured);
+    await p.locator('#cameraPanel').scrollIntoViewIfNeeded();
+    await p.screenshot({ path: path.join(SHOTS, '31-hw-face-only-red.png') });
+    check('C19b zero page errors on the face-only feed', errors.length === 0,
+      errors.slice(0, 2).join(' | '));
+    await b.close();
+  }
+
+  // THE HELD PAGE, LIVE — the second field report: fingers gripping
+  // the page from the frame's bottom edge, a curtain on the left, one
+  // blue 'd'. The border-crossing rule makes the fingers background,
+  // the light goes green, and the auto-capture fires on the letter.
+  {
+    const { browser: b, p, errors } = await camPage('hw-letter-fingers.y4m');
+    await armAndOpenCamera(p, 'd');
+    const t0 = Date.now();
+    await p.waitForFunction(() => window.__hw.stage === 'check',
+      null, { timeout: 30000 });
+    const fg = await p.evaluate(() => ({
+      ch: window.__hw.check.ch,
+      glyph: { w: window.__hw.live.captured.w, h: window.__hw.live.captured.h,
+               parts: window.__hw.live.captured.parts } }));
+    check('C20 the gripped page auto-captures the blue d — fingers and curtain never block the letter',
+      fg.ch === 'd' && fg.glyph.h > 250 && fg.glyph.h < 420 &&
+      fg.glyph.parts <= 3,
+      'captured ' + fg.glyph.w + 'x' + fg.glyph.h + ' in ' +
+      (Date.now() - t0) + 'ms, ' + fg.glyph.parts + ' part(s)');
+    await p.screenshot({ path: path.join(SHOTS, '32-hw-fingers-d-check.png') });
+    check('C20b zero page errors through the gripped-page capture', errors.length === 0,
+      errors.slice(0, 2).join(' | '));
+    await b.close();
+  }
+
   // TREMBLE IS NOT TRAVEL — the field speed fix, measured. A child's
   // hand is not a tripod: the tremor fixture holds the same big R with
   // a seeded pulled-back random walk (steps regularly over the old
@@ -1301,6 +1664,85 @@ const BLAME = /error|failed|invalid|wrong|incorrect|scan|detect|process|percent|
       'held frame: 0 captures across 3 repeats; fresh frames: captured');
   }
 
+  // ==== HW-W: THE SMALL LETTER WINDOW ========================================
+  // The product owner: "we should minimize the camera view. we are
+  // showing single letters so it does not need a wide view." The letter
+  // journey's camera is a compact square centre crop through camera.js's
+  // preferred-shape seam; the drawing journey is untouched (the base
+  // suite's own C4/C5/C9 hold that side).
+  console.log('\n== HW-W: THE SMALL LETTER WINDOW ===========================');
+  {
+    const { browser: b, p, errors } = await camPage('hw-letter-blank.y4m');
+    await armAndOpenCamera(p, 'b');
+    const w1 = await p.evaluate(() => {
+      const v = document.getElementById('cameraLive');
+      const r = BIACamera.analysisRect(v);
+      const btn = document.querySelector('#cameraPanel .bia-camera-shape');
+      return { boxW: v.clientWidth, boxH: v.clientHeight,
+               native: { w: v.videoWidth, h: v.videoHeight }, rect: r,
+               toggleHidden: !btn || btn.hidden || !btn.offsetParent,
+               loopW: null };
+    });
+    check('W1 armed, the camera is a compact SQUARE window — the centre crop of the native frame',
+      w1.boxW === w1.boxH && w1.boxW <= 340 &&
+      w1.rect.w === w1.rect.h &&
+      w1.rect.w === Math.min(w1.native.w, w1.native.h) &&
+      w1.rect.x === Math.round((w1.native.w - w1.rect.w) / 2),
+      w1.boxW + 'px box, analysing the middle ' + w1.rect.w + 'x' + w1.rect.h +
+      ' of ' + w1.native.w + 'x' + w1.native.h);
+    check('W1b the Tall/Wide toggle has no job in the square window and stays away',
+      w1.toggleHidden);
+    await p.waitForFunction(() => window.__hw.live.verdicts >= 1,
+      null, { timeout: 30000 });
+    // The countdown numeral tracks the SMALL window's own rect, ≤1px —
+    // the same fixed-position re-measure the wide camera already proved.
+    await p.click('#cameraPanel .bia-camera-timer-choice[data-seconds="5"]');
+    await p.click('#cameraTakeBtn');
+    await p.waitForFunction(() => !!document.querySelector('.bia-camera-count'));
+    const cnt = await p.evaluate(() => {
+      const v = document.getElementById('cameraLive').getBoundingClientRect();
+      const o = document.querySelector('.bia-camera-count').getBoundingClientRect();
+      return { dx: Math.abs(v.left - o.left), dy: Math.abs(v.top - o.top),
+               dw: Math.abs(v.width - o.width), dh: Math.abs(v.height - o.height) };
+    });
+    check('W2 the countdown rides the small window exactly (≤1px on every edge)',
+      cnt.dx <= 1 && cnt.dy <= 1 && cnt.dw <= 1 && cnt.dh <= 1,
+      'off by ' + JSON.stringify(cnt));
+    await p.click('#cameraTakeBtn');             // Stop — no picture
+    // The readiness light rides the same small rect (the full ≤1px
+    // geometry check is HW-L's L4, now running against this window).
+    const light = await p.evaluate(() => {
+      const v = document.getElementById('cameraLive').getBoundingClientRect();
+      const w = document.getElementById('hwReadyLight').getBoundingClientRect();
+      return { dxRight: Math.abs((v.right - HWLight.INSET) - w.right),
+               dyTop: Math.abs((v.top + HWLight.INSET) - w.top) };
+    });
+    check('W3 the readiness light rides the small window too (≤1px off its corner)',
+      light.dxRight <= 1 && light.dyTop <= 1,
+      'off by ' + light.dxRight.toFixed(1) + '/' + light.dyTop.toFixed(1) + 'px');
+    check('W3b zero page errors through the small-window geometry checks',
+      errors.length === 0, errors.slice(0, 2).join(' | '));
+    await b.close();
+  }
+  {
+    // THE COST OF THE WINDOW, measured on the same scene: the crop
+    // hands the reader 25% fewer native pixels (960×960 of 1280×960 —
+    // exact arithmetic), and the prepass shrinks with it (320² against
+    // 426×320 cells). The measured read cost must not be worse.
+    const scene = { seed: 42, curtain: true, inkColor: '#2038a8',
+                    ch: 'd', size: 430, fingers: true };
+    let fullMs = 0, cropMs = 0;
+    for (let i = 0; i < 3; i++) {                 // medians beat one-off jitter
+      fullMs += (await readDirect(scene, 'd')).cost;
+      cropMs += (await readDirect(scene, 'd', true)).cost;
+    }
+    const pxFull = 1280 * 960, pxCrop = 960 * 960;
+    check('W4 the window is cheaper by construction: 25% fewer native pixels analysed, and the measured read is no slower',
+      pxCrop / pxFull === 0.75 && cropMs <= fullMs * 1.25,
+      'native px ' + pxFull + ' → ' + pxCrop + ' (−25%); read cost ' +
+      Math.round(fullMs / 3) + 'ms full → ' + Math.round(cropMs / 3) + 'ms crop');
+  }
+
   // ==== HW-L: the readiness light ============================================
   // Green is the live worker's own per-frame verdict — the same
   // one-letter read a pressed Take (or the auto-capture itself) would
@@ -1309,14 +1751,19 @@ const BLAME = /error|failed|invalid|wrong|incorrect|scan|detect|process|percent|
   console.log('\n== HW-L: THE READINESS LIGHT ===============================');
   const GRAB_READ = `() => {
     const v = document.getElementById('cameraLive');
+    // The very region the live loop analyses: camera.js's own
+    // analysisRect (the small letter window's centred square crop while
+    // the letter journey is armed; the full frame otherwise).
+    const r = BIACamera.analysisRect(v) ||
+              { x: 0, y: 0, w: v.videoWidth, h: v.videoHeight };
     const c = document.createElement('canvas');
-    c.width = v.videoWidth; c.height = v.videoHeight;
+    c.width = r.w; c.height = r.h;
     const x = c.getContext('2d', { willReadFrequently: true });
-    x.drawImage(v, 0, 0);
+    x.drawImage(v, r.x, r.y, r.w, r.h, 0, 0, r.w, r.h);
     const out = HWLetter.read(
       { width: c.width, height: c.height,
         imageData: x.getImageData(0, 0, c.width, c.height), filename: 'grab' },
-      { log: function () {} });
+      { log: function () {}, ch: window.__hw.letter || null });
     return { kind: out.kind, why: out.why || null };
   }`;
   const lightFacts = `() => {
@@ -1408,7 +1855,9 @@ const BLAME = /error|failed|invalid|wrong|incorrect|scan|detect|process|percent|
       f.dxRight <= 1 && f.dyTop <= 1 && f.size >= 18 && f.size <= 34,
       'off by ' + f.dxRight.toFixed(1) + 'px / ' + f.dyTop.toFixed(1) +
       'px, ' + Math.round(f.size) + 'px light');
-    await p.setViewportSize({ width: 560, height: 700 });
+    // (The letter camera is now the compact 320px square window, so the
+    // squeeze must go under 320 before the picture itself moves.)
+    await p.setViewportSize({ width: 300, height: 700 });
     await p.waitForTimeout(250);
     const f2 = await p.evaluate(`(${lightFacts})()`);
     check('L5 a resized window moves the picture and the light follows (≤1px, size re-fitted)',
