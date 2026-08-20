@@ -4471,3 +4471,48 @@ static-image virtual camera never auto-captures (Take remains); a
 carry that genuinely pauses ≥0.6s captures — that is a hold; Move has
 no undo ("Show me again" recovers); tremor beyond ~10% of frame width
 per verdict still waits.
+
+## A Letter Is Strokes — Any Paper, Any Ink, and the Small Letter Window
+
+The product owner's governing principle, stated after one field
+session broke the detector three ways: *"the kid might write on any
+kind of paper of any color, with any color its our job to figure that
+out."* All three field scenes were reproduced on the old code first —
+a face-like blob + doorframe returned a 456×586px glyph of BACKGROUND
+as a letter (the luminance fence let a 210-luminance wall past its
+199 bar); fingers gripping the page merged into the kept glyph; and
+the owner's own log mechanism, blue ink on dim grey paper shattering
+into 136–235 fragments under the luminance margin. The rebuild
+(`js/hwLetter.js`): the page is UNIFORMITY, never brightness — smooth
+like-coloured cell regions, a held region beating a run-off-frame
+wall, per-cell page colour so vignettes ride along; ink is COLOUR
+DISTANCE from the local page colour in any direction (white gel on
+black asserted byte-close to black-on-white); ink crossing the page's
+edge is background BY DEFINITION, removed before dominance is judged —
+fingers and doorframes always cross, pen strokes never do, and fingers
+covering the stroke refuse kindly rather than reading a finger-broken
+glyph; and a standing letter must be stroke-drawn (letters measure
+0.098–0.20 strokeWidth/dim, the face-like blob 0.397) or a smooth
+solid fill (crayon letters compact 11–16 vs the blob's 44). Part-count
+(>6 refuses as faint) and per-class sliver caps ride every read and
+therefore auto-capture by construction. The colour matrix — 7 papers ×
+5 inks × bright/dim — reads every honest pair at 1–3 parts; the faint
+band earns one gentle nudge ("a darker pen would help"), jargon-free
+through the real journey. All three scenes now behave: the 'e' reads
+with zero background pixels, a face-only live watch shows zero green
+and zero captures, the gripped 'd' auto-captures in 910ms at 1 part.
+The same brief carried the owner's second decision — *"minimize the
+camera view… it does not need a wide view"* — so the letter journey's
+camera is a compact square centre crop through the same
+preferred-shape seam Tall/Wide used (25% fewer native pixels, read
+cost 46→34ms, the Tall/Wide toggle hidden only while square, drawing
+journey untouched, light/countdown ≤1px on the new geometry). No
+face-detection technology anywhere — geometry and ink statistics only,
+procedural fixtures only. Suites: base 191→192/192 (C10 rewritten to
+the square-window decision), handwriting 120→153/153, twice
+consecutively. Disclosed: a wall the page's own colour can merge with
+it (the gates still protect the read); a featureless solid oval is
+indistinguishable from a crayon 'O' (the tap owns identity; the check
+screen is the catch); a letter written across the page's edge refuses;
+fat marker strokes between the two gates would refuse; real light and
+pressure remain the owner's trial.
