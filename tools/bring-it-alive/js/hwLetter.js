@@ -126,8 +126,16 @@
     PAPER_REL: 0.78,  // …and relative: ≥ this × the frame's own p99.5
                       //   luminance, so exposure moves the bar honestly
     PAPER_MIN: 0.06,  // the paper must cover ≥ this of the frame
-    PAPER_EDGE: 3     // px shaved off the paper's row/col spans — the
+    PAPER_EDGE: 3,    // px shaved off the paper's row/col spans — the
                       //   boundary's own anti-aliased darkness stays out
+    SPECK_FRAC: 0.02  // a SEPARATE cluster under this share of the
+                      //   dominant cluster's ink is a speck, not a part
+                      //   of the letter: normalize() leaves it out of
+                      //   the kept sample so it cannot steer the tile's
+                      //   centring (measured: a field-case speck is
+                      //   0.1–1% of the letter's ink; an i/j dot is
+                      //   4–10% AND rides INSIDE the dominant cluster,
+                      //   so it is never judged by this bar at all)
   };
 
   // ---- typographic classes ---------------------------------------------------
@@ -439,6 +447,64 @@
     return dom.parts;
   }
 
+  /* strokeWidthOf(mask, w, h) → the letter's own stroke width in px.
+   *
+   * THE ESTIMATOR: for every ink pixel, take the SHORTER of the
+   * horizontal and vertical ink run through it — a stem's pixels
+   * measure the stem's width, a bar's pixels the bar's height, and a
+   * junction's pixels the thinner of the two strokes that cross there.
+   * The answer is the MEDIAN over all ink pixels, so serif flares, the
+   * odd blob and the crossings cannot drag it (they are a minority of
+   * the ink). Chosen over 2×area/perimeter, which under-reads any
+   * letter with holes or rough edges (every hole and every ragged edge
+   * inflates the perimeter; measured on the fixture alphabet it read
+   * 20–40% thin). Verified against the fixtures: the estimate scales
+   * linearly with the written size, as a stroke width must.
+   *
+   * O(n): two run-length sweeps and a counting median. Returns 0 for
+   * an empty mask. */
+  function strokeWidthOf(mask, w, h) {
+    const n = w * h;
+    const runH = new Uint16Array(n);
+    for (let y = 0; y < h; y++) {
+      let x = 0;
+      while (x < w) {
+        if (!mask[y * w + x]) { x++; continue; }
+        let x1 = x;
+        while (x1 + 1 < w && mask[y * w + x1 + 1]) x1++;
+        const len = x1 - x + 1;
+        for (let xx = x; xx <= x1; xx++) runH[y * w + xx] = len;
+        x = x1 + 1;
+      }
+    }
+    // counting median of min(runH, runV) over ink — runs are ≤ 65535
+    const hist = new Uint32Array(Math.max(w, h) + 1);
+    let ink = 0;
+    for (let x = 0; x < w; x++) {
+      let y = 0;
+      while (y < h) {
+        if (!mask[y * w + x]) { y++; continue; }
+        let y1 = y;
+        while (y1 + 1 < h && mask[(y1 + 1) * w + x]) y1++;
+        const len = y1 - y + 1;
+        for (let yy = y; yy <= y1; yy++) {
+          const m = Math.min(runH[yy * w + x], len);
+          hist[m]++;
+          ink++;
+        }
+        y = y1 + 1;
+      }
+    }
+    if (!ink) return 0;
+    const want = Math.ceil(ink / 2);
+    let acc = 0;
+    for (let v = 0; v < hist.length; v++) {
+      acc += hist[v];
+      if (acc >= want) return v;
+    }
+    return 0;
+  }
+
   // ---- the read ----------------------------------------------------------------
   /* read(photo, {log, deadline}) →
    *   { kind:'letter', glyph:{ mask, w, h, x0, y0, ink, parts, cx, cy },
@@ -553,10 +619,55 @@
   }
 
   // ---- honest proportions ------------------------------------------------------
+  /* significantOf(mask, w, h) → the mask cropped to its SIGNIFICANT
+   * ink: the dominant proximity cluster plus every separate cluster
+   * carrying ≥ SPECK_FRAC of its ink. A tiny far speck — a smudge the
+   * eraser missed, a paper mote the cut dragged along — forms its own
+   * cluster and falls under the bar, so it can no longer stretch the
+   * bounding box and shove the letter off-centre in its tile (the
+   * field case: one top-left speck pushed a whole 'a' into the
+   * bottom-right corner). A GENUINE part is never dropped: the dot of
+   * an i or j rides INSIDE the dominant cluster (proximity merged, as
+   * partsOf counts it), and any separate cluster big enough to be real
+   * ink clears the 2% bar by measurement (a dot alone is 4–10% of its
+   * body). Returns { mask, w, h, parts } — parts is the dominant
+   * cluster's own member count, the same number partsOf() reports. */
+  function significantOf(mask, w, h) {
+    const clusters = clusterize(components(mask, w, h));
+    if (!clusters.length) return { mask, w, h, parts: 0 };
+    let dom = clusters[0];
+    for (const c of clusters) if (c.size > dom.size) dom = c;
+    const keep = clusters.filter((c) =>
+      c === dom || c.size >= P.SPECK_FRAC * dom.size);
+    let x0 = w, x1 = -1, y0 = h, y1 = -1;
+    for (const c of keep) {
+      if (c.x0 < x0) x0 = c.x0; if (c.x1 > x1) x1 = c.x1;
+      if (c.y0 < y0) y0 = c.y0; if (c.y1 > y1) y1 = c.y1;
+    }
+    const ow = x1 - x0 + 1, oh = y1 - y0 + 1;
+    const out = new Uint8Array(ow * oh);
+    for (const c of keep) {
+      for (const comp of c.members) {
+        for (const p of comp.px) {
+          const px = p % w, py = (p / w) | 0;
+          out[(py - y0) * ow + (px - x0)] = 1;
+        }
+      }
+    }
+    return { mask: out, w: ow, h: oh, parts: dom.parts };
+  }
+
   /* normalize(glyph, ch) → an hwFont-ready sample. Uniform scale into
    * the class box — placement and size only, the strokes untouched.
-   * Nearest-neighbour resampling keeps it byte-deterministic. */
-  function normalize(glyph, ch) {
+   * Nearest-neighbour resampling keeps it byte-deterministic. The
+   * glyph is first cropped to its significant ink (see significantOf),
+   * so a stray speck steers neither the box nor the part count. */
+  function normalize(rawGlyph, ch) {
+    const glyph = significantOf(rawGlyph.mask, rawGlyph.w, rawGlyph.h);
+    if (!glyph.parts) {
+      glyph.mask = rawGlyph.mask; glyph.w = rawGlyph.w;
+      glyph.h = rawGlyph.h; glyph.parts = rawGlyph.parts;
+    }
     const box = classBox(ch, glyph.parts);
     const outH = box.top - box.bottom;
     const s = outH / glyph.h;
@@ -584,6 +695,7 @@
   }
 
   window.HWLetter = { read, normalize, classBox, partsOf,
+                      strokeWidthOf, significantOf,
                       downscale, rectClaim, stripRules, paperFence,
                       components, clusterize,
                       PARAMS: P, X_H, CAP, ASC, DESC, DOT_TOP,
