@@ -4197,3 +4197,38 @@ with nothing explaining the disagreement; a slow machine's 0.5–1s
 sampling can make a fast sweep feel like a miss. Verified against
 synthetic frames — real pencil under real light remains the product
 owner's field test.
+
+## The Live Sweep Can No Longer Freeze the Page
+
+The product owner's laptop froze the instant the handwriting camera
+opened. **Measured cause, not assumption**: `readFrame` ran on the MAIN
+THREAD, and a synthetic noisy-room frame (gradients, furniture edges,
+900 specks, a face-blob, no sheet) cost it **12.4 seconds per frame** —
+the mark cap filled, seed-pair RANSAC burned 3.6–5.8s, and the noise
+even assembled a FAKE star ladder that triggered a full whole-sheet
+read — versus 75–354ms on the clean fixtures it was built against. The
+suite had never pointed the camera at anything messy; now it does.
+
+**Four composed fixes**: analysis moved to a **Web Worker**
+(`js/hwLiveWorker.js` — the page only grabs pixels, 15–30ms, one frame
+in flight, stale-verdict generations, a 10s watchdog; `hwRead`'s one
+DOM dependency replaced by an arithmetic stand-in probed
+pixel-identical at three sizes); a **~430px prepass** so a room with no
+sheet costs ~25ms; **hard budgets** (250-mark prepass cap — measured
+1.4× above the heaviest honest fixture; a 1s per-frame time-box;
+combination caps active only when a deadline is passed, so the upload
+path keeps its exact old behaviour); and **first-frame hygiene** (no
+sampling before the video delivers real pixels). Skips are silent —
+the slot just doesn't tick yet.
+
+**After**: the noisy frame costs ~11ms worker-side; the main thread's
+worst gap is **57ms across 6s of noisy sweeping and 33ms during a real
+collection** — asserted by a heartbeat check with a 120ms bound (4× the
+worst grab cost, 100× under the freeze). Suites: base 177/177,
+handwriting **115/115** (every identity/collection assertion passing
+unchanged through the worker path). **Disclosed:** the noisy scene is
+synthetic — a real cluttered room with the sheet only part-filling the
+frame can exceed the mark cap and be skipped until the child comes
+closer (costing sweep time, never a wrong line); a sub-cap scene that
+fakes a full ladder could still tick slots with empty lines
+(pre-existing, far less reachable now, not newly closed).
