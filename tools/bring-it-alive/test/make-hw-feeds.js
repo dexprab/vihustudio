@@ -1,31 +1,40 @@
 /* HW CAMERA FEED FIXTURES — the y4m files Chromium serves as the fake
- * camera (--use-file-for-fake-video-capture) so the FREE-MOTION line
+ * camera (--use-file-for-fake-video-capture) so the FREE-MOTION card
  * collection can be verified end to end against the real live loop.
  *
- * All frames are cut from THE SAME deterministic synthetic filled sheet
+ * All frames are cut from THE SAME deterministic synthetic filled page
  * the handwriting suite asserts against (test/hw-fixture.js, seed 7,
  * width 2000, rendered by the page's own HWSheet.draw — so the fixtures
  * and the suite cannot drift). A landscape 1280×960 sensor, matching
  * test/make-camera-feed.js's precedent:
  *
- *   hw-line-<1..5>.y4m   ONE line's band, fitted by width — the close-up
- *                        a child sweeping the camera actually produces.
- *                        Two identical frames (Chromium loops the file).
- *   hw-sheet.y4m         the whole sheet fitted by height — the full
- *                        ladder registers and every line lands at once.
- *   hw-line-blank.y4m    line 3's band from a sheet the child never
+ *   hw-card-<1..5>.y4m   ONE CUT CARD filling the wide frame with desk
+ *                        margin on every side — the close-up a child
+ *                        holding a snipped-out card actually produces.
+ *                        The card's own paper edges (against the desk)
+ *                        are in frame on all four sides, which is what
+ *                        exercises the frame-component guards. Two
+ *                        identical frames (Chromium loops the file).
+ *   hw-card-attached.y4m card 2 STILL ATTACHED: the uncut page held
+ *                        close on that card, neighbour slivers and cut
+ *                        lines in frame — must read exactly like the
+ *                        cut card (cutting is never required).
+ *   hw-sheet.y4m         the whole page fitted by height — the full
+ *                        ladder registers and every card lands at once.
+ *   hw-card-blank.y4m    card 3, cut, from a page the child never
  *                        wrote on — anchors and model print, no ink:
  *                        must collect NOTHING.
- *   hw-sweep.y4m         lines 1→2→3, four frames each at F2:1 (2s per
- *                        frame) — a sweep across the sheet in one file.
- *                        Chromium accepts exactly one y4m per launch, so
- *                        the deterministic identity checks use one
- *                        launch per line fixture; the sweep file exists
- *                        to drive multi-line accumulation in a single
- *                        launch (order-independent and latest-wins, so
+ *   hw-sweep.y4m         cut cards 1→2→3, four frames each at F2:1 (2s
+ *                        per frame) — showing the cards one after
+ *                        another in one file. Chromium accepts exactly
+ *                        one y4m per launch, so the deterministic
+ *                        identity checks use one launch per card
+ *                        fixture; the sweep file exists to drive
+ *                        multi-card accumulation in a single launch
+ *                        (order-independent and latest-wins, so
  *                        whichever frame each sample lands on, the
  *                        collection converges).
- *   hw-noisy.y4m         a NOISY ROOM SCENE, no sheet anywhere: seeded
+ *   hw-noisy.y4m         a NOISY ROOM SCENE, no page anywhere: seeded
  *                        gradients, furniture-edge rectangles, ruled
  *                        shadows, hundreds of dark compact specks and a
  *                        face-ish blob — the scene shape of the field
@@ -35,12 +44,16 @@
  *                        responsiveness checks sweep it and assert the
  *                        page never blocks and nothing is collected.
  *
- * hw-feeds.json carries each fixture's sheet→frame mapping and the
- * sheet's ground truth, so the suite's mislabel checks stay exact.
+ * hw-feeds.json carries each fixture's sheet→frame mapping, the page's
+ * ground truth, and a VERSION stamp: the fixtures are regenerated
+ * whenever this generator (or the page geometry it renders through)
+ * changes shape — allPresent() refuses a stale set, so the suite can
+ * never assert against frames cut from a geometry that no longer
+ * exists.
  *
  * ~30 MB all told — generated on demand, gitignored, never committed.
  * The suite requires this module and generates the set if it is
- * missing. Standalone (server already running):
+ * missing or stale. Standalone (server already running):
  *   BIA_PORT=9171 NODE_PATH=/opt/node22/lib/node_modules node test/make-hw-feeds.js
  */
 'use strict';
@@ -50,21 +63,27 @@ const path = require('path');
 const { COMPOSE } = require(path.join(__dirname, 'hw-fixture.js'));
 
 const W = 1280, H = 960;
+// Bumped whenever the frames' shape changes: 2 = the five-reading-cards
+// printable (cut-card close-ups in a WIDE frame, the attached fixture).
+const VERSION = 2;
 const CHROME = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
 const META = path.join(__dirname, 'hw-feeds.json');
 
 const FILE = {
-  line: (i) => path.join(__dirname, 'hw-line-' + (i + 1) + '.y4m'),
+  card: (i) => path.join(__dirname, 'hw-card-' + (i + 1) + '.y4m'),
+  attached: path.join(__dirname, 'hw-card-attached.y4m'),
   sheet: path.join(__dirname, 'hw-sheet.y4m'),
-  blank: path.join(__dirname, 'hw-line-blank.y4m'),
+  blank: path.join(__dirname, 'hw-card-blank.y4m'),
   sweep: path.join(__dirname, 'hw-sweep.y4m'),
   noisy: path.join(__dirname, 'hw-noisy.y4m')
 };
 
 function allPresent() {
-  const files = [FILE.sheet, FILE.blank, FILE.sweep, FILE.noisy, META];
-  for (let i = 0; i < 5; i++) files.push(FILE.line(i));
-  return files.every((f) => fs.existsSync(f));
+  const files = [FILE.attached, FILE.sheet, FILE.blank, FILE.sweep, FILE.noisy, META];
+  for (let i = 0; i < 5; i++) files.push(FILE.card(i));
+  if (!files.every((f) => fs.existsSync(f))) return false;
+  try { return JSON.parse(fs.readFileSync(META, 'utf8')).version === VERSION; }
+  catch (e) { return false; }
 }
 
 // RGB → YUV, BT.601 limited range, 4:2:0 — the same arithmetic as
@@ -98,9 +117,14 @@ function y4mOf(frames, fps) {
   return Buffer.concat(parts);
 }
 
-/* Page-side: compose the sheet (or the blank variant) and render ONE
- * frame — a line band fitted by width, or the whole sheet fitted by
- * height — returning raw RGBA (base64) plus the sheet→frame mapping. */
+/* Page-side: compose the page (or the blank variant) and render ONE
+ * frame — a CUT card on the desk (args.card + cut:true), the uncut page
+ * held close on one card (args.card, cut:false — neighbour slivers and
+ * cut lines in frame), or the whole page fitted by height — returning
+ * raw RGBA (base64) plus the sheet→frame mapping. A cut card keeps the
+ * page's full width (the cuts are horizontal), drawn at 94% of the
+ * frame width so the desk shows around all four paper edges, exactly as
+ * a card held in a hand would sit in the wide frame. */
 const FRAME = `async (args) => {
   const made = (${COMPOSE})(args.blank
     ? { seed: 7, width: 2000, blankLines: [0, 1, 2, 3, 4] }
@@ -113,12 +137,26 @@ const FRAME = `async (args) => {
   const c = document.createElement('canvas');
   c.width = fw; c.height = fh;
   const x = c.getContext('2d', { willReadFrequently: true });
-  x.fillStyle = '#5f6673';              // the desk behind the sheet
+  x.fillStyle = '#5f6673';              // the desk behind the paper
   x.fillRect(0, 0, fw, fh);
   x.imageSmoothingQuality = 'high';
   let map;
-  if (args.line != null) {
-    const bandTop = (G.blockTop0 + args.line * G.blockStep - 0.02) * SH;
+  if (args.card != null && args.cut) {
+    // A cut card: exactly its block's rows, full page width, with desk
+    // margin on every side of the wide frame.
+    const cardTop = (G.blockTop0 + args.card * G.blockStep) * SH;
+    const cardH = G.blockStep * SH;
+    const dw = Math.round(0.94 * fw);
+    const scale = dw / SW;
+    const dh = cardH * scale;
+    const ox = (fw - dw) / 2, oy = (fh - dh) / 2;
+    x.drawImage(img, 0, cardTop, SW, cardH, ox, oy, dw, dh);
+    map = { scale, ox, oy, bandTop: cardTop };
+  } else if (args.card != null) {
+    // The same card STILL ATTACHED: the uncut page held close — the
+    // band spills a little into the neighbours, so their borders and
+    // the cut lines are in frame, as they really would be.
+    const bandTop = (G.blockTop0 + args.card * G.blockStep - 0.02) * SH;
     const bandH = (G.blockStep + 0.04) * SH;
     const scale = fw / SW;
     const dh = bandH * scale;
@@ -143,7 +181,7 @@ const FRAME = `async (args) => {
 
 /* Page-side: the noisy room scene — SEEDED (mulberry32-style, no
  * Math.random — the suite's hygiene check applies to fixtures), no
- * sheet anywhere. Its shape is what made the field frame expensive:
+ * page anywhere. Its shape is what made the field frame expensive:
  * hundreds of dark compact candidate marks, long dark edges, gradients. */
 const NOISY_FRAME = `() => {
   const W = ${W}, H = ${H};
@@ -198,18 +236,25 @@ async function generate(base) {
   await page.goto(base);
   await page.waitForFunction(() => window.__hw && window.__bia);
 
-  const meta = { fixtures: {}, gt: null, ruleYs: null, sheetW: 0, sheetH: 0 };
-  const lineFrames = [];
+  const meta = { version: VERSION, fixtures: {}, gt: null, ruleYs: null,
+                 sheetW: 0, sheetH: 0 };
+  const cardFrames = [];
   for (let i = 0; i < 5; i++) {
-    const r = await page.evaluate(`(${FRAME})({ line: ${i} })`);
+    const r = await page.evaluate(`(${FRAME})({ card: ${i}, cut: true })`);
     const rgba = Buffer.from(r.b64, 'base64');
-    lineFrames.push(rgba);
-    fs.writeFileSync(FILE.line(i), y4mOf([rgba, rgba], 30));
-    meta.fixtures['line-' + (i + 1)] = { file: path.basename(FILE.line(i)), map: r.map };
+    cardFrames.push(rgba);
+    fs.writeFileSync(FILE.card(i), y4mOf([rgba, rgba], 30));
+    meta.fixtures['card-' + (i + 1)] = { file: path.basename(FILE.card(i)), map: r.map };
     if (!meta.gt) {
       meta.gt = r.gt; meta.ruleYs = r.ruleYs;
       meta.sheetW = r.W; meta.sheetH = r.H;
     }
+  }
+  {
+    const r = await page.evaluate(`(${FRAME})({ card: 1 })`);
+    const rgba = Buffer.from(r.b64, 'base64');
+    fs.writeFileSync(FILE.attached, y4mOf([rgba, rgba], 30));
+    meta.fixtures.attached = { file: path.basename(FILE.attached), card: 1, map: r.map };
   }
   {
     const r = await page.evaluate(`(${FRAME})({})`);
@@ -218,21 +263,21 @@ async function generate(base) {
     meta.fixtures.sheet = { file: path.basename(FILE.sheet), map: r.map };
   }
   {
-    const r = await page.evaluate(`(${FRAME})({ line: 2, blank: true })`);
+    const r = await page.evaluate(`(${FRAME})({ card: 2, cut: true, blank: true })`);
     const rgba = Buffer.from(r.b64, 'base64');
     fs.writeFileSync(FILE.blank, y4mOf([rgba, rgba], 30));
     meta.fixtures.blank = { file: path.basename(FILE.blank), map: r.map };
   }
   {
-    // the sweep: lines 1 → 2 → 3, four frames each, 2s per frame
+    // the sweep: cut cards 1 → 2 → 3, four frames each, 2s per frame
     const frames = [];
     for (const i of [0, 1, 2]) {
-      for (let k = 0; k < 4; k++) frames.push(lineFrames[i]);
+      for (let k = 0; k < 4; k++) frames.push(cardFrames[i]);
     }
     fs.writeFileSync(FILE.sweep, y4mOf(frames, 2));
     meta.fixtures.sweep = { file: path.basename(FILE.sweep),
                             lines: [0, 1, 2],
-                            map: meta.fixtures['line-1'].map };
+                            map: meta.fixtures['card-1'].map };
   }
   {
     const r = await page.evaluate(`(${NOISY_FRAME})()`);
@@ -250,7 +295,7 @@ function readMeta() { return JSON.parse(fs.readFileSync(META, 'utf8')); }
 /** Map a sheet-space x (at the ground truth's own rule y) into frame x. */
 function frameX(map, x) { return map.ox + x * map.scale; }
 
-module.exports = { generate, allPresent, readMeta, frameX, FILE, META, W, H };
+module.exports = { generate, allPresent, readMeta, frameX, FILE, META, W, H, VERSION };
 
 if (require.main === module) {
   const port = process.env.BIA_PORT || 8765;

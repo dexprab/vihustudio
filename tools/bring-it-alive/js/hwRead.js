@@ -111,7 +111,15 @@
     // ---- end-mark (anchor) registration — stage 2a ----
     A_MIN_PX: 4,           // smallest credible mark, px of ink
     A_BBOX_FRAC: 0.035,    // mark bbox side ≤ this × frame width
-    A_ASPECT_LO: 0.3,      // bbox height/width — squash makes marks flat
+    A_ASPECT_LO: 0.25,     // bbox height/width — squash makes marks flat.
+                           //   MEASURED at 640×360 under the field warp:
+                           //   the last line's star ended 2px of ink on a
+                           //   7px width (0.29), and the old 0.3 floor
+                           //   threw a REAL anchor away — with one anchor
+                           //   gone the true ladder was impossible and a
+                           //   look-alike registered wrong. The floor is
+                           //   for flat junk (dashes, edges); those are
+                           //   refused by darkness and size, not by this.
     A_ASPECT_HI: 3.2,
     A_FILL: 0.22,          // ink fill of own bbox ≥ this (a star is ~0.31)
     A_DARK_REL: 0.45,      // candidate ≥ this × the darkest mark's darkness
@@ -134,6 +142,22 @@
     A_ISO_MIN: 8,          // ≥ this many of the 10 marks in clear margin
     ORIENT_RATIO: 2.5,     // which-way-up: winning band ≥ this × the other…
     ORIENT_MIN: 0.015,     // …and at least this ink-dense (the title block)
+    // The MODEL-PRINT witness on the whole-ladder path. A registration
+    // is only believed when the sheet's own printed model line stands
+    // above EVERY implied rule at the model offset — the same witness
+    // the one-card path has always required (PL.MODEL_MIN), extended to
+    // the ladder. MEASURED need: at 640×360 under the field warp, a
+    // look-alike ladder (the true right-anchor column paired with a
+    // collinear diagonal of letter blobs) passed every pattern gate and
+    // registered the page HALF A PITCH HIGH — the DP then "confidently"
+    // accepted wrong letters. A true registration has solid print above
+    // all five rules at any resolution a photo can be read at (the
+    // print is solid ink — unlike the faint rule, a real camera never
+    // loses it while the letters are still readable): measured 0.06–0.15
+    // across the flat page, the 720p warp, the 640×360 warp and the
+    // markless fallback. A misregistration has to find that much ink
+    // above every one of five wrong places at once.
+    MODEL_BAND_MIN: 0.045,
     COARSE_XH: 14,         // px x-height under which glyphs are honestly coarse
     // The whole aligner runs on WIDTH evidence, and under ~5 camera
     // pixels of unit width there is none: measured at 640×360, the two
@@ -478,6 +502,34 @@
     if (above >= P.ORIENT_MIN && above >= P.ORIENT_RATIO * below) return 'upright';
     if (below >= P.ORIENT_MIN && below >= P.ORIENT_RATIO * above) return 'inverted';
     return 'unclear';
+  }
+
+  /* THE MODEL-PRINT WITNESS (P.MODEL_BAND_MIN). The printed model line
+   * stands a known distance above every rule, it is solid ink, and it is
+   * always there — so a whole-page registration is believed only when
+   * ink stands in that band above EVERY implied rule. The one-card path
+   * has required exactly this since it existed (findLinePairs); the
+   * ladder path gained it after a measured failure — see the constant. */
+  function modelBandDensity(seg, fit, zone) {
+    const G = HWSheet.GEOM;
+    const H = zone.pageH;
+    const lo = (G.ruleOffset - G.modelBaseline) * H;  // model baseline above the rule
+    const dyA = Math.round(lo + G.modelSize * H);
+    const dyB = Math.round(lo - G.modelSize * 0.35 * H);
+    let on = 0, total = 0;
+    const xa = Math.round(fit.x0 + 0.1 * (fit.x1 - fit.x0));
+    const xb = Math.round(fit.x0 + 0.9 * (fit.x1 - fit.x0));
+    for (let x = xa; x <= xb; x += 2) {
+      if (x < 0 || x >= seg.width) continue;
+      const yr = fit.yAt(x);
+      for (let dy = dyB; dy <= dyA; dy += 2) {
+        const y = Math.round(yr - dy);
+        if (y < 0 || y >= seg.height) continue;
+        total++;
+        if (seg.ink[y * seg.width + x]) on++;
+      }
+    }
+    return total > 40 ? on / total : 0;
   }
 
   // Exact pixel permutation — rotating twice reproduces the original
@@ -1448,6 +1500,21 @@
       });
       anis = zones.reduce((a, z) => a + z.anis, 0) / zones.length;
     }
+
+    // The model-print witness, on BOTH registrations: the sheet's own
+    // printed model line must stand above every implied rule, or the
+    // pattern that matched was not the writing page (see MODEL_BAND_MIN
+    // for the measured failure this refuses).
+    const modelDens = fits.map((f, i) => modelBandDensity(seg, f, zones[i]));
+    if (!modelDens.every((d) => d >= P.MODEL_BAND_MIN)) {
+      log('hw: REFUSED — marks lined up, but the printed model lines were not above ' +
+          'the rules they imply (band ink ' +
+          modelDens.map((d) => d.toFixed(3)).join(' ') +
+          ', floor ' + P.MODEL_BAND_MIN + ') — that pattern is not the writing page');
+      return { ok: false, reason: 'lines' };
+    }
+    log('hw: model print stands above every rule (band ink ' +
+        modelDens.map((d) => d.toFixed(2)).join(' ') + ')');
 
     const cleaned = Uint8Array.from(seg.ink);
     const meanW = zones.reduce((a, z) => a + z.pageW, 0) / zones.length;

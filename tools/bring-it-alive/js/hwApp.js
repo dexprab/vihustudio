@@ -32,14 +32,14 @@
                   '0123456789'];
   const ALPHABET = GROUPS.join('');
 
-  // Child-facing words for a line whose letters held hands (touching-
+  // Child-facing words for a card whose letters held hands (touching-
   // refusals dominated — hwRead's `joined`). Never blame words; the
-  // generic retake stays for lines that are merely messy.
+  // generic retake stays for cards that are merely messy.
   const JOINED_LINE_MSG = 'these letters are holding hands — write this ' +
-    'line once more with a little space between each letter, and I’ll ' +
+    'card once more with a little space between each letter, and I’ll ' +
     'meet them all';
   const JOINED_SHEET_MSG = 'Your letters like to hold hands! I can only ' +
-    'meet letters written on their own — try the sheet again, giving ' +
+    'meet letters written on their own — try the cards again, giving ' +
     'each letter a little space of its own.';
 
   // Child-facing words for a photo taken too far away (hwRead's capture
@@ -98,9 +98,9 @@
     camera: $('cameraNote').textContent
   };
   const HW_FRAMING = {
-    title: '✍️ My Handwriting — show me your written sheet',
-    drop: 'Drop a photo of your written sheet here',
-    camera: 'Hold your writing sheet up — one line up close is best, or the whole page at once.'
+    title: '✍️ My Handwriting — show me your cards',
+    drop: 'Drop a photo of your written page here',
+    camera: 'Show me one card at a time — any order. The whole page works too.'
   };
   function setFraming(hw) {
     const f = hw ? HW_FRAMING : FRAMING;
@@ -117,8 +117,8 @@
     HWLive.reset();   // each arming is a fresh sweep — nothing stale ticks
     const banner = $('hwArmed');
     $('hwArmedText').textContent = state.retakeLine == null
-      ? 'Your next photo becomes your handwriting — or open the camera and show me the sheet, line by line.'
-      : 'Show me line ' + (state.retakeLine + 1) + ' once more — up close with the camera, or a fresh photo of the whole sheet.';
+      ? 'Your next photo becomes your handwriting — or open the camera and show me your cards, one at a time.'
+      : 'Show me card ' + (state.retakeLine + 1) + ' once more — up close with the camera, or a fresh photo of the whole page.';
     banner.style.display = 'block';
     setFraming(true);
     go('stepCapture');
@@ -382,7 +382,7 @@
     }
     $('hwGridNote').textContent = have === ALPHABET.length
       ? 'Every letter is here — these are all yours.'
-      : 'An empty box is a letter I haven’t met yet. You can write its line once more, or build the font without it — words will borrow a plain letter there.';
+      : 'An empty box is a letter I haven’t met yet. You can write its card once more, or build the font without it — words will borrow a plain letter there.';
 
     // Sheet-level joined-up: when MOST read lines look joined the child
     // writes joined-up throughout, so say it ONCE, gently, up front —
@@ -409,20 +409,20 @@
       const txt = document.createElement('span');
       if (ln.found && ln.joined && !sheetJoined) {
         row.classList.add('joined');
-        txt.textContent = 'Line ' + (ln.index + 1) + ' · “' + ln.text + '” · ' +
+        txt.textContent = 'Card ' + (ln.index + 1) + ' · “' + ln.text + '” · ' +
           JOINED_LINE_MSG;
       } else if (ln.found) {
-        txt.textContent = 'Line ' + (ln.index + 1) + ' · “' + ln.text + '” · ' +
+        txt.textContent = 'Card ' + (ln.index + 1) + ' · “' + ln.text + '” · ' +
           ln.accepted + ' of ' + ln.expected + ' letters';
       } else {
-        txt.textContent = 'Line ' + (ln.index + 1) + ' · “' + ln.text + '” · not read yet';
+        txt.textContent = 'Card ' + (ln.index + 1) + ' · “' + ln.text + '” · not read yet';
       }
       row.appendChild(txt);
       const btn = document.createElement('button');
       btn.className = 'ghost';
       // One wording for both ways back: write it again and photograph
-      // it, or hold the same line up to the camera once more.
-      btn.textContent = 'Show me this line once more';
+      // it, or hold the same card up to the camera once more.
+      btn.textContent = 'Show me this card once more';
       btn.dataset.line = String(ln.index);
       btn.addEventListener('click', () => arm(ln.index));
       row.appendChild(btn);

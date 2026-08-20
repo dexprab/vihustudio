@@ -184,7 +184,7 @@
            written sheet. -->
       <div class="quiet" id="hwArmed">
         <span id="hwArmedText"></span>
-        <div class="row"><button class="ghost" id="hwDisarmBtn">Never mind — back to my sheet</button></div>
+        <div class="row"><button class="ghost" id="hwDisarmBtn">Never mind — back to my cards</button></div>
       </div>
       <div id="drop">
         <span id="dropWords">Drop a photograph of your drawing here</span>
@@ -208,14 +208,14 @@
                  style="display:none; width:640px; max-width:100%; border-radius:6px;"></canvas>
         </div>
         <!-- MY HANDWRITING, free motion (js/hwLive.js): while the journey
-             is armed and the preview runs, lines are collected one at a
-             time, in any order. Five quiet slots that light up as lines
+             is armed and the preview runs, cards are collected one at a
+             time, in any order. Five quiet slots that light up as cards
              are met — never a percentage, no brackets, no reticle, no
              sweeping anything: nothing that looks like scanning. -->
         <div id="hwLiveRow" style="display:none">
-          <p class="note" id="hwLiveWords">Show me your sheet — one line up
-             close is best, or the whole page at once. Lines light up as I
-             meet them.</p>
+          <p class="note" id="hwLiveWords">Show me one card at a time — any
+             order. The whole page works too. Cards light up as I meet
+             them.</p>
           <div class="hw-live-slots" id="hwLiveSlots"></div>
           <p class="note" id="hwLiveCount"></p>
           <div class="row">
@@ -248,10 +248,10 @@
          font journey starts inside the drawing block. -->
     <div class="journey" id="hwJourney">
       <h2>✍️ My Handwriting — a font of your own letters</h2>
-      <p class="note">Write five lines on a printed sheet, show them to me,
-         and I’ll make a real font out of your very own letters.</p>
+      <p class="note">Write five little cards on one printed page, show me
+         each card, and I’ll make a real font out of your very own letters.</p>
       <div class="row">
-        <button id="hwEntryBtn">Start with my writing sheet</button>
+        <button id="hwEntryBtn">Start with my writing cards</button>
       </div>
     </div>
   </section>
@@ -393,17 +393,19 @@
        built; missing letters are quiet empty slots and are simply absent
        from the font's cmap, so text falls back to a plain letter there. -->
 
-  <!-- THE WRITING SHEET -->
+  <!-- THE WRITING CARDS (one printed page, five reading cards) -->
   <section class="step" id="stepHwSheet">
-    <h2>Your writing sheet</h2>
-    <p class="note">Print this sheet. Copy each line in your own handwriting on
-       the empty line under it — dark pencil or pen, letters apart, sitting on
-       the line. Then photograph the whole sheet, flat.</p>
+    <h2>Your writing cards</h2>
+    <p class="note">Print this page — it makes five little cards. Copy each
+       line in your own handwriting on the empty line in its card — dark
+       pencil or pen, letters apart, sitting on the line. Then snip along the
+       dashed lines if you like, and show me one card at a time — or keep the
+       page whole; both work.</p>
     <div class="board"><canvas id="hwSheetCanvas"></canvas></div>
     <div class="quiet" id="hwQuietSheet"></div>
     <div class="row">
-      <button id="hwPrintBtn">Print the sheet</button>
-      <button id="hwWroteBtn">I’ve written it — photograph my sheet</button>
+      <button id="hwPrintBtn">Print the cards</button>
+      <button id="hwWroteBtn">I’ve written it — show me my cards</button>
       <button class="ghost" id="hwSheetBack">Never mind</button>
     </div>
   </section>
@@ -424,7 +426,7 @@
     <div id="hwLineList"></div>
     <div class="row">
       <button id="hwBuildBtn">Make my font</button>
-      <button class="ghost" id="hwNewSheetBtn">Start with a fresh sheet</button>
+      <button class="ghost" id="hwNewSheetBtn">Start with a fresh page of cards</button>
     </div>
   </section>
 
@@ -438,7 +440,7 @@
     <div class="row">
       <button id="hwDownloadBtn">Download “My Handwriting.ttf”</button>
       <button class="ghost" id="hwBackToLetters">Back to my letters</button>
-      <button class="ghost" id="hwTestNewSheet">Start with a fresh sheet</button>
+      <button class="ghost" id="hwTestNewSheet">Start with a fresh page of cards</button>
     </div>
   </section>
 

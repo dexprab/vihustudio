@@ -13,18 +13,30 @@
  * run reads the same sheet. Ground truth is the drawn letters' own
  * positions, which is what makes the mislabel assertions exact.
  *
- * Seven scenarios:
+ * Eight scenarios:
  *   HW-N  two journeys, two blocks — the entry screen presents the
  *         drawing journey and the font journey as equal, separate
  *         blocks; the shared camera machinery wears each journey's own
  *         words; backing out of one never leaks state into the other.
- *   HW-F  free motion — the camera collects lines ONE AT A TIME, in any
- *         order (fake-camera y4m close-ups, one Chromium launch each):
- *         correct identity 5/5, zero mislabels, latest-wins replace,
- *         the quiet five-slot row, Done-early, the whole-ladder frame
- *         filling all five at once, a sweep accumulating three lines in
- *         one launch, and nothing collected from a drawing or an
- *         unwritten line. The upload path never touches the loop.
+ *   HW-J  five reading cards — the printable is five bordered cards
+ *         with dashed cut lines between them (the product owner: "try
+ *         designing the page as 5 reding cards, and than kid can show
+ *         each card 1 by 1"); the blank is TALLER than the sheet era's;
+ *         the border, dashes and scissors mark are invisible to the
+ *         reader (never ink, never an anchor — the tilted-page-edge
+ *         guard extended to the card border, asserted); a card shown
+ *         STILL ATTACHED reads exactly like the cut card; and the WIDE
+ *         frame buys the close-up pixels, measured against the tall-era
+ *         hold.
+ *   HW-F  free motion — the camera collects the cards ONE AT A TIME, in
+ *         any order (fake-camera y4m cut-card close-ups in the WIDE
+ *         frame, one Chromium launch each): correct identity 5/5, zero
+ *         mislabels, latest-wins replace, the quiet five-slot row,
+ *         Done-early, an ATTACHED card collecting exactly like a cut
+ *         one, the whole-ladder frame filling all five at once, a sweep
+ *         accumulating three cards in one launch, and nothing collected
+ *         from a drawing or an unwritten card. The upload path never
+ *         touches the loop.
  *   HW-G  the page never blocks — the analysis lives in a Web Worker
  *         (js/hwLiveWorker.js) behind a downscaled prepass and hard
  *         per-frame budgets: a main-thread heartbeat stays under 120ms
@@ -315,9 +327,9 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
       extrasHidden: !document.getElementById('drawExtras').offsetParent,
       testHidden: !document.getElementById('testBtn').offsetParent
     }));
-    check('N3 armed, the capture step is visibly the FONT journey (title, drop, camera line)',
-      /My Handwriting/.test(armed.title) && /written sheet/.test(armed.drop) &&
-      /writing sheet/.test(armed.note) && armed.hwBlockHidden &&
+    check('N3 armed, the capture step is visibly the FONT journey (title, drop, camera line — and the words say CARDS)',
+      /My Handwriting/.test(armed.title) && /written page/.test(armed.drop) &&
+      /one card at a time/.test(armed.note) && armed.hwBlockHidden &&
       armed.extrasHidden && armed.testHidden,
       '"' + armed.title + '" · "' + armed.note + '"');
 
@@ -418,6 +430,280 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
       !/cursive|wrong|failed|invalid|error|don.t|never/i.test(callout.text));
   }
   await page.screenshot({ path: path.join(SHOTS, '11-handwriting-sheet.png') });
+
+  // ==== HW-J: five reading cards =============================================
+  // The product owner, verbatim: "i would say instead of reading one full
+  // page, try designing the page as 5 reding cards, and than kid can show
+  // each card 1 by 1. this will make life easier on both ends." The page
+  // is five bordered cards with dashed cut lines between them. Everything
+  // a card adds to the print — the border, the dashes, the scissors mark
+  // — must be INVISIBLE to the reader (the tilted-page-edge lesson,
+  // extended to the card border and asserted); a card shown STILL
+  // ATTACHED must read exactly like the cut card (cutting is never
+  // required); and the WIDE camera frame must actually buy the close-up
+  // pixels the design promises.
+  console.log('\n== HW-J: FIVE READING CARDS ================================');
+  {
+    const layout = await page.evaluate(() => {
+      const c = document.createElement('canvas');
+      const drawn = HWSheet.draw(c, 2000);
+      const G = HWSheet.GEOM;
+      return {
+        cards: drawn.cards.length,
+        cuts: drawn.cuts.length,
+        cutsBetween: drawn.cuts.every((y, k) =>
+          y > drawn.cards[k].y1 && y < drawn.cards[k + 1].y0),
+        cardsHoldLines: drawn.cards.every((card, i) =>
+          drawn.lines[i].zoneTop > card.y0 && drawn.lines[i].zoneBottom < card.y1),
+        blank: G.ascent + G.descent, ascent: G.ascent
+      };
+    });
+    check('J1 the page is FIVE bordered cards with FOUR dashed cut lines between them',
+      layout.cards === 5 && layout.cuts === 4 && layout.cutsBetween &&
+      layout.cardsHoldLines,
+      layout.cards + ' cards, ' + layout.cuts + ' cut lines, each blank inside its card');
+    // The blank grew because the sheet era's page header (0.103·H) went
+    // to the cards: blank 0.116·H → measured here, ascent 0.082·H → here.
+    // The border/cut overheads cap the gain — reported honestly, in mm.
+    const SHEET_ERA = { blank: 0.116, ascent: 0.082 };
+    check('J2 the ruled blank is TALLER than the sheet era\'s — the old header went to the blanks',
+      layout.blank > SHEET_ERA.blank && layout.ascent > SHEET_ERA.ascent,
+      'blank ' + (layout.blank * 297).toFixed(1) + 'mm on A4 vs ' +
+      (SHEET_ERA.blank * 297).toFixed(1) + 'mm (+' +
+      Math.round((layout.blank / SHEET_ERA.blank - 1) * 100) + '%); ascent ' +
+      (layout.ascent * 297).toFixed(1) + 'mm vs ' + (SHEET_ERA.ascent * 297).toFixed(1) + 'mm');
+
+    // The frame-component guard, extended to the card furniture: the
+    // border and the cut dashes wear the rule's own sub-ink-margin grey
+    // (never ink → they can never weld a letter or enter the font), the
+    // scissors mark wears the number grey (far below the end-mark
+    // darkness gate → it can never impersonate an anchor). Asserted
+    // against the real segmentation of the real render, not the colours.
+    const guard = await page.evaluate(() => {
+      const c = document.createElement('canvas');
+      const drawn = HWSheet.draw(c, 2000);
+      const W = c.width, H = c.height;
+      const photo = { width: W, height: H,
+        imageData: c.getContext('2d').getImageData(0, 0, W, H), filename: 'blank' };
+      const loop = [[1, 1], [W - 2, 1], [W - 2, H - 2], [1, H - 2]];
+      const seg = BIASegment.segment(photo, BIAClaim.claim(loop, W, H));
+      let borderInk = 0, borderN = 0;
+      for (const card of drawn.cards) {
+        for (let x = Math.round(card.x0) + 30; x < card.x1 - 30; x += 5) {
+          // the scissors mark straddles the cut area, deliberately dark
+          // enough to see — its own gate is J4; skip its column here
+          if (Math.abs(x - 0.5 * W) < 0.03 * W) continue;
+          for (const y of [Math.round(card.y0), Math.round(card.y1)]) {
+            borderN++;
+            if (seg.ink[y * W + x]) borderInk++;
+          }
+        }
+        for (let y = Math.round(card.y0) + 30; y < card.y1 - 30; y += 5) {
+          for (const x of [Math.round(card.x0), Math.round(card.x1)]) {
+            borderN++;
+            if (seg.ink[y * W + x]) borderInk++;
+          }
+        }
+      }
+      let cutInk = 0, cutN = 0;
+      for (const y of drawn.cuts) {
+        for (let x = 30; x < W - 30; x += 3) {
+          if (Math.abs(x - 0.5 * W) < 0.03 * W) continue; // the scissors mark — dark on purpose, gated below
+          cutN++;
+          if (seg.ink[Math.round(y) * W + x]) cutInk++;
+        }
+      }
+      const { marks } = HWRead.collectMarks(seg);
+      const G = HWSheet.GEOM;
+      const anchors = [];
+      for (let i = 0; i < HWSheet.LINES.length; i++) {
+        anchors.push([G.anchorXLeft * W, HWSheet.ruleYFrac(i) * H]);
+        anchors.push([G.anchorXRight * W, HWSheet.ruleYFrac(i) * H]);
+      }
+      const nearAnchor = (m) => anchors.some(([ax, ay]) =>
+        Math.hypot(m.cx - ax, m.cy - ay) < 0.01 * W);
+      const furnitureMarks = marks.filter((m) => !nearAnchor(m) && (
+        drawn.cuts.some((y) => Math.abs(m.cy - y) < 0.008 * H) ||
+        drawn.cards.some((card) =>
+          Math.abs(m.cy - card.y0) < 0.004 * H || Math.abs(m.cy - card.y1) < 0.004 * H ||
+          Math.abs(m.cx - card.x0) < 0.004 * W || Math.abs(m.cx - card.x1) < 0.004 * W)));
+      const ladder = HWRead.findLadder(seg, function () {});
+      const rungsOnAnchors = !!ladder && ladder.rungs.every((r) =>
+        nearAnchor(r.L) && nearAnchor(r.R));
+      return { borderInk, borderN, cutInk, cutN,
+               furnitureMarks: furnitureMarks.length, rungsOnAnchors };
+    });
+    check('J3 the card borders and cut lines are NOT ink to the reader — they can never weld a letter or enter the font',
+      guard.borderInk === 0 && guard.cutInk === 0,
+      guard.borderN + ' border px + ' + guard.cutN + ' cut-line px sampled, ' +
+      (guard.borderInk + guard.cutInk) + ' read as ink');
+    check('J4 no dash, border or scissors mark passes the end-mark gate — card furniture can never impersonate an anchor',
+      guard.furnitureMarks === 0,
+      guard.furnitureMarks + ' candidate mark(s) on card furniture');
+    check('J5 the ladder still registers on exactly the ten anchor stars',
+      guard.rungsOnAnchors);
+
+    // ATTACHED reads exactly like CUT — per card, through the very same
+    // readFrame the live loop runs. The two frames differ only in what
+    // stands OUTSIDE the card (neighbour slivers and cut lines vs desk),
+    // so the verdicts must be identical: same card named, the same
+    // letters accepted. This is "cutting is never required" as an
+    // assertion, and it is also the border guard at work in close-up —
+    // the attached frame has two cut lines and two neighbour borders in
+    // view, the cut frame has four raw paper edges against the desk.
+    for (let i = 0; i < 5; i++) {
+      const r = await page.evaluate(`(async () => {
+        const i = ${i};
+        const made = (${COMPOSE})({ seed: 7, width: 2000 });
+        const img = new Image();
+        await new Promise((r) => { img.onload = r; img.src = made.dataURL; });
+        const G = HWSheet.GEOM;
+        const SW = img.width, SH = img.height;
+        const fw = 1280, fh = 960;
+        const frameOf = (cut) => {
+          const c = document.createElement('canvas');
+          c.width = fw; c.height = fh;
+          const x = c.getContext('2d', { willReadFrequently: true });
+          x.fillStyle = '#5f6673';
+          x.fillRect(0, 0, fw, fh);
+          const blockTop = (G.blockTop0 + i * G.blockStep) * SH;
+          if (cut) {
+            const dw = Math.round(0.94 * fw);
+            const scale = dw / SW;
+            const dh = G.blockStep * SH * scale;
+            x.drawImage(img, 0, blockTop, SW, G.blockStep * SH,
+                        (fw - dw) / 2, (fh - dh) / 2, dw, dh);
+          } else {
+            const bandTop = blockTop - 0.02 * SH;
+            const bandH = (G.blockStep + 0.04) * SH;
+            const scale = fw / SW;
+            const dh = bandH * scale;
+            x.drawImage(img, 0, bandTop, SW, bandH, 0, (fh - dh) / 2, fw, dh);
+          }
+          return { width: fw, height: fh,
+                   imageData: x.getImageData(0, 0, fw, fh), filename: 'f' };
+        };
+        const read = (photo) => {
+          const out = HWRead.readFrame(photo, { log: function () {} });
+          return { kind: out.kind, index: out.index,
+            accepted: out.kind === 'line'
+              ? out.line.letters.filter((l) => l.accepted).map((l) => l.ch).join('') : null,
+            exp: out.kind === 'line' ? out.line.expected : null,
+            xh: out.capture ? Math.round(out.capture.xHeightPx) : null };
+        };
+        return { attached: read(frameOf(false)), cut: read(frameOf(true)) };
+      })()`);
+      check('J6.' + (i + 1) + ' card ' + (i + 1) + ' STILL ATTACHED reads exactly like the cut card (same identity, same letters)',
+        r.attached.kind === 'line' && r.cut.kind === 'line' &&
+        r.attached.index === i && r.cut.index === i &&
+        r.attached.accepted === r.cut.accepted &&
+        r.cut.accepted.length >= r.cut.exp - 2,
+        r.cut.accepted ? r.cut.accepted.length + '/' + r.cut.exp +
+          ' letters, both frames' : JSON.stringify(r));
+    }
+
+    // The wide frame fits a hand-held card with real margin — from the
+    // geometry itself: a cut card is the page's full width by one block.
+    const fit = await page.evaluate(() => {
+      const G = HWSheet.GEOM;
+      const cardAspect = G.blockStep * G.aspect;   // card height / card width
+      const fw = 1280, fh = 960;
+      const dh = 0.94 * fw * cardAspect;
+      return { cardAspect, usedH: dh / fh, marginFrac: (fh - dh) / 2 / fh };
+    });
+    check('J7 a hand-held card fits the WIDE frame with margin (the card is ~4× wider than tall)',
+      fit.cardAspect < 0.3 && fit.usedH < 0.5 && fit.marginFrac > 0.2,
+      'card h:w ' + fit.cardAspect.toFixed(2) + '; at 94% width it uses ' +
+      Math.round(fit.usedH * 100) + '% of the frame height, ' +
+      Math.round(fit.marginFrac * 100) + '% aiming margin above and below');
+
+    // The resolution win, in numbers: the SAME cut card read at the wide
+    // hold (94% of the wide frame's columns) and at the tall-era hold
+    // (the child aimed inside the old 4:5 tall crop, so a card could
+    // span at most 94% of its 768 columns). The wide frame is what buys
+    // the pixels — measured, not asserted from hope.
+    const win = await page.evaluate(`(async () => {
+      const made = (${COMPOSE})({ seed: 7, width: 2000 });
+      const img = new Image();
+      await new Promise((r) => { img.onload = r; img.src = made.dataURL; });
+      const G = HWSheet.GEOM;
+      const SW = img.width, SH = img.height;
+      const fw = 1280, fh = 960;
+      const readAt = (span) => {
+        const c = document.createElement('canvas');
+        c.width = fw; c.height = fh;
+        const x = c.getContext('2d', { willReadFrequently: true });
+        x.fillStyle = '#5f6673'; x.fillRect(0, 0, fw, fh);
+        const cardTop = G.blockTop0 * SH, cardH = G.blockStep * SH;
+        const scale = span / SW, dh = cardH * scale;
+        x.drawImage(img, 0, cardTop, SW, cardH,
+                    (fw - span) / 2, (fh - dh) / 2, span, dh);
+        const out = HWRead.readFrame(
+          { width: fw, height: fh,
+            imageData: x.getImageData(0, 0, fw, fh), filename: 'f' },
+          { log: function () {} });
+        return out.kind === 'line'
+          ? { xh: out.capture.xHeightPx, measured: out.capture.xHeightMeasured }
+          : { xh: 0, measured: false };
+      };
+      const tallCols = Math.round((4 / 5) * fh);   // the old tall crop's width
+      return { wide: readAt(Math.round(0.94 * fw)),
+               tall: readAt(Math.round(0.94 * tallCols)),
+               floor: HWRead.PARAMS.COARSE_XH };
+    })()`);
+    check('J8 the WIDE frame buys the pixels: the card\'s measured x-height clears the coarse floor with room, ≥1.4× the tall-era hold',
+      win.wide.measured && win.wide.xh >= win.floor + 5 &&
+      win.tall.xh > 0 && win.wide.xh >= 1.4 * win.tall.xh,
+      'wide hold ~' + win.wide.xh.toFixed(1) + 'px vs tall-era hold ~' +
+      win.tall.xh.toFixed(1) + 'px (coarse floor ' + win.floor + 'px) — ' +
+      (win.wide.xh / win.tall.xh).toFixed(2) + '× the camera pixels per letter');
+
+    // The look-alike-ladder regression. With the LEFT stars hidden, a
+    // 640×360 field-warp frame once grew a phantom ladder — the true
+    // right-anchor column paired with a collinear diagonal of letter
+    // blobs — that passed every pattern gate and registered the page
+    // half a pitch high, and the DP then "confidently" accepted wrong
+    // letters. The model-print witness (MODEL_BAND_MIN) now refuses it:
+    // solid print must stand above ALL FIVE implied rules. Refusal, not
+    // misreading, is the assertion — refuse-rather-than-guess absolute.
+    const noLeftURL = await page.evaluate(`(async () => {
+      const made = (${COMPOSE})({ seed: 7, width: 2000 });
+      const img = new Image();
+      await new Promise((r) => { img.onload = r; img.src = made.dataURL; });
+      const c = document.createElement('canvas');
+      c.width = img.width; c.height = img.height;
+      const x = c.getContext('2d');
+      x.drawImage(img, 0, 0);
+      const G = HWSheet.GEOM, W = c.width;
+      const R = G.anchorRadius * W * 1.6;
+      x.fillStyle = '#ffffff';
+      for (let i = 0; i < HWSheet.LINES.length; i++) {
+        const y = HWSheet.ruleYFrac(i) * c.height;
+        x.fillRect(G.anchorXLeft * W - R, y - R, 2 * R, 2 * R);
+      }
+      return c.toDataURL('image/png');
+    })()`);
+    const QUAD_LOW = [[80, 5], [612, 7], [562, 356], [209, 353]];
+    const noLeftLow = await page.evaluate(`(${WARP})(${JSON.stringify(
+      { dataURL: noLeftURL, quad: QUAD_LOW, frameW: 640, frameH: 360, blur: 0.4 })})`);
+    const phantom = await page.evaluate(`(async (durl) => {
+      const img = new Image();
+      await new Promise((r) => { img.onload = r; img.src = durl; });
+      const c = document.createElement('canvas');
+      c.width = img.width; c.height = img.height;
+      const x = c.getContext('2d', { willReadFrequently: true });
+      x.drawImage(img, 0, 0);
+      const logs = [];
+      const out = HWRead.read(
+        { width: c.width, height: c.height,
+          imageData: x.getImageData(0, 0, c.width, c.height), filename: 'p' },
+        { log: (l) => logs.push(l) });
+      return { ok: out.ok, refusedBy: logs.filter((l) => /REFUSED/.test(l)).join(' | ') };
+    })(${JSON.stringify(noLeftLow)})`);
+    check('J9 half the stars hidden → a look-alike ladder can form, and it is REFUSED, never read wrong',
+      phantom.ok === false && /REFUSED/.test(phantom.refusedBy),
+      phantom.refusedBy.slice(0, 110) || 'read ok (should have refused)');
+  }
 
   // ==== HW-B: the complete sheet =============================================
   console.log('\n== HW-B: A COMPLETE FILLED SHEET ===========================');
@@ -905,16 +1191,18 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
       mislabels(dM, eClean.gt).length === 0);
   }
 
-  // ==== HW-F: free motion — the camera collects lines one at a time ==========
-  // The product owner's finding, verbatim: "why is it needed to get all
+  // ==== HW-F: free motion — the camera collects cards one at a time ==========
+  // Two product-owner findings, verbatim: "why is it needed to get all
   // lines clicked at same time. why cant we do first line , 2nd in a
-  // free motion". Chromium accepts exactly ONE y4m per launch, so the
-  // deterministic identity checks run one launch per close-up fixture;
-  // the multi-frame sweep file (lines 1→2→3 at 2s a frame) drives the
+  // free motion" — and then "try designing the page as 5 reding cards,
+  // and than kid can show each card 1 by 1". The close-up fixtures are
+  // CUT CARDS filling the WIDE frame, desk on every side — the hold the
+  // card design is for. Chromium accepts exactly ONE y4m per launch, so
+  // the deterministic identity checks run one launch per card fixture;
+  // the multi-frame sweep file (cards 1→2→3 at 2s a frame) drives the
   // real accumulation in a single launch — collection is any-order and
-  // latest-wins, so whichever frame each sample lands on, it converges
-  // (measured: 3 of 3 lines in ~4s over 6 samples).
-  console.log('\n== HW-F: FREE MOTION — LINES, ONE AT A TIME ================');
+  // latest-wins, so whichever frame each sample lands on, it converges.
+  console.log('\n== HW-F: FREE MOTION — CARDS, ONE AT A TIME ================');
   const hwFeeds = require(path.join(__dirname, 'make-hw-feeds.js'));
   if (!hwFeeds.allPresent()) {
     console.log('  (generating the fake-camera fixtures — one time)');
@@ -954,14 +1242,14 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
     return mislabels({ lines }, framed);
   }
 
-  // Every close-up line fixture: collected with the CORRECT identity,
+  // Every CUT-CARD close-up fixture: collected with the CORRECT identity,
   // read essentially in full, zero letter mislabels — and the measured
-  // x-height per line, which is the resolution win in numbers.
+  // x-height per card, which is the resolution win in numbers.
   {
     let identityOK = 0, mislabelTotal = 0, camErrs = 0;
     const xhs = [];
     for (let i = 0; i < 5; i++) {
-      const { browser, p, errors } = await camPage('hw-line-' + (i + 1) + '.y4m');
+      const { browser, p, errors } = await camPage('hw-card-' + (i + 1) + '.y4m');
       await armAndOpenCamera(p);
       await p.waitForFunction(() =>
         window.__hw.live && window.__hw.live.collected.size >= 1,
@@ -969,12 +1257,12 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
       const got = await p.evaluate(() => Array.from(window.__hw.live.collected.keys()));
       const okId = got.length === 1 && got[0] === i;
       if (okId) identityOK++;
-      check('F1.' + (i + 1) + ' a close-up of line ' + (i + 1) + ' collects line ' +
+      check('F1.' + (i + 1) + ' a cut card ' + (i + 1) + ' filling the wide frame collects card ' +
             (i + 1) + ' and nothing else',
         okId, 'collected [' + got.map((x) => x + 1).join(' ') + ']');
 
       if (i === 1) {
-        // The deep checks ride on one line: latest-wins, the quiet UI,
+        // The deep checks ride on one card: latest-wins, the quiet UI,
         // the lock screenshot, Done-early, and the camera light.
         await p.waitForFunction(() => window.__hw.live.replaced >= 1,
           null, { timeout: 30000 });
@@ -983,9 +1271,9 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
           size: window.__hw.live.collected.size,
           log: document.getElementById('devLog').textContent
         }));
-        check('F2 re-showing an already-collected line replaces it silently (latest wins)',
+        check('F2 re-showing an already-collected card replaces it silently (latest wins)',
           rep.replaced >= 1 && rep.size === 1,
-          rep.replaced + ' replacement(s), still 1 line held');
+          rep.replaced + ' replacement(s), still 1 card held');
         const ui = await p.evaluate(() => ({
           count: document.getElementById('hwLiveCount').textContent,
           met: Array.from(document.querySelectorAll('.hw-live-slot'))
@@ -999,14 +1287,14 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
         check('F4 the collection row never looks like scanning — no jargon, no blame',
           !/percent|%|scanning|detected|processing|error|failed/i.test(ui.words),
           '"' + ui.words.slice(0, 60).replace(/\n/g, ' · ') + '…"');
-        check('F5 the measured x-height per collected line goes to the developer log',
+        check('F5 the measured x-height per collected card goes to the developer log',
           /one line met — line 2, \d+ of \d+ letters, x-height ~\d+px \(measured\)/.test(rep.log));
         await p.locator('#cameraPanel').scrollIntoViewIfNeeded();
-        await p.screenshot({ path: path.join(SHOTS, '18-hw-line-locked.png') });
+        await p.screenshot({ path: path.join(SHOTS, '18-hw-card-locked.png') });
         await p.click('#hwLiveDoneBtn');
         await p.waitForFunction(() => window.__hw.stage === 'alphabet');
         const data = await lettersData(p);
-        check('F6 Done-early keeps what was met: the line reads in full, the rest stay quiet empty slots',
+        check('F6 Done-early keeps what was met: the card reads in full, the rest stay quiet empty slots',
           data.lines[1].found && data.lines[1].accepted >= 28 &&
           data.lines.filter((l) => !l.found).length === 4,
           data.lines.map((l) => l.found ? l.accepted + '/' + l.expected : '—').join(' '));
@@ -1019,7 +1307,7 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
         check('F7 finishing the sweep closes the camera — light off, loop stopped',
           light.panel === 'none' && light.tracks === 'ended' && !light.running,
           'tracks ' + light.tracks);
-        const badDeep = mislabelsFramed(data.lines, feedsMeta.fixtures['line-2'].map);
+        const badDeep = mislabelsFramed(data.lines, feedsMeta.fixtures['card-2'].map);
         mislabelTotal += badDeep.length;
         const xhL = await p.evaluate(() => window.__hw.capture.xHeightPx);
         xhs.push(xhL);
@@ -1027,23 +1315,48 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
         await p.click('#hwLiveDoneBtn');
         await p.waitForFunction(() => window.__hw.stage === 'alphabet');
         const data = await lettersData(p);
-        const bad = mislabelsFramed(data.lines, feedsMeta.fixtures['line-' + (i + 1)].map);
+        const bad = mislabelsFramed(data.lines, feedsMeta.fixtures['card-' + (i + 1)].map);
         mislabelTotal += bad.length;
         xhs.push(await p.evaluate(() => window.__hw.capture.xHeightPx));
       }
       camErrs += errors.length;
       await browser.close();
     }
-    check('F8 all five close-ups collect with the CORRECT identity (5/5) — never a wrong line',
+    check('F8 all five cut cards collect with the CORRECT identity (5/5) — never a wrong card',
       identityOK === 5, identityOK + '/5');
-    check('F9 zero letter mislabels across every collected line',
+    check('F9 zero letter mislabels across every collected card',
       mislabelTotal === 0, mislabelTotal + ' mislabels');
-    check('F10 zero page errors across the five close-up launches', camErrs === 0);
-    console.log('     resolution win: close-up x-heights ' +
+    check('F10 zero page errors across the five cut-card launches', camErrs === 0);
+    console.log('     resolution win: cut-card x-heights ' +
       xhs.map((x) => Math.round(x) + 'px').join(' ') +
-      ' vs the whole sheet in the same frame (next check) — more camera pixels per letter');
-    check('F11 close-up delivers the pixels: every line\'s x-height is ABOVE the coarse floor',
+      ' vs the whole page in the same frame (next check) — more camera pixels per letter');
+    check('F11 the cards deliver the pixels: every card\'s x-height is ABOVE the coarse floor',
       xhs.every((x) => x >= HW_COARSE_FLOOR), xhs.map((x) => Math.round(x)).join(' '));
+  }
+
+  // A card shown STILL ATTACHED — the uncut page held close, neighbour
+  // slivers and cut lines in frame — collects through the very same
+  // loop, with the same identity. Cutting is part of the fun, never a
+  // requirement (HW-J proves the verdicts identical frame for frame;
+  // this proves the end-to-end collection).
+  {
+    const { browser, p, errors } = await camPage('hw-card-attached.y4m');
+    await armAndOpenCamera(p);
+    await p.waitForFunction(() =>
+      window.__hw.live && window.__hw.live.collected.size >= 1,
+      null, { timeout: 60000 });
+    const got = await p.evaluate(() => Array.from(window.__hw.live.collected.keys()));
+    check('F11b an ATTACHED card collects exactly like a cut one — cutting is never required',
+      got.length === 1 && got[0] === 1,
+      'collected [' + got.map((x) => x + 1).join(' ') + ']');
+    await p.click('#hwLiveDoneBtn');
+    await p.waitForFunction(() => window.__hw.stage === 'alphabet');
+    const data = await lettersData(p);
+    const bad = mislabelsFramed(data.lines, feedsMeta.fixtures.attached.map);
+    check('F11c …reads essentially in full with zero mislabels',
+      data.lines[1].accepted >= 28 && bad.length === 0 && errors.length === 0,
+      data.lines[1].accepted + '/' + data.lines[1].expected + ', ' + bad.length + ' mislabels');
+    await browser.close();
   }
 
   // The whole sheet in one frame: the full ladder registers, every line
@@ -1067,9 +1380,9 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
     await browser.close();
   }
 
-  // The sweep: one launch, the file pans across lines 1→2→3, and the
-  // collection accumulates in free motion — the finding, verbatim,
-  // answered end to end.
+  // The sweep: one launch, the file shows cards 1→2→3 one after another,
+  // and the collection accumulates in free motion — "kid can show each
+  // card 1 by 1", verbatim, answered end to end.
   {
     const { browser, p, errors } = await camPage('hw-sweep.y4m');
     await armAndOpenCamera(p);
@@ -1080,15 +1393,15 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
       collected: Array.from(window.__hw.live.collected.keys()).sort().join(','),
       count: document.getElementById('hwLiveCount').textContent
     }));
-    check('F15 sweeping across the sheet collects the lines one at a time, in free motion',
+    check('F15 showing the cards one after another collects them one at a time, in free motion',
       snap.collected === '0,1,2' && /^3 of 5$/.test(snap.count),
-      'lines [' + snap.collected + '], "' + snap.count + '"');
+      'cards [' + snap.collected + '], "' + snap.count + '"');
     await p.locator('#cameraPanel').scrollIntoViewIfNeeded();
     await p.screenshot({ path: path.join(SHOTS, '17-hw-live-collecting.png') });
     await p.click('#hwLiveDoneBtn');
     await p.waitForFunction(() => window.__hw.stage === 'alphabet');
     const data = await lettersData(p);
-    check('F16 Done-early after the sweep keeps all three collected lines',
+    check('F16 Done-early after the sweep keeps all three collected cards',
       data.lines[0].found && data.lines[1].found && data.lines[2].found &&
       !data.lines[3].found && !data.lines[4].found,
       data.lines.map((l) => l.found ? l.accepted + '/' + l.expected : '—').join(' '));
@@ -1097,7 +1410,7 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
   }
 
   // Nothing to collect: a drawing (the base suite's own camera fixture)
-  // and an UNWRITTEN line (anchors and model print, no child ink) both
+  // and an UNWRITTEN card (anchors and model print, no child ink) both
   // collect nothing, kindly — and the drawing journey itself never runs
   // the loop at all.
   {
@@ -1116,7 +1429,7 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
       samples: window.__hw.live.samples,
       row: document.getElementById('hwLiveRow').style.display
     }));
-    check('F18 the drawing journey never runs the line loop (no sampling, no row)',
+    check('F18 the drawing journey never runs the card loop (no sampling, no row)',
       drawSide.samples === 0 && drawSide.row !== 'block',
       drawSide.samples + ' samples');
     await p.click('#cameraCloseBtn');
@@ -1134,11 +1447,11 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
     await browser.close();
   }
   {
-    const { browser, p, errors } = await camPage('hw-line-blank.y4m');
+    const { browser, p, errors } = await camPage('hw-card-blank.y4m');
     await armAndOpenCamera(p);
     await p.waitForFunction(() => window.__hw.live.samples >= 2, null, { timeout: 60000 });
     const b = await p.evaluate(() => window.__hw.live.collected.size);
-    check('F21 an UNWRITTEN line (anchors + model print, no ink) collects nothing',
+    check('F21 an UNWRITTEN card (anchors + model print, no ink) collects nothing',
       b === 0 && errors.length === 0, b + ' collected');
     await browser.close();
   }
@@ -1210,7 +1523,7 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
   {
     // A REAL collection with the heartbeat running: the work moved to
     // the worker, so collecting a line must also leave the page free.
-    const { browser, p, errors } = await camPage('hw-line-1.y4m');
+    const { browser, p, errors } = await camPage('hw-card-1.y4m');
     await armAndOpenCamera(p);
     const hbP = p.evaluate(`(${HEARTBEAT})(5000)`);      // concurrent
     await p.waitForFunction(() =>
