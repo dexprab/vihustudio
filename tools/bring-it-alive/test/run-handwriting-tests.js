@@ -25,6 +25,14 @@
  *         filling all five at once, a sweep accumulating three lines in
  *         one launch, and nothing collected from a drawing or an
  *         unwritten line. The upload path never touches the loop.
+ *   HW-G  the page never blocks — the analysis lives in a Web Worker
+ *         (js/hwLiveWorker.js) behind a downscaled prepass and hard
+ *         per-frame budgets: a main-thread heartbeat stays under 120ms
+ *         across a noisy no-sheet room (the field freeze's own scene
+ *         shape — measured 12.4s a frame on the main thread before) AND
+ *         during a real collection; over-cap frames skip silently with
+ *         no child-facing word; nothing is sampled before the preview
+ *         renders (videoWidth 0).
  *   HW-A  the sheet itself — geometry, coverage of a–z + A–Z + digits,
  *         the printed no-cursive callout, print.
  *   HW-B  a complete filled sheet — every letter captured, every accepted
@@ -1132,6 +1140,95 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
     const b = await p.evaluate(() => window.__hw.live.collected.size);
     check('F21 an UNWRITTEN line (anchors + model print, no ink) collects nothing',
       b === 0 && errors.length === 0, b + ' collected');
+    await browser.close();
+  }
+
+  // ==== HW-G: the page never blocks — the analysis lives in a worker =========
+  // The field failure, verbatim: "as soon as camera opened the entire
+  // page got stuck." Measured cause: hwRead ground a real room scene for
+  // 12.4 SECONDS a frame ON THE MAIN THREAD (a noisy scene keeps the
+  // candidate-mark list at its cap and the anchor pair search over it is
+  // combinatorial — findLadder alone measured 3.6s). The analysis now
+  // runs in js/hwLiveWorker.js behind a cheap downscaled prepass and
+  // hard per-frame budgets, so these checks hold a HEARTBEAT against the
+  // main thread: a 25ms interval's largest gap stays under 120ms — four
+  // times the measured worst main-thread cost of grabbing a frame
+  // (drawImage + getImageData ≈ 15–30ms at 1280×960) and two orders of
+  // magnitude under the freeze — while the loop sweeps.
+  console.log('\n== HW-G: THE PAGE NEVER BLOCKS =============================');
+  const HEARTBEAT = `(ms) => new Promise((resolve) => {
+    const gaps = []; let last = performance.now();
+    const iv = setInterval(() => {
+      const now = performance.now(); gaps.push(now - last); last = now;
+    }, 25);
+    setTimeout(() => { clearInterval(iv);
+      resolve({ max: Math.max.apply(null, gaps), beats: gaps.length }); }, ms);
+  })`;
+  {
+    // First-frame hygiene, on the shared page: a video with no metadata
+    // (videoWidth 0) is never sampled — the loop idles until the preview
+    // actually renders.
+    const g0 = await page.evaluate(async () => {
+      const v = document.createElement('video');   // no stream, no metadata
+      const before = window.__hw.live.samples;
+      HWLive.start(v, {});
+      await new Promise((r) => setTimeout(r, 3 * HWLive.INTERVAL));
+      const during = window.__hw.live.samples;
+      HWLive.stop();
+      HWLive.reset();
+      return { before, during };
+    });
+    check('G1 no frame is sampled before the preview renders (videoWidth 0 → the loop idles)',
+      g0.during === g0.before, g0.during - g0.before + ' frames sampled in 3 intervals');
+  }
+  {
+    // The noisy room — the field freeze's own scene shape, no sheet.
+    const { browser, p, errors } = await camPage('hw-noisy.y4m');
+    await armAndOpenCamera(p);
+    const hb = await p.evaluate(`(${HEARTBEAT})(6000)`);
+    check('G2 the main thread never blocks while sweeping a busy no-sheet scene ' +
+          '(max heartbeat gap < 120ms across 6s)',
+      hb.max < 120 && hb.beats > 150,
+      'max gap ' + Math.round(hb.max) + 'ms over ' + hb.beats + ' beats');
+    const g = await p.evaluate(() => ({
+      samples: window.__hw.live.samples,
+      skipped: window.__hw.live.skipped,
+      collected: window.__hw.live.collected.size,
+      count: document.getElementById('hwLiveCount').textContent,
+      words: document.getElementById('hwLiveRow').innerText
+    }));
+    check('G3 the busy scene is over the mark cap and every frame is SKIPPED — nothing collected',
+      g.samples >= 5 && g.skipped >= 5 && g.collected === 0 && /^0 of 5$/.test(g.count),
+      g.samples + ' sampled, ' + g.skipped + ' skipped');
+    check('G4 …and skipping is SILENT for the child: no busy/timeout/worker word, the slots just wait',
+      !/busy|timeout|worker|skip|frame|slow|wait/i.test(g.words),
+      '"' + g.words.slice(0, 60).replace(/\n/g, ' · ') + '…"');
+    check('G5 zero page errors on the busy scene', errors.length === 0,
+      errors.slice(0, 2).join(' | '));
+    await browser.close();
+  }
+  {
+    // A REAL collection with the heartbeat running: the work moved to
+    // the worker, so collecting a line must also leave the page free.
+    const { browser, p, errors } = await camPage('hw-line-1.y4m');
+    await armAndOpenCamera(p);
+    const hbP = p.evaluate(`(${HEARTBEAT})(5000)`);      // concurrent
+    await p.waitForFunction(() =>
+      window.__hw.live && window.__hw.live.collected.size >= 1,
+      null, { timeout: 60000 });
+    const got = await p.evaluate(() => ({
+      keys: Array.from(window.__hw.live.collected.keys()),
+      cost: Math.round(window.__hw.live.lastCost)
+    }));
+    const hb = await hbP;
+    check('G6 the main thread stays free DURING a real collection (max gap < 120ms; the line still lands)',
+      hb.max < 120 && got.keys.length === 1 && got.keys[0] === 0,
+      'max gap ' + Math.round(hb.max) + 'ms, worker cost ' + got.cost +
+      'ms, collected [' + got.keys.map((x) => x + 1).join(' ') + ']');
+    await p.locator('#cameraPanel').scrollIntoViewIfNeeded();
+    await p.screenshot({ path: path.join(SHOTS, '19-hw-worker-line-ticked.png') });
+    check('G7 zero page errors while collecting through the worker', errors.length === 0,
+      errors.slice(0, 2).join(' | '));
     await browser.close();
   }
 
