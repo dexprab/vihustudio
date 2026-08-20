@@ -4398,3 +4398,40 @@ latency is bounded by the ~600ms verdict cadence; the light reflects
 the last analysed frame, so Take can be one cadence newer; verified on
 seeded fixtures — the real-room pass is the field test, with
 screenshots 24/25 as its reference.
+
+## My Handwriting v2 — The Letter Grid, and Green Takes the Picture
+
+The product owner's redesign: *"make a grid of letters and numerals. a
+kid can tap on any of them and show the letter in his writing. and we
+capture that letter. makes the job easier"* — then *"take picture
+button should be there but a kid should never have to use it… the
+green should take picture on roll."* The journey's front door is now a
+grid of 62 tiles (a–z, A–Z, 0–9): tap one, write that letter anywhere,
+show it, and the readiness light's steady green fires the capture by
+itself — two agreeing reads ~1.25s, a carried letter (260px/verdict)
+broke the beat 7 of 8 times and never snapped, one capture per arming,
+Take and timer stay as fallbacks. Check & fix follows every capture:
+the letter large with pencil and eraser, a live tile preview rendered
+through the grid's own drawInk (byte-identical by construction), Keep
+fills the tile. Identity comes from the tap, never from reading, so
+wrong-letter tiles are impossible by construction — and the identity
+machinery retires with the problem: `hwRead.js` (1843 lines),
+`hwSheet.js`, `hwLive.js`/`hwLiveWorker.js`, the printable, the
+one-card overlay and the no-cursive callout (single letters cannot
+join). Detection is new and fully measured (`js/hwLetter.js`): a paper
+fence (the desk boundary had read as a 45k-px ink ring), rule-thin
+closure so notebook rules cannot slice the paper, proximity grouping
+that always joins an i's dot yet never snowballs 30 seeded specks into
+the glyph, rival refusal at 0.25× dominant ink, minimum ink 90px with
+"write it bigger". Proportions by typographic class (caps 725 units ·
+ascenders 750 · x-class 500 · descenders −275) — placement and scale
+only, every stroke the child's, verified via opentype bounding boxes.
+Surviving guards adapted, never weakened: hwFont and camera untouched,
+hwLight re-aimed through its verdict seam (green⇔would-capture, zero
+disagreements), freeze-fix heartbeats 26–51ms. Suites: base 191/191
+before and after; handwriting 178→102 with every retired check listed
+in the worker report. Disclosed: two letters written closer than their
+own width merge (the check screen is the catch); a very dark rule
+leaves an erasable stub; dark/coloured paper defeats the paper fence
+("dark pen on plain-ish paper" is the accepted target); real pencil
+and real-room light remain the field test.
