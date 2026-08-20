@@ -4435,3 +4435,39 @@ own width merge (the check screen is the catch); a very dark rule
 leaves an erasable stub; dark/coloured paper defeats the paper fence
 ("dark pen on plain-ish paper" is the accepted target); real pencil
 and real-room light remain the field test.
+
+## Check & Fix Refit, the Fast Beat, and "A Frame Must Be a New Frame"
+
+Three field findings from the product owner's first real letter-grid
+session, fixed at the root: **the pencil draws at the letter's own
+stroke width** (median shorter-run through each ink pixel — chosen
+over 2×area/perimeter, which reads 20–40% thin on holed letters;
+25px stroke → 25px pencil, 60 → 59; the eraser stays ≥1.6× the pencil
+so it can always take back what the pencil draws); **✋ Move** (one
+drag selects a piece, the next slides it, the tile preview follows
+byte-for-byte through the same drawInk), with the centring root-fixed
+in `normalize` — the tile centres on significant ink, so the field's
+0.09% far speck moves the kept sample by zero bytes while i/j dots
+still lift their class boxes; and **capture in under a second** —
+tremble is not travel: the first frame is sampled immediately, wobbles
+to 0.10×frameW ride the beat but a wobbly window must come home (net
+displacement — a random walk returns, travel accumulates), and a 500ms
+span floor forbids any sub-half-second beat. Steady 1.30s→0.77s,
+tremor 1.86s→0.80s. The verification gate then turned a disclosed
+fixture artifact into a caught **product hole**: Chromium's fake
+capture holds one frame across the y4m loop seam, and long watches
+showed the carried letter auto-capturing on every pass — two reads of
+one held frame satisfied the beat, exactly as a stalled real camera
+would. The fix is in the product: the worker signs each analysed frame
+and a repeated identical frame neither advances nor breaks the beat;
+the fixtures became honest too (every synthetic frame now carries
+seeded sensor noise, because a real sensor never sends the same bytes
+twice; the base suite's byte-identical feed-001 stays for its
+byte-comparison checks and the letter loop gets noisy feed-002).
+After: 73 reads, ~10 seam crossings, zero captures, three watches.
+Suites: base 191/191; handwriting 102→120/120, run twice consecutively
+green in the environment that exposed the flake. Disclosed: a
+static-image virtual camera never auto-captures (Take remains); a
+carry that genuinely pauses ≥0.6s captures — that is a hold; Move has
+no undo ("Show me again" recovers); tremor beyond ~10% of frame width
+per verdict still waits.
