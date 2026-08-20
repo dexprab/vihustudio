@@ -68,13 +68,17 @@ importScripts('hwSheet.js', 'segment.js', 'hwRead.js');
 const PRE = {
   TARGET_W: 480,    // prepass width — ÷3 at 1280 (426px), ~1/9 the pixels
   MARK_CAP: 250,    // candidate marks at prepass scale; over → not a sheet
-                    //   (measured: noisy room 307–331 · whole sheet 182 ·
-                    //    close-up lines ≤ 53 · unwritten line 21)
+                    //   (measured: noisy room 307–331 · the whole five-card
+                    //    page 176 · a cut card close up 41 · an unwritten
+                    //    card ~20 — the card borders and cut lines add
+                    //    nothing, they are below the ink margin)
   BUDGET_MS: 1000,  // per-frame time box, prepass + full pass together
   BAND_ABOVE: 0.20, // full-res band above a candidate rule (× its own
-                    //   implied page height) — the model line tops out at
-                    //   0.124×H above the rule, the writing ascent at 0.082
-  BAND_BELOW: 0.10, // …and below: descent is 0.034×H
+                    //   implied page height) — the card's model line tops
+                    //   out at ~0.115×H above the rule, the writing ascent
+                    //   at 0.086 (the card border above them is not ink)
+  BAND_BELOW: 0.10, // …and below: descent is 0.040×H, letters admitted
+                    //   to 1.15× that
   BAND_WHOLE: 0.85  // a band covering ≥ this of the frame reads the frame
 };
 
