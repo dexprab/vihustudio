@@ -74,10 +74,12 @@
     $(step).classList.add('here');
   }
 
-  // ---- the sheet -------------------------------------------------------------
+  // ---- the cards (two printed pages: three cards, then two) ------------------
   function showSheet() {
-    state.sheetDrawn = HWSheet.draw($('hwSheetCanvas'), 640);
-    HWSheet.draw($('hwPrintCanvas'), 1600); // the printable copy, crisp
+    state.sheetDrawn = [HWSheet.draw($('hwSheetCanvas1'), 640, 0),
+                        HWSheet.draw($('hwSheetCanvas2'), 640, 1)];
+    HWSheet.draw($('hwPrintCanvas1'), 1600, 0); // the printable copies, crisp
+    HWSheet.draw($('hwPrintCanvas2'), 1600, 1); // — one A4 page each
     $('hwQuietSheet').style.display = 'none';
     state.stage = 'sheet';
     go('stepHwSheet');
@@ -99,8 +101,8 @@
   };
   const HW_FRAMING = {
     title: '✍️ My Handwriting — show me your cards',
-    drop: 'Drop a photo of your written page here',
-    camera: 'Show me one card at a time — any order. The whole page works too.'
+    drop: 'Drop a photo of one written card here',
+    camera: 'Show me one card at a time — any order, just one card in the picture.'
   };
   function setFraming(hw) {
     const f = hw ? HW_FRAMING : FRAMING;
@@ -117,8 +119,8 @@
     HWLive.reset();   // each arming is a fresh sweep — nothing stale ticks
     const banner = $('hwArmed');
     $('hwArmedText').textContent = state.retakeLine == null
-      ? 'Your next photo becomes your handwriting — or open the camera and show me your cards, one at a time.'
-      : 'Show me card ' + (state.retakeLine + 1) + ' once more — up close with the camera, or a fresh photo of the whole page.';
+      ? 'Show me your cards one at a time — a photo of one card, or open the camera and hold each card up.'
+      : 'Show me card ' + (state.retakeLine + 1) + ' once more — up close with the camera, or a fresh photo of just that card.';
     banner.style.display = 'block';
     setFraming(true);
     go('stepCapture');
@@ -195,24 +197,37 @@
     $('hwLiveDoneBtn').style.display = met > 0 ? '' : 'none';
   }
 
+  // The one-card overlay on the live preview — the product owner's
+  // rule, verbatim: "if camera sees more, it can show a message overlay
+  // 1 question at a time". A gentle floating line over the picture; it
+  // clears by itself the moment the view holds one card (or none), and
+  // while it is up no slot ever ticks (a many-card frame reads nothing).
+  function showOneCardNote(on) {
+    $('hwOneCardNote').style.display = on ? 'block' : 'none';
+    state.overlayLog.push(on);   // developer seam: the overlay's history
+  }
+  state.overlayLog = [];
+
   function startLive() {
     $('hwLiveRow').style.display = 'block';
     updateLiveUI();
     HWLive.start($('cameraLive'), {
       log,
       want: state.retakeLine,
+      onMany: showOneCardNote,
       onCollect: (i, isNew) => {
-        log('hw live: line ' + (i + 1) + (isNew ? ' met' : ' seen again — the newer one is kept'));
+        log('hw live: card ' + (i + 1) + (isNew ? ' met' : ' seen again — the newer one is kept'));
         updateLiveUI(isNew ? i : undefined);
       },
       onComplete: finishSweep
     });
-    log('hw live: watching for lines (' +
+    log('hw live: watching for cards, one at a time (' +
         (state.retakeLine == null ? 'any order, all five'
-                                  : 'line ' + (state.retakeLine + 1)) + ')');
+                                  : 'card ' + (state.retakeLine + 1)) + ')');
   }
   function stopLive() {
     HWLive.stop();
+    showOneCardNote(false);
     $('hwLiveRow').style.display = 'none';
   }
 
@@ -281,11 +296,15 @@
         res = { ok: false, reason: 'lines' };
       }
       if (!res.ok) {
-        // Child-safe: the sheet is never "invalid", the picture just
-        // didn't show the lines yet.
+        // Child-safe: the cards are never "invalid" — the picture just
+        // didn't show one card yet, or it showed several at once (the
+        // one-question-at-a-time rule: strictly one card per photo).
         const q = $('hwQuietSheet');
-        q.textContent = 'I couldn’t find the writing lines in that picture yet — ' +
-          'lay the sheet flat, get the whole page in, and take it again.';
+        q.textContent = res.reason === 'many'
+          ? 'One card at a time, please — take a photo of just one card, ' +
+            'and show me each card in its own photo.'
+          : 'I couldn’t find a card in that picture yet — get one whole ' +
+            'card in the picture, nice and close, and take it again.';
         q.style.display = 'block';
         state.stage = 'sheet';
         go('stepHwSheet');
@@ -295,7 +314,14 @@
       if (retake != null && state.lines) {
         if (res.lines[retake] && res.lines[retake].found) {
           state.lines[retake] = res.lines[retake];
-          log('hw: line ' + (retake + 1) + ' replaced from the new photograph');
+          log('hw: card ' + (retake + 1) + ' replaced from the new photograph');
+        }
+      } else if (state.lines) {
+        // Photos ACCUMULATE, one card each (latest wins): a child who
+        // photographs card 1, then card 2, keeps both — exactly as the
+        // camera sweep already collects.
+        for (const ln of res.lines) {
+          if (ln.found) state.lines[ln.index] = ln;
         }
       } else {
         state.lines = res.lines;

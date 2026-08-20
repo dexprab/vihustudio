@@ -68,6 +68,8 @@
     skipped: 0,           // frames the worker declined (busy scene / time)
     lastCost: 0,          // ms of the last analysis (worker-measured)
     want: null,           // a retake: complete as soon as THIS line lands
+    many: false,          // the CURRENT view holds more than one card
+    manySeen: 0,          // how many 'many' verdicts this sweep (dev seam)
     collected: new Map()  // line index → { line, capture, at }
   };
 
@@ -179,11 +181,27 @@
     schedule(Math.max(INTERVAL, 2 * state.lastCost));
   }
 
+  // The one-card overlay (the product owner's rule: strictly one card
+  // at a time). A 'many' verdict raises it; ANY other verdict — a card
+  // read, a legacy sheet, or plain nothing (zero cards) — clears it,
+  // so the moment the view returns to one card (or none) the message
+  // goes away by itself. While it is up, nothing is collected and no
+  // slot ticks, because a 'many' frame reads nothing by construction.
+  function setMany(on) {
+    if (on) state.manySeen++;
+    if (state.many === on) return;
+    state.many = on;
+    if (opts.onMany) opts.onMany(on);
+  }
+
   function handle(out) {
+    if (out.kind === 'many') { setMany(true); return; }
+    setMany(false);
     if (out.kind === 'line') {
       collect(out.index, out.line, out.capture);
     } else if (out.kind === 'sheet') {
-      // The whole ladder registered: every read line lands together.
+      // A legacy sheet's whole ladder registered: every read line lands
+      // together (old printouts only — the card print has no ladder).
       for (const ln of out.result.lines) {
         if (ln.found) collect(ln.index, ln, out.result.capture);
       }
@@ -213,6 +231,7 @@
     opts = o || {};
     state.want = (o && o.want != null) ? o.want : null;
     state.running = true;
+    state.many = false;
     skipLogged = 0;
     schedule(INTERVAL);
   }
@@ -231,6 +250,8 @@
     state.replaced = 0;
     state.skipped = 0;
     state.want = null;
+    state.many = false;
+    state.manySeen = 0;
   }
 
   window.HWLive = { start, stop, reset, state, INTERVAL };

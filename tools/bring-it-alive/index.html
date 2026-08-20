@@ -121,8 +121,24 @@
     100% { box-shadow: 0 0 0 12px rgba(223,177,105,0); }
   }
 
-  /* MY HANDWRITING — the writing sheet, the alphabet grid, the try box. */
-  #hwSheetCanvas { display:block; background:#fff; border-radius:6px; max-width:100%; }
+  /* MY HANDWRITING — the writing cards, the alphabet grid, the try box. */
+  #hwSheetCanvas1, #hwSheetCanvas2 { display:block; background:#fff;
+                                     border-radius:6px; max-width:100%; }
+  .hw-sheet-pages { display:flex; gap:14px; flex-wrap:wrap; }
+  .hw-sheet-pages figure { margin:0; }
+  .hw-sheet-pages figcaption { font:400 .7rem/1.8 var(--mono); letter-spacing:.1em;
+                               text-transform:uppercase; color:var(--faint); }
+  /* The one-card overlay on the live preview (the product owner's rule:
+     strictly one card at a time). A soft floating line over the
+     picture — no brackets, no reticle, nothing that looks like
+     scanning; it clears by itself when the view holds one card. */
+  #cameraBoard { position:relative; }
+  #hwOneCardNote { display:none; position:absolute; left:50%; bottom:14px;
+                   transform:translateX(-50%); max-width:90%;
+                   background:rgba(15,21,38,.82); color:#f2e9d8;
+                   border:1px solid rgba(223,177,105,.55); border-radius:999px;
+                   padding:.45rem 1.1rem; font-size:.88rem; text-align:center;
+                   pointer-events:none; white-space:nowrap; }
   .hw-grid { display:grid; grid-template-columns:repeat(9, 64px); gap:8px; margin-top:.8rem; }
   .hw-slot { background:var(--panel); border:1px solid var(--line); border-radius:8px;
              padding:4px; text-align:center; }
@@ -145,6 +161,11 @@
     body { background:#fff; }
     #hwPrintArea { display:block !important; }
     #hwPrintArea canvas { width:100%; height:auto; }
+    /* Real print pagination: each page of cards is its own A4 sheet. */
+    #hwPrintArea .hw-print-page { page-break-after: always;
+                                  break-after: page; }
+    #hwPrintArea .hw-print-page:last-child { page-break-after: auto;
+                                             break-after: auto; }
   }
 
   .duo { display:flex; gap:14px; flex-wrap:wrap; }
@@ -201,11 +222,16 @@
            like scanning. The button appears only where the camera API exists;
            everywhere else this step is exactly as it was. -->
       <div id="cameraPanel" style="display:none; margin-top:.8rem;">
-        <div class="board">
+        <div class="board" id="cameraBoard">
           <video id="cameraLive" autoplay playsinline muted
                  style="display:block; width:640px; max-width:100%; border-radius:6px;"></video>
           <canvas id="cameraShot"
                  style="display:none; width:640px; max-width:100%; border-radius:6px;"></canvas>
+          <!-- The one-card overlay (My Handwriting): the product owner's
+               rule is strictly one card at a time — when the camera sees
+               more than one, this gentle line floats over the preview and
+               nothing is read until the view returns to one card. -->
+          <div id="hwOneCardNote">One card at a time, please — hold up just one card, and I’ll read it.</div>
         </div>
         <!-- MY HANDWRITING, free motion (js/hwLive.js): while the journey
              is armed and the preview runs, cards are collected one at a
@@ -214,7 +240,7 @@
              sweeping anything: nothing that looks like scanning. -->
         <div id="hwLiveRow" style="display:none">
           <p class="note" id="hwLiveWords">Show me one card at a time — any
-             order. The whole page works too. Cards light up as I meet
+             order, just one card in the picture. Cards light up as I meet
              them.</p>
           <div class="hw-live-slots" id="hwLiveSlots"></div>
           <p class="note" id="hwLiveCount"></p>
@@ -393,15 +419,24 @@
        built; missing letters are quiet empty slots and are simply absent
        from the font's cmap, so text falls back to a plain letter there. -->
 
-  <!-- THE WRITING CARDS (one printed page, five reading cards) -->
+  <!-- THE WRITING CARDS (two printed pages: three cards, then two —
+       "you can put max 3 cards on the paper", with real gutters between
+       the cut lines and 20mm grip margins so a held card never hides
+       its stars or its writing) -->
   <section class="step" id="stepHwSheet">
     <h2>Your writing cards</h2>
-    <p class="note">Print this page — it makes five little cards. Copy each
+    <p class="note">Print the cards — two pages, five little cards. Copy each
        line in your own handwriting on the empty line in its card — dark
-       pencil or pen, letters apart, sitting on the line. Then snip along the
-       dashed lines if you like, and show me one card at a time — or keep the
-       page whole; both work.</p>
-    <div class="board"><canvas id="hwSheetCanvas"></canvas></div>
+       pencil or pen, letters apart, sitting on the line. Snip along the
+       dashed lines, then show me one card at a time: a photo of one card,
+       or hold each card up to the camera. Up close on the uncut page works
+       too — one card in the picture.</p>
+    <div class="hw-sheet-pages">
+      <figure><figcaption>Page 1 · cards 1–3</figcaption>
+        <div class="board"><canvas id="hwSheetCanvas1"></canvas></div></figure>
+      <figure><figcaption>Page 2 · cards 4–5</figcaption>
+        <div class="board"><canvas id="hwSheetCanvas2"></canvas></div></figure>
+    </div>
     <div class="quiet" id="hwQuietSheet"></div>
     <div class="row">
       <button id="hwPrintBtn">Print the cards</button>
@@ -448,9 +483,13 @@
   <pre id="devLog"></pre>
 </div>
 
-<!-- The printable copy of the writing sheet — hidden on screen, the only
-     thing on paper when printing. -->
-<div id="hwPrintArea"><canvas id="hwPrintCanvas"></canvas></div>
+<!-- The printable copies of the writing cards — hidden on screen, the
+     only thing on paper when printing: TWO A4 pages, a page break
+     between them (see the @media print rules). -->
+<div id="hwPrintArea">
+  <div class="hw-print-page"><canvas id="hwPrintCanvas1"></canvas></div>
+  <div class="hw-print-page"><canvas id="hwPrintCanvas2"></canvas></div>
+</div>
 
 <!-- The tool's FIRST outside links (precedent: tools/world-builder-v2/
      already loads root js files). js/themeRepositoryClient.js resolves
