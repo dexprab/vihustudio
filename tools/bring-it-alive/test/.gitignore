@@ -1,6 +1,6 @@
 # The camera-feed fixture is uncompressed YUV (~3.7 MB), generated on demand
 # from tools/imagebed/1000299474.jpg by make-camera-feed.js — never committed.
-camera-feed-001.y4m
+camera-feed-*.y4m
 
 # The handwriting camera fixtures are uncompressed YUV, generated on demand
 # from the seeded letter composer by make-hw-feeds.js — never committed.
