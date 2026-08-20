@@ -1737,6 +1737,253 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
     await browser.close();
   }
 
+  // ==== HW-P: the phantom second card ========================================
+  // The field failure: a child held up ONE cut card and the reader
+  // refused it claiming TWO cards stood in view. Junk pairs — two dark
+  // specks of room clutter, star-sized, isolated, horizontally apart —
+  // implied a card that was never there; their model band caught the
+  // REAL card's print at a wrong offset and scale; and the clipped
+  // slice aligned "surely". The survey then counted a second cluster.
+  // The fix: A NAMING MUST MEET THE READING STANDARD — the print a
+  // pair claims must FIT the card that pair implies (unit agreement +
+  // print coverage, MODEL_UNIT_LO/HI + MODEL_COVER). These checks
+  // drive the still path directly on a seeded synthetic room whose
+  // numbers match the field log: frame 1280 wide, ~490 raw components
+  // (field: 498), a junk pair of span ~1140 (field: 1142) and the real
+  // pair of span ~453 (field: 454).
+  console.log('\n== HW-P: THE PHANTOM SECOND CARD ===========================');
+  // The room: desk gradient, two strips of tiny dark specks (seeded),
+  // two dark desk objects (the junk pair's endpoints), a hand shadow,
+  // and ONE real filled card. blur + JPEG as a camera produces.
+  const PHANTOM_ROOM = `(async (opts) => {
+    const made = (${COMPOSE})({ seed: 7, width: 2000, page: 0 });
+    const img = new Image();
+    await new Promise((r) => { img.onload = r; img.src = made.dataURL; });
+    const k = made.cards.find((c) => c.index === (opts.card || 0));
+    const fw = 1280, fh = opts.fh || 720;
+    const c = document.createElement('canvas');
+    c.width = fw; c.height = fh;
+    const x = c.getContext('2d', { willReadFrequently: true });
+    let s = (opts.seed >>> 0) || 17;
+    const rnd = () => { s |= 0; s = s + 0x6D2B79F5 | 0;
+      let t = Math.imul(s ^ s >>> 15, 1 | s);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+    const grad = x.createLinearGradient(0, 0, 0, fh);
+    grad.addColorStop(0, '#8a8f99');
+    grad.addColorStop(1, '#646b79');
+    x.fillStyle = grad;
+    x.fillRect(0, 0, fw, fh);
+    x.fillStyle = '#2a2e38';
+    for (const reg of (opts.specks ||
+        [{ x0: 30, y0: 30, x1: 1250, y1: 200, n: 230, wLo: 1.5, wHi: 3, hLo: 1.5, hHi: 3 },
+         { x0: 30, y0: 540, x1: 1250, y1: 700, n: 230, wLo: 1.5, wHi: 3, hLo: 1.5, hHi: 3 }])) {
+      for (let i = 0; i < reg.n; i++) {
+        const px = reg.x0 + rnd() * (reg.x1 - reg.x0);
+        const py = reg.y0 + rnd() * (reg.y1 - reg.y0);
+        x.fillRect(px, py, reg.wLo + rnd() * (reg.wHi - reg.wLo),
+                   reg.hLo + rnd() * (reg.hHi - reg.hLo));
+      }
+    }
+    const sw = img.width, sh = k.cutBottom - k.cutTop;
+    const scale = opts.cardW / sw;
+    const cardX = opts.cardX != null ? opts.cardX : 640 - opts.cardW / 2;
+    const cardY = opts.cardY != null ? opts.cardY : 370 - sh * scale / 2;
+    x.fillStyle = '#ffffff';
+    x.drawImage(img, 0, k.cutTop, sw, sh, cardX, cardY, opts.cardW, sh * scale);
+    x.fillStyle = '#14181f';
+    for (const b of (opts.blobs || [])) x.fillRect(b[0], b[1], b[2], b[3]);
+    if (opts.hand !== false) {
+      x.fillStyle = '#4d4238';
+      x.fillRect(560, 500, 180, 220);
+    }
+    const b2 = document.createElement('canvas');
+    b2.width = fw; b2.height = fh;
+    const bx = b2.getContext('2d');
+    bx.filter = 'blur(0.5px)';
+    bx.drawImage(c, 0, 0);
+    const durl = b2.toDataURL('image/jpeg', 0.85);
+    const img2 = new Image();
+    await new Promise((r) => { img2.onload = r; img2.src = durl; });
+    const c2 = document.createElement('canvas');
+    c2.width = fw; c2.height = fh;
+    const x2 = c2.getContext('2d', { willReadFrequently: true });
+    x2.drawImage(img2, 0, 0);
+    const photo = { width: fw, height: fh,
+      imageData: x2.getImageData(0, 0, fw, fh), filename: 'room' };
+    // The naming standard under test is parameterised; opts.loosen
+    // disables it to prove the fixture reproduces the FIELD failure on
+    // the old counting standard (the params are restored either way).
+    const PL = HWRead.LINE_PARAMS;
+    const saved = { lo: PL.MODEL_UNIT_LO, hi: PL.MODEL_UNIT_HI, cov: PL.MODEL_COVER };
+    if (opts.loosen) { PL.MODEL_UNIT_LO = 0; PL.MODEL_UNIT_HI = 1e9; PL.MODEL_COVER = 0; }
+    let out, live, logs = [];
+    try {
+      out = HWRead.read(photo, { log: (l) => logs.push(l) });
+      live = HWRead.readFrame(photo, { log: function () {} });
+    } finally {
+      PL.MODEL_UNIT_LO = saved.lo; PL.MODEL_UNIT_HI = saved.hi; PL.MODEL_COVER = saved.cov;
+    }
+    return { ok: out.ok, reason: out.reason || null, logs,
+             comps: +(logs[0].match(/(\\d+) raw components/) || [])[1],
+             live: live.kind, liveCards: live.cards || null,
+             lines: out.ok ? out.lines.map((ln) => ({
+               index: ln.index, found: ln.found, accepted: ln.accepted || 0,
+               expected: ln.expected || 0,
+               letters: (ln.letters || []).map((l) => ({
+                 ch: l.ch, kind: l.kind, accepted: l.accepted,
+                 x0: l.blobX0, x1: l.blobX1 }))
+             })) : null,
+             gt: made.gt.filter((g) => g.line === (opts.card || 0))
+               .map((g) => ({ line: g.line, ch: g.ch,
+                 x0: g.x0 * scale + cardX, x1: g.x1 * scale + cardX })) };
+  })`;
+  const phantomRoom = (opts) =>
+    page.evaluate(`(${PHANTOM_ROOM})(${JSON.stringify(opts)})`);
+  // The canonical field-numbers scene: card 1 (span ~453) plus the two
+  // desk objects whose pair (span ~1140) puts a model band on the
+  // card's own printed sentence at the wrong offset and scale.
+  const FIELD_SCENE = { card: 0, cardW: 580, cardX: 350, cardY: 260,
+                        blobs: [[62, 542, 15, 15], [1202, 544, 15, 15]] };
+  {
+    // P1 — the reproduction: the OLD counting standard refuses ONE card
+    // as many. This is the field log reborn: same frame width, ~490
+    // raw components, junk span ~1140, real span ~453.
+    const before = await phantomRoom(Object.assign({ loosen: true }, FIELD_SCENE));
+    check('P1 REPRODUCED: on the old counting standard, ONE card in a cluttered room is refused as MANY cards',
+      before.ok === false && before.reason === 'many' && before.live === 'many' &&
+      before.logs.some((l) => /more than one card in this photograph/.test(l)),
+      'reason ' + before.reason + ', ' + before.comps + ' raw components (field: 498)');
+    check('P1b …the phantom\'s own evidence: a junk pair of span ~1140 surely-named the real card\'s print',
+      before.logs.some((l) => /span 11\d\dpx.*names card 1 surely/.test(l)) &&
+      before.logs.some((l) => /span 45\dpx.*names card 1 surely/.test(l)),
+      before.logs.filter((l) => /names card \d surely/.test(l)).map((l) =>
+        l.match(/span \d+px/)[0]).join(' + ') + ' both named "card 1"');
+
+    // P2 — the fix: the same photograph now READS the one card that is
+    // really there, in full, correct identity, zero mislabels.
+    const after = await phantomRoom(FIELD_SCENE);
+    const lineP = after.ok ? after.lines.find((ln) => ln.found) : null;
+    check('P2 FIXED: the same photograph reads the ONE card that is really there',
+      after.ok === true && lineP && lineP.index === 0 &&
+      lineP.accepted >= lineP.expected - 2 &&
+      after.lines.filter((ln) => ln.found).length === 1 &&
+      after.live === 'line',
+      lineP ? 'card 1, ' + lineP.accepted + '/' + lineP.expected + ' letters'
+            : 'reason ' + after.reason);
+    check('P2b …with zero mislabels against the fixture\'s own ground truth',
+      after.ok && mislabels({ lines: after.lines }, after.gt).length === 0);
+    // P3 — the junk pair is refused BY MEASUREMENT, and the log says
+    // both what was refused and what was surely named (the field log
+    // showed only unsure pairs — the survey's own beliefs were
+    // invisible; now they are recorded).
+    check('P3 the junk pair is refused by the reading standard, with its measurements in the log',
+      after.logs.some((l) =>
+        /span 11\d\dpx.*does not FIT this pair's card \(unit \d+px where the pair implies \d+px; print covers \d+% of the rule\)/.test(l)),
+      (after.logs.find((l) => /does not FIT/.test(l)) || '').slice(4, 120));
+    check('P3b the SURE naming that stands is in the log too, with its own evidence',
+      after.logs.some((l) =>
+        /span 45\dpx.*names card 1 surely \(mixed u=[\d.]+, unit \d+px of \d+px implied, print covers \d+%/.test(l)),
+      (after.logs.find((l) => /names card 1 surely/.test(l)) || '').slice(4, 130));
+  }
+  {
+    // P4 — the distance ladder: the SAME room, the card swept from far
+    // (model unit ~1.4px) to close (~20px). At NO distance may a
+    // single card produce the many-cards refusal — far is a quiet
+    // generic refusal (the live sweep keeps sweeping), near is a read
+    // of the right card.
+    const rungs = [88, 150, 250, 350, 450, 500, 580, 800, 1250];
+    let manyAt = [], wrongAt = [], readAt = [], refusedAt = [];
+    for (const w of rungs) {
+      const r = await phantomRoom(Object.assign({}, FIELD_SCENE,
+        { cardW: w, cardX: null, cardY: null }));
+      if (r.reason === 'many' || r.live === 'many') manyAt.push(w);
+      else if (r.ok) {
+        const ln = r.lines.find((l) => l.found);
+        readAt.push(w);
+        if (!ln || ln.index !== 0) wrongAt.push(w);
+      } else refusedAt.push(w);
+    }
+    check('P4 a single card is NEVER refused as many cards, at any distance (unit ~1.4px → ~20px)',
+      manyAt.length === 0,
+      manyAt.length ? 'many at cardW ' + manyAt.join(',')
+        : 'read at [' + readAt.join(' ') + '], quiet refusal at [' + refusedAt.join(' ') + ']');
+    check('P4b every rung that reads, reads the RIGHT card; every far rung refuses quietly',
+      wrongAt.length === 0 && readAt.length >= 3 && refusedAt.length >= 3,
+      readAt.length + ' read, ' + refusedAt.length + ' refused, 0 wrong');
+  }
+  {
+    // P5 — the sibling failure of the same root cause, pinned: with the
+    // naming standard off, a junk pair over the room's specks named the
+    // caps card and the DP then "accepted" letters from a card that is
+    // not even in view — junk in the child's font. The standard
+    // refuses the frame instead.
+    const JUNK_SCENE = { card: 1, cardW: 420, cardX: 430, cardY: 280, seed: 4,
+      specks: [{ x0: 40, y0: 40, x1: 1240, y1: 230, n: 70, wLo: 2, wHi: 9, hLo: 2, hHi: 7 },
+               { x0: 40, y0: 500, x1: 1240, y1: 690, n: 70, wLo: 2, wHi: 9, hLo: 2, hHi: 7 }],
+      hand: false };
+    const junkBefore = await phantomRoom(Object.assign({ loosen: true }, JUNK_SCENE));
+    const junkLine = junkBefore.ok ? junkBefore.lines.find((ln) => ln.found) : null;
+    check('P5 REPRODUCED: the old standard READ a card that is not in view — junk letters accepted',
+      junkBefore.ok === true && junkLine && junkLine.index !== 1 &&
+      junkLine.accepted >= 10,
+      junkLine ? 'card ' + (junkLine.index + 1) + ' "read" with ' + junkLine.accepted +
+        ' junk letters (card 2 was in view)' : 'did not reproduce');
+    const junkAfter = await phantomRoom(JUNK_SCENE);
+    check('P5b FIXED: the same frame refuses quietly — no junk letter can reach the font',
+      junkAfter.ok === false && junkAfter.reason !== 'many' &&
+      junkAfter.live === 'nothing',
+      'reason ' + junkAfter.reason + ', live ' + junkAfter.live);
+  }
+  {
+    // P6 — the strict rule is UNTOUCHED: two genuine cut cards on one
+    // desk still refuse with the one-card message, on both paths. (The
+    // uncut 3-card and 2-card pages are asserted in HW-1.)
+    const two = await page.evaluate(`(async () => {
+      const made = (${COMPOSE})({ seed: 7, width: 2000, page: 0 });
+      const img = new Image();
+      await new Promise((r) => { img.onload = r; img.src = made.dataURL; });
+      const fw = 1280, fh = 960;
+      const c = document.createElement('canvas');
+      c.width = fw; c.height = fh;
+      const x = c.getContext('2d', { willReadFrequently: true });
+      x.fillStyle = '#6a7180';
+      x.fillRect(0, 0, fw, fh);
+      const w = 1100;
+      for (const [idx, top] of [[0, 60], [2, 520]]) {
+        const k = made.cards.find((cc) => cc.index === idx);
+        const sh = k.cutBottom - k.cutTop;
+        x.drawImage(img, 0, k.cutTop, img.width, sh,
+                    (fw - w) / 2, top, w, sh * (w / img.width));
+      }
+      const b = document.createElement('canvas');
+      b.width = fw; b.height = fh;
+      const bx = b.getContext('2d');
+      bx.filter = 'blur(0.5px)';
+      bx.drawImage(c, 0, 0);
+      const durl = b.toDataURL('image/jpeg', 0.85);
+      const img2 = new Image();
+      await new Promise((r) => { img2.onload = r; img2.src = durl; });
+      const c2 = document.createElement('canvas');
+      c2.width = fw; c2.height = fh;
+      const x2 = c2.getContext('2d', { willReadFrequently: true });
+      x2.drawImage(img2, 0, 0);
+      const photo = { width: fw, height: fh,
+        imageData: x2.getImageData(0, 0, fw, fh), filename: 'two' };
+      const logs = [];
+      const out = HWRead.read(photo, { log: (l) => logs.push(l) });
+      const live = HWRead.readFrame(photo, { log: function () {} });
+      return { ok: out.ok, reason: out.reason || null,
+               live: live.kind, liveCards: live.cards || null,
+               refusal: logs.find((l) => /more than one card/.test(l)) || '' };
+    })()`);
+    check('P6 two GENUINE cut cards on one desk still refuse — the strict rule is untouched',
+      two.ok === false && two.reason === 'many' && two.live === 'many' &&
+      (two.liveCards || []).join(',') === '0,2' &&
+      /more than one card in this photograph \(cards 1, 3\)/.test(two.refusal),
+      '"' + two.refusal.slice(4, 90) + '"');
+  }
+
   // ---- hygiene ---------------------------------------------------------------
   console.log('\n-- hygiene');
   const banner = await page.evaluate(() => document.querySelector('#devError').style.display);

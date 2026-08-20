@@ -1144,7 +1144,40 @@
     // bimodal (x-height plus its ascenders, ≥23% of its letters by
     // construction of the texts). u = p85(top)/median(top).
     CASE_UNIFORM: 1.15,      // u ≤ this → caps/digits class
-    CASE_MIXED: 1.25         // u ≥ this → lowercase class; between → refuse
+    CASE_MIXED: 1.25,        // u ≥ this → lowercase class; between → refuse
+    // THE NAMING STANDARD IS THE READING STANDARD — the phantom-card
+    // fix. A field photograph of ONE card was refused as "cards 1, 3":
+    // junk pairs (two specks of clutter, star-sized and isolated,
+    // horizontally apart) implied a card that was never there, their
+    // model band caught the REAL card's print at a wrong offset and
+    // scale, and the clipped slice aligned "surely" to a wrong text —
+    // the caps twin, or a sibling pangram. Reproduced and measured:
+    // junk namings carried model units of 8–10px on pairs whose own
+    // span implied 18–24px, and their "print" covered under half the
+    // rule they claimed. A REAL card's print, read through its OWN
+    // pair, cannot do either — so a surely-named pair must also fit
+    // the card it claims, two ways:
+    // 1. UNIT AGREEMENT. The model print's measured unit must be the
+    //    unit the pair's own span implies (expected = 0.016 × the
+    //    implied pageW — measured 0.0155–0.0167 across card widths
+    //    580–1600). Measured on genuine reads of all five cards — flat,
+    //    the 720p projective warp, and the 640×360 warp — the ratio of
+    //    measured to implied unit stayed in 0.89–1.33 (the caps and
+    //    digits lines print a little wide of the estimate); the junk
+    //    namings measured 0.42–0.45. The gate sits between, wide side
+    //    out. A pair whose implied unit is below MIN_UNIT_PX can never
+    //    surely-name (already true via the aligner's own floor: a
+    //    too-coarse band accepts nothing, so MODEL_FRAC cannot be met).
+    MODEL_UNIT_FRAC: 0.016,  // expected model unit = this × implied pageW
+    MODEL_UNIT_LO: 0.62,     // genuine ≥ 0.89 measured; junk ≤ 0.45
+    MODEL_UNIT_HI: 1.6,      // genuine ≤ 1.33 measured
+    // 2. PRINT COVERAGE. The printed sentence spans its own rule.
+    //    Measured on the same genuine reads: extent/rule-span 0.74–1.00
+    //    (the shortest sentences at default size cover 74–77%); the
+    //    junk namings covered 0.47–0.60. Junk that fails this never
+    //    claimed a real region of paper — refusing it cannot hide a
+    //    card.
+    MODEL_COVER: 0.65        // model comps' x-extent ≥ this × the rule span
   };
 
   // The ink-top uniformity signal above a baseline fit, and a text's
@@ -1355,6 +1388,38 @@
           ') — keep sweeping');
       return { sure: false, fit, zone };
     }
+    // THE NAMING STANDARD IS THE READING STANDARD (see the PL comment).
+    // A naming may only stand when the print it read FITS the card this
+    // pair implies: its unit at the pair's own scale, and its sentence
+    // covering the rule. A clipped slice of some OTHER card's print —
+    // the phantom-card mechanism — fails both.
+    const expUnit = PL.MODEL_UNIT_FRAC * zone.pageW;
+    const uRatio = mBest.unit / Math.max(1e-6, expUnit);
+    let mx0 = Infinity, mx1 = -Infinity;
+    for (const mc of modelComps) {
+      if (mc.x0 < mx0) mx0 = mc.x0;
+      if (mc.x1 > mx1) mx1 = mc.x1;
+    }
+    const cover = (mx1 - mx0 + 1) / fit.len;
+    if (uRatio < PL.MODEL_UNIT_LO || uRatio > PL.MODEL_UNIT_HI ||
+        cover < PL.MODEL_COVER) {
+      log('hw: one-card pair (span ' + Math.round(pr.dx) + 'px) — print aligns ' +
+          'to card ' + (mBest.t + 1) + ' but does not FIT this pair\'s card ' +
+          '(unit ' + Math.round(mBest.unit) + 'px where the pair implies ' +
+          Math.round(expUnit) + 'px; print covers ' + Math.round(cover * 100) +
+          '% of the rule) — not this pair\'s print, keep sweeping');
+      return { sure: false, fit, zone };
+    }
+    // The SURE namings go to the dev log too — the field log that found
+    // the phantom-card bug showed only the UNSURE pairs, so the very
+    // evidence that produced "2 cards stand" was invisible in it.
+    log('hw: one-card pair (span ' + Math.round(pr.dx) + 'px, rule mid y ' +
+        Math.round(fit.yAt((fit.x0 + fit.x1) / 2)) + 'px) — the printed model ' +
+        'line names card ' + (mBest.t + 1) + ' surely (' + mClass + ' u=' +
+        uModel.toFixed(2) + ', unit ' + Math.round(mBest.unit) + 'px of ' +
+        Math.round(expUnit) + 'px implied, print covers ' +
+        Math.round(cover * 100) + '%; ' +
+        candidates.map((s) => 'card ' + (s.t + 1) + ':' + s.acc).join(' ') + ')');
     return { sure: true, t: mBest.t, mClass, uModel, mBest, fit, zone };
   }
 
