@@ -4145,3 +4145,55 @@ disclosure before its field pass); letters written over an end-mark
 cost that pair (two tolerated); a photo cropping the title block
 refuses kindly; old markless printouts read square-on only, keep the
 long line 1, and run ~5% off-scale within tolerance.
+
+## Three Field Findings: a Wider Tall Frame, Free-Motion Lines, Two Journeys
+
+All three from the product owner testing the real tool, folded into one
+sprint; independently re-verified — base **177/177**, handwriting
+**108/108** (was 77), fresh in the worktree and on the merged tree.
+
+**The tall frame is 4:5** (was the sheet's own 1:√2): measured, a √2
+sheet tilted the 10–20° a real hold shows needs 0.78 of frame height in
+width — more than 3:4 holds, inside 4:5 with aiming margin both sides,
+at zero resolution cost.
+
+**Free-motion line-by-line capture** (`js/hwLive.js`) — answering
+*"why cant we do first line, 2nd in a free motion"*: the child sweeps
+the camera over the sheet in ANY order; a line collects when its own
+anchor-star pair registers and **two witnesses agree on which line it
+is** — the printed model line DP-aligned against all five known texts
+(margin gate 1.15; measured in-class margins 1.22–2.0) and the child's
+own ink naming the same line. Child ink alone was measured UNSAFE (a
+stray dot-pair once invented a digits-line read) — that is why the
+model witness exists; a case-class gate separates the capitals line
+from its lowercase twin, which widths alone cannot. **Zero
+line-identity mislabels, asserted** across flat, rotated and 640×480
+variants. Five quiet slots tick to small stars ("3 of 5"), latest-wins
+replace, stopping early keeps what was met; a frame holding the FULL
+ladder reads the whole sheet at once — byte-identical to the
+whole-sheet photo, so the modes cannot disagree; upload never touches
+the loop. **The resolution win, measured: close-up x-height ~24px vs
+~13px whole-sheet on the same frame (~10px at the field's real hold) —
+2–4× the camera pixels per letter.** Two real close-up failure modes
+found by measurement and closed: JPEG pushing faint-rule patches over
+the ink margin (welding a line into one blob), and the sheet's tilted
+edge segmenting as a frame-wide component that swallowed letters.
+
+**Two journeys, two blocks** — answering *"currently am getting
+confused wether am generating font or art"*: the tool's entry is now
+two bordered blocks of equal standing, **Bring a drawing to life** and
+**✍️ My Handwriting — a font of your own letters** ("Start with my
+writing sheet"); nothing font-related starts inside the art block
+(asserted). One camera, two framings — *"show me your written sheet"*
+vs *"Hold your drawing up so the whole page is in the picture"* — with
+the drawing words restored byte-for-byte on disarm and no-leak
+asserted both ways (a sheet photo can never land in the drawing claim,
+nor a drawing in the line reader).
+
+**Where it still breaks for a child:** a line waved quickly or held at
+a strong angle just never ticks, with no on-screen hint why (reasons in
+the dev log only); a line written in the wrong blank refuses forever
+with nothing explaining the disagreement; a slow machine's 0.5–1s
+sampling can make a fast sweep feel like a miss. Verified against
+synthetic frames — real pencil under real light remains the product
+owner's field test.
