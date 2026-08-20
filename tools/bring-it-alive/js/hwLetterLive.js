@@ -155,13 +155,27 @@
     if (!isLive()) { schedule(INTERVAL); return; }
     const w = video.videoWidth, h = video.videoHeight;
     if (!(w > 0 && h > 0)) { schedule(INTERVAL); return; }
+    // The analysed region is what the child SEES: a journey showing a
+    // centre crop (the small letter window) hands a rect predicate in,
+    // and only those native pixels are grabbed and read — cheaper
+    // frames, and preview and analysis cannot disagree. The capture is
+    // still native resolution within the crop.
+    let r = null;
+    if (opts.rect) {
+      try { r = opts.rect(); } catch (e) { r = null; }
+      if (r && !(r.w > 0 && r.h > 0 &&
+                 r.x >= 0 && r.y >= 0 &&
+                 r.x + r.w <= w && r.y + r.h <= h)) r = null;
+    }
+    const gx = r ? r.x : 0, gy = r ? r.y : 0;
+    const gw = r ? r.w : w, gh = r ? r.h : h;
     let img = null;
     try {
       if (!grab) grab = document.createElement('canvas');
-      grab.width = w; grab.height = h;
+      grab.width = gw; grab.height = gh;
       const ctx = grab.getContext('2d', { willReadFrequently: true });
-      ctx.drawImage(video, 0, 0);
-      img = ctx.getImageData(0, 0, w, h);
+      ctx.drawImage(video, gx, gy, gw, gh, 0, 0, gw, gh);
+      img = ctx.getImageData(0, 0, gw, gh);
     } catch (e) {
       (opts.log || noop)('hw letter: frame skipped (' +
         ((e && e.message) || e) + ')');
@@ -171,7 +185,8 @@
     state.samples++;
     inFlight = true;
     ensureWorker().postMessage(
-      { gen, width: w, height: h, buf: img.data.buffer },
+      { gen, width: gw, height: gh, buf: img.data.buffer,
+        sensorW: w, ch: opts.ch || null },
       [img.data.buffer]);                    // transferred, not copied
     dog = setTimeout(() => {
       (opts.log || noop)('hw letter: a frame was abandoned — starting a fresh analyser');
@@ -230,7 +245,11 @@
     }
     const now = performance.now();
     const dim = Math.max(g.w, g.h);
-    const frameW = out.facts.frameW || 1;
+    // The steadiness bars are about a HAND in the world, so they scale
+    // with the SENSOR's width — the analysed frame may be a centre crop
+    // (the small letter window), and a crop must not make the same
+    // honest tremor look bigger than it is.
+    const frameW = out.facts.sensorW || out.facts.frameW || 1;
     // TREMBLE IS NOT TRAVEL. A step within MOVE_FRAC is steady; up to
     // WOBBLE_FRAC it is a hand's wobble and the beat carries on — but
     // the window then runs one read longer, and must end within

@@ -70,23 +70,24 @@
   // File into the exact same loadPhoto as the picker; one pipeline.
   BIACamera.mount({ onPicture: (file) => loadPhoto(file), log });
 
-  // My Handwriting photographs ONE LETTER, and a letter is roughly
-  // SQUARE-ish — so the handwriting journey wants the camera's own wide
-  // default, stated explicitly while armed in case anything earlier in
-  // the session preferred tall. Wide keeps every native pixel (the tall
-  // shape is a centre CROP that discards columns and buys a square-ish
-  // subject nothing); the spare width is pure aiming room, harmless
-  // because the tapped tile — not the framing — is the letter's
-  // identity. Watched off the arm banner hwApp.js already shows and
-  // hides, so the handwriting files are untouched; the seam
-  // (BIACamera.setPreferredShape) never overrides a shape the child
-  // chose themselves, and the child's toggle stays for the whole page.
+  // My Handwriting photographs ONE LETTER, and one letter needs no wide
+  // view (the product owner: "minimize the camera view. we are showing
+  // single letters") — so while the letter journey is armed the camera
+  // prefers the SMALL SQUARE WINDOW: the centred square crop of the
+  // native frame, presented compact. The crop is also what the letter
+  // reader analyses (hwApp hands the loop camera.js's own
+  // analysisRect), so preview, analysis and capture are one picture —
+  // and the flanks of the room (a curtain, a doorframe) never even
+  // enter it. Disarmed, the drawing journey's own wide default returns.
+  // Watched off the arm banner hwApp.js already shows and hides; the
+  // seam (BIACamera.setPreferredShape) never overrides a shape the
+  // child chose themselves, and the child's toggle stays for the whole
+  // page.
   const hwArmedBanner = $('hwArmed');
   if (hwArmedBanner && BIACamera.setPreferredShape) {
     new MutationObserver(() => {
-      if (hwArmedBanner.style.display === 'block') {
-        BIACamera.setPreferredShape('wide');
-      }
+      BIACamera.setPreferredShape(
+        hwArmedBanner.style.display === 'block' ? 'square' : 'wide');
     }).observe(hwArmedBanner, { attributes: true, attributeFilter: ['style'] });
   }
 
