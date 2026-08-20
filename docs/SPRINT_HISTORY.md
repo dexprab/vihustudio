@@ -4232,3 +4232,46 @@ frame can exceed the mark cap and be skipped until the child comes
 closer (costing sweep time, never a wrong line); a sub-cap scene that
 fakes a full ladder could still tick slots with empty lines
 (pre-existing, far less reachable now, not newly closed).
+
+## My Handwriting: Five Reading Cards
+
+The product owner's design (*"instead of reading one full page, try
+designing the page as 5 reding cards, and than kid can show each card
+1 by 1. this will make life easier on both ends"*). Independently
+re-verified — base 177/177 and handwriting **130/130** (was 115),
+fresh in the worktree and on the merged tree.
+
+**The printable is five reading cards on one page**: each card one
+model line over one ruled blank with its two anchor stars, inside a
+light border, dashed cut lines with a scissors mark between cards —
+*"snip along the dashed lines if you like… or keep the page whole;
+both work."* Cutting is invited, never required: an ATTACHED card held
+close produces the identical verdict to the cut card (all five,
+asserted), and a whole-page photo still fills all five slots. The
+writing blank grew **+8.6%** (34.5→37.4mm on A4) — the honest ceiling
+after each card pays for its border and a clearance keeping degraded
+border fragments outside the writing band. **Borders and cut lines can
+never read as ink or anchors**, by construction (rule-grey border,
+number-grey scissors, dash gaps beyond the rule detector's bridge, the
+frame opening beside each star — Decision 17's own move) and by
+assertion against the real segmentation.
+
+**The camera opens WIDE for handwriting** — a card is ~4× wider than
+tall; at 94% width it uses 33% of frame height with aiming margin —
+measured **1.69× the camera pixels per letter** versus the tall-era
+hold (~22.6px vs ~13.4px x-height, above the coarse floor). The
+child's toggle still wins.
+
+**Two real bugs found by measurement and fixed on the way**: at
+640×360 under the field warp, a look-alike ladder (true right anchors
+plus a collinear diagonal of letter blobs) registered the page half a
+pitch high and the DP then confidently accepted wrong letters. Stars
+grew (0.010→0.012·W) and moved inward, the aspect floor relaxed for
+squashed stars, and a **model-print witness** now requires the printed
+model line to stand above EVERY implied rule before a whole-page
+registration is believed — the phantom is pinned as a regression and
+now refuses, never misreads. **Disclosed:** anchor-era sheets (pre-
+cards) read with rule ends inferred ~0.5% off-span; markless sheets
+still read square-on via the fallback; a card cut through its own
+stars refuses; real pencil, lighting and scissors wobble remain the
+product owner's field test.
