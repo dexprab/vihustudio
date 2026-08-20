@@ -141,8 +141,29 @@
     // then "confidently" accepted 18 wrong letters, while every line with
     // unit ≥ 6px stayed at zero mislabels. Below this floor a line
     // refuses everything — refuse-rather-than-guess is absolute.
-    MIN_UNIT_PX: 5
+    MIN_UNIT_PX: 5,
+    // ---- live-frame budgets — refuse-not-grind (hwLiveWorker.js) ----
+    // Active ONLY when a caller passes opts.deadline; the upload path
+    // never does, so a child's one deliberate photograph keeps the full
+    // exhaustive search it always had. The live loop offers dozens of
+    // frames a minute, so a frame that cannot be finished in time is
+    // simply skipped — the next one is 500ms away and skipping is
+    // invisible (the slot just doesn't tick yet). MEASURED need: a
+    // noisy room frame (no sheet, ~600 components, the mark list at its
+    // 400 cap) cost 12.4 SECONDS in readFrame — 3.6s of it in
+    // findLadder's seed-pair RANSAC alone — while the heaviest honest
+    // frame (the whole sheet in view) costs ~350ms. The combination
+    // caps below bound the two combinatorial searches even between
+    // deadline checks.
+    LIVE_SEED_PAIRS: 20000,  // findLadder seed-pair evaluations under budget
+    LIVE_PAIR_COMBOS: 30000  // findLinePairs mark-pair evaluations under budget
   };
+
+  // Under a live budget, has the frame's time run out? Checked at loop
+  // boundaries; `deadline` of 0 (the upload path) disables it entirely.
+  function overtime(deadline) {
+    return deadline > 0 && performance.now() > deadline;
+  }
 
   // Expected RELATIVE ink widths (advance-ish) per character. Only used
   // to align — never to decide what a letter looks like. Capitals are on
@@ -302,9 +323,11 @@
    * (each column is exactly collinear under any projective camera), then
    * column pairs are matched into rungs and every 5-rung subset is held
    * to the whole pattern. Returns the best ladder or null. */
-  function findLadder(seg, log) {
+  function findLadder(seg, log, deadline) {
     const { marks, darkGate } = collectMarks(seg);
     if (marks.length < 10) return null;
+    deadline = deadline || 0;
+    let seedCombos = 0;
     const W = seg.width, H = seg.height;
     const tol = Math.max(2.5, P.A_COL_TOL_FRAC * W);
     const isoCache = new Map();
@@ -323,6 +346,13 @@
     const cols = new Map();
     for (let i = 0; i < seeds.length; i++) {
       for (let j = i + 1; j < seeds.length; j++) {
+        // Live budget: a room scene keeps hundreds of isolated dark
+        // specks, and this pair search over them is the measured 3.6s.
+        // A frame that needs more than the cap is not a printed sheet.
+        if (deadline) {
+          if (++seedCombos > P.LIVE_SEED_PAIRS) return null;
+          if ((seedCombos & 255) === 0 && overtime(deadline)) return null;
+        }
         const dy = seeds[j].cy - seeds[i].cy;
         if (Math.abs(dy) < P.A_COL_MIN_DY * H) continue;
         const dx = seeds[j].cx - seeds[i].cx;
@@ -343,8 +373,10 @@
     let best = null;
     const colList = Array.from(cols.values());
     for (const A of colList) {
+      if (overtime(deadline)) return null;
       for (const B of colList) {
         if (B.mx - A.mx < P.A_SPAN_MIN * W) continue;
+        if (overtime(deadline)) return null;
         // greedy nearest-in-y pairing, left column driving
         const usedB = new Set();
         const rungs = [];
@@ -1058,9 +1090,11 @@
   /* Candidate anchor pairs for a single line, best first. Reuses the
    * ladder's own mark candidacy (collectMarks) and isolation test —
    * one machinery, two registrations. */
-  function findLinePairs(seg) {
+  function findLinePairs(seg, deadline) {
     const { marks, darkGate } = collectMarks(seg);
     if (marks.length < 2) return [];
+    deadline = deadline || 0;
+    let combos = 0;
     const W = seg.width;
     const G = HWSheet.GEOM;
     const aSpan = G.anchorXRight - G.anchorXLeft;
@@ -1077,6 +1111,12 @@
     for (let i = 0; i < marks.length; i++) {
       for (let j = 0; j < marks.length; j++) {
         if (i === j) continue;
+        // Live budget: over the cap or out of time → the frame is
+        // skipped whole (an empty list refuses), never half-searched.
+        if (deadline) {
+          if (++combos > P.LIVE_PAIR_COMBOS) return [];
+          if ((combos & 255) === 0 && overtime(deadline)) return [];
+        }
         const L = marks[i], R = marks[j];
         const dx = R.cx - L.cx;
         if (dx < PL.SPAN_MIN * W) continue;
@@ -1157,9 +1197,9 @@
   /* Read ONE line from an already-segmented frame. Returns
    * { ok:true, index, line, capture, scores } or { ok:false } —
    * never a guess: an ambiguous identity is a refusal. */
-  function readLineFromSeg(seg, log) {
+  function readLineFromSeg(seg, log, deadline) {
     const G = HWSheet.GEOM;
-    const pairs = findLinePairs(seg);
+    const pairs = findLinePairs(seg, deadline);
     // TWO PASSES over the candidate pairs. The first leaves the ink
     // exactly as segmented — on a bright capture the printed rule is
     // below the ink margin and nothing needs removing, so nothing pays
@@ -1169,15 +1209,16 @@
     // margin — too few for the 30% backstop gate, plenty to weld the
     // whole line into one blob (measured: 1 component where 35 stood).
     for (const sweep of [false, true]) {
-      const got = tryPairs(seg, pairs, sweep, G, log);
+      const got = tryPairs(seg, pairs, sweep, G, log, deadline);
       if (got) return got;
       if (!pairs.length) break;
     }
     return { ok: false };
   }
 
-  function tryPairs(seg, pairs, sweep, G, log) {
+  function tryPairs(seg, pairs, sweep, G, log, deadline) {
     for (const pr of pairs) {
+      if (overtime(deadline)) return null;   // out of time — skip the frame
       const fit = { a: pr.y0 - pr.b * pr.x0, b: pr.b,
                     x0: Math.round(pr.x0), x1: Math.round(pr.x1),
                     len: pr.x1 - pr.x0 + 1, thickness: 1,
@@ -1320,16 +1361,21 @@
   function readFrame(photo, opts) {
     opts = opts || {};
     const log = opts.log || function () {};
+    // opts.deadline (performance.now()-based, live frames only): the
+    // whole analysis is time-boxed — a frame that cannot be finished in
+    // time answers 'nothing' and the loop simply offers the next one.
+    const deadline = opts.deadline || 0;
     const loop = [[1, 1], [photo.width - 2, 1],
                   [photo.width - 2, photo.height - 2], [1, photo.height - 2]];
     const claim = BIAClaim.claim(loop, photo.width, photo.height);
     const seg = BIASegment.segment(photo, claim);
-    if (findLadder(seg, function () {})) {
+    if (findLadder(seg, function () {}, deadline)) {
       const res = read(photo, opts);
       if (res.ok) return { kind: 'sheet', result: res };
       return { kind: 'nothing' };
     }
-    const one = readLineFromSeg(seg, log);
+    if (overtime(deadline)) return { kind: 'nothing' };
+    const one = readLineFromSeg(seg, log, deadline);
     if (one.ok) return { kind: 'line', index: one.index, line: one.line,
                          capture: one.capture, scores: one.scores };
     return { kind: 'nothing' };
@@ -1353,7 +1399,7 @@
 
     // ---- registration: end-marks first, printed rules second ---------------
     let fits = null, zones = null, viaAnchors = false, anis = 1;
-    const ladder = findLadder(seg, log);
+    const ladder = findLadder(seg, log, opts.deadline || 0);
     if (ladder) {
       const reg = anchorFits(ladder);
       const up = whichWayUp(seg, reg.fits, reg.gaps);

@@ -25,6 +25,15 @@
  *                        launch (order-independent and latest-wins, so
  *                        whichever frame each sample lands on, the
  *                        collection converges).
+ *   hw-noisy.y4m         a NOISY ROOM SCENE, no sheet anywhere: seeded
+ *                        gradients, furniture-edge rectangles, ruled
+ *                        shadows, hundreds of dark compact specks and a
+ *                        face-ish blob — the scene shape of the field
+ *                        freeze ("as soon as camera opened the entire
+ *                        page got stuck"). Measured, a frame of it cost
+ *                        hwRead 12.4 SECONDS on the main thread. The
+ *                        responsiveness checks sweep it and assert the
+ *                        page never blocks and nothing is collected.
  *
  * hw-feeds.json carries each fixture's sheet→frame mapping and the
  * sheet's ground truth, so the suite's mislabel checks stay exact.
@@ -48,11 +57,12 @@ const FILE = {
   line: (i) => path.join(__dirname, 'hw-line-' + (i + 1) + '.y4m'),
   sheet: path.join(__dirname, 'hw-sheet.y4m'),
   blank: path.join(__dirname, 'hw-line-blank.y4m'),
-  sweep: path.join(__dirname, 'hw-sweep.y4m')
+  sweep: path.join(__dirname, 'hw-sweep.y4m'),
+  noisy: path.join(__dirname, 'hw-noisy.y4m')
 };
 
 function allPresent() {
-  const files = [FILE.sheet, FILE.blank, FILE.sweep, META];
+  const files = [FILE.sheet, FILE.blank, FILE.sweep, FILE.noisy, META];
   for (let i = 0; i < 5; i++) files.push(FILE.line(i));
   return files.every((f) => fs.existsSync(f));
 }
@@ -131,6 +141,56 @@ const FRAME = `async (args) => {
   return { b64: btoa(s), map, gt: made.gt, ruleYs: made.ruleYs, W: made.W, H: made.H };
 }`;
 
+/* Page-side: the noisy room scene — SEEDED (mulberry32-style, no
+ * Math.random — the suite's hygiene check applies to fixtures), no
+ * sheet anywhere. Its shape is what made the field frame expensive:
+ * hundreds of dark compact candidate marks, long dark edges, gradients. */
+const NOISY_FRAME = `() => {
+  const W = ${W}, H = ${H};
+  let s = 11;
+  const rnd = () => { s |= 0; s = (s + 0x6D2B79F5) | 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  const c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  const x = c.getContext('2d', { willReadFrequently: true });
+  const g = x.createLinearGradient(0, 0, W, H);
+  g.addColorStop(0, '#b9b2a6'); g.addColorStop(0.5, '#8f8a80'); g.addColorStop(1, '#5d5952');
+  x.fillStyle = g; x.fillRect(0, 0, W, H);
+  for (let i = 0; i < 14; i++) {              // furniture blocks
+    const v = 30 + rnd() * 90 | 0;
+    x.fillStyle = 'rgb(' + v + ',' + (v - 6) + ',' + (v - 10) + ')';
+    x.fillRect(rnd() * W, rnd() * H, 60 + rnd() * 400, 40 + rnd() * 300);
+  }
+  x.strokeStyle = '#2b2620'; x.lineWidth = 3;  // shelf / frame edges
+  for (let i = 0; i < 20; i++) {
+    x.beginPath();
+    const x0 = rnd() * W, y0 = rnd() * H;
+    x.moveTo(x0, y0); x.lineTo(x0 + (rnd() - 0.5) * 700, y0 + (rnd() - 0.5) * 200);
+    x.stroke();
+  }
+  for (let i = 0; i < 900; i++) {              // dark compact specks
+    const v = rnd() * 40 | 0;
+    x.fillStyle = 'rgb(' + v + ',' + v + ',' + v + ')';
+    const r = 1.5 + rnd() * 6;
+    x.beginPath(); x.arc(rnd() * W, rnd() * H, r, 0, 7); x.fill();
+  }
+  x.fillStyle = '#c9a98c';                     // a face-ish blob
+  x.beginPath(); x.arc(950, 300, 130, 0, 7); x.fill();
+  x.fillStyle = '#241d18';
+  x.beginPath(); x.arc(905, 270, 12, 0, 7); x.fill();
+  x.beginPath(); x.arc(990, 270, 12, 0, 7); x.fill();
+  x.fillRect(915, 340, 75, 10);
+  const d = x.getImageData(0, 0, W, H).data;
+  let out = '';
+  const CHUNK = 0x8000;
+  for (let i = 0; i < d.length; i += CHUNK) {
+    out += String.fromCharCode.apply(null, d.subarray(i, Math.min(i + CHUNK, d.length)));
+  }
+  return { b64: btoa(out) };
+}`;
+
 async function generate(base) {
   const { chromium } = require('playwright');
   const browser = await chromium.launch({ executablePath: CHROME });
@@ -173,6 +233,12 @@ async function generate(base) {
     meta.fixtures.sweep = { file: path.basename(FILE.sweep),
                             lines: [0, 1, 2],
                             map: meta.fixtures['line-1'].map };
+  }
+  {
+    const r = await page.evaluate(`(${NOISY_FRAME})()`);
+    const rgba = Buffer.from(r.b64, 'base64');
+    fs.writeFileSync(FILE.noisy, y4mOf([rgba, rgba], 30));
+    meta.fixtures.noisy = { file: path.basename(FILE.noisy) };
   }
   fs.writeFileSync(META, JSON.stringify(meta));
   await browser.close();
