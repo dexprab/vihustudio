@@ -2407,6 +2407,257 @@ function check(name, cond, detail) {
   check('C10 zero page errors through the handwriting arm + wide camera',
     hwCamErrors.length === 0, hwCamErrors.slice(0, 2).join(' | '));
   await hwCam.close();
+
+  // ---- C11: the picture can wait — Now · 🕔 5 · 🕙 10 ------------------------
+  // The product owner: "for take photo button i need 5sec and 10 sec
+  // timer" and "show the count down on the camera itself". So: a small
+  // clock control beside Take, the count drawn as a big soft numeral
+  // CENTRED ON THE LIVE VIDEO (never beside it), the capture at zero
+  // through the exact existing path, Stop mid-count taking nothing.
+  // The default is Now, and everything C4–C10 asserted above ran with
+  // it — that IS the timer-off byte-identical evidence, gathered before
+  // this section touches the control. The 5-second path below runs at
+  // the REAL pace; the compressed seam is used only for the 10.
+  console.log('\n-- C11: the picture can wait — Now · 🕔 5 · 🕙 10');
+  await cam.click('#cameraBtn');
+  await cam.waitForFunction(() => {
+    const v = document.getElementById('cameraLive');
+    return document.getElementById('cameraPanel').style.display === 'block' &&
+           v.videoWidth > 0;
+  }, null, { timeout: 30000 });
+  const c11a = await cam.evaluate(() => {
+    const wrap = document.querySelector('#cameraPanel .bia-camera-timer');
+    const btns = wrap ? Array.from(wrap.children) : [];
+    const take = document.getElementById('cameraTakeBtn');
+    return { n: btns.length,
+             besideTake: !!wrap && wrap.parentNode === take.parentNode &&
+                         wrap.previousElementSibling === take,
+             visible: !!wrap && !!wrap.offsetParent,
+             states: btns.map((b) => b.dataset.seconds + ':' +
+                              b.getAttribute('aria-pressed')).join(' '),
+             labels: btns.map((b) => b.textContent).join(' · '),
+             panelText: document.getElementById('cameraPanel').textContent };
+  });
+  check('C11 the clock stands beside Take the picture — three choices, Now chosen',
+    c11a.n === 3 && c11a.besideTake && c11a.visible &&
+    c11a.states === '0:true 5:false 10:false',
+    c11a.labels + ' | ' + c11a.states);
+  check('C11 the panel still speaks no jargon and never blames',
+    !/timer|delay|countdown|cancel|portrait|landscape|orientation|error|fail|invalid|wrong/i
+      .test(c11a.panelText), JSON.stringify(c11a.labels));
+  await cam.locator('#cameraPanel').scrollIntoViewIfNeeded();
+  await cam.waitForTimeout(400);
+  await cam.screenshot({ path: path.join(SHOTS, '13-camera-timer.png') });
+
+  // On Now, Take is exactly today's take: instant, and no numeral is
+  // ever drawn (watched for, not assumed absent).
+  await cam.evaluate(() => {
+    window.__countSeen = false;
+    new MutationObserver(() => {
+      if (document.querySelector('.bia-camera-count')) window.__countSeen = true;
+    }).observe(document.body, { childList: true, subtree: true });
+  });
+  await cam.click('#cameraTakeBtn');
+  await cam.waitForFunction(() =>
+    document.getElementById('cameraShot').style.display === 'block');
+  const c11b = await cam.evaluate(() => {
+    const v = document.getElementById('cameraLive');
+    return { seen: window.__countSeen,
+             tracks: v.srcObject.getTracks().map((t) => t.readyState).join(',') };
+  });
+  check('C11 with Now chosen, Take is instant and no count is drawn',
+    !c11b.seen && c11b.tracks.split(',').every((s) => s === 'ended'),
+    JSON.stringify(c11b));
+
+  // The real five seconds. Timestamps are taken INSIDE the page — the
+  // click as it lands, the shot as its style flips — so the gap is the
+  // page's own, not the driver's.
+  await cam.click('#cameraRetakeBtn');
+  await cam.waitForFunction(() => {
+    const v = document.getElementById('cameraLive');
+    return v.style.display === 'block' && v.videoWidth > 0 &&
+           v.srcObject.getTracks().every((t) => t.readyState === 'live');
+  }, null, { timeout: 30000 });
+  await cam.click('#cameraPanel .bia-camera-timer-choice[data-seconds="5"]');
+  await cam.evaluate(() => {
+    window.__t = { takeAt: 0, shotAt: 0 };
+    document.getElementById('cameraTakeBtn').addEventListener('click', () => {
+      if (!window.__t.takeAt) window.__t.takeAt = performance.now();
+    }, { capture: true });
+    const shot = document.getElementById('cameraShot');
+    new MutationObserver(() => {
+      if (shot.style.display === 'block' && !window.__t.shotAt)
+        window.__t.shotAt = performance.now();
+    }).observe(shot, { attributes: true, attributeFilter: ['style'] });
+  });
+  await cam.click('#cameraTakeBtn');
+  await cam.waitForFunction(() => !!document.querySelector('.bia-camera-count'));
+  const c11c = await cam.evaluate(() => {
+    const o = document.querySelector('.bia-camera-count');
+    const v = document.getElementById('cameraLive');
+    const vr = v.getBoundingClientRect();
+    const range = document.createRange();
+    range.selectNodeContents(o);
+    const nr = range.getBoundingClientRect();   // the numeral itself
+    return { n: o.textContent,
+             within: nr.left >= vr.left - 1 && nr.right <= vr.right + 1 &&
+                     nr.top >= vr.top - 1 && nr.bottom <= vr.bottom + 1,
+             dx: Math.abs((nr.left + nr.right) / 2 - (vr.left + vr.right) / 2),
+             dy: Math.abs((nr.top + nr.bottom) / 2 - (vr.top + vr.bottom) / 2),
+             stop: document.getElementById('cameraTakeBtn').textContent,
+             liveShown: v.style.display === 'block',
+             inert: getComputedStyle(o).pointerEvents };
+  });
+  check('C11 the count is drawn ON the camera itself — the numeral centred on the live picture',
+    c11c.within && c11c.dx < 8 && c11c.dy < 8 && c11c.liveShown &&
+    c11c.inert === 'none',
+    'dx ' + c11c.dx.toFixed(1) + ' dy ' + c11c.dy.toFixed(1) +
+    ' within=' + c11c.within);
+  check('C11 the count begins at 5 and the button offers Stop',
+    c11c.n === '5' && c11c.stop === 'Stop', c11c.n + ' · ' + c11c.stop);
+  await cam.waitForTimeout(1200);              // mid-count, a smaller numeral up
+  await cam.screenshot({ path: path.join(SHOTS, '14-camera-countdown.png') });
+  await cam.waitForFunction(() =>
+    document.getElementById('cameraShot').style.display === 'block',
+    null, { timeout: 20000 });
+  const c11d = await cam.evaluate(() => {
+    const v = document.getElementById('cameraLive');
+    const c = document.getElementById('cameraShot');
+    return { gap: window.__t.shotAt - window.__t.takeAt,
+             count: !!document.querySelector('.bia-camera-count'),
+             tracks: v.srcObject.getTracks().map((t) => t.readyState).join(','),
+             w: c.width, h: c.height,
+             use: !!document.getElementById('cameraUseBtn').offsetParent,
+             retake: !!document.getElementById('cameraRetakeBtn').offsetParent };
+  });
+  check('C11 the photo lands only when the count reaches zero — a real five-second wait',
+    c11d.gap >= 4900 && c11d.gap < 9000, Math.round(c11d.gap) + 'ms');
+  check('C11 a waited picture leaves the camera exactly as an instant one — ' +
+        'light off, numeral gone, native frame, same choices',
+    c11d.tracks.split(',').every((s) => s === 'ended') && !c11d.count &&
+    c11d.w === feed.W && c11d.h === feed.H && c11d.use && c11d.retake,
+    JSON.stringify({ tracks: c11d.tracks, w: c11d.w, h: c11d.h }));
+
+  // Stop mid-count: no picture, the numeral leaves, the live camera
+  // simply carries on — and the 🕔 5 choice has stood since it was made.
+  await cam.click('#cameraRetakeBtn');
+  await cam.waitForFunction(() => {
+    const v = document.getElementById('cameraLive');
+    return v.style.display === 'block' && v.videoWidth > 0 &&
+           v.srcObject.getTracks().every((t) => t.readyState === 'live');
+  }, null, { timeout: 30000 });
+  const c11e = await cam.evaluate(() =>
+    Array.from(document.querySelectorAll('#cameraPanel .bia-camera-timer-choice'))
+      .filter((b) => b.getAttribute('aria-pressed') === 'true')
+      .map((b) => b.dataset.seconds).join(','));
+  check('C11 the choice stands for the session — 🕔 5 is still chosen after a retake',
+    c11e === '5', c11e);
+  await cam.click('#cameraTakeBtn');
+  await cam.waitForFunction(() =>
+    document.getElementById('cameraTakeBtn').textContent === 'Stop');
+  await cam.waitForTimeout(1100);
+  await cam.click('#cameraTakeBtn');           // Stop
+  const c11f = await cam.evaluate(() => {
+    const v = document.getElementById('cameraLive');
+    return { count: !!document.querySelector('.bia-camera-count'),
+             label: document.getElementById('cameraTakeBtn').textContent,
+             shot: document.getElementById('cameraShot').style.display,
+             tracks: v.srcObject.getTracks().map((t) => t.readyState).join(','),
+             log: document.querySelector('#devLog').textContent };
+  });
+  check('C11 Stop mid-count: no picture, numeral gone, the live camera carries on',
+    !c11f.count && c11f.label === 'Take the picture' && c11f.shot !== 'block' &&
+    c11f.tracks.split(',').every((s) => s === 'live') &&
+    /camera: the count stopped — no picture taken/.test(c11f.log),
+    JSON.stringify({ label: c11f.label, tracks: c11f.tracks }));
+
+  // Never mind mid-count: the count leaves with the panel, the light
+  // goes off, nothing is taken.
+  await cam.click('#cameraTakeBtn');
+  await cam.waitForTimeout(700);
+  await cam.click('#cameraCloseBtn');
+  const c11g = await cam.evaluate(() => {
+    const v = document.getElementById('cameraLive');
+    return { panel: document.getElementById('cameraPanel').style.display,
+             count: !!document.querySelector('.bia-camera-count'),
+             shot: document.getElementById('cameraShot').style.display,
+             tracks: v.srcObject.getTracks().map((t) => t.readyState).join(',') };
+  });
+  check('C11 Never mind mid-count: the count leaves with the panel and the light goes off',
+    c11g.panel === 'none' && !c11g.count && c11g.shot !== 'block' &&
+    c11g.tracks.split(',').every((s) => s === 'ended'), JSON.stringify(c11g));
+
+  // The 🕙 10 count, compressed through the test seam (the real pace was
+  // proved at 5 above): it begins at ten and still ends in the capture.
+  await cam.evaluate(() => BIACamera._setTimeScale(0.12));
+  await cam.click('#cameraBtn');
+  await cam.waitForFunction(() => {
+    const v = document.getElementById('cameraLive');
+    return document.getElementById('cameraPanel').style.display === 'block' &&
+           v.videoWidth > 0;
+  }, null, { timeout: 30000 });
+  await cam.click('#cameraPanel .bia-camera-timer-choice[data-seconds="10"]');
+  await cam.evaluate(() => {
+    window.__maxN = 0;
+    new MutationObserver(() => {
+      const o = document.querySelector('.bia-camera-count');
+      const n = o ? parseInt(o.textContent, 10) : 0;
+      if (n > window.__maxN) window.__maxN = n;
+    }).observe(document.body, { childList: true, subtree: true, characterData: true });
+  });
+  await cam.click('#cameraTakeBtn');
+  await cam.waitForFunction(() =>
+    document.getElementById('cameraShot').style.display === 'block',
+    null, { timeout: 15000 });
+  const c11h = await cam.evaluate(() => ({
+    maxN: window.__maxN,
+    w: document.getElementById('cameraShot').width }));
+  check('C11 the 🕙 10 count begins at ten and ends in the same capture',
+    c11h.maxN === 10 && c11h.w === feed.W, JSON.stringify(c11h));
+  await cam.evaluate(() => BIACamera._setTimeScale(1));
+  await cam.click('#cameraCloseBtn');
+
+  // The count does not fight the handwriting live sweep: while a count
+  // runs in the armed journey, the sweep keeps sampling frames exactly
+  // as before — the overlay is inert and camera.js never idles the loop.
+  console.log('\n-- C11: the count and the live sweep share the camera');
+  const hw2 = await camBrowser.newPage({ viewport: { width: 1100, height: 840 } });
+  const hw2Errors = [];
+  hw2.on('pageerror', (e) => hw2Errors.push(String(e)));
+  hw2.on('console', (m) => { if (m.type() === 'error') hw2Errors.push(m.text()); });
+  await hw2.goto(BASE);
+  await hw2.waitForFunction(() => window.__bia && window.__hw);
+  await hw2.click('#hwEntryBtn');
+  await hw2.click('#hwWroteBtn');              // arms the journey
+  await hw2.click('#cameraBtn');
+  await hw2.waitForFunction(() => {
+    const v = document.getElementById('cameraLive');
+    return document.getElementById('cameraPanel').style.display === 'block' &&
+           v.videoWidth > 0 && window.HWLive && HWLive.state.running;
+  }, null, { timeout: 30000 });
+  await hw2.evaluate(() => BIACamera._setTimeScale(0.5));   // a 2.5s five-count
+  await hw2.click('#cameraPanel .bia-camera-timer-choice[data-seconds="5"]');
+  const sweepBefore = await hw2.evaluate(() => HWLive.state.samples);
+  await hw2.click('#cameraTakeBtn');
+  await hw2.waitForFunction(() => !!document.querySelector('.bia-camera-count'));
+  await hw2.waitForTimeout(1600);              // mid-count, sweep time to sample
+  const c11i = await hw2.evaluate((before) => ({
+    counting: !!document.querySelector('.bia-camera-count'),
+    running: HWLive.state.running,
+    sampled: HWLive.state.samples > before,
+    slots: document.getElementById('hwLiveRow').style.display
+  }), sweepBefore);
+  check('C11 mid-count the sweep keeps collecting — running, sampling, slots up',
+    c11i.counting && c11i.running && c11i.sampled && c11i.slots === 'block',
+    JSON.stringify(c11i));
+  await hw2.waitForFunction(() =>
+    document.getElementById('cameraShot').style.display === 'block',
+    null, { timeout: 15000 });
+  check('C11 zero page errors through the sweep-and-count camera',
+    hw2Errors.length === 0, hw2Errors.slice(0, 2).join(' | '));
+  await hw2.close();
+  check('C11 zero page errors through the waited captures',
+    camErrors.length === 0, camErrors.slice(0, 3).join(' | '));
   await camBrowser.close();
 
   // ---- hygiene -------------------------------------------------------------
