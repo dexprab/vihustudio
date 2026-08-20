@@ -42,6 +42,17 @@
  *                        scene shape of the field freeze. The
  *                        responsiveness checks sweep it and assert the
  *                        page never blocks and nothing is collected.
+ *   hw-card-far.y4m      cut card 1 held FAR AWAY: drawn 420px wide in
+ *                        the 1280 frame — measured, the reader refuses
+ *                        a clean one-card desk frame up to 560px drawn
+ *                        width and reads from 620px, so 420 refuses
+ *                        with a 140px margin. The readiness light must
+ *                        stay RED on it: too far to read is not ready.
+ *   hw-then-gone.y4m     cut card 1 (eight frames), then the bare desk
+ *                        (eight frames), at 2fps — the view reads,
+ *                        then stops reading. Drives the light's
+ *                        green→red hand-off so its latency can be
+ *                        measured against the real loop.
  *
  * hw-feeds.json carries each fixture's sheet→frame mapping, the pages'
  * ground truth (GLOBAL line indices), and a VERSION stamp: the fixtures
@@ -60,8 +71,9 @@ const { COMPOSE } = require(path.join(__dirname, 'hw-fixture.js'));
 
 const W = 1280, H = 960;
 // Bumped whenever the frames' shape changes: 3 = the two-page card
-// printable (per-card cut lines, grip margins, strictly-one-card rule).
-const VERSION = 3;
+// printable (per-card cut lines, grip margins, strictly-one-card rule);
+// 4 = the readiness-light fixtures (hw-card-far, hw-then-gone).
+const VERSION = 4;
 const CHROME = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
 const META = path.join(__dirname, 'hw-feeds.json');
 
@@ -73,12 +85,15 @@ const FILE = {
   legacy: path.join(__dirname, 'hw-legacy.y4m'),
   blank: path.join(__dirname, 'hw-card-blank.y4m'),
   sweep: path.join(__dirname, 'hw-sweep.y4m'),
-  noisy: path.join(__dirname, 'hw-noisy.y4m')
+  noisy: path.join(__dirname, 'hw-noisy.y4m'),
+  far: path.join(__dirname, 'hw-card-far.y4m'),
+  thenGone: path.join(__dirname, 'hw-then-gone.y4m')
 };
 
 function allPresent() {
   const files = [FILE.attached, FILE.many, FILE.manyThenOne, FILE.legacy,
-                 FILE.blank, FILE.sweep, FILE.noisy, META];
+                 FILE.blank, FILE.sweep, FILE.noisy, FILE.far,
+                 FILE.thenGone, META];
   for (let i = 0; i < 5; i++) files.push(FILE.card(i));
   if (!files.every((f) => fs.existsSync(f))) return false;
   try { return JSON.parse(fs.readFileSync(META, 'utf8')).version === VERSION; }
@@ -144,10 +159,11 @@ const FRAME = `async (args) => {
   let map;
   if (args.card != null && args.cut) {
     // A cut card: its own cut boundary's rows, full page width, with
-    // desk margin on every side of the wide frame.
+    // desk margin on every side of the wide frame. args.cardW draws it
+    // smaller — a card held too far away to read.
     const card = made.cards.find((k) => k.index === args.card);
     const cardTop = card.cutTop, cardH = card.cutBottom - card.cutTop;
-    const dw = Math.round(0.94 * fw);
+    const dw = args.cardW ? Math.round(args.cardW) : Math.round(0.94 * fw);
     const scale = dw / SW;
     const dh = cardH * scale;
     const ox = (fw - dw) / 2, oy = (fh - dh) / 2;
@@ -311,6 +327,31 @@ async function generate(base) {
     const rgba = Buffer.from(r.b64, 'base64');
     fs.writeFileSync(FILE.noisy, y4mOf([rgba, rgba], 30));
     meta.fixtures.noisy = { file: path.basename(FILE.noisy) };
+  }
+  {
+    // The far card: 420px drawn width — measured against the reader,
+    // which refuses a clean one-card frame up to 560px and reads from
+    // 620px. Too far to read must show the readiness light RED.
+    const r = await page.evaluate(`(${FRAME})({ card: 0, cut: true, cardW: 420 })`);
+    const rgba = Buffer.from(r.b64, 'base64');
+    fs.writeFileSync(FILE.far, y4mOf([rgba, rgba], 30));
+    meta.fixtures.far = { file: path.basename(FILE.far), map: r.map };
+  }
+  {
+    // The view reads, then stops reading: card 1 for four seconds,
+    // then the bare desk for four — the light's green→red hand-off,
+    // measurable against the real loop. The desk frame is the same
+    // uniform desk grey every fixture stands its paper on.
+    const desk = Buffer.alloc(W * H * 4);
+    for (let i = 0; i < desk.length; i += 4) {
+      desk[i] = 0x5f; desk[i + 1] = 0x66; desk[i + 2] = 0x73; desk[i + 3] = 255;
+    }
+    const frames = [];
+    for (let k = 0; k < 8; k++) frames.push(cardFrames[0]);
+    for (let k = 0; k < 8; k++) frames.push(desk);
+    fs.writeFileSync(FILE.thenGone, y4mOf(frames, 2));
+    meta.fixtures.thenGone = { file: path.basename(FILE.thenGone),
+                               map: meta.fixtures['card-1'].map };
   }
   fs.writeFileSync(META, JSON.stringify(meta));
   await browser.close();

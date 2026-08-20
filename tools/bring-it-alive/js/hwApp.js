@@ -211,9 +211,18 @@
   function startLive() {
     $('hwLiveRow').style.display = 'block';
     updateLiveUI();
+    // The readiness light rides on the live preview for exactly as long
+    // as the sweep runs (js/hwLight.js). Green is the worker's own
+    // reading verdict — a 'line' or 'sheet' frame is one that collects,
+    // which is also exactly what a pressed Take would read — so the
+    // light and the shutter can never disagree. The drawing journey
+    // never starts this loop, so it never gets a light: it has no
+    // reader, and a light there would be an invented claim.
+    HWLight.show($('cameraLive'));
     HWLive.start($('cameraLive'), {
       log,
       want: state.retakeLine,
+      onVerdict: (kind) => HWLight.verdict(kind === 'line' || kind === 'sheet'),
       onMany: showOneCardNote,
       onCollect: (i, isNew) => {
         log('hw live: card ' + (i + 1) + (isNew ? ' met' : ' seen again — the newer one is kept'));
@@ -227,6 +236,7 @@
   }
   function stopLive() {
     HWLive.stop();
+    HWLight.hide();
     showOneCardNote(false);
     $('hwLiveRow').style.display = 'none';
   }

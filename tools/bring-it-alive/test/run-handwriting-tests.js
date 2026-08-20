@@ -59,6 +59,15 @@
  *         a drawing and an unwritten card collect nothing.
  *   HW-G  the page never blocks — worker + budgets: heartbeat < 120ms
  *         across a noisy no-sheet room AND during a real collection.
+ *   HW-L  the readiness light — a small soft light on the live camera
+ *         picture, green exactly when the current frame reads at the
+ *         full standard (green ⇔ pressing Take would read: asserted
+ *         across the fixture ladder with zero disagreements), red
+ *         otherwise; absent from the drawing camera; rect-tracked to
+ *         the video ≤1px through a resize; debounced against a single
+ *         wobble frame but never holding green past a view that
+ *         stopped reading (latency measured); shape as well as colour;
+ *         plain switch under prefers-reduced-motion; wordless.
  *
  * DISCLOSED: this verifies the journey against synthetic handwriting.
  * Real child handwriting — real-paper lighting, pencil pressure —
@@ -1983,6 +1992,336 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
       /more than one card in this photograph \(cards 1, 3\)/.test(two.refusal),
       '"' + two.refusal.slice(4, 90) + '"');
   }
+
+  // ==== HW-L: the readiness light ============================================
+  // The product owner, verbatim: "can we get red and green marker on
+  // camera itself to understand when is it reading the data correctly
+  // and should be clicked ?" Green is the live worker's own per-frame
+  // verdict — the same hwRead a pressed Take would run — so every
+  // fixture here asserts the EQUIVALENCE: while the light is green,
+  // HWRead.read on the grabbed live frame reads; while red, it refuses.
+  console.log('\n== HW-L: THE READINESS LIGHT ===============================');
+  // Grab the current live frame at native resolution and run the STILL
+  // reader on it — the exact photograph a pressed Take would hand over.
+  const GRAB_READ = `() => {
+    const v = document.getElementById('cameraLive');
+    const c = document.createElement('canvas');
+    c.width = v.videoWidth; c.height = v.videoHeight;
+    const x = c.getContext('2d', { willReadFrequently: true });
+    x.drawImage(v, 0, 0);
+    const out = HWRead.read(
+      { width: c.width, height: c.height,
+        imageData: x.getImageData(0, 0, c.width, c.height), filename: 'grab' },
+      { log: function () {} });
+    return { ok: out.ok, reason: out.reason || null };
+  }`;
+  const lightFacts = `() => {
+    const w = document.getElementById('hwReadyLight');
+    if (!w) return { present: false };
+    const glow = w.children[0], ring = w.children[1];
+    const v = document.getElementById('cameraLive');
+    const vr = v.getBoundingClientRect();
+    const wr = w.getBoundingClientRect();
+    return { present: true,
+             display: w.style.display,
+             colour: HWLight.state.colour,
+             text: w.textContent.trim(),
+             glowOn: glow.style.opacity === '1',
+             ringOn: ring.style.opacity === '1',
+             glowShape: glow.style.borderRadius,
+             ringHollow: ring.style.background === 'transparent' &&
+                         /solid/.test(ring.style.border || ring.style.borderTop || ''),
+             size: wr.width,
+             dxRight: Math.abs((vr.right - HWLight.INSET) - wr.right),
+             dyTop: Math.abs((vr.top + HWLight.INSET) - wr.top),
+             video: { top: vr.top, height: vr.height, width: vr.width },
+             wrapBottom: wr.bottom };
+  }`;
+  let lightDisagreements = 0;   // green⇔read across the whole ladder
+
+  // The drawing camera gets NO light — it has no reader, so a light
+  // there would be an invented claim. Same launch then arms the
+  // journey on the same non-card view: light present and RED.
+  {
+    const camFeed = require(path.join(__dirname, 'make-camera-feed.js'));
+    if (!fs.existsSync(camFeed.OUT)) await camFeed.generate();
+    const { browser, p, errors } = await camPage('camera-feed-001.y4m');
+    await p.click('#cameraBtn');
+    await p.waitForFunction(() => {
+      const v = document.getElementById('cameraLive');
+      return document.getElementById('cameraPanel').style.display === 'block' &&
+             v.videoWidth > 0;
+    }, null, { timeout: 30000 });
+    await p.waitForTimeout(1500);
+    const unarmed = await p.evaluate(() =>
+      !!document.getElementById('hwReadyLight'));
+    check('L1 the DRAWING camera never grows the light — no reader, no claim',
+      !unarmed, unarmed ? 'light element exists unarmed' : 'no light element');
+    await p.click('#cameraCloseBtn');
+    // Armed, the same drawing in view: the light exists and is RED —
+    // nothing card-like reads here.
+    await armAndOpenCamera(p);
+    await p.waitForFunction(() =>
+      window.__hw.live.samples >= 2 && HWLight.state.colour === 'red',
+      null, { timeout: 60000 });
+    const f = await p.evaluate(`(${lightFacts})()`);
+    const still = await p.evaluate(`(${GRAB_READ})()`);
+    if (still.ok !== (f.colour === 'green')) lightDisagreements++;
+    check('L2 nothing readable in view → the light is RED, and Take would refuse the same frame',
+      f.present && f.colour === 'red' && !f.glowOn && f.ringOn && still.ok === false,
+      'light ' + f.colour + ', still reader ok=' + still.ok);
+    check('L2b the light is wordless — no text on or near it',
+      f.text === '', f.text ? '"' + f.text + '"' : 'no words');
+    check('L2c zero page errors', errors.length === 0);
+    await browser.close();
+  }
+
+  // ONE READABLE CARD: green, equivalent to a Take that reads, placed
+  // on the picture's clear top-right corner, tracking the video ≤1px
+  // through a resize, stable across further verdicts, and gone while a
+  // taken picture is being decided about.
+  {
+    const { browser, p, errors } = await camPage('hw-card-1.y4m');
+    await armAndOpenCamera(p);
+    await p.waitForFunction(() =>
+      window.HWLight && HWLight.state.colour === 'green',
+      null, { timeout: 60000 });
+    const f = await p.evaluate(`(${lightFacts})()`);
+    const still = await p.evaluate(`(${GRAB_READ})()`);
+    if (still.ok !== (f.colour === 'green')) lightDisagreements++;
+    check('L3 a readable card → the light is GREEN, and Take WOULD read this very view',
+      f.colour === 'green' && still.ok === true,
+      'light ' + f.colour + ', still reader ok=' + still.ok);
+    check('L3b green and red differ by SHAPE as well as colour: filled round glow vs hollow ring',
+      f.glowOn && !f.ringOn && f.glowShape === '50%' && f.ringHollow,
+      'glow on, ring off; ring is a hollow circle');
+    check('L4 the light rides the picture: top-right corner, ≤1px off the video rect',
+      f.dxRight <= 1 && f.dyTop <= 1 && f.size >= 18 && f.size <= 34,
+      'off by ' + f.dxRight.toFixed(1) + 'px / ' + f.dyTop.toFixed(1) +
+      'px, ' + Math.round(f.size) + 'px light');
+    // The corner is clear of the card BY MEASUREMENT: the fixture map
+    // says where the card's top edge lands in the frame.
+    const cardTopFrac = feedsMeta.fixtures['card-1'].map.oy / hwFeeds.H;
+    const cardTopCss = f.video.top + f.video.height * cardTopFrac;
+    check('L4b …and that corner never covers the card (card top measured well below the light)',
+      f.wrapBottom < cardTopCss - 40,
+      'light ends ' + Math.round(cardTopCss - f.wrapBottom) + 'px above the card');
+    // Resize: the video box changes, the light follows within 1px.
+    await p.setViewportSize({ width: 560, height: 700 });
+    await p.waitForTimeout(250);
+    const f2 = await p.evaluate(`(${lightFacts})()`);
+    check('L5 a resized window moves the picture and the light follows (≤1px, size re-fitted)',
+      f2.video.width < f.video.width && f2.dxRight <= 1 && f2.dyTop <= 1,
+      'video ' + Math.round(f.video.width) + '→' + Math.round(f2.video.width) +
+      'px, off by ' + f2.dxRight.toFixed(1) + 'px');
+    await p.setViewportSize({ width: 1100, height: 900 });
+    // Stability: a steady readable view never flickers — more verdicts
+    // arrive and the light does not leave green once.
+    const before = await p.evaluate(() => ({
+      verdicts: HWLight.state.verdicts,
+      transitions: HWLight.state.history.length }));
+    await p.waitForFunction((n) => HWLight.state.verdicts >= n + 3,
+      before.verdicts, { timeout: 30000 });
+    const after = await p.evaluate(() => ({
+      colour: HWLight.state.colour,
+      redsSinceGreen: HWLight.state.history.filter((h) => h.to === 'red').length,
+      shown: HWLight.state.history.filter((h) => h.why === 'shown').length
+    }));
+    check('L6 no flicker on a steady readable view: green stays green across further verdicts',
+      after.colour === 'green' && after.redsSinceGreen === after.shown,
+      after.redsSinceGreen + ' red transition(s), all from first showing');
+    await p.locator('#cameraPanel').scrollIntoViewIfNeeded();
+    await p.screenshot({ path: path.join(SHOTS, '24-hw-ready-light-green.png') });
+    // The little clock: during a countdown the light keeps updating; a
+    // TAKEN picture hides it — a light over a still would be a claim
+    // about nothing — and retake brings it back to re-prove the view.
+    await p.click('.bia-camera-timer-choice[data-seconds="10"]');
+    const vBefore = await p.evaluate(() => HWLight.state.verdicts);
+    await p.click('#cameraTakeBtn');                 // the count begins
+    await p.waitForFunction((n) => HWLight.state.verdicts >= n + 2,
+      vBefore, { timeout: 15000 });
+    const during = await p.evaluate(() => ({
+      counting: !!document.querySelector('.bia-camera-count'),
+      shown: document.getElementById('hwReadyLight').style.display !== 'none',
+      colour: HWLight.state.colour
+    }));
+    check('L7 during a timer countdown the light stays up and keeps updating — a child can re-aim before the shutter',
+      during.counting && during.shown && during.colour === 'green',
+      'counting, light ' + during.colour + ', 2+ fresh verdicts');
+    await p.click('#cameraTakeBtn');                 // Stop — no picture
+    await p.click('.bia-camera-timer-choice[data-seconds="0"]');
+    await p.click('#cameraTakeBtn');                 // taken right away
+    await p.waitForFunction(() =>
+      document.getElementById('cameraShot').style.display !== 'none',
+      null, { timeout: 15000 });
+    await p.waitForTimeout(200);
+    const stillShot = await p.evaluate(() =>
+      document.getElementById('hwReadyLight').style.display !== 'none');
+    check('L8 a TAKEN picture hides the light — it never claims anything about a still',
+      !stillShot);
+    await p.click('#cameraRetakeBtn');
+    await p.waitForFunction(() => {
+      const v = document.getElementById('cameraLive');
+      return v.videoWidth > 0 && v.style.display !== 'none' &&
+             document.getElementById('hwReadyLight').style.display !== 'none';
+    }, null, { timeout: 30000 });
+    const resumed = await p.evaluate(() => ({
+      first: HWLight.state.history.filter((h) => h.why === 'shown').length
+    }));
+    check('L9 retake brings the light back, and the fresh view starts red until it re-proves',
+      resumed.first >= 2, resumed.first + ' fresh showings, each born red');
+    check('L10 zero page errors across the green run', errors.length === 0,
+      errors.slice(0, 2).join(' | '));
+    await browser.close();
+  }
+
+  // MANY CARDS: red — and the existing one-card overlay still appears
+  // exactly as it does today; the light replaces nothing.
+  {
+    const { browser, p, errors } = await camPage('hw-many.y4m');
+    await armAndOpenCamera(p);
+    await p.waitForFunction(() =>
+      window.__hw.live.manySeen >= 1 && HWLight.state.colour === 'red',
+      null, { timeout: 60000 });
+    const f = await p.evaluate(`(${lightFacts})()`);
+    const still = await p.evaluate(`(${GRAB_READ})()`);
+    if (still.ok !== (f.colour === 'green')) lightDisagreements++;
+    const note = await p.evaluate(() => ({
+      shown: document.getElementById('hwOneCardNote').style.display === 'block',
+      text: document.getElementById('hwOneCardNote').textContent
+    }));
+    check('L11 more than one card → RED, and Take would refuse the same frame the same way',
+      f.colour === 'red' && f.ringOn && !f.glowOn &&
+      still.ok === false && still.reason === 'many',
+      'light ' + f.colour + ', still reader reason=' + still.reason);
+    check('L11b the kind one-card overlay still appears exactly as before — the light replaces nothing',
+      note.shown && /[Oo]ne card at a time/.test(note.text));
+    await p.locator('#cameraPanel').scrollIntoViewIfNeeded();
+    await p.screenshot({ path: path.join(SHOTS, '25-hw-ready-light-red.png') });
+    check('L11c zero page errors', errors.length === 0);
+    await browser.close();
+  }
+
+  // A CARD TOO FAR AWAY: it refuses (the reading floor), so the light
+  // must be red — "in view" is not "readable".
+  {
+    const { browser, p, errors } = await camPage('hw-card-far.y4m');
+    await armAndOpenCamera(p);
+    await p.waitForFunction(() => window.__hw.live.samples >= 3,
+      null, { timeout: 60000 });
+    const f = await p.evaluate(`(${lightFacts})()`);
+    const still = await p.evaluate(`(${GRAB_READ})()`);
+    if (still.ok !== (f.colour === 'green')) lightDisagreements++;
+    const got = await p.evaluate(() => window.__hw.live.collected.size);
+    check('L12 a card too far to read → RED and nothing collected: the light is the reading standard, not "I can see paper"',
+      f.colour === 'red' && got === 0 && still.ok === false,
+      'light ' + f.colour + ', ' + got + ' collected, still reader ok=' + still.ok);
+    check('L12b zero page errors', errors.length === 0);
+    await browser.close();
+  }
+
+  // THE VIEW STOPS READING: card, then bare desk (looping). Green must
+  // yield promptly — measured from the last frame that read to the
+  // moment the light went red.
+  {
+    const { browser, p, errors } = await camPage('hw-then-gone.y4m');
+    await armAndOpenCamera(p);
+    await p.waitForFunction(() => {
+      const h = HWLight.state.history;
+      const g = h.findIndex((e) => e.to === 'green');
+      return g >= 0 && h.slice(g + 1).some((e) => e.to === 'red');
+    }, null, { timeout: 90000 });
+    const gone = await p.evaluate(() => {
+      const h = HWLight.state.history;
+      const handoffs = [];
+      for (let i = 1; i < h.length; i++) {
+        if (h[i].to === 'red' && h[i - 1].to === 'green') handoffs.push(h[i]);
+      }
+      return { handoffs: handoffs.map((e) => ({ why: e.why, sinceRead: e.sinceRead })),
+               order: h.map((e) => e.to).join('>') };
+    });
+    check('L13 green yields when the view stops reading — never instantly (debounce), never late',
+      gone.handoffs.length >= 1 && gone.handoffs.every((e) =>
+        e.sinceRead > 500 && e.sinceRead < 2600),
+      'green→red ' + gone.handoffs.map((e) =>
+        e.sinceRead + 'ms (' + e.why + ')').join(', ') + ' after the last read frame');
+    check('L13b zero page errors across the hand-off', errors.length === 0);
+    await browser.close();
+  }
+
+  // THE DEBOUNCE ITSELF, driven deterministically at the live loop's
+  // own cadence (~600ms a verdict, measured): one wobble frame between
+  // two read frames never blinks the light; two consecutive refusals
+  // turn it red; and a loop that falls SILENT after a refusal is
+  // caught by the hold — green never outlives its evidence.
+  {
+    const m = await page.evaluate(async () => {
+      const L = window.HWLight;
+      L.hide();
+      L.state.history.length = 0;
+      L.show(document.createElement('video'));   // machine live, nothing drawn
+      const pause = (ms) => new Promise((r) => setTimeout(r, ms));
+      L.verdict(true);                            // the view reads
+      await pause(600);
+      L.verdict(false);                           // ONE wobble frame
+      await pause(600);
+      L.verdict(true);                            // …and it reads again
+      const blinked = L.state.history.some((e) => e.to === 'red');
+      await pause(100);
+      const tRef = performance.now();
+      L.verdict(false);                           // the view has really left
+      await pause(600);
+      L.verdict(false);
+      const red1 = L.state.history.filter((e) => e.to === 'red').pop();
+      const twoRefusals = { colour: L.state.colour,
+        why: red1 && red1.why, ms: red1 ? Math.round(red1.at - tRef) : -1 };
+      L.verdict(true);                            // green again…
+      const tStall = performance.now();
+      L.verdict(false);                           // …one refusal, then SILENCE
+      await pause(L.HOLD_MS + 600);
+      const red2 = L.state.history.filter((e) => e.to === 'red').pop();
+      const stalled = { colour: L.state.colour,
+        why: red2 && red2.why, ms: red2 ? Math.round(red2.at - tStall) : -1 };
+      L.hide();
+      return { blinked, twoRefusals, stalled, HOLD: L.HOLD_MS };
+    });
+    check('L14 one refused frame between two read frames never blinks the light',
+      m.blinked === false, 'no red transition across the wobble');
+    check('L15 two consecutive refusals turn it red — measured latency inside one verdict cycle + margin',
+      m.twoRefusals.colour === 'red' && m.twoRefusals.why === 'refused' &&
+      m.twoRefusals.ms >= 500 && m.twoRefusals.ms <= 1100,
+      m.twoRefusals.ms + 'ms after the first refusal');
+    check('L16 a loop that falls silent is caught by the hold (' + m.HOLD + 'ms) — green never outlives its evidence',
+      m.stalled.colour === 'red' && m.stalled.why === 'held' &&
+      m.stalled.ms >= m.HOLD - 100 && m.stalled.ms <= m.HOLD + 700,
+      m.stalled.ms + 'ms, via the hold timer');
+  }
+
+  // REDUCED MOTION: the states simply switch — no cross-fade.
+  {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    const rm = await page.evaluate(() => {
+      HWLight.show(document.createElement('video'));
+      const w = document.getElementById('hwReadyLight');
+      const t = [w.children[0].style.transition, w.children[1].style.transition];
+      HWLight.hide();
+      return t;
+    });
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    const fade = await page.evaluate(() => {
+      HWLight.show(document.createElement('video'));
+      const w = document.getElementById('hwReadyLight');
+      const t = [w.children[0].style.transition, w.children[1].style.transition];
+      HWLight.hide();
+      return t;
+    });
+    check('L17 under prefers-reduced-motion the light plainly switches; otherwise it cross-fades gently',
+      rm.every((t) => t === 'none') && fade.every((t) => /opacity/.test(t)),
+      'reduce: "' + rm[0] + '" · default: "' + fade[0] + '"');
+  }
+
+  check('L18 GREEN ⇔ "Take would read": zero disagreements across the whole fixture ladder',
+    lightDisagreements === 0, lightDisagreements + ' disagreement(s)');
 
   // ---- hygiene ---------------------------------------------------------------
   console.log('\n-- hygiene');
