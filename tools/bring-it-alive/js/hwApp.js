@@ -1,21 +1,35 @@
 /* HW APP — the MY HANDWRITING journey's UI wiring on the standalone page.
  *
- * Four marks: WRITING SHEET → PHOTOGRAPH → YOUR LETTERS → TRY YOUR FONT.
+ * THE LETTER GRID (the product owner, verbatim: "make a grid of letters
+ * and numerals. a kid can tap on any of them and show the letter in his
+ * writing. and we capture that letter. makes the job easier. also once
+ * the scan is in allow user to check it and adjust if a stroke is
+ * missing here and there").
  *
- * The photograph arrives through the EXISTING capture entry — the picker,
- * the drop zone and the camera, all unchanged (app.js owns them). This
- * module only ARMS the journey: after "I've written it", the next
- * photograph that lands is taken for the handwriting sheet. app.js's own
- * loadPhoto runs untouched and steps to the claim as it always does; the
- * observer here notices, takes the decoded photo (one decode, one truth —
- * capture.js's rule), and walks into the handwriting reading instead.
- * Nothing in app.js, flow.js, capture.js or camera.js changed.
+ * Four marks: THE GRID → SHOW ME → CHECK IT → TRY YOUR LETTERS.
  *
- * The alphabet is SHOWN before anything is built (Decision 18's move:
- * show what was recognised and let the child say "that's not right"
- * before the door opens). Missing letters are quiet empty slots — never
- * an error, never a blank glyph later; recovery is per line, never
- * start-over.
+ *   · The GRID is the front door and the progress view in one: A–Z,
+ *     a–z, 0–9, each tile a faint reference letterform until the
+ *     child's own captured letter fills it. Tap any tile, any order,
+ *     any time — a filled one to do it again. No percent, no pressure;
+ *     the grid filling up IS the progress.
+ *   · Tapping a tile ARMS the shared capture entry for that ONE letter
+ *     (the picker, the drop zone and the camera, all unchanged —
+ *     app.js owns them). The tap declares the letter's identity; the
+ *     reader (js/hwLetter.js) only finds the ink.
+ *   · GREEN TAKES THE PICTURE: on the live camera, the readiness light
+ *     (js/hwLight.js, its verdict seam re-aimed at the one-letter
+ *     reader) turns green when one clear letter stands in view, and a
+ *     steady beat of green auto-takes the capture from the very frame
+ *     that read (js/hwLetterLive.js). Take and the timer stay as
+ *     manual fallbacks a child never needs.
+ *   · CHECK IT: every capture — auto, Take, or upload — lands on the
+ *     check screen: the letter large beside its small reference form,
+ *     a pencil to draw a missing stroke, an eraser for smudges, a live
+ *     preview of the tile, and Keep · Show me again.
+ *   · Build works at ANY point with whatever letters exist — hwFont
+ *     omits missing letters from the cmap, so words borrow a plain
+ *     letter there.
  *
  * window.__hw is the developer seam, exactly as window.__bia is for the
  * drawing flow: the suite and a human in devtools read the journey's
@@ -32,35 +46,18 @@
                   '0123456789'];
   const ALPHABET = GROUPS.join('');
 
-  // Child-facing words for a card whose letters held hands (touching-
-  // refusals dominated — hwRead's `joined`). Never blame words; the
-  // generic retake stays for cards that are merely messy.
-  const JOINED_LINE_MSG = 'these letters are holding hands — write this ' +
-    'card once more with a little space between each letter, and I’ll ' +
-    'meet them all';
-  const JOINED_SHEET_MSG = 'Your letters like to hold hands! I can only ' +
-    'meet letters written on their own — try the cards again, giving ' +
-    'each letter a little space of its own.';
-
-  // Child-facing words for a photo taken too far away (hwRead's capture
-  // facts said the letters landed under the coarse floor). Everything
-  // readable is still kept — this is an invitation, never a refusal.
-  const COARSE_MSG = 'This photo is a little far away, so your letters ' +
-    'look tiny to me — I kept every one I could read. Come a bit closer, ' +
-    'or use a photo from a phone, and I’ll see every curve.';
-
   const state = {
-    stage: 'idle',      // idle · sheet · armed · reading · alphabet · test
+    stage: 'idle',      // idle · grid · armed · reading · check · test
     armed: false,
-    retakeLine: null,
-    lines: null,        // the kept per-line read results (merged across retakes)
-    samples: null,      // Map ch → best sample
-    capture: null,      // hwRead's capture facts (anchors, tilts, x-height)
+    letter: null,       // the tapped tile's letter while armed / checking
+    samples: new Map(), // ch → hwFont-ready sample (normalized)
+    glyphs: new Map(),  // ch → the kept native-res glyph {mask,w,h,parts}
+    check: null,        // the check screen's working state
     font: null,         // {buffer, report}
-    builds: 0,
-    sheetDrawn: null
+    builds: 0
   };
   window.__hw = state;
+  state.live = HWLetterLive.state;   // the developer seam sees the loop
 
   function log(msg) {
     console.log('[hw] ' + msg);
@@ -74,306 +71,24 @@
     $(step).classList.add('here');
   }
 
-  // ---- the cards (two printed pages: three cards, then two) ------------------
-  function showSheet() {
-    state.sheetDrawn = [HWSheet.draw($('hwSheetCanvas1'), 640, 0),
-                        HWSheet.draw($('hwSheetCanvas2'), 640, 1)];
-    HWSheet.draw($('hwPrintCanvas1'), 1600, 0); // the printable copies, crisp
-    HWSheet.draw($('hwPrintCanvas2'), 1600, 1); // — one A4 page each
-    $('hwQuietSheet').style.display = 'none';
-    state.stage = 'sheet';
-    go('stepHwSheet');
-  }
-  $('hwEntryBtn').addEventListener('click', showSheet);
-  $('hwPrintBtn').addEventListener('click', () => window.print());
-  $('hwSheetBack').addEventListener('click', () => { state.stage = 'idle'; go('stepCapture'); });
-
-  // ONE camera, TWO framings (field finding: "currently am getting
-  // confused wether am generating font or art"). The shared capture
-  // machinery wears each journey's own words: while the handwriting
-  // journey is armed, the title, the drop words and the camera line all
-  // say LETTERS; disarmed, they say DRAWING again, byte for byte — the
-  // defaults are read from the page itself so the two cannot drift.
-  const FRAMING = {
-    title: $('captureTitle').textContent,
-    drop: $('dropWords').textContent,
-    camera: $('cameraNote').textContent
-  };
-  const HW_FRAMING = {
-    title: '✍️ My Handwriting — show me your cards',
-    drop: 'Drop a photo of one written card here',
-    camera: 'Show me one card at a time — any order, just one card in the picture.'
-  };
-  function setFraming(hw) {
-    const f = hw ? HW_FRAMING : FRAMING;
-    $('captureTitle').textContent = f.title;
-    $('dropWords').textContent = f.drop;
-    $('cameraNote').textContent = f.camera;
-    document.body.classList.toggle('hw-armed', hw);
+  function reduced() {
+    return window.matchMedia &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   }
 
-  function arm(retakeLine) {
-    state.armed = true;
-    state.retakeLine = (retakeLine == null ? null : retakeLine);
-    state.stage = 'armed';
-    HWLive.reset();   // each arming is a fresh sweep — nothing stale ticks
-    const banner = $('hwArmed');
-    $('hwArmedText').textContent = state.retakeLine == null
-      ? 'Show me your cards one at a time — a photo of one card, or open the camera and hold each card up.'
-      : 'Show me card ' + (state.retakeLine + 1) + ' once more — up close with the camera, or a fresh photo of just that card.';
-    banner.style.display = 'block';
-    setFraming(true);
-    go('stepCapture');
-  }
-  function disarm() {
-    state.armed = false;
-    stopLive();
-    $('hwArmed').style.display = 'none';
-    setFraming(false);
-  }
-  $('hwWroteBtn').addEventListener('click', () => arm(null));
-  $('hwDisarmBtn').addEventListener('click', () => {
-    const hadLines = !!state.lines;
-    disarm();
-    if (state.retakeLine != null && hadLines) { state.stage = 'alphabet'; go('stepHwLetters'); }
-    else showSheet();
-  });
-
-  // The existing capture entry, unchanged, is the way in: when a photo
-  // lands while armed, app.js steps to the claim as it always does and
-  // this observer takes over from there.
-  new MutationObserver(() => {
-    if (!state.armed) return;
-    if (!$('stepClaim').classList.contains('here')) return;
-    disarm();
-    const photo = window.__bia && window.__bia.photo;
-    if (photo) readSheet(photo);
-  }).observe($('stepClaim'), { attributes: true, attributeFilter: ['class'] });
-
-  // ---- free-motion camera collection (js/hwLive.js) --------------------------
-  // While the journey is armed and the camera preview runs, lines are
-  // collected one at a time, in any order — the child sweeps the camera
-  // over the sheet. The UPLOAD path never comes near this: the loop
-  // starts only when the camera panel opens while armed, and a picked or
-  // dropped photo goes through readSheet exactly as it always did.
-  state.live = HWLive.state;   // the developer seam sees the sweep
-
-  function liveSlots() {
-    const box = $('hwLiveSlots');
-    if (box.childElementCount) return;
-    for (let i = 0; i < HWSheet.LINES.length; i++) {
-      const s = document.createElement('div');
-      s.className = 'hw-live-slot';
-      s.dataset.line = String(i);
-      s.textContent = String(i + 1);
-      box.appendChild(s);
-    }
-  }
-
-  // A line counts as met if this sweep collected it OR an earlier read
-  // already holds it — a retake sweep must not present four read lines
-  // as missing.
-  function lineMet(i) {
-    if (HWLive.state.collected.has(i)) return true;
-    return !!(state.lines && state.lines[i] && state.lines[i].found);
-  }
-
-  function updateLiveUI(justMet) {
-    liveSlots();
-    let met = 0;
-    for (const s of $('hwLiveSlots').children) {
-      const i = Number(s.dataset.line);
-      const on = lineMet(i);
-      if (on) met++;
-      s.classList.toggle('met', on);
-      s.textContent = on ? '★' : String(i + 1);
-      if (justMet === i) {
-        s.classList.remove('just-met');
-        void s.offsetWidth;            // restart the little glow
-        s.classList.add('just-met');
-      }
-    }
-    $('hwLiveCount').textContent = met + ' of ' + HWSheet.LINES.length;
-    $('hwLiveDoneBtn').style.display = met > 0 ? '' : 'none';
-  }
-
-  // The one-card overlay on the live preview — the product owner's
-  // rule, verbatim: "if camera sees more, it can show a message overlay
-  // 1 question at a time". A gentle floating line over the picture; it
-  // clears by itself the moment the view holds one card (or none), and
-  // while it is up no slot ever ticks (a many-card frame reads nothing).
-  function showOneCardNote(on) {
-    $('hwOneCardNote').style.display = on ? 'block' : 'none';
-    state.overlayLog.push(on);   // developer seam: the overlay's history
-  }
-  state.overlayLog = [];
-
-  function startLive() {
-    $('hwLiveRow').style.display = 'block';
-    updateLiveUI();
-    // The readiness light rides on the live preview for exactly as long
-    // as the sweep runs (js/hwLight.js). Green is the worker's own
-    // reading verdict — a 'line' or 'sheet' frame is one that collects,
-    // which is also exactly what a pressed Take would read — so the
-    // light and the shutter can never disagree. The drawing journey
-    // never starts this loop, so it never gets a light: it has no
-    // reader, and a light there would be an invented claim.
-    HWLight.show($('cameraLive'));
-    HWLive.start($('cameraLive'), {
-      log,
-      want: state.retakeLine,
-      onVerdict: (kind) => HWLight.verdict(kind === 'line' || kind === 'sheet'),
-      onMany: showOneCardNote,
-      onCollect: (i, isNew) => {
-        log('hw live: card ' + (i + 1) + (isNew ? ' met' : ' seen again — the newer one is kept'));
-        updateLiveUI(isNew ? i : undefined);
-      },
-      onComplete: finishSweep
-    });
-    log('hw live: watching for cards, one at a time (' +
-        (state.retakeLine == null ? 'any order, all five'
-                                  : 'card ' + (state.retakeLine + 1)) + ')');
-  }
-  function stopLive() {
-    HWLive.stop();
-    HWLight.hide();
-    showOneCardNote(false);
-    $('hwLiveRow').style.display = 'none';
-  }
-
-  // The sweep is done — every line met, the wanted retake met, or the
-  // child pressed the done button with some lines still to come (an
-  // unmet line is a quiet empty slot, exactly as it already is).
-  function finishSweep() {
-    const collected = new Map(HWLive.state.collected);
-    stopLive();
-    BIACamera.closePanel();
-    disarm();
-    if (!collected.size) return;
-    const lines = [];
-    const xhs = [], tilts = [];
-    for (let i = 0; i < HWSheet.LINES.length; i++) {
-      if (collected.has(i)) {
-        const c = collected.get(i);
-        lines.push(c.line);
-        if (c.capture && c.capture.xHeightPx) xhs.push(c.capture.xHeightPx);
-        if (c.capture && c.capture.tilt != null) tilts.push(c.capture.tilt);
-      } else if (state.lines && state.lines[i]) {
-        lines.push(state.lines[i]);
-      } else {
-        lines.push({ index: i, text: HWSheet.LINES[i].text, found: false, letters: [] });
-      }
-    }
-    state.lines = lines;
-    xhs.sort((a, b) => a - b);
-    const xh = xhs.length ? xhs[(xhs.length / 2) | 0] : 0;
-    state.capture = { viaLive: true, viaAnchors: false, anchors: 0, tilts,
-                      xHeightPx: xh, xHeightMeasured: xhs.length > 0,
-                      coarse: xh > 0 && xh < HWRead.PARAMS.COARSE_XH,
-                      anis: 1, flipped: false };
-    log('hw live: sweep finished — ' + collected.size + ' line(s) from the camera' +
-        (xh ? ', x-height ~' + Math.round(xh) + 'px' : ''));
-    HWLive.reset();
-    rebuildAlphabet();
-    renderLetters();
-    state.stage = 'alphabet';
-    go('stepHwLetters');
-  }
-  $('hwLiveDoneBtn').addEventListener('click', finishSweep);
-
-  // The loop lives exactly as long as the camera panel is open while the
-  // journey is armed. camera.js already closes the panel when the step
-  // is left or the page hides, so the light discipline is one rule.
-  new MutationObserver(() => {
-    const open = $('cameraPanel').style.display === 'block';
-    if (open && state.armed) startLive();
-    else if (!open) stopLive();
-  }).observe($('cameraPanel'), { attributes: true, attributeFilter: ['style'] });
-
-  // ---- reading ---------------------------------------------------------------
-  function readSheet(photo) {
-    state.stage = 'reading';
-    go('stepHwReading');
-    const retake = state.retakeLine;
-    state.retakeLine = null;
-    setTimeout(() => {
-      let res;
-      try {
-        res = HWRead.read(photo, { log, onlyLine: retake });
-      } catch (e) {
-        console.error('[hw]', e);
-        log('hw: reading threw — ' + (e && e.message ? e.message : e));
-        res = { ok: false, reason: 'lines' };
-      }
-      if (!res.ok) {
-        // Child-safe: the cards are never "invalid" — the picture just
-        // didn't show one card yet, or it showed several at once (the
-        // one-question-at-a-time rule: strictly one card per photo).
-        const q = $('hwQuietSheet');
-        q.textContent = res.reason === 'many'
-          ? 'One card at a time, please — take a photo of just one card, ' +
-            'and show me each card in its own photo.'
-          : 'I couldn’t find a card in that picture yet — get one whole ' +
-            'card in the picture, nice and close, and take it again.';
-        q.style.display = 'block';
-        state.stage = 'sheet';
-        go('stepHwSheet');
-        return;
-      }
-      state.capture = res.capture || null;
-      if (retake != null && state.lines) {
-        if (res.lines[retake] && res.lines[retake].found) {
-          state.lines[retake] = res.lines[retake];
-          log('hw: card ' + (retake + 1) + ' replaced from the new photograph');
-        }
-      } else if (state.lines) {
-        // Photos ACCUMULATE, one card each (latest wins): a child who
-        // photographs card 1, then card 2, keeps both — exactly as the
-        // camera sweep already collects.
-        for (const ln of res.lines) {
-          if (ln.found) state.lines[ln.index] = ln;
-        }
-      } else {
-        state.lines = res.lines;
-      }
-      rebuildAlphabet();
-      renderLetters();
-      state.stage = 'alphabet';
-      go('stepHwLetters');
-    }, 40);
-  }
-
-  // ---- the alphabet ----------------------------------------------------------
-  function rebuildAlphabet() {
-    const best = new Map();
-    for (const ln of state.lines) {
-      if (!ln.found) continue;
-      for (const letter of ln.letters) {
-        if (!letter.accepted || !letter.sample) continue;
-        const prev = best.get(letter.ch);
-        if (!prev || letter.cost < prev.cost ||
-            (letter.cost === prev.cost && letter.sample.w > prev.sample.w)) {
-          best.set(letter.ch, { cost: letter.cost, sample: letter.sample, line: ln.index });
-        }
-      }
-    }
-    const samples = new Map();
-    for (const [ch, e] of best) samples.set(ch, e.sample);
-    state.samples = samples;
-  }
-
-  function drawSample(canvas, sample) {
-    const box = 56;
+  // ---- the grid --------------------------------------------------------------
+  // One drawing for a kept letter everywhere it appears — the tile and
+  // the check screen's preview share this, so they cannot disagree.
+  function drawInk(canvas, mask, w, h, box) {
     canvas.width = box; canvas.height = box;
     const ctx = canvas.getContext('2d');
-    const s = Math.min((box - 8) / sample.w, (box - 8) / sample.h);
-    const ox = (box - sample.w * s) / 2, oy = (box - sample.h * s) / 2;
+    const s = Math.min((box - 8) / w, (box - 8) / h);
+    const ox = (box - w * s) / 2, oy = (box - h * s) / 2;
     const img = ctx.createImageData(box, box);
     for (let y = 0; y < box; y++) {
       for (let x = 0; x < box; x++) {
         const sx = Math.floor((x - ox) / s), sy = Math.floor((y - oy) / s);
-        if (sx >= 0 && sx < sample.w && sy >= 0 && sy < sample.h &&
-            sample.mask[sy * sample.w + sx]) {
+        if (sx >= 0 && sx < w && sy >= 0 && sy < h && mask[sy * w + sx]) {
           const d = (y * box + x) * 4;
           img.data[d] = 231; img.data[d + 1] = 234; img.data[d + 2] = 243;
           img.data[d + 3] = 255;
@@ -383,10 +98,29 @@
     ctx.putImageData(img, 0, 0);
   }
 
-  function renderLetters() {
+  function renderTile(slot, ch) {
+    const old = slot.querySelector('canvas, .hw-slot-ref');
+    if (old) old.remove();
+    const sample = state.samples.get(ch);
+    if (sample) {
+      slot.classList.remove('empty');
+      slot.classList.add('made');
+      const c = document.createElement('canvas');
+      drawInk(c, sample.mask, sample.w, sample.h, 56);
+      slot.appendChild(c);
+    } else {
+      slot.classList.add('empty');
+      slot.classList.remove('made');
+      const r = document.createElement('div');
+      r.className = 'hw-slot-ref';
+      r.textContent = ch;
+      slot.appendChild(r);
+    }
+  }
+
+  function buildGrid() {
     const grid = $('hwGrid');
-    grid.innerHTML = '';
-    let have = 0;
+    if (grid.childElementCount) return;
     for (const group of GROUPS) {
       if (group !== GROUPS[0]) {
         const br = document.createElement('div');
@@ -397,89 +131,402 @@
         const slot = document.createElement('div');
         slot.className = 'hw-slot';
         slot.dataset.ch = ch;
+        slot.setAttribute('role', 'button');
+        slot.tabIndex = 0;
         const label = document.createElement('div');
         label.className = 'hw-slot-label';
         label.textContent = ch;
         slot.appendChild(label);
-        const sample = state.samples.get(ch);
-        if (sample) {
-          have++;
-          const c = document.createElement('canvas');
-          drawSample(c, sample);
-          slot.appendChild(c);
-        } else {
-          slot.classList.add('empty');
-          const e = document.createElement('div');
-          e.className = 'hw-slot-empty';
-          slot.appendChild(e);
-        }
+        slot.addEventListener('click', () => arm(ch));
+        slot.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); arm(ch); }
+        });
         grid.appendChild(slot);
+        renderTile(slot, ch);
       }
     }
-    $('hwGridNote').textContent = have === ALPHABET.length
-      ? 'Every letter is here — these are all yours.'
-      : 'An empty box is a letter I haven’t met yet. You can write its card once more, or build the font without it — words will borrow a plain letter there.';
-
-    // Sheet-level joined-up: when MOST read lines look joined the child
-    // writes joined-up throughout, so say it ONCE, gently, up front —
-    // and keep the per-line rows generic rather than four copies of the
-    // same sentence.
-    const found = state.lines.filter((ln) => ln.found);
-    const joinedLines = found.filter((ln) => ln.joined);
-    const sheetJoined = found.length > 0 &&
-      joinedLines.length >= Math.max(2, Math.ceil(found.length * 0.6));
-    const joinedNote = $('hwJoinedNote');
-    joinedNote.textContent = JOINED_SHEET_MSG;
-    joinedNote.style.display = sheetJoined ? 'block' : 'none';
-
-    // Coarse photo: the letters read, but honestly small on the camera.
-    const coarseNote = $('hwCoarseNote');
-    coarseNote.textContent = COARSE_MSG;
-    coarseNote.style.display = state.capture && state.capture.coarse ? 'block' : 'none';
-
-    const list = $('hwLineList');
-    list.innerHTML = '';
-    for (const ln of state.lines) {
-      const row = document.createElement('div');
-      row.className = 'hw-linerow';
-      const txt = document.createElement('span');
-      if (ln.found && ln.joined && !sheetJoined) {
-        row.classList.add('joined');
-        txt.textContent = 'Card ' + (ln.index + 1) + ' · “' + ln.text + '” · ' +
-          JOINED_LINE_MSG;
-      } else if (ln.found) {
-        txt.textContent = 'Card ' + (ln.index + 1) + ' · “' + ln.text + '” · ' +
-          ln.accepted + ' of ' + ln.expected + ' letters';
-      } else {
-        txt.textContent = 'Card ' + (ln.index + 1) + ' · “' + ln.text + '” · not read yet';
-      }
-      row.appendChild(txt);
-      const btn = document.createElement('button');
-      btn.className = 'ghost';
-      // One wording for both ways back: write it again and photograph
-      // it, or hold the same card up to the camera once more.
-      btn.textContent = 'Show me this card once more';
-      btn.dataset.line = String(ln.index);
-      btn.addEventListener('click', () => arm(ln.index));
-      row.appendChild(btn);
-      list.appendChild(row);
-    }
-    $('hwBuildBtn').disabled = state.samples.size === 0;
   }
 
-  $('hwNewSheetBtn').addEventListener('click', () => {
-    state.lines = null; state.samples = null; state.capture = null;
-    state.font = null; state.builds = 0;
-    if (previewFace) { document.fonts.delete(previewFace); previewFace = null; }
-    showSheet();
+  function renderGrid() {
+    buildGrid();
+    for (const slot of document.querySelectorAll('#hwGrid .hw-slot')) {
+      renderTile(slot, slot.dataset.ch);
+    }
+    const have = state.samples.size;
+    $('hwGridNote').textContent = have === 0
+      ? 'Tap any letter, write it big anywhere you like, and show it to me — I’ll catch it.'
+      : have === ALPHABET.length
+        ? 'Every letter is here — all yours. Tap any of them to make it again.'
+        : have + ' of ' + ALPHABET.length + ' letters are yours so far. ' +
+          'Tap an empty letter to add it — or one of yours to make it again.';
+    $('hwBuildBtn').disabled = have === 0;
+  }
+
+  function showGrid() {
+    renderGrid();
+    $('hwLetterQuiet').style.display = 'none';
+    state.stage = 'grid';
+    state.letter = null;
+    go('stepHwGrid');
+  }
+  $('hwEntryBtn').addEventListener('click', showGrid);
+  $('hwGridBack').addEventListener('click', () => { state.stage = 'idle'; go('stepCapture'); });
+
+  // ---- arming the shared capture entry ---------------------------------------
+  // ONE camera, TWO framings (the field finding that named the two-block
+  // entry): while the letter journey is armed, the title, the drop words
+  // and the camera line all say THIS LETTER; disarmed, they say DRAWING
+  // again, byte for byte — the defaults are read from the page itself so
+  // the two cannot drift.
+  const FRAMING = {
+    title: $('captureTitle').textContent,
+    drop: $('dropWords').textContent,
+    camera: $('cameraNote').textContent
+  };
+  function setFraming(letter) {
+    if (letter != null) {
+      $('captureTitle').textContent = '✍️ My Handwriting — show me your ' + letter;
+      $('dropWords').textContent = 'Drop a photo of your ' + letter + ' here';
+      $('cameraNote').textContent = 'Hold your ' + letter + ' up, nice and big — ' +
+        'when the light shines green, I take the picture myself.';
+    } else {
+      $('captureTitle').textContent = FRAMING.title;
+      $('dropWords').textContent = FRAMING.drop;
+      $('cameraNote').textContent = FRAMING.camera;
+    }
+    document.body.classList.toggle('hw-armed', letter != null);
+  }
+
+  function arm(ch) {
+    state.armed = true;
+    state.letter = ch;
+    state.stage = 'armed';
+    HWLetterLive.reset();      // each arming is a fresh loop — nothing stale
+    const banner = $('hwArmed');
+    $('hwArmedRef').textContent = ch;
+    $('hwArmedText').textContent = 'Write a big ' + ch +
+      ' anywhere you like — dark pen or pencil — and hold it up to the ' +
+      'camera, or drop a photo of it. The picture takes itself when your ' +
+      'letter is ready.';
+    banner.style.display = 'block';
+    $('hwLetterQuiet').style.display = 'none';
+    setFraming(ch);
+    go('stepCapture');
+  }
+  function disarm() {
+    state.armed = false;
+    stopLive();
+    $('hwArmed').style.display = 'none';
+    setFraming(null);
+  }
+  $('hwDisarmBtn').addEventListener('click', () => { disarm(); showGrid(); });
+
+  // The existing capture entry, unchanged, is the way in: when a photo
+  // lands while armed, app.js steps to the claim as it always does and
+  // this observer takes over from there.
+  new MutationObserver(() => {
+    if (!state.armed) return;
+    if (!$('stepClaim').classList.contains('here')) return;
+    const ch = state.letter;
+    disarm();
+    const photo = window.__bia && window.__bia.photo;
+    if (photo) readPhoto(ch, photo);
+  }).observe($('stepClaim'), { attributes: true, attributeFilter: ['class'] });
+
+  // ---- the live camera: green takes the picture ------------------------------
+  // The one-letter overlay on the live preview — a gentle floating line;
+  // it clears by itself the moment the view holds one letter (or none).
+  function showOneLetterNote(on) {
+    $('hwOneLetterNote').style.display = on ? 'block' : 'none';
+  }
+
+  // A small quiet capture cue: the picture settles — a soft white breath
+  // over the video, never a shutter sound, never scanning theatrics.
+  function captureCue() {
+    if (reduced()) return;
+    const v = $('cameraLive');
+    const r = v.getBoundingClientRect();
+    if (!(r.width > 0)) return;
+    const cue = document.createElement('div');
+    Object.assign(cue.style, {
+      position: 'fixed', left: r.left + 'px', top: r.top + 'px',
+      width: r.width + 'px', height: r.height + 'px',
+      background: 'rgba(255,255,255,.55)', borderRadius: '6px',
+      pointerEvents: 'none', zIndex: '9999',
+      transition: 'opacity .4s ease', opacity: '1'
+    });
+    cue.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(cue);
+    requestAnimationFrame(() => { cue.style.opacity = '0'; });
+    setTimeout(() => cue.remove(), 500);
+  }
+
+  function startLive() {
+    // The readiness light rides on the live preview for exactly as long
+    // as the loop runs (js/hwLight.js). Green is the worker's own
+    // reading verdict — a 'letter' frame is one that would capture,
+    // which is also exactly what a pressed Take would read — so the
+    // light and the shutter can never disagree. The drawing journey
+    // never starts this loop, so it never gets a light: it has no
+    // reader, and a light there would be an invented claim.
+    HWLight.show($('cameraLive'));
+    HWLetterLive.start($('cameraLive'), {
+      log,
+      onVerdict: (kind) => HWLight.verdict(kind === 'letter'),
+      onMany: showOneLetterNote,
+      onCapture: autoTaken
+    });
+    log('hw: watching for your ' + state.letter +
+        ' — green takes the picture by itself');
+  }
+  function stopLive() {
+    HWLetterLive.stop();
+    HWLight.hide();
+    showOneLetterNote(false);
+  }
+
+  function autoTaken(glyph) {
+    const ch = state.letter;
+    captureCue();
+    stopLive();
+    BIACamera.closePanel();
+    disarm();
+    log('hw: the light held green — picture taken by itself (' +
+        glyph.w + 'x' + glyph.h + 'px of ink, ' + glyph.parts + ' part(s))');
+    enterCheck(ch, glyph);
+  }
+
+  // The loop lives exactly as long as the camera panel is open while the
+  // journey is armed. camera.js already closes the panel when the step
+  // is left or the page hides, so the light discipline is one rule.
+  new MutationObserver(() => {
+    const open = $('cameraPanel').style.display === 'block';
+    if (open && state.armed) startLive();
+    else if (!open) stopLive();
+  }).observe($('cameraPanel'), { attributes: true, attributeFilter: ['style'] });
+
+  // ---- reading an uploaded / taken photo -------------------------------------
+  function refuseKindly(ch, why) {
+    // Child-safe: the letter is never "wrong" — the picture just didn't
+    // show one clear letter yet. The child stays armed for the same
+    // letter and simply tries again.
+    const q = $('hwLetterQuiet');
+    q.textContent = why === 'many'
+      ? 'One letter at a time, please — show me just your ' + ch +
+        ', on its own, and I’ll catch it.'
+      : why === 'small'
+        ? 'Your ' + ch + ' looks tiny from here — write it bigger, or ' +
+          'bring it closer, and show me again.'
+        : 'I couldn’t find your ' + ch + ' in that picture yet — write it ' +
+          'big and dark on plain paper, and show me again.';
+    arm(ch);
+    q.style.display = 'block';
+  }
+
+  function readPhoto(ch, photo) {
+    state.stage = 'reading';
+    $('hwLetterQuiet').style.display = 'none';
+    go('stepHwReading');
+    setTimeout(() => {
+      let res;
+      try {
+        res = HWLetter.read(photo, { log });
+      } catch (e) {
+        console.error('[hw]', e);
+        log('hw: reading threw — ' + (e && e.message ? e.message : e));
+        res = { kind: 'nothing', why: 'blank' };
+      }
+      if (res.kind !== 'letter') {
+        refuseKindly(ch, res.kind === 'many' ? 'many' : res.why);
+        return;
+      }
+      enterCheck(ch, res.glyph);
+    }, 40);
+  }
+
+  // ---- check it: the pencil, the eraser, the keep ----------------------------
+  // The kept ink is edited at CAPTURE resolution with breathing room on
+  // every side, so a missing dot can be drawn ABOVE the ink the camera
+  // found. On Keep the mask is trimmed back to its ink.
+  function enterCheck(ch, glyph) {
+    const pad = Math.max(24, Math.round(0.3 * Math.max(glyph.w, glyph.h)));
+    const w = glyph.w + 2 * pad, h = glyph.h + 2 * pad;
+    const mask = new Uint8Array(w * h);
+    for (let y = 0; y < glyph.h; y++) {
+      for (let x = 0; x < glyph.w; x++) {
+        if (glyph.mask[y * glyph.w + x]) mask[(y + pad) * w + (x + pad)] = 1;
+      }
+    }
+    state.check = { ch, mask, w, h, tool: 'pencil',
+                    brush: Math.max(3, Math.round(Math.max(glyph.w, glyph.h) / 45)),
+                    edits: 0 };
+    state.letter = ch;
+    $('hwCheckRef').textContent = ch;
+    $('hwCheckWords').textContent = 'Here’s your ' + ch +
+      ' — does it look right? Pencil draws a missing bit back in, the ' +
+      'eraser cleans a smudge away.';
+    $('hwCheckQuiet').style.display = 'none';
+    setTool('pencil');
+    paintCheck();
+    paintPreview();
+    state.stage = 'check';
+    go('stepHwCheck');
+  }
+
+  function paintCheck() {
+    const c = $('hwCheckCanvas');
+    const k = state.check;
+    c.width = k.w; c.height = k.h;
+    const ctx = c.getContext('2d');
+    const img = ctx.createImageData(k.w, k.h);
+    for (let i = 0; i < k.mask.length; i++) {
+      const d = i * 4;
+      if (k.mask[i]) {
+        img.data[d] = 29; img.data[d + 1] = 36; img.data[d + 2] = 51;
+      } else {
+        img.data[d] = 253; img.data[d + 1] = 252; img.data[d + 2] = 248;
+      }
+      img.data[d + 3] = 255;
+    }
+    ctx.putImageData(img, 0, 0);
+  }
+
+  function trimmed() {
+    const k = state.check;
+    let x0 = k.w, x1 = -1, y0 = k.h, y1 = -1;
+    for (let y = 0; y < k.h; y++) {
+      for (let x = 0; x < k.w; x++) {
+        if (k.mask[y * k.w + x]) {
+          if (x < x0) x0 = x; if (x > x1) x1 = x;
+          if (y < y0) y0 = y; if (y > y1) y1 = y;
+        }
+      }
+    }
+    if (x1 < 0) return null;
+    const w = x1 - x0 + 1, h = y1 - y0 + 1;
+    const mask = new Uint8Array(w * h);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        mask[y * w + x] = k.mask[(y + y0) * k.w + (x + x0)];
+      }
+    }
+    return { mask, w, h };
+  }
+
+  // The preview IS the tile, by construction: it draws the same
+  // normalized sample Keep would store, through the same drawInk the
+  // grid uses — so what the child sees here is byte-for-byte what the
+  // tile will show.
+  function paintPreview() {
+    const t = trimmed();
+    const c = $('hwCheckPreview');
+    if (!t) {
+      c.width = 56; c.height = 56;
+      return;
+    }
+    const s = HWLetter.normalize(
+      { mask: t.mask, w: t.w, h: t.h,
+        parts: HWLetter.partsOf(t.mask, t.w, t.h) },
+      state.check.ch);
+    drawInk(c, s.mask, s.w, s.h, 56);
+  }
+
+  function setTool(tool) {
+    if (!state.check) return;
+    state.check.tool = tool;
+    $('hwFixPencil').classList.toggle('on', tool === 'pencil');
+    $('hwFixEraser').classList.toggle('on', tool === 'eraser');
+  }
+  $('hwFixPencil').addEventListener('click', () => setTool('pencil'));
+  $('hwFixEraser').addEventListener('click', () => setTool('eraser'));
+
+  function checkPoint(ev) {
+    const c = $('hwCheckCanvas');
+    const r = c.getBoundingClientRect();
+    return { x: (ev.clientX - r.left) * (c.width / r.width),
+             y: (ev.clientY - r.top) * (c.height / r.height) };
+  }
+  function daub(x, y) {
+    const k = state.check;
+    const on = k.tool === 'pencil' ? 1 : 0;
+    const r = k.tool === 'pencil' ? k.brush : Math.round(k.brush * 1.6);
+    const r2 = r * r;
+    for (let dy = -r; dy <= r; dy++) {
+      const yy = Math.round(y) + dy;
+      if (yy < 0 || yy >= k.h) continue;
+      for (let dx = -r; dx <= r; dx++) {
+        if (dx * dx + dy * dy > r2) continue;
+        const xx = Math.round(x) + dx;
+        if (xx < 0 || xx >= k.w) continue;
+        k.mask[yy * k.w + xx] = on;
+      }
+    }
+  }
+  let fixing = false;
+  let lastPt = null;
+  $('hwCheckCanvas').addEventListener('pointerdown', (ev) => {
+    if (state.stage !== 'check') return;
+    fixing = true;
+    state.check.edits++;
+    $('hwCheckCanvas').setPointerCapture(ev.pointerId);
+    lastPt = checkPoint(ev);
+    daub(lastPt.x, lastPt.y);
+    paintCheck();
   });
+  $('hwCheckCanvas').addEventListener('pointermove', (ev) => {
+    if (!fixing) return;
+    const p = checkPoint(ev);
+    // walk the segment so a fast stroke leaves no gaps
+    const steps = Math.max(1, Math.ceil(Math.hypot(p.x - lastPt.x, p.y - lastPt.y) /
+                                        Math.max(1, state.check.brush / 2)));
+    for (let i = 1; i <= steps; i++) {
+      daub(lastPt.x + (p.x - lastPt.x) * i / steps,
+           lastPt.y + (p.y - lastPt.y) * i / steps);
+    }
+    lastPt = p;
+    paintCheck();
+  });
+  const endFix = () => {
+    if (!fixing) return;
+    fixing = false;
+    lastPt = null;
+    paintPreview();
+  };
+  $('hwCheckCanvas').addEventListener('pointerup', endFix);
+  $('hwCheckCanvas').addEventListener('pointercancel', endFix);
+
+  $('hwKeepBtn').addEventListener('click', () => {
+    const k = state.check;
+    const t = trimmed();
+    if (!t) {
+      const q = $('hwCheckQuiet');
+      q.textContent = 'There’s nothing here yet — draw your ' + k.ch +
+        ' back in with the pencil, or show it to me again.';
+      q.style.display = 'block';
+      return;
+    }
+    const glyph = { mask: t.mask, w: t.w, h: t.h,
+                    parts: HWLetter.partsOf(t.mask, t.w, t.h) };
+    state.glyphs.set(k.ch, glyph);
+    state.samples.set(k.ch, HWLetter.normalize(glyph, k.ch));
+    log('hw: ' + k.ch + ' is yours — kept at ' + t.w + 'x' + t.h + 'px' +
+        (k.edits ? ' after ' + k.edits + ' touch-up stroke(s)' : ''));
+    state.check = null;
+    showGrid();
+  });
+  $('hwRetryBtn').addEventListener('click', () => {
+    const ch = state.check.ch;
+    state.check = null;
+    arm(ch);
+  });
+  $('hwCheckBack').addEventListener('click', () => { state.check = null; showGrid(); });
 
   // ---- the font ---------------------------------------------------------------
   let previewFace = null;
 
   $('hwBuildBtn').addEventListener('click', async () => {
     try {
-      state.font = HWFont.build(state.samples, state.lines, { log });
+      state.font = HWFont.build(state.samples, null, { log });
       state.builds++;
       if (previewFace) { document.fonts.delete(previewFace); previewFace = null; }
       previewFace = new FontFace('My Handwriting Preview', state.font.buffer);
@@ -509,8 +556,7 @@
     log('hw: "My Handwriting.ttf" handed over (' + state.font.report.bytes + ' bytes)');
   });
 
-  $('hwBackToLetters').addEventListener('click', () => { state.stage = 'alphabet'; go('stepHwLetters'); });
-  $('hwTestNewSheet').addEventListener('click', () => $('hwNewSheetBtn').click());
+  $('hwBackToLetters').addEventListener('click', showGrid);
 
-  log('my handwriting ready (sheet · capture · letters · font)');
+  log('my handwriting ready (grid · show me · check it · try your letters)');
 })();
