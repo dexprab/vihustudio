@@ -204,8 +204,11 @@
     HWLetterLive.reset();      // each arming is a fresh loop — nothing stale
     const banner = $('hwArmed');
     $('hwArmedRef').textContent = ch;
+    // Any paper, any pen — the governing principle: it is the reader's
+    // job to figure the colours out, never the child's job to own a
+    // dark pen and white paper.
     $('hwArmedText').textContent = 'Write a big ' + ch +
-      ' anywhere you like — dark pen or pencil — and hold it up to the ' +
+      ' anywhere you like — any paper, any pen — and hold it up to the ' +
       'camera, or drop a photo of it. The picture takes itself when your ' +
       'letter is ready.';
     banner.style.display = 'block';
@@ -272,6 +275,12 @@
     HWLight.show($('cameraLive'));
     HWLetterLive.start($('cameraLive'), {
       log,
+      ch: state.letter,                    // the tapped identity, for the
+                                           //   reader's sliver class rule
+      rect: () => BIACamera.analysisRect($('cameraLive')),
+                                           // the small letter window: the
+                                           //   loop reads exactly the crop
+                                           //   the child sees
       onVerdict: (kind) => HWLight.verdict(kind === 'letter'),
       onMany: showOneLetterNote,
       onCapture: autoTaken
@@ -317,8 +326,11 @@
       : why === 'small'
         ? 'Your ' + ch + ' looks tiny from here — write it bigger, or ' +
           'bring it closer, and show me again.'
-        : 'I couldn’t find your ' + ch + ' in that picture yet — write it ' +
-          'big and dark on plain paper, and show me again.';
+        : why === 'faint'
+          ? 'I can only just see your ' + ch + ' on this paper — a ' +
+            'darker pen would help, then show me again.'
+          : 'I couldn’t find your ' + ch + ' in that picture yet — write it ' +
+            'big and clear, and show me again.';
     arm(ch);
     q.style.display = 'block';
   }
@@ -330,7 +342,9 @@
     setTimeout(() => {
       let res;
       try {
-        res = HWLetter.read(photo, { log });
+        // The tapped identity rides along: the reader still recognises
+        // nothing, but the sliver rule may use the letter's CLASS.
+        res = HWLetter.read(photo, { log, ch });
       } catch (e) {
         console.error('[hw]', e);
         log('hw: reading threw — ' + (e && e.message ? e.message : e));
