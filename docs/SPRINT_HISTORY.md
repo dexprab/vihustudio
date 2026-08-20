@@ -4368,3 +4368,33 @@ too far" cannot honestly be told from "nothing found", so the generic
 kind refusal stands; a real printed page held beside a card (a book)
 remains the one theoretical phantom; real cards under real light
 remain the field test.
+
+## The Readiness Light — Green When This Very View Would Read
+
+Asked for by the product owner: *"can we get red and green marker on
+camera itself to understand when is it reading the data correctly and
+should be clicked?"* A small soft light now sits on the live camera
+picture in the handwriting journey (`tools/bring-it-alive/js/hwLight.js`)
+— green exactly when the current analysed frame reads at the full
+standard, red otherwise. Green ⇔ "pressing Take would read" is an
+assertion, not a claim: the suite runs the still reader on the same
+live frame across the fixture ladder and demands agreement — zero
+disagreements (readable card green; drawing red; three cards red with
+the one-card overlay intact; too-far card red). The seam sits one step
+outside the timer's: the light is meaningful only where a reader
+exists, so the handwriting host offers it entirely — `camera.js` is
+untouched, and the drawing camera keeps its plain capture by
+construction. Never a scanner: no brackets, reticle, sweep, percentage
+or text; colour-blind-safe by shape (green filled glow, red hollow
+ring); 0.45s cross-fade, plain switch under prefers-reduced-motion;
+rect-tracked to the video ≤1px through resize, hidden over a taken
+still, born red on every fresh view. Debounce measured: green instant
+on a reading verdict (the reader has no false yes), yields after two
+consecutive refusals or a 1200ms silent-loop hold, so one wobble frame
+never blinks it; end-to-end green→red 1045ms after the last readable
+frame, and the light keeps updating through a timer countdown. Suites:
+base 191/191, handwriting 152→178/178 (26 HW-L checks). Disclosed: red
+latency is bounded by the ~600ms verdict cadence; the light reflects
+the last analysed frame, so Take can be one cadence newer; verified on
+seeded fixtures — the real-room pass is the field test, with
+screenshots 24/25 as its reference.
