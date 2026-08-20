@@ -106,6 +106,21 @@
               border-radius:8px; padding:.7rem 1rem; margin:.8rem 0;
               font:400 .82rem/1.6 var(--mono); white-space:pre-wrap; }
 
+  /* MY HANDWRITING, free motion — the five quiet slots that light up as
+     lines are met. Deliberately NOT a scanner: no brackets, no reticle,
+     no sweep line, no percentage — five little stars waiting to shine. */
+  .hw-live-slots { display:flex; gap:10px; margin:.4rem 0; }
+  .hw-live-slot { width:36px; height:36px; border:1px solid var(--line);
+                  border-radius:50%; display:flex; align-items:center;
+                  justify-content:center; color:var(--faint);
+                  background:var(--panel); font-size:.85rem; }
+  .hw-live-slot.met { color:var(--gold); border-color:var(--gold); }
+  .hw-live-slot.just-met { animation: hwmet .9s ease-out; }
+  @keyframes hwmet {
+    0% { box-shadow: 0 0 0 0 rgba(223,177,105,.7); }
+    100% { box-shadow: 0 0 0 12px rgba(223,177,105,0); }
+  }
+
   /* MY HANDWRITING — the writing sheet, the alphabet grid, the try box. */
   #hwSheetCanvas { display:block; background:#fff; border-radius:6px; max-width:100%; }
   .hw-grid { display:grid; grid-template-columns:repeat(9, 64px); gap:8px; margin-top:.8rem; }
@@ -191,6 +206,21 @@
                  style="display:block; width:640px; max-width:100%; border-radius:6px;"></video>
           <canvas id="cameraShot"
                  style="display:none; width:640px; max-width:100%; border-radius:6px;"></canvas>
+        </div>
+        <!-- MY HANDWRITING, free motion (js/hwLive.js): while the journey
+             is armed and the preview runs, lines are collected one at a
+             time, in any order. Five quiet slots that light up as lines
+             are met — never a percentage, no brackets, no reticle, no
+             sweeping anything: nothing that looks like scanning. -->
+        <div id="hwLiveRow" style="display:none">
+          <p class="note" id="hwLiveWords">Show me your sheet — one line up
+             close is best, or the whole page at once. Lines light up as I
+             meet them.</p>
+          <div class="hw-live-slots" id="hwLiveSlots"></div>
+          <p class="note" id="hwLiveCount"></p>
+          <div class="row">
+            <button id="hwLiveDoneBtn" style="display:none">That’s everything — show me my letters</button>
+          </div>
         </div>
         <div class="row">
           <button id="cameraTakeBtn">Take the picture</button>
@@ -447,6 +477,7 @@
 <script src="vendor/opentype.min.js"></script>
 <script src="js/hwSheet.js"></script>
 <script src="js/hwRead.js"></script>
+<script src="js/hwLive.js"></script>
 <script src="js/hwFont.js"></script>
 <script src="js/hwApp.js"></script>
 </body>
