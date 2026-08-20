@@ -413,6 +413,10 @@
     return { mask, w, h };
   }
 
+  // The preview IS the tile, by construction: it draws the same
+  // normalized sample Keep would store, through the same drawInk the
+  // grid uses — so what the child sees here is byte-for-byte what the
+  // tile will show.
   function paintPreview() {
     const t = trimmed();
     const c = $('hwCheckPreview');
@@ -420,7 +424,11 @@
       c.width = 56; c.height = 56;
       return;
     }
-    drawInk(c, t.mask, t.w, t.h, 56);
+    const s = HWLetter.normalize(
+      { mask: t.mask, w: t.w, h: t.h,
+        parts: HWLetter.partsOf(t.mask, t.w, t.h) },
+      state.check.ch);
+    drawInk(c, s.mask, s.w, s.h, 56);
   }
 
   function setTool(tool) {

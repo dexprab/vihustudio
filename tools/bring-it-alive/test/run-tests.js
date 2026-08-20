@@ -2365,15 +2365,14 @@ function check(name, cond, detail) {
         'overrides it', c9p.wide);
   await cam.click('#cameraCloseBtn');
 
-  // ---- C10: My Handwriting opens the camera WIDE — a card is wide -----------
+  // ---- C10: My Handwriting opens the camera WIDE — a letter is square-ish ---
   // A fresh page (nobody has pressed the shape button): arming the
-  // handwriting journey keeps the camera WIDE — the printable is five
-  // reading cards now, and a card is one wide line with a star at each
-  // end (the journey preferred TALL when it photographed the whole
-  // portrait sheet; the card design flipped it). The child's own toggle
-  // still stands to go tall. The drawing journey's wide default is C4/C5's
-  // own assertion, unchanged above.
-  console.log('\n-- C10: My Handwriting keeps the camera wide — a card is wide');
+  // letters journey (tapping a tile) keeps the camera WIDE — a single
+  // letter is roughly square, wide keeps every native pixel, and the
+  // spare width is aiming room (identity is the tap, not the framing).
+  // The child's own toggle still stands to go tall. The drawing
+  // journey's wide default is C4/C5's own assertion, unchanged above.
+  console.log('\n-- C10: My Handwriting keeps the camera wide — a letter is square-ish');
   const hwCam = await camBrowser.newPage({ viewport: { width: 1100, height: 840 } });
   const hwCamErrors = [];
   hwCam.on('pageerror', (e) => hwCamErrors.push(String(e)));
@@ -2381,7 +2380,9 @@ function check(name, cond, detail) {
   await hwCam.goto(BASE);
   await hwCam.waitForFunction(() => window.__bia && window.__hw);
   await hwCam.click('#hwEntryBtn');
-  await hwCam.click('#hwWroteBtn');           // arms the journey
+  await hwCam.waitForSelector('#stepHwGrid.here');
+  await hwCam.click('#hwGrid .hw-slot[data-ch="R"]');   // arms the journey
+  await hwCam.waitForSelector('#stepCapture.here');
   await hwCam.click('#cameraBtn');
   await hwCam.waitForFunction(() => {
     const v = document.getElementById('cameraLive');
@@ -2395,8 +2396,22 @@ function check(name, cond, detail) {
              label: btn ? btn.textContent : '(missing)',
              armed: window.__hw.armed === true };
   });
-  check('C10 armed for handwriting, the camera opens WIDE with nothing pressed — a card is wide',
+  check('C10 armed for a letter, the camera opens WIDE with nothing pressed — full native frame, aiming room free',
     c10.armed && c10.wide && /Tall page/.test(c10.label), JSON.stringify(c10.label));
+  // The toggle is exercised UNARMED (same session, same preference):
+  // armed, the live loop would auto-capture this view mid-assertion —
+  // that path is the handwriting suite's own C-scenario.
+  await hwCam.click('#cameraCloseBtn');
+  await hwCam.click('#hwDisarmBtn');
+  await hwCam.waitForSelector('#stepHwGrid.here');
+  await hwCam.click('#hwGridBack');
+  await hwCam.waitForSelector('#stepCapture.here');
+  await hwCam.click('#cameraBtn');
+  await hwCam.waitForFunction(() => {
+    const v = document.getElementById('cameraLive');
+    return document.getElementById('cameraPanel').style.display === 'block' &&
+           v.videoWidth > 0;
+  }, null, { timeout: 30000 });
   await hwCam.click('#cameraPanel .bia-camera-shape');
   await hwCam.waitForFunction(() => {
     const v = document.getElementById('cameraLive');
@@ -2617,10 +2632,14 @@ function check(name, cond, detail) {
   await cam.evaluate(() => BIACamera._setTimeScale(1));
   await cam.click('#cameraCloseBtn');
 
-  // The count does not fight the handwriting live sweep: while a count
-  // runs in the armed journey, the sweep keeps sampling frames exactly
-  // as before — the overlay is inert and camera.js never idles the loop.
-  console.log('\n-- C11: the count and the live sweep share the camera');
+  // The count and the letter loop share the camera: while a count runs
+  // in the armed journey the loop keeps sampling — and when steady
+  // green completes mid-count, the auto-capture wins the camera
+  // CLEANLY: the check screen opens, the count stands down with the
+  // panel, no second picture. (The drawing feed reads as one ink
+  // cluster, so the auto-capture genuinely fires here — identity is
+  // the tap, and the check screen is where a child would say no.)
+  console.log('\n-- C11: the count and the letter loop share the camera');
   const hw2 = await camBrowser.newPage({ viewport: { width: 1100, height: 840 } });
   const hw2Errors = [];
   hw2.on('pageerror', (e) => hw2Errors.push(String(e)));
@@ -2628,32 +2647,37 @@ function check(name, cond, detail) {
   await hw2.goto(BASE);
   await hw2.waitForFunction(() => window.__bia && window.__hw);
   await hw2.click('#hwEntryBtn');
-  await hw2.click('#hwWroteBtn');              // arms the journey
+  await hw2.waitForSelector('#stepHwGrid.here');
+  await hw2.click('#hwGrid .hw-slot[data-ch="R"]');   // arms the journey
+  await hw2.waitForSelector('#stepCapture.here');
   await hw2.click('#cameraBtn');
   await hw2.waitForFunction(() => {
     const v = document.getElementById('cameraLive');
     return document.getElementById('cameraPanel').style.display === 'block' &&
-           v.videoWidth > 0 && window.HWLive && HWLive.state.running;
+           v.videoWidth > 0 && window.HWLetterLive && HWLetterLive.state.running;
   }, null, { timeout: 30000 });
   await hw2.evaluate(() => BIACamera._setTimeScale(0.5));   // a 2.5s five-count
   await hw2.click('#cameraPanel .bia-camera-timer-choice[data-seconds="5"]');
-  const sweepBefore = await hw2.evaluate(() => HWLive.state.samples);
+  const sweepBefore = await hw2.evaluate(() => HWLetterLive.state.samples);
   await hw2.click('#cameraTakeBtn');
   await hw2.waitForFunction(() => !!document.querySelector('.bia-camera-count'));
-  await hw2.waitForTimeout(1600);              // mid-count, sweep time to sample
   const c11i = await hw2.evaluate((before) => ({
     counting: !!document.querySelector('.bia-camera-count'),
-    running: HWLive.state.running,
-    sampled: HWLive.state.samples > before,
-    slots: document.getElementById('hwLiveRow').style.display
+    running: HWLetterLive.state.running,
+    sampling: HWLetterLive.state.samples >= before
   }), sweepBefore);
-  check('C11 mid-count the sweep keeps collecting — running, sampling, slots up',
-    c11i.counting && c11i.running && c11i.sampled && c11i.slots === 'block',
-    JSON.stringify(c11i));
-  await hw2.waitForFunction(() =>
-    document.getElementById('cameraShot').style.display === 'block',
+  await hw2.waitForFunction(() => window.__hw.stage === 'check',
     null, { timeout: 15000 });
-  check('C11 zero page errors through the sweep-and-count camera',
+  const c11o = await hw2.evaluate(() => ({
+    countGone: !document.querySelector('.bia-camera-count'),
+    panel: document.getElementById('cameraPanel').style.display,
+    running: HWLetterLive.state.running
+  }));
+  check('C11 mid-count the loop keeps reading — and steady green wins the camera cleanly: check screen open, count stood down, panel closed',
+    c11i.counting && c11i.running && c11i.sampling &&
+    c11o.countGone && c11o.panel === 'none' && !c11o.running,
+    JSON.stringify({ midCount: c11i, after: c11o }));
+  check('C11 zero page errors through the count-and-capture camera',
     hw2Errors.length === 0, hw2Errors.slice(0, 2).join(' | '));
   await hw2.close();
   check('C11 zero page errors through the waited captures',
