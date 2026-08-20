@@ -19,22 +19,32 @@
  * The camera light never outlives its use: tracks stop the moment the
  * picture is taken (retake asks again), on Never Mind, and on page hide.
  *
- * THE FRAME HAS TWO SHAPES (product owner: "for taking handwriting pics
- * the camera needs to be portrait not landscape give a button to move
- * camera between landscape and protrait"). Child-facing they are the
- * WIDE PAGE and the TALL PAGE — one button on the live preview moves
- * between them. Wide is exactly what the camera always did: the full
- * native frame, untouched. Tall re-requests the stream with the ideals
- * swapped so hardware that CAN turn (phones, tablets) actually does;
- * hardware that stays wide anyway (laptop webcams — the sensor is
- * physically wide) gets a CENTRED CROP at TALL_ASPECT (4:5 — see the
- * constant for why it is wider than the sheet itself).
+ * THE FRAME HAS THREE SHAPES (product owner: "for taking handwriting
+ * pics the camera needs to be portrait not landscape give a button to
+ * move camera between landscape and protrait" — and later, for the
+ * letter journey: "we should minimize the camera view. we are showing
+ * single letters so it does not need a wide view"). Child-facing, the
+ * button moves between the WIDE PAGE and the TALL PAGE. Wide is
+ * exactly what the camera always did: the full native frame,
+ * untouched. Tall re-requests the stream with the ideals swapped so
+ * hardware that CAN turn (phones, tablets) actually does; hardware
+ * that stays wide anyway (laptop webcams — the sensor is physically
+ * wide) gets a CENTRED CROP at TALL_ASPECT (4:5 — see the constant for
+ * why it is wider than the sheet itself). SQUARE is the small letter
+ * window: the centred square crop of the native frame (side = the
+ * frame's short edge), shown compact — it is never offered on the
+ * toggle, only STATED by a journey through the preferred-shape seam,
+ * because one letter needs no wide view and fits a square held either
+ * way. While the stated shape is square the toggle has no job and
+ * stays away; the drawing journey's camera is untouched.
  * The preview shows exactly the crop (object-fit: cover on a box of the
  * crop's own aspect centres identically to the capture arithmetic), and
  * the captured frame is the crop region of the NATIVE stream — never a
  * CSS-sized redraw. Journeys may state a preferred shape through
- * setPreferredShape() (My Handwriting photographs a tall written
- * sheet); the child's own toggle choice wins over it for the session.
+ * setPreferredShape(); the child's own toggle choice wins over it for
+ * the session. analysisRect() names the crop region of the live native
+ * frame, so a reader analysing frames reads exactly what the child
+ * sees.
  *
  * THE PICTURE CAN WAIT (product owner: "for take photo button i need
  * 5sec and 10 sec timer"). A small three-choice control beside Take —
@@ -62,6 +72,10 @@
   let savedLiveStyle = '';  // the host's own inline styles, restored on wide
   let savedShotStyle = '';
   const PREVIEW_H = 380;    // tall preview height budget — fits both hosts
+  const SQUARE_PREVIEW = 320; // the small letter window's on-screen box:
+                            //   half the wide preview's width — compact,
+                            //   and the fixture letter (~45% of the
+                            //   square crop) still shows ~140px tall
   let timerSeconds = 0;     // 0 · 5 · 10 — the child's choice, kept for the session
   let counting = null;      // { endAt, overlay, label, shown, raf } while the count runs
   let timeScale = 1;        // test seam (_setTimeScale) — the product always runs at 1
@@ -129,16 +143,43 @@
     return { x: Math.round((vw - w) / 2), y: Math.round((vh - h) / 2), w, h };
   }
 
+  // The small letter window: the centred SQUARE crop, side = the native
+  // frame's short edge — the largest square the sensor offers, so the
+  // letter keeps every native pixel it can while the flanks (curtains,
+  // doorframes, the room) leave the picture. Exactly square on purpose:
+  // a single letter is at most ~1.4× taller than wide by its class box,
+  // a page is held either way round, and a square answers both without
+  // a toggle. object-fit: cover on a square box shows exactly this
+  // crop, the same preview honesty the tall shape already proved.
+  function squareCrop(vw, vh) {
+    const s = Math.min(vw, vh);
+    return { x: Math.round((vw - s) / 2), y: Math.round((vh - s) / 2),
+             w: s, h: s };
+  }
+
+  // The region of the live native frame that IS the current view — the
+  // seam a frame-reading journey (the letter loop) grabs through, so
+  // what is analysed and what the child sees are one picture.
+  function analysisRect(v) {
+    const vw = v.videoWidth, vh = v.videoHeight;
+    if (!(vw > 0 && vh > 0)) return null;
+    if (shape === 'square') return squareCrop(vw, vh);
+    if (shape === 'tall') return tallCrop(vw, vh);
+    return { x: 0, y: 0, w: vw, h: vh };
+  }
+
   // Preview honesty: the child sees exactly what will be captured. Tall
   // gives the video a box of the crop's own aspect and lets object-fit:
   // cover centre it — the same centring the capture arithmetic does.
   // Wide restores the host's own inline styles byte for byte.
   function styleForShape() {
-    if (shape === 'tall') {
-      const w = Math.round(PREVIEW_H * tallAspect());
+    if (shape === 'tall' || shape === 'square') {
+      const h = shape === 'square' ? SQUARE_PREVIEW : PREVIEW_H;
+      const w = shape === 'square' ? SQUARE_PREVIEW
+                                   : Math.round(PREVIEW_H * tallAspect());
       for (const el of [els.live, els.shot]) {
         el.style.width = w + 'px';
-        el.style.height = PREVIEW_H + 'px';
+        el.style.height = h + 'px';
         el.style.maxWidth = '100%';
       }
       els.live.style.objectFit = 'cover';
@@ -151,6 +192,11 @@
 
   function updateToggle() {
     if (!els || !els.shapeBtn) return;
+    // With the small square window the toggle has no job — a letter
+    // fits a square held either way round, so there is no tall/wide
+    // question to answer. The capability stays for every other shape.
+    els.shapeBtn.hidden = shape === 'square';
+    if (shape === 'square') return;
     // The words name where the button goes, never how cameras work.
     els.shapeBtn.textContent = shape === 'wide' ? '⇄ Tall page' : '⇄ Wide page';
     els.shapeBtn.title = shape === 'wide'
@@ -158,14 +204,16 @@
       : 'Make the picture wide again';
   }
 
-  // The seam a journey states its preference through (My Handwriting
-  // photographs a tall written sheet). The child's own press of the
+  // The seam a journey states its preference through (the letter
+  // journey shows one letter in a small square window; the drawing
+  // journey keeps the wide default). The child's own press of the
   // button wins over every preference for the rest of the session.
   function setPreferredShape(s) {
-    if (s !== 'tall' && s !== 'wide') return;
+    if (s !== 'tall' && s !== 'wide' && s !== 'square') return;
     if (childChose) return;
     shape = s;
     updateToggle();
+    if (stream) styleForShape();   // a live preview re-dresses in place
   }
 
   async function switchShape() {
@@ -260,6 +308,11 @@
       const r = tallCrop(v.videoWidth, v.videoHeight);
       opts.log('camera: tall page — keeping the middle ' + r.w + 'x' + r.h +
                ' of the ' + v.videoWidth + 'x' + v.videoHeight + ' frame');
+    } else if (shape === 'square') {
+      const r = squareCrop(v.videoWidth, v.videoHeight);
+      opts.log('camera: small letter window — keeping the middle ' + r.w +
+               'x' + r.h + ' of the ' + v.videoWidth + 'x' + v.videoHeight +
+               ' frame');
     }
     return true;
   }
@@ -353,10 +406,12 @@
     const v = els.live;
     if (!stream || !v.videoWidth) return;
     const c = els.shot;
-    if (shape === 'tall') {
-      // The centred tall crop at NATIVE stream resolution — the crop
-      // region of videoWidth×videoHeight, never a CSS-sized redraw.
-      const r = tallCrop(v.videoWidth, v.videoHeight);
+    if (shape === 'tall' || shape === 'square') {
+      // The centred crop at NATIVE stream resolution — the crop region
+      // of videoWidth×videoHeight, never a CSS-sized redraw.
+      const r = shape === 'square'
+        ? squareCrop(v.videoWidth, v.videoHeight)
+        : tallCrop(v.videoWidth, v.videoHeight);
       c.width = r.w; c.height = r.h;
       c.getContext('2d').drawImage(v, r.x, r.y, r.w, r.h, 0, 0, r.w, r.h);
       opts.log('camera: picture taken at native ' + c.width + 'x' + c.height +
@@ -480,6 +535,7 @@
   // can walk the 10-second path without waiting ten seconds. The product
   // never calls it and the real pace is also exercised for real.
   window.BIACamera = { mount, supported, stopTracks, closePanel,
-                       setPreferredShape, tallAspect,
+                       setPreferredShape, tallAspect, squareCrop,
+                       analysisRect,
                        _setTimeScale: (s) => { timeScale = (s > 0 ? s : 1); } };
 })();
