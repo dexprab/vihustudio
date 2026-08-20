@@ -1036,7 +1036,58 @@ const BLAME = /error|failed|invalid|wrong|incorrect|scan|detect|process|percent|
       after.reds + ' red transition(s), all from first showing');
     await p.locator('#cameraPanel').scrollIntoViewIfNeeded();
     await p.screenshot({ path: path.join(SHOTS, '24-hw-ready-light-green.png') });
+    // A TAKEN picture hides the light — it never claims anything about
+    // a still — and retake brings it back, born red until it re-proves.
+    await p.click('#cameraTakeBtn');
+    await p.waitForFunction(() =>
+      document.getElementById('cameraShot').style.display !== 'none',
+      null, { timeout: 15000 });
+    await p.waitForTimeout(200);
+    const stillShot = await p.evaluate(() =>
+      document.getElementById('hwReadyLight').style.display !== 'none');
+    check('L8 a TAKEN picture hides the light — it never claims anything about a still',
+      !stillShot);
+    await p.click('#cameraRetakeBtn');
+    await p.waitForFunction(() => {
+      const v = document.getElementById('cameraLive');
+      return v.videoWidth > 0 && v.style.display !== 'none' &&
+             document.getElementById('hwReadyLight').style.display !== 'none';
+    }, null, { timeout: 30000 });
+    const resumed = await p.evaluate(() => ({
+      first: HWLight.state.history.filter((h) => h.why === 'shown').length }));
+    check('L9 retake brings the light back, and the fresh view starts red until it re-proves',
+      resumed.first >= 2, resumed.first + ' fresh showings, each born red');
     check('L6b zero page errors', errors.length === 0);
+    await b.close();
+  }
+
+  // THE VIEW STOPS READING: the moving letter, then the bare desk
+  // (looping). Green must yield promptly — measured from the last
+  // frame that read to the moment the light went red, against the REAL
+  // loop rather than the unit seam.
+  {
+    const { browser: b, p, errors } = await camPage('hw-letter-then-gone.y4m');
+    await armAndOpenCamera(p, 'R');
+    await p.waitForFunction(() => {
+      const h = HWLight.state.history;
+      const g = h.findIndex((e) => e.to === 'green');
+      return g >= 0 && h.slice(g + 1).some((e) => e.to === 'red');
+    }, null, { timeout: 90000 });
+    const gone = await p.evaluate(() => {
+      const h = HWLight.state.history;
+      const handoffs = [];
+      for (let i = 1; i < h.length; i++) {
+        if (h[i].to === 'red' && h[i - 1].to === 'green') handoffs.push(h[i]);
+      }
+      return { handoffs: handoffs.map((e) => ({ why: e.why, sinceRead: e.sinceRead })),
+               captured: !!window.__hw.live.captured };
+    });
+    check('L13 green yields when the view stops reading — never instantly (debounce), never late',
+      gone.handoffs.length >= 1 && !gone.captured && gone.handoffs.every((e) =>
+        e.sinceRead > 500 && e.sinceRead < 2600),
+      'green→red ' + gone.handoffs.map((e) =>
+        e.sinceRead + 'ms (' + e.why + ')').join(', ') + ' after the last read frame');
+    check('L13b zero page errors across the hand-off', errors.length === 0);
     await b.close();
   }
 

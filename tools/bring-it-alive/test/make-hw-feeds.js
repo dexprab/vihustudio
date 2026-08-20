@@ -31,6 +31,11 @@
  *                         so the light may show green, but the steady
  *                         beat must never complete: a letter passing
  *                         through is never snapped mid-motion.
+ *   hw-letter-then-gone.y4m  the moving R (never steady, so never
+ *                         captured), then the bare desk — the view
+ *                         reads, then stops reading, looping: drives
+ *                         the light's real green→red hand-off so its
+ *                         latency can be measured against the live loop.
  *   hw-noisy.y4m          a NOISY ROOM SCENE, no paper anywhere — the
  *                         scene shape of the field freeze. The
  *                         responsiveness checks sweep it and assert the
@@ -54,14 +59,15 @@ const { COMPOSE } = require(path.join(__dirname, 'hw-fixture.js'));
 
 const W = 1280, H = 960;
 // 5 = the letter-grid redesign: single-letter fixtures replace the
-// card fixtures wholesale.
-const VERSION = 5;
+// card fixtures wholesale. 6 = hw-letter-then-gone (the hand-off).
+const VERSION = 6;
 const CHROME = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
 const META = path.join(__dirname, 'hw-feeds.json');
 
 const NAMES = ['hw-letter-R', 'hw-letter-i', 'hw-letter-two',
                'hw-letter-small', 'hw-letter-ruled', 'hw-letter-specks',
-               'hw-letter-blank', 'hw-letter-moving', 'hw-noisy'];
+               'hw-letter-blank', 'hw-letter-moving',
+               'hw-letter-then-gone', 'hw-noisy'];
 const FILE = {};
 for (const n of NAMES) FILE[n] = path.join(__dirname, n + '.y4m');
 
@@ -194,7 +200,12 @@ const FIXTURES = {
   'hw-letter-blank':  { fps: 30, frames: [{ seed: 11, letters: [] }] },
   'hw-letter-moving': { fps: 2, frames: MOVING_CX.map((cx, i) =>
                           ({ seed: 20 + i, size: 430,
-                             letters: [{ ch: 'R', cx, cy: 480 }] })) }
+                             letters: [{ ch: 'R', cx, cy: 480 }] })) },
+  'hw-letter-then-gone': { fps: 2, frames:
+      MOVING_CX.slice(0, 4).map((cx, i) =>
+        ({ seed: 30 + i, size: 430, letters: [{ ch: 'R', cx, cy: 480 }] }))
+      .concat([0, 1, 2, 3].map((i) =>
+        ({ seed: 40 + i, letters: [], noPaper: true }))) }
 };
 
 async function generate(base) {
