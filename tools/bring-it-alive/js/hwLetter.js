@@ -95,6 +95,15 @@
                       //   dot of a DejaVu i sits ~0.18 of the body height
                       //   away; a deliberate second letter a full letter
                       //   width away never merges)
+    TINY_FRAC: 0.02,  // a component under this share of the core's ink
+                      //   is clutter, not a part: it may still join, but
+                      //   only from TINY_GAP × the core's size away —
+                      //   (an i dot carries ~5–8% of its body's ink, so a
+                      //   real letter part is never treated as clutter)
+    TINY_GAP: 0.15,   //   (measured: without the tighter bar, 30 seeded
+                      //   paper specks grew a 301×349px Q into a
+                      //   490×564px "glyph" — specks must not become
+                      //   strokes just by lying near the letter)
     RIVAL_FRAC: 0.25, // a second cluster with ≥ this share of the
                       //   dominant cluster's ink → 'many' (measured: an
                       //   i dot carries ~0.04–0.10 of its body's ink, a
@@ -307,6 +316,38 @@
     const thr = Math.max(P.PAPER_LUM, Math.round(P.PAPER_REL * p995));
     const bright = new Uint8Array(n);
     for (let i = 0; i < n; i++) bright[i] = lum[i] >= thr ? 1 : 0;
+    // A rule-thin dark line does not divide a page: close dark runs no
+    // thicker than a ruled line, in both directions, so notebook rules
+    // cannot slice the paper into bands (measured: without this, the
+    // native cut of a letter on ruled paper found "the paper" to be one
+    // 90px strip between two rules and kept a third of the letter).
+    // Letter strokes are several times thicker and are never bridged —
+    // and would not matter if they were, since the fence is spans.
+    const CLOSE = Math.max(4, Math.round(0.02 * Math.min(w, h)));
+    for (let x = 0; x < w; x++) {          // vertical runs (horizontal rules)
+      let y = 0;
+      while (y < h) {
+        if (bright[y * w + x]) { y++; continue; }
+        let y1 = y;
+        while (y1 + 1 < h && !bright[(y1 + 1) * w + x]) y1++;
+        if (y > 0 && y1 < h - 1 && (y1 - y + 1) <= CLOSE) {
+          for (let yy = y; yy <= y1; yy++) bright[yy * w + x] = 1;
+        }
+        y = y1 + 1;
+      }
+    }
+    for (let y = 0; y < h; y++) {          // horizontal runs (vertical rules)
+      let x = 0;
+      while (x < w) {
+        if (bright[y * w + x]) { x++; continue; }
+        let x1 = x;
+        while (x1 + 1 < w && !bright[y * w + x1 + 1]) x1++;
+        if (x > 0 && x1 < w - 1 && (x1 - x + 1) <= CLOSE) {
+          for (let xx = x; xx <= x1; xx++) bright[y * w + xx] = 1;
+        }
+        x = x1 + 1;
+      }
+    }
     const comps = components(bright, w, h);
     if (!comps.length) return null;
     let paper = comps[0];
@@ -342,37 +383,48 @@
     return Math.max(dx, dy);
   }
 
-  /* Merge components into proximity clusters: two clusters join when the
-   * gap between them is ≤ GAP_FRAC × the larger one's max dimension.
-   * Iterated to a fixpoint with deterministic order. */
+  /* Merge components into proximity clusters. Each cluster grows from a
+   * CORE — the largest component still unassigned — and attaches every
+   * component whose gap TO THE CORE'S OWN BOX is ≤ GAP_FRAC × the
+   * larger of the two dimensions. Satellites attach to the core, never
+   * to each other: measured, a fixpoint merge let a trail of paper
+   * specks chain outward from a letter until the "glyph" was the whole
+   * page (a 30-speck fixture snowballed a 300px letter into an
+   * 815×711px cluster). Against the fixed core box, the dot of an i
+   * (gap ~0.18 of the body's height) still joins, and a speck a
+   * letter-width away still cannot. Deterministic order throughout. */
   function clusterize(comps) {
-    const clusters = comps.map((c) => ({
-      size: c.size, x0: c.x0, x1: c.x1, y0: c.y0, y1: c.y1,
-      members: [c], parts: 1
-    }));
-    let merged = true;
-    while (merged) {
-      merged = false;
-      outer:
-      for (let i = 0; i < clusters.length; i++) {
-        for (let j = i + 1; j < clusters.length; j++) {
-          const a = clusters[i], b = clusters[j];
-          const big = Math.max(a.x1 - a.x0 + 1, a.y1 - a.y0 + 1,
-                               b.x1 - b.x0 + 1, b.y1 - b.y0 + 1);
-          if (bboxGap(a, b) <= P.GAP_FRAC * big) {
-            a.size += b.size;
-            a.x0 = Math.min(a.x0, b.x0); a.x1 = Math.max(a.x1, b.x1);
-            a.y0 = Math.min(a.y0, b.y0); a.y1 = Math.max(a.y1, b.y1);
-            a.members = a.members.concat(b.members);
-            a.parts += b.parts;
-            clusters.splice(j, 1);
-            merged = true;
-            break outer;
-          }
+    const order = comps.slice().sort((a, b) =>
+      b.size - a.size || a.y0 - b.y0 || a.x0 - b.x0);
+    const used = new Uint8Array(order.length);
+    const out = [];
+    for (let i = 0; i < order.length; i++) {
+      if (used[i]) continue;
+      const core = order[i];
+      used[i] = 1;
+      const coreBox = { x0: core.x0, x1: core.x1, y0: core.y0, y1: core.y1 };
+      const coreDim = Math.max(core.x1 - core.x0 + 1, core.y1 - core.y0 + 1);
+      const cl = { size: core.size, x0: core.x0, x1: core.x1,
+                   y0: core.y0, y1: core.y1, members: [core], parts: 1 };
+      for (let j = i + 1; j < order.length; j++) {
+        if (used[j]) continue;
+        const b = order[j];
+        const bDim = Math.max(b.x1 - b.x0 + 1, b.y1 - b.y0 + 1);
+        const reach = b.size < P.TINY_FRAC * core.size
+          ? P.TINY_GAP * coreDim
+          : P.GAP_FRAC * Math.max(coreDim, bDim);
+        if (bboxGap(coreBox, b) <= reach) {
+          used[j] = 1;
+          cl.size += b.size;
+          cl.x0 = Math.min(cl.x0, b.x0); cl.x1 = Math.max(cl.x1, b.x1);
+          cl.y0 = Math.min(cl.y0, b.y0); cl.y1 = Math.max(cl.y1, b.y1);
+          cl.members.push(b);
+          cl.parts++;
         }
       }
+      out.push(cl);
     }
-    return clusters;
+    return out;
   }
 
   /* How many parts is a kept mask made of? — the DOMINANT cluster's own
