@@ -1,63 +1,46 @@
 /* HW CAMERA FEED FIXTURES — the y4m files Chromium serves as the fake
- * camera (--use-file-for-fake-video-capture) so the FREE-MOTION card
- * collection can be verified end to end against the real live loop.
+ * camera (--use-file-for-fake-video-capture) so the letter journey's
+ * live loop — the readiness light and GREEN TAKES THE PICTURE — can be
+ * verified end to end against the real page.
  *
- * All frames are cut from THE SAME deterministic synthetic filled pages
- * the handwriting suite asserts against (test/hw-fixture.js, seed 7,
- * width 2000, rendered by the page's own HWSheet.draw — so the fixtures
- * and the suite cannot drift). A landscape 1280×960 sensor, matching
- * test/make-camera-feed.js's precedent:
+ * All frames are composed by THE SAME deterministic letter composer the
+ * handwriting suite asserts against (test/hw-fixture.js — seeded, no
+ * Math.random), so the fixtures and the suite cannot drift. A landscape
+ * 1280×960 sensor, matching test/make-camera-feed.js's precedent:
  *
- *   hw-card-<1..5>.y4m   ONE CUT CARD filling the wide frame with desk
- *                        margin on every side — the close-up a child
- *                        holding a snipped-out card actually produces,
- *                        cut along the card's own cut lines (the new
- *                        print gives every card its own pair, with a
- *                        gutter between neighbours). Cards 1–3 come
- *                        from page 1, cards 4–5 from page 2.
- *   hw-card-attached.y4m card 2 STILL ATTACHED: the uncut page held
- *                        close on that card — gutters, neighbour cut
- *                        lines and border slivers in frame — must read
- *                        exactly like the cut card.
- *   hw-many.y4m          the WHOLE page 1 in frame: three cards at
- *                        once. The product rule is strictly one card
- *                        at a time, so this must raise the gentle
- *                        one-card overlay and collect NOTHING.
- *   hw-many-then-one.y4m page 1 whole (four frames), then cut card 1
- *                        (four frames), 2s a frame: the overlay must
- *                        show, then clear by itself when the view
- *                        returns to one card, and the card collects.
- *   hw-legacy.y4m        the FROZEN one-page five-card sheet, filled,
- *                        fitted by height — the legacy ladder registers
- *                        and all five lines land at once, exactly as
- *                        old printouts always did.
- *   hw-card-blank.y4m    card 3, cut, from a page the child never
- *                        wrote on — anchors and model print, no ink:
- *                        must collect NOTHING.
- *   hw-sweep.y4m         cut cards 1→2→3, four frames each at F2:1 —
- *                        showing the cards one after another in one
- *                        file, driving multi-card accumulation in a
- *                        single launch.
- *   hw-noisy.y4m         a NOISY ROOM SCENE, no page anywhere — the
- *                        scene shape of the field freeze. The
- *                        responsiveness checks sweep it and assert the
- *                        page never blocks and nothing is collected.
- *   hw-card-far.y4m      cut card 1 held FAR AWAY: drawn 420px wide in
- *                        the 1280 frame — measured, the reader refuses
- *                        a clean one-card desk frame up to 560px drawn
- *                        width and reads from 620px, so 420 refuses
- *                        with a 140px margin. The readiness light must
- *                        stay RED on it: too far to read is not ready.
- *   hw-then-gone.y4m     cut card 1 (eight frames), then the bare desk
- *                        (eight frames), at 2fps — the view reads,
- *                        then stops reading. Drives the light's
- *                        green→red hand-off so its latency can be
- *                        measured against the real loop.
+ *   hw-letter-R.y4m       ONE steady big R on plain paper — the honest
+ *                         hold. Steady green must auto-take the picture.
+ *   hw-letter-i.y4m       a steady dotted i — the two-part letter must
+ *                         capture whole, dot and all.
+ *   hw-letter-two.y4m     'a' and 'b' far apart on one page — the light
+ *                         stays red, the gentle one-letter overlay
+ *                         shows, and nothing is ever captured.
+ *   hw-letter-small.y4m   one letter written far too small to capture
+ *                         well — red, with nothing captured: too small
+ *                         to make a good letter is not ready.
+ *   hw-letter-ruled.y4m   a letter on ruled notebook paper — reads and
+ *                         captures, the rules stripped as disclosed.
+ *   hw-letter-specks.y4m  a letter among scattered paper specks —
+ *                         clutter must not block a clear letter.
+ *   hw-letter-blank.y4m   clean paper, nothing written — red, nothing
+ *                         captured.
+ *   hw-letter-moving.y4m  the same R carried across the frame, a new
+ *                         place every half second (adjacent positions
+ *                         ≥190px apart, far over the steadiness bar of
+ *                         4% of the frame = 51px) — every frame READS,
+ *                         so the light may show green, but the steady
+ *                         beat must never complete: a letter passing
+ *                         through is never snapped mid-motion.
+ *   hw-noisy.y4m          a NOISY ROOM SCENE, no paper anywhere — the
+ *                         scene shape of the field freeze. The
+ *                         responsiveness checks sweep it and assert the
+ *                         page never blocks and nothing is captured.
  *
- * hw-feeds.json carries each fixture's sheet→frame mapping, the pages'
- * ground truth (GLOBAL line indices), and a VERSION stamp: the fixtures
- * are regenerated whenever this generator (or the page geometry it
- * renders through) changes shape — allPresent() refuses a stale set.
+ * hw-feeds.json carries each fixture's letter geometry (the ground
+ * truth the auto-capture checks compare the kept glyph against) and a
+ * VERSION stamp: the fixtures are regenerated whenever this generator
+ * (or the composer it renders through) changes shape — allPresent()
+ * refuses a stale set.
  *
  * Generated on demand, gitignored, never committed. Standalone (server
  * already running):
@@ -70,31 +53,20 @@ const path = require('path');
 const { COMPOSE } = require(path.join(__dirname, 'hw-fixture.js'));
 
 const W = 1280, H = 960;
-// Bumped whenever the frames' shape changes: 3 = the two-page card
-// printable (per-card cut lines, grip margins, strictly-one-card rule);
-// 4 = the readiness-light fixtures (hw-card-far, hw-then-gone).
-const VERSION = 4;
+// 5 = the letter-grid redesign: single-letter fixtures replace the
+// card fixtures wholesale.
+const VERSION = 5;
 const CHROME = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
 const META = path.join(__dirname, 'hw-feeds.json');
 
-const FILE = {
-  card: (i) => path.join(__dirname, 'hw-card-' + (i + 1) + '.y4m'),
-  attached: path.join(__dirname, 'hw-card-attached.y4m'),
-  many: path.join(__dirname, 'hw-many.y4m'),
-  manyThenOne: path.join(__dirname, 'hw-many-then-one.y4m'),
-  legacy: path.join(__dirname, 'hw-legacy.y4m'),
-  blank: path.join(__dirname, 'hw-card-blank.y4m'),
-  sweep: path.join(__dirname, 'hw-sweep.y4m'),
-  noisy: path.join(__dirname, 'hw-noisy.y4m'),
-  far: path.join(__dirname, 'hw-card-far.y4m'),
-  thenGone: path.join(__dirname, 'hw-then-gone.y4m')
-};
+const NAMES = ['hw-letter-R', 'hw-letter-i', 'hw-letter-two',
+               'hw-letter-small', 'hw-letter-ruled', 'hw-letter-specks',
+               'hw-letter-blank', 'hw-letter-moving', 'hw-noisy'];
+const FILE = {};
+for (const n of NAMES) FILE[n] = path.join(__dirname, n + '.y4m');
 
 function allPresent() {
-  const files = [FILE.attached, FILE.many, FILE.manyThenOne, FILE.legacy,
-                 FILE.blank, FILE.sweep, FILE.noisy, FILE.far,
-                 FILE.thenGone, META];
-  for (let i = 0; i < 5; i++) files.push(FILE.card(i));
+  const files = NAMES.map((n) => FILE[n]).concat([META]);
   if (!files.every((f) => fs.existsSync(f))) return false;
   try { return JSON.parse(fs.readFileSync(META, 'utf8')).version === VERSION; }
   catch (e) { return false; }
@@ -102,7 +74,7 @@ function allPresent() {
 
 // RGB → YUV, BT.601 limited range, 4:2:0 — the same arithmetic as
 // test/make-camera-feed.js, generalised to many frames and a chosen
-// frame rate (the sweep files play slowly on purpose).
+// frame rate (the moving fixture plays at 2fps on purpose).
 function y4mOf(frames, fps) {
   const yPlane = () => Buffer.alloc(W * H);
   const cPlane = () => Buffer.alloc((W / 2) * (H / 2));
@@ -131,76 +103,32 @@ function y4mOf(frames, fps) {
   return Buffer.concat(parts);
 }
 
-/* Page-side: compose the right page (or the blank/legacy variant) and
- * render ONE frame — a CUT card on the desk (args.card + cut:true, cut
- * along the card's own cut lines), the uncut page held close on one
- * card (args.card, cut:false — gutters and neighbour slivers in
- * frame), or a whole page fitted by height ({} → page 1 of the card
- * print; {legacy:true} → the frozen one-page sheet) — returning raw
- * RGBA (base64) plus the sheet→frame mapping. A cut card keeps the
- * page's full width (the cuts are horizontal), drawn at 94% of the
- * frame width so the desk shows around all four paper edges. */
-const FRAME = `async (args) => {
-  const opts = { seed: 7, width: 2000 };
-  if (args.blank) opts.blankLines = [0, 1, 2, 3, 4];
-  if (args.legacy) opts.legacy = true;
-  else opts.page = args.card != null ? HWSheet.pageOf(args.card).page : 0;
-  const made = (${COMPOSE})(opts);
-  const img = new Image();
-  await new Promise((r) => { img.onload = r; img.src = made.dataURL; });
-  const SW = img.width, SH = img.height;
-  const fw = ${W}, fh = ${H};
-  const c = document.createElement('canvas');
-  c.width = fw; c.height = fh;
-  const x = c.getContext('2d', { willReadFrequently: true });
-  x.fillStyle = '#5f6673';              // the desk behind the paper
-  x.fillRect(0, 0, fw, fh);
-  x.imageSmoothingQuality = 'high';
-  let map;
-  if (args.card != null && args.cut) {
-    // A cut card: its own cut boundary's rows, full page width, with
-    // desk margin on every side of the wide frame. args.cardW draws it
-    // smaller — a card held too far away to read.
-    const card = made.cards.find((k) => k.index === args.card);
-    const cardTop = card.cutTop, cardH = card.cutBottom - card.cutTop;
-    const dw = args.cardW ? Math.round(args.cardW) : Math.round(0.94 * fw);
-    const scale = dw / SW;
-    const dh = cardH * scale;
-    const ox = (fw - dw) / 2, oy = (fh - dh) / 2;
-    x.drawImage(img, 0, cardTop, SW, cardH, ox, oy, dw, dh);
-    map = { scale, ox, oy, bandTop: cardTop };
-  } else if (args.card != null) {
-    // The same card STILL ATTACHED: the uncut page held close — the
-    // band spills through the gutters into the neighbours, so their
-    // cut lines and border slivers are in frame, as they really would
-    // be.
-    const card = made.cards.find((k) => k.index === args.card);
-    const bandTop = card.cutTop - 0.025 * SH;
-    const bandH = (card.cutBottom - card.cutTop) + 0.05 * SH;
-    const scale = fw / SW;
-    const dh = bandH * scale;
-    const oy = (fh - dh) / 2;
-    x.drawImage(img, 0, bandTop, SW, bandH, 0, oy, fw, dh);
-    map = { scale, ox: 0, oy, bandTop };
-  } else {
-    const scale = fh / SH;
-    const dw = SW * scale;
-    const ox = (fw - dw) / 2;
-    x.drawImage(img, 0, 0, SW, SH, ox, 0, dw, fh);
-    map = { scale, ox, oy: 0, bandTop: 0 };
-  }
-  const d = x.getImageData(0, 0, fw, fh).data;
-  let s = '';
-  const CHUNK = 0x8000;
-  for (let i = 0; i < d.length; i += CHUNK) {
-    s += String.fromCharCode.apply(null, d.subarray(i, Math.min(i + CHUNK, d.length)));
-  }
-  return { b64: btoa(s), map, gt: made.gt, ruleYs: made.ruleYs, W: made.W, H: made.H };
+// Page-side: compose one letter frame and hand back raw RGBA (base64).
+const FRAME = `(o) => {
+  const made = (${COMPOSE})(o);
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement('canvas');
+      c.width = ${W}; c.height = ${H};
+      const x = c.getContext('2d', { willReadFrequently: true });
+      x.drawImage(img, 0, 0);
+      const d = x.getImageData(0, 0, ${W}, ${H}).data;
+      let s2 = '';
+      const CHUNK = 0x8000;
+      for (let i = 0; i < d.length; i += CHUNK) {
+        s2 += String.fromCharCode.apply(null, d.subarray(i, Math.min(i + CHUNK, d.length)));
+      }
+      resolve({ b64: btoa(s2), letters: made.letters, size: made.size,
+                paper: made.paper });
+    };
+    img.src = made.dataURL;
+  });
 }`;
 
 /* Page-side: the noisy room scene — SEEDED (mulberry32-style, no
  * Math.random — the suite's hygiene check applies to fixtures), no
- * page anywhere. Its shape is what made the field frame expensive:
+ * paper anywhere. Its shape is what made the field frame expensive:
  * hundreds of dark compact candidate marks, long dark edges, gradients. */
 const NOISY_FRAME = `() => {
   const W = ${W}, H = ${H};
@@ -248,6 +176,27 @@ const NOISY_FRAME = `() => {
   return { b64: btoa(out) };
 }`;
 
+// The moving letter's positions: adjacent steps (including the wrap
+// from last back to first, since the file loops) are ≥190px apart —
+// far over the steadiness bar (MOVE_FRAC 0.04 × 1280 = 51px).
+const MOVING_CX = [300, 640, 980, 450, 820, 300, 980, 500];
+
+// The fixtures, declaratively: composer opts + frame rate.
+const FIXTURES = {
+  'hw-letter-R':      { fps: 30, frames: [{ ch: 'R', seed: 5, size: 430 }] },
+  'hw-letter-i':      { fps: 30, frames: [{ ch: 'i', seed: 6, size: 520 }] },
+  'hw-letter-two':    { fps: 30, frames: [{ seed: 7, size: 300, letters: [
+                          { ch: 'a', cx: 420, cy: 480 },
+                          { ch: 'b', cx: 880, cy: 480 }] }] },
+  'hw-letter-small':  { fps: 30, frames: [{ ch: 'e', seed: 8, size: 110 }] },
+  'hw-letter-ruled':  { fps: 30, frames: [{ ch: 'a', seed: 9, size: 380, ruled: true }] },
+  'hw-letter-specks': { fps: 30, frames: [{ ch: 'Q', seed: 10, size: 400, specks: 30 }] },
+  'hw-letter-blank':  { fps: 30, frames: [{ seed: 11, letters: [] }] },
+  'hw-letter-moving': { fps: 2, frames: MOVING_CX.map((cx, i) =>
+                          ({ seed: 20 + i, size: 430,
+                             letters: [{ ch: 'R', cx, cy: 480 }] })) }
+};
+
 async function generate(base) {
   const { chromium } = require('playwright');
   const browser = await chromium.launch({ executablePath: CHROME });
@@ -255,103 +204,24 @@ async function generate(base) {
   await page.goto(base);
   await page.waitForFunction(() => window.__hw && window.__bia);
 
-  const meta = { version: VERSION, fixtures: {}, gt: [], ruleYs: [],
-                 sheetW: 0, sheetH: 0 };
-  const cardFrames = [];
-  for (let i = 0; i < 5; i++) {
-    const r = await page.evaluate(`(${FRAME})({ card: ${i}, cut: true })`);
-    const rgba = Buffer.from(r.b64, 'base64');
-    cardFrames.push(rgba);
-    fs.writeFileSync(FILE.card(i), y4mOf([rgba, rgba], 30));
-    meta.fixtures['card-' + (i + 1)] = { file: path.basename(FILE.card(i)), map: r.map };
-    // ground truth accumulates across the two pages (global indices)
-    for (const g of r.gt) {
-      if (!meta.gt.some((h) => h.line === g.line && h.x0 === g.x0 && h.ch === g.ch)) {
-        meta.gt.push(g);
-      }
-    }
-    for (let k = 0; k < 5; k++) {
-      if (r.ruleYs[k] != null) meta.ruleYs[k] = r.ruleYs[k];
-    }
-    meta.sheetW = r.W; meta.sheetH = r.H;
-  }
-  {
-    const r = await page.evaluate(`(${FRAME})({ card: 1 })`);
-    const rgba = Buffer.from(r.b64, 'base64');
-    fs.writeFileSync(FILE.attached, y4mOf([rgba, rgba], 30));
-    meta.fixtures.attached = { file: path.basename(FILE.attached), card: 1, map: r.map };
-  }
-  let page1Whole;
-  {
-    const r = await page.evaluate(`(${FRAME})({})`);
-    page1Whole = Buffer.from(r.b64, 'base64');
-    fs.writeFileSync(FILE.many, y4mOf([page1Whole, page1Whole], 30));
-    meta.fixtures.many = { file: path.basename(FILE.many), map: r.map };
-  }
-  {
-    // the overlay's own story: three cards at once, then one card —
-    // the message must show, then clear, and the card must collect
+  const meta = { version: VERSION, W, H, fixtures: {} };
+  for (const [name, fix] of Object.entries(FIXTURES)) {
     const frames = [];
-    for (let k = 0; k < 4; k++) frames.push(page1Whole);
-    for (let k = 0; k < 4; k++) frames.push(cardFrames[0]);
-    fs.writeFileSync(FILE.manyThenOne, y4mOf(frames, 2));
-    meta.fixtures.manyThenOne = { file: path.basename(FILE.manyThenOne),
-                                  map: meta.fixtures['card-1'].map };
-  }
-  {
-    const r = await page.evaluate(`(${FRAME})({ legacy: true })`);
-    const rgba = Buffer.from(r.b64, 'base64');
-    fs.writeFileSync(FILE.legacy, y4mOf([rgba, rgba], 30));
-    meta.fixtures.legacy = { file: path.basename(FILE.legacy), map: r.map,
-                             gt: r.gt, ruleYs: r.ruleYs };
-  }
-  {
-    const r = await page.evaluate(`(${FRAME})({ card: 2, cut: true, blank: true })`);
-    const rgba = Buffer.from(r.b64, 'base64');
-    fs.writeFileSync(FILE.blank, y4mOf([rgba, rgba], 30));
-    meta.fixtures.blank = { file: path.basename(FILE.blank), map: r.map };
-  }
-  {
-    // the sweep: cut cards 1 → 2 → 3, four frames each, 2s per frame
-    const frames = [];
-    for (const i of [0, 1, 2]) {
-      for (let k = 0; k < 4; k++) frames.push(cardFrames[i]);
+    const geoms = [];
+    for (const opts of fix.frames) {
+      const r = await page.evaluate(`(${FRAME})(${JSON.stringify(opts)})`);
+      frames.push(Buffer.from(r.b64, 'base64'));
+      geoms.push({ letters: r.letters, size: r.size });
     }
-    fs.writeFileSync(FILE.sweep, y4mOf(frames, 2));
-    meta.fixtures.sweep = { file: path.basename(FILE.sweep),
-                            lines: [0, 1, 2],
-                            map: meta.fixtures['card-1'].map };
+    if (frames.length === 1) frames.push(frames[0]);   // ≥2 frames per file
+    fs.writeFileSync(FILE[name], y4mOf(frames, fix.fps));
+    meta.fixtures[name] = { file: name + '.y4m', fps: fix.fps, geoms };
   }
   {
     const r = await page.evaluate(`(${NOISY_FRAME})()`);
     const rgba = Buffer.from(r.b64, 'base64');
-    fs.writeFileSync(FILE.noisy, y4mOf([rgba, rgba], 30));
-    meta.fixtures.noisy = { file: path.basename(FILE.noisy) };
-  }
-  {
-    // The far card: 420px drawn width — measured against the reader,
-    // which refuses a clean one-card frame up to 560px and reads from
-    // 620px. Too far to read must show the readiness light RED.
-    const r = await page.evaluate(`(${FRAME})({ card: 0, cut: true, cardW: 420 })`);
-    const rgba = Buffer.from(r.b64, 'base64');
-    fs.writeFileSync(FILE.far, y4mOf([rgba, rgba], 30));
-    meta.fixtures.far = { file: path.basename(FILE.far), map: r.map };
-  }
-  {
-    // The view reads, then stops reading: card 1 for four seconds,
-    // then the bare desk for four — the light's green→red hand-off,
-    // measurable against the real loop. The desk frame is the same
-    // uniform desk grey every fixture stands its paper on.
-    const desk = Buffer.alloc(W * H * 4);
-    for (let i = 0; i < desk.length; i += 4) {
-      desk[i] = 0x5f; desk[i + 1] = 0x66; desk[i + 2] = 0x73; desk[i + 3] = 255;
-    }
-    const frames = [];
-    for (let k = 0; k < 8; k++) frames.push(cardFrames[0]);
-    for (let k = 0; k < 8; k++) frames.push(desk);
-    fs.writeFileSync(FILE.thenGone, y4mOf(frames, 2));
-    meta.fixtures.thenGone = { file: path.basename(FILE.thenGone),
-                               map: meta.fixtures['card-1'].map };
+    fs.writeFileSync(FILE['hw-noisy'], y4mOf([rgba, rgba], 30));
+    meta.fixtures['hw-noisy'] = { file: 'hw-noisy.y4m', fps: 30 };
   }
   fs.writeFileSync(META, JSON.stringify(meta));
   await browser.close();
@@ -360,10 +230,8 @@ async function generate(base) {
 
 function readMeta() { return JSON.parse(fs.readFileSync(META, 'utf8')); }
 
-/** Map a sheet-space x (at the ground truth's own rule y) into frame x. */
-function frameX(map, x) { return map.ox + x * map.scale; }
-
-module.exports = { generate, allPresent, readMeta, frameX, FILE, META, W, H, VERSION };
+module.exports = { generate, allPresent, readMeta, FILE, META, W, H,
+                   VERSION, MOVING_CX };
 
 if (require.main === module) {
   const port = process.env.BIA_PORT || 8765;
