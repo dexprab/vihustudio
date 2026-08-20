@@ -2,7 +2,7 @@
  * camera (--use-file-for-fake-video-capture) so the FREE-MOTION card
  * collection can be verified end to end against the real live loop.
  *
- * All frames are cut from THE SAME deterministic synthetic filled page
+ * All frames are cut from THE SAME deterministic synthetic filled pages
  * the handwriting suite asserts against (test/hw-fixture.js, seed 7,
  * width 2000, rendered by the page's own HWSheet.draw — so the fixtures
  * and the suite cannot drift). A landscape 1280×960 sensor, matching
@@ -10,50 +10,46 @@
  *
  *   hw-card-<1..5>.y4m   ONE CUT CARD filling the wide frame with desk
  *                        margin on every side — the close-up a child
- *                        holding a snipped-out card actually produces.
- *                        The card's own paper edges (against the desk)
- *                        are in frame on all four sides, which is what
- *                        exercises the frame-component guards. Two
- *                        identical frames (Chromium loops the file).
+ *                        holding a snipped-out card actually produces,
+ *                        cut along the card's own cut lines (the new
+ *                        print gives every card its own pair, with a
+ *                        gutter between neighbours). Cards 1–3 come
+ *                        from page 1, cards 4–5 from page 2.
  *   hw-card-attached.y4m card 2 STILL ATTACHED: the uncut page held
- *                        close on that card, neighbour slivers and cut
- *                        lines in frame — must read exactly like the
- *                        cut card (cutting is never required).
- *   hw-sheet.y4m         the whole page fitted by height — the full
- *                        ladder registers and every card lands at once.
+ *                        close on that card — gutters, neighbour cut
+ *                        lines and border slivers in frame — must read
+ *                        exactly like the cut card.
+ *   hw-many.y4m          the WHOLE page 1 in frame: three cards at
+ *                        once. The product rule is strictly one card
+ *                        at a time, so this must raise the gentle
+ *                        one-card overlay and collect NOTHING.
+ *   hw-many-then-one.y4m page 1 whole (four frames), then cut card 1
+ *                        (four frames), 2s a frame: the overlay must
+ *                        show, then clear by itself when the view
+ *                        returns to one card, and the card collects.
+ *   hw-legacy.y4m        the FROZEN one-page five-card sheet, filled,
+ *                        fitted by height — the legacy ladder registers
+ *                        and all five lines land at once, exactly as
+ *                        old printouts always did.
  *   hw-card-blank.y4m    card 3, cut, from a page the child never
  *                        wrote on — anchors and model print, no ink:
  *                        must collect NOTHING.
- *   hw-sweep.y4m         cut cards 1→2→3, four frames each at F2:1 (2s
- *                        per frame) — showing the cards one after
- *                        another in one file. Chromium accepts exactly
- *                        one y4m per launch, so the deterministic
- *                        identity checks use one launch per card
- *                        fixture; the sweep file exists to drive
- *                        multi-card accumulation in a single launch
- *                        (order-independent and latest-wins, so
- *                        whichever frame each sample lands on, the
- *                        collection converges).
- *   hw-noisy.y4m         a NOISY ROOM SCENE, no page anywhere: seeded
- *                        gradients, furniture-edge rectangles, ruled
- *                        shadows, hundreds of dark compact specks and a
- *                        face-ish blob — the scene shape of the field
- *                        freeze ("as soon as camera opened the entire
- *                        page got stuck"). Measured, a frame of it cost
- *                        hwRead 12.4 SECONDS on the main thread. The
+ *   hw-sweep.y4m         cut cards 1→2→3, four frames each at F2:1 —
+ *                        showing the cards one after another in one
+ *                        file, driving multi-card accumulation in a
+ *                        single launch.
+ *   hw-noisy.y4m         a NOISY ROOM SCENE, no page anywhere — the
+ *                        scene shape of the field freeze. The
  *                        responsiveness checks sweep it and assert the
  *                        page never blocks and nothing is collected.
  *
- * hw-feeds.json carries each fixture's sheet→frame mapping, the page's
- * ground truth, and a VERSION stamp: the fixtures are regenerated
- * whenever this generator (or the page geometry it renders through)
- * changes shape — allPresent() refuses a stale set, so the suite can
- * never assert against frames cut from a geometry that no longer
- * exists.
+ * hw-feeds.json carries each fixture's sheet→frame mapping, the pages'
+ * ground truth (GLOBAL line indices), and a VERSION stamp: the fixtures
+ * are regenerated whenever this generator (or the page geometry it
+ * renders through) changes shape — allPresent() refuses a stale set.
  *
- * ~30 MB all told — generated on demand, gitignored, never committed.
- * The suite requires this module and generates the set if it is
- * missing or stale. Standalone (server already running):
+ * Generated on demand, gitignored, never committed. Standalone (server
+ * already running):
  *   BIA_PORT=9171 NODE_PATH=/opt/node22/lib/node_modules node test/make-hw-feeds.js
  */
 'use strict';
@@ -63,23 +59,26 @@ const path = require('path');
 const { COMPOSE } = require(path.join(__dirname, 'hw-fixture.js'));
 
 const W = 1280, H = 960;
-// Bumped whenever the frames' shape changes: 2 = the five-reading-cards
-// printable (cut-card close-ups in a WIDE frame, the attached fixture).
-const VERSION = 2;
+// Bumped whenever the frames' shape changes: 3 = the two-page card
+// printable (per-card cut lines, grip margins, strictly-one-card rule).
+const VERSION = 3;
 const CHROME = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
 const META = path.join(__dirname, 'hw-feeds.json');
 
 const FILE = {
   card: (i) => path.join(__dirname, 'hw-card-' + (i + 1) + '.y4m'),
   attached: path.join(__dirname, 'hw-card-attached.y4m'),
-  sheet: path.join(__dirname, 'hw-sheet.y4m'),
+  many: path.join(__dirname, 'hw-many.y4m'),
+  manyThenOne: path.join(__dirname, 'hw-many-then-one.y4m'),
+  legacy: path.join(__dirname, 'hw-legacy.y4m'),
   blank: path.join(__dirname, 'hw-card-blank.y4m'),
   sweep: path.join(__dirname, 'hw-sweep.y4m'),
   noisy: path.join(__dirname, 'hw-noisy.y4m')
 };
 
 function allPresent() {
-  const files = [FILE.attached, FILE.sheet, FILE.blank, FILE.sweep, FILE.noisy, META];
+  const files = [FILE.attached, FILE.many, FILE.manyThenOne, FILE.legacy,
+                 FILE.blank, FILE.sweep, FILE.noisy, META];
   for (let i = 0; i < 5; i++) files.push(FILE.card(i));
   if (!files.every((f) => fs.existsSync(f))) return false;
   try { return JSON.parse(fs.readFileSync(META, 'utf8')).version === VERSION; }
@@ -88,7 +87,7 @@ function allPresent() {
 
 // RGB → YUV, BT.601 limited range, 4:2:0 — the same arithmetic as
 // test/make-camera-feed.js, generalised to many frames and a chosen
-// frame rate (the sweep file plays slowly on purpose).
+// frame rate (the sweep files play slowly on purpose).
 function y4mOf(frames, fps) {
   const yPlane = () => Buffer.alloc(W * H);
   const cPlane = () => Buffer.alloc((W / 2) * (H / 2));
@@ -117,21 +116,23 @@ function y4mOf(frames, fps) {
   return Buffer.concat(parts);
 }
 
-/* Page-side: compose the page (or the blank variant) and render ONE
- * frame — a CUT card on the desk (args.card + cut:true), the uncut page
- * held close on one card (args.card, cut:false — neighbour slivers and
- * cut lines in frame), or the whole page fitted by height — returning
- * raw RGBA (base64) plus the sheet→frame mapping. A cut card keeps the
+/* Page-side: compose the right page (or the blank/legacy variant) and
+ * render ONE frame — a CUT card on the desk (args.card + cut:true, cut
+ * along the card's own cut lines), the uncut page held close on one
+ * card (args.card, cut:false — gutters and neighbour slivers in
+ * frame), or a whole page fitted by height ({} → page 1 of the card
+ * print; {legacy:true} → the frozen one-page sheet) — returning raw
+ * RGBA (base64) plus the sheet→frame mapping. A cut card keeps the
  * page's full width (the cuts are horizontal), drawn at 94% of the
- * frame width so the desk shows around all four paper edges, exactly as
- * a card held in a hand would sit in the wide frame. */
+ * frame width so the desk shows around all four paper edges. */
 const FRAME = `async (args) => {
-  const made = (${COMPOSE})(args.blank
-    ? { seed: 7, width: 2000, blankLines: [0, 1, 2, 3, 4] }
-    : { seed: 7, width: 2000 });
+  const opts = { seed: 7, width: 2000 };
+  if (args.blank) opts.blankLines = [0, 1, 2, 3, 4];
+  if (args.legacy) opts.legacy = true;
+  else opts.page = args.card != null ? HWSheet.pageOf(args.card).page : 0;
+  const made = (${COMPOSE})(opts);
   const img = new Image();
   await new Promise((r) => { img.onload = r; img.src = made.dataURL; });
-  const G = HWSheet.GEOM;
   const SW = img.width, SH = img.height;
   const fw = ${W}, fh = ${H};
   const c = document.createElement('canvas');
@@ -142,10 +143,10 @@ const FRAME = `async (args) => {
   x.imageSmoothingQuality = 'high';
   let map;
   if (args.card != null && args.cut) {
-    // A cut card: exactly its block's rows, full page width, with desk
-    // margin on every side of the wide frame.
-    const cardTop = (G.blockTop0 + args.card * G.blockStep) * SH;
-    const cardH = G.blockStep * SH;
+    // A cut card: its own cut boundary's rows, full page width, with
+    // desk margin on every side of the wide frame.
+    const card = made.cards.find((k) => k.index === args.card);
+    const cardTop = card.cutTop, cardH = card.cutBottom - card.cutTop;
     const dw = Math.round(0.94 * fw);
     const scale = dw / SW;
     const dh = cardH * scale;
@@ -154,10 +155,12 @@ const FRAME = `async (args) => {
     map = { scale, ox, oy, bandTop: cardTop };
   } else if (args.card != null) {
     // The same card STILL ATTACHED: the uncut page held close — the
-    // band spills a little into the neighbours, so their borders and
-    // the cut lines are in frame, as they really would be.
-    const bandTop = (G.blockTop0 + args.card * G.blockStep - 0.02) * SH;
-    const bandH = (G.blockStep + 0.04) * SH;
+    // band spills through the gutters into the neighbours, so their
+    // cut lines and border slivers are in frame, as they really would
+    // be.
+    const card = made.cards.find((k) => k.index === args.card);
+    const bandTop = card.cutTop - 0.025 * SH;
+    const bandH = (card.cutBottom - card.cutTop) + 0.05 * SH;
     const scale = fw / SW;
     const dh = bandH * scale;
     const oy = (fh - dh) / 2;
@@ -236,7 +239,7 @@ async function generate(base) {
   await page.goto(base);
   await page.waitForFunction(() => window.__hw && window.__bia);
 
-  const meta = { version: VERSION, fixtures: {}, gt: null, ruleYs: null,
+  const meta = { version: VERSION, fixtures: {}, gt: [], ruleYs: [],
                  sheetW: 0, sheetH: 0 };
   const cardFrames = [];
   for (let i = 0; i < 5; i++) {
@@ -245,10 +248,16 @@ async function generate(base) {
     cardFrames.push(rgba);
     fs.writeFileSync(FILE.card(i), y4mOf([rgba, rgba], 30));
     meta.fixtures['card-' + (i + 1)] = { file: path.basename(FILE.card(i)), map: r.map };
-    if (!meta.gt) {
-      meta.gt = r.gt; meta.ruleYs = r.ruleYs;
-      meta.sheetW = r.W; meta.sheetH = r.H;
+    // ground truth accumulates across the two pages (global indices)
+    for (const g of r.gt) {
+      if (!meta.gt.some((h) => h.line === g.line && h.x0 === g.x0 && h.ch === g.ch)) {
+        meta.gt.push(g);
+      }
     }
+    for (let k = 0; k < 5; k++) {
+      if (r.ruleYs[k] != null) meta.ruleYs[k] = r.ruleYs[k];
+    }
+    meta.sheetW = r.W; meta.sheetH = r.H;
   }
   {
     const r = await page.evaluate(`(${FRAME})({ card: 1 })`);
@@ -256,11 +265,29 @@ async function generate(base) {
     fs.writeFileSync(FILE.attached, y4mOf([rgba, rgba], 30));
     meta.fixtures.attached = { file: path.basename(FILE.attached), card: 1, map: r.map };
   }
+  let page1Whole;
   {
     const r = await page.evaluate(`(${FRAME})({})`);
+    page1Whole = Buffer.from(r.b64, 'base64');
+    fs.writeFileSync(FILE.many, y4mOf([page1Whole, page1Whole], 30));
+    meta.fixtures.many = { file: path.basename(FILE.many), map: r.map };
+  }
+  {
+    // the overlay's own story: three cards at once, then one card —
+    // the message must show, then clear, and the card must collect
+    const frames = [];
+    for (let k = 0; k < 4; k++) frames.push(page1Whole);
+    for (let k = 0; k < 4; k++) frames.push(cardFrames[0]);
+    fs.writeFileSync(FILE.manyThenOne, y4mOf(frames, 2));
+    meta.fixtures.manyThenOne = { file: path.basename(FILE.manyThenOne),
+                                  map: meta.fixtures['card-1'].map };
+  }
+  {
+    const r = await page.evaluate(`(${FRAME})({ legacy: true })`);
     const rgba = Buffer.from(r.b64, 'base64');
-    fs.writeFileSync(FILE.sheet, y4mOf([rgba, rgba], 30));
-    meta.fixtures.sheet = { file: path.basename(FILE.sheet), map: r.map };
+    fs.writeFileSync(FILE.legacy, y4mOf([rgba, rgba], 30));
+    meta.fixtures.legacy = { file: path.basename(FILE.legacy), map: r.map,
+                             gt: r.gt, ruleYs: r.ruleYs };
   }
   {
     const r = await page.evaluate(`(${FRAME})({ card: 2, cut: true, blank: true })`);
