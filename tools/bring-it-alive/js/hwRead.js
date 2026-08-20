@@ -1,15 +1,30 @@
-/* HW READ — find the lines, cut the ink apart, and ALIGN, never recognise.
+/* HW READ — find the card, cut the ink apart, and ALIGN, never recognise.
  *
- * The reader's whole contract: it is handed a photograph of the filled
- * writing sheet (hwSheet.js) and the KNOWN text of every line, and it
+ * The reader's whole contract: it is handed a photograph of a filled
+ * writing CARD (hwSheet.js) and the KNOWN text of every line, and it
  * answers "which known letter is this blob of ink standing where" — by
  * sequence alignment with gap tolerance, never by OCR, never by guessing
  * what a child's letter looks like. The house rule is REFUSE RATHER THAN
  * GUESS: letters that touched each other, marks that fit nowhere, and
  * alignments that are not confident are SKIPPED, never mislabeled. A
  * skipped letter costs the child nothing but an empty slot in the
- * alphabet grid, and recovery is per-line ("write this line once more"),
- * never start-over.
+ * alphabet grid, and recovery is per-card ("show me this card once
+ * more"), never start-over.
+ *
+ * STRICTLY ONE CARD AT A TIME (the product owner, verbatim: "only 1
+ * question at a time will be shown, if camera sees more, it can show a
+ * message overlay 1 question at a time"). Every card carries its own
+ * two anchor stars and its own printed sentence, so each card registers
+ * and identifies itself — there is no page identity anywhere, and none
+ * to get wrong. A view in which the survey (surveyCards) surely names
+ * MORE than one card reads NOTHING: the live loop shows a gentle
+ * overlay, the upload path a kind one-card-per-photo message.
+ *
+ * LEGACY: the whole-sheet machinery below (the 5-rung anchor ladder and
+ * the rule-pattern fallback) is FROZEN against HWSheet.LEGACY.GEOM and
+ * exists only so one-page sheets printed before the two-page redesign
+ * keep reading, whole-page, exactly as they always did. The new card
+ * print cannot form a 5-rung ladder, so the two worlds cannot collide.
  *
  * Five stages:
  *
@@ -180,7 +195,16 @@
     // caps below bound the two combinatorial searches even between
     // deadline checks.
     LIVE_SEED_PAIRS: 20000,  // findLadder seed-pair evaluations under budget
-    LIVE_PAIR_COMBOS: 30000  // findLinePairs mark-pair evaluations under budget
+    // findLinePairs under a live budget: raw mark-pair combos are a
+    // cheap O(1) gate chain, so their cap is the theoretical maximum at
+    // the 400-mark cap (the overtime check every 256 combos is the real
+    // bound); the EXPENSIVE step — sampling a candidate's model band —
+    // gets its own small cap. The old single 30000-combo cap silently
+    // refused an honest whole-page view (three cards ≈ 200 marks ≈
+    // 40000 raw combos, measured), so the many-card overlay never fired
+    // on exactly the frame it exists for.
+    LIVE_PAIR_COMBOS: 160000,
+    LIVE_PAIR_DENSE: 400     // model-band density samplings under budget
   };
 
   // Under a live budget, has the frame's time run out? Checked at loop
@@ -282,14 +306,18 @@
     })(0, 0);
   }
 
-  /* Score five rungs as THE ladder, or reject them. Every gate is a fact
-   * about the printed sheet under a projective camera: smooth pitch,
-   * smooth lengths, near-parallel rungs, and — the decisive one against
-   * ink lookalikes — every mark the SIZE the ladder itself implies for a
-   * printed star at that page scale. Returns null unless the whole
-   * pattern holds. */
+  /* Score five rungs as THE ladder, or reject them. LEGACY: the ladder
+   * is the one-page five-card sheet's registration, and every number
+   * here measures against HWSheet.LEGACY.GEOM — the print as it already
+   * exists on children's desks. The two-page card print has no ladder;
+   * a new-print photo can never form five rungs and falls through to
+   * the one-card path. Every gate is a fact about the printed sheet
+   * under a projective camera: smooth pitch, smooth lengths,
+   * near-parallel rungs, and — the decisive one against ink lookalikes
+   * — every mark the SIZE the ladder itself implies for a printed star
+   * at that page scale. Returns null unless the whole pattern holds. */
   function scoreLadder(sel, W, H, iso) {
-    const G = HWSheet.GEOM;
+    const G = HWSheet.LEGACY.GEOM;
     const aSpan = G.anchorXRight - G.anchorXLeft;
     const gaps = [], lens = [], tilts = [];
     for (let i = 0; i < sel.length; i++) {
@@ -327,7 +355,7 @@
     let sizePenalty = 0;
     for (const r of sel) {
       const pageW = (r.R.cx - r.L.cx) / aSpan;
-      const exp = HWSheet.anchorAreaPx(pageW) *
+      const exp = HWSheet.anchorAreaPx(pageW, G) *
                   Math.min(1.6, Math.max(0.25, anis));
       for (const m of [r.L, r.R]) {
         const q = m.size / exp;
@@ -444,7 +472,7 @@
    * the vertical scale comes from the measured pitch to the neighbouring
    * rungs — no flat-plane assumption anywhere. */
   function anchorFits(ladder) {
-    const G = HWSheet.GEOM;
+    const G = HWSheet.LEGACY.GEOM;   // the ladder is legacy-only
     const span = G.anchorXRight - G.anchorXLeft;
     const t0 = (G.xLeft - G.anchorXLeft) / span;
     const t1 = (G.xRight - G.anchorXLeft) / span;
@@ -461,7 +489,7 @@
       const pitch = i === 0 ? gaps[0]
         : i === ladder.rungs.length - 1 ? gaps[gaps.length - 1]
         : (gaps[i - 1] + gaps[i]) / 2;
-      const zone = HWSheet.lineZoneFor(x1 - x0 + 1, pitch);
+      const zone = HWSheet.lineZoneFor(x1 - x0 + 1, pitch, G);
       zones.push(zone);
       fits.push({ a, b, x0: Math.round(x0), x1: Math.round(x1),
                   len: x1 - x0 + 1,
@@ -509,9 +537,10 @@
    * always there — so a whole-page registration is believed only when
    * ink stands in that band above EVERY implied rule. The one-card path
    * has required exactly this since it existed (findLinePairs); the
-   * ladder path gained it after a measured failure — see the constant. */
+   * ladder path gained it after a measured failure — see the constant.
+   * Legacy-only, so it measures against the legacy print's offsets. */
   function modelBandDensity(seg, fit, zone) {
-    const G = HWSheet.GEOM;
+    const G = HWSheet.LEGACY.GEOM;
     const H = zone.pageH;
     const lo = (G.ruleOffset - G.modelBaseline) * H;  // model baseline above the rule
     const dyA = Math.round(lo + G.modelSize * H);
@@ -590,10 +619,12 @@
     });
   }
 
-  // Choose the 4 bands that ARE the sheet: even pitch, equal lengths,
-  // aligned ends, pitch/length ratio near the geometry's own.
+  // Choose the bands that ARE the legacy sheet: even pitch, equal
+  // lengths, aligned ends, pitch/length ratio near the OLD geometry's
+  // own — this fallback exists for sheets printed before the end-marks,
+  // which are all one-page five-rule sheets.
   function chooseRules(bands, log) {
-    const G = HWSheet.GEOM;
+    const G = HWSheet.LEGACY.GEOM;
     const want = HWSheet.LINES.length;
     if (bands.length < want) return null;
     const expRatio = (G.blockStep * G.aspect) / (G.xRight - G.xLeft);
@@ -1146,7 +1177,7 @@
     const { marks, darkGate } = collectMarks(seg);
     if (marks.length < 2) return [];
     deadline = deadline || 0;
-    let combos = 0;
+    let combos = 0, dense = 0;
     const W = seg.width;
     const G = HWSheet.GEOM;
     const aSpan = G.anchorXRight - G.anchorXLeft;
@@ -1181,6 +1212,8 @@
         if (qL < PL.SIZE_LO || qL > PL.SIZE_HI ||
             qR < PL.SIZE_LO || qR > PL.SIZE_HI) continue;
         if (!iso(L) || !iso(R)) continue;
+        // The expensive step starts here — its own live budget.
+        if (deadline && ++dense > P.LIVE_PAIR_DENSE) return [];
         // The rule's endpoints, interpolated along the pair (the marks
         // sit at known sheet fractions — the ladder's own arithmetic).
         const x0 = L.cx + t0 * dx, y0 = L.cy + t0 * (R.cy - L.cy);
@@ -1246,12 +1279,156 @@
       (c.x1 - c.x0 + 1) <= maxW && (c.y1 - c.y0 + 1) <= maxH);
   }
 
-  /* Read ONE line from an already-segmented frame. Returns
-   * { ok:true, index, line, capture, scores } or { ok:false } —
-   * never a guess: an ambiguous identity is a refusal. */
-  function readLineFromSeg(seg, log, deadline) {
+  /* One candidate pair's rule fit and card zone. No pitch is measurable
+   * from one pair, so the zone is isotropic (anis = 1): a close-up is
+   * held roughly square-on, and a frame that is not simply fails the
+   * identity gates and is re-swept. */
+  function cardFitOf(pr) {
+    const zone = HWSheet.lineZoneFor(pr.x1 - pr.x0 + 1);
+    const fit = { a: pr.y0 - pr.b * pr.x0, b: pr.b,
+                  x0: Math.round(pr.x0), x1: Math.round(pr.x1),
+                  len: pr.x1 - pr.x0 + 1,
+                  thickness: Math.max(1, Math.round(zone.ruleThicknessPx)),
+                  yAt(x) { return this.a + this.b * x; } };
+    return { fit, zone };
+  }
+
+  /* THE PRINTED MODEL LINE IS A WITNESS. It stands at a known offset
+   * above the rule, it is clean print, and it is one of the same five
+   * known texts — so it is read by the same alignment (never
+   * recognition) and names its own card. Measured, this is what makes
+   * identity safe: the child-ink DP alone separated the true text from
+   * its neighbours by only ~1.35× (three full pangrams align each
+   * other's ink far too well), and a stray pair of dot-sized marks
+   * could drop a zone onto arbitrary ink and have the forgiving digits
+   * text accept it. The model band refuses both: a wrong pair has no
+   * clean print at the model offset, and the print names its own line.
+   * Returns { sure, t, mClass, mBest, fit, zone } — sure:false when the
+   * pair carries no nameable print. */
+  function nameModel(seg, pr, log) {
     const G = HWSheet.GEOM;
+    const { fit, zone } = cardFitOf(pr);
+    const Hpage = zone.pageH;
+    const modelFit = { a: fit.a - (G.ruleOffset - G.modelBaseline) * Hpage,
+                       b: fit.b, x0: fit.x0, x1: fit.x1, len: fit.len,
+                       thickness: 1, yAt(x) { return this.a + this.b * x; } };
+    const modelZone = { pageW: zone.pageW, pageH: Hpage,
+                        ascentPx: G.modelSize * 1.3 * Hpage,
+                        descentPx: G.modelSize * 0.45 * Hpage,
+                        blockStepPx: zone.blockStepPx,
+                        ruleThicknessPx: 1, anis: 1 };
+    let modelComps = lineComponents(seg.ink, seg, modelFit, modelZone);
+    modelComps = dropNonWriting(modelComps, modelFit, modelZone);
+    modelComps = mergeSatellites(modelComps, modelZone);
+    if (modelComps.length < 8) {           // no print here → not a card
+      log('hw: one-card pair (span ' + Math.round(pr.dx) + 'px) — no printed ' +
+          'model text above it (' + modelComps.length + ' marks) — keep sweeping');
+      return { sure: false, fit, zone };
+    }
+    // The model band's CASE CLASS first — it halves the candidate list
+    // and is what separates the capitals line from its lowercase twin,
+    // which the width DP alone cannot (measured 28 vs 27).
+    const uModel = caseSignal(modelComps, modelFit);
+    const mClass = classOf(uModel);
+    if (!mClass) {
+      log('hw: one-card pair (span ' + Math.round(pr.dx) + 'px) — the model ' +
+          'band\'s case is unclear (u=' + (uModel == null ? '—' : uModel.toFixed(2)) +
+          ') — keep sweeping');
+      return { sure: false, fit, zone };
+    }
+    const candidates = [];
+    for (let t = 0; t < HWSheet.LINES.length; t++) {
+      if ((isUniformText(HWSheet.LINES[t].text) ? 'uniform' : 'mixed') === mClass) {
+        candidates.push(Object.assign({ t },
+          scoreAgainst(HWSheet.LINES[t].text, modelComps)));
+      }
+    }
+    candidates.sort((a, b) => b.acc - a.acc);
+    const mBest = candidates[0], mSecond = candidates[1];
+    const sure = mBest.acc >= PL.MODEL_FRAC * mBest.expected &&
+      mBest.acc >= PL.MODEL_ID_MARGIN * Math.max(1, mSecond ? mSecond.acc : 0);
+    if (!sure) {
+      log('hw: one-card pair (span ' + Math.round(pr.dx) + 'px) — the printed ' +
+          'model line did not name a card clearly (' + mClass + ' u=' +
+          uModel.toFixed(2) + '; ' +
+          candidates.map((s) => 'card ' + (s.t + 1) + ':' + s.acc).join(' ') +
+          ') — keep sweeping');
+      return { sure: false, fit, zone };
+    }
+    return { sure: true, t: mBest.t, mClass, uModel, mBest, fit, zone };
+  }
+
+  /* THE SURVEY — how many cards stand in this view? Every candidate
+   * pair's model print is named first, then the surely-named pairs are
+   * clustered by the REGION they claim: two pairs whose implied rules
+   * lie on the same stretch of paper are two candidate registrations
+   * of ONE card, never two cards — measured, a junk pair (an anchor
+   * paired with an isolated speck of the child's ink) implies a rule
+   * a few percent off the true one, its model band catches a clipped
+   * slice of the true print, and the clipped glyphs can align "surely"
+   * to a WRONG text; counting names alone therefore over-counted a
+   * single card as two. Physically distinct cards are what the rule is
+   * about, and distinct cards are geometrically DISJOINT: neighbouring
+   * rules stand a full card apart (0.30·H ≈ 2.8× the ascent), while
+   * every junk twin of a pair overlaps its card's own writing zone.
+   * The product rule is STRICTLY ONE CARD AT A TIME: two or more
+   * disjoint cards in view reads NOTHING and the caller shows a kind
+   * message instead. */
+  function surveyCards(seg, pairs, log, deadline) {
+    const named = [];
+    const sure = [];
+    for (const pr of pairs) {
+      if (overtime(deadline)) return null;   // out of time — skip the frame
+      const n = nameModel(seg, pr, log);
+      named.push(n);
+      if (n.sure) sure.push(n);
+    }
+    // Cluster by claimed region: same card iff the rule midlines sit
+    // within 0.6× the smaller ascent of each other AND the rule spans
+    // overlap by half the shorter one. Real neighbours are ~2.8 ascents
+    // apart, so the margin is wide on both sides.
+    const clusters = [];
+    for (const n of sure) {
+      const yMid = n.fit.yAt((n.fit.x0 + n.fit.x1) / 2);
+      let home = null;
+      for (const c of clusters) {
+        const dy = Math.abs(yMid - c.yMid);
+        const over = Math.min(n.fit.x1, c.x1) - Math.max(n.fit.x0, c.x0);
+        const shorter = Math.min(n.fit.len, c.x1 - c.x0 + 1);
+        if (dy < 0.6 * Math.min(n.zone.ascentPx, c.ascentPx) &&
+            over >= 0.5 * shorter) { home = c; break; }
+      }
+      if (home) home.lines.add(n.t);
+      else clusters.push({ yMid, x0: n.fit.x0, x1: n.fit.x1,
+                           ascentPx: n.zone.ascentPx,
+                           lines: new Set([n.t]) });
+    }
+    const lines = new Set();
+    for (const c of clusters) {
+      // a cluster is one card; it answers to its best pair's name, and
+      // the pairs are span-ordered best first, so the first name wins
+      lines.add(c.lines.values().next().value);
+    }
+    return { named, lines, clusters: clusters.length };
+  }
+
+  /* Read ONE card from an already-segmented frame. Returns
+   * { ok:true, index, line, capture, scores }, { ok:false, many:true }
+   * when more than one card stands in view (strictly one at a time —
+   * the product owner's rule), or { ok:false } — never a guess: an
+   * ambiguous identity is a refusal. */
+  function readLineFromSeg(seg, log, deadline) {
     const pairs = findLinePairs(seg, deadline);
+    if (!pairs.length) return { ok: false };
+    const survey = surveyCards(seg, pairs, log, deadline);
+    if (!survey) return { ok: false };
+    if (survey.clusters >= 2) {
+      log('hw: ' + survey.clusters + ' cards stand in this view (cards ' +
+          Array.from(survey.lines).sort().map((t) => t + 1).join(', ') +
+          ') — one card at a time, nothing read');
+      return { ok: false, many: true,
+               cards: Array.from(survey.lines).sort() };
+    }
     // TWO PASSES over the candidate pairs. The first leaves the ink
     // exactly as segmented — on a bright capture the printed rule is
     // below the ink margin and nothing needs removing, so nothing pays
@@ -1261,83 +1438,20 @@
     // margin — too few for the 30% backstop gate, plenty to weld the
     // whole line into one blob (measured: 1 component where 35 stood).
     for (const sweep of [false, true]) {
-      const got = tryPairs(seg, pairs, sweep, G, log, deadline);
+      const got = tryPairs(seg, pairs, survey.named, sweep, log, deadline);
       if (got) return got;
-      if (!pairs.length) break;
     }
     return { ok: false };
   }
 
-  function tryPairs(seg, pairs, sweep, G, log, deadline) {
-    for (const pr of pairs) {
+  function tryPairs(seg, pairs, named, sweep, log, deadline) {
+    for (let pi = 0; pi < pairs.length; pi++) {
+      const pr = pairs[pi];
       if (overtime(deadline)) return null;   // out of time — skip the frame
-      const fit = { a: pr.y0 - pr.b * pr.x0, b: pr.b,
-                    x0: Math.round(pr.x0), x1: Math.round(pr.x1),
-                    len: pr.x1 - pr.x0 + 1, thickness: 1,
-                    yAt(x) { return this.a + this.b * x; } };
-      // No pitch is measurable from one pair, so the zone is isotropic
-      // (anis = 1): a close-up is held roughly square-on, and a frame
-      // that is not simply fails the identity gates and is re-swept.
-      const zone = HWSheet.lineZoneFor(fit.len);
-      fit.thickness = Math.max(1, Math.round(zone.ruleThicknessPx));
-      const Hpage = zone.pageH;
-      // THE PRINTED MODEL LINE IS A WITNESS. It stands at a known offset
-      // above the rule, it is clean print, and it is one of the same
-      // five known texts — so it is read by the same alignment (never
-      // recognition) and must name the SAME line as the child's ink.
-      // Measured, this is what makes identity safe: the child-ink DP
-      // alone separated the true text from its neighbours by only
-      // ~1.35× (three full pangrams align each other's ink far too
-      // well), and a stray pair of dot-sized marks could drop a zone
-      // onto arbitrary ink and have the forgiving digits text accept
-      // it. The model band refuses both: a wrong pair has no clean
-      // print at the model offset, and the print names its own line.
-      const modelFit = { a: fit.a - (G.ruleOffset - G.modelBaseline) * Hpage,
-                         b: fit.b, x0: fit.x0, x1: fit.x1, len: fit.len,
-                         thickness: 1, yAt(x) { return this.a + this.b * x; } };
-      const modelZone = { pageW: zone.pageW, pageH: Hpage,
-                          ascentPx: G.modelSize * 1.3 * Hpage,
-                          descentPx: G.modelSize * 0.45 * Hpage,
-                          blockStepPx: zone.blockStepPx,
-                          ruleThicknessPx: 1, anis: 1 };
-      let modelComps = lineComponents(seg.ink, seg, modelFit, modelZone);
-      modelComps = dropNonWriting(modelComps, modelFit, modelZone);
-      modelComps = mergeSatellites(modelComps, modelZone);
-      if (modelComps.length < 8) {           // no print here → not a line
-        log('hw: one-line pair (span ' + Math.round(pr.dx) + 'px) — no printed ' +
-            'model text above it (' + modelComps.length + ' marks) — keep sweeping');
-        continue;
-      }
-      // The model band's CASE CLASS first — it halves the candidate
-      // list and is what separates the capitals line from its lowercase
-      // twin, which the width DP alone cannot (measured 28 vs 27).
-      const uModel = caseSignal(modelComps, modelFit);
-      const mClass = classOf(uModel);
-      if (!mClass) {
-        log('hw: one-line pair (span ' + Math.round(pr.dx) + 'px) — the model ' +
-            'band\'s case is unclear (u=' + (uModel == null ? '—' : uModel.toFixed(2)) +
-            ') — keep sweeping');
-        continue;
-      }
-      const candidates = [];
-      for (let t = 0; t < HWSheet.LINES.length; t++) {
-        if ((isUniformText(HWSheet.LINES[t].text) ? 'uniform' : 'mixed') === mClass) {
-          candidates.push(Object.assign({ t },
-            scoreAgainst(HWSheet.LINES[t].text, modelComps)));
-        }
-      }
-      candidates.sort((a, b) => b.acc - a.acc);
-      const mBest = candidates[0], mSecond = candidates[1];
-      const modelSure = mBest.acc >= PL.MODEL_FRAC * mBest.expected &&
-        mBest.acc >= PL.MODEL_ID_MARGIN * Math.max(1, mSecond ? mSecond.acc : 0);
-      if (!modelSure) {
-        log('hw: one-line pair (span ' + Math.round(pr.dx) + 'px) — the printed ' +
-            'model line did not name a line clearly (' + mClass + ' u=' +
-            uModel.toFixed(2) + '; ' +
-            candidates.map((s) => 'line ' + (s.t + 1) + ':' + s.acc).join(' ') +
-            ') — keep sweeping');
-        continue;
-      }
+      const nm = named[pi];
+      if (!nm || !nm.sure) continue;         // named by the survey, once
+      const fit = nm.fit, zone = nm.zone;
+      const mBest = nm.mBest, mClass = nm.mClass, uModel = nm.uModel;
       let cleaned = seg.ink;
       if (sweep) {
         cleaned = Uint8Array.from(seg.ink);
@@ -1354,16 +1468,16 @@
       // zone's height, so the cap costs no letter and no welded word.
       comps = dropNonWriting(comps, fit, zone);
       comps = mergeSatellites(comps, zone);
-      if (comps.length < 4) {                // an unwritten line collects nothing
-        log('hw: one-line pair (span ' + Math.round(pr.dx) + 'px) — the writing ' +
+      if (comps.length < 4) {                // an unwritten card collects nothing
+        log('hw: one-card pair (span ' + Math.round(pr.dx) + 'px) — the writing ' +
             'line under the model is empty (' + comps.length + ' marks) — keep sweeping');
         continue;
       }
       // The child's ink must AGREE, twice over: its measured case class
       // matches the model's, and its own best alignment WITHIN that
-      // class is the very line the model named, at the normal
+      // class is the very card the model named, at the normal
       // acceptance quality. Disagreement refuses the frame — never a
-      // guess, never a wrong line identity.
+      // guess, never a wrong card identity.
       const uChild = caseSignal(comps, fit);
       const cClass = classOf(uChild);
       const scores = [];
@@ -1379,24 +1493,60 @@
       const confident = cClass === mClass && best && best.t === mBest.t &&
         best.acc >= PL.ID_MIN &&
         best.acc >= PL.ID_FRAC * best.expected;
-      log('hw: one-line pair (span ' + Math.round(pr.dx) + 'px, tilt ' +
-          (Math.atan(pr.b) * 180 / Math.PI).toFixed(1) + '°) — model says line ' +
+      // JOINED-UP IDENTITY. A card whose letters all hold hands accepts
+      // ~nothing, so the child witness above can never pass — under the
+      // whole-sheet era the ladder still registered such a line and the
+      // child got the kind "holding hands" diagnosis; a card must not
+      // lose it. When the model print alone has surely named the card,
+      // the child ink aligned against THAT text is examined for the
+      // joined signature (assembleLine's own thresholds): touching-
+      // refusals dominating is a writing STYLE, not junk. Nothing is
+      // ever ACCEPTED from such a card — every welded letter is refused
+      // — so the zero-mislabel contract is untouched; what is at stake
+      // is only which row carries the retake message, and the model
+      // witness (72% of a full printed line, with margin) is the same
+      // gate the confident path trusts for the same fact. The child
+      // case class is deliberately not required here: welded word-blobs
+      // top out at their tallest letter, so a joined lowercase line
+      // measures 'uniform' by construction.
+      let index = confident ? best.t : null;
+      let viaJoined = false;
+      if (index == null) {
+        const alM = align(HWSheet.LINES[mBest.t].text, comps);
+        if (alM.unit >= P.MIN_UNIT_PX) {
+          let expected = 0, touching = 0, acc = 0;
+          for (const tok of alM.tokens) {
+            if (tok.ch === ' ') continue;
+            expected++;
+            if (tok.kind === 'touching') touching++;
+            else if (accept(tok, comps, alM.unit)) acc++;
+          }
+          const joinedSig = expected > 0 &&
+            (touching >= P.JOINED_TOUCH_FRAC * expected ||
+             (acc <= P.JOINED_ACCEPT_FRAC * expected &&
+              touching >= P.JOINED_TOUCH_FRAC_LO * expected));
+          if (joinedSig) { index = mBest.t; viaJoined = true; }
+        }
+      }
+      log('hw: one-card pair (span ' + Math.round(pr.dx) + 'px, tilt ' +
+          (Math.atan(pr.b) * 180 / Math.PI).toFixed(1) + '°) — model says card ' +
           (mBest.t + 1) + ' (' + mClass + ', ' + mBest.acc + ' of ' + mBest.expected +
-          (mSecond ? ' vs ' + mSecond.acc : '') + '); child ink (u=' +
+          '); child ink (u=' +
           (uChild == null ? '—' : uChild.toFixed(2)) + ') accepted per text: ' +
-          scores.map((s) => 'line ' + (s.t + 1) + ':' + s.acc).join(' ') +
-          (confident ? ' → line ' + (best.t + 1)
-                     : ' → not sure enough, keep sweeping'));
-      if (!confident) continue;
+          scores.map((s) => 'card ' + (s.t + 1) + ':' + s.acc).join(' ') +
+          (index != null
+            ? ' → card ' + (index + 1) + (viaJoined ? ' (reads as joined-up)' : '')
+            : ' → not sure enough, keep sweeping'));
+      if (index == null) continue;
       const xTops = [];
-      const line = assembleLine(best.t, HWSheet.LINES[best.t].text, comps,
-                                align(HWSheet.LINES[best.t].text, comps),
+      const line = assembleLine(index, HWSheet.LINES[index].text, comps,
+                                align(HWSheet.LINES[index].text, comps),
                                 fit, zone, seg, xTops, log);
       const xh = median(xTops) || 0.4 * zone.ascentPx;
-      log('hw: one line met — line ' + (best.t + 1) + ', ' + line.accepted +
+      log('hw: one card met — card ' + (index + 1) + ', ' + line.accepted +
           ' of ' + line.expected + ' letters, x-height ~' + Math.round(xh) +
           'px' + (xTops.length ? ' (measured)' : ' (estimated)'));
-      return { ok: true, index: best.t, line, scores,
+      return { ok: true, index, line, scores,
                capture: { xHeightPx: xh, xHeightMeasured: xTops.length > 0,
                           coarse: xh < P.COARSE_XH, unit: line.unit,
                           pageW: zone.pageW,
@@ -1405,11 +1555,14 @@
     return null;
   }
 
-  /* One live frame of the free-motion loop. The whole sheet wins when it
-   * is there — a frame where the FULL ladder registers reads the whole
-   * sheet at once (all five lines land together, which is also exactly
-   * what a whole-sheet photo through the same camera already did) —
-   * otherwise the frame is offered to the single-line reader. */
+  /* One live frame of the free-motion loop. A LEGACY whole sheet wins
+   * when it is there — a frame where the old print's full ladder
+   * registers reads that whole sheet at once (all five lines land
+   * together, exactly as an old sheet's photo always did) — otherwise
+   * the frame is offered to the one-card reader. STRICTLY ONE CARD:
+   * more than one card of the new print in view answers kind:'many'
+   * and the page shows a gentle "one card at a time" overlay instead
+   * of reading anything. */
   function readFrame(photo, opts) {
     opts = opts || {};
     const log = opts.log || function () {};
@@ -1428,6 +1581,7 @@
     }
     if (overtime(deadline)) return { kind: 'nothing' };
     const one = readLineFromSeg(seg, log, deadline);
+    if (one.many) return { kind: 'many', cards: one.cards };
     if (one.ok) return { kind: 'line', index: one.index, line: one.line,
                          capture: one.capture, scores: one.scores };
     return { kind: 'nothing' };
@@ -1466,8 +1620,8 @@
       }
       fits = reg.fits; zones = reg.zones; viaAnchors = true; anis = ladder.anis;
     } else {
-      log('hw: no anchor end-marks found — trying the printed rules themselves ' +
-          '(an older sheet, square-on)');
+      log('hw: no legacy sheet ladder — trying an old sheet\'s printed rules, ' +
+          'then the cards themselves');
       const runs = rowRuns(seg);
       let bands = candidateBands(runs, seg.width, seg.height, P.RUN_FRAC);
       let rules = chooseRules(bands, log);
@@ -1476,19 +1630,26 @@
         rules = chooseRules(bands, log);
       }
       if (!rules) {
-        log('hw: REFUSED — the sheet\'s end-marks and ruled lines were not found (' +
-            bands.length + ' candidate bands, none matching the sheet pattern)');
-        return { ok: false, reason: 'lines' };
+        // Not an old whole sheet — this photograph is offered to the
+        // ONE-CARD reader (the current print is cards, strictly one at
+        // a time).
+        return readCardPhoto(photo, seg, opts, log, t0);
       }
       fits = [];
+      let broken = false;
       for (const band of rules) {
         const fit = fitRule(seg, band);
-        if (!fit) { log('hw: REFUSED — a rule band would not fit a line'); return { ok: false, reason: 'lines' }; }
+        if (!fit) { broken = true; break; }
         fits.push(fit);
+      }
+      if (broken) {
+        log('hw: a rule band would not fit a line — trying the cards themselves');
+        return readCardPhoto(photo, seg, opts, log, t0);
       }
       // Per-line zones from measured length AND measured pitch, exactly as
       // the anchor path derives them — a flat capture measures anis ≈ 1
-      // and everything downstream behaves as it always did.
+      // and everything downstream behaves as it always did. Legacy
+      // geometry: this fallback only ever matches the old print.
       const mids = fits.map((f) => f.yAt((f.x0 + f.x1) / 2));
       const gaps = [];
       for (let i = 1; i < mids.length; i++) gaps.push(mids[i] - mids[i - 1]);
@@ -1496,7 +1657,7 @@
         const pitch = i === 0 ? gaps[0]
           : i === fits.length - 1 ? gaps[gaps.length - 1]
           : (gaps[i - 1] + gaps[i]) / 2;
-        return HWSheet.lineZoneFor(f.len, pitch);
+        return HWSheet.lineZoneFor(f.len, pitch, HWSheet.LEGACY.GEOM);
       });
       anis = zones.reduce((a, z) => a + z.anis, 0) / zones.length;
     }
@@ -1569,6 +1730,46 @@
     return { ok: true, lines, zones, pageW: meanW,
              capture: { anchors: viaAnchors ? 10 : 0, viaAnchors, tilts,
                         xHeightPx, xHeightMeasured: !!xhMeasured, coarse, anis,
+                        flipped: !!opts._flipped } };
+  }
+
+  /* A photograph offered to the ONE-CARD reader — the upload path for
+   * the two-page card print. Strictly one card per photo (the product
+   * owner's rule: "only 1 question at a time will be shown"): more than
+   * one card surely in view answers { ok:false, reason:'many' } and the
+   * app asks kindly for one card per picture. A photo that reads
+   * nothing right way up is tried once upside down — phones do that —
+   * through the very same gates. */
+  function readCardPhoto(photo, seg, opts, log, t0) {
+    const one = readLineFromSeg(seg, log, opts.deadline || 0);
+    if (one.many) {
+      log('hw: REFUSED — more than one card in this photograph (cards ' +
+          one.cards.map((t) => t + 1).join(', ') + '); one card per picture');
+      return { ok: false, reason: 'many' };
+    }
+    if (!one.ok) {
+      if (!opts._flipped) {
+        log('hw: no card met this way up — turning the photograph around and trying once more');
+        const flipped = read(rotate180(photo), Object.assign({}, opts, { _flipped: true }));
+        if (flipped.ok || flipped.reason === 'many') return flipped;
+      }
+      log('hw: REFUSED — no card\'s star pair and printed sentence were found together');
+      return { ok: false, reason: 'lines' };
+    }
+    const lines = [];
+    for (let i = 0; i < HWSheet.LINES.length; i++) {
+      if (i === one.index) lines.push(one.line);
+      else lines.push({ index: i, text: HWSheet.LINES[i].text,
+                        found: false, letters: [] });
+    }
+    const cap = one.capture || {};
+    log('hw: card photograph read in ' + Math.round(performance.now() - t0) + 'ms');
+    return { ok: true, lines, zones: null, pageW: cap.pageW || 0,
+             capture: { anchors: 2, viaAnchors: false, viaCard: true,
+                        tilts: [cap.tilt || 0],
+                        xHeightPx: cap.xHeightPx || 0,
+                        xHeightMeasured: !!cap.xHeightMeasured,
+                        coarse: !!cap.coarse, anis: 1,
                         flipped: !!opts._flipped } };
   }
 

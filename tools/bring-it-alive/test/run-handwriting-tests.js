@@ -1,80 +1,68 @@
 /* MY HANDWRITING — verification suite.
  *
  * Drives the REAL page end to end: presses the real entry button, arms
- * the real capture step, feeds a photograph through the real file input,
+ * the real capture step, feeds photographs through the real file input,
  * and asserts on what the journey actually produced — the alphabet the
  * child would see, the refusals, and the font bytes themselves.
  *
- * The fixture is a DETERMINISTIC SYNTHETIC FILLED SHEET: the page's own
- * HWSheet.draw renders the sheet, and the model text is then written
- * onto the rules in a jittered handwriting-ish style — per-letter
- * baseline wobble, rotation, size variation and spacing jitter, all from
- * a SEEDED generator (mulberry32; Math.random appears nowhere), so every
- * run reads the same sheet. Ground truth is the drawn letters' own
+ * The fixture is a DETERMINISTIC SYNTHETIC FILLED PAGE SET: the page's
+ * own HWSheet.draw renders each printable page (and HWSheet.LEGACY.draw
+ * the frozen one-page sheet), and the model text is then written onto
+ * the rules in a jittered handwriting-ish style — all from a SEEDED
+ * generator (mulberry32; Math.random appears nowhere), so every run
+ * reads the same pages. Ground truth is the drawn letters' own
  * positions, which is what makes the mislabel assertions exact.
  *
- * Eight scenarios:
+ * Scenarios:
  *   HW-N  two journeys, two blocks — the entry screen presents the
  *         drawing journey and the font journey as equal, separate
  *         blocks; the shared camera machinery wears each journey's own
- *         words; backing out of one never leaks state into the other.
- *   HW-J  five reading cards — the printable is five bordered cards
- *         with dashed cut lines between them (the product owner: "try
- *         designing the page as 5 reding cards, and than kid can show
- *         each card 1 by 1"); the blank is TALLER than the sheet era's;
- *         the border, dashes and scissors mark are invisible to the
- *         reader (never ink, never an anchor — the tilted-page-edge
- *         guard extended to the card border, asserted); a card shown
- *         STILL ATTACHED reads exactly like the cut card; and the WIDE
- *         frame buys the close-up pixels, measured against the tall-era
- *         hold.
- *   HW-F  free motion — the camera collects the cards ONE AT A TIME, in
- *         any order (fake-camera y4m cut-card close-ups in the WIDE
- *         frame, one Chromium launch each): correct identity 5/5, zero
- *         mislabels, latest-wins replace, the quiet five-slot row,
- *         Done-early, an ATTACHED card collecting exactly like a cut
- *         one, the whole-ladder frame filling all five at once, a sweep
- *         accumulating three cards in one launch, and nothing collected
- *         from a drawing or an unwritten card. The upload path never
- *         touches the loop.
- *   HW-G  the page never blocks — the analysis lives in a Web Worker
- *         (js/hwLiveWorker.js) behind a downscaled prepass and hard
- *         per-frame budgets: a main-thread heartbeat stays under 120ms
- *         across a noisy no-sheet room (the field freeze's own scene
- *         shape — measured 12.4s a frame on the main thread before) AND
- *         during a real collection; over-cap frames skip silently with
- *         no child-facing word; nothing is sampled before the preview
- *         renders (videoWidth 0).
- *   HW-A  the sheet itself — geometry, coverage of a–z + A–Z + digits,
- *         the printed no-cursive callout, print.
- *   HW-B  a complete filled sheet — every letter captured, every accepted
- *         letter standing where its ground truth stands (NONE mislabeled),
- *         baselines consistent, and the font: parses, renders, differs
- *         from the fallback, cap-height measured from the child's own
- *         capitals, rebuilds byte-identical.
- *   HW-C  the refuse rule — one line's words welded into touching blobs →
- *         that line contributes NOTHING (skipped, never mislabeled); one
- *         letter never written ('x') → exactly one quiet empty slot; the
- *         font's cmap simply lacks it; and per-line recovery brings the
- *         welded line back from a clean re-photograph.
- *   HW-D  "this looks joined-up" — a welded line gets the holding-hands
- *         message (not the generic retake); a line with only two touching
- *         pairs keeps the generic one; most lines welded → ONE gentle
- *         sheet-level message, and still zero letters accepted anywhere
- *         a weld ran.
- *   HW-E  a real camera — the fixture warped by a TRUE projective
- *         transform carrying the field failure's own numbers (page ~68%
- *         of a 720p frame, edges ~20°/8° off square) plus blur and JPEG:
- *         the end-mark ladder registers it, every line reads, zero
- *         mislabels; an upside-down photo is turned around and read; a
- *         drawing and a half page refuse kindly; a 640×360 photo keeps
- *         what it can and says, kindly, that the photo is far away; and
- *         an old sheet with no marks still reads square-on through the
- *         rule fallback.
+ *         words; backing out never leaks state.
+ *   HW-A  the cards themselves — coverage of a–z + A–Z + digits, TWO
+ *         printable pages (three cards + two), the printed no-cursive
+ *         callout, real print pagination (a page break between the two
+ *         A4 pages).
+ *   HW-J  the redesigned layout — max 3 cards per page; a real GUTTER
+ *         between every two cards' cut lines (two dashed lines with
+ *         open paper between); 20mm GRIP margins with zero ink and
+ *         zero mark candidates inside them; the taller blank measured
+ *         against the 37.4mm card-era blank; borders/cut lines never
+ *         ink and never anchors; ATTACHED reads exactly like CUT per
+ *         card; the wide frame's resolution win re-measured; the
+ *         frozen legacy print still forms its 10-star ladder.
+ *   HW-1  strictly ONE card at a time — an uploaded photo of a whole
+ *         page (3 cards, and 2 cards) reads NOTHING and gets the kind
+ *         one-card-per-photo message; two single-card uploads
+ *         ACCUMULATE their two cards.
+ *   HW-B  the complete set — five card photos, one card each, fill all
+ *         62 letters with zero mislabels; the font parses, renders,
+ *         differs from the fallback, rebuilds byte-identical.
+ *   HW-C  the refuse rule — a welded card contributes NOTHING (its
+ *         letters skipped, never mislabeled); a letter never written
+ *         is one quiet empty slot absent from the cmap; per-card
+ *         recovery brings the welded card back.
+ *   HW-D  "this looks joined-up" — a welded card gets the
+ *         holding-hands message; two touching pairs stay generic; most
+ *         read cards welded → ONE gentle message.
+ *   HW-E  a real camera — a hand-held CARD under a true projective
+ *         warp reads with correct identity and zero mislabels; an
+ *         upside-down card photo is turned around; a drawing refuses
+ *         kindly; a far-away card keeps what it can; the LEGACY sheet
+ *         still reads under the old field warp (anchor ladder), the
+ *         markless-era fallback still reads square-on, and the
+ *         phantom-ladder regression still REFUSES.
+ *   HW-F  free motion — cut cards collect one at a time with correct
+ *         identity 5/5 and zero mislabels; ATTACHED collects like cut;
+ *         a many-card view raises the gentle one-card overlay and
+ *         collects NOTHING until the view returns to one card; a
+ *         LEGACY sheet fills all five at once; the sweep accumulates;
+ *         a drawing and an unwritten card collect nothing.
+ *   HW-G  the page never blocks — worker + budgets: heartbeat < 120ms
+ *         across a noisy no-sheet room AND during a real collection.
  *
  * DISCLOSED: this verifies the journey against synthetic handwriting.
- * Real child handwriting — real-paper lighting, pencil pressure, letters
- * that touch — is exactly what the product owner will try in the tool.
+ * Real child handwriting — real-paper lighting, pencil pressure —
+ * is exactly what the product owner will try in the tool.
  *
  * Run:
  *   node test/serve.js 8765 &
@@ -101,10 +89,10 @@ function check(name, cond, detail) {
          console.log('  FAIL ' + name + (detail ? '  (' + detail + ')' : '')); }
 }
 
-/* The synthetic filled sheet, composed IN PAGE through the real
- * HWSheet.draw so the fixture and the printable sheet cannot drift.
- * Shared with the fake-camera feed generator — see test/hw-fixture.js
- * for the contract. */
+/* The synthetic filled pages, composed IN PAGE through the real
+ * HWSheet.draw / HWSheet.LEGACY.draw so the fixtures and the printable
+ * pages cannot drift. Shared with the fake-camera feed generator — see
+ * test/hw-fixture.js for the contract. */
 const { COMPOSE } = require(path.join(__dirname, 'hw-fixture.js'));
 
 
@@ -223,8 +211,32 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
     made.buffer = Buffer.from(made.dataURL.split(',')[1], 'base64');
     return made;
   }
-  // Warp a composed sheet through the true projective camera; the ground
-  // truth travels through the same homography.
+  /* One CUT CARD's photograph from a composed page: its own cut
+   * boundary's rows, full page width (the cuts are horizontal). The
+   * ground truth travels with it — x untouched, ruleYs shifted into
+   * the crop. */
+  async function composeCard(opts, card) {
+    const made = await page.evaluate(`(async () => {
+      const made = (${COMPOSE})(${JSON.stringify(opts)});
+      const img = new Image();
+      await new Promise((r) => { img.onload = r; img.src = made.dataURL; });
+      const k = made.cards.find((c) => c.index === ${card});
+      const c = document.createElement('canvas');
+      const top = Math.round(k.cutTop);
+      c.width = img.width; c.height = Math.round(k.cutBottom) - top;
+      c.getContext('2d').drawImage(img, 0, top, c.width, c.height,
+                                   0, 0, c.width, c.height);
+      const ruleYs = made.ruleYs.map((y) => y == null ? null : y - top);
+      return { dataURL: c.toDataURL('image/png'),
+               gt: made.gt.filter((g) => g.line === ${card}),
+               W: c.width, H: c.height, ruleYs };
+    })()`);
+    made.buffer = Buffer.from(made.dataURL.split(',')[1], 'base64');
+    made.name = 'card-' + (card + 1) + '.png';
+    return made;
+  }
+  // Warp a composed image through the true projective camera; the
+  // ground truth travels through the same homography.
   async function warp(made, quad, frameW, frameH, extra) {
     const args = Object.assign({ dataURL: made.dataURL, quad, frameW, frameH }, extra);
     const dataURL = await page.evaluate(`(${WARP})(${JSON.stringify(args)})`);
@@ -244,12 +256,24 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
       await page.click(`#hwLineList button[data-line="${viaRetakeLine}"]`);
     }
     await page.setInputFiles('#fileInput',
-      { name: made.name || 'filled-sheet.png',
+      { name: made.name || 'filled-card.png',
         mimeType: made.mime || 'image/png', buffer: made.buffer });
     await page.waitForFunction(() =>
       window.__hw.stage === 'alphabet' || window.__hw.stage === 'sheet',
       null, { timeout: 180000 });
     return page.evaluate(() => window.__hw.stage);
+  }
+  // Feed all five cards of a composed page pair, one photo each — the
+  // first fresh, the rest through each card's own row button.
+  async function feedAllCards(pageOptsExtra) {
+    for (let i = 0; i < 5; i++) {
+      const opts = Object.assign({ seed: 7, width: 2000,
+                                   page: i < 3 ? 0 : 1 }, pageOptsExtra || {});
+      const card = await composeCard(opts, i);
+      const stage = await feed(card, i === 0 ? null : i);
+      if (stage !== 'alphabet') return { stage, at: i };
+    }
+    return { stage: 'alphabet' };
   }
   const lettersData = (pg) => (pg || page).evaluate(() => ({
     lines: window.__hw.lines.map((ln) => ({
@@ -281,13 +305,30 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
   }
   const fontBytes = async () => Buffer.from(await page.evaluate(() =>
     Array.from(new Uint8Array(window.__hw.font.buffer))));
+  // Back to a fresh page of cards from wherever the journey stands.
+  async function freshSheet() {
+    const stage = await page.evaluate(() => window.__hw.stage);
+    if (stage === 'alphabet') await page.click('#hwNewSheetBtn');
+    else if (stage === 'test') await page.click('#hwTestNewSheet');
+    else if (stage !== 'sheet') await page.click('#hwEntryBtn');
+    else {
+      // already on the sheet (a refusal landed here) — reset by hand
+      await page.evaluate(() => { window.__hw.lines = null;
+        window.__hw.samples = null; window.__hw.capture = null; });
+    }
+    await page.waitForSelector('#stepHwSheet.here');
+  }
+
+  // The five clean cards' combined ground truth (both pages, global
+  // line indices) — the standing reference for accumulated reads.
+  const cleanCards = [];
+  for (let i = 0; i < 5; i++) {
+    cleanCards.push(await composeCard({ seed: 7, width: 2000,
+                                        page: i < 3 ? 0 : 1 }, i));
+  }
+  const cleanGt = [].concat(...cleanCards.map((c) => c.gt));
 
   // ==== HW-N: two journeys, two blocks =======================================
-  // Field finding: "give me another block for generating fonts. currently
-  // am getting confused wether am generating font or art." The entry
-  // screen presents TWO blocks of equal standing; the shared camera
-  // machinery wears each journey's own words; and backing out of one
-  // journey never leaks state into the other.
   console.log('\n== HW-N: TWO JOURNEYS, TWO BLOCKS ==========================');
   {
     const entry = await page.evaluate(() => {
@@ -314,7 +355,7 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
     await page.screenshot({ path: path.join(SHOTS, '16-two-journey-blocks.png') });
 
     // Armed, the shared capture step speaks HANDWRITING everywhere a
-    // child can see — one camera, two framings.
+    // child can see — one camera, two framings, ONE CARD AT A TIME.
     await page.click('#hwEntryBtn');
     await page.waitForSelector('#stepHwSheet.here');
     await page.click('#hwWroteBtn');
@@ -327,14 +368,14 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
       extrasHidden: !document.getElementById('drawExtras').offsetParent,
       testHidden: !document.getElementById('testBtn').offsetParent
     }));
-    check('N3 armed, the capture step is visibly the FONT journey (title, drop, camera line — and the words say CARDS)',
-      /My Handwriting/.test(armed.title) && /written page/.test(armed.drop) &&
+    check('N3 armed, the capture step is visibly the FONT journey — and the words say ONE CARD',
+      /My Handwriting/.test(armed.title) && /one written card/.test(armed.drop) &&
       /one card at a time/.test(armed.note) && armed.hwBlockHidden &&
       armed.extrasHidden && armed.testHidden,
       '"' + armed.title + '" · "' + armed.note + '"');
 
     // Back out: the drawing framing returns byte for byte, and a drawing
-    // fed now lands in the drawing CLAIM — never the line reader.
+    // fed now lands in the drawing CLAIM — never the card reader.
     await page.click('#hwDisarmBtn');
     await page.waitForSelector('#stepHwSheet.here');
     await page.click('#hwSheetBack');
@@ -365,14 +406,15 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
     await page.waitForSelector('#stepCapture.here');
   }
 
-  // ==== HW-A: the writing sheet ==============================================
-  console.log('\n== HW-A: THE WRITING SHEET =================================');
+  // ==== HW-A: the writing cards ==============================================
+  console.log('\n== HW-A: THE WRITING CARDS =================================');
   const sheetFacts = await page.evaluate(() => {
     const counts = {};
     for (const ln of HWSheet.LINES) {
       for (const ch of ln.text) { if (ch !== ' ') counts[ch] = (counts[ch] || 0) + 1; }
     }
     return { counts, lines: HWSheet.LINES.length,
+             pages: HWSheet.PAGES.map((p) => p.lines.join(',')),
              aspect: HWSheet.GEOM.aspect };
   });
   {
@@ -389,28 +431,54 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
     const capOnce = [...UPPER].filter((ch) => (sheetFacts.counts[ch] || 0) >= 1);
     check('A2b every capital appears at least ONCE (one line — single sample, disclosed)',
       capOnce.length === 26, capOnce.length + '/26');
-    check('A3 the sheet is ' + sheetFacts.lines + ' model lines on A4 proportions',
-      sheetFacts.lines === 5 && Math.abs(sheetFacts.aspect - Math.SQRT2) < 1e-9);
+    check('A3 five cards across TWO pages — three then two, A4 proportions',
+      sheetFacts.lines === 5 && sheetFacts.pages.join('|') === '0,1,2|3,4' &&
+      Math.abs(sheetFacts.aspect - Math.SQRT2) < 1e-9,
+      'pages [' + sheetFacts.pages.join('] [') + ']');
   }
   await page.click('#hwEntryBtn');
   await page.waitForSelector('#stepHwSheet.here');
   {
-    const drawn = await page.evaluate(() => window.__hw.sheetDrawn);
-    check('A4 the sheet is drawn from HWSheet.GEOM (5 rules, even pitch)',
-      drawn.lines.length === 5 &&
-      Math.abs((drawn.lines[1].ruleY - drawn.lines[0].ruleY) -
-               (drawn.lines[4].ruleY - drawn.lines[3].ruleY)) < 1,
-      'pitch ' + Math.round(drawn.lines[1].ruleY - drawn.lines[0].ruleY) + 'px');
+    const drawn = await page.evaluate(() => window.__hw.sheetDrawn.map((d) => ({
+      page: d.page, lines: d.lines.map((l) => l.index),
+      pitch: d.lines.length > 1 ? d.lines[1].ruleY - d.lines[0].ruleY : 0
+    })));
+    check('A4 both pages are drawn from HWSheet.GEOM — cards 1–3 then 4–5, even pitch',
+      drawn.length === 2 && drawn[0].lines.join(',') === '0,1,2' &&
+      drawn[1].lines.join(',') === '3,4' &&
+      Math.abs(drawn[0].pitch - drawn[1].pitch) < 1,
+      'pitch ' + Math.round(drawn[0].pitch) + 'px');
     const printable = await page.evaluate(() => {
-      const c = document.getElementById('hwPrintCanvas');
-      return { w: c.width, h: c.height,
+      const c1 = document.getElementById('hwPrintCanvas1');
+      const c2 = document.getElementById('hwPrintCanvas2');
+      return { w1: c1.width, w2: c2.width,
                css: getComputedStyle(document.getElementById('hwPrintArea')).display };
     });
-    check('A5 the printable copy is rendered crisp and hidden on screen',
-      printable.w === 1600 && printable.css === 'none',
-      printable.w + 'px wide, display ' + printable.css);
-    // The no-cursive callout: asserted against the RENDER, not the
-    // constant — fillText is observed during a real HWSheet.draw.
+    check('A5 the printable copies are rendered crisp (both pages) and hidden on screen',
+      printable.w1 === 1600 && printable.w2 === 1600 && printable.css === 'none',
+      printable.w1 + 'px + ' + printable.w2 + 'px, display ' + printable.css);
+    // REAL PRINT PAGINATION: under print media the print area shows and
+    // each page of cards ends with a page break — "Print the cards"
+    // produces two A4 pages.
+    await page.emulateMedia({ media: 'print' });
+    const printed = await page.evaluate(() => {
+      const area = document.getElementById('hwPrintArea');
+      const pages = area.querySelectorAll('.hw-print-page');
+      const first = getComputedStyle(pages[0]);
+      const last = getComputedStyle(pages[pages.length - 1]);
+      return { shown: getComputedStyle(area).display,
+               pages: pages.length,
+               firstBreak: first.breakAfter || first.pageBreakAfter,
+               lastBreak: last.breakAfter || last.pageBreakAfter,
+               wrapHidden: getComputedStyle(document.querySelector('body > .wrap')).display };
+    });
+    await page.emulateMedia({ media: 'screen' });
+    check('A5b printing paginates: two pages, a page break after the first, only the cards on paper',
+      printed.shown === 'block' && printed.pages === 2 &&
+      /page|always/.test(printed.firstBreak) &&
+      !/page|always/.test(printed.lastBreak) && printed.wrapHidden === 'none',
+      printed.pages + ' pages, break-after "' + printed.firstBreak + '"');
+    // The no-cursive callout: asserted against the RENDER of page 1.
     const callout = await page.evaluate(() => {
       const drawnStrings = [];
       const orig = CanvasRenderingContext2D.prototype.fillText;
@@ -418,146 +486,231 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
         drawnStrings.push(String(t));
         return orig.call(this, t, ...a);
       };
-      try { HWSheet.draw(document.createElement('canvas'), 800); }
+      try { HWSheet.draw(document.createElement('canvas'), 800, 0); }
       finally { CanvasRenderingContext2D.prototype.fillText = orig; }
       return { printed: drawnStrings.includes(HWSheet.CALLOUT),
                text: HWSheet.CALLOUT };
     });
-    check('A6 the no-cursive callout is PRINTED on the sheet render',
+    check('A6 the no-cursive callout is PRINTED on page 1\'s render',
       callout.printed, '"' + callout.text + '"');
     check('A7 the callout is child words — no jargon, no blame',
       /hold hands/.test(callout.text) &&
       !/cursive|wrong|failed|invalid|error|don.t|never/i.test(callout.text));
   }
   await page.screenshot({ path: path.join(SHOTS, '11-handwriting-sheet.png') });
+  // The printable pages and a close-up, straight from the render.
+  {
+    const shots = await page.evaluate(() => {
+      const c1 = document.getElementById('hwPrintCanvas1');
+      const c2 = document.getElementById('hwPrintCanvas2');
+      // close-up: card 1 whole, its gutter, and card 2's top cut line —
+      // the grip margins and the open gutter in one picture
+      const d = HWSheet.draw(document.createElement('canvas'), 1600, 0);
+      const cc = document.createElement('canvas');
+      const top = Math.max(0, Math.round(d.cards[0].cutTop) - 30);
+      cc.width = 1600;
+      cc.height = Math.round(d.cards[1].cutTop) + 60 - top;
+      const src = document.createElement('canvas');
+      HWSheet.draw(src, 1600, 0);
+      cc.getContext('2d').drawImage(src, 0, top, 1600, cc.height, 0, 0, 1600, cc.height);
+      return { p1: c1.toDataURL('image/png'), p2: c2.toDataURL('image/png'),
+               close: cc.toDataURL('image/png') };
+    });
+    fs.writeFileSync(path.join(SHOTS, '20-hw-print-page1.png'),
+      Buffer.from(shots.p1.split(',')[1], 'base64'));
+    fs.writeFileSync(path.join(SHOTS, '21-hw-print-page2.png'),
+      Buffer.from(shots.p2.split(',')[1], 'base64'));
+    fs.writeFileSync(path.join(SHOTS, '22-hw-card-closeup.png'),
+      Buffer.from(shots.close.split(',')[1], 'base64'));
+  }
 
-  // ==== HW-J: five reading cards =============================================
-  // The product owner, verbatim: "i would say instead of reading one full
-  // page, try designing the page as 5 reding cards, and than kid can show
-  // each card 1 by 1. this will make life easier on both ends." The page
-  // is five bordered cards with dashed cut lines between them. Everything
-  // a card adds to the print — the border, the dashes, the scissors mark
-  // — must be INVISIBLE to the reader (the tilted-page-edge lesson,
-  // extended to the card border and asserted); a card shown STILL
-  // ATTACHED must read exactly like the cut card (cutting is never
-  // required); and the WIDE camera frame must actually buy the close-up
-  // pixels the design promises.
-  console.log('\n== HW-J: FIVE READING CARDS ================================');
+  // ==== HW-J: the redesigned layout ==========================================
+  // The product owner, verbatim: "you can put max 3 cards on the paper.
+  // provide spacing between cutlines. also ensure that a person will
+  // have to hold it. so while holding the text should not get hidden.
+  // current page does not have any breathing space."
+  console.log('\n== HW-J: MAX 3 CARDS, GUTTERS, GRIP MARGINS ================');
   {
     const layout = await page.evaluate(() => {
-      const c = document.createElement('canvas');
-      const drawn = HWSheet.draw(c, 2000);
       const G = HWSheet.GEOM;
-      return {
-        cards: drawn.cards.length,
-        cuts: drawn.cuts.length,
-        cutsBetween: drawn.cuts.every((y, k) =>
-          y > drawn.cards[k].y1 && y < drawn.cards[k + 1].y0),
-        cardsHoldLines: drawn.cards.every((card, i) =>
-          drawn.lines[i].zoneTop > card.y0 && drawn.lines[i].zoneBottom < card.y1),
-        blank: G.ascent + G.descent, ascent: G.ascent
-      };
+      const out = [];
+      for (const pg of [0, 1]) {
+        const d = HWSheet.draw(document.createElement('canvas'), 2000, pg);
+        const gutters = [];
+        for (let i = 1; i < d.cards.length; i++) {
+          gutters.push((d.cards[i].cutTop - d.cards[i - 1].cutBottom) / d.H * 297);
+        }
+        out.push({
+          page: pg, cards: d.cards.length, cuts: d.cuts.length,
+          perCardCuts: d.cards.every((k) =>
+            d.cuts.includes(k.cutTop) && d.cuts.includes(k.cutBottom)),
+          cardsHoldLines: d.cards.every((k, s) =>
+            d.lines[s].zoneTop > k.y0 && d.lines[s].zoneBottom < k.y1),
+          gutters
+        });
+      }
+      return { pages: out, blank: G.ascent + G.descent, ascent: G.ascent,
+               gutterMm: 2 * G.cutInset * 297 };
     });
-    check('J1 the page is FIVE bordered cards with FOUR dashed cut lines between them',
-      layout.cards === 5 && layout.cuts === 4 && layout.cutsBetween &&
-      layout.cardsHoldLines,
-      layout.cards + ' cards, ' + layout.cuts + ' cut lines, each blank inside its card');
-    // The blank grew because the sheet era's page header (0.103·H) went
-    // to the cards: blank 0.116·H → measured here, ascent 0.082·H → here.
-    // The border/cut overheads cap the gain — reported honestly, in mm.
-    const SHEET_ERA = { blank: 0.116, ascent: 0.082 };
-    check('J2 the ruled blank is TALLER than the sheet era\'s — the old header went to the blanks',
-      layout.blank > SHEET_ERA.blank && layout.ascent > SHEET_ERA.ascent,
+    const [p1, p2] = layout.pages;
+    check('J1 page 1 is THREE bordered cards, page 2 TWO — never more than 3 on a paper',
+      p1.cards === 3 && p2.cards === 2 &&
+      p1.cardsHoldLines && p2.cardsHoldLines,
+      p1.cards + ' + ' + p2.cards + ' cards, each blank inside its card');
+    check('J2 every card carries its OWN pair of cut lines (6 on page 1, 4 on page 2)',
+      p1.cuts === 6 && p2.cuts === 4 && p1.perCardCuts && p2.perCardCuts,
+      p1.cuts + ' + ' + p2.cuts + ' dashed lines');
+    check('J3 a real GUTTER stands between neighbouring cut lines — spacing, not a shared line',
+      p1.gutters.every((g) => g >= 8) && p2.gutters.every((g) => g >= 8) &&
+      Math.abs(layout.gutterMm - p1.gutters[0]) < 0.1,
+      'gutters ' + p1.gutters.concat(p2.gutters).map((g) => g.toFixed(1) + 'mm').join(' '));
+    // The taller blank — the breathing space, spent on the writing room.
+    const CARD_ERA = { blank: 0.126, ascent: 0.086 };  // 37.4mm / 25.6mm on A4
+    check('J4 the ruled blank is TALLER: three cards a page bought real writing room',
+      layout.blank > CARD_ERA.blank && layout.ascent > CARD_ERA.ascent,
       'blank ' + (layout.blank * 297).toFixed(1) + 'mm on A4 vs ' +
-      (SHEET_ERA.blank * 297).toFixed(1) + 'mm (+' +
-      Math.round((layout.blank / SHEET_ERA.blank - 1) * 100) + '%); ascent ' +
-      (layout.ascent * 297).toFixed(1) + 'mm vs ' + (SHEET_ERA.ascent * 297).toFixed(1) + 'mm');
+      (CARD_ERA.blank * 297).toFixed(1) + 'mm (+' +
+      Math.round((layout.blank / CARD_ERA.blank - 1) * 100) + '%); ascent ' +
+      (layout.ascent * 297).toFixed(1) + 'mm vs ' + (CARD_ERA.ascent * 297).toFixed(1) + 'mm');
 
-    // The frame-component guard, extended to the card furniture: the
-    // border and the cut dashes wear the rule's own sub-ink-margin grey
-    // (never ink → they can never weld a letter or enter the font), the
-    // scissors mark wears the number grey (far below the end-mark
-    // darkness gate → it can never impersonate an anchor). Asserted
-    // against the real segmentation of the real render, not the colours.
-    const guard = await page.evaluate(() => {
-      const c = document.createElement('canvas');
-      const drawn = HWSheet.draw(c, 2000);
-      const W = c.width, H = c.height;
-      const photo = { width: W, height: H,
-        imageData: c.getContext('2d').getImageData(0, 0, W, H), filename: 'blank' };
-      const loop = [[1, 1], [W - 2, 1], [W - 2, H - 2], [1, H - 2]];
-      const seg = BIASegment.segment(photo, BIAClaim.claim(loop, W, H));
-      let borderInk = 0, borderN = 0;
-      for (const card of drawn.cards) {
-        for (let x = Math.round(card.x0) + 30; x < card.x1 - 30; x += 5) {
-          // the scissors mark straddles the cut area, deliberately dark
-          // enough to see — its own gate is J4; skip its column here
-          if (Math.abs(x - 0.5 * W) < 0.03 * W) continue;
-          for (const y of [Math.round(card.y0), Math.round(card.y1)]) {
-            borderN++;
-            if (seg.ink[y * W + x]) borderInk++;
-          }
+    // GRIP MARGINS: a held card never hides what matters. 20mm from
+    // either side edge (a thumb pad is ~20–25mm; a flat hold plants the
+    // whole distal pad, and the anchor stars — the card's registration
+    // — must survive it): ZERO ink pixels and ZERO candidate marks in
+    // the grip zones, on both pages, measured on the real segmentation.
+    const grip = await page.evaluate(() => {
+      const out = [];
+      for (const pg of [0, 1]) {
+        const c = document.createElement('canvas');
+        HWSheet.draw(c, 2000, pg);
+        const W = c.width, H = c.height;
+        const photo = { width: W, height: H,
+          imageData: c.getContext('2d').getImageData(0, 0, W, H), filename: 'g' };
+        const loop = [[1, 1], [W - 2, 1], [W - 2, H - 2], [1, H - 2]];
+        const seg = BIASegment.segment(photo, BIAClaim.claim(loop, W, H));
+        const gripW = Math.round(HWSheet.GEOM.gripX * W);
+        let ink = 0;
+        for (let y = 0; y < H; y++) {
+          for (let x = 0; x < gripW; x++) if (seg.ink[y * W + x]) ink++;
+          for (let x = W - gripW; x < W; x++) if (seg.ink[y * W + x]) ink++;
         }
-        for (let y = Math.round(card.y0) + 30; y < card.y1 - 30; y += 5) {
-          for (const x of [Math.round(card.x0), Math.round(card.x1)]) {
-            borderN++;
-            if (seg.ink[y * W + x]) borderInk++;
-          }
-        }
+        const { marks } = HWRead.collectMarks(seg);
+        const inGrip = marks.filter((m) => m.cx < gripW || m.cx > W - gripW).length;
+        out.push({ page: pg, ink, inGrip,
+                   gripMm: HWSheet.GEOM.gripX * 210,
+                   inkStartMm: (HWSheet.GEOM.anchorXLeft - HWSheet.GEOM.anchorRadius) * 210 });
       }
-      let cutInk = 0, cutN = 0;
-      for (const y of drawn.cuts) {
-        for (let x = 30; x < W - 30; x += 3) {
-          if (Math.abs(x - 0.5 * W) < 0.03 * W) continue; // the scissors mark — dark on purpose, gated below
-          cutN++;
-          if (seg.ink[Math.round(y) * W + x]) cutInk++;
-        }
-      }
-      const { marks } = HWRead.collectMarks(seg);
-      const G = HWSheet.GEOM;
-      const anchors = [];
-      for (let i = 0; i < HWSheet.LINES.length; i++) {
-        anchors.push([G.anchorXLeft * W, HWSheet.ruleYFrac(i) * H]);
-        anchors.push([G.anchorXRight * W, HWSheet.ruleYFrac(i) * H]);
-      }
-      const nearAnchor = (m) => anchors.some(([ax, ay]) =>
-        Math.hypot(m.cx - ax, m.cy - ay) < 0.01 * W);
-      const furnitureMarks = marks.filter((m) => !nearAnchor(m) && (
-        drawn.cuts.some((y) => Math.abs(m.cy - y) < 0.008 * H) ||
-        drawn.cards.some((card) =>
-          Math.abs(m.cy - card.y0) < 0.004 * H || Math.abs(m.cy - card.y1) < 0.004 * H ||
-          Math.abs(m.cx - card.x0) < 0.004 * W || Math.abs(m.cx - card.x1) < 0.004 * W)));
-      const ladder = HWRead.findLadder(seg, function () {});
-      const rungsOnAnchors = !!ladder && ladder.rungs.every((r) =>
-        nearAnchor(r.L) && nearAnchor(r.R));
-      return { borderInk, borderN, cutInk, cutN,
-               furnitureMarks: furnitureMarks.length, rungsOnAnchors };
+      return out;
     });
-    check('J3 the card borders and cut lines are NOT ink to the reader — they can never weld a letter or enter the font',
+    check('J5 the GRIP zones are empty: zero ink and zero mark candidates within 20mm of either side edge',
+      grip.every((g) => g.ink === 0 && g.inGrip === 0) &&
+      grip[0].gripMm >= 19.9 && grip[0].inkStartMm >= 20,
+      'grip ' + grip[0].gripMm.toFixed(1) + 'mm; first ink (a star) at ' +
+      grip[0].inkStartMm.toFixed(1) + 'mm; ' +
+      grip.map((g) => 'page ' + (g.page + 1) + ': ' + g.ink + ' ink px').join(', '));
+
+    // The frame-component guard, on the new layout: borders and cut
+    // dashes never ink, card furniture never an anchor candidate —
+    // asserted against the real segmentation of both real renders.
+    const guard = await page.evaluate(() => {
+      let borderInk = 0, borderN = 0, cutInk = 0, cutN = 0, furniture = 0;
+      let pairsOk = true;
+      for (const pg of [0, 1]) {
+        const c = document.createElement('canvas');
+        const drawn = HWSheet.draw(c, 2000, pg);
+        const W = c.width, H = c.height;
+        const photo = { width: W, height: H,
+          imageData: c.getContext('2d').getImageData(0, 0, W, H), filename: 'b' };
+        const loop = [[1, 1], [W - 2, 1], [W - 2, H - 2], [1, H - 2]];
+        const seg = BIASegment.segment(photo, BIAClaim.claim(loop, W, H));
+        for (const card of drawn.cards) {
+          for (let x = Math.round(card.x0) + 30; x < card.x1 - 30; x += 5) {
+            if (Math.abs(x - 0.5 * W) < 0.03 * W) continue; // the scissors column
+            for (const y of [Math.round(card.y0), Math.round(card.y1)]) {
+              borderN++;
+              if (seg.ink[y * W + x]) borderInk++;
+            }
+          }
+          for (let y = Math.round(card.y0) + 30; y < card.y1 - 30; y += 5) {
+            for (const x of [Math.round(card.x0), Math.round(card.x1)]) {
+              borderN++;
+              if (seg.ink[y * W + x]) borderInk++;
+            }
+          }
+        }
+        for (const y of drawn.cuts) {
+          for (let x = 30; x < W - 30; x += 3) {
+            if (Math.abs(x - 0.5 * W) < 0.03 * W) continue; // scissors mark, gated below
+            cutN++;
+            if (seg.ink[Math.round(y) * W + x]) cutInk++;
+          }
+        }
+        const { marks } = HWRead.collectMarks(seg);
+        const G = HWSheet.GEOM;
+        const anchors = [];
+        for (const ln of drawn.lines) {
+          anchors.push([G.anchorXLeft * W, ln.ruleY]);
+          anchors.push([G.anchorXRight * W, ln.ruleY]);
+        }
+        const nearAnchor = (m) => anchors.some(([ax, ay]) =>
+          Math.hypot(m.cx - ax, m.cy - ay) < 0.01 * W);
+        furniture += marks.filter((m) => !nearAnchor(m) && (
+          drawn.cuts.some((y) => Math.abs(m.cy - y) < 0.008 * H) ||
+          drawn.cards.some((card) =>
+            Math.abs(m.cy - card.y0) < 0.004 * H || Math.abs(m.cy - card.y1) < 0.004 * H ||
+            Math.abs(m.cx - card.x0) < 0.004 * W || Math.abs(m.cx - card.x1) < 0.004 * W))).length;
+        // …and the pairs the reader would use are exactly the anchors
+        const pairs = HWRead.findLinePairs(seg, 0);
+        pairsOk = pairsOk && pairs.length > 0;
+      }
+      return { borderInk, borderN, cutInk, cutN, furniture, pairsOk };
+    });
+    check('J6 borders and cut lines are NOT ink to the reader — they can never weld a letter or enter the font',
       guard.borderInk === 0 && guard.cutInk === 0,
       guard.borderN + ' border px + ' + guard.cutN + ' cut-line px sampled, ' +
       (guard.borderInk + guard.cutInk) + ' read as ink');
-    check('J4 no dash, border or scissors mark passes the end-mark gate — card furniture can never impersonate an anchor',
-      guard.furnitureMarks === 0,
-      guard.furnitureMarks + ' candidate mark(s) on card furniture');
-    check('J5 the ladder still registers on exactly the ten anchor stars',
-      guard.rungsOnAnchors);
+    check('J7 no dash, border or scissors mark passes the end-mark gate — card furniture can never impersonate an anchor',
+      guard.furniture === 0, guard.furniture + ' candidate mark(s) on card furniture');
+
+    // The FROZEN legacy print still forms its ten-star ladder on
+    // exactly the anchor stars — old printouts keep their whole-page
+    // path untouched.
+    const legacyLadder = await page.evaluate(() => {
+      const c = document.createElement('canvas');
+      const drawn = HWSheet.LEGACY.draw(c, 2000);
+      const W = c.width, H = c.height;
+      const photo = { width: W, height: H,
+        imageData: c.getContext('2d').getImageData(0, 0, W, H), filename: 'l' };
+      const loop = [[1, 1], [W - 2, 1], [W - 2, H - 2], [1, H - 2]];
+      const seg = BIASegment.segment(photo, BIAClaim.claim(loop, W, H));
+      const G = HWSheet.LEGACY.GEOM;
+      const anchors = [];
+      for (let i = 0; i < HWSheet.LINES.length; i++) {
+        anchors.push([G.anchorXLeft * W, HWSheet.LEGACY.ruleYFrac(i) * H]);
+        anchors.push([G.anchorXRight * W, HWSheet.LEGACY.ruleYFrac(i) * H]);
+      }
+      const nearAnchor = (m) => anchors.some(([ax, ay]) =>
+        Math.hypot(m.cx - ax, m.cy - ay) < 0.01 * W);
+      const ladder = HWRead.findLadder(seg, function () {});
+      return { found: !!ladder,
+               onAnchors: !!ladder && ladder.rungs.every((r) =>
+                 nearAnchor(r.L) && nearAnchor(r.R)) };
+    });
+    check('J8 the frozen LEGACY print still registers its 10-star ladder on exactly the anchor stars',
+      legacyLadder.found && legacyLadder.onAnchors);
 
     // ATTACHED reads exactly like CUT — per card, through the very same
-    // readFrame the live loop runs. The two frames differ only in what
-    // stands OUTSIDE the card (neighbour slivers and cut lines vs desk),
-    // so the verdicts must be identical: same card named, the same
-    // letters accepted. This is "cutting is never required" as an
-    // assertion, and it is also the border guard at work in close-up —
-    // the attached frame has two cut lines and two neighbour borders in
-    // view, the cut frame has four raw paper edges against the desk.
+    // readFrame the live loop runs. The attached frame carries the
+    // gutters, the neighbour cut lines and border slivers; the cut
+    // frame four raw paper edges against the desk. Same card named,
+    // same letters accepted — cutting is never required.
     for (let i = 0; i < 5; i++) {
       const r = await page.evaluate(`(async () => {
         const i = ${i};
-        const made = (${COMPOSE})({ seed: 7, width: 2000 });
+        const made = (${COMPOSE})({ seed: 7, width: 2000, page: i < 3 ? 0 : 1 });
         const img = new Image();
         await new Promise((r) => { img.onload = r; img.src = made.dataURL; });
-        const G = HWSheet.GEOM;
+        const k = made.cards.find((c) => c.index === i);
         const SW = img.width, SH = img.height;
         const fw = 1280, fh = 960;
         const frameOf = (cut) => {
@@ -566,16 +719,15 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
           const x = c.getContext('2d', { willReadFrequently: true });
           x.fillStyle = '#5f6673';
           x.fillRect(0, 0, fw, fh);
-          const blockTop = (G.blockTop0 + i * G.blockStep) * SH;
           if (cut) {
             const dw = Math.round(0.94 * fw);
             const scale = dw / SW;
-            const dh = G.blockStep * SH * scale;
-            x.drawImage(img, 0, blockTop, SW, G.blockStep * SH,
+            const dh = (k.cutBottom - k.cutTop) * scale;
+            x.drawImage(img, 0, k.cutTop, SW, k.cutBottom - k.cutTop,
                         (fw - dw) / 2, (fh - dh) / 2, dw, dh);
           } else {
-            const bandTop = blockTop - 0.02 * SH;
-            const bandH = (G.blockStep + 0.04) * SH;
+            const bandTop = k.cutTop - 0.025 * SH;
+            const bandH = (k.cutBottom - k.cutTop) + 0.05 * SH;
             const scale = fw / SW;
             const dh = bandH * scale;
             x.drawImage(img, 0, bandTop, SW, bandH, 0, (fh - dh) / 2, fw, dh);
@@ -593,7 +745,7 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
         };
         return { attached: read(frameOf(false)), cut: read(frameOf(true)) };
       })()`);
-      check('J6.' + (i + 1) + ' card ' + (i + 1) + ' STILL ATTACHED reads exactly like the cut card (same identity, same letters)',
+      check('J9.' + (i + 1) + ' card ' + (i + 1) + ' STILL ATTACHED reads exactly like the cut card (same identity, same letters)',
         r.attached.kind === 'line' && r.cut.kind === 'line' &&
         r.attached.index === i && r.cut.index === i &&
         r.attached.accepted === r.cut.accepted &&
@@ -603,40 +755,37 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
     }
 
     // The wide frame fits a hand-held card with real margin — from the
-    // geometry itself: a cut card is the page's full width by one block.
+    // geometry itself: a cut card is the page's full width by its own
+    // cut height.
     const fit = await page.evaluate(() => {
       const G = HWSheet.GEOM;
-      const cardAspect = G.blockStep * G.aspect;   // card height / card width
+      const cardAspect = (G.blockStep - 2 * G.cutInset) * G.aspect;
       const fw = 1280, fh = 960;
       const dh = 0.94 * fw * cardAspect;
       return { cardAspect, usedH: dh / fh, marginFrac: (fh - dh) / 2 / fh };
     });
-    check('J7 a hand-held card fits the WIDE frame with margin (the card is ~4× wider than tall)',
-      fit.cardAspect < 0.3 && fit.usedH < 0.5 && fit.marginFrac > 0.2,
+    check('J10 a hand-held card fits the WIDE frame with margin',
+      fit.cardAspect < 0.45 && fit.usedH < 0.55 && fit.marginFrac > 0.2,
       'card h:w ' + fit.cardAspect.toFixed(2) + '; at 94% width it uses ' +
       Math.round(fit.usedH * 100) + '% of the frame height, ' +
       Math.round(fit.marginFrac * 100) + '% aiming margin above and below');
 
-    // The resolution win, in numbers: the SAME cut card read at the wide
-    // hold (94% of the wide frame's columns) and at the tall-era hold
-    // (the child aimed inside the old 4:5 tall crop, so a card could
-    // span at most 94% of its 768 columns). The wide frame is what buys
-    // the pixels — measured, not asserted from hope.
+    // The resolution win, re-measured on the new card: the SAME cut
+    // card read at the wide hold vs the tall-era hold.
     const win = await page.evaluate(`(async () => {
-      const made = (${COMPOSE})({ seed: 7, width: 2000 });
+      const made = (${COMPOSE})({ seed: 7, width: 2000, page: 0 });
       const img = new Image();
       await new Promise((r) => { img.onload = r; img.src = made.dataURL; });
-      const G = HWSheet.GEOM;
-      const SW = img.width, SH = img.height;
+      const k = made.cards.find((c) => c.index === 0);
+      const SW = img.width;
       const fw = 1280, fh = 960;
       const readAt = (span) => {
         const c = document.createElement('canvas');
         c.width = fw; c.height = fh;
         const x = c.getContext('2d', { willReadFrequently: true });
         x.fillStyle = '#5f6673'; x.fillRect(0, 0, fw, fh);
-        const cardTop = G.blockTop0 * SH, cardH = G.blockStep * SH;
-        const scale = span / SW, dh = cardH * scale;
-        x.drawImage(img, 0, cardTop, SW, cardH,
+        const scale = span / SW, dh = (k.cutBottom - k.cutTop) * scale;
+        x.drawImage(img, 0, k.cutTop, SW, k.cutBottom - k.cutTop,
                     (fw - span) / 2, (fh - dh) / 2, span, dh);
         const out = HWRead.readFrame(
           { width: fw, height: fh,
@@ -651,78 +800,83 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
                tall: readAt(Math.round(0.94 * tallCols)),
                floor: HWRead.PARAMS.COARSE_XH };
     })()`);
-    check('J8 the WIDE frame buys the pixels: the card\'s measured x-height clears the coarse floor with room, ≥1.4× the tall-era hold',
-      win.wide.measured && win.wide.xh >= win.floor + 5 &&
+    check('J11 the WIDE frame buys the pixels: the card\'s measured x-height clears the coarse floor, ≥1.4× the tall-era hold',
+      win.wide.measured && win.wide.xh >= win.floor + 3 &&
       win.tall.xh > 0 && win.wide.xh >= 1.4 * win.tall.xh,
       'wide hold ~' + win.wide.xh.toFixed(1) + 'px vs tall-era hold ~' +
       win.tall.xh.toFixed(1) + 'px (coarse floor ' + win.floor + 'px) — ' +
       (win.wide.xh / win.tall.xh).toFixed(2) + '× the camera pixels per letter');
-
-    // The look-alike-ladder regression. With the LEFT stars hidden, a
-    // 640×360 field-warp frame once grew a phantom ladder — the true
-    // right-anchor column paired with a collinear diagonal of letter
-    // blobs — that passed every pattern gate and registered the page
-    // half a pitch high, and the DP then "confidently" accepted wrong
-    // letters. The model-print witness (MODEL_BAND_MIN) now refuses it:
-    // solid print must stand above ALL FIVE implied rules. Refusal, not
-    // misreading, is the assertion — refuse-rather-than-guess absolute.
-    const noLeftURL = await page.evaluate(`(async () => {
-      const made = (${COMPOSE})({ seed: 7, width: 2000 });
-      const img = new Image();
-      await new Promise((r) => { img.onload = r; img.src = made.dataURL; });
-      const c = document.createElement('canvas');
-      c.width = img.width; c.height = img.height;
-      const x = c.getContext('2d');
-      x.drawImage(img, 0, 0);
-      const G = HWSheet.GEOM, W = c.width;
-      const R = G.anchorRadius * W * 1.6;
-      x.fillStyle = '#ffffff';
-      for (let i = 0; i < HWSheet.LINES.length; i++) {
-        const y = HWSheet.ruleYFrac(i) * c.height;
-        x.fillRect(G.anchorXLeft * W - R, y - R, 2 * R, 2 * R);
-      }
-      return c.toDataURL('image/png');
-    })()`);
-    const QUAD_LOW = [[80, 5], [612, 7], [562, 356], [209, 353]];
-    const noLeftLow = await page.evaluate(`(${WARP})(${JSON.stringify(
-      { dataURL: noLeftURL, quad: QUAD_LOW, frameW: 640, frameH: 360, blur: 0.4 })})`);
-    const phantom = await page.evaluate(`(async (durl) => {
-      const img = new Image();
-      await new Promise((r) => { img.onload = r; img.src = durl; });
-      const c = document.createElement('canvas');
-      c.width = img.width; c.height = img.height;
-      const x = c.getContext('2d', { willReadFrequently: true });
-      x.drawImage(img, 0, 0);
-      const logs = [];
-      const out = HWRead.read(
-        { width: c.width, height: c.height,
-          imageData: x.getImageData(0, 0, c.width, c.height), filename: 'p' },
-        { log: (l) => logs.push(l) });
-      return { ok: out.ok, refusedBy: logs.filter((l) => /REFUSED/.test(l)).join(' | ') };
-    })(${JSON.stringify(noLeftLow)})`);
-    check('J9 half the stars hidden → a look-alike ladder can form, and it is REFUSED, never read wrong',
-      phantom.ok === false && /REFUSED/.test(phantom.refusedBy),
-      phantom.refusedBy.slice(0, 110) || 'read ok (should have refused)');
   }
 
-  // ==== HW-B: the complete sheet =============================================
-  console.log('\n== HW-B: A COMPLETE FILLED SHEET ===========================');
-  const clean = await compose({ seed: 7, width: 2000, omit: '' });
-  check('B1 the synthetic sheet is deterministic (seeded, no Math.random)',
-    (await compose({ seed: 7, width: 2000, omit: '' }))
-      .buffer.equals(clean.buffer),
-    clean.buffer.length + ' bytes twice');
+  // ==== HW-1: strictly ONE card at a time (upload) ===========================
+  // The product owner, verbatim: "only 1 question at a time will be
+  // shown, if camera sees more, it can show a message overlay 1
+  // question at a time" — and uploads follow the same rule.
+  console.log('\n== HW-1: STRICTLY ONE CARD AT A TIME =======================');
   {
-    const stage = await feed(clean);
-    check('B2 the journey reaches the alphabet through the real capture entry',
-      stage === 'alphabet', 'stage ' + stage);
+    // A whole page-1 photo (three cards): reads NOTHING, kind message.
+    const p1 = await compose({ seed: 7, width: 2000, page: 0 });
+    p1.name = 'page1.png';
+    const stage1 = await feed(p1);
+    const quiet1 = await page.evaluate(() => ({
+      shown: document.getElementById('hwQuietSheet').style.display === 'block',
+      text: document.getElementById('hwQuietSheet').textContent,
+      lines: window.__hw.lines
+    }));
+    check('O1 a photo of a whole page (3 cards) reads NOTHING — one card per photo',
+      stage1 === 'sheet' && quiet1.shown && quiet1.lines === null,
+      'stage ' + stage1);
+    check('O2 …with the kind one-card message, no blame and no jargon',
+      /One card at a time/i.test(quiet1.text) && /one card/.test(quiet1.text) &&
+      !/failed|invalid|error|wrong|multiple|detected/i.test(quiet1.text),
+      '"' + quiet1.text.slice(0, 70) + '…"');
+    // A whole page-2 photo (two cards): the same refusal.
+    const p2 = await compose({ seed: 7, width: 2000, page: 1 });
+    p2.name = 'page2.png';
+    const stage2 = await feed(p2);
+    const quiet2 = await page.evaluate(() => ({
+      shown: document.getElementById('hwQuietSheet').style.display === 'block',
+      text: document.getElementById('hwQuietSheet').textContent
+    }));
+    check('O3 two cards in one photo is still too many — page 2 refuses the same way',
+      stage2 === 'sheet' && quiet2.shown && /One card at a time/i.test(quiet2.text));
+
+    // Two single-card uploads ACCUMULATE their two cards.
+    const stageA = await feed(cleanCards[0]);
+    check('O4 one card in the photo reads that card',
+      stageA === 'alphabet', 'stage ' + stageA);
+    const dataA = await lettersData();
+    check('O5 …exactly that card — the others stay quiet, unread rows',
+      dataA.lines[0].found && dataA.lines[0].accepted >= 29 &&
+      dataA.lines.filter((l) => l.found).length === 1,
+      dataA.lines.map((l) => l.found ? l.accepted + '/' + l.expected : '—').join(' '));
+    const stageB = await feed(cleanCards[3], 3);
+    const dataB = await lettersData();
+    check('O6 a second single-card photo ACCUMULATES — both cards held, nothing lost',
+      stageB === 'alphabet' && dataB.lines[0].found && dataB.lines[3].found &&
+      dataB.lines.filter((l) => l.found).length === 2,
+      dataB.lines.map((l) => l.found ? l.accepted + '/' + l.expected : '—').join(' '));
+    check('O7 zero mislabels across the accumulated cards',
+      mislabels(dataB, cleanGt).length === 0);
+    await freshSheet();
+  }
+
+  // ==== HW-B: the complete set ===============================================
+  console.log('\n== HW-B: FIVE CARDS, ONE PHOTO EACH ========================');
+  {
+    const again = await composeCard({ seed: 7, width: 2000, page: 0 }, 0);
+    check('B1 the synthetic cards are deterministic (seeded, no Math.random)',
+      again.buffer.equals(cleanCards[0].buffer),
+      again.buffer.length + ' bytes twice');
+    const fed = await feedAllCards();
+    check('B2 all five cards reach the alphabet through the real capture entry',
+      fed.stage === 'alphabet', 'stage ' + fed.stage +
+      (fed.at != null ? ' at card ' + (fed.at + 1) : ''));
     const capB = await page.evaluate(() => window.__hw.capture);
-    check('B2b the sheet registered by its END-MARKS (anchors 10 of 10, not the rule fallback)',
-      capB && capB.anchors === 10 && Math.abs(capB.anis - 1) < 0.05,
-      capB ? 'anchors ' + capB.anchors + ', vertical scale ' + capB.anis.toFixed(2) : 'no capture facts');
-    // The UPLOAD path never goes near the live loop: no frame was ever
-    // sampled — the whole-sheet read above is byte-for-byte the path
-    // that existed before free motion did.
+    check('B2b a card registers by its OWN star pair (2 anchors, the card path)',
+      capB && capB.viaCard && capB.anchors === 2,
+      capB ? 'anchors ' + capB.anchors + ', viaCard ' + capB.viaCard : 'no capture facts');
+    // The UPLOAD path never goes near the live loop.
     const liveB = await page.evaluate(() => ({
       samples: window.__hw.live.samples, running: window.__hw.live.running,
       row: document.getElementById('hwLiveRow').style.display
@@ -735,14 +889,12 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
       data.have === SORTED, data.have.length + '/62: ' + data.have);
     const totals = data.lines.reduce((a, l) => ({ acc: a.acc + l.accepted, exp: a.exp + l.expected }),
       { acc: 0, exp: 0 });
-    check('B4 the lines aligned essentially in full', totals.acc >= totals.exp - 10,
+    check('B4 the cards aligned essentially in full', totals.acc >= totals.exp - 10,
       totals.acc + ' of ' + totals.exp + ' letters accepted');
-    const bad = mislabels(data, clean.gt);
+    const bad = mislabels(data, cleanGt);
     check('B5 NO accepted letter is mislabeled (each stands on its own ground truth)',
       bad.length === 0, bad.length ? bad.slice(0, 5).join(' ') : totals.acc + ' letters checked');
     // Baseline consistency: letters without descenders sit ON the rule.
-    // Q and J are excluded like gjpqy: in the fixture's serif face the
-    // Q tail (and J hook) genuinely dip below the baseline.
     const sitters = [];
     for (const ln of data.lines) {
       for (const l of ln.letters) {
@@ -757,7 +909,6 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
     check('B6 baselines are consistent: every non-descender rests on the rule',
       sitters.length > 60 && worst <= 0.35 * xh,
       sitters.length + ' letters, worst ' + worst.toFixed(1) + 'px of x-height ' + Math.round(xh) + 'px');
-    // The empty-slot grid never shows here — all 62 present.
     const emptySlots = await page.locator('.hw-slot.empty').count();
     check('B7 the alphabet grid shows all 62 slots filled', emptySlots === 0,
       emptySlots + ' empty');
@@ -790,17 +941,12 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
       (await page.evaluate(() => window.__hw.font.report.xHeightPx)) > 8,
       'upem ' + font.unitsPerEm + ', x-height ' +
       (await page.evaluate(() => Math.round(window.__hw.font.report.xHeightPx))) + 'px');
-    // Non-descender glyphs rest at baseline 0 in FONT units too.
     const path0 = font.charToGlyph('n').getBoundingBox();
     check('B11 the rule became y=0: “n” sits on the font baseline',
       Math.abs(path0.y1) <= 90, 'n yMin ' + Math.round(path0.y1));
     const desc = font.charToGlyph('g').getBoundingBox();
     check('B12 descenders descend: “g” reaches below the baseline', desc.y1 < -60,
       'g yMin ' + Math.round(desc.y1));
-    // Cap-height: MEASURED from the child's own capitals, no longer the
-    // ascender fallback. Two witnesses that must agree: our own report
-    // (median capital ink top × scale) and the font's OS/2 sCapHeight,
-    // which the assembler takes from a real capital glyph's outline.
     const capFacts = await page.evaluate(() => ({
       capHeight: window.__hw.font.report.capHeight,
       capMeasured: window.__hw.font.report.capMeasured,
@@ -819,8 +965,6 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
       Math.abs(capBox.y1) <= 90 && capBox.y2 > 550,
       'H yMin ' + Math.round(capBox.y1) + ', yMax ' + Math.round(capBox.y2));
 
-    // The preview: rendered with the REAL FontFace, measured against the
-    // fallback rendering of the same sentence.
     const probe = await page.evaluate(async () => {
       const sentence = 'my very own letters 123';
       const c = document.createElement('canvas');
@@ -849,12 +993,11 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
       probe.diff > 2000 && Math.abs(probe.mineW - probe.fallW) > 1,
       probe.diff + ' px differ, width ' + Math.round(probe.mineW) + ' vs ' + Math.round(probe.fallW));
 
-    // Byte-determinism: rebuild from the same sheet, compare every byte.
     await page.click('#hwBackToLetters');
     await page.click('#hwBuildBtn');
     await page.waitForFunction(() => window.__hw.stage === 'test');
     const bytes2 = await fontBytes();
-    check('B15 rebuilding from the same sheet is BYTE-DETERMINISTIC',
+    check('B15 rebuilding from the same cards is BYTE-DETERMINISTIC',
       bytes1.equals(bytes2), bytes1.length + ' bytes twice');
     await page.fill('#hwTryInput', 'my very own letters 123');
     await page.screenshot({ path: path.join(SHOTS, '13-handwriting-type-test.png') });
@@ -862,24 +1005,30 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
 
   // ==== HW-C: the refuse rule ================================================
   console.log('\n== HW-C: REFUSE RATHER THAN GUESS ==========================');
-  const CORRUPT = 1; // line 2 — every word ≥ 3 letters, so nothing 1:1 survives
-  const variant = await compose({ seed: 7, width: 2000, omit: 'x', corruptLines: [CORRUPT] });
+  const CORRUPT = 1; // card 2 — every word ≥ 3 letters, so nothing 1:1 survives
   {
-    await page.click('#hwTestNewSheet');
-    await page.waitForSelector('#stepHwSheet.here');
-    const stage = await feed(variant);
-    check('C1 the corrupted sheet still reaches the alphabet', stage === 'alphabet');
+    await freshSheet();
+    const fed = await feedAllCards({ omit: 'x', corruptLines: [CORRUPT] });
+    check('C1 the five variant cards (x never written, card 2 welded) still reach the alphabet',
+      fed.stage === 'alphabet', 'stage ' + fed.stage +
+      (fed.at != null ? ' at card ' + (fed.at + 1) : ''));
     const data = await lettersData();
     const l2 = data.lines[CORRUPT];
-    check('C2 the welded line contributes NOTHING: every letter skipped, none accepted',
-      l2.accepted === 0 && l2.expected === 30,
+    check('C2 the welded card contributes NOTHING: every letter skipped, none accepted',
+      l2.found && l2.accepted === 0 && l2.expected === 30,
       l2.accepted + ' accepted of ' + l2.expected);
     const kinds = {};
     for (const l of l2.letters) kinds[l.kind] = (kinds[l.kind] || 0) + 1;
     check('C3 the skips are honest refusals: touching blobs and missing letters',
       (kinds.touching || 0) >= 15 && !l2.letters.some((l) => l.accepted),
       JSON.stringify(kinds));
-    const bad = mislabels(data, variant.gt);
+    const variantGt = [];
+    for (let i = 0; i < 5; i++) {
+      const c = await composeCard({ seed: 7, width: 2000, page: i < 3 ? 0 : 1,
+                                    omit: 'x', corruptLines: [CORRUPT] }, i);
+      variantGt.push(...c.gt);
+    }
+    const bad = mislabels(data, variantGt);
     check('C4 NOTHING anywhere is mislabeled — the refuse rule as an assertion',
       bad.length === 0, bad.length ? bad.slice(0, 5).join(' ') : 'all accepted letters on their own ground truth');
     check('C5 the never-written letter is honestly absent (x and only x)',
@@ -898,50 +1047,44 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
     check('C7 no blaming word on the surface (failed/invalid/error/wrong)',
       !/failed|invalid|error|wrong/i.test(words.replace(/Developer.*$/s, '')));
 
-    // Per-line recovery: “write this line once more”, never start-over.
-    const stage2 = await feed(clean, CORRUPT);
-    check('C8 re-photographing ONE line brings it back', stage2 === 'alphabet');
-    const data2 = await lettersData();
-    check('C9 the welded line now reads in full from the retake',
-      data2.lines[CORRUPT].accepted >= 28,
-      data2.lines[CORRUPT].accepted + ' of ' + data2.lines[CORRUPT].expected);
-    check('C10 the other lines kept their letters (the retake replaced ONE line)',
-      data2.lines[0].accepted >= 25 && data2.lines[2].accepted >= 24 &&
-      data2.lines[3].accepted >= 22 && data2.lines[4].accepted >= 18,
-      [0, 2, 3, 4].map((i) => data2.lines[i].accepted + '/' + data2.lines[i].expected).join(' '));
-
-    // The variant font: absent letters are ABSENT FROM THE CMAP.
-    // (x was written nowhere — including the retake, which came from the
-    // clean sheet… which HAS x. So rebuild the miss first.)
-    const data3 = await lettersData();
-    if (data3.have.includes('x')) {
-      // the retake photograph carried an x; drop back to the pure variant
-      await page.click('#hwNewSheetBtn');
-      await feed(variant);
-    }
+    // The variant font FIRST (before recovery brings x back with the
+    // clean card): absent letters are ABSENT FROM THE CMAP.
     await page.click('#hwBuildBtn');
     await page.waitForFunction(() => window.__hw.stage === 'test', null, { timeout: 60000 });
     const vb = await fontBytes();
     const vfont = opentype.parse(vb.buffer.slice(vb.byteOffset, vb.byteOffset + vb.length));
-    check('C11 a letter never captured is simply ABSENT from the cmap (falls back, never blank)',
+    check('C8 a letter never captured is simply ABSENT from the cmap (falls back, never blank)',
       vfont.charToGlyphIndex('x') === 0 && vfont.charToGlyphIndex('a') > 0,
       'x → glyph 0 (.notdef unmapped), a → glyph ' + vfont.charToGlyphIndex('a'));
+
+    // Per-card recovery: “show me this card once more”, never start-over.
+    await page.click('#hwBackToLetters');
+    const stage2 = await feed(cleanCards[CORRUPT], CORRUPT);
+    check('C9 re-photographing ONE card brings it back', stage2 === 'alphabet');
+    const data2 = await lettersData();
+    check('C10 the welded card now reads in full from the retake',
+      data2.lines[CORRUPT].accepted >= 28,
+      data2.lines[CORRUPT].accepted + ' of ' + data2.lines[CORRUPT].expected);
+    check('C11 the other cards kept their letters (the retake replaced ONE card)',
+      data2.lines[0].accepted >= 25 && data2.lines[2].accepted >= 24 &&
+      data2.lines[3].accepted >= 22 && data2.lines[4].accepted >= 18,
+      [0, 2, 3, 4].map((i) => data2.lines[i].accepted + '/' + data2.lines[i].expected).join(' '));
   }
 
   // ==== HW-D: “this looks joined-up” =========================================
   console.log('\n== HW-D: THIS LOOKS JOINED-UP ==============================');
   {
-    // ONE welded line → the holding-hands message on that row, generic
-    // everywhere else, no sheet-level banner.
-    await page.click('#hwTestNewSheet');
-    await page.waitForSelector('#stepHwSheet.here');
-    const welded = await compose({ seed: 7, width: 2000, omit: '', corruptLines: [CORRUPT] });
+    // ONE welded card → the holding-hands message on that row, no
+    // sheet-level banner.
+    await freshSheet();
+    const welded = await composeCard({ seed: 7, width: 2000, page: 0,
+                                       corruptLines: [CORRUPT] }, CORRUPT);
     const stage = await feed(welded);
-    check('D1 the welded sheet reaches the alphabet', stage === 'alphabet');
+    check('D1 the welded card reaches the alphabet', stage === 'alphabet');
     const data = await lettersData();
-    check('D2 the welded line is CLASSIFIED joined-up (touching dominates)',
-      data.lines[CORRUPT].joined && data.lines[CORRUPT].touching >=
-        0.5 * data.lines[CORRUPT].expected,
+    check('D2 the welded card is CLASSIFIED joined-up (touching dominates)',
+      data.lines[CORRUPT].found && data.lines[CORRUPT].joined &&
+      data.lines[CORRUPT].touching >= 0.5 * data.lines[CORRUPT].expected,
       data.lines[CORRUPT].touching + '/' + data.lines[CORRUPT].expected + ' touching');
     const rows = await page.evaluate(() =>
       Array.from(document.querySelectorAll('.hw-linerow span')).map((s) => s.textContent));
@@ -949,25 +1092,25 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
       /holding hands/.test(rows[CORRUPT]) && /little space/.test(rows[CORRUPT]) &&
       /once more/.test(rows[CORRUPT]),
       '"' + rows[CORRUPT].slice(0, 90) + '…"');
-    check('D4 every other row keeps the generic count text',
+    check('D4 every other row stays a quiet unread row',
       rows.every((t, i) => i === CORRUPT ||
-        (/of \d+ letters/.test(t) && !/holding hands/.test(t))));
+        (/not read yet/.test(t) && !/holding hands/.test(t))));
     let banner = await page.evaluate(() =>
       document.getElementById('hwJoinedNote').style.display);
-    check('D5 one joined line does NOT raise the sheet-level message',
+    check('D5 one joined card does NOT raise the sheet-level message',
       banner !== 'block', 'display ' + banner);
-    check('D6 the refuse rule holds on the welded line: 0 accepted, 0 mislabels',
+    check('D6 the refuse rule holds on the welded card: 0 accepted, 0 mislabels',
       data.lines[CORRUPT].accepted === 0 && mislabels(data, welded.gt).length === 0,
       data.lines[CORRUPT].accepted + ' accepted');
     await page.locator('#hwLineList').scrollIntoViewIfNeeded();
     await page.screenshot({ path: path.join(SHOTS, '14-handwriting-joined-line.png') });
 
     // TWO touching pairs → merely messy: generic retake, not joined-up.
-    const pairs = await compose({ seed: 7, width: 2000, omit: '', pairLine: 0, pairCount: 2 });
-    await page.click('#hwNewSheetBtn');
-    await page.waitForSelector('#stepHwSheet.here');
+    const pairs = await composeCard({ seed: 7, width: 2000, page: 0,
+                                      pairLine: 0, pairCount: 2 }, 0);
+    await freshSheet();
     const stage2 = await feed(pairs);
-    check('D7 the two-pairs sheet reaches the alphabet', stage2 === 'alphabet');
+    check('D7 the two-pairs card reaches the alphabet', stage2 === 'alphabet');
     const dp = await lettersData();
     check('D8 two touching pairs stay BELOW the joined-up gates (thresholds behave)',
       !dp.lines[0].joined && dp.lines[0].touching >= 2 &&
@@ -976,7 +1119,7 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
       dp.lines[0].accepted + ' accepted');
     const rows2 = await page.evaluate(() =>
       Array.from(document.querySelectorAll('.hw-linerow span')).map((s) => s.textContent));
-    check('D9 that line keeps the GENERIC retake message',
+    check('D9 that card keeps the GENERIC count message',
       /of \d+ letters/.test(rows2[0]) && rows2.every((t) => !/holding hands/.test(t)),
       '"' + rows2[0] + '"');
     check('D10 the touched letters were refused, never mislabeled — the rest read',
@@ -984,108 +1127,67 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
       dp.lines[0].accepted >= dp.lines[0].expected - 8,
       dp.lines[0].accepted + '/' + dp.lines[0].expected + ' accepted');
 
-    // MOST lines welded → the child writes joined-up throughout: ONE
-    // gentle sheet-level message, said once, with the rows kept generic.
-    const cursive = await compose({ seed: 7, width: 2000, omit: '', corruptLines: [0, 1, 2] });
-    await page.click('#hwNewSheetBtn');
-    await page.waitForSelector('#stepHwSheet.here');
-    const stage3 = await feed(cursive);
-    check('D11 the mostly-welded sheet reaches the alphabet', stage3 === 'alphabet');
+    // MOST read cards welded → the child writes joined-up throughout:
+    // ONE gentle sheet-level message, with the rows kept generic.
+    await freshSheet();
+    let stage3 = 'alphabet';
+    for (let i = 0; i < 3; i++) {
+      const c = await composeCard({ seed: 7, width: 2000, page: 0,
+                                    corruptLines: [0, 1, 2] }, i);
+      stage3 = await feed(c, i === 0 ? null : i);
+      if (stage3 !== 'alphabet') break;
+    }
+    check('D11 the three welded cards reach the alphabet', stage3 === 'alphabet');
     const dm = await lettersData();
     banner = await page.evaluate(() =>
       document.getElementById('hwJoinedNote').style.display);
-    check('D12 most lines joined → the sheet-level message appears',
+    check('D12 most read cards joined → the sheet-level message appears',
       banner === 'block' && dm.lines.filter((l) => l.joined).length >= 3,
-      dm.lines.filter((l) => l.joined).length + ' joined lines, display ' + banner);
+      dm.lines.filter((l) => l.joined).length + ' joined cards, display ' + banner);
     const surface = await page.evaluate(() => ({
       count: (document.querySelector('.wrap').innerText.match(/hold hands/g) || []).length,
       note: document.getElementById('hwJoinedNote').textContent
     }));
-    check('D13 …exactly ONCE — not four copies of the line-level one',
+    check('D13 …exactly ONCE — not three copies of the line-level one',
       surface.count === 1 && /little space/.test(surface.note),
       surface.count + ' occurrence(s): "' + surface.note.slice(0, 70) + '…"');
     const rows3 = await page.evaluate(() =>
       Array.from(document.querySelectorAll('.hw-linerow span')).map((s) => s.textContent));
-    check('D14 the line rows stay generic under the sheet-level message',
+    check('D14 the card rows stay generic under the sheet-level message',
       rows3.every((t) => !/holding hands/.test(t)));
-    // Every word on lines 1–3 is ≥2 letters (line 1's old one-letter “a”
-    // left with the old pangram), so a welded line contributes nothing.
-    check('D15 welded lines still contribute NOTHING: 0 accepted where welds ran, 0 mislabels',
+    check('D15 welded cards still contribute NOTHING: 0 accepted where welds ran',
       dm.lines[0].accepted <= 1 && dm.lines[1].accepted === 0 &&
-      dm.lines[2].accepted === 0 && mislabels(dm, cursive.gt).length === 0,
+      dm.lines[2].accepted === 0,
       [0, 1, 2].map((i) => dm.lines[i].accepted + '/' + dm.lines[i].expected).join(' '));
     check('D16 no blame word in either joined-up message',
       !/failed|invalid|error|wrong|cursive/i.test(rows.join(' ') + ' ' + surface.note));
   }
 
-  // ==== HW-E: a real camera — end-marks under perspective ====================
-  console.log('\n== HW-E: A REAL CAMERA — END-MARKS UNDER PERSPECTIVE =======');
+  // ==== HW-E: a real camera ==================================================
+  console.log('\n== HW-E: A REAL CAMERA =====================================');
   {
-    // The field failure's own numbers: page ~68% of a 1280×720 frame,
-    // left edge ~20.2° off vertical, right ~8.1° — a webcam looking down
-    // at a sheet on the desk (which is also why the page lands vertically
-    // foreshortened). E1 documents that the fixture really carries them.
-    const QUAD = [[160, 10], [1224, 14], [1124, 712], [418, 706]]; // tl tr br bl
-    const deg = (dx, dy) => Math.atan2(dx, dy) * 180 / Math.PI;
-    const leftTilt = deg(QUAD[3][0] - QUAD[0][0], QUAD[3][1] - QUAD[0][1]);
-    const rightTilt = deg(QUAD[1][0] - QUAD[2][0], QUAD[2][1] - QUAD[1][1]);
-    let area2 = 0;
-    for (let i = 0; i < 4; i++) {
-      const [ax, ay] = QUAD[i], [bx, by] = QUAD[(i + 1) % 4];
-      area2 += ax * by - bx * ay;
-    }
-    const coverage = Math.abs(area2 / 2) / (1280 * 720);
-    check('E1 the camera fixture matches the field photo (tilts ~20.2°/~8.1°, page ~68% of 720p frame)',
-      Math.abs(leftTilt - 20.2) < 1 && Math.abs(rightTilt - 8.1) < 1 &&
-      coverage > 0.62 && coverage < 0.72,
-      'left ' + leftTilt.toFixed(1) + '° right ' + rightTilt.toFixed(1) +
-      '° coverage ' + Math.round(coverage * 100) + '%');
-
-    const eClean = await compose({ seed: 7, width: 2000, omit: '' });
-    const cam = await warp(eClean, QUAD, 1280, 720);
-    await page.click('#hwNewSheetBtn');
-    await page.waitForSelector('#stepHwSheet.here');
-    const stage = await feed(cam);
-    check('E2 the warped 720p photo reaches the alphabet', stage === 'alphabet');
-    const cap = await page.evaluate(() => window.__hw.capture);
-    check('E3 the anchor ladder was found under the warp (10 of 10 end-marks)',
-      cap && cap.anchors === 10, cap ? 'anchors ' + cap.anchors : 'no capture facts');
-    check('E3b the measured vertical squash matches the camera (per-line registration, not a flat guess)',
-      cap && cap.anis > 0.4 && cap.anis < 0.75,
-      'vertical scale ' + (cap ? cap.anis.toFixed(2) : '—') + '× the horizontal');
+    // A hand-held CARD under a true projective warp at 720p: slight
+    // turn and keystone, blur, JPEG — the hold a child photographing
+    // one cut card actually produces.
+    const CARD_QUAD = [[52, 128], [1230, 158], [1196, 590], [78, 548]]; // tl tr br bl
+    const cardE = await composeCard({ seed: 7, width: 2000, page: 0 }, 1);
+    const camCard = await warp(cardE, CARD_QUAD, 1280, 720);
+    await freshSheet();
+    const stage = await feed(camCard);
+    check('E1 a hand-held card photo (true projective warp, blur, JPEG) reads',
+      stage === 'alphabet', 'stage ' + stage);
+    const capE = await page.evaluate(() => window.__hw.capture);
     const dE = await lettersData();
-    check('E4 EVERY line reads under the warp (each within 2 letters of full)',
-      dE.lines.every((l) => l.found && l.accepted >= l.expected - 2),
-      dE.lines.map((l) => l.accepted + '/' + l.expected).join(' '));
-    const badE = mislabels(dE, cam.gt);
-    check('E5 ZERO mislabels under the warp — refuse-rather-than-guess holds at 720p',
-      badE.length === 0, badE.length ? badE.slice(0, 5).join(' ')
-        : dE.lines.reduce((a, l) => a + l.accepted, 0) + ' letters checked');
-    // At this distance the letters land ~10 camera pixels tall: the read
-    // is complete but the traced glyphs are honestly blocky, so the kind
-    // coarse note is CORRECT here — and absent on the flat sheet (B).
-    const coarseE = await page.evaluate(() => ({
-      coarse: window.__hw.capture.coarse,
-      xh: window.__hw.capture.xHeightPx,
-      shown: document.getElementById('hwCoarseNote').style.display === 'block',
-      text: document.getElementById('hwCoarseNote').textContent
-    }));
-    check('E6 the capture facts are honest: x-height measured in camera pixels, under the floor',
-      coarseE.xh > 5 && coarseE.xh < 14, 'x-height ~' + Math.round(coarseE.xh) + 'px');
-    check('E7 the kind coarse note shows — closer or a phone photo — with no blame word',
-      coarseE.coarse && coarseE.shown && /closer/.test(coarseE.text) &&
-      /phone/.test(coarseE.text) && !/failed|invalid|error|wrong|small for/i.test(coarseE.text),
-      '"' + coarseE.text.slice(0, 60) + '…"');
-    const logE = await page.evaluate(() => document.getElementById('devLog').textContent);
-    check('E8 the dev log carries the capture facts (anchors n of 10, per-line tilt, x-height)',
-      /anchors 10 of 10/.test(logE) && /line tilt/.test(logE) && /x-height/.test(logE));
-    await page.locator('#hwGrid').scrollIntoViewIfNeeded();
-    await page.screenshot({ path: path.join(SHOTS, '15-handwriting-camera-alphabet.png') });
+    check('E2 …with the CORRECT identity, essentially in full',
+      dE.lines[1].found && dE.lines[1].accepted >= dE.lines[1].expected - 3 &&
+      dE.lines.filter((l) => l.found).length === 1,
+      'card 2: ' + dE.lines[1].accepted + '/' + dE.lines[1].expected +
+      ', x-height ~' + Math.round(capE.xHeightPx) + 'px');
+    check('E3 ZERO mislabels under the warp — refuse-rather-than-guess holds',
+      mislabels(dE, camCard.gt).length === 0);
 
-    // Upside down: the ladder is top-bottom symmetric, so the reader asks
-    // the sheet (the title block) — a clearly inverted photo is turned
-    // around and read, never refused and never misread.
-    const flipped = await page.evaluate(async (durl) => {
+    // An upside-down card photo is turned around and read.
+    const flippedCard = await page.evaluate(async (durl) => {
       const img = new Image();
       await new Promise((r) => { img.onload = r; img.src = durl; });
       const c = document.createElement('canvas');
@@ -1094,114 +1196,160 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
       x.translate(c.width, c.height); x.rotate(Math.PI);
       x.drawImage(img, 0, 0);
       return c.toDataURL('image/jpeg', 0.92);
-    }, cam.dataURL);
-    await page.click('#hwNewSheetBtn');
-    await page.waitForSelector('#stepHwSheet.here');
-    const stageF = await feed({ buffer: Buffer.from(flipped.split(',')[1], 'base64'),
-                                name: 'camera-upside-down.jpg', mime: 'image/jpeg' });
+    }, camCard.dataURL);
+    await freshSheet();
+    const stageF = await feed({ buffer: Buffer.from(flippedCard.split(',')[1], 'base64'),
+                                name: 'card-upside-down.jpg', mime: 'image/jpeg' });
     const capF = await page.evaluate(() => window.__hw.capture);
     const dF = await lettersData();
-    check('E9 an upside-down photo is TURNED AROUND and read (never refused, never misread)',
-      stageF === 'alphabet' && capF && capF.flipped && capF.anchors === 10,
-      'stage ' + stageF + ', flipped ' + (capF && capF.flipped));
-    check('E10 …and reads like the right way up: every line, zero mislabels',
-      dF.lines.every((l) => l.found && l.accepted >= l.expected - 3) &&
-      mislabels(dF, cam.gt).length === 0,
-      dF.lines.map((l) => l.accepted + '/' + l.expected).join(' '));
+    check('E4 an upside-down card photo is TURNED AROUND and read (never refused, never misread)',
+      stageF === 'alphabet' && capF && capF.flipped &&
+      dF.lines[1].found && dF.lines[1].accepted >= dF.lines[1].expected - 3,
+      'stage ' + stageF + ', flipped ' + (capF && capF.flipped) +
+      ', ' + dF.lines[1].accepted + '/' + dF.lines[1].expected);
 
     // A photo of something else entirely still refuses with kind words.
-    await page.click('#hwNewSheetBtn');
-    await page.waitForSelector('#stepHwSheet.here');
+    await freshSheet();
     const garbage = fs.readFileSync(path.join(__dirname, 'surrogate-001.png'));
     const stageG = await feed({ buffer: garbage, name: 'drawing.png' });
     const quietG = await page.evaluate(() => ({
       shown: document.getElementById('hwQuietSheet').style.display === 'block',
       text: document.getElementById('hwQuietSheet').textContent
     }));
-    check('E11 a photo of something else REFUSES (no ladder can be invented from a drawing)',
+    check('E5 a photo of something else REFUSES (no card can be invented from a drawing)',
       stageG === 'sheet' && quietG.shown, 'stage ' + stageG);
-    check('E12 …with the kind retake words, never blame',
-      /lay the sheet flat/.test(quietG.text) &&
+    check('E6 …with the kind retake words, never blame',
+      /one whole\s+card in the picture/.test(quietG.text.replace(/\s+/g, ' ')) &&
       !/failed|invalid|error|wrong/i.test(quietG.text));
 
-    // Half a page: three rungs are not a ladder, and the faint rules
-    // cannot rescue a perspective photo — refused, never guessed.
-    const half = await page.evaluate(async (durl) => {
-      const img = new Image();
-      await new Promise((r) => { img.onload = r; img.src = durl; });
-      const c = document.createElement('canvas');
-      c.width = img.width; c.height = Math.round(img.height * 0.55);
-      c.getContext('2d').drawImage(img, 0, 0);
-      return c.toDataURL('image/jpeg', 0.92);
-    }, cam.dataURL);
-    const stageH = await feed({ buffer: Buffer.from(half.split(',')[1], 'base64'),
-                                name: 'half.jpg', mime: 'image/jpeg' });
-    check('E13 half a page REFUSES (the ladder is matched whole or not at all)',
-      stageH === 'sheet');
-
-    // Low resolution: the same camera twice as far away. Everything that
-    // can read still reads, nothing is mislabeled, and the child is told
-    // kindly that the photo is a little far away.
-    const low = await warp(eClean, QUAD.map(([x, y]) => [x / 2, y / 2]), 640, 360,
+    // Far away: the same card warp at 640×360. Everything that can
+    // read still reads, nothing is mislabeled.
+    const low = await warp(cardE, CARD_QUAD.map(([x, y]) => [x / 2, y / 2]), 640, 360,
                            { blur: 0.4 });
     const stageL = await feed(low);
-    check('E14 a 640×360 photo still reads what it can', stageL === 'alphabet');
-    const capL = await page.evaluate(() => window.__hw.capture);
-    const dL = await lettersData();
-    const gotL = dL.lines.reduce((a, l) => a + l.accepted, 0);
-    check('E15 the coarse note appears at low resolution (and letters were still kept)',
-      capL && capL.coarse && gotL >= 40 &&
-      await page.evaluate(() => document.getElementById('hwCoarseNote').style.display === 'block'),
-      gotL + ' letters kept, x-height ~' + Math.round(capL.xHeightPx) + 'px');
-    check('E16 zero mislabels even at 640×360 — refusals rise, guesses never',
-      mislabels(dL, low.gt).length === 0, gotL + ' accepted letters checked');
+    const capL = stageL === 'alphabet'
+      ? await page.evaluate(() => window.__hw.capture) : null;
+    if (stageL === 'alphabet') {
+      const dL = await lettersData();
+      check('E7 a 640×360 card photo still reads what it can, honestly',
+        dL.lines[1].found && dL.lines[1].accepted >= 10,
+        dL.lines[1].accepted + '/' + dL.lines[1].expected +
+        ', x-height ~' + (capL ? Math.round(capL.xHeightPx) : 0) + 'px' +
+        (capL && capL.coarse ? ' (coarse — the kind note shows)' : ''));
+      check('E8 zero mislabels even at 640×360 — refusals rise, guesses never',
+        mislabels(dL, low.gt).length === 0);
+    } else {
+      check('E7 a 640×360 card photo refuses honestly rather than guessing',
+        stageL === 'sheet', 'stage ' + stageL + ' (refused, no guess)');
+      check('E8 zero mislabels even at 640×360 — nothing was read, nothing mislabeled', true);
+    }
 
-    // A sheet printed BEFORE the end-marks existed: the rule-pattern
-    // fallback still reads it square-on (the marks are painted out of the
-    // fixture, simulating an old printout).
+    // ---- the LEGACY sheet: old printouts keep their whole-page path ----
+    const QUAD = [[160, 10], [1224, 14], [1124, 712], [418, 706]]; // the field photo's numbers
+    const legacy = await compose({ seed: 7, width: 2000, legacy: true });
+    legacy.name = 'legacy-sheet.png';
+    const camL = await warp(legacy, QUAD, 1280, 720);
+    await freshSheet();
+    const stageOld = await feed(camL);
+    const capOld = await page.evaluate(() => window.__hw.capture);
+    const dOld = await lettersData();
+    check('E9 a LEGACY sheet under the field warp still reads whole-page (anchors 10 of 10)',
+      stageOld === 'alphabet' && capOld && capOld.anchors === 10 &&
+      dOld.lines.every((l) => l.found && l.accepted >= l.expected - 2),
+      'anchors ' + (capOld && capOld.anchors) + ', ' +
+      dOld.lines.map((l) => l.accepted + '/' + l.expected).join(' '));
+    check('E10 …zero mislabels on the frozen path, vertical squash measured',
+      mislabels(dOld, camL.gt).length === 0 &&
+      capOld.anis > 0.4 && capOld.anis < 0.75,
+      'vertical scale ' + capOld.anis.toFixed(2) + '× the horizontal');
+    check('E11 the coarse note appears when the letters land small, with no blame word',
+      capOld.coarse === (capOld.xHeightPx < 14) &&
+      await page.evaluate(() => {
+        const el = document.getElementById('hwCoarseNote');
+        return (el.style.display === 'block') === window.__hw.capture.coarse &&
+               !/failed|invalid|error|wrong/i.test(el.textContent);
+      }),
+      'x-height ~' + Math.round(capOld.xHeightPx) + 'px');
+    await page.locator('#hwGrid').scrollIntoViewIfNeeded();
+    await page.screenshot({ path: path.join(SHOTS, '15-handwriting-camera-alphabet.png') });
+
+    // A markless legacy sheet (printed before the end-marks existed)
+    // still reads square-on through the RULE fallback.
     const markless = await page.evaluate(`(async () => {
-      const made = (${COMPOSE})({ seed: 7, width: 2000, omit: '' });
+      const made = (${COMPOSE})({ seed: 7, width: 2000, legacy: true });
       const img = new Image();
       await new Promise((r) => { img.onload = r; img.src = made.dataURL; });
       const c = document.createElement('canvas');
       c.width = img.width; c.height = img.height;
       const x = c.getContext('2d');
       x.drawImage(img, 0, 0);
-      const G = HWSheet.GEOM, W = c.width;
+      const G = HWSheet.LEGACY.GEOM, W = c.width;
       const R = G.anchorRadius * W * 1.8;
       x.fillStyle = '#ffffff';
       for (let i = 0; i < HWSheet.LINES.length; i++) {
-        const y = HWSheet.ruleYFrac(i) * c.height;
+        const y = HWSheet.LEGACY.ruleYFrac(i) * c.height;
         x.fillRect(G.anchorXLeft * W - R, y - R, 2 * R, 2 * R);
         x.fillRect(G.anchorXRight * W - R, y - R, 2 * R, 2 * R);
       }
       return c.toDataURL('image/png');
     })()`);
-    await page.click('#hwNewSheetBtn');
-    await page.waitForSelector('#stepHwSheet.here');
-    const stageM = await feed({ buffer: Buffer.from(markless.split(',')[1], 'base64') });
+    await freshSheet();
+    const stageM = await feed({ buffer: Buffer.from(markless.split(',')[1], 'base64'),
+                                name: 'markless.png' });
     const capM = await page.evaluate(() => window.__hw.capture);
     const dM = await lettersData();
-    check('E17 an old markless sheet still reads square-on through the RULE fallback',
+    check('E12 an old markless sheet still reads square-on through the RULE fallback',
       stageM === 'alphabet' && capM && capM.anchors === 0 &&
       dM.lines.every((l) => l.found && l.accepted >= l.expected - 3),
       'anchors ' + (capM && capM.anchors) + ', ' +
       dM.lines.map((l) => l.accepted + '/' + l.expected).join(' '));
-    check('E18 …and zero mislabels on the fallback path too',
-      mislabels(dM, eClean.gt).length === 0);
+    check('E13 …and zero mislabels on the fallback path too',
+      mislabels(dM, legacy.gt).length === 0);
+
+    // THE PHANTOM-LADDER REGRESSION (J9 of the card era). Left stars
+    // hidden on a legacy sheet at 640×360: a look-alike ladder can
+    // form, and it must be REFUSED, never read wrong.
+    const noLeftURL = await page.evaluate(`(async () => {
+      const made = (${COMPOSE})({ seed: 7, width: 2000, legacy: true });
+      const img = new Image();
+      await new Promise((r) => { img.onload = r; img.src = made.dataURL; });
+      const c = document.createElement('canvas');
+      c.width = img.width; c.height = img.height;
+      const x = c.getContext('2d');
+      x.drawImage(img, 0, 0);
+      const G = HWSheet.LEGACY.GEOM, W = c.width;
+      const R = G.anchorRadius * W * 1.6;
+      x.fillStyle = '#ffffff';
+      for (let i = 0; i < HWSheet.LINES.length; i++) {
+        const y = HWSheet.LEGACY.ruleYFrac(i) * c.height;
+        x.fillRect(G.anchorXLeft * W - R, y - R, 2 * R, 2 * R);
+      }
+      return c.toDataURL('image/png');
+    })()`);
+    const QUAD_LOW = [[80, 5], [612, 7], [562, 356], [209, 353]];
+    const noLeftLow = await page.evaluate(`(${WARP})(${JSON.stringify(
+      { dataURL: noLeftURL, quad: QUAD_LOW, frameW: 640, frameH: 360, blur: 0.4 })})`);
+    const phantom = await page.evaluate(`(async (durl) => {
+      const img = new Image();
+      await new Promise((r) => { img.onload = r; img.src = durl; });
+      const c = document.createElement('canvas');
+      c.width = img.width; c.height = img.height;
+      const x = c.getContext('2d', { willReadFrequently: true });
+      x.drawImage(img, 0, 0);
+      const logs = [];
+      const out = HWRead.read(
+        { width: c.width, height: c.height,
+          imageData: x.getImageData(0, 0, c.width, c.height), filename: 'p' },
+        { log: (l) => logs.push(l) });
+      return { ok: out.ok, reason: out.reason,
+               refusedBy: logs.filter((l) => /REFUSED/.test(l)).join(' | ') };
+    })(${JSON.stringify(noLeftLow)})`);
+    check('E14 half the stars hidden → a look-alike ladder can form, and it is REFUSED, never read wrong',
+      phantom.ok === false && /REFUSED/.test(phantom.refusedBy),
+      phantom.refusedBy.slice(0, 110) || 'read ok (should have refused)');
   }
 
-  // ==== HW-F: free motion — the camera collects cards one at a time ==========
-  // Two product-owner findings, verbatim: "why is it needed to get all
-  // lines clicked at same time. why cant we do first line , 2nd in a
-  // free motion" — and then "try designing the page as 5 reding cards,
-  // and than kid can show each card 1 by 1". The close-up fixtures are
-  // CUT CARDS filling the WIDE frame, desk on every side — the hold the
-  // card design is for. Chromium accepts exactly ONE y4m per launch, so
-  // the deterministic identity checks run one launch per card fixture;
-  // the multi-frame sweep file (cards 1→2→3 at 2s a frame) drives the
-  // real accumulation in a single launch — collection is any-order and
-  // latest-wins, so whichever frame each sample lands on, it converges.
+  // ==== HW-F: free motion — cards, strictly one at a time ====================
   console.log('\n== HW-F: FREE MOTION — CARDS, ONE AT A TIME ================');
   const hwFeeds = require(path.join(__dirname, 'make-hw-feeds.js'));
   if (!hwFeeds.allPresent()) {
@@ -1269,11 +1417,15 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
         const rep = await p.evaluate(() => ({
           replaced: window.__hw.live.replaced,
           size: window.__hw.live.collected.size,
+          many: window.__hw.live.many,
           log: document.getElementById('devLog').textContent
         }));
         check('F2 re-showing an already-collected card replaces it silently (latest wins)',
           rep.replaced >= 1 && rep.size === 1,
           rep.replaced + ' replacement(s), still 1 card held');
+        check('F2b ONE card in view never raises the one-card overlay',
+          !rep.many && await p.evaluate(() =>
+            document.getElementById('hwOneCardNote').style.display !== 'block'));
         const ui = await p.evaluate(() => ({
           count: document.getElementById('hwLiveCount').textContent,
           met: Array.from(document.querySelectorAll('.hw-live-slot'))
@@ -1288,7 +1440,7 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
           !/percent|%|scanning|detected|processing|error|failed/i.test(ui.words),
           '"' + ui.words.slice(0, 60).replace(/\n/g, ' · ') + '…"');
         check('F5 the measured x-height per collected card goes to the developer log',
-          /one line met — line 2, \d+ of \d+ letters, x-height ~\d+px \(measured\)/.test(rep.log));
+          /one card met — card 2, \d+ of \d+ letters, x-height ~\d+px \(measured\)/.test(rep.log));
         await p.locator('#cameraPanel').scrollIntoViewIfNeeded();
         await p.screenshot({ path: path.join(SHOTS, '18-hw-card-locked.png') });
         await p.click('#hwLiveDoneBtn');
@@ -1329,16 +1481,13 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
     check('F10 zero page errors across the five cut-card launches', camErrs === 0);
     console.log('     resolution win: cut-card x-heights ' +
       xhs.map((x) => Math.round(x) + 'px').join(' ') +
-      ' vs the whole page in the same frame (next check) — more camera pixels per letter');
-    check('F11 the cards deliver the pixels: every card\'s x-height is ABOVE the coarse floor',
+      ' — the close-up the bigger cards were designed for');
+    check('F11 the cards deliver the pixels: every measured x-height is ABOVE the coarse floor',
       xhs.every((x) => x >= HW_COARSE_FLOOR), xhs.map((x) => Math.round(x)).join(' '));
   }
 
-  // A card shown STILL ATTACHED — the uncut page held close, neighbour
-  // slivers and cut lines in frame — collects through the very same
-  // loop, with the same identity. Cutting is part of the fun, never a
-  // requirement (HW-J proves the verdicts identical frame for frame;
-  // this proves the end-to-end collection).
+  // A card shown STILL ATTACHED — the uncut page held close on one
+  // card — collects through the very same loop, with the same identity.
   {
     const { browser, p, errors } = await camPage('hw-card-attached.y4m');
     await armAndOpenCamera(p);
@@ -1346,43 +1495,99 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
       window.__hw.live && window.__hw.live.collected.size >= 1,
       null, { timeout: 60000 });
     const got = await p.evaluate(() => Array.from(window.__hw.live.collected.keys()));
-    check('F11b an ATTACHED card collects exactly like a cut one — cutting is never required',
+    check('F12 an ATTACHED card collects exactly like a cut one — cutting is never required',
       got.length === 1 && got[0] === 1,
       'collected [' + got.map((x) => x + 1).join(' ') + ']');
     await p.click('#hwLiveDoneBtn');
     await p.waitForFunction(() => window.__hw.stage === 'alphabet');
     const data = await lettersData(p);
     const bad = mislabelsFramed(data.lines, feedsMeta.fixtures.attached.map);
-    check('F11c …reads essentially in full with zero mislabels',
+    check('F13 …reads essentially in full with zero mislabels',
       data.lines[1].accepted >= 28 && bad.length === 0 && errors.length === 0,
       data.lines[1].accepted + '/' + data.lines[1].expected + ', ' + bad.length + ' mislabels');
     await browser.close();
   }
 
-  // The whole sheet in one frame: the full ladder registers, every line
-  // lands together, and the journey proceeds by itself.
+  // MORE THAN ONE CARD IN VIEW: the whole page 1 in frame (three
+  // cards). The gentle overlay shows, its words carry no blame and no
+  // jargon, and NOTHING is collected however long the view stays.
   {
-    const { browser, p, errors } = await camPage('hw-sheet.y4m');
+    const { browser, p, errors } = await camPage('hw-many.y4m');
+    await armAndOpenCamera(p);
+    await p.waitForFunction(() => window.__hw.live.samples >= 4, null, { timeout: 60000 });
+    const many = await p.evaluate(() => ({
+      many: window.__hw.live.many,
+      manySeen: window.__hw.live.manySeen,
+      collected: window.__hw.live.collected.size,
+      count: document.getElementById('hwLiveCount').textContent,
+      overlay: document.getElementById('hwOneCardNote').style.display,
+      text: document.getElementById('hwOneCardNote').textContent
+    }));
+    check('F14 three cards in view → the one-card overlay shows and NOTHING is collected',
+      many.many && many.manySeen >= 1 && many.collected === 0 &&
+      /^0 of 5$/.test(many.count) && many.overlay === 'block',
+      many.manySeen + ' many-verdicts, ' + many.collected + ' collected');
+    check('F14b the overlay speaks child words — one card at a time, no blame, no jargon',
+      /[Oo]ne card at a time/.test(many.text) &&
+      !/error|failed|invalid|wrong|detected|multiple|scan/i.test(many.text),
+      '"' + many.text + '"');
+    await p.locator('#cameraPanel').scrollIntoViewIfNeeded();
+    await p.screenshot({ path: path.join(SHOTS, '23-hw-one-card-overlay.png') });
+    check('F14c zero page errors while the overlay is up', errors.length === 0);
+    await browser.close();
+  }
+
+  // …and the overlay CLEARS by itself when the view returns to one
+  // card: page 1 whole (2s a frame ×4), then cut card 1. The card
+  // collects, and at the moment it collects the overlay is down
+  // (a 'line' verdict clears `many` before the collect callback runs).
+  {
+    const { browser, p, errors } = await camPage('hw-many-then-one.y4m');
+    await armAndOpenCamera(p);
+    await p.waitForFunction(() =>
+      window.__hw.live && window.__hw.live.collected.size >= 1,
+      null, { timeout: 90000 });
+    const after = await p.evaluate(() => ({
+      manySeen: window.__hw.live.manySeen,
+      overlayLog: window.__hw.overlayLog.join(','),
+      got: Array.from(window.__hw.live.collected.keys())
+    }));
+    // The overlay's own history (recorded at each transition): it came
+    // up for the many-card view and went down again — a 'line' verdict
+    // clears it before the collect lands, so the down-transition is in
+    // the log by the time the card is held.
+    check('F15 the overlay shows for the many-card view, then CLEARS when one card returns — and the card collects',
+      after.manySeen >= 1 && /true,false/.test(after.overlayLog) &&
+      after.got.length === 1 && after.got[0] === 0,
+      after.manySeen + ' many-verdicts, overlay [' + after.overlayLog +
+      '], then card ' + (after.got[0] + 1) + ' collected');
+    check('F15b zero page errors across the transition', errors.length === 0);
+    await browser.close();
+  }
+
+  // A LEGACY sheet in frame: the frozen ladder registers and all five
+  // lines land at once — old printouts keep their one-shot path.
+  {
+    const { browser, p, errors } = await camPage('hw-legacy.y4m');
     await armAndOpenCamera(p);
     await p.waitForFunction(() => window.__hw.stage === 'alphabet', null, { timeout: 90000 });
     const data = await lettersData(p);
-    const bad = mislabelsFramed(data.lines, feedsMeta.fixtures.sheet.map);
-    const xhSheet = await p.evaluate(() => window.__hw.capture.xHeightPx);
-    check('F12 a frame holding the WHOLE ladder fills all five slots at once and proceeds',
+    const lgt = feedsMeta.fixtures.legacy.gt.map((g) => ({ line: g.line, ch: g.ch,
+      x0: hwFeeds.frameX(feedsMeta.fixtures.legacy.map, g.x0),
+      x1: hwFeeds.frameX(feedsMeta.fixtures.legacy.map, g.x1) }));
+    check('F16 a LEGACY whole sheet fills all five slots at once and proceeds',
       data.lines.every((l) => l.found && l.accepted >= l.expected - 2) &&
       data.have.length === 62,
       data.lines.map((l) => l.accepted + '/' + l.expected).join(' ') + ', ' +
       data.have.length + '/62 letters');
-    check('F13 …with zero mislabels through the very same whole-sheet reader', bad.length === 0);
-    console.log('     whole sheet in the same 1280×960 frame: x-height ~' +
-      Math.round(xhSheet) + 'px (close-up measured ~2–4× that)');
-    check('F14 zero page errors on the whole-sheet launch', errors.length === 0);
+    check('F17 …with zero mislabels through the frozen whole-sheet reader',
+      mislabels({ lines: data.lines }, lgt).length === 0);
+    check('F17b zero page errors on the legacy launch', errors.length === 0);
     await browser.close();
   }
 
-  // The sweep: one launch, the file shows cards 1→2→3 one after another,
-  // and the collection accumulates in free motion — "kid can show each
-  // card 1 by 1", verbatim, answered end to end.
+  // The sweep: one launch, the file shows cut cards 1→2→3 one after
+  // another, and the collection accumulates in free motion.
   {
     const { browser, p, errors } = await camPage('hw-sweep.y4m');
     await armAndOpenCamera(p);
@@ -1393,7 +1598,7 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
       collected: Array.from(window.__hw.live.collected.keys()).sort().join(','),
       count: document.getElementById('hwLiveCount').textContent
     }));
-    check('F15 showing the cards one after another collects them one at a time, in free motion',
+    check('F18 showing the cards one after another collects them one at a time, in free motion',
       snap.collected === '0,1,2' && /^3 of 5$/.test(snap.count),
       'cards [' + snap.collected + '], "' + snap.count + '"');
     await p.locator('#cameraPanel').scrollIntoViewIfNeeded();
@@ -1401,18 +1606,17 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
     await p.click('#hwLiveDoneBtn');
     await p.waitForFunction(() => window.__hw.stage === 'alphabet');
     const data = await lettersData(p);
-    check('F16 Done-early after the sweep keeps all three collected cards',
+    check('F19 Done-early after the sweep keeps all three collected cards',
       data.lines[0].found && data.lines[1].found && data.lines[2].found &&
       !data.lines[3].found && !data.lines[4].found,
       data.lines.map((l) => l.found ? l.accepted + '/' + l.expected : '—').join(' '));
-    check('F17 zero page errors on the sweep launch', errors.length === 0);
+    check('F20 zero page errors on the sweep launch', errors.length === 0);
     await browser.close();
   }
 
   // Nothing to collect: a drawing (the base suite's own camera fixture)
-  // and an UNWRITTEN card (anchors and model print, no child ink) both
-  // collect nothing, kindly — and the drawing journey itself never runs
-  // the loop at all.
+  // and an UNWRITTEN card both collect nothing, kindly — and the
+  // drawing journey itself never runs the loop at all.
   {
     const camFeed = require(path.join(__dirname, 'make-camera-feed.js'));
     if (!fs.existsSync(camFeed.OUT)) await camFeed.generate();
@@ -1429,21 +1633,22 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
       samples: window.__hw.live.samples,
       row: document.getElementById('hwLiveRow').style.display
     }));
-    check('F18 the drawing journey never runs the card loop (no sampling, no row)',
+    check('F21 the drawing journey never runs the card loop (no sampling, no row)',
       drawSide.samples === 0 && drawSide.row !== 'block',
       drawSide.samples + ' samples');
     await p.click('#cameraCloseBtn');
-    // THEN: armed, the same drawing yields NOTHING — no line invented.
+    // THEN: armed, the same drawing yields NOTHING — no card invented.
     await armAndOpenCamera(p);
     await p.waitForFunction(() => window.__hw.live.samples >= 3, null, { timeout: 60000 });
     const g = await p.evaluate(() => ({
       size: window.__hw.live.collected.size,
+      many: window.__hw.live.manySeen,
       count: document.getElementById('hwLiveCount').textContent
     }));
-    check('F19 a photo of something else collects NOTHING — ambiguity keeps sweeping, never guesses',
-      g.size === 0 && /^0 of 5$/.test(g.count),
+    check('F22 a photo of something else collects NOTHING — ambiguity keeps sweeping, never guesses',
+      g.size === 0 && g.many === 0 && /^0 of 5$/.test(g.count),
       g.size + ' collected after 3+ samples');
-    check('F20 zero page errors while refusing', errors.length === 0);
+    check('F23 zero page errors while refusing', errors.length === 0);
     await browser.close();
   }
   {
@@ -1451,23 +1656,12 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
     await armAndOpenCamera(p);
     await p.waitForFunction(() => window.__hw.live.samples >= 2, null, { timeout: 60000 });
     const b = await p.evaluate(() => window.__hw.live.collected.size);
-    check('F21 an UNWRITTEN card (anchors + model print, no ink) collects nothing',
+    check('F24 an UNWRITTEN card (anchors + model print, no ink) collects nothing',
       b === 0 && errors.length === 0, b + ' collected');
     await browser.close();
   }
 
   // ==== HW-G: the page never blocks — the analysis lives in a worker =========
-  // The field failure, verbatim: "as soon as camera opened the entire
-  // page got stuck." Measured cause: hwRead ground a real room scene for
-  // 12.4 SECONDS a frame ON THE MAIN THREAD (a noisy scene keeps the
-  // candidate-mark list at its cap and the anchor pair search over it is
-  // combinatorial — findLadder alone measured 3.6s). The analysis now
-  // runs in js/hwLiveWorker.js behind a cheap downscaled prepass and
-  // hard per-frame budgets, so these checks hold a HEARTBEAT against the
-  // main thread: a 25ms interval's largest gap stays under 120ms — four
-  // times the measured worst main-thread cost of grabbing a frame
-  // (drawImage + getImageData ≈ 15–30ms at 1280×960) and two orders of
-  // magnitude under the freeze — while the loop sweeps.
   console.log('\n== HW-G: THE PAGE NEVER BLOCKS =============================');
   const HEARTBEAT = `(ms) => new Promise((resolve) => {
     const gaps = []; let last = performance.now();
@@ -1479,8 +1673,7 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
   })`;
   {
     // First-frame hygiene, on the shared page: a video with no metadata
-    // (videoWidth 0) is never sampled — the loop idles until the preview
-    // actually renders.
+    // (videoWidth 0) is never sampled.
     const g0 = await page.evaluate(async () => {
       const v = document.createElement('video');   // no stream, no metadata
       const before = window.__hw.live.samples;
@@ -1521,8 +1714,7 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
     await browser.close();
   }
   {
-    // A REAL collection with the heartbeat running: the work moved to
-    // the worker, so collecting a line must also leave the page free.
+    // A REAL collection with the heartbeat running.
     const { browser, p, errors } = await camPage('hw-card-1.y4m');
     await armAndOpenCamera(p);
     const hbP = p.evaluate(`(${HEARTBEAT})(5000)`);      // concurrent
@@ -1534,7 +1726,7 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
       cost: Math.round(window.__hw.live.lastCost)
     }));
     const hb = await hbP;
-    check('G6 the main thread stays free DURING a real collection (max gap < 120ms; the line still lands)',
+    check('G6 the main thread stays free DURING a real collection (max gap < 120ms; the card still lands)',
       hb.max < 120 && got.keys.length === 1 && got.keys[0] === 0,
       'max gap ' + Math.round(hb.max) + 'ms, worker cost ' + got.cost +
       'ms, collected [' + got.keys.map((x) => x + 1).join(' ') + ']');

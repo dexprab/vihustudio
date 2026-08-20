@@ -2,14 +2,18 @@
 # from tools/imagebed/1000299474.jpg by make-camera-feed.js — never committed.
 camera-feed-001.y4m
 
-# The handwriting camera fixtures are uncompressed YUV (~30 MB all told),
-# generated on demand from the synthetic five-card page by make-hw-feeds.js
-# — never committed. hw-feeds.json carries their mappings, ground truth and
-# version stamp. (hw-line-*.y4m was the pre-card era's name for the
-# close-ups; kept ignored so a stale checkout never offers one to git.)
+# The handwriting camera fixtures are uncompressed YUV (~40 MB all told),
+# generated on demand from the synthetic two-page card set (and the frozen
+# legacy sheet) by make-hw-feeds.js — never committed. hw-feeds.json carries
+# their mappings, ground truth and version stamp. (hw-line-*.y4m and
+# hw-sheet.y4m were earlier eras' names; kept ignored so a stale checkout
+# never offers one to git.)
 hw-line-*.y4m
 hw-card-*.y4m
 hw-sheet.y4m
 hw-sweep.y4m
 hw-noisy.y4m
+hw-many.y4m
+hw-many-then-one.y4m
+hw-legacy.y4m
 hw-feeds.json

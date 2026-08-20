@@ -1,33 +1,41 @@
-/* HW FIXTURE — the deterministic synthetic FILLED writing sheet, shared.
+/* HW FIXTURE — the deterministic synthetic FILLED writing pages, shared.
  *
  * One composer, three consumers: the handwriting suite
  * (test/run-handwriting-tests.js), the fake-camera feed generator
  * (test/make-hw-feeds.js) and any measurement harness. It lives here so
- * the sheet the suite asserts against and the sheet the camera fixtures
+ * the pages the suite asserts against and the pages the camera fixtures
  * are cut from can never drift apart.
  *
  * COMPOSE is a STRING of page-side code (evaluated in the page, where
- * HWSheet and the canvas are): the page's own HWSheet.draw renders the
- * sheet, and the model text is then written onto the rules in a
- * jittered handwriting-ish style — per-letter baseline wobble, rotation,
- * size variation and spacing jitter, all from a SEEDED generator
+ * HWSheet and the canvas are): the page's own HWSheet.draw renders ONE
+ * page of the two-page card printable (opts.page: 0 → cards 1–3,
+ * 1 → cards 4–5) — or, with opts.legacy, the FROZEN one-page five-card
+ * sheet through HWSheet.LEGACY.draw, for the reader's legacy-path
+ * checks. The model text is then written onto the rules in a jittered
+ * handwriting-ish style — per-letter baseline wobble, rotation, size
+ * variation and spacing jitter, all from a SEEDED generator
  * (mulberry32; Math.random appears nowhere), so every run reads the
- * same sheet. Ground truth is the drawn letters' own positions, which
- * is what makes the mislabel assertions exact.
+ * same page. Ground truth is the drawn letters' own positions (GLOBAL
+ * line indices 0–4), which is what makes the mislabel assertions exact.
  *
- * opts: { seed, width, omit ('' or letters),
- *         corruptLines ([] or line indices — every word on those lines is
- *         welded into one touching blob, cursive-style),
+ * opts: { seed, width, page (0|1, default 0), legacy (bool),
+ *         omit ('' or letters),
+ *         corruptLines ([] or GLOBAL line indices — every word on those
+ *         lines is welded into one touching blob, cursive-style),
  *         pairLine/pairCount (weld only the first `pairCount` word-
- *         internal letter pairs on `pairLine` — "merely messy"),
- *         blankLines ([] or line indices — the child never wrote them) }.
- * Returns { dataURL, gt:[{line,ch,x0,x1}], W, H, ruleYs }.
+ *         internal letter pairs on GLOBAL line `pairLine`),
+ *         blankLines ([] or GLOBAL line indices — never written) }.
+ * Returns { dataURL, gt:[{line,ch,x0,x1}], W, H,
+ *           ruleYs: 5 slots (px, null for lines not on this page),
+ *           cards: the drawn card boxes (cut boundaries included) }.
  */
 'use strict';
 
 const COMPOSE = `(opts) => {
   const c = document.createElement('canvas');
-  const drawn = HWSheet.draw(c, opts.width || 2000);
+  const drawn = opts.legacy
+    ? HWSheet.LEGACY.draw(c, opts.width || 2000)
+    : HWSheet.draw(c, opts.width || 2000, opts.page || 0);
   const ctx = c.getContext('2d');
   let s = (opts.seed >>> 0) || 1;
   const rnd = () => { s |= 0; s = s + 0x6D2B79F5 | 0;
@@ -36,16 +44,18 @@ const COMPOSE = `(opts) => {
     return ((t ^ t >>> 14) >>> 0) / 4294967296; };
   const gt = [];
   // Sans, not Serif: at this scale DejaVu Serif's serifs detach at the
-  // ink threshold (an L foot joined a Y's split and inflated its width;
-  // a u fragment impersonated an i) — a sans face has no serif to shed
-  // and sturdier junctions, which is also closer to a child's print.
+  // ink threshold — a sans face has no serif to shed and sturdier
+  // junctions, which is also closer to a child's print.
   const FAM = '"DejaVu Sans"';
   ctx.fillStyle = '#20242e';
   ctx.textBaseline = 'alphabetic';
   for (const ln of drawn.lines) {
     if ((opts.blankLines || []).includes(ln.index)) continue;
     const text = ln.text;
-    let size = drawn.H * 0.052;
+    // The starting size follows the geometry's own ascent (a taller
+    // blank invites taller writing); the span fit below is what
+    // actually binds on the long pangram lines.
+    let size = drawn.H * (opts.legacy ? 0.052 : 0.065);
     const fit = () => {
       ctx.font = size.toFixed(1) + 'px ' + FAM;
       let total = 0;
@@ -107,8 +117,10 @@ const COMPOSE = `(opts) => {
       }
     }
   }
+  const ruleYs = [null, null, null, null, null];
+  for (const ln of drawn.lines) ruleYs[ln.index] = ln.ruleY;
   return { dataURL: c.toDataURL('image/png'), gt, W: c.width, H: c.height,
-           ruleYs: drawn.lines.map((l) => l.ruleY) };
+           ruleYs, cards: drawn.cards };
 }`;
 
 module.exports = { COMPOSE };

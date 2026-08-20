@@ -74,11 +74,12 @@ const PRE = {
                     //    nothing, they are below the ink margin)
   BUDGET_MS: 1000,  // per-frame time box, prepass + full pass together
   BAND_ABOVE: 0.20, // full-res band above a candidate rule (× its own
-                    //   implied page height) — the card's model line tops
-                    //   out at ~0.115×H above the rule, the writing ascent
-                    //   at 0.086 (the card border above them is not ink)
-  BAND_BELOW: 0.10, // …and below: descent is 0.040×H, letters admitted
-                    //   to 1.15× that
+                    //   implied page height) — the card's model band tops
+                    //   out at ~0.144×H above the rule (two-page print),
+                    //   the writing ascent at 0.108 (the card border
+                    //   above them is not ink)
+  BAND_BELOW: 0.10, // …and below: descent is 0.048×H, letters admitted
+                    //   to 1.15× that (0.055)
   BAND_WHOLE: 0.85  // a band covering ≥ this of the frame reads the frame
 };
 
