@@ -119,7 +119,8 @@
                    border:1px solid rgba(223,177,105,.55); border-radius:999px;
                    padding:.45rem 1.1rem; font-size:.88rem; text-align:center;
                    pointer-events:none; white-space:nowrap; }
-  .hw-grid { display:grid; grid-template-columns:repeat(9, 64px); gap:8px; margin-top:.8rem; }
+  .hw-grid { display:grid; grid-template-columns:repeat(9, 64px); gap:8px; margin-top:.8rem;
+             position:relative; /* the choice card anchors to its tapped tile */ }
   .hw-slot { background:var(--panel); border:1px solid var(--line); border-radius:8px;
              padding:4px; text-align:center; cursor:pointer; }
   .hw-slot:hover { border-color:var(--gold); }
@@ -130,6 +131,18 @@
      warmed, and holds the child's own ink. */
   .hw-slot.empty { border-style:dashed; }
   .hw-slot.made { border-color:var(--gold); background:rgba(223,177,105,.07); }
+  /* A KEPT LETTER ASKS FIRST (the product owner: "a tile which already
+     has a letter, if i tap it again it should give me the option of
+     redo, edit, never mind"). A small card by the tapped tile — three
+     ways on, none louder than the others. An empty tile never shows
+     it: there is nothing there to ask about. */
+  .hw-choice { position:absolute; z-index:5; background:var(--panel);
+               border:1px solid var(--gold); border-radius:10px;
+               padding:.6rem .8rem .7rem; width:max-content; max-width:270px;
+               box-shadow:0 8px 26px rgba(0,0,0,.5); }
+  .hw-choice-words { color:var(--soft); font-size:.84rem; margin:0; }
+  .hw-choice .row { margin-top:.55rem; gap:.4rem; }
+  .hw-choice button { font-size:.82rem; padding:.4rem .7rem; }
   .hw-slot-ref { width:56px; height:56px; margin:0 auto; display:flex;
                  align-items:center; justify-content:center;
                  font:400 2.1rem/1 Georgia,serif; color:var(--faint); opacity:.5; }

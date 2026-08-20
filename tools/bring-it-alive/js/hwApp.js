@@ -11,8 +11,11 @@
  *   · The GRID is the front door and the progress view in one: A–Z,
  *     a–z, 0–9, each tile a faint reference letterform until the
  *     child's own captured letter fills it. Tap any tile, any order,
- *     any time — a filled one to do it again. No percent, no pressure;
- *     the grid filling up IS the progress.
+ *     any time. A FILLED one asks first (the product owner: "a tile
+ *     which already has a letter, if i tap it again it should give me
+ *     the option of redo, edit, never mind"): a small card by the tile
+ *     offers Make it again · Fix it up · Never mind. No percent, no
+ *     pressure; the grid filling up IS the progress.
  *   · Tapping a tile ARMS the shared capture entry for that ONE letter
  *     (the picker, the drop zone and the camera, all unchanged —
  *     app.js owns them). The tap declares the letter's identity; the
@@ -52,6 +55,7 @@
     letter: null,       // the tapped tile's letter while armed / checking
     samples: new Map(), // ch → hwFont-ready sample (normalized)
     glyphs: new Map(),  // ch → the kept native-res glyph {mask,w,h,parts}
+    choice: null,       // {ch} while the kept-tile choice card is up
     check: null,        // the check screen's working state
     font: null,         // {buffer, report}
     builds: 0
@@ -137,9 +141,9 @@
         label.className = 'hw-slot-label';
         label.textContent = ch;
         slot.appendChild(label);
-        slot.addEventListener('click', () => arm(ch));
+        slot.addEventListener('click', () => tap(ch, slot));
         slot.addEventListener('keydown', (e) => {
-          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); arm(ch); }
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tap(ch, slot); }
         });
         grid.appendChild(slot);
         renderTile(slot, ch);
@@ -156,13 +160,14 @@
     $('hwGridNote').textContent = have === 0
       ? 'Tap any letter, write it big anywhere you like, and show it to me — I’ll catch it.'
       : have === ALPHABET.length
-        ? 'Every letter is here — all yours. Tap any of them to make it again.'
+        ? 'Every letter is here — all yours. Tap any of them to make it again or fix it up.'
         : have + ' of ' + ALPHABET.length + ' letters are yours so far. ' +
-          'Tap an empty letter to add it — or one of yours to make it again.';
+          'Tap an empty letter to add it — or one of yours to make it again or fix it up.';
     $('hwBuildBtn').disabled = have === 0;
   }
 
   function showGrid() {
+    closeChoice();
     renderGrid();
     $('hwLetterQuiet').style.display = 'none';
     state.stage = 'grid';
@@ -170,7 +175,88 @@
     go('stepHwGrid');
   }
   $('hwEntryBtn').addEventListener('click', showGrid);
-  $('hwGridBack').addEventListener('click', () => { state.stage = 'idle'; go('stepCapture'); });
+  $('hwGridBack').addEventListener('click', () => {
+    closeChoice(); state.stage = 'idle'; go('stepCapture');
+  });
+
+  // ---- a kept letter asks first ----------------------------------------------
+  // (the product owner: "a tile which already has a letter, if i tap it
+  // again it should give me the option of redo, edit, never mind").
+  // A tap used to mean MAKE IT AGAIN unconditionally — the one thing a
+  // child reaching for a finished letter might want least. Now a KEPT
+  // tile answers with a small card beside it, three ways on and none
+  // louder than the others:
+  //   · Make it again — the capture, exactly as a tap always meant;
+  //   · Fix it up — the same check screen every fresh capture lands
+  //     on (pencil · eraser · Move), holding the KEPT ink, so a wonky
+  //     stroke is repaired without the camera coming out at all;
+  //   · Never mind — the card closes and nothing has happened.
+  // An EMPTY tile still arms instantly: there is nothing to protect,
+  // and a question with one honest answer is a form.
+  function closeChoice() {
+    const card = document.getElementById('hwChoice');
+    if (card) card.remove();
+    state.choice = null;
+  }
+  function openChoice(ch, slot) {
+    closeChoice();
+    const card = document.createElement('div');
+    card.className = 'hw-choice';
+    card.id = 'hwChoice';
+    const words = document.createElement('p');
+    words.className = 'hw-choice-words';
+    words.textContent = 'Your ' + ch + ' is already here — what would you like?';
+    card.appendChild(words);
+    const row = document.createElement('div');
+    row.className = 'row';
+    const again = document.createElement('button');
+    again.id = 'hwChoiceAgain';
+    again.textContent = '📷 Make it again';
+    again.addEventListener('click', () => { closeChoice(); arm(ch); });
+    const fix = document.createElement('button');
+    fix.id = 'hwChoiceFix';
+    fix.textContent = '✏️ Fix it up';
+    fix.addEventListener('click', () => {
+      closeChoice();
+      // The kept native-res glyph goes back through the SAME door a
+      // fresh capture uses — enterCheck pads a working copy, so the
+      // kept ink is never touched until the child presses Keep.
+      enterCheck(ch, state.glyphs.get(ch) || state.samples.get(ch));
+    });
+    const never = document.createElement('button');
+    never.className = 'ghost';
+    never.id = 'hwChoiceNever';
+    never.textContent = 'Never mind';
+    never.addEventListener('click', closeChoice);
+    row.appendChild(again); row.appendChild(fix); row.appendChild(never);
+    card.appendChild(row);
+    const grid = $('hwGrid');
+    grid.appendChild(card);
+    // Beside its tile, kept on the paper: below the tapped slot, pulled
+    // back from the grid's right edge if the tile sits near it.
+    card.style.left = Math.max(0,
+      Math.min(slot.offsetLeft, grid.clientWidth - card.offsetWidth)) + 'px';
+    card.style.top = (slot.offsetTop + slot.offsetHeight + 6) + 'px';
+    state.choice = { ch };
+  }
+  function tap(ch, slot) {
+    if (state.choice && state.choice.ch === ch) { closeChoice(); return; }
+    if (state.samples.has(ch)) { openChoice(ch, slot); return; }
+    closeChoice();
+    arm(ch);
+  }
+  // A tap anywhere that is not the card and not a tile answers Never
+  // mind — walking away is allowed to be the whole of the answer.
+  document.addEventListener('pointerdown', (e) => {
+    if (!state.choice) return;
+    const card = document.getElementById('hwChoice');
+    if (card && card.contains(e.target)) return;
+    if (e.target.closest && e.target.closest('.hw-slot')) return;
+    closeChoice();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && state.choice) closeChoice();
+  });
 
   // ---- arming the shared capture entry ---------------------------------------
   // ONE camera, TWO framings (the field finding that named the two-block

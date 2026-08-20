@@ -146,6 +146,12 @@ const BLAME = /error|failed|invalid|wrong|incorrect|scan|detect|process|percent|
       const stage = await page.evaluate(() => window.__hw.stage);
       if (stage !== 'grid') throw new Error('feedLetter from stage ' + stage);
       await page.click(`#hwGrid .hw-slot[data-ch="${ch}"]`);
+      // A KEPT tile asks first (make it again · fix it up · never
+      // mind); feeding a letter again means the capture, so answer
+      // Make it again. An empty tile arms without asking.
+      if (await page.evaluate(() => !!window.__hw.choice)) {
+        await page.click('#hwChoiceAgain');
+      }
       await page.waitForSelector('#stepCapture.here');
     }
     await page.evaluate(() =>
@@ -1111,6 +1117,113 @@ const BLAME = /error|failed|invalid|wrong|incorrect|scan|detect|process|percent|
     }
   }
 
+  // ==== HW-A: A KEPT LETTER ASKS FIRST =======================================
+  // (the product owner: "a tile which already has a letter, if i tap it
+  // again it should give me the option of redo, edit, never mind").
+  // Tapping a KEPT tile opens a small choice card by the tile — Make it
+  // again · Fix it up · Never mind — and does nothing else; an EMPTY
+  // tile still arms instantly. Fix it up lands the KEPT ink on the same
+  // check screen a fresh capture uses.
+  console.log('\n== HW-A: A KEPT LETTER ASKS FIRST ==========================');
+  {
+    // 'o' is kept from HW-X. Tapping it asks; nothing arms, nothing moves.
+    await page.click('#hwGrid .hw-slot[data-ch="o"]');
+    const asked = await page.evaluate(() => ({
+      choice: window.__hw.choice, stage: window.__hw.stage,
+      armed: window.__hw.armed,
+      card: !!document.getElementById('hwChoice'),
+      words: document.getElementById('hwChoice').innerText,
+      onGrid: document.getElementById('stepHwGrid').classList.contains('here')
+    }));
+    check('A1 tapping a kept tile asks — the choice card, still on the grid, nothing armed',
+      asked.card && asked.choice && asked.choice.ch === 'o' &&
+      asked.stage === 'grid' && asked.onGrid && !asked.armed);
+    check('A2 the card offers exactly the three ways: make it again · fix it up · never mind',
+      /Make it again/.test(asked.words) && /Fix it up/.test(asked.words) &&
+      /Never mind/.test(asked.words) && !BLAME.test(asked.words),
+      '"' + asked.words.replace(/\n/g, ' · ') + '"');
+    await page.locator('#hwGrid').scrollIntoViewIfNeeded();
+    await page.screenshot({ path: path.join(SHOTS, '33-hw-kept-tile-choice.png') });
+
+    // Never mind: the card closes and nothing has happened.
+    const beforeBytes = await page.evaluate(() => {
+      const t = document.querySelector('#hwGrid .hw-slot[data-ch="o"] canvas');
+      return t.getContext('2d').getImageData(0, 0, t.width, t.height).data.join('');
+    });
+    await page.click('#hwChoiceNever');
+    const closed = await page.evaluate(() => ({
+      choice: window.__hw.choice, card: !!document.getElementById('hwChoice'),
+      stage: window.__hw.stage
+    }));
+    const afterBytes = await page.evaluate(() => {
+      const t = document.querySelector('#hwGrid .hw-slot[data-ch="o"] canvas');
+      return t.getContext('2d').getImageData(0, 0, t.width, t.height).data.join('');
+    });
+    check('A3 Never mind closes the card and changes nothing',
+      !closed.card && !closed.choice && closed.stage === 'grid' &&
+      beforeBytes === afterBytes);
+
+    // A tap anywhere else is Never mind too — walking away answers.
+    await page.click('#hwGrid .hw-slot[data-ch="o"]');
+    await page.click('#hwGridNote');
+    const walked = await page.evaluate(() => ({
+      card: !!document.getElementById('hwChoice'), choice: window.__hw.choice
+    }));
+    check('A4 a tap anywhere else closes the card the same way', !walked.card && !walked.choice);
+
+    // Fix it up: the KEPT ink lands on the same check screen, and the
+    // preview IS the tile it came from, byte for byte.
+    await page.click('#hwGrid .hw-slot[data-ch="o"]');
+    await page.click('#hwChoiceFix');
+    await page.waitForSelector('#stepHwCheck.here');
+    const fix = await page.evaluate(() => {
+      const prev = document.getElementById('hwCheckPreview');
+      return { stage: window.__hw.stage, ch: window.__hw.check.ch,
+               ink: window.__hw.check.mask.reduce((a, v) => a + v, 0),
+               kept: window.__hw.glyphs.get('o').mask.reduce((a, v) => a + v, 0),
+               preview: prev.getContext('2d')
+                 .getImageData(0, 0, prev.width, prev.height).data.join('') };
+    });
+    check('A5 Fix it up opens the check screen holding the kept ink, untouched',
+      fix.stage === 'check' && fix.ch === 'o' && fix.ink === fix.kept,
+      fix.ink + 'px of ink either side');
+    check('A5b …and its preview matches the kept tile byte for byte',
+      fix.preview === beforeBytes);
+    await page.click('#hwCheckBack');
+    await page.waitForSelector('#stepHwGrid.here');
+    check('A5c Never mind from the check screen keeps the letter exactly as it was',
+      (await page.evaluate(() => {
+        const t = document.querySelector('#hwGrid .hw-slot[data-ch="o"] canvas');
+        return t.getContext('2d').getImageData(0, 0, t.width, t.height).data.join('');
+      })) === beforeBytes);
+
+    // Make it again: the capture step, armed for that letter — exactly
+    // what a tap on a kept tile used to mean, now chosen rather than
+    // assumed.
+    await page.click('#hwGrid .hw-slot[data-ch="o"]');
+    await page.click('#hwChoiceAgain');
+    await page.waitForSelector('#stepCapture.here');
+    const again = await page.evaluate(() => ({
+      armed: window.__hw.armed, letter: window.__hw.letter,
+      still: Array.from(window.__hw.samples.keys()).includes('o')
+    }));
+    check('A6 Make it again arms the capture for that letter, keeping the kept one until it is replaced',
+      again.armed && again.letter === 'o' && again.still);
+    await page.click('#hwDisarmBtn');
+    await page.waitForSelector('#stepHwGrid.here');
+
+    // An empty tile never asks — it arms on the spot, as it always did.
+    await page.click('#hwGrid .hw-slot[data-ch="3"]');
+    const instant = await page.evaluate(() => ({
+      card: !!document.getElementById('hwChoice'),
+      armed: window.__hw.armed, letter: window.__hw.letter
+    }));
+    check('A7 an empty tile still arms instantly — no card, no question',
+      !instant.card && instant.armed && instant.letter === '3');
+    await page.click('#hwDisarmBtn');
+    await page.waitForSelector('#stepHwGrid.here');
+  }
+
   // ==== HW-B: the whole alphabet, and the font ===============================
   console.log('\n== HW-B: THE ALPHABET AND THE FONT =========================');
   {
@@ -1285,6 +1398,10 @@ const BLAME = /error|failed|invalid|wrong|incorrect|scan|detect|process|percent|
     await p.click('#hwEntryBtn');
     await p.waitForSelector('#stepHwGrid.here');
     await p.click(`#hwGrid .hw-slot[data-ch="${ch}"]`);
+    // a kept tile asks first — the camera scenarios always mean redo
+    if (await p.evaluate(() => !!window.__hw.choice)) {
+      await p.click('#hwChoiceAgain');
+    }
     await p.waitForSelector('#stepCapture.here');
     await p.click('#cameraBtn');
     await p.waitForFunction(() => {

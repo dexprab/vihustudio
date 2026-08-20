@@ -4516,3 +4516,34 @@ indistinguishable from a crayon 'O' (the tap owns identity; the check
 screen is the catch); a letter written across the page's edge refuses;
 fat marker strokes between the two gates would refuse; real light and
 pressure remain the owner's trial.
+
+## A Kept Letter Asks First — Redo · Edit · Never Mind
+
+The product owner, verbatim: *"a tile which already has a letter, if i
+tap it again it should give me the option of redo, edit, never mind."*
+Until now a tap on a KEPT tile re-armed the camera unconditionally —
+remaking was the one thing a tap could say, and it was the thing a
+child reaching for a finished letter might want least. Now a kept tile
+answers with a small choice card beside it (`.hw-choice`, anchored to
+the tapped slot inside the grid): **📷 Make it again** — the capture,
+exactly as a tap always meant; **✏️ Fix it up** — the SAME check
+screen every fresh capture lands on (pencil · eraser · Move), holding
+the kept native-res glyph, so a wonky stroke is repaired without the
+camera coming out at all; **Never mind** — the card closes and nothing
+has happened. Walking away answers too: a tap anywhere else, or
+Escape, closes it the same way, and tapping the same tile again
+toggles it shut — a card on a shelf, never a prompt that must be
+answered. An EMPTY tile still arms instantly: there is nothing there
+to protect, and a question with one honest answer is a form. The edit
+path reuses `enterCheck()` unchanged — it pads a working copy, so the
+kept ink is untouched until Keep — and the suite proves the round
+trip: Fix it up → Never mind leaves the tile byte-for-byte identical,
+and the check preview matches the kept tile exactly (the same
+assertion X4 makes for a fresh capture). `feedLetter`/
+`armAndOpenCamera` answer the card with Make it again, so every
+existing scenario still means what it meant. New scenario HW-A
+(A1–A7): the card's three ways and no blame words, never-mind and
+walk-away both change nothing, fix-it-up holds the kept ink untouched,
+make-it-again arms while keeping the kept letter until replaced, and
+an empty tile never asks. Suites: handwriting 153→162/162, base
+192/192, zero page errors.
