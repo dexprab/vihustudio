@@ -243,6 +243,14 @@
         .then((res) => {
           if (res && res.ok) {
             _log('library: kept "' + name + '" as ' + res.record.id);
+            // MY GARDEN sprint — a creation has successfully entered My
+            // Garden. This event is the whole integration: the Garden
+            // never learns what was scanned or how (Plan Card 08), and
+            // the record id is what makes one capture exactly one
+            // growth however many times anything re-renders.
+            try {
+              document.dispatchEvent(new CustomEvent('vihu:creation-captured', { detail: { id: res.record.id } }));
+            } catch (e) {}
             const onKept = _opts && _opts.onKept;
             close();
             if (onKept) { try { onKept(res.record); } catch (e) {} }
@@ -515,7 +523,7 @@
     _els.nameInput.setAttribute('aria-label', 'What is its name?');
     keepRow.appendChild(_els.nameInput);
     _els.libraryBtn = _btn('bia-studio-btn bia-studio-btn-primary',
-      '🌟 Keep in My Library', _keep);
+      '🌟 Keep in My Garden', _keep);
     keepRow.appendChild(_els.libraryBtn);
     _els.keepStatus = _el('span', 'bia-studio-status', '');
     keepRow.appendChild(_els.keepStatus);

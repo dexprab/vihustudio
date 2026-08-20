@@ -1439,6 +1439,54 @@ Decision 24's hierarchy.
   lines, Traveller identity, Traveller preferences, previous-visit
   awareness, and conversation of any kind.
 
+### 27. My Garden — Where the Things a Child Creates Live
+
+Locked by the product owner in the MY GARDEN sprint brief, with two
+corrections given during design: growth happens in the CENTER pane
+around the play area, and My Garden holds both scanned creations and
+handwriting.
+
+- **My Library's meaning changed; its machinery did not.** Child-facing
+  it is **My Garden** (🌿); internally the feature is the **Living
+  Garden** and nothing is renamed — `creatorLibrary.js`,
+  `creator_library`, every API. Same rule as Publish/Finish Story.
+- **The Garden is an environment, not a screen.** The center pane stays
+  the child's play area. Growth — vines, sprigs, leaves, buds, the
+  occasional flower — lives in the workspace margins AROUND the page,
+  never over the page, the strip, or any control; the reserve is
+  enforced by measured geometry, and the layer sits above the stage sky
+  and below everything real by document order alone.
+- **Every capture grows the Garden; the kind of creation never
+  matters.** One event — `vihu:creation-captured` with a capture id and
+  deliberately no type field — is the whole integration. The scanner
+  dispatches it on a successful keep; handwriting and future sources
+  use the same event; the Garden learns nothing about cameras,
+  segmentation or OCR. **One capture = one growth**, held by a
+  recent-ids guard; re-rendering grows nothing, by construction.
+- **Growth is state-driven and replayed, never scan-numbered.** What
+  persists is `{seed, events}` (plus the id guard), scoped to the Magic
+  Card with a Traveller fallback swept on claim (Decision 19's
+  pattern). Each step consults the garden built so far through six
+  zones — origin, nearby, edge travel, branching, connections,
+  blossoming — and past a hard density ceiling the garden deepens (buds
+  open, leaves fill) while the element count never rises again.
+- **No gamification, ever:** no counts, scores, levels, badges,
+  progress bars, percentages, rewards, unlocks or comparisons — and no
+  instruction: nothing tells a child that scanning grows the Garden;
+  the behaviour is the teaching. A growth response is ~1.5s, then
+  still; no bursts, no confetti; reduced-motion suppresses it.
+- **The developer trigger is Author Mode only** ("Add Creation", one
+  simulated capture per click) — a development configuration, never a
+  child-facing control, per Decision 13.
+- Out of scope and not implemented: a separate Garden world, scenes,
+  quests, characters in the Garden, AI regeneration of child artwork,
+  runtime/story/page-model changes, and any Studio redesign.
+- Disclosed: the growth record is local-first per device; a cloud row
+  (the `creator_handwriting` pattern) is the follow-up when one garden
+  should span devices.
+- `js/gardenEngine.js` · `js/gardenRenderer.js` ·
+  `tools/garden-test/run-garden-tests.js`.
+
 ## Roadmap
 
 1. Theme Designer Polish

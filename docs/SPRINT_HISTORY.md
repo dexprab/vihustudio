@@ -4576,3 +4576,57 @@ and the client wiring (keep-to-cloud from the grid, the Studio font
 list, the rite that teaches it) is not yet built. Verified by review
 against the three tables it mirrors; no schema object it touches
 exists yet, and it is idempotent.
+
+## My Garden — My Library Becomes a Living Garden
+
+The MY GARDEN sprint, executed in the sprint's own order. The child-facing
+rename shipped first: every "My Library" a child could read now says "My
+Garden" (the Add Something tile — now 🌿 — the picker heading, the empty
+state, the keep button and the take-out confirmations); nothing internal was
+renamed, exactly as Decisions 8 and 12 already require — `creatorLibrary.js`,
+`creator_library` and every API keep their names. The Living Garden itself is
+two new modules and one event. `js/gardenEngine.js` owns the growth record —
+persisted as just `{seed, events, recentIds}`, scoped to the Magic Card with
+a Traveller fallback swept by `claim()` like the library's own
+`claimUnowned` — and REPLAYS growth deterministically: each step consults the
+garden built so far (the active vine's tip, each zone's fullness), which is
+what makes growth state-driven rather than scan-number-driven, and makes
+re-renders idempotent by construction. The zones are the sprint's six —
+origin (a first sprig at the foot of the left margin), nearby curls, edge
+travel, branching, connections closing the top arc, blossoming where the
+vine is oldest — with a hard density ceiling past which buds open and
+leaves fill but the element count never rises again. `js/gardenRenderer.js`
+draws state into the workspace margins around the page canvas: bands are
+measured fresh from the real canvas rect each render, a reserve guard
+refuses any point over the play area by construction, and the layer mounts
+inside `.preview-wrapper` immediately after the stage sky — document order
+alone puts it above the sky and below the page and every control, no
+z-index anywhere. Growth animates ~1.4s (a vine draws itself in, a leaf
+unfolds) then is completely still; suppressed under prefers-reduced-motion.
+The one integration is the event: the scanner's keep branch dispatches
+`vihu:creation-captured` with the record id, the engine's recent-ids list
+makes one capture exactly one growth, and any future source (handwriting
+included) uses the same event without the Garden learning anything about
+it — the detail deliberately carries no type field. Author Mode gets the
+sprint's developer trigger (an "Add Creation" button simulating one capture
+per click); no child ever sees it. Verified by
+`tools/garden-test/run-garden-tests.js` (29 checks, 4 consecutive clean
+runs): the rename, the origin, one-capture-one-growth, no growth on
+re-render, the 1/5/15/30/60 ladder with per-node disjointness from the play
+area measured at every stage, the ceiling at 100 captures, byte-identical
+persistence across a full reload, the Traveller→card sweep, the dev
+trigger, a REAL `CreatorLibrary.save` growing the garden exactly once
+through the shipped event, and zero page errors; stage screenshots in
+`tools/garden-test/shots/`. Three real bugs the suite-plus-eyes loop
+caught before ship: the ceiling originally kept adding leaves once buds ran
+out (density uncapped); a transform-driven layout settle could place one
+node from a stale rect (fixed by the reserve guard plus a settle
+re-render); and the layer SVG sat at the replaced-element default 300×150 —
+counts all green while the child would have seen almost nothing, which is
+why the acceptance run ends with looking at the screenshots, not the
+numbers. Disclosed: the growth record is local-first per device today (a
+few dozen bytes in localStorage) — the cloud row mirroring
+`creator_handwriting`'s pattern is the natural follow-up when the owner
+wants one garden across devices; and the in-Studio scanner's button-to-keep
+flow is exercised by the standalone suites, while the garden suite proves
+the store-and-event seam those five shipped lines call.

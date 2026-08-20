@@ -2568,11 +2568,11 @@ const ContextPanel=(function(){
     // its own copy.
     const remove=_el('button','context-library-remove','✕');
     remove.type='button';
-    remove.title='Take out of My Library';
-    remove.setAttribute('aria-label','Take “'+(item.name||'My Character')+'” out of My Library');
+    remove.title='Take out of My Garden';
+    remove.setAttribute('aria-label','Take “'+(item.name||'My Character')+'” out of My Garden');
     remove.addEventListener('click',function(ev){
       ev.stopPropagation();
-      if(!window.confirm('Take “'+(item.name||'My Character')+'” out of My Library? Anything already on your pages stays right where it is.')) return;
+      if(!window.confirm('Take “'+(item.name||'My Character')+'” out of My Garden? Anything already on your pages stays right where it is.')) return;
       try{ if(typeof CreatorLibrary!=='undefined') CreatorLibrary.remove(item.id); }catch(e){}
       _showLibraryPicker();
     });
@@ -2594,7 +2594,7 @@ const ContextPanel=(function(){
     stickerStudioOpen=true;
     panelRoot.innerHTML='';
     panelRoot.classList.remove('is-empty');
-    panelRoot.appendChild(_el('div','context-collection-picker-heading','📚 My Library'));
+    panelRoot.appendChild(_el('div','context-collection-picker-heading','🌿 My Garden'));
 
     // The PERMANENT entry, above the kept characters — always present,
     // never only when the shelf is empty (a child with ten characters
@@ -2621,7 +2621,7 @@ const ContextPanel=(function(){
       // same overlay in place. Nothing navigates away, so Decision 23's
       // entry gate never enters into it.
       const empty=_el('div','context-library-empty');
-      empty.appendChild(_el('div','context-library-empty-line','Nothing here yet — bring one of your paper drawings to life, and keep it in My Library.'));
+      empty.appendChild(_el('div','context-library-empty-line','Nothing here yet — bring one of your paper drawings to life, and keep it in My Garden.'));
       const invite=_el('button','context-library-empty-link','✨ Bring a drawing to life');
       invite.type='button';
       invite.addEventListener('click',_openBringItAlive);
@@ -3437,7 +3437,7 @@ const ContextPanel=(function(){
     // all: an empty library is an invitation (the picker's own empty
     // state links to bringing a drawing to life), never a dead end.
     if(typeof CreatorLibrary!=='undefined'){
-      items.push({id:'library',icon:'📚',label:'My Library',onClick:function(){ _showLibraryPicker(); }});
+      items.push({id:'library',icon:'🌿',label:'My Garden',onClick:function(){ _showLibraryPicker(); }});
     }
     // Family Photos — shown whenever the repository layer is configured
     // at all (an unconfigured deployment can never have albums, so the
