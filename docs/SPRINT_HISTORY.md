@@ -4302,3 +4302,35 @@ is measured in-suite at 5023ms; **disclosed:** the 10-second path runs
 end-to-end only time-compressed via an unadvertised test seam (real
 pace proved on the 5), and the Studio overlay inherits the control by
 construction without a Studio harness driving it.
+
+## My Handwriting — Two Roomy Pages of Cards, Held Without Hiding
+
+The product owner, holding the real printout: *"you can put max 3
+cards on the paper. provide spacing between cutlines. also ensure that
+a person will have to hold it. so while holding the text should not
+get hidden. current page does not have any breathing space."* All
+four, met with measured numbers: the printable is now **two A4 pages**
+(cards 1–3, then 4–5, a real `break-after: page`); **8.9mm gutters**
+between cut lines (two cut-insets, so scissors get a lane rather than
+a shared line); **20mm grip margins** each side of every card — the
+nearest star ink starts 20.6mm from the edge, the number 28.4mm, the
+rule 32.6mm, and zero ink or mark candidates in the grip zones is
+asserted; and the blank grew to **46.3mm (+23.9%, ascent +25%)** — the
+breathing space is where the child writes. Disclosed cost: the writing
+span narrows 186→150.6mm; the close-up x-height rises to 18–19px
+(1.67× the tall-era read, floor 14). Page identity was **deleted** per
+the owner ("we will only show 1 question at a time… how does it
+matter") and replaced by the strict one-card rule: two or more
+disjoint cards in view reads nothing and shows *"One card at a time,
+please — hold up just one card, and I'll read it."* — camera and
+uploads alike, clearing at one card. Old printouts keep working: the
+whole-sheet five-rung machinery is frozen onto `HWSheet.LEGACY.GEOM`
+(forced — every live GEOM number moved) and re-asserted. One reader
+fix rode along: `LIVE_PAIR_COMBOS` counted cheap rejects and starved
+the legitimate whole-page frame — split into a raw bound plus
+`LIVE_PAIR_DENSE`, deadline-gated so the upload path is unchanged.
+Suites on the merged tree: base 191/191, handwriting 141/141.
+Disclosed limits: a legacy card shown in close-up refuses kindly; a
+thumb across the middle of a card refuses until re-held; welded cards
+ride the model print alone (zero-mislabel holds); real print, pencil
+and scissors remain the field test.
