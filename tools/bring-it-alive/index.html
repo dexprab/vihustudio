@@ -66,6 +66,19 @@
           text-align:center; color:var(--soft); background:var(--panel); }
   #drop.over { border-color:var(--gold); color:var(--ink); }
 
+  /* TWO JOURNEYS, TWO BLOCKS — the entry screen's answer to "am I making
+     a font or art?". Equal visual standing: the same border, the same
+     heading treatment, each with its own door. */
+  .journey { border:1px solid var(--line); border-radius:14px;
+             padding:1.1rem 1.3rem 1.3rem; background:rgba(21,28,46,.45); }
+  .journey + .journey { margin-top:1.2rem; }
+  .journey > h2 { margin-top:0; }
+  /* While My Handwriting is armed, the shared machinery wears handwriting
+     words and the drawing-only affordances step aside — the child is in
+     the font journey and every visible thing says so. */
+  body.hw-armed #hwJourney, body.hw-armed #drawExtras,
+  body.hw-armed #testBtn { display:none; }
+
   .board { background:var(--panel); border:1px solid var(--line); border-radius:10px;
            padding:10px; display:inline-block; }
   canvas.work { display:block; touch-action:none; cursor:crosshair; border-radius:6px; }
@@ -92,6 +105,21 @@
   #devError { display:none; background:#3a1620; border:1px solid var(--warn); color:#f2c4b5;
               border-radius:8px; padding:.7rem 1rem; margin:.8rem 0;
               font:400 .82rem/1.6 var(--mono); white-space:pre-wrap; }
+
+  /* MY HANDWRITING, free motion — the five quiet slots that light up as
+     lines are met. Deliberately NOT a scanner: no brackets, no reticle,
+     no sweep line, no percentage — five little stars waiting to shine. */
+  .hw-live-slots { display:flex; gap:10px; margin:.4rem 0; }
+  .hw-live-slot { width:36px; height:36px; border:1px solid var(--line);
+                  border-radius:50%; display:flex; align-items:center;
+                  justify-content:center; color:var(--faint);
+                  background:var(--panel); font-size:.85rem; }
+  .hw-live-slot.met { color:var(--gold); border-color:var(--gold); }
+  .hw-live-slot.just-met { animation: hwmet .9s ease-out; }
+  @keyframes hwmet {
+    0% { box-shadow: 0 0 0 0 rgba(223,177,105,.7); }
+    100% { box-shadow: 0 0 0 12px rgba(223,177,105,0); }
+  }
 
   /* MY HANDWRITING — the writing sheet, the alphabet grid, the try box. */
   #hwSheetCanvas { display:block; background:#fff; border-radius:6px; max-width:100%; }
@@ -140,55 +168,92 @@
   <p class="sub">Your drawing, exactly as you made it — yours. <span id="buildTag">v0.2</span></p>
   <div id="devError"></div>
 
-  <!-- CAPTURE -->
+  <!-- CAPTURE — the entry screen. TWO journeys, TWO blocks of equal
+       standing (field finding: "give me another block for generating
+       fonts. currently am getting confused wether am generating font or
+       art"). The drawing block owns the shared photograph machinery
+       (picker · drop · camera); while My Handwriting is ARMED the same
+       machinery is reframed in handwriting words (title, drop words,
+       camera line all swap — one camera, two framings) and the
+       handwriting entry block hides, because the child is inside it. -->
   <section class="step here" id="stepCapture">
-    <h2>Photograph</h2>
-    <div id="drop">
-      Drop a photograph of your drawing here
-      <div class="row" style="justify-content:center; margin-top:1rem;">
-        <button id="pickBtn">Choose a photo</button>
-        <button id="cameraBtn" style="display:none">Use the camera</button>
-        <button class="ghost" id="testBtn">Use test page</button>
+    <div class="journey" id="drawJourney">
+      <h2 id="captureTitle">Bring a drawing to life</h2>
+      <!-- MY HANDWRITING, armed: the next photograph through this very
+           entry (picker, drop or camera — all unchanged) becomes the
+           written sheet. -->
+      <div class="quiet" id="hwArmed">
+        <span id="hwArmedText"></span>
+        <div class="row"><button class="ghost" id="hwDisarmBtn">Never mind — back to my sheet</button></div>
       </div>
-      <input type="file" id="fileInput" accept="image/*" style="display:none">
+      <div id="drop">
+        <span id="dropWords">Drop a photograph of your drawing here</span>
+        <div class="row" style="justify-content:center; margin-top:1rem;">
+          <button id="pickBtn">Choose a photo</button>
+          <button id="cameraBtn" style="display:none">Use the camera</button>
+          <button class="ghost" id="testBtn">Use test page</button>
+        </div>
+        <input type="file" id="fileInput" accept="image/*" style="display:none">
+      </div>
+      <!-- CAMERA (v0.3) — the second way in, beside the picker, never instead
+           of it. Deliberately plain: the live picture and one big button — no
+           corner brackets, no reticle, no sweeping line, nothing that looks
+           like scanning. The button appears only where the camera API exists;
+           everywhere else this step is exactly as it was. -->
+      <div id="cameraPanel" style="display:none; margin-top:.8rem;">
+        <div class="board">
+          <video id="cameraLive" autoplay playsinline muted
+                 style="display:block; width:640px; max-width:100%; border-radius:6px;"></video>
+          <canvas id="cameraShot"
+                 style="display:none; width:640px; max-width:100%; border-radius:6px;"></canvas>
+        </div>
+        <!-- MY HANDWRITING, free motion (js/hwLive.js): while the journey
+             is armed and the preview runs, lines are collected one at a
+             time, in any order. Five quiet slots that light up as lines
+             are met — never a percentage, no brackets, no reticle, no
+             sweeping anything: nothing that looks like scanning. -->
+        <div id="hwLiveRow" style="display:none">
+          <p class="note" id="hwLiveWords">Show me your sheet — one line up
+             close is best, or the whole page at once. Lines light up as I
+             meet them.</p>
+          <div class="hw-live-slots" id="hwLiveSlots"></div>
+          <p class="note" id="hwLiveCount"></p>
+          <div class="row">
+            <button id="hwLiveDoneBtn" style="display:none">That’s everything — show me my letters</button>
+          </div>
+        </div>
+        <div class="row">
+          <button id="cameraTakeBtn">Take the picture</button>
+          <button id="cameraUseBtn" style="display:none">Use this one</button>
+          <button class="ghost" id="cameraRetakeBtn" style="display:none">Take it again</button>
+          <button class="ghost" id="cameraCloseBtn">Never mind</button>
+        </div>
+        <p class="note" id="cameraNote">Hold your drawing up so the whole page is in the picture.</p>
+      </div>
+      <div class="quiet" id="cameraQuiet"></div>
+      <div id="drawExtras">
+        <div class="row">
+          <button class="ghost" id="openCreationBtn">Open a creation (JSON)</button>
+          <input type="file" id="creationInput" accept="application/json,.json" style="display:none">
+        </div>
+        <p class="note">The test page is a <b>procedural surrogate</b> of Test Case 001 —
+           a rendered stand-in, not a real photograph. The real Test Case 001
+           photographs live in <code>tools/imagebed/</code> and load through
+           “Choose a photo” like any other image. A saved creation (the
+           layered JSON) reopens exactly where it was left, edits and all.</p>
+      </div>
     </div>
-    <!-- CAMERA (v0.3) — the second way in, beside the picker, never instead
-         of it. Deliberately plain: the live picture and one big button — no
-         corner brackets, no reticle, no sweeping line, nothing that looks
-         like scanning. The button appears only where the camera API exists;
-         everywhere else this step is exactly as it was. -->
-    <div id="cameraPanel" style="display:none; margin-top:.8rem;">
-      <div class="board">
-        <video id="cameraLive" autoplay playsinline muted
-               style="display:block; width:640px; max-width:100%; border-radius:6px;"></video>
-        <canvas id="cameraShot"
-               style="display:none; width:640px; max-width:100%; border-radius:6px;"></canvas>
-      </div>
+
+    <!-- MY HANDWRITING — its own block, its own door. Nothing about the
+         font journey starts inside the drawing block. -->
+    <div class="journey" id="hwJourney">
+      <h2>✍️ My Handwriting — a font of your own letters</h2>
+      <p class="note">Write five lines on a printed sheet, show them to me,
+         and I’ll make a real font out of your very own letters.</p>
       <div class="row">
-        <button id="cameraTakeBtn">Take the picture</button>
-        <button id="cameraUseBtn" style="display:none">Use this one</button>
-        <button class="ghost" id="cameraRetakeBtn" style="display:none">Take it again</button>
-        <button class="ghost" id="cameraCloseBtn">Never mind</button>
+        <button id="hwEntryBtn">Start with my writing sheet</button>
       </div>
-      <p class="note">Hold your drawing up so the whole page is in the picture.</p>
     </div>
-    <div class="quiet" id="cameraQuiet"></div>
-    <div class="row">
-      <button class="ghost" id="openCreationBtn">Open a creation (JSON)</button>
-      <input type="file" id="creationInput" accept="application/json,.json" style="display:none">
-      <button class="ghost" id="hwEntryBtn">✍️ My Handwriting — make a font of your own letters</button>
-    </div>
-    <!-- MY HANDWRITING, armed: the next photograph through this very entry
-         (picker, drop or camera — all unchanged) becomes the written sheet. -->
-    <div class="quiet" id="hwArmed">
-      <span id="hwArmedText"></span>
-      <div class="row"><button class="ghost" id="hwDisarmBtn">Never mind — back to my sheet</button></div>
-    </div>
-    <p class="note">The test page is a <b>procedural surrogate</b> of Test Case 001 —
-       a rendered stand-in, not a real photograph. The real Test Case 001
-       photographs live in <code>tools/imagebed/</code> and load through
-       “Choose a photo” like any other image. A saved creation (the
-       layered JSON) reopens exactly where it was left, edits and all.</p>
   </section>
 
   <!-- CLAIM -->
@@ -412,6 +477,7 @@
 <script src="vendor/opentype.min.js"></script>
 <script src="js/hwSheet.js"></script>
 <script src="js/hwRead.js"></script>
+<script src="js/hwLive.js"></script>
 <script src="js/hwFont.js"></script>
 <script src="js/hwApp.js"></script>
 </body>

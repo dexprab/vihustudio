@@ -363,6 +363,11 @@ function check(name, cond, detail) {
 
   // ---- pointer-event drivers ----------------------------------------------
   async function canvasMap(id) {
+    // Mouse coordinates are viewport coordinates: bring the canvas into
+    // view first, or a scroll position left by a previous (taller) step
+    // puts the mapped points outside the window and the pointer events
+    // land nowhere.
+    await page.locator('#' + id).scrollIntoViewIfNeeded();
     const box = await page.locator('#' + id).boundingBox();
     const scale = await page.evaluate(() => window.__bia.displayScale);
     return ([ix, iy]) => [box.x + ix * scale, box.y + iy * scale];
@@ -2173,10 +2178,13 @@ function check(name, cond, detail) {
 
   // ---- C9: the frame has two shapes — Tall page ⇄ Wide page -----------------
   // The fixture is a LANDSCAPE 1280×960 feed, i.e. hardware that cannot
-  // turn (a laptop webcam), so tall must be the centred crop to the
-  // writing sheet's own aspect — preview and capture alike, capture at
-  // NATIVE stream resolution. Wide must stay byte-identical to what the
-  // camera always did.
+  // turn (a laptop webcam), so tall must be the centred crop at the tall
+  // aspect — preview and capture alike, capture at NATIVE stream
+  // resolution. The tall aspect is 4:5 (BIACamera.tallAspect()), WIDER
+  // than the sheet's own 1:√2 by the product owner's field finding, so
+  // the crop must CONTAIN the fixture's page with aiming margin either
+  // side rather than land exactly on it. Wide must stay byte-identical
+  // to what the camera always did.
   console.log('\n-- C9: Tall page ⇄ Wide page — the shape button');
   await cam.click('#aliveNewPhoto');
   await cam.click('#cameraBtn');
@@ -2259,8 +2267,7 @@ function check(name, cond, detail) {
   const c9t = await cam.evaluate(() => {
     const c = document.getElementById('cameraShot');
     const wide = window.__c9wide;
-    const a = (window.HWSheet && HWSheet.GEOM && HWSheet.GEOM.aspect)
-      ? 1 / HWSheet.GEOM.aspect : 1 / Math.SQRT2;
+    const a = BIACamera.tallAspect();                    // 4:5 — the real number
     const expW = Math.round(wide.height * a);            // landscape feed → full height
     const expX = Math.round((wide.width - expW) / 2);
     const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
@@ -2278,25 +2285,31 @@ function check(name, cond, detail) {
     // The centre of the crop is the middle of the page — bright paper,
     // nothing like the dim room (#232028).
     const mid = ((c.height >> 1) * c.width + (c.width >> 1)) * 4;
-    return { w: c.width, h: c.height, expW, expX, mismatch,
+    return { w: c.width, h: c.height, expW, expX, mismatch, aspect: a,
              midSum: d[mid] + d[mid + 1] + d[mid + 2],
              log: document.querySelector('#devLog').textContent };
   });
-  check('C9 the tall picture is the sheet-aspect crop at NATIVE resolution',
+  check('C9 the tall picture is the 4:5 tall-page crop at NATIVE resolution',
     c9t.w === c9t.expW && c9t.h === feed.H, c9t.w + 'x' + c9t.h +
     ' (expected ' + c9t.expW + 'x' + feed.H + ')');
+  check('C9 the tall frame is WIDER than the sheet — real aiming margin ' +
+        '(field finding: "the tall page needs to be a bit wider")',
+    Math.abs(c9t.aspect - 0.8) < 1e-9 && c9t.aspect > 1 / Math.SQRT2,
+    'w:h ' + c9t.aspect.toFixed(3) + ' vs sheet ' + (1 / Math.SQRT2).toFixed(3));
   check('C9 the crop is centred — byte-identical to the wide frame at the ' +
         'centred offset',
     c9t.mismatch === 0, 'mismatch ' + c9t.mismatch + ' at offset x=' + c9t.expX);
   // Against the fixture's own documented geometry: the page pillar-boxes
-  // at [OFFSET_X, OFFSET_X + round(3472·SCALE)), and the centred crop must
-  // land wholly INSIDE it — not one column of the dim room comes along —
-  // with bright paper at its centre.
+  // at [OFFSET_X, OFFSET_X + round(3472·SCALE)). At the sheet's exact
+  // aspect the crop landed wholly inside the page — zero margin, the
+  // field complaint. At 4:5 the crop must CONTAIN the whole page with
+  // aiming room on BOTH sides, and bright paper at its centre.
   const pageR = feed.OFFSET_X + Math.round(3472 * feed.SCALE);
-  check('C9 the crop shows the page, not the room beside it (fixture x-offset)',
-    c9t.expX >= feed.OFFSET_X && c9t.expX + c9t.w <= pageR && c9t.midSum > 350,
-    'crop x ' + c9t.expX + '..' + (c9t.expX + c9t.w) + ' inside page ' +
-    feed.OFFSET_X + '..' + pageR + ', centre rgb sum ' + c9t.midSum);
+  check('C9 the crop contains the whole page WITH aiming margin either side',
+    c9t.expX < feed.OFFSET_X && c9t.expX + c9t.w > pageR && c9t.midSum > 350,
+    'crop x ' + c9t.expX + '..' + (c9t.expX + c9t.w) + ' around page ' +
+    feed.OFFSET_X + '..' + pageR + ' (margin ' + (feed.OFFSET_X - c9t.expX) +
+    '/' + (c9t.expX + c9t.w - pageR) + 'px), centre rgb sum ' + c9t.midSum);
   check('C9 the honest crop facts went to the developer log',
     /camera: picture taken at native \d+x\d+ \(the middle of \d+x\d+\)/.test(c9t.log));
   // And back to wide: the capture is byte-comparable to the pre-toggle

@@ -13,7 +13,18 @@
  * run reads the same sheet. Ground truth is the drawn letters' own
  * positions, which is what makes the mislabel assertions exact.
  *
- * Five scenarios:
+ * Seven scenarios:
+ *   HW-N  two journeys, two blocks — the entry screen presents the
+ *         drawing journey and the font journey as equal, separate
+ *         blocks; the shared camera machinery wears each journey's own
+ *         words; backing out of one never leaks state into the other.
+ *   HW-F  free motion — the camera collects lines ONE AT A TIME, in any
+ *         order (fake-camera y4m close-ups, one Chromium launch each):
+ *         correct identity 5/5, zero mislabels, latest-wins replace,
+ *         the quiet five-slot row, Done-early, the whole-ladder frame
+ *         filling all five at once, a sweep accumulating three lines in
+ *         one launch, and nothing collected from a drawing or an
+ *         unwritten line. The upload path never touches the loop.
  *   HW-A  the sheet itself — geometry, coverage of a–z + A–Z + digits,
  *         the printed no-cursive callout, print.
  *   HW-B  a complete filled sheet — every letter captured, every accepted
@@ -72,96 +83,10 @@ function check(name, cond, detail) {
 
 /* The synthetic filled sheet, composed IN PAGE through the real
  * HWSheet.draw so the fixture and the printable sheet cannot drift.
- * opts: { seed, width, omit ('' or letters),
- *         corruptLines ([] or line indices — every word on those lines is
- *         welded into one touching blob, cursive-style),
- *         pairLine/pairCount (weld only the first `pairCount` word-
- *         internal letter pairs on `pairLine` — "merely messy") }.
- * Returns { dataURL, gt:[{line,ch,x0,x1}], W, H }. */
-const COMPOSE = `(opts) => {
-  const c = document.createElement('canvas');
-  const drawn = HWSheet.draw(c, opts.width || 2000);
-  const ctx = c.getContext('2d');
-  let s = (opts.seed >>> 0) || 1;
-  const rnd = () => { s |= 0; s = s + 0x6D2B79F5 | 0;
-    let t = Math.imul(s ^ s >>> 15, 1 | s);
-    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
-    return ((t ^ t >>> 14) >>> 0) / 4294967296; };
-  const gt = [];
-  // Sans, not Serif: at this scale DejaVu Serif's serifs detach at the
-  // ink threshold (an L foot joined a Y's split and inflated its width;
-  // a u fragment impersonated an i) — a sans face has no serif to shed
-  // and sturdier junctions, which is also closer to a child's print.
-  const FAM = '"DejaVu Sans"';
-  ctx.fillStyle = '#20242e';
-  ctx.textBaseline = 'alphabetic';
-  for (const ln of drawn.lines) {
-    const text = ln.text;
-    let size = drawn.H * 0.052;
-    const fit = () => {
-      ctx.font = size.toFixed(1) + 'px ' + FAM;
-      let total = 0;
-      for (const ch of text) total += ch === ' '
-        ? size * 0.62 : ctx.measureText(ch).width + size * 0.16;
-      return total;
-    };
-    let total = fit();
-    const span = (ln.x1 - ln.x0) * 0.96;
-    if (total > span) { size *= span / total; total = fit(); }
-    let x = ln.x0 + 3;
-    const words = [];
-    let word = null;
-    for (const ch of text) {
-      if (ch === ' ') {
-        if (word) { words.push(word); word = null; }
-        x += size * 0.62 * (0.9 + 0.2 * rnd());
-        continue;
-      }
-      if (opts.omit && opts.omit.includes(ch)) { x += size * 0.25; continue; }
-      const wch = ctx.measureText(ch).width;
-      const jy = (rnd() - 0.5) * size * 0.06;
-      const rot = (rnd() - 0.5) * 2 * 2.2 * Math.PI / 180;
-      const jsz = 1 + (rnd() - 0.5) * 0.10;
-      ctx.save();
-      ctx.translate(x + wch / 2, ln.ruleY + jy);
-      ctx.rotate(rot);
-      ctx.scale(jsz, jsz);
-      ctx.font = size.toFixed(1) + 'px ' + FAM;
-      ctx.fillText(ch, -wch / 2, 0);
-      ctx.restore();
-      gt.push({ line: ln.index, ch, x0: x, x1: x + wch });
-      if (!word) word = { x0: x, n: 0, size, letters: [] };
-      word.x1 = x + wch; word.n++;
-      word.letters.push({ x0: x, x1: x + wch });
-      x += wch + size * 0.16 * (0.8 + 0.4 * rnd());
-    }
-    if (word) words.push(word);
-    if ((opts.corruptLines || []).includes(ln.index)) {
-      // weld each word into ONE touching blob: a stroke through the
-      // letters at mid x-height, in the same ink
-      for (const w of words) {
-        if (w.n < 2) continue;
-        const y = ln.ruleY - w.size * 0.24;
-        ctx.fillRect(w.x0 + 1, y - 2, (w.x1 - w.x0) - 2, 4);
-      }
-    }
-    if (opts.pairLine === ln.index && opts.pairCount > 0) {
-      // weld only the FIRST letter pair of the first pairCount words —
-      // a couple of letters that happened to touch, not a style
-      let welded = 0;
-      for (const w of words) {
-        if (welded >= opts.pairCount || w.n < 2) continue;
-        const a = w.letters[0], b = w.letters[1];
-        const y = ln.ruleY - w.size * 0.24;
-        ctx.fillRect(a.x1 - w.size * 0.1, y - 2,
-                     (b.x0 - a.x1) + w.size * 0.2, 4);
-        welded++;
-      }
-    }
-  }
-  return { dataURL: c.toDataURL('image/png'), gt, W: c.width, H: c.height,
-           ruleYs: drawn.lines.map((l) => l.ruleY) };
-}`;
+ * Shared with the fake-camera feed generator — see test/hw-fixture.js
+ * for the contract. */
+const { COMPOSE } = require(path.join(__dirname, 'hw-fixture.js'));
+
 
 /* A REAL CAMERA, synthesised honestly: the flat fixture warped by a TRUE
  * projective transform (unit square → quad, inverse-mapped with bilinear
@@ -306,7 +231,7 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
       null, { timeout: 180000 });
     return page.evaluate(() => window.__hw.stage);
   }
-  const lettersData = () => page.evaluate(() => ({
+  const lettersData = (pg) => (pg || page).evaluate(() => ({
     lines: window.__hw.lines.map((ln) => ({
       index: ln.index, found: ln.found, accepted: ln.accepted || 0,
       expected: ln.expected || 0, unit: ln.unit,
@@ -336,6 +261,89 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
   }
   const fontBytes = async () => Buffer.from(await page.evaluate(() =>
     Array.from(new Uint8Array(window.__hw.font.buffer))));
+
+  // ==== HW-N: two journeys, two blocks =======================================
+  // Field finding: "give me another block for generating fonts. currently
+  // am getting confused wether am generating font or art." The entry
+  // screen presents TWO blocks of equal standing; the shared camera
+  // machinery wears each journey's own words; and backing out of one
+  // journey never leaks state into the other.
+  console.log('\n== HW-N: TWO JOURNEYS, TWO BLOCKS ==========================');
+  {
+    const entry = await page.evaluate(() => {
+      const draw = document.getElementById('drawJourney');
+      const hw = document.getElementById('hwJourney');
+      return {
+        blocks: document.querySelectorAll('#stepCapture .journey').length,
+        drawHead: draw.querySelector('h2').textContent,
+        hwHead: hw.querySelector('h2').textContent,
+        hwEntryInDraw: !!draw.querySelector('#hwEntryBtn'),
+        hwEntryInHw: !!hw.querySelector('#hwEntryBtn'),
+        drawText: draw.innerText,
+        hwShown: !!hw.offsetParent
+      };
+    });
+    check('N1 the entry screen presents TWO blocks — a drawing journey and a font journey',
+      entry.blocks === 2 && /drawing to life/i.test(entry.drawHead) &&
+      /My Handwriting/i.test(entry.hwHead) && entry.hwShown,
+      '"' + entry.drawHead + '" · "' + entry.hwHead + '"');
+    check('N2 nothing about the font journey starts inside the drawing block',
+      !entry.hwEntryInDraw && entry.hwEntryInHw &&
+      !/handwriting|font|letters/i.test(entry.drawText),
+      'entry button lives in the handwriting block');
+    await page.screenshot({ path: path.join(SHOTS, '16-two-journey-blocks.png') });
+
+    // Armed, the shared capture step speaks HANDWRITING everywhere a
+    // child can see — one camera, two framings.
+    await page.click('#hwEntryBtn');
+    await page.waitForSelector('#stepHwSheet.here');
+    await page.click('#hwWroteBtn');
+    await page.waitForSelector('#stepCapture.here');
+    const armed = await page.evaluate(() => ({
+      title: document.getElementById('captureTitle').textContent,
+      drop: document.getElementById('dropWords').textContent,
+      note: document.getElementById('cameraNote').textContent,
+      hwBlockHidden: !document.getElementById('hwJourney').offsetParent,
+      extrasHidden: !document.getElementById('drawExtras').offsetParent,
+      testHidden: !document.getElementById('testBtn').offsetParent
+    }));
+    check('N3 armed, the capture step is visibly the FONT journey (title, drop, camera line)',
+      /My Handwriting/.test(armed.title) && /written sheet/.test(armed.drop) &&
+      /writing sheet/.test(armed.note) && armed.hwBlockHidden &&
+      armed.extrasHidden && armed.testHidden,
+      '"' + armed.title + '" · "' + armed.note + '"');
+
+    // Back out: the drawing framing returns byte for byte, and a drawing
+    // fed now lands in the drawing CLAIM — never the line reader.
+    await page.click('#hwDisarmBtn');
+    await page.waitForSelector('#stepHwSheet.here');
+    await page.click('#hwSheetBack');
+    await page.waitForSelector('#stepCapture.here');
+    const disarmed = await page.evaluate(() => ({
+      title: document.getElementById('captureTitle').textContent,
+      drop: document.getElementById('dropWords').textContent,
+      note: document.getElementById('cameraNote').textContent,
+      hwShown: !!document.getElementById('hwJourney').offsetParent
+    }));
+    check('N4 backing out restores the drawing framing byte for byte',
+      disarmed.title === 'Bring a drawing to life' &&
+      disarmed.drop === 'Drop a photograph of your drawing here' &&
+      /your drawing up/.test(disarmed.note) && disarmed.hwShown,
+      '"' + disarmed.title + '"');
+    const surrogatePng = fs.readFileSync(path.join(__dirname, 'surrogate-001.png'));
+    await page.setInputFiles('#fileInput',
+      { name: 'drawing.png', mimeType: 'image/png', buffer: surrogatePng });
+    await page.waitForSelector('#stepClaim.here');
+    const leak = await page.evaluate(() => ({
+      stage: window.__hw.stage, armed: window.__hw.armed,
+      lines: window.__hw.lines
+    }));
+    check('N5 a drawing fed after backing out lands in the drawing claim — no state leaks',
+      leak.stage === 'idle' && !leak.armed && leak.lines === null,
+      'hw stage ' + leak.stage);
+    await page.click('#claimNewPhoto');
+    await page.waitForSelector('#stepCapture.here');
+  }
 
   // ==== HW-A: the writing sheet ==============================================
   console.log('\n== HW-A: THE WRITING SHEET =================================');
@@ -418,6 +426,16 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
     check('B2b the sheet registered by its END-MARKS (anchors 10 of 10, not the rule fallback)',
       capB && capB.anchors === 10 && Math.abs(capB.anis - 1) < 0.05,
       capB ? 'anchors ' + capB.anchors + ', vertical scale ' + capB.anis.toFixed(2) : 'no capture facts');
+    // The UPLOAD path never goes near the live loop: no frame was ever
+    // sampled — the whole-sheet read above is byte-for-byte the path
+    // that existed before free motion did.
+    const liveB = await page.evaluate(() => ({
+      samples: window.__hw.live.samples, running: window.__hw.live.running,
+      row: document.getElementById('hwLiveRow').style.display
+    }));
+    check('B2c the upload path never touches the live loop (zero frames sampled)',
+      liveB.samples === 0 && !liveB.running && liveB.row !== 'block',
+      liveB.samples + ' samples');
     const data = await lettersData();
     check('B3 every letter, every CAPITAL and every digit was captured',
       data.have === SORTED, data.have.length + '/62: ' + data.have);
@@ -877,6 +895,244 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
       dM.lines.map((l) => l.accepted + '/' + l.expected).join(' '));
     check('E18 …and zero mislabels on the fallback path too',
       mislabels(dM, eClean.gt).length === 0);
+  }
+
+  // ==== HW-F: free motion — the camera collects lines one at a time ==========
+  // The product owner's finding, verbatim: "why is it needed to get all
+  // lines clicked at same time. why cant we do first line , 2nd in a
+  // free motion". Chromium accepts exactly ONE y4m per launch, so the
+  // deterministic identity checks run one launch per close-up fixture;
+  // the multi-frame sweep file (lines 1→2→3 at 2s a frame) drives the
+  // real accumulation in a single launch — collection is any-order and
+  // latest-wins, so whichever frame each sample lands on, it converges
+  // (measured: 3 of 3 lines in ~4s over 6 samples).
+  console.log('\n== HW-F: FREE MOTION — LINES, ONE AT A TIME ================');
+  const hwFeeds = require(path.join(__dirname, 'make-hw-feeds.js'));
+  if (!hwFeeds.allPresent()) {
+    console.log('  (generating the fake-camera fixtures — one time)');
+    await hwFeeds.generate(BASE);
+  }
+  const feedsMeta = hwFeeds.readMeta();
+  const HW_COARSE_FLOOR = await page.evaluate(() => HWRead.PARAMS.COARSE_XH);
+  const camArgs = (file) => [
+    '--use-fake-ui-for-media-stream',
+    '--use-fake-device-for-media-stream',
+    '--use-file-for-fake-video-capture=' + path.join(__dirname, file)
+  ];
+  async function camPage(file) {
+    const browser = await chromium.launch({ executablePath: CHROME, args: camArgs(file) });
+    const p = await browser.newPage({ viewport: { width: 1100, height: 900 } });
+    const errors = [];
+    p.on('pageerror', (e) => errors.push(String(e)));
+    p.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+    await p.goto(BASE);
+    await p.waitForFunction(() => window.__hw && window.__bia);
+    return { browser, p, errors };
+  }
+  async function armAndOpenCamera(p) {
+    await p.click('#hwEntryBtn');
+    await p.waitForSelector('#stepHwSheet.here');
+    await p.click('#hwWroteBtn');
+    await p.click('#cameraBtn');
+    await p.waitForFunction(() => {
+      const v = document.getElementById('cameraLive');
+      return document.getElementById('cameraPanel').style.display === 'block' &&
+             v.videoWidth > 0;
+    }, null, { timeout: 30000 });
+  }
+  function mislabelsFramed(lines, map) {
+    const framed = feedsMeta.gt.map((g) => ({ line: g.line, ch: g.ch,
+      x0: hwFeeds.frameX(map, g.x0), x1: hwFeeds.frameX(map, g.x1) }));
+    return mislabels({ lines }, framed);
+  }
+
+  // Every close-up line fixture: collected with the CORRECT identity,
+  // read essentially in full, zero letter mislabels — and the measured
+  // x-height per line, which is the resolution win in numbers.
+  {
+    let identityOK = 0, mislabelTotal = 0, camErrs = 0;
+    const xhs = [];
+    for (let i = 0; i < 5; i++) {
+      const { browser, p, errors } = await camPage('hw-line-' + (i + 1) + '.y4m');
+      await armAndOpenCamera(p);
+      await p.waitForFunction(() =>
+        window.__hw.live && window.__hw.live.collected.size >= 1,
+        null, { timeout: 60000 });
+      const got = await p.evaluate(() => Array.from(window.__hw.live.collected.keys()));
+      const okId = got.length === 1 && got[0] === i;
+      if (okId) identityOK++;
+      check('F1.' + (i + 1) + ' a close-up of line ' + (i + 1) + ' collects line ' +
+            (i + 1) + ' and nothing else',
+        okId, 'collected [' + got.map((x) => x + 1).join(' ') + ']');
+
+      if (i === 1) {
+        // The deep checks ride on one line: latest-wins, the quiet UI,
+        // the lock screenshot, Done-early, and the camera light.
+        await p.waitForFunction(() => window.__hw.live.replaced >= 1,
+          null, { timeout: 30000 });
+        const rep = await p.evaluate(() => ({
+          replaced: window.__hw.live.replaced,
+          size: window.__hw.live.collected.size,
+          log: document.getElementById('devLog').textContent
+        }));
+        check('F2 re-showing an already-collected line replaces it silently (latest wins)',
+          rep.replaced >= 1 && rep.size === 1,
+          rep.replaced + ' replacement(s), still 1 line held');
+        const ui = await p.evaluate(() => ({
+          count: document.getElementById('hwLiveCount').textContent,
+          met: Array.from(document.querySelectorAll('.hw-live-slot'))
+            .map((s) => s.classList.contains('met') ? '*' : '.').join(''),
+          words: document.getElementById('hwLiveRow').innerText,
+          doneShown: !!document.getElementById('hwLiveDoneBtn').offsetParent
+        }));
+        check('F3 the quiet progress row: five slots, this one lit, "1 of 5", a done button',
+          /^1 of 5$/.test(ui.count) && ui.met === '.*...' && ui.doneShown,
+          '"' + ui.count + '" slots ' + ui.met);
+        check('F4 the collection row never looks like scanning — no jargon, no blame',
+          !/percent|%|scanning|detected|processing|error|failed/i.test(ui.words),
+          '"' + ui.words.slice(0, 60).replace(/\n/g, ' · ') + '…"');
+        check('F5 the measured x-height per collected line goes to the developer log',
+          /one line met — line 2, \d+ of \d+ letters, x-height ~\d+px \(measured\)/.test(rep.log));
+        await p.locator('#cameraPanel').scrollIntoViewIfNeeded();
+        await p.screenshot({ path: path.join(SHOTS, '18-hw-line-locked.png') });
+        await p.click('#hwLiveDoneBtn');
+        await p.waitForFunction(() => window.__hw.stage === 'alphabet');
+        const data = await lettersData(p);
+        check('F6 Done-early keeps what was met: the line reads in full, the rest stay quiet empty slots',
+          data.lines[1].found && data.lines[1].accepted >= 28 &&
+          data.lines.filter((l) => !l.found).length === 4,
+          data.lines.map((l) => l.found ? l.accepted + '/' + l.expected : '—').join(' '));
+        const light = await p.evaluate(() => {
+          const v = document.getElementById('cameraLive');
+          return { panel: document.getElementById('cameraPanel').style.display,
+                   tracks: v.srcObject ? v.srcObject.getTracks().map((t) => t.readyState).join(',') : 'none',
+                   running: window.__hw.live.running };
+        });
+        check('F7 finishing the sweep closes the camera — light off, loop stopped',
+          light.panel === 'none' && light.tracks === 'ended' && !light.running,
+          'tracks ' + light.tracks);
+        const badDeep = mislabelsFramed(data.lines, feedsMeta.fixtures['line-2'].map);
+        mislabelTotal += badDeep.length;
+        const xhL = await p.evaluate(() => window.__hw.capture.xHeightPx);
+        xhs.push(xhL);
+      } else {
+        await p.click('#hwLiveDoneBtn');
+        await p.waitForFunction(() => window.__hw.stage === 'alphabet');
+        const data = await lettersData(p);
+        const bad = mislabelsFramed(data.lines, feedsMeta.fixtures['line-' + (i + 1)].map);
+        mislabelTotal += bad.length;
+        xhs.push(await p.evaluate(() => window.__hw.capture.xHeightPx));
+      }
+      camErrs += errors.length;
+      await browser.close();
+    }
+    check('F8 all five close-ups collect with the CORRECT identity (5/5) — never a wrong line',
+      identityOK === 5, identityOK + '/5');
+    check('F9 zero letter mislabels across every collected line',
+      mislabelTotal === 0, mislabelTotal + ' mislabels');
+    check('F10 zero page errors across the five close-up launches', camErrs === 0);
+    console.log('     resolution win: close-up x-heights ' +
+      xhs.map((x) => Math.round(x) + 'px').join(' ') +
+      ' vs the whole sheet in the same frame (next check) — more camera pixels per letter');
+    check('F11 close-up delivers the pixels: every line\'s x-height is ABOVE the coarse floor',
+      xhs.every((x) => x >= HW_COARSE_FLOOR), xhs.map((x) => Math.round(x)).join(' '));
+  }
+
+  // The whole sheet in one frame: the full ladder registers, every line
+  // lands together, and the journey proceeds by itself.
+  {
+    const { browser, p, errors } = await camPage('hw-sheet.y4m');
+    await armAndOpenCamera(p);
+    await p.waitForFunction(() => window.__hw.stage === 'alphabet', null, { timeout: 90000 });
+    const data = await lettersData(p);
+    const bad = mislabelsFramed(data.lines, feedsMeta.fixtures.sheet.map);
+    const xhSheet = await p.evaluate(() => window.__hw.capture.xHeightPx);
+    check('F12 a frame holding the WHOLE ladder fills all five slots at once and proceeds',
+      data.lines.every((l) => l.found && l.accepted >= l.expected - 2) &&
+      data.have.length === 62,
+      data.lines.map((l) => l.accepted + '/' + l.expected).join(' ') + ', ' +
+      data.have.length + '/62 letters');
+    check('F13 …with zero mislabels through the very same whole-sheet reader', bad.length === 0);
+    console.log('     whole sheet in the same 1280×960 frame: x-height ~' +
+      Math.round(xhSheet) + 'px (close-up measured ~2–4× that)');
+    check('F14 zero page errors on the whole-sheet launch', errors.length === 0);
+    await browser.close();
+  }
+
+  // The sweep: one launch, the file pans across lines 1→2→3, and the
+  // collection accumulates in free motion — the finding, verbatim,
+  // answered end to end.
+  {
+    const { browser, p, errors } = await camPage('hw-sweep.y4m');
+    await armAndOpenCamera(p);
+    await p.waitForFunction(() =>
+      window.__hw.live && window.__hw.live.collected.size >= 3,
+      null, { timeout: 90000 });
+    const snap = await p.evaluate(() => ({
+      collected: Array.from(window.__hw.live.collected.keys()).sort().join(','),
+      count: document.getElementById('hwLiveCount').textContent
+    }));
+    check('F15 sweeping across the sheet collects the lines one at a time, in free motion',
+      snap.collected === '0,1,2' && /^3 of 5$/.test(snap.count),
+      'lines [' + snap.collected + '], "' + snap.count + '"');
+    await p.locator('#cameraPanel').scrollIntoViewIfNeeded();
+    await p.screenshot({ path: path.join(SHOTS, '17-hw-live-collecting.png') });
+    await p.click('#hwLiveDoneBtn');
+    await p.waitForFunction(() => window.__hw.stage === 'alphabet');
+    const data = await lettersData(p);
+    check('F16 Done-early after the sweep keeps all three collected lines',
+      data.lines[0].found && data.lines[1].found && data.lines[2].found &&
+      !data.lines[3].found && !data.lines[4].found,
+      data.lines.map((l) => l.found ? l.accepted + '/' + l.expected : '—').join(' '));
+    check('F17 zero page errors on the sweep launch', errors.length === 0);
+    await browser.close();
+  }
+
+  // Nothing to collect: a drawing (the base suite's own camera fixture)
+  // and an UNWRITTEN line (anchors and model print, no child ink) both
+  // collect nothing, kindly — and the drawing journey itself never runs
+  // the loop at all.
+  {
+    const camFeed = require(path.join(__dirname, 'make-camera-feed.js'));
+    if (!fs.existsSync(camFeed.OUT)) await camFeed.generate();
+    const { browser, p, errors } = await camPage('camera-feed-001.y4m');
+    // FIRST: the drawing journey (not armed) — the loop must not run.
+    await p.click('#cameraBtn');
+    await p.waitForFunction(() => {
+      const v = document.getElementById('cameraLive');
+      return document.getElementById('cameraPanel').style.display === 'block' &&
+             v.videoWidth > 0;
+    }, null, { timeout: 30000 });
+    await p.waitForTimeout(1800);
+    const drawSide = await p.evaluate(() => ({
+      samples: window.__hw.live.samples,
+      row: document.getElementById('hwLiveRow').style.display
+    }));
+    check('F18 the drawing journey never runs the line loop (no sampling, no row)',
+      drawSide.samples === 0 && drawSide.row !== 'block',
+      drawSide.samples + ' samples');
+    await p.click('#cameraCloseBtn');
+    // THEN: armed, the same drawing yields NOTHING — no line invented.
+    await armAndOpenCamera(p);
+    await p.waitForFunction(() => window.__hw.live.samples >= 3, null, { timeout: 60000 });
+    const g = await p.evaluate(() => ({
+      size: window.__hw.live.collected.size,
+      count: document.getElementById('hwLiveCount').textContent
+    }));
+    check('F19 a photo of something else collects NOTHING — ambiguity keeps sweeping, never guesses',
+      g.size === 0 && /^0 of 5$/.test(g.count),
+      g.size + ' collected after 3+ samples');
+    check('F20 zero page errors while refusing', errors.length === 0);
+    await browser.close();
+  }
+  {
+    const { browser, p, errors } = await camPage('hw-line-blank.y4m');
+    await armAndOpenCamera(p);
+    await p.waitForFunction(() => window.__hw.live.samples >= 2, null, { timeout: 60000 });
+    const b = await p.evaluate(() => window.__hw.live.collected.size);
+    check('F21 an UNWRITTEN line (anchors + model print, no ink) collects nothing',
+      b === 0 && errors.length === 0, b + ' collected');
+    await browser.close();
   }
 
   // ---- hygiene ---------------------------------------------------------------

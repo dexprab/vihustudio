@@ -27,9 +27,8 @@
  * native frame, untouched. Tall re-requests the stream with the ideals
  * swapped so hardware that CAN turn (phones, tablets) actually does;
  * hardware that stays wide anyway (laptop webcams — the sensor is
- * physically wide) gets a CENTRED CROP to the writing sheet's own
- * proportions (HWSheet.GEOM.aspect where the sheet module is loaded,
- * A4 = 1:√2 otherwise — the same number, stated twice on purpose).
+ * physically wide) gets a CENTRED CROP at TALL_ASPECT (4:5 — see the
+ * constant for why it is wider than the sheet itself).
  * The preview shows exactly the crop (object-fit: cover on a box of the
  * crop's own aspect centres identically to the capture arithmetic), and
  * the captured frame is the crop region of the NATIVE stream — never a
@@ -70,17 +69,24 @@
   }
 
   // ---- the two shapes ------------------------------------------------------
-  // The tall frame's width-over-height. The writing sheet's own geometry
-  // when hwSheet.js is aboard (GEOM.aspect is H/W), A4's 1:√2 otherwise —
-  // numerically the same value, so a bare copy of the tool cannot drift.
-  // Read lazily: hwSheet.js loads after this file on the standalone page.
-  function tallAspect() {
-    try {
-      const a = window.HWSheet && HWSheet.GEOM && HWSheet.GEOM.aspect;
-      if (typeof a === 'number' && isFinite(a) && a > 1) return 1 / a;
-    } catch (e) { /* the A4 fallback below */ }
-    return 1 / Math.SQRT2;
-  }
+  // The tall frame's width-over-height: 4:5, a natural portrait-photo
+  // shape — deliberately WIDER than the writing sheet's own 1:√2
+  // (0.707). The first tall frame WAS the sheet's exact aspect, and the
+  // product owner found it in the field: "the tall page needs to be a
+  // bit wider." Measured, the sheet aspect left literally zero aiming
+  // margin — a sheet at full frame height had 0 columns to spare — and
+  // the field photo the reader was tuned against (HW-E) shows the real
+  // hold: ~10–20° of tilt with the page nearly filling the frame. A
+  // √2-tall sheet tilted 10° needs a bounding box 0.87× its height
+  // wide; at a 90%-of-height hold that is 0.78 of the frame height —
+  // more than a 3:4 frame (0.75) can hold, inside 4:5 (0.80) with
+  // margin either side. So 4:5 is the first standard portrait aspect
+  // that absorbs the tilt a child's hold actually has, while still
+  // reading unmistakably TALL on the preview. Widening costs no sheet
+  // resolution: the crop is fitted by frame height, so the sheet keeps
+  // every pixel it had and the extra columns are pure aiming room.
+  const TALL_ASPECT = 4 / 5;
+  function tallAspect() { return TALL_ASPECT; }
 
   // The centred crop of a native vw×vh stream to the tall aspect. On a
   // camera that really turned, the stream is already tall and the crop is
@@ -311,5 +317,6 @@
     }
   }
 
-  window.BIACamera = { mount, supported, stopTracks, closePanel, setPreferredShape };
+  window.BIACamera = { mount, supported, stopTracks, closePanel,
+                       setPreferredShape, tallAspect };
 })();

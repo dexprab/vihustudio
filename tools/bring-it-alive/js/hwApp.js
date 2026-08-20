@@ -86,20 +86,48 @@
   $('hwPrintBtn').addEventListener('click', () => window.print());
   $('hwSheetBack').addEventListener('click', () => { state.stage = 'idle'; go('stepCapture'); });
 
+  // ONE camera, TWO framings (field finding: "currently am getting
+  // confused wether am generating font or art"). The shared capture
+  // machinery wears each journey's own words: while the handwriting
+  // journey is armed, the title, the drop words and the camera line all
+  // say LETTERS; disarmed, they say DRAWING again, byte for byte — the
+  // defaults are read from the page itself so the two cannot drift.
+  const FRAMING = {
+    title: $('captureTitle').textContent,
+    drop: $('dropWords').textContent,
+    camera: $('cameraNote').textContent
+  };
+  const HW_FRAMING = {
+    title: '✍️ My Handwriting — show me your written sheet',
+    drop: 'Drop a photo of your written sheet here',
+    camera: 'Hold your writing sheet up — one line up close is best, or the whole page at once.'
+  };
+  function setFraming(hw) {
+    const f = hw ? HW_FRAMING : FRAMING;
+    $('captureTitle').textContent = f.title;
+    $('dropWords').textContent = f.drop;
+    $('cameraNote').textContent = f.camera;
+    document.body.classList.toggle('hw-armed', hw);
+  }
+
   function arm(retakeLine) {
     state.armed = true;
     state.retakeLine = (retakeLine == null ? null : retakeLine);
     state.stage = 'armed';
+    HWLive.reset();   // each arming is a fresh sweep — nothing stale ticks
     const banner = $('hwArmed');
     $('hwArmedText').textContent = state.retakeLine == null
-      ? 'Your next photo becomes your handwriting — photograph your written sheet, flat and whole.'
-      : 'Photograph the sheet with line ' + (state.retakeLine + 1) + ' written once more — flat and whole.';
+      ? 'Your next photo becomes your handwriting — or open the camera and show me the sheet, line by line.'
+      : 'Show me line ' + (state.retakeLine + 1) + ' once more — up close with the camera, or a fresh photo of the whole sheet.';
     banner.style.display = 'block';
+    setFraming(true);
     go('stepCapture');
   }
   function disarm() {
     state.armed = false;
+    stopLive();
     $('hwArmed').style.display = 'none';
+    setFraming(false);
   }
   $('hwWroteBtn').addEventListener('click', () => arm(null));
   $('hwDisarmBtn').addEventListener('click', () => {
@@ -119,6 +147,123 @@
     const photo = window.__bia && window.__bia.photo;
     if (photo) readSheet(photo);
   }).observe($('stepClaim'), { attributes: true, attributeFilter: ['class'] });
+
+  // ---- free-motion camera collection (js/hwLive.js) --------------------------
+  // While the journey is armed and the camera preview runs, lines are
+  // collected one at a time, in any order — the child sweeps the camera
+  // over the sheet. The UPLOAD path never comes near this: the loop
+  // starts only when the camera panel opens while armed, and a picked or
+  // dropped photo goes through readSheet exactly as it always did.
+  state.live = HWLive.state;   // the developer seam sees the sweep
+
+  function liveSlots() {
+    const box = $('hwLiveSlots');
+    if (box.childElementCount) return;
+    for (let i = 0; i < HWSheet.LINES.length; i++) {
+      const s = document.createElement('div');
+      s.className = 'hw-live-slot';
+      s.dataset.line = String(i);
+      s.textContent = String(i + 1);
+      box.appendChild(s);
+    }
+  }
+
+  // A line counts as met if this sweep collected it OR an earlier read
+  // already holds it — a retake sweep must not present four read lines
+  // as missing.
+  function lineMet(i) {
+    if (HWLive.state.collected.has(i)) return true;
+    return !!(state.lines && state.lines[i] && state.lines[i].found);
+  }
+
+  function updateLiveUI(justMet) {
+    liveSlots();
+    let met = 0;
+    for (const s of $('hwLiveSlots').children) {
+      const i = Number(s.dataset.line);
+      const on = lineMet(i);
+      if (on) met++;
+      s.classList.toggle('met', on);
+      s.textContent = on ? '★' : String(i + 1);
+      if (justMet === i) {
+        s.classList.remove('just-met');
+        void s.offsetWidth;            // restart the little glow
+        s.classList.add('just-met');
+      }
+    }
+    $('hwLiveCount').textContent = met + ' of ' + HWSheet.LINES.length;
+    $('hwLiveDoneBtn').style.display = met > 0 ? '' : 'none';
+  }
+
+  function startLive() {
+    $('hwLiveRow').style.display = 'block';
+    updateLiveUI();
+    HWLive.start($('cameraLive'), {
+      log,
+      want: state.retakeLine,
+      onCollect: (i, isNew) => {
+        log('hw live: line ' + (i + 1) + (isNew ? ' met' : ' seen again — the newer one is kept'));
+        updateLiveUI(isNew ? i : undefined);
+      },
+      onComplete: finishSweep
+    });
+    log('hw live: watching for lines (' +
+        (state.retakeLine == null ? 'any order, all five'
+                                  : 'line ' + (state.retakeLine + 1)) + ')');
+  }
+  function stopLive() {
+    HWLive.stop();
+    $('hwLiveRow').style.display = 'none';
+  }
+
+  // The sweep is done — every line met, the wanted retake met, or the
+  // child pressed the done button with some lines still to come (an
+  // unmet line is a quiet empty slot, exactly as it already is).
+  function finishSweep() {
+    const collected = new Map(HWLive.state.collected);
+    stopLive();
+    BIACamera.closePanel();
+    disarm();
+    if (!collected.size) return;
+    const lines = [];
+    const xhs = [], tilts = [];
+    for (let i = 0; i < HWSheet.LINES.length; i++) {
+      if (collected.has(i)) {
+        const c = collected.get(i);
+        lines.push(c.line);
+        if (c.capture && c.capture.xHeightPx) xhs.push(c.capture.xHeightPx);
+        if (c.capture && c.capture.tilt != null) tilts.push(c.capture.tilt);
+      } else if (state.lines && state.lines[i]) {
+        lines.push(state.lines[i]);
+      } else {
+        lines.push({ index: i, text: HWSheet.LINES[i].text, found: false, letters: [] });
+      }
+    }
+    state.lines = lines;
+    xhs.sort((a, b) => a - b);
+    const xh = xhs.length ? xhs[(xhs.length / 2) | 0] : 0;
+    state.capture = { viaLive: true, viaAnchors: false, anchors: 0, tilts,
+                      xHeightPx: xh, xHeightMeasured: xhs.length > 0,
+                      coarse: xh > 0 && xh < HWRead.PARAMS.COARSE_XH,
+                      anis: 1, flipped: false };
+    log('hw live: sweep finished — ' + collected.size + ' line(s) from the camera' +
+        (xh ? ', x-height ~' + Math.round(xh) + 'px' : ''));
+    HWLive.reset();
+    rebuildAlphabet();
+    renderLetters();
+    state.stage = 'alphabet';
+    go('stepHwLetters');
+  }
+  $('hwLiveDoneBtn').addEventListener('click', finishSweep);
+
+  // The loop lives exactly as long as the camera panel is open while the
+  // journey is armed. camera.js already closes the panel when the step
+  // is left or the page hides, so the light discipline is one rule.
+  new MutationObserver(() => {
+    const open = $('cameraPanel').style.display === 'block';
+    if (open && state.armed) startLive();
+    else if (!open) stopLive();
+  }).observe($('cameraPanel'), { attributes: true, attributeFilter: ['style'] });
 
   // ---- reading ---------------------------------------------------------------
   function readSheet(photo) {
@@ -275,7 +420,9 @@
       row.appendChild(txt);
       const btn = document.createElement('button');
       btn.className = 'ghost';
-      btn.textContent = 'Write this line once more';
+      // One wording for both ways back: write it again and photograph
+      // it, or hold the same line up to the camera once more.
+      btn.textContent = 'Show me this line once more';
       btn.dataset.line = String(ln.index);
       btn.addEventListener('click', () => arm(ln.index));
       row.appendChild(btn);
