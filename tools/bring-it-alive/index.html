@@ -106,34 +106,14 @@
               border-radius:8px; padding:.7rem 1rem; margin:.8rem 0;
               font:400 .82rem/1.6 var(--mono); white-space:pre-wrap; }
 
-  /* MY HANDWRITING, free motion — the five quiet slots that light up as
-     lines are met. Deliberately NOT a scanner: no brackets, no reticle,
-     no sweep line, no percentage — five little stars waiting to shine. */
-  .hw-live-slots { display:flex; gap:10px; margin:.4rem 0; }
-  .hw-live-slot { width:36px; height:36px; border:1px solid var(--line);
-                  border-radius:50%; display:flex; align-items:center;
-                  justify-content:center; color:var(--faint);
-                  background:var(--panel); font-size:.85rem; }
-  .hw-live-slot.met { color:var(--gold); border-color:var(--gold); }
-  .hw-live-slot.just-met { animation: hwmet .9s ease-out; }
-  @keyframes hwmet {
-    0% { box-shadow: 0 0 0 0 rgba(223,177,105,.7); }
-    100% { box-shadow: 0 0 0 12px rgba(223,177,105,0); }
-  }
-
-  /* MY HANDWRITING — the writing cards, the alphabet grid, the try box. */
-  #hwSheetCanvas1, #hwSheetCanvas2 { display:block; background:#fff;
-                                     border-radius:6px; max-width:100%; }
-  .hw-sheet-pages { display:flex; gap:14px; flex-wrap:wrap; }
-  .hw-sheet-pages figure { margin:0; }
-  .hw-sheet-pages figcaption { font:400 .7rem/1.8 var(--mono); letter-spacing:.1em;
-                               text-transform:uppercase; color:var(--faint); }
-  /* The one-card overlay on the live preview (the product owner's rule:
-     strictly one card at a time). A soft floating line over the
-     picture — no brackets, no reticle, nothing that looks like
-     scanning; it clears by itself when the view holds one card. */
+  /* MY HANDWRITING — the letter grid, the check screen, the try box.
+     Deliberately NOT a scanner anywhere: no brackets, no reticle, no
+     sweep line, no percentage — a shelf of letters filling up. */
+  /* The one-letter overlay on the live preview (one letter at a time).
+     A soft floating line over the picture; it clears by itself when
+     the view holds one letter. */
   #cameraBoard { position:relative; }
-  #hwOneCardNote { display:none; position:absolute; left:50%; bottom:14px;
+  #hwOneLetterNote { display:none; position:absolute; left:50%; bottom:14px;
                    transform:translateX(-50%); max-width:90%;
                    background:rgba(15,21,38,.82); color:#f2e9d8;
                    border:1px solid rgba(223,177,105,.55); border-radius:999px;
@@ -141,32 +121,44 @@
                    pointer-events:none; white-space:nowrap; }
   .hw-grid { display:grid; grid-template-columns:repeat(9, 64px); gap:8px; margin-top:.8rem; }
   .hw-slot { background:var(--panel); border:1px solid var(--line); border-radius:8px;
-             padding:4px; text-align:center; }
+             padding:4px; text-align:center; cursor:pointer; }
+  .hw-slot:hover { border-color:var(--gold); }
   .hw-slot-label { font:400 .68rem/1.2 var(--mono); color:var(--faint); }
   .hw-slot canvas { display:block; margin:0 auto; }
+  /* Empty vs captured, obvious at a glance: an empty tile is a dashed
+     box holding a faint REFERENCE letterform; a captured one is solid,
+     warmed, and holds the child's own ink. */
   .hw-slot.empty { border-style:dashed; }
-  .hw-slot-empty { width:56px; height:56px; margin:0 auto; }
+  .hw-slot.made { border-color:var(--gold); background:rgba(223,177,105,.07); }
+  .hw-slot-ref { width:56px; height:56px; margin:0 auto; display:flex;
+                 align-items:center; justify-content:center;
+                 font:400 2.1rem/1 Georgia,serif; color:var(--faint); opacity:.5; }
   .hw-grid-break { grid-column:1 / -1; height:2px; }
-  .hw-linerow { display:flex; gap:.8rem; align-items:center; justify-content:space-between;
-                border:1px solid var(--line); border-radius:8px; background:var(--panel);
-                padding:.5rem .8rem; margin-top:.5rem; font-size:.86rem; color:var(--soft); }
+  /* The armed banner carries the wanted letter as a big reference form. */
+  .hw-armed-ref { display:inline-flex; width:2.6rem; height:2.6rem;
+                  margin-right:.7rem; align-items:center; justify-content:center;
+                  border:1px dashed var(--line); border-radius:8px;
+                  font:400 1.7rem/1 Georgia,serif; color:var(--ink);
+                  vertical-align:middle; }
+  /* CHECK IT — the captured letter large, the reference small, a live
+     tile preview, a pencil and an eraser. */
+  .hw-check-row { display:flex; gap:16px; flex-wrap:wrap; align-items:flex-start; }
+  #hwCheckCanvas { display:block; background:#fdfcf8; border-radius:6px;
+                   max-width:430px; max-height:430px; width:auto; height:auto;
+                   touch-action:none; cursor:crosshair; }
+  .hw-check-side { display:flex; flex-direction:column; gap:.6rem; }
+  .hw-check-side .rowlabel { margin-top:.2rem; }
+  #hwCheckRef { width:72px; height:72px; display:flex; align-items:center;
+                justify-content:center; background:var(--panel);
+                border:1px dashed var(--line); border-radius:8px;
+                font:400 2.6rem/1 Georgia,serif; color:var(--soft); }
+  #hwCheckPreview { background:var(--panel); border:1px solid var(--gold);
+                    border-radius:8px; padding:4px; }
   #hwTryInput { background:var(--panel); border:1px solid var(--line); border-radius:6px;
                 color:var(--ink); padding:.45rem .7rem; font:inherit; width:100%; max-width:34rem; }
   #hwPreview { background:#fdfcf8; color:#1d2433; border-radius:10px; margin-top:.8rem;
                padding:1.2rem 1.4rem; font:400 2.1rem/1.5 'My Handwriting Preview', Georgia, serif;
                min-height:4.4rem; max-width:44rem; overflow-wrap:anywhere; }
-  #hwPrintArea { display:none; }
-  @media print {
-    body > .wrap { display:none !important; }
-    body { background:#fff; }
-    #hwPrintArea { display:block !important; }
-    #hwPrintArea canvas { width:100%; height:auto; }
-    /* Real print pagination: each page of cards is its own A4 sheet. */
-    #hwPrintArea .hw-print-page { page-break-after: always;
-                                  break-after: page; }
-    #hwPrintArea .hw-print-page:last-child { page-break-after: auto;
-                                             break-after: auto; }
-  }
 
   .duo { display:flex; gap:14px; flex-wrap:wrap; }
   .duo figure { margin:0; }
@@ -202,11 +194,12 @@
       <h2 id="captureTitle">Bring a drawing to life</h2>
       <!-- MY HANDWRITING, armed: the next photograph through this very
            entry (picker, drop or camera — all unchanged) becomes the
-           written sheet. -->
+           tapped letter. -->
       <div class="quiet" id="hwArmed">
-        <span id="hwArmedText"></span>
-        <div class="row"><button class="ghost" id="hwDisarmBtn">Never mind — back to my cards</button></div>
+        <span class="hw-armed-ref" id="hwArmedRef"></span><span id="hwArmedText"></span>
+        <div class="row"><button class="ghost" id="hwDisarmBtn">Never mind — back to my letters</button></div>
       </div>
+      <div class="quiet" id="hwLetterQuiet"></div>
       <div id="drop">
         <span id="dropWords">Drop a photograph of your drawing here</span>
         <div class="row" style="justify-content:center; margin-top:1rem;">
@@ -227,26 +220,11 @@
                  style="display:block; width:640px; max-width:100%; border-radius:6px;"></video>
           <canvas id="cameraShot"
                  style="display:none; width:640px; max-width:100%; border-radius:6px;"></canvas>
-          <!-- The one-card overlay (My Handwriting): the product owner's
-               rule is strictly one card at a time — when the camera sees
-               more than one, this gentle line floats over the preview and
-               nothing is read until the view returns to one card. -->
-          <div id="hwOneCardNote">One card at a time, please — hold up just one card, and I’ll read it.</div>
-        </div>
-        <!-- MY HANDWRITING, free motion (js/hwLive.js): while the journey
-             is armed and the preview runs, cards are collected one at a
-             time, in any order. Five quiet slots that light up as cards
-             are met — never a percentage, no brackets, no reticle, no
-             sweeping anything: nothing that looks like scanning. -->
-        <div id="hwLiveRow" style="display:none">
-          <p class="note" id="hwLiveWords">Show me one card at a time — any
-             order, just one card in the picture. Cards light up as I meet
-             them.</p>
-          <div class="hw-live-slots" id="hwLiveSlots"></div>
-          <p class="note" id="hwLiveCount"></p>
-          <div class="row">
-            <button id="hwLiveDoneBtn" style="display:none">That’s everything — show me my letters</button>
-          </div>
+          <!-- The one-letter overlay (My Handwriting): one letter at a
+               time — when the camera sees more than one, this gentle
+               line floats over the preview and nothing is captured
+               until the view returns to one letter. -->
+          <div id="hwOneLetterNote">One letter at a time, please — show me just one, nice and big.</div>
         </div>
         <div class="row">
           <button id="cameraTakeBtn">Take the picture</button>
@@ -271,13 +249,14 @@
     </div>
 
     <!-- MY HANDWRITING — its own block, its own door. Nothing about the
-         font journey starts inside the drawing block. -->
+         letters journey starts inside the drawing block. -->
     <div class="journey" id="hwJourney">
-      <h2>✍️ My Handwriting — a font of your own letters</h2>
-      <p class="note">Write five little cards on one printed page, show me
-         each card, and I’ll make a real font out of your very own letters.</p>
+      <h2>✍️ My Handwriting — an alphabet of your very own</h2>
+      <p class="note">Tap a letter, write it anywhere you like — any paper,
+         any pen — and show it to me. Letter by letter the whole alphabet
+         becomes yours, and anything you type appears in your own writing.</p>
       <div class="row">
-        <button id="hwEntryBtn">Start with my writing cards</button>
+        <button id="hwEntryBtn">Start my letters</button>
       </div>
     </div>
   </section>
@@ -410,85 +389,73 @@
     </details>
   </section>
 
-  <!-- MY HANDWRITING — a child copies the printed lines in their own
-       handwriting, photographs the sheet, and the tool builds a real font
-       of their letters. Known text per line turns reading into ALIGNMENT
-       (hwRead.js) — never OCR, never guessing a child's letters; the
-       refuse-rather-than-guess rule skips what it cannot be sure of, and
-       recovery is per line. The alphabet is SHOWN before the font is
-       built; missing letters are quiet empty slots and are simply absent
-       from the font's cmap, so text falls back to a plain letter there. -->
+  <!-- MY HANDWRITING — the letter grid. A child taps any letter, writes
+       it anywhere in their own hand, and shows it: the tap declares the
+       letter's identity, the reader (hwLetter.js) only finds the ink —
+       never OCR, never guessing which letter this is. On the live
+       camera, steady green auto-takes the picture; every capture lands
+       on the check screen for a pencil-and-eraser touch-up. Missing
+       letters are quiet empty tiles and are simply absent from the
+       built letters' cmap, so text falls back to a plain letter. -->
 
-  <!-- THE WRITING CARDS (two printed pages: three cards, then two —
-       "you can put max 3 cards on the paper", with real gutters between
-       the cut lines and 20mm grip margins so a held card never hides
-       its stars or its writing) -->
-  <section class="step" id="stepHwSheet">
-    <h2>Your writing cards</h2>
-    <p class="note">Print the cards — two pages, five little cards. Copy each
-       line in your own handwriting on the empty line in its card — dark
-       pencil or pen, letters apart, sitting on the line. Snip along the
-       dashed lines, then show me one card at a time: a photo of one card,
-       or hold each card up to the camera. Up close on the uncut page works
-       too — one card in the picture.</p>
-    <div class="hw-sheet-pages">
-      <figure><figcaption>Page 1 · cards 1–3</figcaption>
-        <div class="board"><canvas id="hwSheetCanvas1"></canvas></div></figure>
-      <figure><figcaption>Page 2 · cards 4–5</figcaption>
-        <div class="board"><canvas id="hwSheetCanvas2"></canvas></div></figure>
-    </div>
-    <div class="quiet" id="hwQuietSheet"></div>
-    <div class="row">
-      <button id="hwPrintBtn">Print the cards</button>
-      <button id="hwWroteBtn">I’ve written it — show me my cards</button>
-      <button class="ghost" id="hwSheetBack">Never mind</button>
-    </div>
-  </section>
-
-  <!-- READING -->
-  <section class="step" id="stepHwReading">
+  <!-- THE GRID -->
+  <section class="step" id="stepHwGrid">
     <h2>Your letters</h2>
-    <p class="note">Looking at your letters…</p>
-  </section>
-
-  <!-- THE ALPHABET -->
-  <section class="step" id="stepHwLetters">
-    <h2>Your letters</h2>
-    <div class="quiet" id="hwJoinedNote"></div>
-    <div class="quiet" id="hwCoarseNote"></div>
     <p class="note" id="hwGridNote"></p>
     <div class="hw-grid" id="hwGrid"></div>
-    <div id="hwLineList"></div>
     <div class="row">
-      <button id="hwBuildBtn">Make my font</button>
-      <button class="ghost" id="hwNewSheetBtn">Start with a fresh page of cards</button>
+      <button id="hwBuildBtn">That’s everything — show me my letters</button>
+      <button class="ghost" id="hwGridBack">Never mind</button>
     </div>
   </section>
 
-  <!-- TRY YOUR FONT -->
+  <!-- READING (the upload path's brief interstitial) -->
+  <section class="step" id="stepHwReading">
+    <h2>Your letters</h2>
+    <p class="note">Looking for your letter…</p>
+  </section>
+
+  <!-- CHECK IT -->
+  <section class="step" id="stepHwCheck">
+    <h2>Have a look</h2>
+    <p class="note" id="hwCheckWords"></p>
+    <div class="row">
+      <button class="ghost on" id="hwFixPencil">✏️ Pencil</button>
+      <button class="ghost" id="hwFixEraser">Eraser</button>
+    </div>
+    <div class="hw-check-row" style="margin-top:.8rem;">
+      <div class="board"><canvas id="hwCheckCanvas"></canvas></div>
+      <div class="hw-check-side">
+        <span class="rowlabel">It looks like</span>
+        <div id="hwCheckRef"></div>
+        <span class="rowlabel">On its tile</span>
+        <canvas id="hwCheckPreview" width="56" height="56"></canvas>
+      </div>
+    </div>
+    <div class="quiet" id="hwCheckQuiet"></div>
+    <div class="row">
+      <button id="hwKeepBtn">Keep it</button>
+      <button class="ghost" id="hwRetryBtn">Show me again</button>
+      <button class="ghost" id="hwCheckBack">Never mind — back to my letters</button>
+    </div>
+  </section>
+
+  <!-- TRY YOUR LETTERS -->
   <section class="step" id="stepHwTest">
-    <h2>Try your font</h2>
-    <p class="note">Type anything — it appears in your own handwriting. A letter
-       you haven’t written yet borrows a plain letter instead.</p>
+    <h2>Try your letters</h2>
+    <p class="note">Type anything — it appears in your own writing. A letter
+       you haven’t made yet borrows a plain letter instead. Big letters and
+       little letters take their proper places; every shape is your own.</p>
     <input type="text" id="hwTryInput" value="the quick brown fox jumps over a lazy dog" maxlength="120">
     <div id="hwPreview"></div>
     <div class="row">
       <button id="hwDownloadBtn">Download “My Handwriting.ttf”</button>
       <button class="ghost" id="hwBackToLetters">Back to my letters</button>
-      <button class="ghost" id="hwTestNewSheet">Start with a fresh page of cards</button>
     </div>
   </section>
 
   <h2>Log</h2>
   <pre id="devLog"></pre>
-</div>
-
-<!-- The printable copies of the writing cards — hidden on screen, the
-     only thing on paper when printing: TWO A4 pages, a page break
-     between them (see the @media print rules). -->
-<div id="hwPrintArea">
-  <div class="hw-print-page"><canvas id="hwPrintCanvas1"></canvas></div>
-  <div class="hw-print-page"><canvas id="hwPrintCanvas2"></canvas></div>
 </div>
 
 <!-- The tool's FIRST outside links (precedent: tools/world-builder-v2/
@@ -512,13 +479,13 @@
 <script src="js/preview.js"></script>
 <script src="js/exportAsset.js"></script>
 <script src="js/app.js"></script>
-<!-- MY HANDWRITING — the sheet, the reader, the font builder, the wiring.
-     vendor/opentype.min.js is opentype.js 2.0.0 (MIT), vendored; see
-     vendor/README.md for the two facts a maintainer should know. -->
+<!-- MY HANDWRITING — the letter reader, the live loop, the light, the
+     font builder, the wiring. vendor/opentype.min.js is opentype.js
+     2.0.0 (MIT), vendored; see vendor/README.md for the two facts a
+     maintainer should know. -->
 <script src="vendor/opentype.min.js"></script>
-<script src="js/hwSheet.js"></script>
-<script src="js/hwRead.js"></script>
-<script src="js/hwLive.js"></script>
+<script src="js/hwLetter.js"></script>
+<script src="js/hwLetterLive.js"></script>
 <script src="js/hwLight.js"></script>
 <script src="js/hwFont.js"></script>
 <script src="js/hwApp.js"></script>
