@@ -195,6 +195,10 @@
   }
 
   function handle(out) {
+    // The per-frame verdict, surfaced as-is: the readiness light (and
+    // any other host UI) reads what the worker just decided — the
+    // worker already knows, the page only needs to show it.
+    if (opts.onVerdict) opts.onVerdict(out.kind);
     if (out.kind === 'many') { setMany(true); return; }
     setMany(false);
     if (out.kind === 'line') {
