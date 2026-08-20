@@ -2365,12 +2365,15 @@ function check(name, cond, detail) {
         'overrides it', c9p.wide);
   await cam.click('#cameraCloseBtn');
 
-  // ---- C10: My Handwriting opens the camera tall, untouched -----------------
+  // ---- C10: My Handwriting opens the camera WIDE — a card is wide -----------
   // A fresh page (nobody has pressed the shape button): arming the
-  // handwriting journey makes the camera open TALL by default, and the
-  // button still stands to go wide. The drawing journey's wide default is
-  // C4/C5's own assertion, unchanged above.
-  console.log('\n-- C10: My Handwriting opens the camera tall by default');
+  // handwriting journey keeps the camera WIDE — the printable is five
+  // reading cards now, and a card is one wide line with a star at each
+  // end (the journey preferred TALL when it photographed the whole
+  // portrait sheet; the card design flipped it). The child's own toggle
+  // still stands to go tall. The drawing journey's wide default is C4/C5's
+  // own assertion, unchanged above.
+  console.log('\n-- C10: My Handwriting keeps the camera wide — a card is wide');
   const hwCam = await camBrowser.newPage({ viewport: { width: 1100, height: 840 } });
   const hwCamErrors = [];
   hwCam.on('pageerror', (e) => hwCamErrors.push(String(e)));
@@ -2388,20 +2391,20 @@ function check(name, cond, detail) {
   const c10 = await hwCam.evaluate(() => {
     const v = document.getElementById('cameraLive');
     const btn = document.querySelector('#cameraPanel .bia-camera-shape');
-    return { tall: v.clientHeight > v.clientWidth,
+    return { wide: v.clientWidth > v.clientHeight,
              label: btn ? btn.textContent : '(missing)',
              armed: window.__hw.armed === true };
   });
-  check('C10 armed for handwriting, the camera opens TALL with nothing pressed',
-    c10.armed && c10.tall && /Wide page/.test(c10.label), JSON.stringify(c10.label));
+  check('C10 armed for handwriting, the camera opens WIDE with nothing pressed — a card is wide',
+    c10.armed && c10.wide && /Tall page/.test(c10.label), JSON.stringify(c10.label));
   await hwCam.click('#cameraPanel .bia-camera-shape');
   await hwCam.waitForFunction(() => {
     const v = document.getElementById('cameraLive');
-    return v.videoWidth > 0 && v.clientWidth > v.clientHeight;
+    return v.videoWidth > 0 && v.clientHeight > v.clientWidth;
   }, null, { timeout: 30000 });
   check('C10 the button still stands in the handwriting journey — one press ' +
-        'goes wide', true);
-  check('C10 zero page errors through the handwriting arm + tall camera',
+        'goes tall (the child\'s toggle stays)', true);
+  check('C10 zero page errors through the handwriting arm + wide camera',
     hwCamErrors.length === 0, hwCamErrors.slice(0, 2).join(' | '));
   await hwCam.close();
   await camBrowser.close();
