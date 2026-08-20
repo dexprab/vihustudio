@@ -4547,3 +4547,32 @@ walk-away both change nothing, fix-it-up holds the kept ink untouched,
 make-it-again arms while keeping the kept letter until replaced, and
 an empty tile never asks. Suites: handwriting 153→162/162, base
 192/192, zero page errors.
+
+## My Handwriting Goes to the Cloud — the Storage Foundation
+
+The product owner, approving the letter grid's path into the Studio:
+*"it needs to be stored also correct. it needs to go on cloud."* Until
+now the grid's letters lived in in-memory Maps — reload the page and
+every kept letter was gone. `supabase/migrations_handwriting.sql`
+gives them a home: `creator_handwriting`, one self-contained jsonb row
+per KEPT LETTER plus one for the built font — per-letter rows are what
+make the grid mergeable across devices (five letters kept at home and
+three at grandma's union naturally; a single all-letters row would
+have the second device overwrite the first's work), and the font row
+spares the Studio fetching every letter just to offer "My Handwriting"
+in its font lists. The design is deliberately NOT new: it mirrors
+`creator_library` exactly — self-contained rows because handwriting
+belongs to no project (so no bucket changes and no new storage
+policy), owner-scoped CRUD on `auth.uid()`, and SELECT widened only by
+the existing `has_magic_recall_grant()`, so cross-device recall came
+free: prove your stars, receive your writing; a typed-code recall
+holds no grant and receives nothing (Decision 18's own standard — the
+pattern is the credential). Handwriting stays scoped to the Magic Card
+that made it (`cardId` in `data`, Decision 19's standard) and is
+private — nothing like the Ether applies to a child's own hand.
+Disclosed: this is the foundation only — the SQL awaits the owner's
+run in the Supabase SQL Editor (VERIFY queries included in the file),
+and the client wiring (keep-to-cloud from the grid, the Studio font
+list, the rite that teaches it) is not yet built. Verified by review
+against the three tables it mirrors; no schema object it touches
+exists yet, and it is idempotent.
