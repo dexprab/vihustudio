@@ -31,7 +31,11 @@
  *   HW-X  check & fix — a pencil stroke joins the glyph (a drawn-in
  *         dot changes an i's own class box), an erased mark leaves it,
  *         the preview matches the tile, Keep persists, Show me again
- *         re-arms.
+ *         re-arms. The pencil repairs at the LETTER'S OWN measured
+ *         stroke width (thin and thick letters alike); Move picks a
+ *         piece up with one drag and slides it with the next, the
+ *         preview following; and a far speck cannot steer the tile —
+ *         normalize is speck-immune while i/j dots still count.
  *   HW-B  the whole alphabet and the font — a partial set builds (the
  *         missing letters absent from the cmap), all 62 letters feed
  *         through the real journey, HONEST PROPORTIONS measured in the
@@ -43,7 +47,10 @@
  *         never re-snaps; a letter carried across the frame is never
  *         snapped mid-motion; two letters in view show the gentle
  *         overlay and capture nothing; Take still works as the manual
- *         fallback.
+ *         fallback. TREMBLE IS NOT TRAVEL: a big letter held with
+ *         honest hand tremor captures in about a second, a slow carry
+ *         (steps inside the wobble bar, travelling) never captures,
+ *         and no beat under MIN_BEAT_MS can complete.
  *   HW-L  the readiness light — re-aimed at the one-letter reader:
  *         green ⇔ this very view would capture (asserted across the
  *         fixture ladder with zero disagreements), red otherwise;
@@ -558,6 +565,245 @@ const BLAME = /error|failed|invalid|wrong|incorrect|scan|detect|process|percent|
     check('X7 the check screen carries no jargon and no blame anywhere',
       !BLAME.test(words), '"' + words.slice(0, 70).replace(/\n/g, ' · ') + '…"');
     await keep();
+
+    // THE PENCIL DRAWS AT THE LETTER'S OWN STROKE WIDTH (field report:
+    // "pencil stroke needs to be thin"). Measured on a thin and a
+    // thick letter: the pencil's stroke, drawn with real pointer
+    // events, lands at the width the child's own pen made — and the
+    // estimator itself scales linearly with the written size.
+    async function pencilProbe(ch, size, seed) {
+      await feedLetter(ch, { ch, seed, size });
+      const geo = await page.evaluate(() => {
+        const c = document.getElementById('hwCheckCanvas');
+        const r = c.getBoundingClientRect();
+        const k = window.__hw.check;
+        return { left: r.left, top: r.top,
+                 sx: r.width / c.width, sy: r.height / c.height,
+                 brush: k.brush, wipe: k.wipe, w: k.w, h: k.h,
+                 sw: HWLetter.strokeWidthOf(k.mask, k.w, k.h) };
+      });
+      // a horizontal pencil stroke across the top margin, clear of the
+      // letter and clear of the canvas edge
+      const rowY = geo.top + (geo.brush + 8) * geo.sy;
+      await page.mouse.move(geo.left + 0.15 * geo.w * geo.sx, rowY);
+      await page.mouse.down();
+      await page.mouse.move(geo.left + 0.55 * geo.w * geo.sx, rowY, { steps: 8 });
+      await page.mouse.up();
+      const drawn = await page.evaluate((margin) => {
+        const k = window.__hw.check;
+        const ths = [];
+        const x0 = Math.round(0.22 * k.w), x1 = Math.round(0.48 * k.w);
+        for (let x = x0; x <= x1; x += Math.max(1, Math.round((x1 - x0) / 12))) {
+          let t = 0;
+          for (let y = 0; y < margin; y++) if (k.mask[y * k.w + x]) t++;
+          if (t) ths.push(t);
+        }
+        ths.sort((a, b) => a - b);
+        return ths[ths.length >> 1] || 0;
+      }, 2 * geo.brush + 16);   // rows the stroke can reach — the letter starts lower
+      return { ...geo, drawn };
+    }
+    {
+      const thin = await pencilProbe('v', 260, 31);
+      const tol = (sw) => Math.max(3, Math.round(0.15 * sw));
+      check('X8 on a THIN letter the pencil repairs at the letter\'s own stroke width',
+        Math.abs(2 * thin.brush - thin.sw) <= 3 &&
+        Math.abs(thin.drawn - thin.sw) <= tol(thin.sw) + 1,
+        'letter stroke ' + thin.sw + 'px, pencil drew ' + thin.drawn + 'px');
+      await page.screenshot({ path: path.join(SHOTS, '27-hw-thin-pencil.png') });
+      await page.click('#hwCheckBack');
+      await page.waitForSelector('#stepHwGrid.here');
+      const thick = await pencilProbe('D', 600, 32);
+      check('X8b on a THICK letter the pencil matches too — the width is measured, ' +
+            'never a fixed dab',
+        Math.abs(2 * thick.brush - thick.sw) <= 3 &&
+        Math.abs(thick.drawn - thick.sw) <= tol(thick.sw) + 1 &&
+        thick.sw > 1.8 * thin.sw,
+        'letter stroke ' + thick.sw + 'px, pencil drew ' + thick.drawn +
+        'px (thin letter was ' + thin.sw + 'px)');
+      check('X8c the eraser stays LARGER than the pencil (area for smudges, and it ' +
+            'can always take back what the pencil drew) yet a small fraction of the canvas',
+        thin.wipe >= thin.brush && thick.wipe >= thick.brush &&
+        thick.wipe >= 5 &&
+        (2 * thick.wipe + 1) <= 0.25 * Math.max(thick.w, thick.h),
+        'eraser radius ' + thin.wipe + '/' + thick.wipe + 'px vs pencil ' +
+        thin.brush + '/' + thick.brush + 'px');
+      await page.click('#hwCheckBack');
+      await page.waitForSelector('#stepHwGrid.here');
+    }
+
+    // MOVE — one drag picks a piece up, the next drag slides it (field
+    // report: "allow selecting and moving so that i can center the
+    // tile"). The dot of an i is selected, slid sideways, and the kept
+    // ink and the live tile preview both follow.
+    {
+      await feedLetter('i', { ch: 'i', seed: 33, size: 500 });
+      const before = await page.evaluate(() => {
+        const k = window.__hw.check;
+        // the dot: the topmost connected part's bbox
+        const comps = HWLetter.components(k.mask, k.w, k.h)
+          .slice().sort((a, b) => a.y0 - b.y0);
+        const dot = comps[0];
+        const c = document.getElementById('hwCheckCanvas');
+        const r = c.getBoundingClientRect();
+        return { left: r.left, top: r.top, sx: r.width / c.width,
+                 sy: r.height / c.height,
+                 dot: { x0: dot.x0, x1: dot.x1, y0: dot.y0, y1: dot.y1 },
+                 ink: k.mask.reduce((a, v) => a + v, 0),
+                 parts: HWLetter.partsOf(k.mask, k.w, k.h),
+                 preview: (() => { const p = document.getElementById('hwCheckPreview');
+                   return p.getContext('2d').getImageData(0, 0, p.width, p.height).data.join(''); })() };
+      });
+      await page.click('#hwFixMove');
+      const px = (x) => before.left + x * before.sx;
+      const py = (y) => before.top + y * before.sy;
+      // drag 1: a soft box around the dot
+      await page.mouse.move(px(Math.max(1, before.dot.x0 - 8)), py(Math.max(1, before.dot.y0 - 8)));
+      await page.mouse.down();
+      await page.mouse.move(px(before.dot.x1 + 8), py(before.dot.y1 + 8), { steps: 5 });
+      await page.mouse.up();
+      const sel = await page.evaluate(() => {
+        const s = window.__hw.check.sel;
+        return s ? { x0: s.x0, y0: s.y0 } : null;
+      });
+      await page.screenshot({ path: path.join(SHOTS, '28-hw-move-select.png') });
+      // drag 2: slide the dot 30px right
+      const cx = (before.dot.x0 + before.dot.x1) / 2;
+      const cy = (before.dot.y0 + before.dot.y1) / 2;
+      await page.mouse.move(px(cx), py(cy));
+      await page.mouse.down();
+      await page.mouse.move(px(cx + 30), py(cy), { steps: 8 });
+      await page.mouse.up();
+      const after = await page.evaluate(() => {
+        const k = window.__hw.check;
+        const comps = HWLetter.components(k.mask, k.w, k.h)
+          .slice().sort((a, b) => a.y0 - b.y0);
+        const dot = comps[0];
+        const p = document.getElementById('hwCheckPreview');
+        return { dot: { x0: dot.x0, y0: dot.y0 },
+                 ink: k.mask.reduce((a, v) => a + v, 0),
+                 parts: HWLetter.partsOf(k.mask, k.w, k.h),
+                 sel: !!window.__hw.check.sel,
+                 preview: p.getContext('2d').getImageData(0, 0, p.width, p.height).data.join('') };
+      });
+      check('X9 Move relocates exactly the selected ink: the dot slid sideways, ' +
+            'no ink gained or lost, the letter still its two parts',
+        sel !== null && !after.sel &&
+        Math.abs(after.dot.x0 - (before.dot.x0 + 30)) <= 2 &&
+        Math.abs(after.dot.y0 - before.dot.y0) <= 2 &&
+        after.ink === before.ink && before.parts === 2 && after.parts === 2,
+        'dot x ' + before.dot.x0 + ' → ' + after.dot.x0 + ', ink ' +
+        before.ink + ' → ' + after.ink);
+      check('X9b …and the tile preview followed the move through the same drawing path',
+        after.preview !== before.preview);
+      // byte-honesty: the preview equals a fresh draw of the moved ink
+      const previewTrue = await page.evaluate(() => {
+        const k = window.__hw.check;
+        let x0 = k.w, x1 = -1, y0 = k.h, y1 = -1;
+        for (let y = 0; y < k.h; y++) for (let x = 0; x < k.w; x++) {
+          if (k.mask[y * k.w + x]) {
+            if (x < x0) x0 = x; if (x > x1) x1 = x;
+            if (y < y0) y0 = y; if (y > y1) y1 = y;
+          }
+        }
+        const w = x1 - x0 + 1, h = y1 - y0 + 1;
+        const m = new Uint8Array(w * h);
+        for (let y = 0; y < h; y++) for (let x = 0; x < w; x++)
+          m[y * w + x] = k.mask[(y + y0) * k.w + (x + x0)];
+        const s = HWLetter.normalize({ mask: m, w, h,
+          parts: HWLetter.partsOf(m, w, h) }, k.ch);
+        const box = 56;
+        const c = document.createElement('canvas');
+        c.width = box; c.height = box;
+        const ctx = c.getContext('2d');
+        const sc = Math.min((box - 8) / s.w, (box - 8) / s.h);
+        const ox = (box - s.w * sc) / 2, oy = (box - s.h * sc) / 2;
+        const img = ctx.createImageData(box, box);
+        for (let y = 0; y < box; y++) for (let x = 0; x < box; x++) {
+          const sx2 = Math.floor((x - ox) / sc), sy2 = Math.floor((y - oy) / sc);
+          if (sx2 >= 0 && sx2 < s.w && sy2 >= 0 && sy2 < s.h && s.mask[sy2 * s.w + sx2]) {
+            const d = (y * box + x) * 4;
+            img.data[d] = 231; img.data[d + 1] = 234; img.data[d + 2] = 243;
+            img.data[d + 3] = 255;
+          }
+        }
+        ctx.putImageData(img, 0, 0);
+        const want = ctx.getImageData(0, 0, box, box).data.join('');
+        const p = document.getElementById('hwCheckPreview');
+        return want === p.getContext('2d').getImageData(0, 0, p.width, p.height).data.join('');
+      });
+      check('X9c the preview after the move is byte-for-byte the tile the moved ink ' +
+            'would keep', previewTrue);
+      const moveWords = await page.evaluate(() =>
+        document.getElementById('stepHwCheck').innerText);
+      check('X9d the Move tool speaks child words — Move, nothing technical',
+        /Move/.test(moveWords) && !/select|transform|region|drag|handle/i.test(moveWords) &&
+        !BLAME.test(moveWords));
+      await page.click('#hwCheckBack');
+      await page.waitForSelector('#stepHwGrid.here');
+    }
+
+    // A SPECK CANNOT STEER THE TILE (field report: a stray speck in the
+    // tile's top-left rode into the kept ink and shoved the letter into
+    // the bottom-right corner). First at the seam: normalize() with and
+    // without a far 0.1% speck answers byte-identically. Then through
+    // the real journey: a speck planted in the check canvas's far
+    // corner, kept, changes the tile not one byte.
+    {
+      const seam = await page.evaluate(() => {
+        const W = 600, H = 600;
+        const base = new Uint8Array(W * H);
+        for (let y = 150; y < 450; y++) for (let x = 200; x < 260; x++) base[y * W + x] = 1;
+        for (let y = 150; y < 210; y++) for (let x = 200; x < 400; x++) base[y * W + x] = 1;
+        const speck = base.slice();
+        for (let y = 5; y < 10; y++) for (let x = 5; x < 10; x++) speck[y * W + x] = 1;
+        const ink = base.reduce((a, v) => a + v, 0);
+        const a = HWLetter.normalize({ mask: base, w: W, h: H, parts: 1 }, 'n');
+        const b = HWLetter.normalize({ mask: speck, w: W, h: H, parts: 2 }, 'n');
+        return { share: 25 / ink,
+                 same: a.w === b.w && a.h === b.h &&
+                       a.mask.every((v, i) => v === b.mask[i]) };
+      });
+      check('X10 normalize is speck-immune at the seam: a far speck of ~0.1% of the ' +
+            'ink moves the kept sample by ZERO units (byte-identical)',
+        seam.share < 0.02 && seam.same,
+        'speck ' + (100 * seam.share).toFixed(2) + '% of the ink');
+      // …and a genuine part is never dropped: the i/j dot classes are
+      // asserted upstream (D5, X2) and again here at the seam.
+      const dotSeam = await page.evaluate(() => {
+        const W = 200, H = 400;
+        const m = new Uint8Array(W * H);
+        for (let y = 100; y < 380; y++) for (let x = 90; x < 115; x++) m[y * W + x] = 1;
+        for (let y = 20; y < 48; y++) for (let x = 90; x < 116; x++) m[y * W + x] = 1;
+        const s = HWLetter.normalize({ mask: m, w: W, h: H,
+          parts: HWLetter.partsOf(m, W, H) }, 'i');
+        return { top: s.topAbove, parts: s.parts };
+      });
+      check('X10b …while the dot of an i still lifts it into the dotted box — a real ' +
+            'part is never a speck', dotSeam.top === 415 && dotSeam.parts === 2);
+
+      // The journey: capture an o, note the tile it would keep, plant a
+      // 3×3 speck in the far corner, Keep — the tile is the same tile.
+      await feedLetter('o', { ch: 'o', seed: 22, size: 380 });
+      const cleanTile = await page.evaluate(() => {
+        const p = document.getElementById('hwCheckPreview');
+        return p.getContext('2d').getImageData(0, 0, p.width, p.height).data.join('');
+      });
+      await page.evaluate(() => {
+        const k = window.__hw.check;
+        for (let y = 2; y < 5; y++) for (let x = 2; x < 5; x++) k.mask[y * k.w + x] = 1;
+      });
+      await keep();
+      const speckTile = await page.evaluate(() => {
+        const tile = document.querySelector('#hwGrid .hw-slot[data-ch="o"] canvas');
+        return tile.getContext('2d').getImageData(0, 0, tile.width, tile.height).data.join('');
+      });
+      check('X11 through the real journey a far corner speck changes the kept tile ' +
+            'by ZERO bytes — the letter stays centred on its tile',
+        cleanTile === speckTile);
+      await page.locator('#hwGrid').scrollIntoViewIfNeeded();
+      await page.screenshot({ path: path.join(SHOTS, '29-hw-tile-centred.png') });
+    }
   }
 
   // ==== HW-B: the whole alphabet, and the font ===============================
@@ -755,6 +1001,7 @@ const BLAME = /error|failed|invalid|wrong|incorrect|scan|detect|process|percent|
       ch: window.__hw.check.ch,
       steady: window.__hw.live.steady,
       verdicts: window.__hw.live.verdicts,
+      beatSpan: window.__hw.live.beatSpan,
       running: window.__hw.live.running,
       panel: document.getElementById('cameraPanel').style.display,
       tracks: (() => { const v = document.getElementById('cameraLive');
@@ -767,8 +1014,16 @@ const BLAME = /error|failed|invalid|wrong|incorrect|scan|detect|process|percent|
     check('C1 steady green fires the capture by itself — no button, and the check screen opens',
       snap.ch === 'R' && snap.steady >= 2 && snap.verdicts >= 2,
       'after ' + ms + 'ms, ' + snap.verdicts + ' verdicts');
-    check('C1b the steady beat is on the order of a second — two consecutive reading verdicts',
-      ms >= 900 && ms <= 6000, ms + 'ms from camera open to check screen');
+    // (Adapted for the field speed fix: the first frame is now sampled
+    // the moment the loop starts, so the whole capture runs ~0.8s
+    // rather than ~1.3s. What the beat PROMISES is unchanged and now
+    // asserted directly: two reads of one and the same held-up moment,
+    // at least MIN_BEAT_MS of real time apart — never one moment read
+    // twice.)
+    check('C1b the steady beat is real: its two reads spanned ≥ ' +
+          'MIN_BEAT_MS of held green — and capture stays prompt',
+      ms <= 6000 && snap.beatSpan >= 500, ms + 'ms from camera open to ' +
+      'check screen; the beat spanned ' + snap.beatSpan + 'ms');
     check('C2 the picture IS the frame that read: the kept ink stands where the fixture wrote the letter',
       Math.abs(snap.glyph.cx - gt.cx) < 40 && Math.abs(snap.glyph.cy - gt.cy) < 40 &&
       snap.glyph.h > 250 && snap.glyph.h < 420,
@@ -903,6 +1158,116 @@ const BLAME = /error|failed|invalid|wrong|incorrect|scan|detect|process|percent|
     check('C12 clean paper with nothing written is never captured — no invented letters',
       !bl.captured && bl.colour === 'red' && errors.length === 0);
     await b.close();
+  }
+
+  // TREMBLE IS NOT TRAVEL — the field speed fix, measured. A child's
+  // hand is not a tripod: the tremor fixture holds the same big R with
+  // a seeded pulled-back random walk (steps regularly over the old
+  // per-step bar of 4% of the frame — exactly the wobble that used to
+  // keep resetting the beat) and slight scale breathing. It must
+  // capture, and in about a second — while the carried letter (C7)
+  // still never does.
+  {
+    // The fixture is honest hand-shake, by its own recorded geometry:
+    // several steps over the tight bar (the old guard would break on
+    // them), none over the wobble bar (no step is a carry).
+    const tg = feedsMeta.fixtures['hw-letter-tremor'].geoms.map((g) => g.letters[0]);
+    const tSteps = tg.map((p0, i) => {
+      const q = tg[(i + 1) % tg.length];
+      return Math.hypot(p0.cx - q.cx, p0.cy - q.cy);
+    });
+    const overTight = tSteps.filter((s) => s > 0.04 * 1280).length;
+    check('C13 the tremor fixture trembles like a hand: several steps over the old ' +
+          'per-step bar, none as far as a carry',
+      overTight >= 3 && Math.max.apply(null, tSteps) <= 0.10 * 1280 &&
+      Math.max.apply(null, tSteps) >= 60,
+      overTight + '/' + tSteps.length + ' steps over 51px, largest ' +
+      Math.round(Math.max.apply(null, tSteps)) + 'px');
+
+    const { browser: b, p, errors } = await camPage('hw-letter-tremor.y4m');
+    await armAndOpenCamera(p, 'R');
+    const t0 = Date.now();
+    await p.waitForFunction(() => window.__hw.stage === 'check',
+      null, { timeout: 30000 });
+    const ms = Date.now() - t0;
+    const tr = await p.evaluate(() => ({
+      ch: window.__hw.check.ch, verdicts: window.__hw.live.verdicts,
+      beatSpan: window.__hw.live.beatSpan,
+      glyph: { w: window.__hw.live.captured.w, h: window.__hw.live.captured.h } }));
+    check('C14 a big clear letter held with honest hand tremor captures in about a ' +
+          'second (was ~1.9s before the fix; ~0.8s measured after)',
+      ms <= 2500 && tr.verdicts >= 2 && tr.beatSpan >= 500 && tr.ch === 'R',
+      ms + 'ms from camera open to check screen, beat spanned ' + tr.beatSpan + 'ms');
+    check('C14b …and the tremor capture is still a whole letter',
+      tr.glyph.h > 250 && tr.glyph.h < 420,
+      'ink ' + tr.glyph.w + 'x' + tr.glyph.h);
+    check('C14c zero page errors through the tremor capture', errors.length === 0,
+      errors.slice(0, 2).join(' | '));
+    await b.close();
+  }
+
+  // THE GUARD AT EXACT GEOMETRY — driven through HWLetterLive.verdict,
+  // the same entry a worker verdict takes (the seam HWLight already
+  // offers its own checks), at real clock spacings a y4m cannot
+  // promise (the fake capture holds a frame across its loop seam).
+  {
+    const DRIVE = `(async (spec) => {
+      const L = HWLetterLive;
+      L.stop(); L.reset();
+      let took = 0;
+      L.start(document.createElement('video'), { onCapture: () => { took++; } });
+      const pause = (ms) => new Promise((r) => setTimeout(r, ms));
+      for (const r of spec) {
+        if (r.wait) await pause(r.wait);
+        if (!L.state.running) break;
+        L.verdict({ kind: 'letter',
+          glyph: { cx: r.cx, cy: r.cy, w: r.dim || 300, h: r.dim || 300,
+                   mask: new Uint8Array(1), x0: 0, y0: 0, ink: 1, parts: 1 },
+          facts: { frameW: 1280, frameH: 960 } });
+      }
+      const out = { took, steady: L.state.steady,
+                    unsteady: L.state.unsteady, wobbles: L.state.wobbles,
+                    beatSpan: L.state.beatSpan };
+      L.stop(); L.reset();
+      return out;
+    })`;
+    const drive = (spec) => page.evaluate(`(${DRIVE})(${JSON.stringify(spec)})`);
+
+    // A SLOW CARRY: 80px/verdict, one direction — every step is inside
+    // the wobble bar, so only the net-displacement check can tell it
+    // from tremor. It must never capture.
+    const slow = await drive(Array.from({ length: 12 }, (_, i) =>
+      ({ cx: 200 + i * 80, cy: 480, wait: i ? 550 : 0 })));
+    check('C15 a letter carried SLOWLY (80px a verdict — inside the wobble bar) ' +
+          'never captures: travel accumulates and the net bar refuses it',
+      slow.took === 0 && slow.wobbles >= 5,
+      slow.wobbles + ' wobble steps ridden, 0 captures across 12 reads');
+
+    // TREMBLE: the same size steps, but wandering home — one extra
+    // read is asked of a wobbly window, then it captures.
+    const tremble = await drive([
+      { cx: 640, cy: 480 },
+      { cx: 710, cy: 510, wait: 550 },     // 76px out — a wobble
+      { cx: 655, cy: 468, wait: 550 }]);   // back within 20px of the start
+    check('C16 the same-sized steps that WANDER HOME capture — one extra read is ' +
+          'asked of a wobbly window, never a reset',
+      tremble.took === 1 && tremble.wobbles >= 1 && tremble.beatSpan >= 1000,
+      'captured on the 3rd read, beat spanned ' + tremble.beatSpan + 'ms');
+
+    // THE SPAN FLOOR, strictly stronger than the old guard: two reads
+    // of the SAME place a blink apart are one moment read twice, and
+    // must not capture until MIN_BEAT_MS of real time separates them.
+    const blink = await drive([
+      { cx: 640, cy: 480 },
+      { cx: 642, cy: 481, wait: 120 }]);
+    const held = await drive([
+      { cx: 640, cy: 480 },
+      { cx: 642, cy: 481, wait: 120 },
+      { cx: 641, cy: 479, wait: 520 }]);
+    check('C17 two reads a blink apart never complete the beat (MIN_BEAT_MS floor); ' +
+          'held on past the floor, the same view captures',
+      blink.took === 0 && held.took === 1 && held.beatSpan >= 500,
+      'blink 0 captures; held captured after ' + held.beatSpan + 'ms of beat');
   }
 
   // ==== HW-L: the readiness light ============================================
