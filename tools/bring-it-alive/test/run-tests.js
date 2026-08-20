@@ -363,6 +363,11 @@ function check(name, cond, detail) {
 
   // ---- pointer-event drivers ----------------------------------------------
   async function canvasMap(id) {
+    // Mouse coordinates are viewport coordinates: bring the canvas into
+    // view first, or a scroll position left by a previous (taller) step
+    // puts the mapped points outside the window and the pointer events
+    // land nowhere.
+    await page.locator('#' + id).scrollIntoViewIfNeeded();
     const box = await page.locator('#' + id).boundingBox();
     const scale = await page.evaluate(() => window.__bia.displayScale);
     return ([ix, iy]) => [box.x + ix * scale, box.y + iy * scale];

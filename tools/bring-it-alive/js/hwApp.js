@@ -86,6 +86,30 @@
   $('hwPrintBtn').addEventListener('click', () => window.print());
   $('hwSheetBack').addEventListener('click', () => { state.stage = 'idle'; go('stepCapture'); });
 
+  // ONE camera, TWO framings (field finding: "currently am getting
+  // confused wether am generating font or art"). The shared capture
+  // machinery wears each journey's own words: while the handwriting
+  // journey is armed, the title, the drop words and the camera line all
+  // say LETTERS; disarmed, they say DRAWING again, byte for byte — the
+  // defaults are read from the page itself so the two cannot drift.
+  const FRAMING = {
+    title: $('captureTitle').textContent,
+    drop: $('dropWords').textContent,
+    camera: $('cameraNote').textContent
+  };
+  const HW_FRAMING = {
+    title: '✍️ My Handwriting — show me your written sheet',
+    drop: 'Drop a photo of your written sheet here',
+    camera: 'Hold your writing sheet up so the whole page is in the picture.'
+  };
+  function setFraming(hw) {
+    const f = hw ? HW_FRAMING : FRAMING;
+    $('captureTitle').textContent = f.title;
+    $('dropWords').textContent = f.drop;
+    $('cameraNote').textContent = f.camera;
+    document.body.classList.toggle('hw-armed', hw);
+  }
+
   function arm(retakeLine) {
     state.armed = true;
     state.retakeLine = (retakeLine == null ? null : retakeLine);
@@ -93,13 +117,15 @@
     const banner = $('hwArmed');
     $('hwArmedText').textContent = state.retakeLine == null
       ? 'Your next photo becomes your handwriting — photograph your written sheet, flat and whole.'
-      : 'Photograph the sheet with line ' + (state.retakeLine + 1) + ' written once more — flat and whole.';
+      : 'Show me the sheet with line ' + (state.retakeLine + 1) + ' once more — flat and whole.';
     banner.style.display = 'block';
+    setFraming(true);
     go('stepCapture');
   }
   function disarm() {
     state.armed = false;
     $('hwArmed').style.display = 'none';
+    setFraming(false);
   }
   $('hwWroteBtn').addEventListener('click', () => arm(null));
   $('hwDisarmBtn').addEventListener('click', () => {

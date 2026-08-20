@@ -337,6 +337,89 @@ const SORTED = [...ALPHABET].sort().join(''); // window.__hw.samples keys come b
   const fontBytes = async () => Buffer.from(await page.evaluate(() =>
     Array.from(new Uint8Array(window.__hw.font.buffer))));
 
+  // ==== HW-N: two journeys, two blocks =======================================
+  // Field finding: "give me another block for generating fonts. currently
+  // am getting confused wether am generating font or art." The entry
+  // screen presents TWO blocks of equal standing; the shared camera
+  // machinery wears each journey's own words; and backing out of one
+  // journey never leaks state into the other.
+  console.log('\n== HW-N: TWO JOURNEYS, TWO BLOCKS ==========================');
+  {
+    const entry = await page.evaluate(() => {
+      const draw = document.getElementById('drawJourney');
+      const hw = document.getElementById('hwJourney');
+      return {
+        blocks: document.querySelectorAll('#stepCapture .journey').length,
+        drawHead: draw.querySelector('h2').textContent,
+        hwHead: hw.querySelector('h2').textContent,
+        hwEntryInDraw: !!draw.querySelector('#hwEntryBtn'),
+        hwEntryInHw: !!hw.querySelector('#hwEntryBtn'),
+        drawText: draw.innerText,
+        hwShown: !!hw.offsetParent
+      };
+    });
+    check('N1 the entry screen presents TWO blocks — a drawing journey and a font journey',
+      entry.blocks === 2 && /drawing to life/i.test(entry.drawHead) &&
+      /My Handwriting/i.test(entry.hwHead) && entry.hwShown,
+      '"' + entry.drawHead + '" · "' + entry.hwHead + '"');
+    check('N2 nothing about the font journey starts inside the drawing block',
+      !entry.hwEntryInDraw && entry.hwEntryInHw &&
+      !/handwriting|font|letters/i.test(entry.drawText),
+      'entry button lives in the handwriting block');
+    await page.screenshot({ path: path.join(SHOTS, '16-two-journey-blocks.png') });
+
+    // Armed, the shared capture step speaks HANDWRITING everywhere a
+    // child can see — one camera, two framings.
+    await page.click('#hwEntryBtn');
+    await page.waitForSelector('#stepHwSheet.here');
+    await page.click('#hwWroteBtn');
+    await page.waitForSelector('#stepCapture.here');
+    const armed = await page.evaluate(() => ({
+      title: document.getElementById('captureTitle').textContent,
+      drop: document.getElementById('dropWords').textContent,
+      note: document.getElementById('cameraNote').textContent,
+      hwBlockHidden: !document.getElementById('hwJourney').offsetParent,
+      extrasHidden: !document.getElementById('drawExtras').offsetParent,
+      testHidden: !document.getElementById('testBtn').offsetParent
+    }));
+    check('N3 armed, the capture step is visibly the FONT journey (title, drop, camera line)',
+      /My Handwriting/.test(armed.title) && /written sheet/.test(armed.drop) &&
+      /writing sheet/.test(armed.note) && armed.hwBlockHidden &&
+      armed.extrasHidden && armed.testHidden,
+      '"' + armed.title + '" · "' + armed.note + '"');
+
+    // Back out: the drawing framing returns byte for byte, and a drawing
+    // fed now lands in the drawing CLAIM — never the line reader.
+    await page.click('#hwDisarmBtn');
+    await page.waitForSelector('#stepHwSheet.here');
+    await page.click('#hwSheetBack');
+    await page.waitForSelector('#stepCapture.here');
+    const disarmed = await page.evaluate(() => ({
+      title: document.getElementById('captureTitle').textContent,
+      drop: document.getElementById('dropWords').textContent,
+      note: document.getElementById('cameraNote').textContent,
+      hwShown: !!document.getElementById('hwJourney').offsetParent
+    }));
+    check('N4 backing out restores the drawing framing byte for byte',
+      disarmed.title === 'Bring a drawing to life' &&
+      disarmed.drop === 'Drop a photograph of your drawing here' &&
+      /your drawing up/.test(disarmed.note) && disarmed.hwShown,
+      '"' + disarmed.title + '"');
+    const surrogatePng = fs.readFileSync(path.join(__dirname, 'surrogate-001.png'));
+    await page.setInputFiles('#fileInput',
+      { name: 'drawing.png', mimeType: 'image/png', buffer: surrogatePng });
+    await page.waitForSelector('#stepClaim.here');
+    const leak = await page.evaluate(() => ({
+      stage: window.__hw.stage, armed: window.__hw.armed,
+      lines: window.__hw.lines
+    }));
+    check('N5 a drawing fed after backing out lands in the drawing claim — no state leaks',
+      leak.stage === 'idle' && !leak.armed && leak.lines === null,
+      'hw stage ' + leak.stage);
+    await page.click('#claimNewPhoto');
+    await page.waitForSelector('#stepCapture.here');
+  }
+
   // ==== HW-A: the writing sheet ==============================================
   console.log('\n== HW-A: THE WRITING SHEET =================================');
   const sheetFacts = await page.evaluate(() => {
