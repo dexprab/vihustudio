@@ -14,17 +14,35 @@
  * cut in the worker from the analysed frame).
  *
  * THE STEADY BEAT, measured rather than guessed: verdicts land every
- * ~600ms (INTERVAL 500ms floor + ~60–120ms analysis), so STEADY_READS=2
- * consecutive reading verdicts is on the order of a second of held
- * green — long enough that a letter PASSING THROUGH the frame cannot
- * snap mid-motion, short enough that a child holding a page up is never
- * kept waiting. Passing-through is also guarded by GEOMETRY: the two
- * reads must agree about where the letter stands (centres within
- * MOVE_FRAC of the frame width) and how big it is (sizes within
- * SIZE_TOL of each other). A letter carried across the view at any
- * honest speed moves whole letter-widths between two verdicts and can
- * never satisfy the agreement; a held letter's hand-wobble measures a
- * few dozen pixels and always does.
+ * ~600ms (INTERVAL 500ms floor + ~60–120ms analysis; the FIRST frame
+ * is sampled the moment the loop starts — the field fix for "such a
+ * big letter still taking too long": waiting a full interval before
+ * even looking was ~40% of the whole capture time, measured 1.30s →
+ * 0.8s on the steady fixture). STEADY_READS=2 consecutive reading
+ * verdicts, at least MIN_BEAT_MS apart first-to-last, auto-takes —
+ * long enough that a letter PASSING THROUGH the frame cannot snap
+ * mid-motion, short enough that a child holding a page up is never
+ * kept waiting.
+ *
+ * TREMBLE IS NOT TRAVEL — the geometry guard, remeasured in the field.
+ * The reads must agree about where the letter stands and how big it is
+ * (sizes within SIZE_TOL), but a child's HAND is not a tripod: on the
+ * seeded hand-tremor fixture (a pulled-back random walk, the honest
+ * hold) 5 of 12 per-verdict displacements measure 52–111px at 1280
+ * width — over the old per-step bar of MOVE_FRAC 0.04 × frameW = 51px
+ * — and every break cost a full ~600ms verdict cycle of re-proving
+ * (measured: 1.86s to capture at a kind loop phase, unboundedly worse
+ * at an unkind one). So the guard now reads like a hand rather than a
+ * ruler: a step within MOVE_FRAC is steady as it always was; a step up
+ * to WOBBLE_FRAC (0.10 × frameW) is a WOBBLE — the beat carries on,
+ * but a wobbly window must (a) run one read LONGER and (b) end no
+ * further than WOBBLE_FRAC from where it began. Tremble wanders and
+ * comes home, so it passes; TRAVEL accumulates — a letter carried at
+ * even 60px/verdict is ≥120px from its start two verdicts later — so
+ * the net bar refuses it and the window restarts where the letter now
+ * is. A letter carried at any honest speed still moves whole
+ * letter-widths (the carried fixture: ≥190px) between verdicts and
+ * fails even the wobble bar outright, exactly as before.
  *
  * ONE capture per arming: the moment the beat completes, the loop stops
  * itself and hands the glyph over — the camera does not keep snapping
@@ -42,8 +60,20 @@
   const INTERVAL = 500;      // ms floor between frame analyses
   const WATCHDOG = 10000;    // ms without a verdict → terminate the worker
   const STEADY_READS = 2;    // consecutive reading verdicts to auto-take
-  const MOVE_FRAC = 0.04;    // centres must agree within this × frame width
+  const MOVE_FRAC = 0.04;    // a step within this × frame width is STEADY
+  const WOBBLE_FRAC = 0.10;  // …within this it is a WOBBLE: the beat holds,
+                             //   but the window runs one read longer and its
+                             //   NET drift must stay under this bar too
+                             //   (tremor fixture steps measure ≤111px =
+                             //   0.087; the carried letter ≥190px = 0.148)
   const SIZE_TOL = 0.35;     // …and max dimensions within ±this fraction
+  const MIN_BEAT_MS = 500;   // the beat's first and last read must span at
+                             //   least this — two reads of one and the same
+                             //   held-up moment, never one moment twice.
+                             //   Read spacing is ≥ INTERVAL + analysis cost,
+                             //   so this floor never slows an honest hold;
+                             //   it EXISTS so no future interval change can
+                             //   quietly let a sub-half-second beat capture
 
   const state = {
     running: false,
@@ -54,6 +84,8 @@
     reads: 0,              // 'letter' verdicts seen this arming
     steady: 0,             // current consecutive qualifying reads
     unsteady: 0,           // reads that broke the beat (dev seam: motion)
+    wobbles: 0,            // wobble steps ridden through (dev seam: tremor)
+    beatSpan: 0,           // ms the capturing beat spanned, first→last read
     many: false,           // the CURRENT view holds more than one letter
     manySeen: 0,
     captured: null         // the glyph handed over, once the beat completes
@@ -67,7 +99,9 @@
   let inFlight = false;
   let gen = 0;             // arming generation — a stale verdict cannot land
   let dog = null;
-  let lastRead = null;     // { cx, cy, dim, at } of the previous 'letter' verdict
+  let lastRead = null;     // { cx, cy, dim } of the previous 'letter' verdict
+  let beatStart = null;    // { cx, cy, at } — the current window's first read
+  let beatWobbly = false;  // the window rode through a wobble step
 
   function noop() {}
 
@@ -168,23 +202,50 @@
     if (out.kind !== 'letter') {
       state.steady = 0;
       lastRead = null;
+      beatStart = null;
+      beatWobbly = false;
       return;
     }
     state.reads++;
     const g = out.glyph;
+    const now = performance.now();
     const dim = Math.max(g.w, g.h);
     const frameW = out.facts.frameW || 1;
-    let steadyWithLast = false;
+    // TREMBLE IS NOT TRAVEL. A step within MOVE_FRAC is steady; up to
+    // WOBBLE_FRAC it is a hand's wobble and the beat carries on — but
+    // the window then runs one read longer, and must end within
+    // WOBBLE_FRAC of where it began (a random walk comes home; a
+    // carried letter accumulates and fails the net bar).
+    let stepKind = 'start';                  // start | steady | wobble | broke
     if (lastRead) {
       const moved = Math.hypot(g.cx - lastRead.cx, g.cy - lastRead.cy);
       const grewBy = Math.abs(dim - lastRead.dim) / Math.max(dim, lastRead.dim);
-      steadyWithLast = moved <= MOVE_FRAC * frameW && grewBy <= SIZE_TOL;
-      if (!steadyWithLast) state.unsteady++;
+      if (grewBy > SIZE_TOL || moved > WOBBLE_FRAC * frameW) stepKind = 'broke';
+      else if (moved > MOVE_FRAC * frameW) stepKind = 'wobble';
+      else stepKind = 'steady';
     }
-    state.steady = steadyWithLast ? state.steady + 1 : 1;
+    if (stepKind === 'broke') state.unsteady++;
+    if (stepKind === 'wobble') state.wobbles++;
+    if (stepKind === 'steady' || stepKind === 'wobble') {
+      state.steady++;
+      if (stepKind === 'wobble') beatWobbly = true;
+      const net = Math.hypot(g.cx - beatStart.cx, g.cy - beatStart.cy);
+      if (net > WOBBLE_FRAC * frameW) {      // travelled: not a hold at all
+        state.unsteady++;
+        state.steady = 1;
+        beatStart = { cx: g.cx, cy: g.cy, at: now };
+        beatWobbly = false;
+      }
+    } else {
+      state.steady = 1;
+      beatStart = { cx: g.cx, cy: g.cy, at: now };
+      beatWobbly = false;
+    }
     lastRead = { cx: g.cx, cy: g.cy, dim };
-    if (state.steady >= STEADY_READS) {
+    const needed = beatWobbly ? STEADY_READS + 1 : STEADY_READS;
+    if (state.steady >= needed && now - beatStart.at >= MIN_BEAT_MS) {
       // The beat is complete: this very frame's glyph IS the picture.
+      state.beatSpan = Math.round(now - beatStart.at);
       state.captured = g;
       stop();
       if (opts.onCapture) opts.onCapture(g);
@@ -201,7 +262,13 @@
     state.steady = 0;
     state.captured = null;
     lastRead = null;
-    schedule(INTERVAL);
+    beatStart = null;
+    beatWobbly = false;
+    // The first frame is looked at NOW — the camera is already live and
+    // a child is already holding their letter up; waiting a full
+    // interval before the first glance was ~40% of the capture time.
+    // (tick() itself idles politely until the preview really renders.)
+    schedule(0);
   }
 
   function stop() {
@@ -219,12 +286,22 @@
     state.reads = 0;
     state.steady = 0;
     state.unsteady = 0;
+    state.wobbles = 0;
+    state.beatSpan = 0;
     state.many = false;
     state.manySeen = 0;
     state.captured = null;
     lastRead = null;
+    beatStart = null;
+    beatWobbly = false;
   }
 
-  window.HWLetterLive = { start, stop, reset, state,
-                          INTERVAL, STEADY_READS, MOVE_FRAC, SIZE_TOL };
+  // `verdict` is the suite's deterministic seam — the same entry a
+  // worker verdict takes, driveable directly the way HWLight.verdict
+  // already is, so tremble-vs-travel can be proved at exact geometries
+  // and exact clock spacings (a y4m cannot promise either: the fake
+  // capture holds a frame across the file's loop seam).
+  window.HWLetterLive = { start, stop, reset, state, verdict: handle,
+                          INTERVAL, STEADY_READS, MOVE_FRAC, WOBBLE_FRAC,
+                          SIZE_TOL, MIN_BEAT_MS };
 })();

@@ -60,14 +60,20 @@ const { COMPOSE } = require(path.join(__dirname, 'hw-fixture.js'));
 const W = 1280, H = 960;
 // 5 = the letter-grid redesign: single-letter fixtures replace the
 // card fixtures wholesale. 6 = hw-letter-then-gone (the hand-off).
-const VERSION = 6;
+// 7 = hw-letter-tremor (a held letter with honest hand tremor).
+// (A slow-carry y4m was tried for the net-displacement guard and
+// dropped: Chromium's fake capture holds a frame across the file's
+// loop seam, and a frame held >500ms IS a pause, not a carry — the
+// slow carry is driven deterministically through HWLetterLive.verdict
+// in the suite instead.)
+const VERSION = 7;
 const CHROME = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
 const META = path.join(__dirname, 'hw-feeds.json');
 
 const NAMES = ['hw-letter-R', 'hw-letter-i', 'hw-letter-two',
                'hw-letter-small', 'hw-letter-ruled', 'hw-letter-specks',
                'hw-letter-blank', 'hw-letter-moving',
-               'hw-letter-then-gone', 'hw-noisy'];
+               'hw-letter-then-gone', 'hw-letter-tremor', 'hw-noisy'];
 const FILE = {};
 for (const n of NAMES) FILE[n] = path.join(__dirname, n + '.y4m');
 
@@ -187,6 +193,40 @@ const NOISY_FRAME = `() => {
 // far over the steadiness bar (MOVE_FRAC 0.04 × 1280 = 51px).
 const MOVING_CX = [300, 640, 980, 450, 820, 300, 980, 500];
 
+/* THE HAND-TREMOR FIXTURE — a child HOLDING a big clear letter up, with
+ * an honest hand: the letter TREMBLES around one place instead of
+ * travelling anywhere. Seeded (mulberry32 — Math.random appears
+ * nowhere): the offset is a pulled-back random walk (each frame keeps
+ * ¾ of the last offset and adds a fresh ~N(0,42px) kick), so it
+ * wanders tens of pixels and always comes home — tremble, not travel —
+ * plus slight scale breathing (±4%) for the arm moving nearer and
+ * farther. At 2fps a frame is ~one live-loop verdict apart, so the
+ * per-frame steps ARE the per-verdict displacements the loop sees:
+ * measured at generation and recorded in the meta (typically 15–110px
+ * at 1280 width — regularly over the old 51px per-step bar, which is
+ * exactly the field failure this fixture reproduces, and essentially
+ * never over a whole letter width, which is what an honest carry
+ * does). */
+function tremorFrames() {
+  let s = 97;
+  const rnd = () => { s |= 0; s = (s + 0x6D2B79F5) | 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  const gauss = () => (rnd() + rnd() + rnd() + rnd() - 2) * 1.732;
+  const frames = [];
+  let ox = 0, oy = 0;
+  for (let i = 0; i < 12; i++) {
+    ox = Math.max(-95, Math.min(95, 0.75 * ox + gauss() * 42));
+    oy = Math.max(-95, Math.min(95, 0.75 * oy + gauss() * 42));
+    const breath = 1 + (rnd() - 0.5) * 0.08;
+    frames.push({ seed: 50 + i, size: Math.round(430 * breath),
+                  letters: [{ ch: 'R', cx: 640 + Math.round(ox),
+                              cy: 480 + Math.round(oy) }] });
+  }
+  return frames;
+}
+
 // The fixtures, declaratively: composer opts + frame rate.
 const FIXTURES = {
   'hw-letter-R':      { fps: 30, frames: [{ ch: 'R', seed: 5, size: 430 }] },
@@ -205,7 +245,8 @@ const FIXTURES = {
       MOVING_CX.slice(0, 4).map((cx, i) =>
         ({ seed: 30 + i, size: 430, letters: [{ ch: 'R', cx, cy: 480 }] }))
       .concat([0, 1, 2, 3].map((i) =>
-        ({ seed: 40 + i, letters: [], noPaper: true }))) }
+        ({ seed: 40 + i, letters: [], noPaper: true }))) },
+  'hw-letter-tremor': { fps: 2, frames: tremorFrames() }
 };
 
 async function generate(base) {
