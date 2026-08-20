@@ -9,21 +9,23 @@
  * overlay re-measured against the video's own box every frame, so it
  * stays on the picture whatever the layout does). GREEN when the most
  * recent analysed frame ACTUALLY read at the full standard — exactly
- * one card stands, surely named, letters collectable, the same verdict
- * that decides whether a frame collects — and RED when it did not.
- * Green is never a guess: the signal is the live worker's own per-frame
- * verdict (js/hwLive.js → onVerdict), which runs the very hwRead that a
- * pressed Take would run, so "the light is green" and "taking the
- * picture now would read" are one fact, not two opinions.
+ * one clear letter stands in view, big enough to capture well, the
+ * same verdict whose steady beat auto-takes the picture — and RED when
+ * it did not. Green is never a guess: the signal is the live worker's
+ * own per-frame verdict (js/hwLetterLive.js → onVerdict), which runs
+ * the very one-letter read (js/hwLetter.js) that a pressed Take would
+ * run, so "the light is green" and "taking the picture now would read"
+ * are one fact, not two opinions. (The seam is unchanged from the
+ * card era this light shipped in — only what the verdict MEANS was
+ * re-aimed when the letter grid replaced the cards.)
  *
- * WHERE IT SITS — the top-right corner of the picture, and that corner
- * is chosen by measurement, not taste. In the wide frame a held card is
- * fitted by width and centred: across every one-card fixture the card's
- * top edge lands at y ≥ 190px of the 960-high frame (card-1: 250px,
- * attached: 190px, and a far-away card sits lower still), so the top
- * band is always open desk. The light's lowest pixel sits ~52px down —
- * ≥138px (≥14% of the frame) clear of any card a child can show. The
- * bottom corners are ruled out twice over: the one-card note floats
+ * WHERE IT SITS — the top-right corner of the picture, kept from the
+ * card era. A single letter is held roughly centred (the armed words
+ * ask for it big, in the middle of the view), so the frame's corner
+ * stays the least-occupied ground; and the light only OVERLAYS the
+ * preview — the reader sees the full frame regardless, so a letter
+ * held under the corner still reads and still captures. The bottom
+ * corners are ruled out twice over: the one-letter note floats
  * bottom-centre, and hands enter the picture from the bottom.
  *
  * WHAT IT LOOKS LIKE — a light, never an instrument. No corner
@@ -36,24 +38,25 @@
  * gently; under prefers-reduced-motion they simply switch.
  *
  * THE DEBOUNCE — measured, not guessed. Verdicts land every
- * ~600ms (INTERVAL 500ms floor + ~70–100ms analysis; the heaviest
- * honest frame ~350ms pushes one cycle to ~1050ms). A child glancing
- * between the card and the screen must see a stable answer, so a
+ * ~600ms (INTERVAL 500ms floor + ~30–100ms one-letter analysis; the
+ * heaviest measured honest frame, a big upload-sized view, ~150ms —
+ * one cycle stays well under HOLD_MS). A child glancing
+ * between the letter and the screen must see a stable answer, so a
  * single refused frame between two read frames — a hand wobble, one
  * blurred frame — never blinks the light: green yields only after TWO
  * consecutive non-reading verdicts (~1.2s after the view stops
  * reading), or after HOLD_MS with no reading verdict at all (the
  * backstop for a stalled loop — a wedged worker sends no verdicts, and
  * the light must not claim green into the silence). HOLD_MS = 1200ms
- * covers the worst honest verdict cycle (~1050ms) with margin, so the
+ * covers the worst honest verdict cycle (~650ms) with margin, so the
  * hold can never expire between two genuine reads. Green needs no
  * debounce: a reading verdict is definitive (refuse-rather-than-guess
  * means the reader has no false yes), and it is the direction where a
  * slow answer would cost a child the moment.
  *
  * This module is DOM only — it owns no camera, no stream, no reading.
- * hwApp.js shows it while the handwriting sweep runs and hides it when
- * the sweep stops; camera.js is untouched and stays flow-agnostic (the
+ * hwApp.js shows it while the letter loop runs and hides it when the
+ * loop stops; camera.js is untouched and stays flow-agnostic (the
  * drawing capture has no reader, so it gets no light — a light there
  * would be an invented claim).
  */
