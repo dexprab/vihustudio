@@ -918,6 +918,423 @@
              inkWidth: pw, cx };
   }
 
+  /* One line's read result from its aligned components — the shared tail
+   * of the whole-sheet path and the single-line (free-motion) path, so
+   * the two can never drift in what a "read line" means. Appends the
+   * accepted x-class letters' raw ink heights to xTops. */
+  function assembleLine(i, text, comps, al, rule, zone, seg, xTops, log) {
+    const XC = (window.HWFont && HWFont.XCLASS) || 'acemnorsuvwxz';
+    // Under MIN_UNIT_PX of unit width the aligner's only evidence is
+    // gone — nothing on this line may be accepted (see P.MIN_UNIT_PX).
+    const unitTooSmall = comps.length > 0 && al.unit > 0 && al.unit < P.MIN_UNIT_PX;
+    const blobs = comps.map((c) => ({ x0: c.x0, x1: c.x1, y0: c.y0, y1: c.y1, n: c.px.length }));
+    const letters = [];
+    const gapsIntra = [], gapsWord = [];
+    let prevMatch = null, prevSpace = false;
+    for (let t = 0; t < al.tokens.length; t++) {
+      const tok = al.tokens[t];
+      if (tok.ch === ' ') { prevSpace = true; continue; }
+      const ok = !unitTooSmall && accept(tok, comps, al.unit);
+      if (unitTooSmall && (tok.kind === 'match' || tok.kind === 'split')) {
+        tok.refused = 'coarse';
+      }
+      const entry = { ch: tok.ch, kind: tok.kind, accepted: ok,
+                      refused: tok.refused || (ok ? null : tok.kind), cost: tok.cost,
+                      blobIndex: tok.blob != null ? tok.blob : null };
+      if (ok) {
+        const pieces = (tok.kind === 'split' ? tok.blobs : [tok.blob]).map((b) => comps[b]);
+        entry.sample = samplePatch(pieces, seg, rule, zone.anis);
+        if (XC.includes(tok.ch)) xTops.push(entry.sample.rawTop);
+        entry.blobX0 = entry.sample.x0;
+        entry.blobX1 = entry.sample.x0 + entry.sample.w - 1;
+        if (prevMatch != null) {
+          const gap = pieces[0].x0 - prevMatch;
+          (prevSpace ? gapsWord : gapsIntra).push(gap);
+        }
+        prevMatch = pieces[pieces.length - 1].x1;
+        prevSpace = false;
+      } else {
+        prevMatch = null; prevSpace = false;
+      }
+      letters.push(entry);
+    }
+    const expected = letters.length;
+    const got = letters.filter((l) => l.accepted).length;
+    const touching = letters.filter((l) => l.kind === 'touching').length;
+    // Joined-up: touching-refusals dominate → the letters held hands.
+    // A merely messy line (a couple of touching pairs, the rest read)
+    // stays below both gates and keeps the generic retake.
+    // A line whose unit collapsed is a resolution problem, never a
+    // writing-style diagnosis — it must not claim "joined-up".
+    const joined = !unitTooSmall && expected > 0 &&
+      (touching >= P.JOINED_TOUCH_FRAC * expected ||
+       (got <= P.JOINED_ACCEPT_FRAC * expected &&
+        touching >= P.JOINED_TOUCH_FRAC_LO * expected));
+    log('hw: line ' + (i + 1) + ' — ' + comps.length + ' blobs vs ' + expected +
+        ' letters: ' + got + ' accepted, ' +
+        touching + ' touching-refused, ' +
+        letters.filter((l) => l.kind === 'missing').length + ' missing (unit ' +
+        Math.round(al.unit) + 'px)' + (joined ? ' — READS AS JOINED-UP' : '') +
+        (unitTooSmall ? ' — UNIT UNDER ' + P.MIN_UNIT_PX +
+          'px: too coarse to verify, everything refused' : ''));
+    return { index: i, text, found: true, rule,
+             letters, expected, accepted: got, touching, joined, blobs,
+             unit: al.unit, gapsIntra, gapsWord };
+  }
+
+  // ---- 2c. ONE LINE — free-motion close-up registration -----------------------
+  /* The free-motion capture mode: the child sweeps the camera over the
+   * sheet and lines are collected one at a time, in any order. A frame
+   * holds a SINGLE line when one anchor-star pair registers it — two
+   * star-sized dark isolated marks, horizontally separated by a
+   * plausible rule length, with the printed MODEL text's ink above the
+   * rule they imply. WHICH line it is is decided by ALIGNMENT, never
+   * recognition: the child's ink is DP-aligned against ALL FIVE known
+   * texts and the best is taken only when it wins by a clear margin AND
+   * meets the normal acceptance quality. Ambiguity refuses the frame —
+   * the child keeps sweeping; a wrong line identity is never possible
+   * to accept quietly, and the suite asserts zero. */
+  const PL = {
+    SPAN_MIN: 0.35,     // pair span ≥ this × frame width — a line fills the frame
+    SIZE_LO: 0.2,       // mark area vs the pair's own implied star size…
+    SIZE_HI: 4.0,       //   (wider than the ladder's gate: no anis known yet)
+    MODEL_MIN: 0.012,   // printed model-text band ink density ≥ this
+    PAIR_CAP: 6,        // at most this many candidate pairs tried per frame
+    // Identity gates. Measured (close-up fixtures, all five lines):
+    // child ink ALONE is not identity-safe — the true text accepted
+    // 30–31 letters but the best wrong text 20–25 (three full pangrams
+    // align each other's ink far too well: margin ~1.35×), and a stray
+    // dot-sized pair once dropped a zone onto arbitrary ink that the
+    // forgiving digits text accepted. So identity is TWO witnesses that
+    // must agree: the printed MODEL line (clean print at a known offset,
+    // aligned by the same DP — measured margin on the fixtures: true
+    // text 30–36 accepted, best wrong text ≤ a third of that) names the
+    // line, and the child's ink's own best alignment must name the SAME
+    // line at the normal acceptance quality. Both are alignment against
+    // known text — nothing recognises a letter anywhere.
+    MODEL_FRAC: 0.72,        // the model line is print: ≥ this fraction aligns
+    // In-class margins measured on the close-up fixtures: 1.47–2.0 flat,
+    // degrading to 1.22–1.25 under blur + JPEG + a couple of degrees of
+    // roll. The margin alone never inverted (the true text stayed the
+    // argmax in every measurement); junk pairs are refused by the OTHER
+    // witnesses (class agreement and the child argmax), so the gate sits
+    // under the degraded true margins rather than above the junk ones.
+    MODEL_ID_MARGIN: 1.15,   // …and beats the runner-up IN ITS CLASS by this
+    ID_MIN: 12,              // the child's ink: at least this accepted…
+    ID_FRAC: 0.4,            // …and ≥ this fraction of the line's letters
+    // The case classes. A width DP cannot tell the capitals line from
+    // its lowercase twin (same sentence — measured 28 vs 27 on clean
+    // print), but the INK TOPS can, scale-free: a caps or digits line
+    // is height-UNIFORM above its baseline, a lowercase pangram is
+    // bimodal (x-height plus its ascenders, ≥23% of its letters by
+    // construction of the texts). u = p85(top)/median(top).
+    CASE_UNIFORM: 1.15,      // u ≤ this → caps/digits class
+    CASE_MIXED: 1.25         // u ≥ this → lowercase class; between → refuse
+  };
+
+  // The ink-top uniformity signal above a baseline fit, and a text's
+  // case class. Both sides of the identity check speak this: the band's
+  // measured class must match the class of the text it claims to be.
+  function caseSignal(comps, fit) {
+    const tops = [];
+    for (const c of comps) {
+      const t = fit.yAt(c.cx) - c.y0;
+      if (t > 0) tops.push(t);
+    }
+    if (tops.length < 6) return null;
+    tops.sort((a, b) => a - b);
+    const q = (p) => tops[Math.min(tops.length - 1, Math.round(p * (tops.length - 1)))];
+    const med = q(0.5);
+    return med > 0 ? q(0.85) / med : null;
+  }
+  function isUniformText(text) { return !/[a-z]/.test(text); }
+  function classOf(u) {
+    if (u == null) return null;
+    if (u <= PL.CASE_UNIFORM) return 'uniform';
+    if (u >= PL.CASE_MIXED) return 'mixed';
+    return null;
+  }
+
+  /* Candidate anchor pairs for a single line, best first. Reuses the
+   * ladder's own mark candidacy (collectMarks) and isolation test —
+   * one machinery, two registrations. */
+  function findLinePairs(seg) {
+    const { marks, darkGate } = collectMarks(seg);
+    if (marks.length < 2) return [];
+    const W = seg.width;
+    const G = HWSheet.GEOM;
+    const aSpan = G.anchorXRight - G.anchorXLeft;
+    const isoCache = new Map();
+    const iso = (m) => {
+      let v = isoCache.get(m.label);
+      if (v === undefined) { v = isIsolated(seg, m, darkGate); isoCache.set(m.label, v); }
+      return v;
+    };
+    const t0 = (G.xLeft - G.anchorXLeft) / aSpan;
+    const t1 = (G.xRight - G.anchorXLeft) / aSpan;
+    const modelLo = G.ruleOffset - G.modelBaseline; // model baseline above the rule (of H)
+    const pairs = [];
+    for (let i = 0; i < marks.length; i++) {
+      for (let j = 0; j < marks.length; j++) {
+        if (i === j) continue;
+        const L = marks[i], R = marks[j];
+        const dx = R.cx - L.cx;
+        if (dx < PL.SPAN_MIN * W) continue;
+        if (Math.abs(R.cy - L.cy) > P.A_RUNG_TILT * dx) continue;
+        const s = Math.max(L.size, R.size) / Math.min(L.size, R.size);
+        if (s > 4) continue;
+        const pageW = dx / aSpan;
+        const exp = HWSheet.anchorAreaPx(pageW);
+        const qL = L.size / exp, qR = R.size / exp;
+        if (qL < PL.SIZE_LO || qL > PL.SIZE_HI ||
+            qR < PL.SIZE_LO || qR > PL.SIZE_HI) continue;
+        if (!iso(L) || !iso(R)) continue;
+        // The rule's endpoints, interpolated along the pair (the marks
+        // sit at known sheet fractions — the ladder's own arithmetic).
+        const x0 = L.cx + t0 * dx, y0 = L.cy + t0 * (R.cy - L.cy);
+        const x1 = L.cx + t1 * dx, y1 = L.cy + t1 * (R.cy - L.cy);
+        // The printed MODEL text stands a known distance above the rule.
+        // A pair with no ink there is not a writing line — two stray
+        // marks cannot fake the sheet's own print.
+        const Hpage = pageW * G.aspect;
+        const b = (y1 - y0) / Math.max(1e-6, x1 - x0);
+        let on = 0, total = 0;
+        const xa = Math.round(x0 + 0.1 * (x1 - x0));
+        const xb = Math.round(x0 + 0.9 * (x1 - x0));
+        const dyA = Math.round((modelLo + G.modelSize) * Hpage);
+        const dyB = Math.round((modelLo - G.modelSize * 0.35) * Hpage);
+        for (let x = xa; x <= xb; x += 2) {
+          if (x < 0 || x >= W) continue;
+          const yr = y0 + b * (x - x0);
+          for (let dy = dyB; dy <= dyA; dy += 2) {
+            const y = Math.round(yr - dy);
+            if (y < 0 || y >= seg.height) continue;
+            total++;
+            if (seg.ink[y * W + x]) on++;
+          }
+        }
+        const density = total > 40 ? on / total : 0;
+        if (density < PL.MODEL_MIN) continue;
+        const tilt = Math.abs(R.cy - L.cy) / dx;
+        pairs.push({ x0, y0, x1, y1, b, dx, tilt, pageW, density,
+                     sizeErr: Math.abs(Math.log(qL)) + Math.abs(Math.log(qR)) });
+      }
+    }
+    // Longest first: the anchors are the OUTERMOST marks of their line,
+    // so the true pair is the widest — a dot-and-anchor pair is always
+    // shorter. Ties (there are none in practice) break flatter-first.
+    pairs.sort((p, q) => (q.dx - p.dx) || (p.tilt - q.tilt));
+    if (pairs.length > PL.PAIR_CAP) pairs.length = PL.PAIR_CAP;
+    return pairs;
+  }
+
+  // The accepted-letter count of one component list against one known
+  // text — the identity scorer's unit of evidence.
+  function scoreAgainst(text, comps) {
+    const al = align(text, comps);
+    const unitTooSmall = al.unit > 0 && al.unit < P.MIN_UNIT_PX;
+    let acc = 0, expected = 0;
+    for (const tok of al.tokens) {
+      if (tok.ch === ' ') continue;
+      expected++;
+      if (!unitTooSmall && accept(tok, comps, al.unit)) acc++;
+    }
+    return { acc, expected, unit: al.unit };
+  }
+
+  // Close-up bands only: drop what cannot be writing at all — a
+  // component most of the rule's own width, or taller than the whole
+  // writing zone, is the sheet's edge or the room, never a letter and
+  // never even a welded word (a weld is per word, a fraction of the
+  // rule). See the caller for the measured failure this closes.
+  function dropNonWriting(comps, fit, zone) {
+    const maxW = 0.6 * fit.len;
+    const maxH = 1.5 * (zone.ascentPx + zone.descentPx);
+    return comps.filter((c) =>
+      (c.x1 - c.x0 + 1) <= maxW && (c.y1 - c.y0 + 1) <= maxH);
+  }
+
+  /* Read ONE line from an already-segmented frame. Returns
+   * { ok:true, index, line, capture, scores } or { ok:false } —
+   * never a guess: an ambiguous identity is a refusal. */
+  function readLineFromSeg(seg, log) {
+    const G = HWSheet.GEOM;
+    const pairs = findLinePairs(seg);
+    // TWO PASSES over the candidate pairs. The first leaves the ink
+    // exactly as segmented — on a bright capture the printed rule is
+    // below the ink margin and nothing needs removing, so nothing pays
+    // the sweep's disclosed cost (round letter bottoms can split at the
+    // rule). If NO pair collects, the second pass sweeps the rule band:
+    // a JPEG camera frame pushes patches of the faint rule over the ink
+    // margin — too few for the 30% backstop gate, plenty to weld the
+    // whole line into one blob (measured: 1 component where 35 stood).
+    for (const sweep of [false, true]) {
+      const got = tryPairs(seg, pairs, sweep, G, log);
+      if (got) return got;
+      if (!pairs.length) break;
+    }
+    return { ok: false };
+  }
+
+  function tryPairs(seg, pairs, sweep, G, log) {
+    for (const pr of pairs) {
+      const fit = { a: pr.y0 - pr.b * pr.x0, b: pr.b,
+                    x0: Math.round(pr.x0), x1: Math.round(pr.x1),
+                    len: pr.x1 - pr.x0 + 1, thickness: 1,
+                    yAt(x) { return this.a + this.b * x; } };
+      // No pitch is measurable from one pair, so the zone is isotropic
+      // (anis = 1): a close-up is held roughly square-on, and a frame
+      // that is not simply fails the identity gates and is re-swept.
+      const zone = HWSheet.lineZoneFor(fit.len);
+      fit.thickness = Math.max(1, Math.round(zone.ruleThicknessPx));
+      const Hpage = zone.pageH;
+      // THE PRINTED MODEL LINE IS A WITNESS. It stands at a known offset
+      // above the rule, it is clean print, and it is one of the same
+      // five known texts — so it is read by the same alignment (never
+      // recognition) and must name the SAME line as the child's ink.
+      // Measured, this is what makes identity safe: the child-ink DP
+      // alone separated the true text from its neighbours by only
+      // ~1.35× (three full pangrams align each other's ink far too
+      // well), and a stray pair of dot-sized marks could drop a zone
+      // onto arbitrary ink and have the forgiving digits text accept
+      // it. The model band refuses both: a wrong pair has no clean
+      // print at the model offset, and the print names its own line.
+      const modelFit = { a: fit.a - (G.ruleOffset - G.modelBaseline) * Hpage,
+                         b: fit.b, x0: fit.x0, x1: fit.x1, len: fit.len,
+                         thickness: 1, yAt(x) { return this.a + this.b * x; } };
+      const modelZone = { pageW: zone.pageW, pageH: Hpage,
+                          ascentPx: G.modelSize * 1.3 * Hpage,
+                          descentPx: G.modelSize * 0.45 * Hpage,
+                          blockStepPx: zone.blockStepPx,
+                          ruleThicknessPx: 1, anis: 1 };
+      let modelComps = lineComponents(seg.ink, seg, modelFit, modelZone);
+      modelComps = dropNonWriting(modelComps, modelFit, modelZone);
+      modelComps = mergeSatellites(modelComps, modelZone);
+      if (modelComps.length < 8) {           // no print here → not a line
+        log('hw: one-line pair (span ' + Math.round(pr.dx) + 'px) — no printed ' +
+            'model text above it (' + modelComps.length + ' marks) — keep sweeping');
+        continue;
+      }
+      // The model band's CASE CLASS first — it halves the candidate
+      // list and is what separates the capitals line from its lowercase
+      // twin, which the width DP alone cannot (measured 28 vs 27).
+      const uModel = caseSignal(modelComps, modelFit);
+      const mClass = classOf(uModel);
+      if (!mClass) {
+        log('hw: one-line pair (span ' + Math.round(pr.dx) + 'px) — the model ' +
+            'band\'s case is unclear (u=' + (uModel == null ? '—' : uModel.toFixed(2)) +
+            ') — keep sweeping');
+        continue;
+      }
+      const candidates = [];
+      for (let t = 0; t < HWSheet.LINES.length; t++) {
+        if ((isUniformText(HWSheet.LINES[t].text) ? 'uniform' : 'mixed') === mClass) {
+          candidates.push(Object.assign({ t },
+            scoreAgainst(HWSheet.LINES[t].text, modelComps)));
+        }
+      }
+      candidates.sort((a, b) => b.acc - a.acc);
+      const mBest = candidates[0], mSecond = candidates[1];
+      const modelSure = mBest.acc >= PL.MODEL_FRAC * mBest.expected &&
+        mBest.acc >= PL.MODEL_ID_MARGIN * Math.max(1, mSecond ? mSecond.acc : 0);
+      if (!modelSure) {
+        log('hw: one-line pair (span ' + Math.round(pr.dx) + 'px) — the printed ' +
+            'model line did not name a line clearly (' + mClass + ' u=' +
+            uModel.toFixed(2) + '; ' +
+            candidates.map((s) => 'line ' + (s.t + 1) + ':' + s.acc).join(' ') +
+            ') — keep sweeping');
+        continue;
+      }
+      let cleaned = seg.ink;
+      if (sweep) {
+        cleaned = Uint8Array.from(seg.ink);
+        removeRule(cleaned, seg, fit, Math.round(0.012 * zone.pageW));
+      }
+      let comps = lineComponents(cleaned, seg, fit, zone);
+      // NOT-WRITING FILTER, close-up only. A close-up frame has the
+      // sheet's own edge in it, and that edge's anti-aliased boundary
+      // against the room segments as one frame-wide component whose
+      // centroid can land inside the writing band — mergeSatellites
+      // then swallows every letter into it (measured: 1 component where
+      // 35 stood, with every letter intact underneath). Nothing on a
+      // writing line is anywhere near the rule's own width or the whole
+      // zone's height, so the cap costs no letter and no welded word.
+      comps = dropNonWriting(comps, fit, zone);
+      comps = mergeSatellites(comps, zone);
+      if (comps.length < 4) {                // an unwritten line collects nothing
+        log('hw: one-line pair (span ' + Math.round(pr.dx) + 'px) — the writing ' +
+            'line under the model is empty (' + comps.length + ' marks) — keep sweeping');
+        continue;
+      }
+      // The child's ink must AGREE, twice over: its measured case class
+      // matches the model's, and its own best alignment WITHIN that
+      // class is the very line the model named, at the normal
+      // acceptance quality. Disagreement refuses the frame — never a
+      // guess, never a wrong line identity.
+      const uChild = caseSignal(comps, fit);
+      const cClass = classOf(uChild);
+      const scores = [];
+      for (let t = 0; t < HWSheet.LINES.length; t++) {
+        scores.push(Object.assign({ t },
+          scoreAgainst(HWSheet.LINES[t].text, comps)));
+      }
+      let best = null;
+      for (const s of scores) {
+        if ((isUniformText(HWSheet.LINES[s.t].text) ? 'uniform' : 'mixed') !== mClass) continue;
+        if (!best || s.acc > best.acc) best = s;
+      }
+      const confident = cClass === mClass && best && best.t === mBest.t &&
+        best.acc >= PL.ID_MIN &&
+        best.acc >= PL.ID_FRAC * best.expected;
+      log('hw: one-line pair (span ' + Math.round(pr.dx) + 'px, tilt ' +
+          (Math.atan(pr.b) * 180 / Math.PI).toFixed(1) + '°) — model says line ' +
+          (mBest.t + 1) + ' (' + mClass + ', ' + mBest.acc + ' of ' + mBest.expected +
+          (mSecond ? ' vs ' + mSecond.acc : '') + '); child ink (u=' +
+          (uChild == null ? '—' : uChild.toFixed(2)) + ') accepted per text: ' +
+          scores.map((s) => 'line ' + (s.t + 1) + ':' + s.acc).join(' ') +
+          (confident ? ' → line ' + (best.t + 1)
+                     : ' → not sure enough, keep sweeping'));
+      if (!confident) continue;
+      const xTops = [];
+      const line = assembleLine(best.t, HWSheet.LINES[best.t].text, comps,
+                                align(HWSheet.LINES[best.t].text, comps),
+                                fit, zone, seg, xTops, log);
+      const xh = median(xTops) || 0.4 * zone.ascentPx;
+      log('hw: one line met — line ' + (best.t + 1) + ', ' + line.accepted +
+          ' of ' + line.expected + ' letters, x-height ~' + Math.round(xh) +
+          'px' + (xTops.length ? ' (measured)' : ' (estimated)'));
+      return { ok: true, index: best.t, line, scores,
+               capture: { xHeightPx: xh, xHeightMeasured: xTops.length > 0,
+                          coarse: xh < P.COARSE_XH, unit: line.unit,
+                          pageW: zone.pageW,
+                          tilt: Math.atan(pr.b) * 180 / Math.PI } };
+    }
+    return null;
+  }
+
+  /* One live frame of the free-motion loop. The whole sheet wins when it
+   * is there — a frame where the FULL ladder registers reads the whole
+   * sheet at once (all five lines land together, which is also exactly
+   * what a whole-sheet photo through the same camera already did) —
+   * otherwise the frame is offered to the single-line reader. */
+  function readFrame(photo, opts) {
+    opts = opts || {};
+    const log = opts.log || function () {};
+    const loop = [[1, 1], [photo.width - 2, 1],
+                  [photo.width - 2, photo.height - 2], [1, photo.height - 2]];
+    const claim = BIAClaim.claim(loop, photo.width, photo.height);
+    const seg = BIASegment.segment(photo, claim);
+    if (findLadder(seg, function () {})) {
+      const res = read(photo, opts);
+      if (res.ok) return { kind: 'sheet', result: res };
+      return { kind: 'nothing' };
+    }
+    const one = readLineFromSeg(seg, log);
+    if (one.ok) return { kind: 'line', index: one.index, line: one.line,
+                         capture: one.capture, scores: one.scores };
+    return { kind: 'nothing' };
+  }
+
   // ---- the reader ------------------------------------------------------------
   /* read(photo, {log, onlyLine}) → result. `onlyLine` limits the merge a
    * per-line retake wants; the whole sheet is still located (the rules
@@ -1004,7 +1421,6 @@
 
     const lines = [];
     const xTops = []; // raw camera-pixel ink heights of accepted x-class letters
-    const XC = (window.HWFont && HWFont.XCLASS) || 'acemnorsuvwxz';
     for (let i = 0; i < HWSheet.LINES.length; i++) {
       const text = HWSheet.LINES[i].text;
       if (opts.onlyLine != null && opts.onlyLine !== i) {
@@ -1015,63 +1431,8 @@
       const zone = zones[i];
       let comps = lineComponents(cleaned, seg, rule, zone);
       comps = mergeSatellites(comps, zone);
-      const al = align(text, comps);
-      // Under MIN_UNIT_PX of unit width the aligner's only evidence is
-      // gone — nothing on this line may be accepted (see P.MIN_UNIT_PX).
-      const unitTooSmall = comps.length > 0 && al.unit > 0 && al.unit < P.MIN_UNIT_PX;
-      const blobs = comps.map((c) => ({ x0: c.x0, x1: c.x1, y0: c.y0, y1: c.y1, n: c.px.length }));
-      const letters = [];
-      const gapsIntra = [], gapsWord = [];
-      let prevMatch = null, prevSpace = false;
-      for (let t = 0; t < al.tokens.length; t++) {
-        const tok = al.tokens[t];
-        if (tok.ch === ' ') { prevSpace = true; continue; }
-        const ok = !unitTooSmall && accept(tok, comps, al.unit);
-        if (unitTooSmall && (tok.kind === 'match' || tok.kind === 'split')) {
-          tok.refused = 'coarse';
-        }
-        const entry = { ch: tok.ch, kind: tok.kind, accepted: ok,
-                        refused: tok.refused || (ok ? null : tok.kind), cost: tok.cost,
-                        blobIndex: tok.blob != null ? tok.blob : null };
-        if (ok) {
-          const pieces = (tok.kind === 'split' ? tok.blobs : [tok.blob]).map((b) => comps[b]);
-          entry.sample = samplePatch(pieces, seg, rule, zone.anis);
-          if (XC.includes(tok.ch)) xTops.push(entry.sample.rawTop);
-          entry.blobX0 = entry.sample.x0;
-          entry.blobX1 = entry.sample.x0 + entry.sample.w - 1;
-          if (prevMatch != null) {
-            const gap = pieces[0].x0 - prevMatch;
-            (prevSpace ? gapsWord : gapsIntra).push(gap);
-          }
-          prevMatch = pieces[pieces.length - 1].x1;
-          prevSpace = false;
-        } else {
-          prevMatch = null; prevSpace = false;
-        }
-        letters.push(entry);
-      }
-      const expected = letters.length;
-      const got = letters.filter((l) => l.accepted).length;
-      const touching = letters.filter((l) => l.kind === 'touching').length;
-      // Joined-up: touching-refusals dominate → the letters held hands.
-      // A merely messy line (a couple of touching pairs, the rest read)
-      // stays below both gates and keeps the generic retake.
-      // A line whose unit collapsed is a resolution problem, never a
-      // writing-style diagnosis — it must not claim "joined-up".
-      const joined = !unitTooSmall && expected > 0 &&
-        (touching >= P.JOINED_TOUCH_FRAC * expected ||
-         (got <= P.JOINED_ACCEPT_FRAC * expected &&
-          touching >= P.JOINED_TOUCH_FRAC_LO * expected));
-      log('hw: line ' + (i + 1) + ' — ' + comps.length + ' blobs vs ' + expected +
-          ' letters: ' + got + ' accepted, ' +
-          touching + ' touching-refused, ' +
-          letters.filter((l) => l.kind === 'missing').length + ' missing (unit ' +
-          Math.round(al.unit) + 'px)' + (joined ? ' — READS AS JOINED-UP' : '') +
-          (unitTooSmall ? ' — UNIT UNDER ' + P.MIN_UNIT_PX +
-            'px: too coarse to verify, everything refused' : ''));
-      lines.push({ index: i, text, found: true, rule,
-                   letters, expected, accepted: got, touching, joined, blobs,
-                   unit: al.unit, gapsIntra, gapsWord });
+      lines.push(assembleLine(i, text, comps, align(text, comps),
+                              rule, zone, seg, xTops, log));
     }
 
     // Honest capture facts: how the photo registered, how tilted each
@@ -1098,5 +1459,6 @@
                         flipped: !!opts._flipped } };
   }
 
-  window.HWRead = { read, PARAMS: P, wt, collectMarks, findLadder };
+  window.HWRead = { read, readFrame, PARAMS: P, LINE_PARAMS: PL, wt,
+                    collectMarks, findLadder, findLinePairs };
 })();
