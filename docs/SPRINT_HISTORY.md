@@ -4334,3 +4334,37 @@ Disclosed limits: a legacy card shown in close-up refuses kindly; a
 thumb across the middle of a card refuses until re-held; welded cards
 ride the model print alone (zero-mislabel holds); real print, pencil
 and scissors remain the field test.
+
+## The Phantom Second Card — Naming Meets the Reading Standard
+
+Field failure, confirmed by the product owner: ONE cut reading card
+held to the camera was refused as *"more than one card in this
+photograph (cards 1, 3)"* — the kind message instructing a child to do
+the thing they were already doing. Reproduced deterministically at the
+field's own numbers (492 raw components vs the field's 498; junk span
+1140 vs 1142; real span 453 vs 454): a junk pair of two star-sized
+desk specks implied a card that was never there, its model band caught
+the REAL card's print at a wrong offset and scale, the clipped slice
+aligned "surely", and the phantom's rule sat 150px below the real one
+— past the cluster merge — so it stood as a second card. The fix binds
+`surveyCards` to one principle: **a refusal that blames a second card
+must meet the evidence standard of a read.** A sure naming now also
+requires the print to FIT the pair's own card — unit agreement
+(measured model unit within 0.62–1.6 of the span-implied unit; genuine
+0.89–1.33, junk 0.42–0.45) and print coverage (≥0.65 of the claimed
+rule; genuine 0.74–1.00, junk 0.47–0.60) — and sure namings are logged
+so the next field log shows what the survey believed. A sibling
+failure found during reproduction is pinned by the same standard: a
+junk pair had fed 18 letters of a card not in view into the child's
+font. The strict one-card rule is untouched by the owner's choice: two
+genuine cards still refuse, and a cluster-scale veto was deliberately
+NOT added because it could un-count a real second card. Distance
+ladder asserted — one card at nine scales (unit 1.4→20px) never
+refuses as many, zero mislabels. Suites: base 191/191, handwriting
+141→152/152 (11 new HW-P checks incl. the old-standard reproduction).
+Disclosed: the fixture's phantom names the true card's own text where
+the field's named a sibling (same mechanism, both covered); "one card,
+too far" cannot honestly be told from "nothing found", so the generic
+kind refusal stands; a real printed page held beside a card (a book)
+remains the one theoretical phantom; real cards under real light
+remain the field test.
