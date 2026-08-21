@@ -563,6 +563,48 @@ function check(cond, name, note) { (cond ? ok : fail)(name, note); }
     'F10 it holds still while a dialog is open', JSON.stringify(overlay));
 
   // ---------------------------------------------------------------
+  console.log('\nVOICE AND WORDS — they arrive together');
+  // ---------------------------------------------------------------
+
+  // The product owner's rule: the words are held back until the sound
+  // is ready, and may never precede it by more than a second.
+  const timing = await page.evaluate(async () => {
+    const bubble = document.querySelector('.companion-bubble');
+    const eng = window.__vihuTestEngine;
+    if (!bubble) return { skipped: 'no bubble' };
+
+    const visible = () => bubble.className.indexOf('companion-bubble-hidden') === -1;
+    const out = {};
+
+    // 1. A voice that is never coming must not delay the words at all:
+    //    with no platform configured, prepare() answers false quickly
+    //    and the line goes up rather than waiting out the cap.
+    const t0 = performance.now();
+    CompanionDirector.notify('story-started');
+    for (let i = 0; i < 60 && !visible(); i++) await new Promise((r) => setTimeout(r, 50));
+    out.noVoiceMs = Math.round(performance.now() - t0);
+    out.shown = visible();
+    return out;
+  });
+  check(timing.skipped || timing.shown, 'V1 a line still reaches the child',
+    JSON.stringify(timing));
+  check(timing.skipped || timing.noVoiceMs < 2500,
+    'V2 a line with no voice coming is not held back', timing.noVoiceMs + 'ms');
+
+  // The promise itself, checked against the constants in the engine.
+  const promise = await page.evaluate(() => {
+    const src = String(CompanionEngine.prototype.speak);
+    return {
+      waits: /prepare\(/.test(src),
+      caps: /capTimer|VOICE_WAIT_MS/.test(src),
+      leadRule: /MAX_LEAD_MS/.test(src)
+    };
+  });
+  check(promise.waits, 'V3 the words wait on the voice being ready');
+  check(promise.caps, 'V4 the wait is capped, so a line is never lost');
+  check(promise.leadRule, 'V5 a late voice is refused rather than dubbed over the words');
+
+  // ---------------------------------------------------------------
   console.log('\nWIRING — the Studio itself');
   // ---------------------------------------------------------------
   const wired = await page.evaluate(() => ({

@@ -84,6 +84,20 @@
   const SETTLE_CLASS_MS = 520; // matches css/style.css's companion-settle-bounce duration (.5s) + a small margin
   const CLICK_CLASS_MS = 620;
   const GLOW_BOOST_MS = 900;
+  // ---------- Text and voice arrive together ----------
+  // Stated by the product owner: "text is shown only when voice is
+  // ready to be played. text should never be more than 1 sec before
+  // audio." A bubble sitting in silence while audio generates reads as
+  // a broken Companion, and a line that arrives long after its words
+  // reads as a dub.
+  //
+  // VOICE_WAIT_MS is how long the words are held back waiting for the
+  // sound. MAX_LEAD_MS is the promise itself: if the wait ran out and
+  // the words went up alone, the sound may still join them only if it
+  // is this close behind. Later than that and the line stays silent —
+  // Vihu Voice's own rule that silence is always a correct answer.
+  const VOICE_WAIT_MS = 2500;
+  const MAX_LEAD_MS = 1000;
   const ROAM_STYLES = ['glide','roll','drift'];
   const ROAM_MAX_MS = 3400;             // safety net past the slowest style
   const WANDER_HOME_MIN_MS = 30000;
@@ -115,6 +129,8 @@
       this._bubbleEl=null;
       this._portraitWrapEl=null;
       this._speakTimer=null;
+      this._speakToken=0;
+      this._pendingSpeech=null;
       this._autoTransitionTimer=null;
       this._blinkTimer=null;
       this._dragCleanup=null;
@@ -251,6 +267,9 @@
     unload(){
       if(this._autoTransitionTimer){ clearTimeout(this._autoTransitionTimer); this._autoTransitionTimer=null; }
       if(this._speakTimer){ clearTimeout(this._speakTimer); this._speakTimer=null; }
+      // A line still waiting on its voice must not surface after the
+      // companion it belonged to has gone.
+      this._cancelPendingSpeech();
       if(this._blinkTimer){ clearTimeout(this._blinkTimer); this._blinkTimer=null; }
       if(this._idleSparkleTimer){ clearTimeout(this._idleSparkleTimer); this._idleSparkleTimer=null; }
       if(this._wanderTimer){ clearTimeout(this._wanderTimer); this._wanderTimer=null; }
@@ -499,29 +518,81 @@
     speak(text,opts){
       this._ensureDom();
       if(this._speakTimer){ clearTimeout(this._speakTimer); this._speakTimer=null; }
+      this._cancelPendingSpeech();
       if(!text){
         this._bubbleEl.classList.add('companion-bubble-hidden');
         try{ if(window.VihuVoice) window.VihuVoice.stop(); }catch(e){}
         return;
       }
-      if(!(opts&&opts.silent)){
-        try{
-          const who=this._package&&this._package.id;
-          // THE FEELING IS THE STATE THIS COMPANION IS ALREADY IN. A
-          // Companion pulling a delighted face while speaking in a flat
-          // monotone is the one thing giving it a voice must not
-          // produce, and the state is right here — no caller has to
-          // remember to pass a mood, and none of them was changed to.
-          // opts.emotion overrides it for the rare line whose words
-          // carry a different feeling from the pose.
-          const mood=(opts&&opts.emotion)||this._state;
-          if(who&&window.VihuVoice){
-            window.VihuVoice.speak({characterId:who,text:String(text),emotion:mood});
-          }
-        }catch(e){}
+
+      const words=String(text);
+      const who=this._package&&this._package.id;
+      // THE FEELING IS THE STATE THIS COMPANION IS ALREADY IN. A
+      // Companion pulling a delighted face while speaking in a flat
+      // monotone is the one thing giving it a voice must not produce,
+      // and the state is right here — no caller has to remember to pass
+      // a mood, and none of them was changed to. opts.emotion overrides
+      // it for the rare line whose words carry a different feeling from
+      // the pose.
+      const mood=(opts&&opts.emotion)||this._state;
+      const voice=(!(opts&&opts.silent)) && who && window.VihuVoice && window.VihuVoice.prepare;
+
+      // Nothing is ever going to be spoken — a silent line, no package,
+      // no voice module. There is nothing to wait for, so the words go
+      // up at once exactly as they always did.
+      if(!voice){ this._showSpeech(words); return; }
+
+      // A line is only the CURRENT line until another one starts. The
+      // token is what tells a resolved promise that it has been
+      // superseded, so a slow line can never barge in over a newer one.
+      const token=++this._speakToken;
+      let shown=false, shownAt=0;
+      const show=()=>{
+        if(shown || this._speakToken!==token) return;
+        shown=true; shownAt=Date.now();
+        this._showSpeech(words);
+      };
+
+      // The words are never LOST to a slow network — only delayed. If
+      // the sound has not arrived by the cap, they go up alone.
+      const capTimer=setTimeout(show,VOICE_WAIT_MS);
+      this._pendingSpeech={token:token, timer:capTimer};
+
+      window.VihuVoice.prepare({characterId:who,text:words,emotion:mood})
+        .then((ready)=>{
+          if(this._speakToken!==token) return;
+          clearTimeout(capTimer);
+          this._pendingSpeech=null;
+          if(!ready){ show(); return; }            // no voice for this character
+          // Ready, and the words are still waiting: they go up together.
+          // Ready, but the words went up already: the sound may join
+          // them only if it is inside the promised second.
+          if(shown && (Date.now()-shownAt)>MAX_LEAD_MS) return;
+          show();
+          try{ window.VihuVoice.speak({characterId:who,text:words,emotion:mood}); }catch(e){}
+        })
+        .catch(()=>{
+          if(this._speakToken!==token) return;
+          clearTimeout(capTimer);
+          this._pendingSpeech=null;
+          show();
+        });
+    }
+
+    /** A line that is no longer wanted stops waiting to be said. */
+    _cancelPendingSpeech(){
+      this._speakToken=(this._speakToken||0)+1;
+      if(this._pendingSpeech){
+        clearTimeout(this._pendingSpeech.timer);
+        this._pendingSpeech=null;
       }
-      this._bubbleEl.textContent=String(text);
+    }
+
+    /** Puts the words on screen and starts their own dwell timer. */
+    _showSpeech(words){
+      this._bubbleEl.textContent=words;
       this._bubbleEl.classList.remove('companion-bubble-hidden');
+      if(this._speakTimer) clearTimeout(this._speakTimer);
       this._speakTimer=setTimeout(()=>{
         this._bubbleEl.classList.add('companion-bubble-hidden');
         this._speakTimer=null;

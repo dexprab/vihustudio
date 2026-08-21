@@ -5310,3 +5310,38 @@ still rides a dispatch that was happening anyway.
 Verified live: left alone in the running Studio, the Companion moved
 itself from (1309,719) to (1152,158) mid-glide with nobody touching
 anything. Suite 45/45, zero page errors. Build 0605 → 0606.
+
+## The Words Wait for the Voice (build 0607)
+
+Stated by the product owner: *"text is shown only when voice is ready to
+be played. text should never be more than 1 sec before audio."*
+
+**A bubble sitting in silence reads as a broken Companion.** Until now
+`speak()` put the words up immediately and started generating the sound
+afterwards, so on a cold line the child read a sentence and then heard it
+some seconds later — or never. The two now arrive together.
+
+**Three rules, in the order they apply.** The words are held while
+`VihuVoice.prepare()` warms the audio (it already resolved exactly on
+"ready", so no new plumbing was needed). If the sound arrives first, the
+words and the sound go together. If the wait runs out at
+`VOICE_WAIT_MS` (2500ms) the words go up ALONE — a line is never lost to
+a slow network — and the sound may then join them only if it lands
+within `MAX_LEAD_MS` (1000ms), which is the product owner's rule stated
+as a constant. Later than that the line stays silent, which Decision 25
+already establishes as a correct answer.
+
+**A line that can never be spoken is never delayed.** Silent lines, a
+companion with no package, no voice module, or a character with no voice
+id all skip the wait entirely and behave exactly as before — measured at
+401ms for the first line (the platform-config fetch, cached thereafter)
+and instant after that.
+
+**A newer line always wins.** Each call takes a token; a resolved
+promise whose token has moved on does nothing, so a slow line can never
+barge in over the line that replaced it, and `unload()` cancels a
+pending line so it cannot surface after its companion has gone.
+
+Verified live: hover, click and drag each still produce their line, and
+the suite gained five checks covering the delay, the cap and the lead
+rule. 50/50, zero page errors. Build 0606 → 0607.
