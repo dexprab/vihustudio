@@ -492,6 +492,52 @@ function check(cond, name, note) { (cond ? ok : fail)(name, note); }
   check(named.built && named.family === "Vihaan's Handwriting" && named.registered && named.label,
     "F2 the font carries its maker's name — Vihaan's Handwriting", JSON.stringify(named));
 
+  // The stroke width of the font is consistent: one letter written BIG
+  // (thin after normalize) and one written SMALL (fat after normalize)
+  // must come out of the built TTF with near-equal strokes. Measured by
+  // parsing the stored ttf back with opentype and rasterizing both
+  // glyphs at one size.
+  const strokes = await page.evaluate(async () => {
+    const pen = (size, penW, fn) => {
+      const c = document.createElement('canvas'); c.width = size; c.height = size;
+      const x = c.getContext('2d');
+      x.strokeStyle = '#1a1a1a'; x.lineWidth = penW; x.lineCap = 'round'; fn(x, size);
+      return { png: c.toDataURL('image/png'), w: size, h: size };
+    };
+    // same 6px pen, very different paper distance
+    const big = pen(240, 6, (x, s) => { x.beginPath(); x.moveTo(s * .25, s * .8); x.lineTo(s * .25, s * .3);
+      x.quadraticCurveTo(s * .5, s * .15, s * .7, s * .3); x.lineTo(s * .7, s * .8); x.stroke(); });
+    const small = pen(56, 6, (x, s) => { x.beginPath(); x.arc(s * .5, s * .55, s * .3, 0, Math.PI * 2); x.stroke(); });
+    const rn = await HandwritingStore.save({ ch: 'n', w: big.w, h: big.h, png: big.png });
+    const ro = await HandwritingStore.save({ ch: 'o', w: small.w, h: small.h, png: small.png });
+    await HandwritingFont.rebuild();
+    const row = HandwritingStore.getFont();
+    const buf = Uint8Array.from(atob(row.ttf), (c) => c.charCodeAt(0)).buffer;
+    const font = opentype.parse(buf);
+    const strokeOf = (ch) => {
+      const c = document.createElement('canvas'); c.width = 200; c.height = 200;
+      const x = c.getContext('2d');
+      font.getPath(ch, 20, 150, 120).draw(x);
+      const d = x.getImageData(0, 0, 200, 200).data;
+      const runs = [];
+      for (let y = 0; y < 200; y++) {
+        let run = 0;
+        for (let px = 0; px <= 200; px++) {
+          const on = px < 200 && d[(y * 200 + px) * 4 + 3] > 100;
+          if (on) run++; else if (run) { runs.push(run); run = 0; }
+        }
+      }
+      runs.sort((a, b) => a - b);
+      return runs.length ? runs[Math.floor(runs.length / 2)] : 0;
+    };
+    const sn = strokeOf('n'), so = strokeOf('o');
+    try { HandwritingStore.remove(rn.record.id); HandwritingStore.remove(ro.record.id); } catch (e) {}
+    const fr = HandwritingStore.getFont(); if (fr) try { HandwritingStore.remove(fr.id); } catch (e) {}
+    return { n: sn, o: so, ratio: sn && so ? Math.max(sn, so) / Math.min(sn, so) : 99 };
+  });
+  check(strokes.n > 0 && strokes.o > 0 && strokes.ratio <= 1.8,
+    'F3 mixed-distance captures come out with consistent stroke width (ratio ≤ 1.8)', JSON.stringify(strokes));
+
   console.log('-- W: the real store, the real seam');
   // The scanner's keep branch is: CreatorLibrary.save(...) → ok →
   // dispatch vihu:creation-captured with the record id. The camera flow

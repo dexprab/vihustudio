@@ -251,11 +251,124 @@
     });
   }
 
+  /* THE STROKE WIDTH OF THE FONT IS CONSISTENT (the product owner,
+   * shown 'vihupapa' with fat and thin letters side by side). Each
+   * letter is captured at its own camera distance, so normalize()'s
+   * per-class height scaling leaves each glyph's STROKE at a different
+   * width — a letter written small comes out fat, one written big comes
+   * out thin. The originals are sacred (the tiles keep the child's real
+   * ink untouched); the FONT is where consistency belongs, so this
+   * pre-pass gently thickens or thins each normalized mask toward the
+   * MEDIAN stroke width of the set, one morphological step at a time
+   * (a dilate/erode step moves a stroke ~2px). Bounded to a few steps
+   * so no letter is ever redrawn — only evened — and thinning carries a
+   * guard: if an erosion breaks a glyph's ink into more pieces than it
+   * had, that glyph reverts to its previous step, because a broken
+   * letter is worse than a fat one. Deterministic, like everything
+   * here. */
+  function _medianStroke(mask, w, h) {
+    // median horizontal ink-run length — the same idea HWLetter's
+    // strokeWidthOf measures, kept local so the worker-free hosts and
+    // this module need no new dependency.
+    const runs = [];
+    for (let y = 0; y < h; y++) {
+      let run = 0;
+      for (let x = 0; x <= w; x++) {
+        if (x < w && mask[y * w + x]) run++;
+        else if (run) { runs.push(run); run = 0; }
+      }
+    }
+    if (!runs.length) return 0;
+    runs.sort(function (a, b) { return a - b; });
+    return runs[Math.floor(runs.length / 2)];
+  }
+  function _dilate(mask, w, h) {
+    const out = new Uint8Array(w * h);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        if (!mask[y * w + x]) continue;
+        for (let dy = -1; dy <= 1; dy++) {
+          const yy = y + dy;
+          if (yy < 0 || yy >= h) continue;
+          for (let dx = -1; dx <= 1; dx++) {
+            const xx = x + dx;
+            if (xx < 0 || xx >= w) continue;
+            out[yy * w + xx] = 1;
+          }
+        }
+      }
+    }
+    return out;
+  }
+  function _erode(mask, w, h) {
+    const out = new Uint8Array(w * h);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        if (!mask[y * w + x]) continue;
+        const up = y > 0 ? mask[(y - 1) * w + x] : 0;
+        const dn = y < h - 1 ? mask[(y + 1) * w + x] : 0;
+        const lf = x > 0 ? mask[y * w + x - 1] : 0;
+        const rt = x < w - 1 ? mask[y * w + x + 1] : 0;
+        if (up && dn && lf && rt) out[y * w + x] = 1;
+      }
+    }
+    return out;
+  }
+  function _partsOf(mask, w, h) {
+    if (window.HWLetter && HWLetter.partsOf) return HWLetter.partsOf(mask, w, h);
+    return 1;   // no counter available → the revert guard simply never fires
+  }
+  function _equalizeStrokes(samples, log) {
+    if (samples.size < 2) return samples;
+    const sw = new Map();
+    let hSum = 0;
+    samples.forEach(function (s, ch) { sw.set(ch, _medianStroke(s.mask, s.w, s.h)); hSum += s.h; });
+    const widths = Array.from(sw.values()).filter(function (v) { return v > 0; }).sort(function (a, b) { return a - b; });
+    if (widths.length < 2) return samples;
+    // The target is the set's median, held inside a healthy WEIGHT BAND
+    // relative to the normalized letter height (5–12% of it) — so two
+    // letters at wild extremes (13px and 60px on a 300px body, the
+    // measured real case) meet in readable-pen territory instead of one
+    // extreme dragging the whole set fat or spidery.
+    const H = hSum / samples.size;
+    const target = Math.max(Math.round(0.05 * H),
+                   Math.min(Math.round(0.12 * H), widths[Math.floor(widths.length / 2)]));
+    const out = new Map();
+    samples.forEach(function (s, ch) {
+      const from = sw.get(ch);
+      let steps = from > 0 ? Math.round((target - from) / 2) : 0;
+      if (!steps) { out.set(ch, s); return; }
+      let mask = s.mask, parts = _partsOf(s.mask, s.w, s.h);
+      let applied = 0, guard = 30;
+      while (steps !== 0 && guard-- > 0) {
+        const next = steps > 0 ? _dilate(mask, s.w, s.h) : _erode(mask, s.w, s.h);
+        if (steps < 0) {
+          const nsw = _medianStroke(next, s.w, s.h);
+          const nparts = _partsOf(next, s.w, s.h);
+          // never thin a stroke away or break the letter apart
+          if (nsw < 2 || nparts > parts) break;
+        }
+        mask = next;
+        applied += steps > 0 ? 1 : -1;
+        steps += steps > 0 ? -1 : 1;
+      }
+      if (!applied) { out.set(ch, s); return; }
+      const t = {};
+      Object.keys(s).forEach(function (k) { t[k] = s[k]; });
+      t.mask = mask;
+      out.set(ch, t);
+      log('hwFont: ' + ch + ' stroke ' + from + 'px → ~' + (from + applied * 2) +
+          'px (set target ' + target + 'px)');
+    });
+    return out;
+  }
+
   /* build(samples, lines, {log}) → {buffer, report}. Deterministic: same
    * samples in, identical bytes out — asserted by the suite. */
   function build(samples, lines, opts) {
     const log = (opts && opts.log) || function () {};
     if (!window.opentype) throw new Error('hwFont: vendor/opentype.min.js did not load');
+    samples = _equalizeStrokes(samples, log);
     const m = measure(samples, lines);
     const glyphs = [new opentype.Glyph({
       name: '.notdef', unicode: 0, advanceWidth: Math.round(m.xHeightPx * m.scale),

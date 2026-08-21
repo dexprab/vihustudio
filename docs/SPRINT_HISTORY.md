@@ -4810,3 +4810,27 @@ the garden exactly as a letter re-keep does. Suite 39 checks (L6
 drives the whole drawing-edit journey — choice card, Make It Yours on
 the record, keep updating in place and growing the garden; F2 the
 named font); base 192 and handwriting 162 re-run green.
+
+**Follow-up 8, same sprint** — *"the stroke width of font should be
+consistent"* (the product owner, showing 'vihupapa' with fat and thin
+letters side by side). Root cause: each letter is captured at its own
+camera distance, and normalize()'s per-class height scaling leaves each
+glyph's STROKE at a different width — written small comes out fat,
+written big comes out thin (measured on the real case: 13px and 60px
+strokes on the same 300px body). The originals stay sacred — the tiles
+keep the child's exact ink — so consistency lives where it belongs, in
+the FONT: HWFont.build (the SHARED builder, so the tool page's Build
+benefits identically) gained a deterministic stroke-equalization
+pre-pass that dilates or erodes each normalized mask, one morphological
+step (~2px) at a time, toward the set's median stroke held inside a
+healthy weight band (5–12% of the normalized letter height — without
+the band, the median of two extremes IS one of the extremes, the first
+attempt's measured mistake). Thinning carries a guard: an erosion that
+would break a glyph's ink into more pieces, or thin any stroke under
+2px, stops that glyph where it stands — a fat letter is better than a
+broken one. Verified numerically in the real Studio (suite F3: a
+big-paper letter and a close-paper letter parsed back out of the stored
+TTF and rasterized — stroke ratio 1.4, down from 3.0) and visually
+('vihupapa' from six letters at two wildly different distances reads as
+one pen). Build bumped 0590 → 0591 so updated browsers refetch; base
+192 and handwriting 162 re-run green.
