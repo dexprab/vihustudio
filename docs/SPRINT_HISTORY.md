@@ -4873,3 +4873,17 @@ settle re-render learned to WAIT OUT a growth in flight — it used to
 rebuild the layer at 600ms and would have cut every slow-motion short.
 Stage portraits in the suite now wait for growth to finish. 41 checks
 green.
+
+**Follow-up 11, same sprint** — the tuned garden earned a one-word
+review: *"nope"* — a tangle of oversized blobs, self-crossing vines,
+leaves floating mid-air. Restraint pass, measured against the margin's
+real ~110px: blades back to 1.0× (1.45× crowded a band that size into
+blobs), ONE leaf per node with sides alternating deterministically
+(pairs everywhere read as clutter), the vine's sideways sway cut from
+±0.4 to ±0.18 of the band so it can no longer cross itself, sprigs
+thinned to occasional — and a rule with no exceptions from zone 5 on:
+everything grows ON a vine, anchored to a real vine node chosen by the
+seeded rng; the mid-air leaf/bud scatter that produced the floating
+blobs is gone. The look at 26 captures is one clean climbing vine with
+alternating leaves — the visual plan's own calm. Replay reshapes every
+existing garden; build 0592 → 0593; 41 checks green.

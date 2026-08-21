@@ -125,7 +125,7 @@
   function _leaf(x, y, ang, s) {
     // A real BLADE, not a fleck — rounder and fuller than the first two
     // attempts, which read as bare twigs at reading distance.
-    s = s * 1.45;
+    s = s * 1.0;   // measured against a ~110px margin: 1.45 crowded it into blobs
     const g = _svg('g', {});
     g.appendChild(_svg('path', {
       d: 'M0,0 Q' + (5 * s) + ',' + (-9 * s) + ' ' + (14 * s) + ',' + (-3 * s)

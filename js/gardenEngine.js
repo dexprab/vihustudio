@@ -155,9 +155,11 @@
     // product owner, at 13 captures: the vine had already spanned the
     // column with bare stretches between tiny leaves).
     if (stage < 5) {
-      vineNode('left', jitter(0.5, 0.35), g.tip.v - 0.045 - rnd() * 0.02);
-      el.push({ k: 'leaf', band: 'left', u: jitter(g.tip.u - 0.2, 0.15), v: g.tip.v, s: 1.0 + rnd() * 0.3 });
-      if (rnd() < 0.6) el.push({ k: 'leaf', band: 'left', u: jitter(g.tip.u + 0.2, 0.15), v: jitter(g.tip.v, 0.02), s: 0.9 + rnd() * 0.3 });
+      // one leaf per node, sides alternating — pairs everywhere read as
+      // clutter in a margin this size (the product owner's "nope")
+      const side = (stage % 2 ? 1 : -1) * 0.18;
+      vineNode('left', jitter(0.5, 0.18), g.tip.v - 0.045 - rnd() * 0.02);
+      el.push({ k: 'leaf', band: 'left', u: jitter(g.tip.u + side, 0.06), v: g.tip.v, s: 0.8 + rnd() * 0.25 });
       return;
     }
 
@@ -165,48 +167,60 @@
     // (it reaches the upper half only around twenty captures), leaves
     // in pairs along the way, a sprig branching now and then.
     if (stage < 13) {
-      if (g.tip.band === 'left' && g.tip.v > 0.45) { vineNode('left', jitter(0.45, 0.4), g.tip.v - 0.055 - rnd() * 0.025); }
-      else { el.push({ k: 'sprig', band: 'left', u: jitter(0.5, 0.5), v: g.tip.v + 0.1 + rnd() * 0.35, s: 0.9 + rnd() * 0.3 }); }
-      el.push({ k: 'leaf', band: 'left', u: jitter(g.tip.u - 0.2, 0.2), v: jitter(g.tip.v, 0.02), s: 0.95 + rnd() * 0.3 });
-      if (rnd() < 0.6) el.push({ k: 'leaf', band: 'left', u: jitter(g.tip.u + 0.2, 0.2), v: jitter(g.tip.v, 0.03), s: 0.9 + rnd() * 0.25 });
+      const side = (stage % 2 ? 1 : -1) * 0.18;
+      if (g.tip.band === 'left' && g.tip.v > 0.45) { vineNode('left', jitter(0.47, 0.18), g.tip.v - 0.055 - rnd() * 0.025); }
+      else if (rnd() < 0.4) { el.push({ k: 'sprig', band: 'left', u: jitter(0.5, 0.3), v: g.tip.v + 0.15 + rnd() * 0.3, s: 0.8 + rnd() * 0.2 }); }
+      el.push({ k: 'leaf', band: 'left', u: jitter(g.tip.u + side, 0.06), v: jitter(g.tip.v, 0.02), s: 0.8 + rnd() * 0.25 });
       return;
     }
 
     // Zone 4 — branching: the left vine finishes its climb; the right
     // side begins from its own foot; sprigs reach the mid-margins.
     if (stage < 24) {
+      const side = (stage % 2 ? 1 : -1) * 0.18;
       if (g.tip.band === 'left' && g.tip.v > 0.14) {
-        vineNode('left', jitter(0.45, 0.4), g.tip.v - 0.06 - rnd() * 0.03);
-        el.push({ k: 'leaf', band: 'left', u: jitter(g.tip.u, 0.3), v: jitter(g.tip.v, 0.02), s: 0.9 + rnd() * 0.3 });
+        vineNode('left', jitter(0.47, 0.18), g.tip.v - 0.06 - rnd() * 0.03);
+        el.push({ k: 'leaf', band: 'left', u: jitter(g.tip.u + side, 0.06), v: jitter(g.tip.v, 0.02), s: 0.8 + rnd() * 0.25 });
         return;
       }
-      if (stage === 18 || (g.tip.band !== 'right' && rnd() < 0.4)) { vineNode('right', jitter(0.5, 0.3), 0.95); return; }
-      if (g.tip.band === 'right' && g.tip.v > 0.5) { vineNode('right', jitter(0.5, 0.4), g.tip.v - 0.06 - rnd() * 0.03); el.push({ k: 'leaf', band: 'right', u: jitter(g.tip.u, 0.3), v: g.tip.v, s: 0.9 + rnd() * 0.25 }); return; }
-      el.push({ k: 'sprig', band: rnd() < 0.5 ? 'left' : 'right', u: jitter(0.5, 0.5), v: 0.25 + rnd() * 0.55, s: 0.85 + rnd() * 0.3 });
+      if (stage === 18 || (g.tip.band !== 'right' && rnd() < 0.4)) { vineNode('right', jitter(0.5, 0.18), 0.95); return; }
+      if (g.tip.band === 'right' && g.tip.v > 0.5) { vineNode('right', jitter(0.5, 0.18), g.tip.v - 0.06 - rnd() * 0.03); el.push({ k: 'leaf', band: 'right', u: jitter(g.tip.u + side, 0.06), v: g.tip.v, s: 0.8 + rnd() * 0.25 }); return; }
+      el.push({ k: 'sprig', band: rnd() < 0.5 ? 'left' : 'right', u: jitter(0.5, 0.25), v: 0.25 + rnd() * 0.5, s: 0.8 + rnd() * 0.2 });
       return;
+    }
+
+    // Anything that grows from here on grows ON a vine — a leaf or bud
+    // in mid-air is decoration, and decoration was the "nope". The
+    // anchor is a real vine node, chosen by the seeded rng.
+    function onVine(kind, extra) {
+      const vines = el.filter(function (e) { return e.k === 'vine'; });
+      if (!vines.length) return false;
+      const a = vines[Math.floor(rnd() * vines.length)];
+      const side = (Math.floor(rnd() * 2) ? 1 : -1) * 0.16;
+      el.push(Object.assign({ k: kind, band: a.band, u: jitter(a.u + side, 0.05), v: jitter(a.v, 0.02) }, extra || {}));
+      return true;
     }
 
     // Zone 5 — connections: the right edge finishes its climb and the
     // top arc closes, so both sides read as ONE garden. First buds.
     if (stage < 40) {
-      if (g.tip.band === 'right' && g.tip.v > 0.12) { vineNode('right', jitter(0.5, 0.4), g.tip.v - 0.09 - rnd() * 0.04); if (rnd() < 0.6) el.push({ k: 'leaf', band: 'right', u: jitter(g.tip.u, 0.3), v: g.tip.v, s: 0.8 + rnd() * 0.2 }); return; }
-      if (!g.topClosed) { g.topClosed = true; for (let u = 0.4; u <= 0.96; u += 0.14) el.push({ k: 'vine', band: 'top', u: u, v: jitter(0.5, 0.4) }); return; }
-      if (rnd() < 0.35) { el.push({ k: 'bud', band: ['left', 'right', 'top'][Math.floor(rnd() * 3)], u: jitter(0.5, 0.6), v: 0.15 + rnd() * 0.7 }); return; }
-      el.push({ k: 'leaf', band: ['left', 'right', 'top'][Math.floor(rnd() * 3)], u: jitter(0.5, 0.6), v: 0.1 + rnd() * 0.8, s: 0.75 + rnd() * 0.3 });
+      if (g.tip.band === 'right' && g.tip.v > 0.12) { vineNode('right', jitter(0.5, 0.18), g.tip.v - 0.09 - rnd() * 0.04); if (rnd() < 0.6) el.push({ k: 'leaf', band: 'right', u: jitter(g.tip.u + 0.16, 0.05), v: g.tip.v, s: 0.8 + rnd() * 0.2 }); return; }
+      if (!g.topClosed) { g.topClosed = true; for (let u = 0.4; u <= 0.96; u += 0.14) el.push({ k: 'vine', band: 'top', u: u, v: jitter(0.5, 0.3) }); return; }
+      if (rnd() < 0.35 && onVine('bud')) return;
+      onVine('leaf', { s: 0.75 + rnd() * 0.25 });
       return;
     }
 
     // Zone 6 — blossoming: flowers open where the vine is OLDEST — near
-    // the origin first — and the margins slowly fill with quiet detail.
+    // the origin first — and the vines slowly fill with quiet detail.
     if (rnd() < 0.3) {
       const budIx = g.elements.findIndex(function (e) { return e.k === 'bud'; });
       if (budIx >= 0) { const b = g.elements[budIx]; g.elements[budIx] = { k: 'flower', band: b.band, u: b.u, v: b.v }; return; }
-      el.push({ k: 'flower', band: 'left', u: jitter(0.5, 0.4), v: 0.86 - (g.flowers = (g.flowers || 0) + 1) * 0.12 });
+      el.push({ k: 'flower', band: 'left', u: jitter(0.5, 0.2), v: 0.86 - (g.flowers = (g.flowers || 0) + 1) * 0.12 });
       return;
     }
-    if (rnd() < 0.3) { el.push({ k: 'sprig', band: ['left', 'right'][Math.floor(rnd() * 2)], u: jitter(0.5, 0.5), v: 0.15 + rnd() * 0.7, s: 0.7 + rnd() * 0.3 }); return; }
-    if (rnd() < 0.25) { el.push({ k: 'bud', band: ['left', 'right', 'top'][Math.floor(rnd() * 3)], u: jitter(0.5, 0.6), v: 0.15 + rnd() * 0.7 }); return; }
-    el.push({ k: 'leaf', band: ['left', 'right', 'top'][Math.floor(rnd() * 3)], u: jitter(0.5, 0.6), v: 0.08 + rnd() * 0.84, s: 0.75 + rnd() * 0.3 });
+    if (rnd() < 0.25 && onVine('bud')) return;
+    onVine('leaf', { s: 0.75 + rnd() * 0.25 });
   }
 
   function _build(seed, events) {
