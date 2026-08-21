@@ -79,7 +79,66 @@ const CompanionBrain=(function(){
     'full-page':"There's a lot happening on this page."
   };
 
+  // ---------- PLAY ----------
+  // Three things a child DOES to the Companion, and they are a
+  // different kind of event from everything else in this file. The
+  // rules above are the Companion volunteering something; these are a
+  // child poking a creature and waiting to see what it does. So the
+  // restraint that exists to stop it nagging does not apply: play is
+  // ANSWERED, every time, as often as they like.
+  //
+  // What still applies is not talking over itself — each gesture has a
+  // short gap of its own, and a spoken line still starts the shared
+  // clock so the Companion does not giggle and then immediately
+  // volunteer something about the story.
+  //
+  // Three gestures, three feelings, stated by the product owner:
+  // "poking is clicking, tickling is hovering over it. both different
+  // action warrants different feelings."
+  const PLAY={
+    // Hovering. Being tickled: helpless giggling.
+    tickle:{
+      gap:6000,
+      pose:['happy','celebrate','wave','curious'],
+      emotion:'happy',
+      lines:[
+        "Hee hee! That tickles!",
+        "Ooh, stop… no, don't stop!",
+        "Hee! Not there, that's my giggly bit.",
+        "You found my ticklish spot!",
+        "Hehe — I'm very ticklish, you know."
+      ]
+    },
+    // Clicking. Being poked: startled, then delighted.
+    poke:{
+      gap:1500,
+      pose:['surprised','celebrate','curious','wave'],
+      emotion:'surprised',
+      lines:[
+        "Oi! You poked me!",
+        "Boop! Right back at you.",
+        "Hey — I felt that!",
+        "Poke me again. Go on, I dare you.",
+        "Ooh! You're quick."
+      ]
+    },
+    // Dragging. Being carried somewhere new.
+    carry:{
+      gap:1200,
+      pose:['wave','happy','celebrate','curious'],
+      emotion:'happy',
+      lines:[
+        "Whooooosh!",
+        "Here I go!",
+        "Where do you want me?",
+        "Wheee! Put me down here?",
+        "Flying! Look at me go."
+      ]
+    }
+  };
+
   let _lines=LINES;
+  let _play=PLAY;
   let _never=[];
 
   // ---------- Restraint state ----------
@@ -91,6 +150,12 @@ const CompanionBrain=(function(){
   let _lastSpokeAt=0;
   let _startedAt=0;
   const _said={};
+  // Per-gesture: when it last answered, and which line it used — so the
+  // same one never lands twice running. A child who hears the identical
+  // giggle twice has learned it is a recording, which is the same rule
+  // the World Host's greetings already follow.
+  const _playAt={};
+  const _playLast={};
 
   function _now(){ try{ return Date.now(); }catch(e){ return 0; } }
 
@@ -102,16 +167,23 @@ const CompanionBrain=(function(){
     return false;
   }
 
+  // The loaded package's own policy, applied identically to a noticed
+  // line and a giggle: a forbidden phrase means the line is not said.
+  function _forbidden(t){
+    for(let i=0;i<_never.length;i++){
+      const bad=String(_never[i]||'').toLowerCase();
+      if(bad && String(t).toLowerCase().indexOf(bad)!==-1) return true;
+    }
+    return false;
+  }
+
   function _line(key){
     const t=_lines[key];
     if(!t) return null;
     // The package's own policy, finally enforced. A forbidden phrase
     // means the line is not said at all — never rewritten, because
     // rewriting somebody's authored policy line is how a voice drifts.
-    for(let i=0;i<_never.length;i++){
-      const bad=String(_never[i]||'').toLowerCase();
-      if(bad && t.toLowerCase().indexOf(bad)!==-1) return null;
-    }
+    if(_forbidden(t)) return null;
     return t;
   }
 
@@ -187,6 +259,55 @@ const CompanionBrain=(function(){
   }
 
   /**
+   * A child played with the Companion. Answered as often as they like:
+   * novelty and the settling window deliberately do NOT apply, because
+   * this is a reply to something they just did rather than the
+   * Companion deciding to speak.
+   *
+   * A Traveller gets the movement and no words — the Story Egg
+   * accompanies through animation only and never speaks
+   * (docs/COMPANION_CANON.md), which is the same canon the top of
+   * decide() enforces, applied to the same effect here.
+   *
+   * @param {string} gesture 'tickle' | 'poke' | 'carry'
+   * @param {object} [opts] {mode:'creator'|'traveller'}
+   * @returns {object} An intent, or {} if this gesture answered a
+   *   moment ago.
+   */
+  function play(gesture,opts){
+    try{
+      const cfg=_play[gesture];
+      if(!cfg) return {};
+      const now=_now();
+      if(_playAt[gesture] && (now-_playAt[gesture])<cfg.gap) return {};
+      _playAt[gesture]=now;
+
+      const intent={ poseChain:cfg.pose.slice(), source:'play:'+gesture, confidence:1 };
+
+      const mode=(opts&&opts.mode)||'creator';
+      if(mode!=='creator') return intent;      // movement, never words
+
+      const pool=[];
+      for(let i=0;i<cfg.lines.length;i++){
+        const t=cfg.lines[i];
+        if(t===_playLast[gesture]) continue;
+        if(_forbidden(t)) continue;
+        pool.push(t);
+      }
+      if(!pool.length) return intent;
+      const text=pool[Math.floor(Math.random()*pool.length)];
+      _playLast[gesture]=text;
+      intent.say=text;
+      intent.emotion=cfg.emotion;
+      // Play speaks, so the Companion has just used its voice — the
+      // story rules wait their turn exactly as they would after any
+      // other line.
+      _lastSpokeAt=now;
+      return intent;
+    }catch(e){ return {}; }
+  }
+
+  /**
    * The single contract with the Director.
    * @param {object} snapshot From CompanionContext.snapshot().
    * @param {string} [event] The Director's own event name, if this tick
@@ -235,10 +356,25 @@ const CompanionBrain=(function(){
    */
   function usePolicy(personality){
     _lines=LINES;
+    _play=PLAY;
     _never=[];
     try{
       if(!personality) return;
       if(Array.isArray(personality.neverSays)) _never=personality.neverSays.slice();
+      // A package may give its own creature its own giggles, keeping
+      // "add a companion" a zero-code act: personality.play.tickle =
+      // ["...", "..."]. Anything it does not name keeps the platform's.
+      if(personality.play && typeof personality.play==='object'){
+        const merged={};
+        for(const g in PLAY){
+          if(!Object.prototype.hasOwnProperty.call(PLAY,g)) continue;
+          const own=personality.play[g];
+          merged[g]=(own && Array.isArray(own.lines) && own.lines.length)
+            ? Object.assign({},PLAY[g],{lines:own.lines.slice()})
+            : PLAY[g];
+        }
+        _play=merged;
+      }
       if(personality.lines && typeof personality.lines==='object'){
         const merged={};
         for(const k in LINES) if(Object.prototype.hasOwnProperty.call(LINES,k)) merged[k]=LINES[k];
@@ -260,10 +396,13 @@ const CompanionBrain=(function(){
     _lastSpokeAt=0;
     _startedAt=(opts&&opts.aged)?(_now()-SETTLE_MS-1000):0;
     for(const k in _said) if(Object.prototype.hasOwnProperty.call(_said,k)) delete _said[k];
+    for(const k in _playAt) if(Object.prototype.hasOwnProperty.call(_playAt,k)) delete _playAt[k];
+    for(const k in _playLast) if(Object.prototype.hasOwnProperty.call(_playLast,k)) delete _playLast[k];
   }
 
   return {
     decide:decide,
+    play:play,
     noteSpoken:noteSpoken,
     usePolicy:usePolicy,
     _reset:_reset,

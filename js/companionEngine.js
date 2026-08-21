@@ -222,6 +222,19 @@
     /** The loaded package's personality.json contents, or null. */
     getPersonality(){ return this._personality; }
 
+    /**
+     * The pose names this loaded package actually declares — the list
+     * a caller needs to degrade a preference down to something the
+     * package really has, rather than asking for a pose and getting
+     * defaultState. A pure read of data this class already holds;
+     * setState()'s own behaviour is unchanged.
+     * @returns {string[]}
+     */
+    getStates(){
+      try{ return this._package ? Object.keys(this._package.states||{}) : []; }
+      catch(e){ return []; }
+    }
+
     /** The loaded package's animations.json contents, or null. */
     getAnimations(){ return this._animations; }
 
@@ -720,6 +733,7 @@
         hovering=true;
         if(this._root) this._root.classList.add('companion-hovering');
         this._spawnParticle('hover');
+        this._gesture('tickle');
         hoverParticleTimer=setTimeout(function tick(){
           if(!hovering) return;
           this._spawnParticle('hover');
@@ -743,6 +757,21 @@
       portrait.addEventListener('mouseenter',onEnter);
       portrait.addEventListener('mouseleave',onLeave);
       portrait.addEventListener('mousemove',onMove);
+    }
+
+    // ---------- The child plays with the Companion ----------
+    // A tap, a hover and a carry are things a child DOES to the
+    // Companion, and the pointer state that tells them apart lives
+    // here. This announces which one happened and nothing more — no
+    // pose, no speech, no policy. Whoever listens decides.
+    _gesture(name){
+      try{
+        if(!this._root) return;
+        this._root.dispatchEvent(new CustomEvent('vihu:companion-gesture',{
+          bubbles:true,
+          detail:{ gesture:name, companionId:(this._package&&this._package.id)||null }
+        }));
+      }catch(e){}
     }
 
     // ---------- Click: happy wiggle + pulse + sparkle burst ----------
@@ -812,9 +841,11 @@
           this._savePosition();
           this._hasCustomPosition=true;
           this._armWanderHome();
+          this._gesture('carry');
         }else{
           // Never exceeded the drag-movement threshold — a tap/click.
           this._playClickReaction();
+          this._gesture('poke');
         }
       };
       const onDown=(e)=>{

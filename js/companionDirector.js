@@ -346,6 +346,62 @@
       });
     }
 
+    // ---------- The child plays with the Companion ----------
+    // A hover, a tap and a carry are the three things a child can do
+    // TO the Companion, and each gets its own answer. This is the one
+    // place in the whole system where speech is not rationed: the
+    // child asked, so the Companion replies, every time.
+    //
+    // POSES DEGRADE TO WHAT THE PACKAGE ACTUALLY HAS. The packs are
+    // unevenly complete — Quill has no happy and no surprised — so the
+    // Brain sends a PREFERENCE chain and this picks the first pose the
+    // loaded package really declares. Without it a giggle would land
+    // on Quill's default idle face and read as nothing at all.
+    function _pose(chain){
+      try{
+        if(!chain || !chain.length) return null;
+        const have=(engine.getStates&&engine.getStates())||[];
+        for(let i=0;i<chain.length;i++){
+          if(have.indexOf(chain[i])!==-1) return chain[i];
+        }
+      }catch(e){}
+      return null;
+    }
+
+    function _played(gesture){
+      if(!ready || !engine) return;
+      safe(function(){
+        if(typeof CompanionBrain==='undefined' || !CompanionBrain.play) return;
+        // Being played with wakes it. A child poking a sleeping
+        // Companion expects it to wake up, not to be ignored.
+        if(asleep){ asleep=false; }
+        resetIdleTimer();
+        const intent=CompanionBrain.play(gesture,{mode:currentMode})||{};
+        if(!intent.source) return;                 // answered a moment ago
+        const pose=_pose(intent.poseChain);
+        if(pose){ engine.setState(pose); _holdPose(); }
+        // The feeling is sent explicitly here, unlike everywhere else:
+        // the POSE may have degraded to something the package happens
+        // to own, and the voice should still sound tickled rather than
+        // sounding like whatever face was available.
+        const cfg=modeCfg();
+        if(intent.say && cfg.speaks) _say(intent.say,{emotion:intent.emotion});
+      });
+    }
+
+    let _unplay=null;
+    function _watchPlay(){
+      if(_unplay) return;
+      safe(function(){
+        const handler=function(e){
+          const g=e && e.detail && e.detail.gesture;
+          if(g) _played(g);
+        };
+        document.addEventListener('vihu:companion-gesture',handler);
+        _unplay=function(){ document.removeEventListener('vihu:companion-gesture',handler); };
+      });
+    }
+
     let _unobserve=null;
     function _watchPage(){
       if(_unobserve) return;
@@ -464,6 +520,7 @@
           }
         });
         _watchPage();
+        _watchPlay();
         if(onReady) onReady();
       }).catch(function(){
         engine=null;

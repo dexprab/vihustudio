@@ -5197,3 +5197,57 @@ shipped product — the line is correct and no child will meet it.
 Recorded rather than worked around.
 
 Suite 26/26, zero page errors. Build 0603 → 0604.
+
+## The Companion Can Be Played With (build 0605)
+
+Asked for by the product owner — first tickling and giggling, then
+speaking when carried, then the distinction that shaped the whole
+feature: *"poking is clicking, tickling is hovering over it. both
+different action warrants different feelings."*
+
+**Play is the opposite kind of event from noticing, and is answered
+every time.** Everything Phase 1 built exists to stop the Companion
+volunteering too much; a child hovering, tapping or carrying it is
+asking it a question. So `CompanionBrain.play()` deliberately ignores
+the settling window and the once-per-session novelty rule that bound
+`decide()` — a child may play as long as they like. What still holds is
+that it never talks over itself: each gesture has a short gap of its
+own (tickle 6s, poke 1.5s, carry 1.2s), no line lands twice running, and
+a spoken giggle starts the SHARED clock so the story rules wait their
+turn rather than piling on.
+
+**Three gestures, three feelings, five lines each.** Hovering is being
+tickled (*"Hee! Not there, that's my giggly bit."*), clicking is being
+poked (*"Boop! Right back at you."*), carrying is flight (*"Wheee! Put
+me down here?"*). The feeling is sent to the voice explicitly rather
+than being read off the face, because the pose may have degraded — a
+tickled Quill should still SOUND tickled.
+
+**A real package fault, found and fixed.** `quill/companion.json`
+declared `celebrate`, `happy`, `sleep` and `surprised` with no art
+behind them, so the engine would resolve the pose and the browser would
+404 — which is exactly what the product owner's console was showing.
+Nimbus and Leosaurus declared `think`, the Story Egg `hero` and `magic`;
+all trimmed to what each pack actually ships. A declaration a package
+cannot keep is worse than a missing one, because the fallback never
+fires.
+
+**Poses are preferences and now really do degrade.**
+`CompanionEngine.getStates()` (additive, a pure read) lets the Director
+walk a preference chain down to the first pose the loaded package truly
+has, so a giggle on Quill lands on `curious` rather than on the default
+idle face. Without it every gesture would have looked identical.
+
+**One additive signal, deciding nothing.** The engine already owned the
+pointer state that tells a tap from a drag from a hover, so
+discriminating them anywhere else would have meant duplicating that
+logic and getting it subtly wrong. `vihu:companion-gesture` announces
+which one happened and carries no pose, no speech and no policy — the
+same shape as the Garden's own `vihu:creation-captured`.
+
+**The Story Egg wiggles and never speaks.** Canon holds without a second
+rule: a Traveller's play returns movement and no words.
+
+Verified live with real mouse gestures — hover, click and drag each
+produced their own line in the running Studio, zero page errors. Suite
+35/35. Build 0604 → 0605.

@@ -350,6 +350,105 @@ function check(cond, name, note) { (cond ? ok : fail)(name, note); }
   language.lines.forEach((l) => console.log('        "' + l + '"'));
 
   // ---------------------------------------------------------------
+  console.log('\nPLAY — the child pokes back');
+  // ---------------------------------------------------------------
+
+  // Play is answered every time. This is the one place the restraint
+  // above deliberately does not apply, so it is worth proving.
+  const repeats = await page.evaluate(async () => {
+    CompanionBrain._reset();          // NOT aged: play ignores settling
+    const said = [];
+    for (let i = 0; i < 6; i++) {
+      const out = CompanionBrain.play('poke', { mode: 'creator' });
+      if (out.say) said.push(out.say);
+      await new Promise((r) => setTimeout(r, 1700));   // past poke's own gap
+    }
+    return said;
+  });
+  check(repeats.length >= 5, 'P1 a poke is answered every time, not once a session',
+    repeats.length + ' answers');
+
+  const norepeat = await page.evaluate(async () => {
+    CompanionBrain._reset();
+    const said = [];
+    for (let i = 0; i < 5; i++) {
+      const out = CompanionBrain.play('poke', { mode: 'creator' });
+      if (out.say) said.push(out.say);
+      await new Promise((r) => setTimeout(r, 1700));
+    }
+    let backToBack = 0;
+    for (let i = 1; i < said.length; i++) if (said[i] === said[i - 1]) backToBack++;
+    return { backToBack, distinct: new Set(said).size };
+  });
+  check(norepeat.backToBack === 0, 'P2 the same line never lands twice running');
+  check(norepeat.distinct >= 3, 'P3 the lines actually vary', norepeat.distinct + ' distinct');
+
+  // Mashing must not machine-gun.
+  const mash = await page.evaluate(() => {
+    CompanionBrain._reset();
+    let spoke = 0;
+    for (let i = 0; i < 20; i++) if (CompanionBrain.play('poke', { mode: 'creator' }).say) spoke++;
+    return spoke;
+  });
+  check(mash === 1, 'P4 twenty rapid pokes answer once, not twenty times', mash + ' answers');
+
+  // Three gestures, three distinct feelings.
+  const three = await page.evaluate(() => {
+    const out = {};
+    ['tickle', 'poke', 'carry'].forEach((g) => {
+      CompanionBrain._reset();
+      const i = CompanionBrain.play(g, { mode: 'creator' });
+      out[g] = { say: i.say || null, emotion: i.emotion || null, pose: (i.poseChain || [])[0] || null };
+    });
+    return out;
+  });
+  check(!!three.tickle.say && !!three.poke.say && !!three.carry.say,
+    'P5 all three gestures speak');
+  check(three.tickle.emotion !== three.poke.emotion,
+    'P6 tickling and poking are different feelings',
+    'tickle=' + three.tickle.emotion + ' poke=' + three.poke.emotion);
+  console.log('        tickle: "' + three.tickle.say + '"');
+  console.log('        poke:   "' + three.poke.say + '"');
+  console.log('        carry:  "' + three.carry.say + '"');
+
+  // Canon: the Story Egg moves and never speaks.
+  const eggPlay = await page.evaluate(() => {
+    CompanionBrain._reset();
+    const i = CompanionBrain.play('tickle', { mode: 'traveller' });
+    return { say: i.say || null, moved: !!(i.poseChain && i.poseChain.length) };
+  });
+  check(eggPlay.say === null && eggPlay.moved,
+    'P7 a Traveller\'s Story Egg wiggles and never speaks');
+
+  // Play uses the voice, so the story rules must wait their turn.
+  const sharesClock = await page.evaluate(() => {
+    CompanionBrain._reset({ aged: true });
+    CompanionBrain.play('poke', { mode: 'creator' });
+    const after = CompanionBrain.decide({
+      pages: 3, pageIndex: 0, richness: 1,
+      objects: { total: 2, scene: [], text: [], world: [] },
+      selection: { id: 'w', owner: 'world', moveable: false, editable: false },
+      notices: [], at: Date.now()
+    }, null, { mode: 'creator' });
+    return !after.say;
+  });
+  check(sharesClock, 'P8 a giggle starts the shared clock, so noticing waits');
+
+  // Every pose a gesture can ask for must exist in SOME pack, and the
+  // chain must end somewhere every pack has.
+  const poses = await page.evaluate(async () => {
+    const res = await fetch('assets/quill/companion.json');
+    const quill = Object.keys((await res.json()).states || {});
+    const chains = ['tickle', 'poke', 'carry'].map((g) => {
+      CompanionBrain._reset();
+      return CompanionBrain.play(g, { mode: 'creator' }).poseChain || [];
+    });
+    return chains.map((c) => c.filter((p) => quill.indexOf(p) !== -1).length);
+  });
+  check(poses.every((n) => n > 0),
+    'P9 every gesture degrades to a pose Quill actually ships', poses.join(','));
+
+  // ---------------------------------------------------------------
   console.log('\nWIRING — the Studio itself');
   // ---------------------------------------------------------------
   const wired = await page.evaluate(() => ({
