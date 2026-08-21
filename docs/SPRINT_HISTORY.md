@@ -5028,3 +5028,17 @@ face still reads at 32px and survives as a warm glow on night blue at 16px
 all — plus `assets/brand/apple-touch-icon.png` (180×180) for home-screen
 bookmarks. Verified over the local server: both public pages load with zero
 errors and both icons serve. Build 0598 → 0599.
+
+## Follow-up — The Tab Wears a Star Instead (build 0600)
+
+The spirit favicon lasted one look: the product owner rejected it — the
+glowing spirit characters are the illustrator's, not VihuPlanet's, and an
+icon should be something the product actually has. Four honest candidates
+were cut and shown (moon and galaxy from the owner's own art, a gold
+five-point star, the V wordmark); with no preference stated, the gold star
+shipped — it is the product's own identity language (⭐ Show Me Your Stars,
+Magic Card constellations), drawn procedurally in the house gold (#E8B871)
+on the universe's night blue with four faint companion stars. Same two
+files regenerated in place (`assets/brand/favicon.png` 64,
+`apple-touch-icon.png` 180), same three pages, nothing rewired. Build
+0599 → 0600.
