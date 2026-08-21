@@ -709,7 +709,15 @@ try{ window.applyBookTitleStyle=applyBookTitleStyle; }catch(e){}
     section('Font');
     const fonts=document.createElement('div');
     fonts.className='header-title-fonts';
-    HEADER_TITLE_FONTS.forEach(function(pair){
+    // The child's own font joins the title fonts the moment it exists
+    // (js/handwritingFont.js).
+    const titleFonts=HEADER_TITLE_FONTS.slice();
+    try{
+      if(typeof HandwritingFont!=='undefined' && HandwritingFont.available()){
+        titleFonts.push([HandwritingFont.stack,'My Handwriting']);
+      }
+    }catch(e){}
+    titleFonts.forEach(function(pair){
       const b=document.createElement('button');
       b.type='button';
       b.className='header-title-font'+((st.fontFamily||'')===pair[0]?' active':'');

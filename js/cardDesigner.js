@@ -2553,7 +2553,7 @@ const CardDesigner=(function(){
     fontRow.appendChild(fontLbl);
     const fontSel=document.createElement('select');
     fontSel.className='sticker-text-font-select';
-    FONT_FAMILY_OPTIONS.forEach(function(o){
+    _withHwFont(FONT_FAMILY_OPTIONS).forEach(function(o){
       const opt=document.createElement('option'); opt.value=o.value; opt.textContent=o.label; fontSel.appendChild(opt);
     });
     fontSel.addEventListener('change',function(){ _stickerUpdate({fontFamily:fontSel.value}); });
@@ -3569,6 +3569,14 @@ const CardDesigner=(function(){
   // Sans was the closest existing option before this, a system font
   // only. Web-safe fallbacks stay in the stack in case the webfont
   // hasn't finished loading yet.
+  // The child's own font joins the list the moment it exists
+  // (js/handwritingFont.js) — same seam the Context Panel uses.
+  function _withHwFont(list){
+    try{
+      if(typeof HandwritingFont!=='undefined') return HandwritingFont.withOption(list);
+    }catch(e){}
+    return list;
+  }
   const FONT_FAMILY_OPTIONS=[
     {value:'',label:'World Default'},
     {value:'Georgia, serif',label:'Georgia'},
@@ -3762,7 +3770,7 @@ const CardDesigner=(function(){
     familyRow.appendChild(familyLabel);
     const familySel=document.createElement('select');
     familySel.className='text-family-select';
-    FONT_FAMILY_OPTIONS.forEach(function(o){
+    _withHwFont(FONT_FAMILY_OPTIONS).forEach(function(o){
       const opt=document.createElement('option'); opt.value=o.value; opt.textContent=o.label; familySel.appendChild(opt);
     });
     familySel.addEventListener('change',function(){

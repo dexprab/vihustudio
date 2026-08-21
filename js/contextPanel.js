@@ -491,6 +491,14 @@ const ContextPanel=(function(){
   // in both places even though the two write to genuinely different
   // override bags (cardOverrides.textElements there, elementOverrides
   // here).
+  // The child's own font joins every font list the moment it exists —
+  // js/handwritingFont.js's one seam; the lists are untouched otherwise.
+  function _withHwFont(list){
+    try{
+      if(typeof HandwritingFont!=='undefined') return HandwritingFont.withOption(list);
+    }catch(e){}
+    return list;
+  }
   const WORLD_TEXT_FONT_OPTIONS=[
     {value:'',label:'World Default'},
     {value:'Georgia, serif',label:'Georgia'},
@@ -1228,7 +1236,7 @@ const ContextPanel=(function(){
         // Font Family's old partner, Weight, no longer exists as a dropdown
         // (folded into Style as a Bold toggle, below) — Font Family is now
         // paired instead with the newer Fill Style toggle right beside it.
-        const familyCell=_makeSelectRow(null,'Font Family',WORLD_TEXT_FONT_OPTIONS,ov.fontFamily||'',function(val){
+        const familyCell=_makeSelectRow(null,'Font Family',_withHwFont(WORLD_TEXT_FONT_OPTIONS),ov.fontFamily||'',function(val){
           SceneEngine.setContentOverride(slide,sceneObj.id,'fontFamily',val===''?null:val);
           _afterQuickEditChange();
         });
@@ -1443,7 +1451,7 @@ const ContextPanel=(function(){
     container.appendChild((typeof EmojiPicker!=='undefined' && typeof EmojiPicker.wrap==='function') ? EmojiPicker.wrap(textarea) : textarea);
 
     container.appendChild(_el('div','designer-sublabel','Typography'));
-    const familyCell=_makeSelectRow(null,'Font',STICKER_TEXT_FONT_OPTIONS,st.fontFamily||'',function(val){ update({fontFamily:val}); });
+    const familyCell=_makeSelectRow(null,'Font',_withHwFont(STICKER_TEXT_FONT_OPTIONS),st.fontFamily||'',function(val){ update({fontFamily:val}); });
     // "geometric/faceted lettering" — the same Solid/Shapes Fill Style
     // toggle the World-owned Text popup got, mirrored here for a
     // Story-owned freeform text sticker; renderer/slideRenderer.js's

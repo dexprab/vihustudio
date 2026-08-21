@@ -4754,3 +4754,32 @@ reopens onto its own room — a kept character lands the child in
 Drawings, a kept or fixed letter in Letters — and Done Browsing is the
 shared floor. Suite re-run green (36) with the door now walking
 through the tab.
+
+**Follow-up 6, same sprint** — *"my letters are pictures, where is my
+ttf font"* (the product owner). The last piece of My Handwriting
+arrived in the Studio: `js/handwritingFont.js` builds the child's real
+TTF from their kept letters using the tool page's own proven builder
+(hwFont + opentype, shared, deterministic, family name already "My
+Handwriting"): each stored PNG's alpha is rebuilt into the exact glyph
+Keep stored, normalized by the same HWLetter.normalize, built in
+milliseconds, registered as a real FontFace, and stored through
+HandwritingStore.saveFont — the migration's own font row (base64 ttf ·
+the letters it was built from · builtAt), so a fresh device wears the
+stored font before it has re-read a single letter. THE FONT FOLLOWS
+THE LETTERS: every letter keep triggers a debounced rebuild — making a
+letter IS updating the font, nothing to press. The font lists stay
+honest through one seam — HandwritingFont.withOption(list) — used at
+the five real select sites (Context Panel world text and sticker text,
+Card Designer's two, the header title fonts): 'My Handwriting'
+appears only once a font exists, with a stack that falls back to
+Kalam, so letters not yet made simply borrow a plain letter and a
+story never waits for the alphabet. Publish needed nothing: the
+renderer resolves fontFamily strings and Publish Studio already
+preloads every real family (Rule 5's race, closed long ago).
+HandwritingStore's list()/get() learned to exclude the font row so the
+grid stays letters. Suite 37 checks — F1 drives the whole journey in
+the real Studio: two letters through the real store → rebuild →
+document.fonts carries "My Handwriting" → the stored row holds the
+ttf → the option seam offers it → the letters list stays clean — and
+the visual pass ends with "hello world" drawn on the real page canvas
+in the child's own strokes. Both tool suites re-run green.

@@ -1491,13 +1491,22 @@ handwriting.
   letter. Backed by `js/handwritingStore.js` (the library's plumbing,
   letter-sized, writing `creator_handwriting`); the tool's grid
   hydrates from the same store so kept letters survive a reload.
+- **The letters are also a FONT.** `js/handwritingFont.js` builds the
+  child's real TTF from their kept letters with the tool's own builder
+  (shared, deterministic), registers it as a FontFace, stores it in
+  the migration's font row, and rebuilds on every keep — making a
+  letter IS updating the font. "My Handwriting" joins the font lists
+  through one seam (`withOption`) only once a font exists, with a
+  Kalam fallback so unmade letters borrow a plain one. Publish needed
+  nothing new — the renderer resolves families and Publish already
+  preloads them (Rule 5).
 - Disclosed: the growth record is local-first per device; a cloud row
   (the `creator_handwriting` pattern) is the follow-up when one garden
   should span devices. Handwriting cloud sync is push-only like the
-  library's; "My Handwriting" in the font lists is the next
-  handwriting-into-Studio piece.
+  library's.
 - `js/gardenEngine.js` · `js/gardenRenderer.js` ·
-  `js/handwritingStore.js` · `tools/garden-test/run-garden-tests.js`.
+  `js/handwritingStore.js` · `js/handwritingStudio.js` ·
+  `js/handwritingFont.js` · `tools/garden-test/run-garden-tests.js`.
 
 ## Roadmap
 

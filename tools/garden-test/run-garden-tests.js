@@ -382,6 +382,38 @@ function check(cond, name, note) { (cond ? ok : fail)(name, note); }
     'L5 Fix it up opens the check screen holding the kept ink — pencil·eraser·move — and Keep grows the garden', JSON.stringify(edited));
   await page.evaluate((id) => { try { HandwritingStore.remove(id); } catch (e) {} }, seeded);
 
+  console.log('-- F: the letters become a FONT');
+  // Two letters through the real store → HandwritingFont.rebuild() →
+  // a registered "My Handwriting" FontFace, the stored font row (the
+  // migration's own base64 shape), and the option seam offering it.
+  const font = await page.evaluate(async () => {
+    await HandwritingStore.whenReady();
+    const draw = (fn) => {
+      const c = document.createElement('canvas'); c.width = 60; c.height = 70;
+      const x = c.getContext('2d');
+      x.strokeStyle = '#1a1a1a'; x.lineWidth = 6; x.lineCap = 'round'; fn(x);
+      return c.toDataURL('image/png');
+    };
+    const r1 = await HandwritingStore.save({ ch: 'o', w: 60, h: 70, png: draw((x) => {
+      x.beginPath(); x.arc(30, 38, 20, 0, Math.PI * 2); x.stroke();
+    }) });
+    const r2 = await HandwritingStore.save({ ch: 'l', w: 60, h: 70, png: draw((x) => {
+      x.beginPath(); x.moveTo(30, 8); x.lineTo(30, 64); x.stroke();
+    }) });
+    const built = await HandwritingFont.rebuild();
+    const check16 = document.fonts.check('16px "My Handwriting"');
+    const row = HandwritingStore.getFont();
+    const withOpt = HandwritingFont.withOption([{ value: 'x', label: 'X' }]);
+    const listClean = HandwritingStore.list().every((r) => r.kind !== 'font');
+    try { HandwritingStore.remove(r1.record.id); HandwritingStore.remove(r2.record.id); } catch (e) {}
+    return { built: built, registered: check16,
+             row: !!(row && row.ttf && row.ttf.length > 1000 && /o/.test(row.letters) && /l/.test(row.letters)),
+             option: withOpt.length === 2 && withOpt[1].label === 'My Handwriting',
+             listClean: listClean };
+  });
+  check(font.built && font.registered && font.row && font.option && font.listClean,
+    'F1 letters build the TTF: FontFace registered, font row stored, lists offer My Handwriting, letters list stays letters', JSON.stringify(font));
+
   console.log('-- W: the real store, the real seam');
   // The scanner's keep branch is: CreatorLibrary.save(...) → ok →
   // dispatch vihu:creation-captured with the record id. The camera flow

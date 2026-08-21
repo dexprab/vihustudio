@@ -154,6 +154,7 @@
     const cardId = _activeCardId();
     const out = [];
     _map.forEach(function (r) {
+      if (r.kind === 'font') return;              // the font row is not a letter
       if (cardId ? r.cardId === cardId : !r.cardId) out.push(r);
     });
     // Alphabetical the way a child reads it — 'a m R', never the ASCII
@@ -169,9 +170,49 @@
     const cardId = _activeCardId();
     let found = null;
     _map.forEach(function (r) {
+      if (r.kind === 'font') return;
       if (r.ch === ch && (cardId ? r.cardId === cardId : !r.cardId)) found = r;
     });
     return found;
+  }
+
+  // ---- the font row — the build product, one per card ----------------------
+  // migrations_handwriting.sql's second documented shape: { kind:'font',
+  // cardId, ttf:'<base64>', letters:'ab…', builtAt }. Kept so a fresh
+  // device can wear the font before it has re-read a single letter, and
+  // rebuilt (hwFont is deterministic and takes milliseconds) whenever
+  // the letters change.
+  function getFont() {
+    const cardId = _activeCardId();
+    let found = null;
+    _map.forEach(function (r) {
+      if (r.kind === 'font' && (cardId ? r.cardId === cardId : !r.cardId)) found = r;
+    });
+    return found;
+  }
+  function saveFont(input) {
+    input = input || {};
+    if (!input.ttf) return Promise.resolve({ ok: false, error: 'nothing_to_save' });
+    return hydrate().then(function () {
+      const existing = getFont();
+      const now = new Date().toISOString();
+      const record = {};
+      if (existing) Object.keys(existing).forEach(function (k) { record[k] = existing[k]; });
+      record.id = (existing && existing.id) || ('hwf_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8));
+      record.kind = 'font';
+      record.cardId = (existing && existing.cardId) || _activeCardId() || undefined;
+      record.ttf = input.ttf;
+      record.letters = String(input.letters || '');
+      record.builtAt = now;
+      record.createdAt = (existing && existing.createdAt) || now;
+      record.updatedAt = now;
+      record.cloudSyncedAt = existing ? existing.cloudSyncedAt : undefined;
+      _map.set(record.id, record);
+      return _persistOne(record).then(function (result) {
+        if (result.ok) _scheduleDrainSoon();
+        return { ok: true, record: record, persisted: result.ok, error: result.error };
+      });
+    }).catch(function (e) { return { ok: false, error: e }; });
   }
 
   function claimUnowned() {
@@ -313,6 +354,7 @@
   const api = {
     hydrate: hydrate, whenReady: whenReady,
     list: list, get: get, save: save, remove: remove,
+    getFont: getFont, saveFont: saveFont,
     claimUnowned: claimUnowned, drainPendingSync: drainPendingSync,
     isAvailable: isAvailable
   };
