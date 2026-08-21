@@ -5003,3 +5003,15 @@ Verified over the local server: zero page errors on both pages, one
 title/canonical/description each, both JSON-LD blocks parse with every `@id`
 resolved in-graph, and the image serves. Head-only again — the body of
 neither page changed. Build 0597 → 0598.
+
+## Follow-up — The GPTBot Decision Is Made
+
+The one policy question the Discoverability sprint deliberately left open
+is now answered: the product owner chose to block model-training crawls.
+`User-agent: GPTBot / Disallow: /` joins robots.txt, with a comment saying
+whose decision it was and why nothing else changes — `OAI-SearchBot` (which
+powers ChatGPT's search and citations) remains explicitly allowed, so
+discoverability through AI assistants is untouched. `INDEXING_POLICY.md`
+and Decision 28 updated to record the decision; Decision 28's disclosed
+og:image gap was also marked closed (previous follow-up, build 0598). No
+HTML changed, so no build bump.

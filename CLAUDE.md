@@ -1547,18 +1547,23 @@ child sees.
   (`#vihuplanet` Brand, `#website` WebSite, `#vihustudio`
   WebApplication, `#my-garden` Thing), every reference defined
   in-graph, nothing marked up that is not on the page.
-- **robots.txt welcomes OAI-SearchBot explicitly, never names
-  Googlebot, and deliberately says nothing about GPTBot** — allowing
-  or blocking model-training crawls is the product owner's policy
-  decision, not made here.
+- **robots.txt welcomes OAI-SearchBot explicitly and never names
+  Googlebot. GPTBot is blocked** — decided by the product owner after
+  the sprint shipped (the sprint itself deliberately left it unset).
+  Model-training crawls are refused; search and ChatGPT-search
+  visibility are unaffected because OAI-SearchBot stays allowed.
 - **Canonical URLs say `https://vihuplanet.com/`** — never the GitHub
   Pages hostname.
-- Disclosed: no og:image and no twitter:site are set, because no real
-  brand image or social account exists — the social share image is the
-  one remaining asset task, and inventing either is forbidden.
+- ~~Disclosed: no og:image is set~~ — **closed.** The product owner
+  supplied the real brand image (the living night universe with the
+  VihuPlanet wordmark); it lives at `assets/brand/og-image.jpg`
+  (1200×630) and is wired as og:image/twitter:image on `/` and
+  `/about` and as the Brand node's `image` in both JSON-LD graphs.
+  No twitter:site is set — still no real social account exists, and
+  inventing one remains forbidden.
 - Out of scope and not implemented: SEO content farming, blogs,
-  keyword pages, analytics, search-ranking promises, GPTBot policy,
-  and any change to the experience itself.
+  keyword pages, analytics, search-ranking promises, and any change
+  to the experience itself.
 - `docs/VIHUPLANET_ENTITY_CANON.md` · `docs/DISCOVERABILITY_AUDIT.md` ·
   `docs/INDEXING_POLICY.md` · `docs/DISCOVERABILITY_TEST.md` ·
   `about.html` · `robots.txt` · `sitemap.xml` · `llms.txt`.

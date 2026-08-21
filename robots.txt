@@ -16,4 +16,9 @@ Disallow: /admin/
 Disallow: /tools/
 Disallow: /supabase/
 
+# Model-training crawls are not: the owner's decision. Search and
+# ChatGPT-search visibility are unaffected — OAI-SearchBot above.
+User-agent: GPTBot
+Disallow: /
+
 Sitemap: https://vihuplanet.com/sitemap.xml

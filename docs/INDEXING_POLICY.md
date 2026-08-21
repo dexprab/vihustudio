@@ -60,8 +60,11 @@ table above.
 - Normal crawling is allowed for every agent; **Googlebot is never given a
   special rule and never blocked.**
 - `OAI-SearchBot` is explicitly allowed (OpenAI's search crawler).
-- **No `GPTBot` rules exist** — allowing or blocking model-training crawls
-  is a policy decision for the product owner, deliberately not made here.
+- **`GPTBot` is blocked** (`Disallow: /`) — decided by the product owner
+  after the sprint shipped. VihuPlanet's content is not model-training
+  material. This costs nothing in search or ChatGPT-search visibility:
+  `OAI-SearchBot`, which powers ChatGPT's search and citations, remains
+  explicitly allowed.
 - The sitemap is referenced absolutely: `https://vihuplanet.com/sitemap.xml`.
 
 ## Standing rules for future pages
