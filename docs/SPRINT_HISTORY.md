@@ -5129,3 +5129,33 @@ names a control. `tools/companion-test/run-companion-tests.js`.
 children's content leaving the device) and Phase 4 (Performing — still
 gated on global undo existing). Creative suggestion stays out of scope
 entirely.
+
+## The Registry Is Never Served Stale (build 0603)
+
+Reported while testing Companion Intelligence: Quill showed its bubble —
+*"There's no cover on your story yet."* — and said nothing.
+`VihuVoice.canSpeak('quill')` answered **false** in the browser while
+`assets/registry.json` on disk carried Quill's voice id, which is the
+whole diagnosis.
+
+**Decision 25 promises that changing a voice is "a JSON edit with no code
+change and no redeploy", and that promise was quietly false.**
+`js/vihuVoice.js` already fetched the platform CONFIG with
+`{cache:'no-store'}`, but the registry — the file carrying every voice
+id — went through `CompanionEngine.loadRegistry()`, which fetched with
+default caching. So a browser that had ever loaded the Studio kept
+yesterday's voice table: the id live on the server, silence in the
+child's browser, and nothing anywhere saying why. Fixed at the one fetch;
+every caller benefits, including the Director's own companion-id
+resolution, which was equally stale-prone.
+
+**A silent silence is indistinguishable from a broken one.** Decision 25
+also requires that every unspoken line leave "the reason in the console",
+and one path had no reason: a character with no voice returned `false`
+without a word. That is a normal state, not a fault — but it is exactly
+the state that was hit here, and its silence is what made the bug opaque.
+It now says so.
+
+Verified: `canSpeak` true for lumo, nimbus, quill and leafy, false for
+leosaurus (no id yet) and the Story Egg (canon). Companion suite 25/25,
+zero page errors. Build 0602 → 0603.

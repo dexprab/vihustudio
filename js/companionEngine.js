@@ -966,7 +966,14 @@
    */
   CompanionEngine.loadRegistry=function(assetsBase){
     const base=assetsBase||'assets/companions/';
-    return fetch(base+'registry.json').then(function(res){
+    // NEVER FROM CACHE. This file is not code — it is the live table of
+    // who exists, what art they use and (since the Vihu Voice sprint)
+    // which voice is theirs. Adding a voice is meant to be a JSON edit
+    // with no redeploy, and a cached registry silently breaks exactly
+    // that promise: the id is live on the server and the child's browser
+    // is still reading yesterday's empty one. js/vihuVoice.js already
+    // fetches the platform config this way for the same reason.
+    return fetch(base+'registry.json',{cache:'no-store'}).then(function(res){
       if(!res.ok) return {companions:[]};
       return res.json().catch(function(){ return {companions:[]}; });
     }).then(function(data){

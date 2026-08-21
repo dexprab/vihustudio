@@ -737,7 +737,15 @@
     }
 
     return voiceOf(who).then(function (v) {
-      if (!v) return false;                        // no voice chosen yet
+      if (!v) {
+        // A normal state, not a fault — every character starts with no
+        // voice and the whole product works with none configured. It is
+        // still worth saying out loud, because a silent silence is
+        // indistinguishable from a broken one when somebody is trying to
+        // find out why nobody spoke.
+        _note('no voice for "' + who + '" yet — staying silent');
+        return false;
+      }
       return _generate(v, words, o.emotion).then(function (src) {
         if (!src) return false;
         return _play(src);
