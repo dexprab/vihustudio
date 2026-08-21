@@ -4910,6 +4910,7 @@ SEASON: the calendar is now buds from ~24 captures, flowers from ~40
 now and then ripens into a small amber fruit — and past the density
 ceiling everything keeps ripening (bud → flower → fruit → leaves
 fill). Birds are deliberately NOT built: the sprint's own DO-NOT-BUILD
-names "Garden characters", and a bird is on that line — the product
-owner can amend canon if they want one. Suite 41 green (L6 rewritten
+names "Garden characters", and a bird is on that line — put to the
+product owner, who held it: *"hold on birds for now."* The garden's
+vocabulary stays vines · leaves · sprigs · buds · flowers · fruit. Suite 41 green (L6 rewritten
 for the cards and the five-way ask); build 0593 → 0594.
