@@ -480,6 +480,12 @@
      404 keeps working — the My Library row simply never shows. -->
 <script src="../../js/themeRepositoryClient.js"></script>
 <script src="../../js/creatorLibrary.js"></script>
+<!-- MY GARDEN (Decision 27) — the Living Garden engine rides along so a
+     capture made HERE grows the same garden the Studio shows: the engine
+     listens for vihu:creation-captured and persists {seed,events} per
+     Magic Card in localStorage. No renderer on this page - the garden is
+     seen in the Studio; this page only reports captures. -->
+<script src="../../js/gardenEngine.js"></script>
 <script src="js/capture.js"></script>
 <script src="js/camera.js"></script>
 <script src="js/flow.js"></script>

@@ -430,6 +430,11 @@
           btn.disabled = false;
           if (res && res.ok) {
             status.textContent = 'Saved to My Library ✓';
+            // MY GARDEN — a creation entered the garden; the record id
+            // makes one capture exactly one growth (Decision 27).
+            try {
+              document.dispatchEvent(new CustomEvent('vihu:creation-captured', { detail: { id: res.record.id } }));
+            } catch (e) {}
             log('library: kept "' + name + '" as ' + res.record.id +
                 ' (png ' + png.length + ' chars' +
                 (res.record.png && res.record.png.length !== png.length

@@ -776,6 +776,14 @@
                     parts: HWLetter.partsOf(t.mask, t.w, t.h) };
     state.glyphs.set(k.ch, glyph);
     state.samples.set(k.ch, HWLetter.normalize(glyph, k.ch));
+    // MY GARDEN — a kept letter is a capture like any other, and the kind
+    // of creation never matters (Decision 27). The id is unique per KEEP,
+    // not per letter: making a letter again is a new creative act and
+    // grows the garden again; the guard only stops one keep double-firing.
+    try {
+      document.dispatchEvent(new CustomEvent('vihu:creation-captured',
+        { detail: { id: 'hw-' + k.ch + '-' + Date.now() } }));
+    } catch (e) {}
     log('hw: ' + k.ch + ' is yours — kept at ' + t.w + 'x' + t.h + 'px' +
         (k.edits ? ' after ' + k.edits + ' touch-up stroke(s)' : ''));
     state.check = null;

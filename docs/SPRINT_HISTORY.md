@@ -4630,3 +4630,22 @@ few dozen bytes in localStorage) — the cloud row mirroring
 wants one garden across devices; and the in-Studio scanner's button-to-keep
 flow is exercised by the standalone suites, while the garden suite proves
 the store-and-event seam those five shipped lines call.
+
+**Follow-up, same sprint** — reported by the product owner: *"i dont see
+my handwriting in garden."* True, and the root cause was scope, not a
+bug: handwriting still lives only in the standalone tool (the letter
+grid keeps letters in in-memory Maps; nothing writes `creator_handwriting`
+yet, and no letter keep fired the garden event anywhere). Closed the
+half that belongs to THIS sprint: the tool page now carries
+`js/gardenEngine.js` (engine only — the garden is seen in the Studio,
+the tool just reports captures), the letter grid's Keep dispatches
+`vihu:creation-captured` with a per-keep id (making a letter again is a
+new creative act and grows the garden again), and the standalone
+scanner's own keep — which also predated the event — dispatches with
+its record id. Suite grew to 31 checks with the cross-page journey:
+captures on the tool page (duplicate guarded) → the Studio draws the
+garden they grew. Both tool suites re-run clean. What remains is the
+handwriting-into-Studio sprint proper — the Studio-side letter surface,
+the `creator_handwriting` store client, and "My Handwriting" in the
+font lists — which is where letters become visible IN the Studio rather
+than only growing its garden.

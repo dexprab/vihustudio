@@ -234,6 +234,28 @@ function check(cond, name, note) { (cond ? ok : fail)(name, note); }
     check(cPost.events === cPre.events + 1, 'D2 the dev trigger simulates one successful capture', cPre.events + ' → ' + cPost.events);
   }
 
+  console.log('-- T: a capture on the tool page grows the Studio\'s garden');
+  // The letter grid and the standalone scanner live on the tool page,
+  // which now carries the engine (no renderer) — a keep there must grow
+  // the SAME garden the Studio draws. The journey, end to end: clean
+  // garden → two captures on the tool page (one a handwriting-style id,
+  // one repeated to prove the guard holds cross-page) → open the Studio
+  // → the garden shows exactly those captures.
+  await page.goto(BASE + '/tools/bring-it-alive/');
+  await page.waitForFunction(() => typeof LivingGarden !== 'undefined', null, { timeout: 20000 });
+  const toolSide = await page.evaluate(() => {
+    Object.keys(localStorage).filter((k) => k.indexOf('vihu-living-garden') === 0).forEach((k) => localStorage.removeItem(k));
+    document.dispatchEvent(new CustomEvent('vihu:creation-captured', { detail: { id: 'hw-R-suite' } }));
+    document.dispatchEvent(new CustomEvent('vihu:creation-captured', { detail: { id: 'hw-R-suite' } }));
+    document.dispatchEvent(new CustomEvent('vihu:creation-captured', { detail: { id: 'hw-o-suite' } }));
+    return LivingGarden.state().events;
+  });
+  check(toolSide === 2, 'T1 the tool page records captures (handwriting ids, duplicate guarded)', toolSide + ' events');
+  await bootEditor();
+  const studioSide = await gardenCounts();
+  check(studioSide.events === 2 && studioSide.drawn > 0,
+    'T2 the Studio draws the garden those tool-page captures grew', JSON.stringify(studioSide));
+
   console.log('-- W: the real store, the real seam');
   // The scanner's keep branch is: CreatorLibrary.save(...) → ok →
   // dispatch vihu:creation-captured with the record id. The camera flow
