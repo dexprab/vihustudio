@@ -5042,3 +5042,15 @@ on the universe's night blue with four faint companion stars. Same two
 files regenerated in place (`assets/brand/favicon.png` 64,
 `apple-touch-icon.png` 180), same three pages, nothing rewired. Build
 0599 → 0600.
+
+## Follow-up — The Owner's Badge Is the Icon (build 0601)
+
+Third and final take on the favicon, and this one is the product owner's
+own: a round badge — a child's paper drawings with a crayoned planet, sun,
+crayon, gold star and a My Garden leaf, rimmed in night blue. Supplied at
+180×180 with true transparent corners, so the badge's own circle is the
+icon's shape and the apple-touch size is native resolution; the 64px
+favicon is a downscale of the same file. Checked at 32px (reads clearly)
+and 16px (a bright distinctive disc). Same files, same three pages,
+nothing rewired — the gold star and the spirit before it live only in git
+history. Build 0600 → 0601.
