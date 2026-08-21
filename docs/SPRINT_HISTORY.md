@@ -5345,3 +5345,46 @@ pending line so it cannot surface after its companion has gone.
 Verified live: hover, click and drag each still produce their line, and
 the suite gained five checks covering the delay, the cap and the lead
 rule. 50/50, zero page errors. Build 0606 → 0607.
+
+## A Sibling's Card Is Not Your Card (build 0608)
+
+Found while reading the Story Rite Progression sprint against the code,
+and confirmed by measurement rather than argument: the Rite's grandfather
+clause asked `MagicCard.list().length > 0` — *does anybody on this laptop
+hold a card* — which is a fact about the DEVICE, not about the child in
+front of it. A brand-new child on a machine holding an older sibling's
+card was sent straight past the mandatory Rite.
+
+**The product owner's objection was the useful part.** *"the platform
+always loads with ether so it should not be able to affect."* Reasonable,
+and wrong by exactly one step, which is worth recording: **VihuPlanet
+decides who is ACTIVE; it never changes what is STORED.** So the Ether
+can correctly conclude "I do not know you", hand the child to the Studio,
+and the Studio then reads a different child's card and calls the Rite
+done. Measured: no active card, Rite never taken, `isComplete()` → true.
+
+**Same bug class as Decision 19** (*"the store was never Creator-scoped
+... it is per-DEVICE"*), and the same fix: ask about the child.
+`getActive()` replaces `list().length`, which also means a stale pointer
+to a deleted card grandfathers nobody, since `getActive()` already
+resolves one to null.
+
+**The other half is disclosed rather than fixed, because it cannot be
+fixed here.** The completion flag is per-device and has to be: it is
+written before the child has any identity to scope it to — not having a
+Magic Card yet is the entire premise of the Rite. So a second child
+arriving after the first has genuinely COMPLETED the Rite still inherits
+an unlocked Studio. Closing that needs the taught-capability record on
+the card (`docs/STUDIO_RITE_LEVELS.md`), not a cleverer read of
+localStorage.
+
+**Left alone deliberately:** a Traveller who completed the Rite and
+declined to share still reaches the six-tile screen without a Magic Card.
+The product owner reviewed that and chose to keep it — Canon 6 stands,
+the Creator Ceremony remains the consequence of sharing.
+
+New suite `tools/rite-test/run-rite-gate-tests.js`, 7/7 — including the
+regression itself, a recognised Creator still being grandfathered, a
+stale pointer grandfathering nobody, and a card-less Traveller who
+finished the Rite keeping their Studio. Companion 50/50, Garden 41/41,
+zero page errors. Build 0607 → 0608.

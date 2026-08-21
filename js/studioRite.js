@@ -50,14 +50,39 @@ const StudioRite=(function(){
   // the Rite exists to teach. Already true for every existing Creator,
   // already false for every Traveller, and already loaded at boot: no
   // backfill, no schema change, no migration.
+  //
+  // THE ACTIVE CARD, NOT EVERY CARD ON THE DEVICE. This asked
+  // `MagicCard.list().length>0` — "does anybody here hold a card" — and
+  // that is a fact about the LAPTOP, not about the child in front of
+  // it. On a shared machine an older sibling's card grandfathered a
+  // brand-new child straight past the Rite: measured, with no card
+  // active and the Rite never taken, isComplete() answered true.
+  //
+  // The Ether does not protect against it, which is the part worth
+  // remembering: VihuPlanet decides who is ACTIVE, and never changes
+  // what is stored, so a child can be correctly unrecognised at the
+  // door and still be treated here as somebody else.
+  //
+  // Same bug class as Decision 19 ("the store was never Creator-scoped
+  // ... it is per-DEVICE"), and the same fix: ask about the child.
+  // getActive() resolves a stale pointer to null on its own, so a card
+  // that no longer exists cannot grandfather anybody either.
   function _isCreator(){
     try{
       return typeof MagicCard!=='undefined'
-        && typeof MagicCard.list==='function'
-        && MagicCard.list().length>0;
+        && typeof MagicCard.getActive==='function'
+        && !!MagicCard.getActive();
     }catch(e){ return false; }
   }
 
+  // DISCLOSED, because it is the half that cannot be fixed here. The
+  // flag is per-DEVICE, and it has to be: it is written before the
+  // child has any identity to scope it to — the whole point of the Rite
+  // is that they do not have a Magic Card yet. So on a shared machine,
+  // a second child arriving after the first has COMPLETED the Rite
+  // still inherits an unlocked Studio. Closing that needs the taught-
+  // capability record on the card (docs/STUDIO_RITE_LEVELS.md), not a
+  // cleverer read of localStorage.
   function isComplete(){ return _flagSet()||_isCreator(); }
 
   // True from the moment the Rite starts until it has fully finished.
