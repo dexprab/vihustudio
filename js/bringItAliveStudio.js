@@ -239,7 +239,10 @@
       const r = _state.creation.render();
       const png = r.canvas.toDataURL('image/png');
       const name = (_els.nameInput.value || '').trim() || NAME_DEFAULT;
-      CreatorLibrary.save({ name, png, creation: _state.creation.toJSON() })
+      // Reopened for edit or retake (opts.record), the keep UPDATES the
+      // record — same id, same shelf spot — instead of minting a twin.
+      CreatorLibrary.save({ id: _opts && _opts.record ? _opts.record.id : undefined,
+                            name, png, creation: _state.creation.toJSON() })
         .then((res) => {
           if (res && res.ok) {
             _log('library: kept "' + name + '" as ' + res.record.id);
@@ -248,8 +251,12 @@
             // never learns what was scanned or how (Plan Card 08), and
             // the record id is what makes one capture exactly one
             // growth however many times anything re-renders.
+            // The id carries updatedAt so a RE-keep (edit, retake) is a
+            // new creative act and grows the garden like a letter
+            // re-keep does; the guard still stops one save double-firing.
             try {
-              document.dispatchEvent(new CustomEvent('vihu:creation-captured', { detail: { id: res.record.id } }));
+              document.dispatchEvent(new CustomEvent('vihu:creation-captured',
+                { detail: { id: res.record.id + '@' + res.record.updatedAt } }));
             } catch (e) {}
             const onKept = _opts && _opts.onKept;
             close();
@@ -563,6 +570,27 @@
     _build();
     _keyHandler = (e) => { if (e.key === 'Escape') close(); };
     document.addEventListener('keydown', _keyHandler);
+    // Reopening a KEPT character (the My Garden choice card): with
+    // opts.record and no retake, the still-editable creation document
+    // the record carries loads straight into Make It Yours — no camera,
+    // no re-claiming; the paper ride-along is already aboard. A retake
+    // starts at the photograph exactly like a fresh scan; either way
+    // the keep lands on the same record (see _keep). A record whose
+    // document cannot load falls through to the photograph rather than
+    // refusing — the child can always bring the drawing again.
+    if (_opts.record) {
+      try { _els.nameInput.value = _opts.record.name || NAME_DEFAULT; } catch (e) {}
+      if (!_opts.retake && _opts.record.creation && typeof BIACreation !== 'undefined') {
+        BIACreation.fromJSON(_opts.record.creation)
+          .then((created) => {
+            if (!_state) return;
+            _state.creation = created;
+            _openYours();
+          })
+          .catch(() => { _log('reopen: creation did not load — starting at the photograph'); });
+        return true;
+      }
+    }
     return true;
   }
 

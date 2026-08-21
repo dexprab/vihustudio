@@ -2566,8 +2566,39 @@ const ContextPanel=(function(){
     thumb.appendChild(img);
     tile.appendChild(thumb);
     tile.appendChild(_el('span','context-collection-tile-label',item.name||'My Character'));
-    tile.addEventListener('click',function(){
-      _addImageStickerFromDataURL(item.png,'library.'+item.id);
+    // A kept character asks first, exactly like a kept letter ("my
+    // drawing section needs update. the tiles need same option edit /
+    // retake" — the product owner): put it on the page (gold), bring it
+    // again (the camera, replacing this record on keep), fix it up (the
+    // record's own still-editable creation document, straight into Make
+    // It Yours), never mind.
+    tile.addEventListener('click',function(ev){
+      ev.stopPropagation();
+      const oldCard=panelRoot.querySelector('.context-hw-choice');
+      if(oldCard){ oldCard.remove(); if(oldCard._forCh==='lib:'+item.id) return; }
+      const card=_el('div','context-hw-choice');
+      card._forCh='lib:'+item.id;
+      function opt(cls,label,fn){
+        const b=_el('button',cls,label);
+        b.type='button';
+        b.addEventListener('click',function(e2){ e2.stopPropagation(); card.remove(); fn(); });
+        card.appendChild(b);
+      }
+      opt('context-hw-choice-gold','🖼 Put it on the page',function(){
+        _addImageStickerFromDataURL(item.png,'library.'+item.id);
+      });
+      opt('','📷 Bring it again',function(){
+        if(typeof BringItAliveStudio!=='undefined') BringItAliveStudio.open({record:item,retake:true,onKept:function(){ _showLibraryPicker('drawings'); }});
+      });
+      opt('','✏️ Fix it up',function(){
+        if(typeof BringItAliveStudio!=='undefined') BringItAliveStudio.open({record:item,onKept:function(){ _showLibraryPicker('drawings'); }});
+      });
+      opt('','Never mind',function(){});
+      cell.appendChild(card);
+      const away=function(e2){
+        if(!card.contains(e2.target)){ card.remove(); document.removeEventListener('pointerdown',away,true); }
+      };
+      document.addEventListener('pointerdown',away,true);
     });
     cell.appendChild(tile);
     // A small quiet remove, revealed on hover/focus — one gentle

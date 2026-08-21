@@ -4783,3 +4783,30 @@ document.fonts carries "My Handwriting" → the stored row holds the
 ttf → the option seam offers it → the letters list stays clean — and
 the visual pass ends with "hello world" drawn on the real page canvas
 in the child's own strokes. Both tool suites re-run green.
+
+**Follow-up 7, same sprint** — three at once. *"dont see it"*: the
+font pipeline was correct (a cold-load probe proved letters → build →
+register → offer with no manual step) and the reason was the CACHE —
+every ship in this sprint had kept `?v=0589`, the same cache-buster the
+owner's browser already held, so their Studio was running stale
+JavaScript while the new files sat unfetched. Bumped to `?v=0590`
+across studio.html and index.html and set version.txt to 0590 so the
+build stamp's own "tap to update" pulls the new modules; the lesson is
+recorded here so no future ship forgets the bump. *"keep the font name
+as username handwriting"*: the family is now the active card's own
+nickname — "Vihaan's Handwriting" — so on a shared machine two
+Creators' fonts are two names, never one ambiguous "mine"; a Traveller
+holding no card keeps plain "My Handwriting" until they claim one
+(F2). And *"my drawing section needs update. the tiles need same
+option edit / retake"*: a kept character now asks first with the same
+card a kept letter uses — 🖼 Put it on the page · 📷 Bring it again ·
+✏️ Fix it up · Never mind. Fix it up loads the record's own
+still-editable creation document straight into Make It Yours (no
+camera, no re-claiming — the document the library has carried since
+its first sprint finally pays off); Bring it again starts at the
+photograph; either keep lands on the SAME record, and the capture id
+now carries updatedAt so a re-keep is a new creative act that grows
+the garden exactly as a letter re-keep does. Suite 39 checks (L6
+drives the whole drawing-edit journey — choice card, Make It Yours on
+the record, keep updating in place and growing the garden; F2 the
+named font); base 192 and handwriting 162 re-run green.

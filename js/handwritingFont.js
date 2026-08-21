@@ -32,8 +32,30 @@
 (function () {
   'use strict';
 
-  const FAMILY = 'My Handwriting';
-  const STACK = '"My Handwriting", "Kalam", "Comic Sans MS", cursive';
+  // The font carries its maker's name — "keep the font name as username
+  // handwriting" (the product owner). The family is the active card's
+  // own nickname ("Vihaan's Handwriting"), so on a shared machine two
+  // Creators' fonts are two names, never one ambiguous "mine"; a
+  // Traveller holding no card gets the plain 'My Handwriting' until
+  // they claim one. The TTF's internal name stays whatever hwFont
+  // wrote — a FontFace registers under any family it is given.
+  function _creatorName() {
+    try {
+      const id = (typeof MagicCard !== 'undefined' && MagicCard.activeId) ? MagicCard.activeId()
+        : localStorage.getItem('vihu-magic-card-active-id');
+      if (!id) return null;
+      const cards = (typeof MagicCard !== 'undefined' && MagicCard.list) ? (MagicCard.list() || [])
+        : JSON.parse(localStorage.getItem('vihu-magic-cards') || '[]');
+      const card = cards.filter(function (c) { return c && c.id === id; })[0];
+      return (card && card.nickname) ? String(card.nickname).trim() : null;
+    } catch (e) { return null; }
+  }
+  function _familyName() {
+    const name = _creatorName();
+    return name ? (name + "'s Handwriting") : 'My Handwriting';
+  }
+  function _stackFor(family) { return '"' + family + '", "Kalam", "Comic Sans MS", cursive'; }
+
   let _face = null;          // the registered FontFace, null until one lands
   let _builtFrom = '';       // signature of the letters the face was built from
   let _rebuildTimer = 0;
@@ -44,8 +66,9 @@
   // font when it exists. Never mutates the caller's array.
   function withOption(list) {
     if (!_face) return list;
-    if (list.some(function (o) { return o && o.label === FAMILY; })) return list;
-    return list.concat([{ value: STACK, label: FAMILY }]);
+    const fam = api.family;
+    if (list.some(function (o) { return o && o.label === fam; })) return list;
+    return list.concat([{ value: api.stack, label: fam }]);
   }
 
   function _b64FromBuffer(buf) {
@@ -64,11 +87,14 @@
   }
 
   function _register(buffer) {
-    const face = new FontFace(FAMILY, buffer);
+    const family = _familyName();
+    const face = new FontFace(family, buffer);
     return face.load().then(function () {
       if (_face) { try { document.fonts.delete(_face); } catch (e) {} }
       document.fonts.add(face);
       _face = face;
+      api.family = family;
+      api.stack = _stackFor(family);
       return true;
     });
   }
@@ -149,7 +175,7 @@
   }
 
   const api = { available: available, withOption: withOption, rebuild: rebuild,
-                family: FAMILY, stack: STACK };
+                family: _familyName(), stack: _stackFor(_familyName()) };
   try { window.HandwritingFont = api; } catch (e) {}
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);

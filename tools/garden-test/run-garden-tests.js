@@ -382,6 +382,61 @@ function check(cond, name, note) { (cond ? ok : fail)(name, note); }
     'L5 Fix it up opens the check screen holding the kept ink — pencil·eraser·move — and Keep grows the garden', JSON.stringify(edited));
   await page.evaluate((id) => { try { HandwritingStore.remove(id); } catch (e) {} }, seeded);
 
+  console.log('-- L6: a kept DRAWING asks first, and Fix it up edits the record');
+  const drawing = await page.evaluate(async () => {
+    // A real creation document, the way the scanner builds one.
+    const w = 12, h = 12;
+    const img = new ImageData(w, h);
+    for (let i = 0; i < w * h; i++) {
+      if (i % 3 === 0) { img.data[i * 4] = 20; img.data[i * 4 + 3] = 255; }
+    }
+    const mask = new Uint8Array(w * h).fill(1);
+    const created = BIACreation.create({ imageData: img, crop: { x: 0, y: 0, w: w, h: h }, maskPixels: mask },
+      { source: { filename: 'suite.png', width: w, height: h } });
+    const r = created.render();
+    const res = await CreatorLibrary.save({ name: 'Suite Char', png: r.canvas.toDataURL('image/png'), creation: created.toJSON() });
+    if (!res.ok) return { ok: false, why: 'save failed' };
+    const before = { updatedAt: res.record.updatedAt, events: LivingGarden.state().events };
+
+    // The picker may already be open (L5's keep reopened it on Letters);
+    // otherwise go through the door first.
+    if (!document.querySelector('.context-hw-tab')) {
+      const door = Array.from(document.querySelectorAll('button.context-add-card'))
+        .find((t) => /My Garden/.test(t.textContent || ''));
+      if (door) door.click();
+    }
+    const dtab = Array.from(document.querySelectorAll('.context-hw-tab'))
+      .find((t) => /My Drawings/.test(t.textContent || ''));
+    if (dtab) dtab.click();
+    const tile = Array.from(document.querySelectorAll('.context-library-cell .context-collection-tile'))
+      .find((t) => /Suite Char/.test(t.textContent || ''));
+    if (!tile) return { ok: false, why: 'no tile' };
+    tile.click();
+    const card = document.querySelector('.context-hw-choice');
+    if (!card) return { ok: false, why: 'no card' };
+    const labels = Array.from(card.querySelectorAll('button')).map((b) => b.textContent.trim());
+    const fix = Array.from(card.querySelectorAll('button')).find((b) => /Fix it up/.test(b.textContent));
+    fix.click();
+    await new Promise((r2) => setTimeout(r2, 900));
+    const overlay = document.querySelector('[data-step]');
+    const step = overlay ? overlay.getAttribute('data-step') : null;
+    const keepBtn = Array.from(document.querySelectorAll('button')).find((b) => /Keep in My Garden/.test(b.textContent || ''));
+    if (!keepBtn) return { ok: false, why: 'no keep btn', step: step, labels: labels };
+    keepBtn.click();
+    await new Promise((r3) => setTimeout(r3, 900));
+    const rec = CreatorLibrary.get ? CreatorLibrary.get(res.record.id) : null;
+    const after = { updatedAt: rec && rec.updatedAt, events: LivingGarden.state().events };
+    const out = { ok: true, labels: labels, step: step,
+                  updated: !!(after.updatedAt && after.updatedAt !== before.updatedAt),
+                  grew: after.events === before.events + 1,
+                  sameRecord: !!rec };
+    try { CreatorLibrary.remove(res.record.id); } catch (e) {}
+    return out;
+  });
+  check(drawing.ok && drawing.labels.length === 4 && drawing.step === 'yours' && drawing.updated && drawing.grew && drawing.sameRecord,
+    'L6 a kept drawing asks (place · retake · edit · never mind); Fix it up opens Make It Yours on the record, Keep updates it and grows the garden',
+    JSON.stringify(drawing));
+
   console.log('-- F: the letters become a FONT');
   // Two letters through the real store → HandwritingFont.rebuild() →
   // a registered "My Handwriting" FontFace, the stored font row (the
@@ -413,6 +468,29 @@ function check(cond, name, note) { (cond ? ok : fail)(name, note); }
   });
   check(font.built && font.registered && font.row && font.option && font.listClean,
     'F1 letters build the TTF: FontFace registered, font row stored, lists offer My Handwriting, letters list stays letters', JSON.stringify(font));
+
+  // The font carries its maker's name: with a card whose nickname is
+  // known, the family is "<nickname>'s Handwriting".
+  const named = await page.evaluate(async () => {
+    localStorage.setItem('vihu-magic-card-active-id', 'card-font-name');
+    localStorage.setItem('vihu-magic-cards', JSON.stringify([{ id: 'card-font-name', nickname: 'Vihaan' }]));
+    const c = document.createElement('canvas'); c.width = 60; c.height = 70;
+    const x = c.getContext('2d'); x.strokeStyle = '#1a1a1a'; x.lineWidth = 6;
+    x.beginPath(); x.moveTo(30, 8); x.lineTo(30, 64); x.stroke();
+    const r = await HandwritingStore.save({ ch: 'l', w: 60, h: 70, png: c.toDataURL('image/png') });
+    const built = await HandwritingFont.rebuild();
+    const fam = HandwritingFont.family;
+    const reg = document.fonts.check("16px \"Vihaan's Handwriting\"");
+    const opt = HandwritingFont.withOption([]);
+    try { HandwritingStore.remove(r.record.id); } catch (e) {}
+    const fr = HandwritingStore.getFont();
+    if (fr) try { HandwritingStore.remove(fr.id); } catch (e) {}
+    localStorage.removeItem('vihu-magic-card-active-id');
+    localStorage.removeItem('vihu-magic-cards');
+    return { built: built, family: fam, registered: reg, label: opt.length === 1 && opt[0].label === fam };
+  });
+  check(named.built && named.family === "Vihaan's Handwriting" && named.registered && named.label,
+    "F2 the font carries its maker's name — Vihaan's Handwriting", JSON.stringify(named));
 
   console.log('-- W: the real store, the real seam');
   // The scanner's keep branch is: CreatorLibrary.save(...) → ok →
