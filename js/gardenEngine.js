@@ -149,25 +149,40 @@
     // the foot of the left margin. The garden's fixed point, forever.
     if (stage === 0) { el.push({ k: 'sprig', band: 'left', u: 0.55, v: 0.94, s: 1.1 }); g.tip = { band: 'left', u: 0.5, v: 0.9 }; return; }
 
-    // Zone 2 — nearby growth: a young vine curls upward from the origin.
-    if (stage < 5) { vineNode('left', jitter(0.5, 0.35), g.tip.v - 0.07 - rnd() * 0.04); if (rnd() < 0.8) el.push({ k: 'leaf', band: 'left', u: jitter(g.tip.u, 0.25), v: g.tip.v, s: 0.85 + rnd() * 0.2 }); return; }
-
-    // Zone 3 — edge travel: the vine climbs the left margin.
-    if (stage < 13) {
-      if (g.tip.band === 'left' && g.tip.v > 0.14) { vineNode('left', jitter(0.45, 0.4), g.tip.v - 0.09 - rnd() * 0.04); }
-      else { el.push({ k: 'sprig', band: 'left', u: jitter(0.5, 0.5), v: 0.2 + rnd() * 0.6, s: 0.75 + rnd() * 0.3 }); }
-      if (rnd() < 0.7) el.push({ k: 'leaf', band: 'left', u: jitter(g.tip.u, 0.3), v: jitter(g.tip.v, 0.03), s: 0.8 + rnd() * 0.25 });
+    // Zone 2 — nearby growth: a young vine curls upward from the origin,
+    // SLOWLY, leafing as it goes — at a dozen captures the garden should
+    // read as a leafy young cluster, never a floor-to-ceiling wire (the
+    // product owner, at 13 captures: the vine had already spanned the
+    // column with bare stretches between tiny leaves).
+    if (stage < 5) {
+      vineNode('left', jitter(0.5, 0.35), g.tip.v - 0.045 - rnd() * 0.02);
+      el.push({ k: 'leaf', band: 'left', u: jitter(g.tip.u - 0.2, 0.15), v: g.tip.v, s: 1.0 + rnd() * 0.3 });
+      if (rnd() < 0.6) el.push({ k: 'leaf', band: 'left', u: jitter(g.tip.u + 0.2, 0.15), v: jitter(g.tip.v, 0.02), s: 0.9 + rnd() * 0.3 });
       return;
     }
 
-    // Zone 4 — branching: the top-left corner turns; sprigs reach the
-    // mid-margins; the right side begins from its own foot.
+    // Zone 3 — edge travel: the vine keeps climbing, still unhurried
+    // (it reaches the upper half only around twenty captures), leaves
+    // in pairs along the way, a sprig branching now and then.
+    if (stage < 13) {
+      if (g.tip.band === 'left' && g.tip.v > 0.45) { vineNode('left', jitter(0.45, 0.4), g.tip.v - 0.055 - rnd() * 0.025); }
+      else { el.push({ k: 'sprig', band: 'left', u: jitter(0.5, 0.5), v: g.tip.v + 0.1 + rnd() * 0.35, s: 0.9 + rnd() * 0.3 }); }
+      el.push({ k: 'leaf', band: 'left', u: jitter(g.tip.u - 0.2, 0.2), v: jitter(g.tip.v, 0.02), s: 0.95 + rnd() * 0.3 });
+      if (rnd() < 0.6) el.push({ k: 'leaf', band: 'left', u: jitter(g.tip.u + 0.2, 0.2), v: jitter(g.tip.v, 0.03), s: 0.9 + rnd() * 0.25 });
+      return;
+    }
+
+    // Zone 4 — branching: the left vine finishes its climb; the right
+    // side begins from its own foot; sprigs reach the mid-margins.
     if (stage < 24) {
-      if (stage === 13) { vineNode('top', 0.06, 0.5); return; }
-      if (g.tip.band === 'top' && g.tip.u < 0.34) { vineNode('top', g.tip.u + 0.06 + rnd() * 0.04, jitter(0.5, 0.5)); if (rnd() < 0.6) el.push({ k: 'leaf', band: 'top', u: g.tip.u, v: jitter(0.5, 0.4), s: 0.75 + rnd() * 0.2 }); return; }
-      if (stage === 18) { vineNode('right', jitter(0.5, 0.3), 0.95); return; }
-      if (g.tip.band === 'right' && g.tip.v > 0.5) { vineNode('right', jitter(0.5, 0.4), g.tip.v - 0.09 - rnd() * 0.04); if (rnd() < 0.7) el.push({ k: 'leaf', band: 'right', u: jitter(g.tip.u, 0.3), v: g.tip.v, s: 0.8 + rnd() * 0.25 }); return; }
-      el.push({ k: 'sprig', band: rnd() < 0.5 ? 'left' : 'right', u: jitter(0.5, 0.5), v: 0.25 + rnd() * 0.55, s: 0.7 + rnd() * 0.3 });
+      if (g.tip.band === 'left' && g.tip.v > 0.14) {
+        vineNode('left', jitter(0.45, 0.4), g.tip.v - 0.06 - rnd() * 0.03);
+        el.push({ k: 'leaf', band: 'left', u: jitter(g.tip.u, 0.3), v: jitter(g.tip.v, 0.02), s: 0.9 + rnd() * 0.3 });
+        return;
+      }
+      if (stage === 18 || (g.tip.band !== 'right' && rnd() < 0.4)) { vineNode('right', jitter(0.5, 0.3), 0.95); return; }
+      if (g.tip.band === 'right' && g.tip.v > 0.5) { vineNode('right', jitter(0.5, 0.4), g.tip.v - 0.06 - rnd() * 0.03); el.push({ k: 'leaf', band: 'right', u: jitter(g.tip.u, 0.3), v: g.tip.v, s: 0.9 + rnd() * 0.25 }); return; }
+      el.push({ k: 'sprig', band: rnd() < 0.5 ? 'left' : 'right', u: jitter(0.5, 0.5), v: 0.25 + rnd() * 0.55, s: 0.85 + rnd() * 0.3 });
       return;
     }
 

@@ -4834,3 +4834,42 @@ TTF and rasterized — stroke ratio 1.4, down from 3.0) and visually
 ('vihupapa' from six letters at two wildly different distances reads as
 one pen). Build bumped 0590 → 0591 so updated browsers refetch; base
 192 and handwriting 162 re-run green.
+
+**Follow-up 9, same sprint** — two reports together. *"this does not
+look good in black match the studio colors"*: a letter's stored ink is
+now the Studio's own navy (#1D3457 — the same colour a Text object
+writes in) at every draw site (the Studio catcher's keep, the tool's
+keep, the check screen's working ink), and letters stored before this
+are recolored by a one-shot lossless sweep in HandwritingStore — the
+PNG is a pure alpha mask, so the child's exact ink survives, only the
+colour changes; placed objects own their copies and are deliberately
+untouched (suite N1). And *"i have done letters a-k along with 2 scans
+and this is the garden growth"* — a spindly floor-to-ceiling wire at
+13 captures — had TWO causes. Tuning: the young vine climbed far too
+fast (it now stays in the lower half until ~20 captures, steps of
+~0.05 not ~0.1, leaves in pairs at every node, bigger blades), and
+because growth is a state replay, existing gardens reshape themselves
+with no migration. And a REAL renderer bug the tuning screenshots
+exposed: the breath animation's CSS transform OVERRIDES an SVG
+element's attribute transform, so every animated blade lost its
+translate(...) and piled invisibly at the layer origin — the vines
+kept only their bare stems, which is much of what "not living" and
+"fishbone" were. Fixed structurally: an OUTER group carries position
+as an attribute, an INNER group carries the breath and the grow-in,
+with its local origin the attachment point by construction. Build
+0591 → 0592. Suite 42 checks; base 192 and handwriting 162 green.
+
+**Follow-up 10, same sprint** — *"the growth seems to stem abruptly
+and fast… think slow motion video for every growth. and take half a
+second post action completion to start the growth."* The whole growth
+moment re-paced as a sequence: a half-second quiet beat after the
+capture lands, then the vine's NEW tail segment alone grows out of the
+tip over ~2.6s (dash-offset hides only the new segment — the
+established vine never redraws, which is also what kills the
+out-of-the-blue feel), the new element's stem draws out of the vine at
+~2.4s over 1.2s, the leaf unfolds last (1.4s fade, 2.2s scale, from
+3.2s), and the breath joins only once growth settles (~6.2s). The
+settle re-render learned to WAIT OUT a growth in flight — it used to
+rebuild the layer at 600ms and would have cut every slow-motion short.
+Stage portraits in the suite now wait for growth to finish. 41 checks
+green.

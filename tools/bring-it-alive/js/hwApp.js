@@ -858,7 +858,7 @@
     const img = ctx.createImageData(glyph.w, glyph.h);
     for (let i = 0; i < glyph.mask.length; i++) {
       if (glyph.mask[i]) {
-        img.data[i * 4] = 26; img.data[i * 4 + 1] = 26; img.data[i * 4 + 2] = 26; img.data[i * 4 + 3] = 255;
+        img.data[i * 4] = 29; img.data[i * 4 + 1] = 52; img.data[i * 4 + 2] = 87; img.data[i * 4 + 3] = 255;
       }
     }
     ctx.putImageData(img, 0, 0);

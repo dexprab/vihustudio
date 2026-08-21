@@ -142,8 +142,51 @@
       });
     }).then(function (rows) {
       (rows || []).forEach(function (r) { _map.set(r.id, r); });
+      setTimeout(recolorLegacyInk, 400);
     }).catch(function () { _useFallbackMemoryOnly = true; });
     return _hydratePromise;
+  }
+
+  // One-shot sweep: letters kept before the ink matched the Studio
+  // ("this does not look good in black match the studio colors" — the
+  // product owner) were stored near-black. A letter PNG is a pure
+  // alpha mask, so the recolor is lossless — the child's exact ink,
+  // in the Studio's own navy (#1D3457, the same a Text object writes
+  // in). Marked on the record so it runs once per letter; placed
+  // objects own their copies and are deliberately untouched.
+  const INK = '#1D3457';
+  function recolorLegacyInk() {
+    const jobs = [];
+    _map.forEach(function (r) {
+      if (r.kind === 'font' || !r.glyph || !r.glyph.png || r.ink === INK) return;
+      jobs.push(new Promise(function (resolve) {
+        const im = new Image();
+        im.onload = function () {
+          try {
+            const c = document.createElement('canvas');
+            c.width = r.glyph.w; c.height = r.glyph.h;
+            const x = c.getContext('2d', { willReadFrequently: true });
+            x.drawImage(im, 0, 0);
+            const img = x.getImageData(0, 0, c.width, c.height);
+            for (let i = 0; i < img.data.length; i += 4) {
+              if (img.data[i + 3] > 0) { img.data[i] = 29; img.data[i + 1] = 52; img.data[i + 2] = 87; }
+            }
+            x.putImageData(img, 0, 0);
+            const next = {};
+            Object.keys(r).forEach(function (k) { next[k] = r[k]; });
+            next.glyph = { png: c.toDataURL('image/png'), w: r.glyph.w, h: r.glyph.h };
+            next.ink = INK;
+            next.updatedAt = new Date().toISOString();
+            _map.set(next.id, next);
+            _persistOne(next).then(function () { resolve(true); });
+          } catch (e) { resolve(false); }
+        };
+        im.onerror = function () { resolve(false); };
+        im.src = r.glyph.png;
+      }));
+    });
+    if (jobs.length) return Promise.all(jobs).then(function () { _scheduleDrainSoon(); return jobs.length; });
+    return Promise.resolve(0);
   }
   function whenReady() { return hydrate(); }
 
@@ -355,6 +398,7 @@
     hydrate: hydrate, whenReady: whenReady,
     list: list, get: get, save: save, remove: remove,
     getFont: getFont, saveFont: saveFont,
+    recolorLegacyInk: recolorLegacyInk,
     claimUnowned: claimUnowned, drainPendingSync: drainPendingSync,
     isAvailable: isAvailable
   };

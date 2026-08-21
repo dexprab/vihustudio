@@ -52,7 +52,7 @@
     const img = ctx.createImageData(glyph.w, glyph.h);
     for (let i = 0; i < glyph.mask.length; i++) {
       if (glyph.mask[i]) {
-        img.data[i * 4] = 26; img.data[i * 4 + 1] = 26; img.data[i * 4 + 2] = 26; img.data[i * 4 + 3] = 255;
+        img.data[i * 4] = 29; img.data[i * 4 + 1] = 52; img.data[i * 4 + 2] = 87; img.data[i * 4 + 3] = 255;
       }
     }
     ctx.putImageData(img, 0, 0);
@@ -236,7 +236,7 @@
     const img = ctx.createImageData(k.w, k.h);
     for (let i = 0; i < k.mask.length; i++) {
       const d = i * 4;
-      if (k.mask[i]) { img.data[d] = 29; img.data[d + 1] = 36; img.data[d + 2] = 51; }
+      if (k.mask[i]) { img.data[d] = 29; img.data[d + 1] = 52; img.data[d + 2] = 87; }
       else { img.data[d] = 253; img.data[d + 1] = 252; img.data[d + 2] = 248; }
       img.data[d + 3] = 255;
     }

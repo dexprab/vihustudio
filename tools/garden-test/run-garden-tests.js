@@ -184,6 +184,7 @@ function check(cond, name, note) { (cond ? ok : fail)(name, note); }
     check(c.elements > prevElements, 'S' + target + ' the garden visibly grew since the last stage', prevElements + ' → ' + c.elements);
     check(bad.length === 0, 'S' + target + ' nothing overlaps the play area', bad.length ? bad.join(' · ') : '0 overlapping nodes');
     prevElements = c.elements;
+    await page.waitForTimeout(5600);   // slow-motion growth finishes before the stage portrait
     await page.screenshot({ path: path.join(SHOTS, 'stage-' + target + '.png') });
   }
 
@@ -268,6 +269,29 @@ function check(cond, name, note) { (cond ? ok : fail)(name, note); }
     return res && res.ok ? res.record.id : null;
   });
   check(!!seeded, 'L1 a letter lands in the real HandwritingStore', seeded || 'save failed');
+  // The ink matches the Studio: a letter stored near-black (the seed
+  // above) is recolored to the Studio's navy by the legacy sweep, alpha
+  // untouched — the child's exact ink, in the house colour.
+  const ink = await page.evaluate(async (id) => {
+    await HandwritingStore.recolorLegacyInk();
+    const rec = HandwritingStore.list().find((r) => r.id === id);
+    if (!rec) return { ok: false };
+    return await new Promise((resolve) => {
+      const im = new Image();
+      im.onload = () => {
+        const c = document.createElement('canvas'); c.width = rec.glyph.w; c.height = rec.glyph.h;
+        const x = c.getContext('2d'); x.drawImage(im, 0, 0);
+        const d = x.getImageData(0, 0, c.width, c.height).data;
+        for (let i = 0; i < d.length; i += 4) {
+          if (d[i + 3] > 0) { resolve({ ok: true, rgb: [d[i], d[i + 1], d[i + 2]] }); return; }
+        }
+        resolve({ ok: false });
+      };
+      im.src = rec.glyph.png;
+    });
+  }, seeded);
+  check(ink.ok && ink.rgb.join(',') === '29,52,87',
+    'N1 stored ink wears the Studio navy (#1D3457), alpha untouched', JSON.stringify(ink));
   const doorClicked = await page.evaluate(() => {
     const door = Array.from(document.querySelectorAll('button.context-add-card'))
       .find((t) => /My Garden/.test(t.textContent || '') && t.offsetParent);

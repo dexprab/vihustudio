@@ -110,35 +110,52 @@
     return n;
   }
 
+  // Every decoration is built at its own LOCAL origin and positioned by
+  // an OUTER group's attribute transform, while the breath animates an
+  // INNER group. This split is load-bearing: a CSS transform (the
+  // breath's keyframes) OVERRIDES an element's attribute transform, so
+  // animating the same node that carries translate(...) tears every
+  // blade off its vine and piles them at the layer origin — the
+  // measured cause of the product owner's fishbone garden.
+  function _place(x, y, ang, inner) {
+    const outer = _svg('g', { transform: 'translate(' + x.toFixed(1) + ',' + y.toFixed(1) + ') rotate(' + ang.toFixed(0) + ')' });
+    outer.appendChild(inner);
+    return outer;
+  }
   function _leaf(x, y, ang, s) {
-    const g = _svg('g', { transform: 'translate(' + x.toFixed(1) + ',' + y.toFixed(1) + ') rotate(' + ang.toFixed(0) + ')' });
+    // A real BLADE, not a fleck — rounder and fuller than the first two
+    // attempts, which read as bare twigs at reading distance.
+    s = s * 1.45;
+    const g = _svg('g', {});
     g.appendChild(_svg('path', {
-      d: 'M0,0 Q' + (6 * s) + ',' + (-7 * s) + ' ' + (13 * s) + ',0 Q' + (6 * s) + ',' + (6 * s) + ' 0,0 z',
+      d: 'M0,0 Q' + (5 * s) + ',' + (-9 * s) + ' ' + (14 * s) + ',' + (-3 * s)
+       + ' Q' + (16 * s) + ',' + (-1 * s) + ' ' + (14 * s) + ',' + (1 * s)
+       + ' Q' + (6 * s) + ',' + (7 * s) + ' 0,0 z',
       fill: ((x + y) | 0) % 2 ? LEAF_A : LEAF_B
     }));
-    return g;
+    return _place(x, y, ang, g);
   }
   function _sprig(x, y, ang, s) {
-    const g = _svg('g', { transform: 'translate(' + x.toFixed(1) + ',' + y.toFixed(1) + ') rotate(' + ang.toFixed(0) + ')' });
+    const g = _svg('g', {});
     g.appendChild(_svg('path', { d: 'M0,0 q' + (8 * s) + ',' + (-14 * s) + ' ' + (4 * s) + ',' + (-30 * s), fill: 'none', stroke: VINE, 'stroke-width': (2 * s).toFixed(1), 'stroke-linecap': 'round' }));
     g.appendChild(_svg('path', { d: 'M' + (2 * s) + ',' + (-10 * s) + ' Q' + (10 * s) + ',' + (-16 * s) + ' ' + (16 * s) + ',' + (-10 * s) + ' Q' + (9 * s) + ',' + (-5 * s) + ' ' + (2 * s) + ',' + (-10 * s) + ' z', fill: LEAF_A }));
     g.appendChild(_svg('path', { d: 'M' + (3 * s) + ',' + (-20 * s) + ' Q' + (-5 * s) + ',' + (-27 * s) + ' ' + (-11 * s) + ',' + (-21 * s) + ' Q' + (-4 * s) + ',' + (-15 * s) + ' ' + (3 * s) + ',' + (-20 * s) + ' z', fill: LEAF_B }));
-    return g;
+    return _place(x, y, ang, g);
   }
   function _bud(x, y) {
     const g = _svg('g', {});
-    g.appendChild(_svg('line', { x1: x, y1: y, x2: x, y2: y - 6, stroke: VINE, 'stroke-width': 1.6 }));
-    g.appendChild(_svg('circle', { cx: x, cy: y - 8, r: 3.4, fill: PETAL }));
-    return g;
+    g.appendChild(_svg('line', { x1: 0, y1: 0, x2: 0, y2: -6, stroke: VINE, 'stroke-width': 1.6 }));
+    g.appendChild(_svg('circle', { cx: 0, cy: -8, r: 3.4, fill: PETAL }));
+    return _place(x, y, 0, g);
   }
   function _flower(x, y) {
     const g = _svg('g', {});
     for (let k = 0; k < 5; k++) {
       const a = (k * 72 - 90) * Math.PI / 180;
-      g.appendChild(_svg('circle', { cx: x + 5.5 * Math.cos(a), cy: y + 5.5 * Math.sin(a), r: 3.1, fill: PETAL }));
+      g.appendChild(_svg('circle', { cx: 5.5 * Math.cos(a), cy: 5.5 * Math.sin(a), r: 3.1, fill: PETAL }));
     }
-    g.appendChild(_svg('circle', { cx: x, cy: y, r: 2.6, fill: PETAL_C }));
-    return g;
+    g.appendChild(_svg('circle', { cx: 0, cy: 0, r: 2.6, fill: PETAL_C }));
+    return _place(x, y, 0, g);
   }
 
   function _reducedMotion() {
@@ -195,15 +212,21 @@
       d += 'q' + (8 * ux - 6 * uy).toFixed(1) + ',' + (8 * uy + 6 * ux).toFixed(1)
          + ' ' + (2 * ux - 10 * uy).toFixed(1) + ',' + (2 * uy + 10 * ux).toFixed(1) + ' ';
       const path = _svg('path', { d: d, fill: 'none', stroke: VINE, 'stroke-width': 2.2, 'stroke-linecap': 'round', opacity: 0.92 });
-      // A capture that extended this vine draws the whole path in — the
-      // cheap, calm version of "shoot extends": ~0.9s of line growth.
+      // SLOW MOTION, and only the NEW growth moves (the product owner:
+      // "it looks like… something which appeared out of the blue. think
+      // slow motion video… take half a second post action to start").
+      // The established vine stays exactly where it was; the tail
+      // segment alone grows out of the tip — hidden by dash-offset and
+      // released over ~2.6s after the half-second quiet beat.
       if (nodes[nodes.length - 1].ix >= animateFrom) {
         try {
           layer.appendChild(path);
           const len = path.getTotalLength();
+          const a = nodes[nodes.length - 2].pt, b2 = nodes[nodes.length - 1].pt;
+          const seg = Math.min(len, Math.hypot(b2.x - a.x, b2.y - a.y) + 18);
           path.style.strokeDasharray = String(len);
-          path.style.strokeDashoffset = String(len);
-          path.style.transition = 'stroke-dashoffset .9s ease-out';
+          path.style.strokeDashoffset = String(seg);
+          path.style.transition = 'stroke-dashoffset 2.6s ease-in-out .5s';
           requestAnimationFrame(function () { path.style.strokeDashoffset = '0'; });
           return;
         } catch (e) {}
@@ -227,53 +250,77 @@
         let dx = pt.x - root.x, dy = pt.y - root.y;
         const dl = Math.max(1, Math.hypot(dx, dy));
         dx /= dl; dy /= dl;
-        const reach = Math.min(dl, 10 + 8 * s);
+        const reach = Math.min(dl, 7 + 5 * s);   // blades hug the vine
         pt = { x: root.x + dx * reach, y: root.y + dy * reach };
         ang = Math.atan2(dy, dx) * 180 / Math.PI;
-        layer.appendChild(_svg('path', {
+        const stem = _svg('path', {
           d: 'M' + root.x.toFixed(1) + ',' + root.y.toFixed(1)
            + ' Q' + ((root.x + pt.x) / 2 + dy * 3).toFixed(1) + ',' + ((root.y + pt.y) / 2 - dx * 3).toFixed(1)
            + ' ' + pt.x.toFixed(1) + ',' + pt.y.toFixed(1),
           fill: 'none', stroke: VINE, 'stroke-width': 1.5, 'stroke-linecap': 'round', opacity: 0.85
-        }));
+        });
+        layer.appendChild(stem);
+        // a NEW element's stem draws out of the vine after the vine's
+        // own tail has mostly grown
+        if (ix >= animateFrom && !reduced) {
+          try {
+            const sl = stem.getTotalLength();
+            stem.style.strokeDasharray = String(sl);
+            stem.style.strokeDashoffset = String(sl);
+            stem.style.transition = 'stroke-dashoffset 1.2s ease-out 2.4s';
+            requestAnimationFrame(function () { stem.style.strokeDashoffset = '0'; });
+          } catch (e) {}
+        }
       }
       if (el.k === 'leaf') node = _leaf(pt.x, pt.y, ang, s);
       else if (el.k === 'sprig') node = _sprig(pt.x, pt.y, (el.u - 0.5) * 40, s);
       else if (el.k === 'bud') node = _bud(pt.x, pt.y);
       else if (el.k === 'flower') node = _flower(pt.x, pt.y);
       if (!node) return;
-      node.style.transformOrigin = (root ? root.x : pt.x) + 'px ' + (root ? root.y : pt.y) + 'px';
-      // The breath: a barely-there sway, seconds-slow, staggered so the
-      // garden never moves as one — alive, still calm. Reduced motion
-      // stills it entirely.
+      // The breath and the grow-in animate the INNER group only — its
+      // local origin is the attachment point by construction — so the
+      // outer group's positioning transform is never overridden.
+      const inner = node.firstChild;
+      inner.style.transformOrigin = '0px 0px';
       const breath = reduced ? '' : ('vihuGardenBreath ' + (11 + (ix % 5) * 1.7).toFixed(1) + 's ease-in-out '
         + (-(ix % 7) * 1.9).toFixed(1) + 's infinite alternate');
       if (ix >= animateFrom) {
-        // Grow in first (both drive transform, so the breath waits its
-        // turn), then breathe.
-        node.style.opacity = '0';
-        node.style.transition = 'opacity .5s ease-out .6s, transform .8s ease-out .6s';
-        node.style.transform = 'scale(.4)';
-        requestAnimationFrame(function () { node.style.opacity = '1'; node.style.transform = 'scale(1)'; });
+        // The leaf unfolds LAST, slowly — after the quiet beat, the
+        // vine's tail and the stem have already grown to meet it.
+        inner.style.opacity = '0';
+        inner.style.transition = 'opacity 1.4s ease-out 3.2s, transform 2.2s ease-out 3.2s';
+        inner.style.transform = 'scale(.3)';
+        requestAnimationFrame(function () { inner.style.opacity = '1'; inner.style.transform = 'scale(1)'; });
         if (breath) setTimeout(function () {
-          if (node.isConnected) { node.style.transition = ''; node.style.transform = ''; node.style.animation = breath; }
-        }, 1700);
+          if (inner.isConnected) { inner.style.transition = ''; inner.style.transform = ''; inner.style.animation = breath; }
+        }, 6200);
       } else if (breath) {
-        node.style.animation = breath;
+        inner.style.animation = breath;
       }
       layer.appendChild(node);
     });
   }
 
-  let _settle = 0;
+  let _settle = 0, _growingUntil = 0;
   function _scheduleRender(opts) {
     if (_raf) cancelAnimationFrame(_raf);
-    _raf = requestAnimationFrame(function () { _raf = 0; render(opts); });
+    _raf = requestAnimationFrame(function () {
+      _raf = 0;
+      render(opts);
+      if (opts && opts.animate) _growingUntil = Date.now() + 6500;
+    });
     // A transform-driven layout (the Rite's beside mode, the gateway
     // standing down) moves the canvas without firing ResizeObserver —
-    // one quiet follow-up render on settled geometry covers it.
+    // one quiet follow-up render on settled geometry covers it. It
+    // WAITS OUT a growth in flight: a static re-render mid-growth would
+    // rebuild the layer and cut the slow-motion short.
     clearTimeout(_settle);
-    _settle = setTimeout(function () { render(); }, 600);
+    const settle = function () {
+      const left = _growingUntil - Date.now();
+      if (left > 0) { _settle = setTimeout(settle, left + 100); return; }
+      render();
+    };
+    _settle = setTimeout(settle, 600);
   }
 
   function init() {
