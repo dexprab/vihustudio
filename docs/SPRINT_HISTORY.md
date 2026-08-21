@@ -4987,3 +4987,19 @@ the local test server does not emulate GitHub Pages' extensionless
 routes, so /about was verified as /about.html locally; and Search
 Console submission is post-deployment owner work, listed as to-dos —
 no ranking promised anywhere. Decision 28.
+
+## Follow-up — The Share Image Exists (build 0598)
+
+The one outstanding asset task from the Discoverability sprint closed: the
+product owner supplied the real brand image — the living night universe,
+glowing star spirits among floating story worlds, the VihuPlanet wordmark
+riding on it as a signature — and it now lives at
+`assets/brand/og-image.jpg` (1200×630 cover-crop of the supplied art, 180KB,
+rendered through Chromium since no image tooling ships in the environment).
+Wired as `og:image` (+width/height/alt) and `twitter:image` with
+`twitter:card` promoted from `summary` to `summary_large_image` on both `/`
+and `/about`, and added as `image` on the Brand node in both JSON-LD graphs.
+Verified over the local server: zero page errors on both pages, one
+title/canonical/description each, both JSON-LD blocks parse with every `@id`
+resolved in-graph, and the image serves. Head-only again — the body of
+neither page changed. Build 0597 → 0598.
