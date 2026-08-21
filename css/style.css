@@ -12306,47 +12306,45 @@ body.dark-theme .bia-studio-btn:hover{ background:rgba(255,255,255,0.08); }
    the quiet ⋯, the blue banner door and the camera footer. */
 .context-hw-banner-blue{
   background:#EAF1FB !important; border:1px solid #D7E3F5 !important;
+  height:auto !important; min-height:0 !important;
+  padding:10px 12px !important; align-items:center;
 }
+.context-hw-banner-blue .context-library-bring-text{ min-width:0; }
+.context-hw-banner-blue .context-hw-banner-art{ flex:0 0 auto; }
+.context-hw-banner-blue .context-hw-banner-art svg{ display:block; }
 .context-hw-banner-blue .context-hw-banner-art svg{ width:36px; height:40px; display:block; }
-.context-hw-drawlist{ display:flex; flex-direction:column; gap:10px; margin-bottom:12px; }
+.context-hw-drawlist{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin-bottom:12px; }
 .context-hw-drawcard{
   position:relative;
   background:var(--panel,#fff); border:1.5px solid #E4E9F2; border-radius:16px;
   box-shadow:0 2px 8px rgba(30,47,94,.07); overflow:visible;
 }
 .context-hw-drawcard-pic{
-  display:block; width:100% !important; height:150px !important;
-  margin:0 !important; padding:8px !important;
+  display:block; width:100% !important; height:104px !important;
+  margin:0 !important; padding:6px !important;
   background:#FDFCF8; border:none; border-radius:16px 16px 0 0;
   cursor:pointer; position:relative; overflow:hidden;
 }
 .context-hw-drawcard-pic img{
   width:100%; height:100%; object-fit:contain; display:block;
 }
-.context-hw-ribbon{
-  position:absolute; right:12px; top:0;
-  width:24px; height:30px; color:#fff; font-size:12px;
-  display:flex; align-items:flex-start; justify-content:center; padding-top:5px;
-  clip-path:polygon(0 0, 100% 0, 100% 100%, 50% 78%, 0 100%);
-  opacity:.9;
-}
 .context-hw-drawcard-foot{
-  display:flex; align-items:center; gap:8px;
-  padding:6px 8px 8px; border-top:1px solid #F0F2F7;
+  display:flex; align-items:center; gap:6px;
+  padding:5px 6px 7px; border-top:1px solid #F0F2F7;
 }
-.context-hw-drawcard-foot .context-hw-pot svg{ width:26px; height:30px; }
+.context-hw-drawcard-foot .context-hw-pot svg{ width:22px; height:26px; }
 .context-hw-drawcard-names{ flex:1; min-width:0; }
 .context-hw-drawcard-name{
-  font-size:13px; font-weight:800; color:var(--text);
+  font-size:12px; font-weight:800; color:var(--text);
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
-.context-hw-drawcard-when{ font-size:10.5px; color:var(--text-secondary); }
+.context-hw-drawcard-when{ font-size:10px; color:var(--text-secondary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .context-hw-drawcard-dots{
   width:30px !important; height:30px !important; margin:0 !important; padding:0 !important;
   border:1px solid var(--line); border-radius:12px; background:var(--bg,#F1F4FC);
   font-size:14px; color:var(--text-secondary); cursor:pointer; flex:0 0 auto;
 }
-.context-hw-drawcard .context-hw-choice{ left:8px; right:8px; top:auto; bottom:44px; min-width:0; }
+.context-hw-drawcard .context-hw-choice{ left:4px; right:4px; top:auto; bottom:40px; min-width:0; }
 .context-hw-morebar{
   display:flex; align-items:center; gap:8px;
   background:#EAF1FB; border:1px solid #D7E3F5; border-radius:14px;

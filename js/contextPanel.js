@@ -2574,7 +2574,6 @@ const ContextPanel=(function(){
       return d.toLocaleDateString([], {month:'short', day:'numeric'});
     }catch(e){ return ''; }
   }
-  const _RIBBONS=[['#B58AD1','\u2665'],['#F5C542','\u2605'],['#8FBF6F','\u273F'],['#F08A8A','\u2665']];
   function _buildLibraryTile(item){
     const cardEl=_el('div','context-hw-drawcard');
     const openChoice=function(anchor){
@@ -2615,10 +2614,6 @@ const ContextPanel=(function(){
     img.src=item.thumbnail||item.png||'';
     img.alt=item.name||'My Character';
     pic.appendChild(img);
-    const rb=_RIBBONS[Math.abs((item.id||'').split('').reduce(function(a,c){ return a+c.charCodeAt(0); },0))%_RIBBONS.length];
-    const ribbon=_el('span','context-hw-ribbon',rb[1]);
-    ribbon.style.background=rb[0];
-    pic.appendChild(ribbon);
     pic.addEventListener('click',function(ev){ ev.stopPropagation(); openChoice(cardEl); });
     cardEl.appendChild(pic);
     const foot=_el('div','context-hw-drawcard-foot');
@@ -2702,19 +2697,6 @@ const ContextPanel=(function(){
       const list=_el('div','context-hw-drawlist');
       items.forEach(function(item){ list.appendChild(_buildLibraryTile(item)); });
       panelRoot.appendChild(list);
-      if(typeof BringItAliveStudio!=='undefined'){
-        const more=_el('div','context-hw-morebar');
-        more.appendChild(_el('span','context-hw-morebar-icon','📷'));
-        const mtxt=_el('span','context-hw-morebar-text');
-        mtxt.appendChild(_el('span','context-hw-morebar-title','More drawings, more magic!'));
-        mtxt.appendChild(_el('span','context-hw-morebar-sub','Show me another drawing and I’ll add it to your garden.'));
-        more.appendChild(mtxt);
-        const addBtn=_el('button','context-hw-morebar-btn','📷 Add Drawing');
-        addBtn.type='button';
-        addBtn.addEventListener('click',_openBringItAlive);
-        more.appendChild(addBtn);
-        panelRoot.appendChild(more);
-      }
     }else{
       // Empty is still an invitation, not a dead end — and it opens the
       // same overlay in place. Nothing navigates away, so Decision 23's

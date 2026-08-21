@@ -4914,3 +4914,15 @@ names "Garden characters", and a bird is on that line — put to the
 product owner, who held it: *"hold on birds for now."* The garden's
 vocabulary stays vines · leaves · sprigs · buds · flowers · fruit. Suite 41 green (L6 rewritten
 for the cards and the five-way ask); build 0593 → 0594.
+
+**Follow-up 13, same sprint** — four refinements on the drawings room,
+from seeing it real: the cards sit in a 2×2 grid (the one-column list
+scrolled too long too fast); the "More drawings, more magic!" camera
+bar is gone — the banner on top is the same door and one door is
+enough; the Bring-a-drawing-to-life banner properly contains its words
+(the global button height reset was squeezing it — escaped with the
+same !important discipline every overlay documents); and the corner
+ribbon is removed — the product owner: it "does not have any work",
+and a decoration with no meaning is exactly what the garden's own
+rules refuse. Cards compacted for two-up (104px picture, smaller pot,
+nowrap time line). Build 0594 → 0595; suite 41 green.
