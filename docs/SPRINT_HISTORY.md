@@ -5015,3 +5015,16 @@ discoverability through AI assistants is untouched. `INDEXING_POLICY.md`
 and Decision 28 updated to record the decision; Decision 28's disclosed
 og:image gap was also marked closed (previous follow-up, build 0598). No
 HTML changed, so no build bump.
+
+## Follow-up — The Tab Wears the Spirit (build 0599)
+
+The favicon was a placeholder flower glyph (✿) in an inline SVG data URI —
+the "sunflower" the product owner asked to change. It is now the glowing
+star spirit from the brand art: a square crop of the big spirit from
+`assets/brand/og-image.jpg`'s source, cut at head-and-body framing so the
+face still reads at 32px and survives as a warm glow on night blue at 16px
+(checked at all three sizes before shipping). `assets/brand/favicon.png`
+(64×64) on all three pages — index, about, and studio, which had no icon at
+all — plus `assets/brand/apple-touch-icon.png` (180×180) for home-screen
+bookmarks. Verified over the local server: both public pages load with zero
+errors and both icons serve. Build 0598 → 0599.
