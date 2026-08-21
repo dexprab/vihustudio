@@ -1447,7 +1447,7 @@ around the play area, and My Garden holds both scanned creations and
 handwriting.
 
 - **My Library's meaning changed; its machinery did not.** Child-facing
-  it is **My Garden** (🌿); internally the feature is the **Living
+  it is **My Garden** (🪴 — a potted plant, the thing actually inside); internally the feature is the **Living
   Garden** and nothing is renamed — `creatorLibrary.js`,
   `creator_library`, every API. Same rule as Publish/Finish Story.
 - **The Garden is an environment, not a screen.** The center pane stays

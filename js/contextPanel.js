@@ -2653,7 +2653,7 @@ const ContextPanel=(function(){
     stickerStudioOpen=true;
     panelRoot.innerHTML='';
     panelRoot.classList.remove('is-empty');
-    panelRoot.appendChild(_el('div','context-collection-picker-heading','🌿 My Garden'));
+    panelRoot.appendChild(_el('div','context-collection-picker-heading','🪴 My Garden'));
 
     const tabs=_el('div','context-hw-tabs');
     [['drawings','🖼 My Drawings'],['letters','✍️ My Letters']].forEach(function(pair){
@@ -3660,7 +3660,7 @@ const ContextPanel=(function(){
     // all: an empty library is an invitation (the picker's own empty
     // state links to bringing a drawing to life), never a dead end.
     if(typeof CreatorLibrary!=='undefined'){
-      items.push({id:'library',icon:'🌿',label:'My Garden',onClick:function(){ _showLibraryPicker(); }});
+      items.push({id:'library',icon:'🪴',label:'My Garden',onClick:function(){ _showLibraryPicker(); }});
     }
     // Family Photos — shown whenever the repository layer is configured
     // at all (an unconfigured deployment can never have albums, so the

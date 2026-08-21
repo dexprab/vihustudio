@@ -4926,3 +4926,10 @@ ribbon is removed — the product owner: it "does not have any work",
 and a decoration with no meaning is exactly what the garden's own
 rules refuse. Cards compacted for two-up (104px picture, smaller pot,
 nowrap time line). Build 0594 → 0595; suite 41 green.
+
+**Follow-up 14, same sprint** — *"change my garden icon also. it
+needs to reflect whats inside"* (the product owner). 🌿 became 🪴 on
+the Add tile and the picker heading: inside are drawings and letters
+growing in little pots, so the door wears a potted plant — the thing
+actually inside. Decision 27's note updated; build 0595 → 0596; suite
+41 green.
