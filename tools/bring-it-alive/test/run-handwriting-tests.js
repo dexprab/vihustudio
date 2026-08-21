@@ -128,7 +128,11 @@ const BLAME = /error|failed|invalid|wrong|incorrect|scan|detect|process|percent|
   const page = await browser.newPage({ viewport: { width: 1100, height: 900 } });
   const pageErrors = [];
   page.on('pageerror', (e) => pageErrors.push(String(e)));
-  page.on('console', (m) => { if (m.type() === 'error') pageErrors.push(m.text()); });
+  // A net:: resource failure is the SANDBOX's dead network, not the page:
+  // the platform client fetching its SDK is a handled state everywhere
+  // (local first, cloud after, silently) and must not fail the suite in
+  // an environment with no internet. Real page errors still count.
+  page.on('console', (m) => { if (m.type() === 'error' && !/net::ERR_/.test(m.text())) pageErrors.push(m.text()); });
   await page.goto(BASE);
   await page.waitForFunction(() => window.__hw && window.__bia);
 
@@ -1389,7 +1393,7 @@ const BLAME = /error|failed|invalid|wrong|incorrect|scan|detect|process|percent|
     const p = await b.newPage({ viewport: { width: 1100, height: 900 } });
     const errors = [];
     p.on('pageerror', (e) => errors.push(String(e)));
-    p.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+    p.on('console', (m) => { if (m.type() === 'error' && !/net::ERR_/.test(m.text())) errors.push(m.text()); });
     await p.goto(BASE);
     await p.waitForFunction(() => window.__hw && window.__bia);
     return { browser: b, p, errors };

@@ -776,6 +776,16 @@
                     parts: HWLetter.partsOf(t.mask, t.w, t.h) };
     state.glyphs.set(k.ch, glyph);
     state.samples.set(k.ch, HWLetter.normalize(glyph, k.ch));
+    // MY HANDWRITING GOES TO THE CLOUD — the letter is the unit of
+    // keeping, so Keep is the moment it is stored (HandwritingStore:
+    // local-first, creator_handwriting after, silently). The PNG is the
+    // glyph's own ink, alpha-exact, so hydrate can rebuild the mask
+    // from it without a second stored shape.
+    try {
+      if (typeof HandwritingStore !== 'undefined') {
+        HandwritingStore.save({ ch: k.ch, png: _glyphToPng(glyph), w: glyph.w, h: glyph.h });
+      }
+    } catch (e) {}
     // MY GARDEN — a kept letter is a capture like any other, and the kind
     // of creation never matters (Decision 27). The id is unique per KEEP,
     // not per letter: making a letter again is a new creative act and
@@ -832,6 +842,62 @@
   });
 
   $('hwBackToLetters').addEventListener('click', showGrid);
+
+  // ---- kept letters come back (HandwritingStore) -----------------------------
+  // The grid used to forget everything on reload — the letters lived in
+  // the two Maps above and nowhere else. Now Keep stores each letter
+  // (see the Keep handler) and this block is the other half: on load,
+  // every stored letter is rebuilt into the exact {mask,w,h,parts}
+  // glyph Keep produced, alpha from the stored PNG, parts and samples
+  // recomputed by the same HWLetter calls Keep itself uses. If the grid
+  // is already on screen when hydration lands, it repaints.
+  function _glyphToPng(glyph) {
+    const c = document.createElement('canvas');
+    c.width = glyph.w; c.height = glyph.h;
+    const ctx = c.getContext('2d');
+    const img = ctx.createImageData(glyph.w, glyph.h);
+    for (let i = 0; i < glyph.mask.length; i++) {
+      if (glyph.mask[i]) {
+        img.data[i * 4] = 26; img.data[i * 4 + 1] = 26; img.data[i * 4 + 2] = 26; img.data[i * 4 + 3] = 255;
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+    return c.toDataURL('image/png');
+  }
+  function _pngToGlyph(png, w, h) {
+    return new Promise((resolve, reject) => {
+      const im = new Image();
+      im.onload = () => {
+        const c = document.createElement('canvas');
+        c.width = w; c.height = h;
+        const ctx = c.getContext('2d', { willReadFrequently: true });
+        ctx.drawImage(im, 0, 0);
+        const data = ctx.getImageData(0, 0, w, h).data;
+        const mask = new Uint8Array(w * h);
+        for (let i = 0; i < mask.length; i++) mask[i] = data[i * 4 + 3] > 0 ? 1 : 0;
+        resolve({ mask, w, h, parts: HWLetter.partsOf(mask, w, h) });
+      };
+      im.onerror = () => reject(new Error('letter png failed to decode'));
+      im.src = png;
+    });
+  }
+  if (typeof HandwritingStore !== 'undefined') {
+    HandwritingStore.whenReady().then(() => {
+      const kept = HandwritingStore.list();
+      return Promise.all(kept.map((r) =>
+        _pngToGlyph(r.glyph.png, r.glyph.w, r.glyph.h).then((glyph) => {
+          if (state.glyphs.has(r.ch)) return;   // this session's own keep wins
+          state.glyphs.set(r.ch, glyph);
+          state.samples.set(r.ch, HWLetter.normalize(glyph, r.ch));
+        }).catch(() => {})
+      )).then(() => {
+        if (kept.length) {
+          log('hw: ' + state.glyphs.size + ' kept letter(s) came back from the store');
+          if (state.stage === 'grid') renderGrid();
+        }
+      });
+    });
+  }
 
   log('my handwriting ready (grid · show me · check it · try your letters)');
 })();

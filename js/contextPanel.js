@@ -2629,6 +2629,54 @@ const ContextPanel=(function(){
       panelRoot.appendChild(empty);
     }
 
+    // ---- My Letters — the child's kept handwriting, in the same
+    // garden (the product owner: "my garden caters to both scanned
+    // characters and handwriting"). The store is js/handwritingStore.js
+    // (the library's own plumbing, letter-sized); this panel only
+    // browses it. A letter places through the exact same
+    // _addImageStickerFromDataURL tail a character uses, so the placed
+    // ink is an ordinary object — drag, resize, rotate, publish, all
+    // unchanged by construction. ABSENT rather than empty when no
+    // letters are kept: the section teaches nothing and asks nothing
+    // (Decision 27's no-instruction rule) — it simply appears the day
+    // letters exist.
+    try{
+      const letters=(typeof HandwritingStore!=='undefined' && HandwritingStore.list) ? HandwritingStore.list() : [];
+      if(letters.length){
+        panelRoot.appendChild(_el('div','context-collection-group-label','✍️ My Letters'));
+        const lGrid=_el('div','context-collection-picker-grid');
+        letters.forEach(function(rec){
+          const cell=_el('div','context-library-cell');
+          const tile=_el('button','context-collection-tile');
+          tile.type='button';
+          const thumb=_el('span','context-collection-tile-thumb');
+          const img=document.createElement('img');
+          img.src=(rec.glyph&&rec.glyph.png)||'';
+          img.alt='My letter '+rec.ch;
+          thumb.appendChild(img);
+          tile.appendChild(thumb);
+          tile.appendChild(_el('span','context-collection-tile-label',rec.ch));
+          tile.addEventListener('click',function(){
+            _addImageStickerFromDataURL(rec.glyph.png,'handwriting.'+rec.id);
+          });
+          cell.appendChild(tile);
+          const remove=_el('button','context-library-remove','✕');
+          remove.type='button';
+          remove.title='Take out of My Garden';
+          remove.setAttribute('aria-label','Take your letter '+rec.ch+' out of My Garden');
+          remove.addEventListener('click',function(ev){
+            ev.stopPropagation();
+            if(!window.confirm('Take your letter “'+rec.ch+'” out of My Garden? Anything already on your pages stays right where it is.')) return;
+            try{ HandwritingStore.remove(rec.id); }catch(e){}
+            _showLibraryPicker();
+          });
+          cell.appendChild(remove);
+          lGrid.appendChild(cell);
+        });
+        panelRoot.appendChild(lGrid);
+      }
+    }catch(e){}
+
     const btn=_el('button','context-btn','← Done Browsing');
     btn.type='button';
     btn.addEventListener('click',function(){ refresh(); });

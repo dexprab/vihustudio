@@ -256,6 +256,50 @@ function check(cond, name, note) { (cond ? ok : fail)(name, note); }
   check(studioSide.events === 2 && studioSide.drawn > 0,
     'T2 the Studio draws the garden those tool-page captures grew', JSON.stringify(studioSide));
 
+  console.log('-- L: My Letters lives in My Garden');
+  // Seed one kept letter through the real store, open the real picker
+  // through the real door (Add Something → 🌿 My Garden), and place the
+  // letter on the page through the tile itself.
+  const seeded = await page.evaluate(async () => {
+    const c = document.createElement('canvas'); c.width = 24; c.height = 24;
+    const x = c.getContext('2d'); x.fillStyle = '#1a1a1a'; x.fillRect(4, 4, 16, 16);
+    await HandwritingStore.whenReady();
+    const res = await HandwritingStore.save({ ch: 'a', png: c.toDataURL('image/png'), w: 24, h: 24 });
+    return res && res.ok ? res.record.id : null;
+  });
+  check(!!seeded, 'L1 a letter lands in the real HandwritingStore', seeded || 'save failed');
+  const doorClicked = await page.evaluate(() => {
+    const door = Array.from(document.querySelectorAll('button.context-add-card'))
+      .find((t) => /My Garden/.test(t.textContent || '') && t.offsetParent);
+    if (!door) return false;
+    door.click();
+    return true;
+  });
+  await page.waitForTimeout(400);
+  const shelf = await page.evaluate(() => {
+    const root = document.body.innerText;
+    const letterTile = Array.from(document.querySelectorAll('.context-collection-tile'))
+      .find((t) => (t.textContent || '').trim() === 'a');
+    return { door: true, hasHeading: /My Letters/.test(root), hasTile: !!letterTile };
+  });
+  check(doorClicked && shelf.hasHeading && shelf.hasTile,
+    'L2 the picker shows the ✍️ My Letters section with the kept letter', JSON.stringify(shelf));
+  const placed = await page.evaluate(() => {
+    const tile = Array.from(document.querySelectorAll('.context-collection-tile'))
+      .find((t) => (t.textContent || '').trim() === 'a');
+    if (!tile) return false;
+    tile.click();
+    return true;
+  });
+  await page.waitForTimeout(900);
+  const stripVisible = await page.evaluate(() => {
+    const s = document.getElementById('selectionActionStrip');
+    return !!(s && !s.className.includes('selection-action-strip-hidden'));
+  });
+  check(placed && stripVisible,
+    'L3 tapping the letter places it on the page and selects it (the strip appears)', 'placed=' + placed + ' strip=' + stripVisible);
+  await page.evaluate((id) => { try { HandwritingStore.remove(id); } catch (e) {} }, seeded);
+
   console.log('-- W: the real store, the real seam');
   // The scanner's keep branch is: CreatorLibrary.save(...) → ok →
   // dispatch vihu:creation-captured with the record id. The camera flow

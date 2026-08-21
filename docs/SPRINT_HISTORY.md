@@ -4649,3 +4649,33 @@ handwriting-into-Studio sprint proper — the Studio-side letter surface,
 the `creator_handwriting` store client, and "My Handwriting" in the
 font lists — which is where letters become visible IN the Studio rather
 than only growing its garden.
+
+**Follow-up 2, same sprint** — the product owner: *"i still dont see my
+handwriting section under my garden."* Right — growing the garden was
+half the correction; the letters themselves belong IN it. Built the
+visible half: `js/handwritingStore.js` is `creatorLibrary.js` with the
+image plumbing removed — the same synchronous in-memory Map over its
+own IndexedDB, the same durable pendingCloudSync queue and backoff
+ladder into `creator_handwriting` (the table from the storage
+foundation, until now written by nothing), the same one shared client,
+and Decision 19's card scoping with `claimUnowned()`. One record per
+letter per card, in the migration's documented data shape; keeping a
+letter again replaces that card's letter on the same row. The tool's
+Keep now stores each letter, and the grid hydrates them back on load —
+the mask rebuilt from the stored PNG's own alpha, parts and samples
+recomputed by the same HWLetter calls Keep uses — so the grid finally
+survives a reload, which is what "it needs to be stored" meant all
+along. In the Studio, `_showLibraryPicker` gained the ✍️ My Letters
+section: kept letters as tiles in the child's real ink, placing
+through the exact `_addImageStickerFromDataURL` tail a character uses
+(so a placed letter is an ordinary object — drag, resize, publish,
+unchanged by construction), with the same quiet take-out; ABSENT
+rather than empty when no letters exist, per the no-instruction rule.
+Letters sort as a child reads ('a m R', never ASCII's 'R a m'). Suite
+now 34 checks — the new L section seeds a letter through the real
+store, opens the picker through the real door, and places the letter
+tile onto the page (asserted by the Selection Action Strip appearing);
+both tool suites re-run clean. Disclosed: cloud is push-only like the
+library (recall-adoption on a strange device is still ahead), and the
+font path ("My Handwriting" in the font lists) remains the next piece
+of handwriting-into-Studio.

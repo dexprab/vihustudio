@@ -1481,11 +1481,20 @@ handwriting.
 - Out of scope and not implemented: a separate Garden world, scenes,
   quests, characters in the Garden, AI regeneration of child artwork,
   runtime/story/page-model changes, and any Studio redesign.
+- **The Garden holds the letters too.** Kept handwriting lives in the
+  picker's ✍️ My Letters section — the child's real ink, placeable
+  through the same tail a scanned character uses — backed by
+  `js/handwritingStore.js` (the library's plumbing, letter-sized,
+  writing `creator_handwriting`), and the tool's grid hydrates from the
+  same store so kept letters survive a reload. The section is absent,
+  never empty, when no letters exist.
 - Disclosed: the growth record is local-first per device; a cloud row
   (the `creator_handwriting` pattern) is the follow-up when one garden
-  should span devices.
+  should span devices. Handwriting cloud sync is push-only like the
+  library's; "My Handwriting" in the font lists is the next
+  handwriting-into-Studio piece.
 - `js/gardenEngine.js` · `js/gardenRenderer.js` ·
-  `tools/garden-test/run-garden-tests.js`.
+  `js/handwritingStore.js` · `tools/garden-test/run-garden-tests.js`.
 
 ## Roadmap
 
