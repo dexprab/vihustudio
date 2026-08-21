@@ -138,6 +138,10 @@
     if (el.length >= DENSITY_CEILING) {
       const budIx = el.findIndex(function (e) { return e.k === 'bud'; });
       if (budIx >= 0) { el[budIx] = { k: 'flower', band: el[budIx].band, u: el[budIx].u, v: el[budIx].v }; return; }
+      if (rnd() < 0.3) {
+        const fIx = el.findIndex(function (e) { return e.k === 'flower'; });
+        if (fIx >= 0) { el[fIx] = { k: 'fruit', band: el[fIx].band, u: el[fIx].u, v: el[fIx].v }; return; }
+      }
       const leaves = el.filter(function (e) { return e.k === 'leaf' && (e.s || 1) < 1.35; });
       if (leaves.length) { const L = leaves[Math.floor(rnd() * leaves.length)]; L.s = Math.min(1.35, (L.s || 1) + 0.12); }
       return;
@@ -211,8 +215,16 @@
       return;
     }
 
-    // Zone 6 — blossoming: flowers open where the vine is OLDEST — near
-    // the origin first — and the vines slowly fill with quiet detail.
+    // Zone 6 — blossoming, then FRUIT: flowers open where the vine is
+    // OLDEST — near the origin first — and from the mid-fifties an
+    // open flower now and then ripens into a small amber fruit ("when
+    // will we get buds, flowers, fruits" — the product owner; the
+    // vine's seasons are: buds from ~24 captures, flowers from ~40,
+    // fruit from ~55, and past the ceiling everything keeps ripening).
+    if (stage >= 55 && rnd() < 0.18) {
+      const fIx = g.elements.findIndex(function (e) { return e.k === 'flower'; });
+      if (fIx >= 0) { const f = g.elements[fIx]; g.elements[fIx] = { k: 'fruit', band: f.band, u: f.u, v: f.v }; return; }
+    }
     if (rnd() < 0.3) {
       const budIx = g.elements.findIndex(function (e) { return e.k === 'bud'; });
       if (budIx >= 0) { const b = g.elements[budIx]; g.elements[budIx] = { k: 'flower', band: b.band, u: b.u, v: b.v }; return; }

@@ -432,10 +432,10 @@ function check(cond, name, note) { (cond ? ok : fail)(name, note); }
     const dtab = Array.from(document.querySelectorAll('.context-hw-tab'))
       .find((t) => /My Drawings/.test(t.textContent || ''));
     if (dtab) dtab.click();
-    const tile = Array.from(document.querySelectorAll('.context-library-cell .context-collection-tile'))
+    const drawCard = Array.from(document.querySelectorAll('.context-hw-drawcard'))
       .find((t) => /Suite Char/.test(t.textContent || ''));
-    if (!tile) return { ok: false, why: 'no tile' };
-    tile.click();
+    if (!drawCard) return { ok: false, why: 'no card element' };
+    drawCard.querySelector('.context-hw-drawcard-pic').click();
     const card = document.querySelector('.context-hw-choice');
     if (!card) return { ok: false, why: 'no card' };
     const labels = Array.from(card.querySelectorAll('button')).map((b) => b.textContent.trim());
@@ -457,8 +457,8 @@ function check(cond, name, note) { (cond ? ok : fail)(name, note); }
     try { CreatorLibrary.remove(res.record.id); } catch (e) {}
     return out;
   });
-  check(drawing.ok && drawing.labels.length === 4 && drawing.step === 'yours' && drawing.updated && drawing.grew && drawing.sameRecord,
-    'L6 a kept drawing asks (place · retake · edit · never mind); Fix it up opens Make It Yours on the record, Keep updates it and grows the garden',
+  check(drawing.ok && drawing.labels.length === 5 && drawing.step === 'yours' && drawing.updated && drawing.grew && drawing.sameRecord,
+    'L6 a kept drawing asks (place · retake · edit · take out · never mind); Fix it up opens Make It Yours on the record, Keep updates it and grows the garden',
     JSON.stringify(drawing));
 
   console.log('-- F: the letters become a FONT');

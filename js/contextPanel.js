@@ -2555,25 +2555,29 @@ const ContextPanel=(function(){
   // library item can never touch a page. Follows _showCollectionPicker's
   // full-panel pattern exactly (the wrapping grid — the horizontal
   // strip was tried and rejected for Collections, see above).
+  // A drawing lives on a storybook CARD (the product owner's drawings
+  // style guide): the picture large, a soft ribbon in the corner, a
+  // potted sprout beside the name and when it was made, and a quiet ...
+  // that asks — the same choice card a tap on the picture opens: put it
+  // on the page (gold) / bring it again / fix it up / take it out /
+  // never mind. Taking out moved INTO the card, so the picture carries
+  // no hover chrome at all.
+  function _drawingWhen(iso){
+    try{
+      const d=new Date(iso); if(isNaN(d)) return '';
+      const now=new Date();
+      const day=function(x){ return x.getFullYear()+'-'+x.getMonth()+'-'+x.getDate(); };
+      const t=d.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'});
+      if(day(d)===day(now)) return 'Today · '+t;
+      const y=new Date(now.getTime()-86400000);
+      if(day(d)===day(y)) return 'Yesterday · '+t;
+      return d.toLocaleDateString([], {month:'short', day:'numeric'});
+    }catch(e){ return ''; }
+  }
+  const _RIBBONS=[['#B58AD1','\u2665'],['#F5C542','\u2605'],['#8FBF6F','\u273F'],['#F08A8A','\u2665']];
   function _buildLibraryTile(item){
-    const cell=_el('div','context-library-cell');
-    const tile=_el('button','context-collection-tile');
-    tile.type='button';
-    const thumb=_el('span','context-collection-tile-thumb');
-    const img=document.createElement('img');
-    img.src=item.thumbnail||item.png||'';
-    img.alt=item.name||'My Character';
-    thumb.appendChild(img);
-    tile.appendChild(thumb);
-    tile.appendChild(_el('span','context-collection-tile-label',item.name||'My Character'));
-    // A kept character asks first, exactly like a kept letter ("my
-    // drawing section needs update. the tiles need same option edit /
-    // retake" — the product owner): put it on the page (gold), bring it
-    // again (the camera, replacing this record on keep), fix it up (the
-    // record's own still-editable creation document, straight into Make
-    // It Yours), never mind.
-    tile.addEventListener('click',function(ev){
-      ev.stopPropagation();
+    const cardEl=_el('div','context-hw-drawcard');
+    const openChoice=function(anchor){
       const oldCard=panelRoot.querySelector('.context-hw-choice');
       if(oldCard){ oldCard.remove(); if(oldCard._forCh==='lib:'+item.id) return; }
       const card=_el('div','context-hw-choice');
@@ -2584,39 +2588,54 @@ const ContextPanel=(function(){
         b.addEventListener('click',function(e2){ e2.stopPropagation(); card.remove(); fn(); });
         card.appendChild(b);
       }
-      opt('context-hw-choice-gold','🖼 Put it on the page',function(){
+      opt('context-hw-choice-gold','\u{1F5BC} Put it on the page',function(){
         _addImageStickerFromDataURL(item.png,'library.'+item.id);
       });
-      opt('','📷 Bring it again',function(){
+      opt('','\u{1F4F7} Bring it again',function(){
         if(typeof BringItAliveStudio!=='undefined') BringItAliveStudio.open({record:item,retake:true,onKept:function(){ _showLibraryPicker('drawings'); }});
       });
-      opt('','✏️ Fix it up',function(){
+      opt('','\u270F\uFE0F Fix it up',function(){
         if(typeof BringItAliveStudio!=='undefined') BringItAliveStudio.open({record:item,onKept:function(){ _showLibraryPicker('drawings'); }});
       });
+      opt('','\u2715 Take out of My Garden',function(){
+        if(!window.confirm('Take \u201C'+(item.name||'My Character')+'\u201D out of My Garden? Anything already on your pages stays right where it is.')) return;
+        try{ if(typeof CreatorLibrary!=='undefined') CreatorLibrary.remove(item.id); }catch(e){}
+        _showLibraryPicker('drawings');
+      });
       opt('','Never mind',function(){});
-      cell.appendChild(card);
+      anchor.appendChild(card);
       const away=function(e2){
         if(!card.contains(e2.target)){ card.remove(); document.removeEventListener('pointerdown',away,true); }
       };
       document.addEventListener('pointerdown',away,true);
-    });
-    cell.appendChild(tile);
-    // A small quiet remove, revealed on hover/focus — one gentle
-    // confirm in the child's own words, never "delete permanently",
-    // never blame. Pages are explicitly safe: a placed character owns
-    // its own copy.
-    const remove=_el('button','context-library-remove','✕');
-    remove.type='button';
-    remove.title='Take out of My Garden';
-    remove.setAttribute('aria-label','Take “'+(item.name||'My Character')+'” out of My Garden');
-    remove.addEventListener('click',function(ev){
-      ev.stopPropagation();
-      if(!window.confirm('Take “'+(item.name||'My Character')+'” out of My Garden? Anything already on your pages stays right where it is.')) return;
-      try{ if(typeof CreatorLibrary!=='undefined') CreatorLibrary.remove(item.id); }catch(e){}
-      _showLibraryPicker();
-    });
-    cell.appendChild(remove);
-    return cell;
+    };
+    const pic=_el('button','context-hw-drawcard-pic');
+    pic.type='button';
+    const img=document.createElement('img');
+    img.src=item.thumbnail||item.png||'';
+    img.alt=item.name||'My Character';
+    pic.appendChild(img);
+    const rb=_RIBBONS[Math.abs((item.id||'').split('').reduce(function(a,c){ return a+c.charCodeAt(0); },0))%_RIBBONS.length];
+    const ribbon=_el('span','context-hw-ribbon',rb[1]);
+    ribbon.style.background=rb[0];
+    pic.appendChild(ribbon);
+    pic.addEventListener('click',function(ev){ ev.stopPropagation(); openChoice(cardEl); });
+    cardEl.appendChild(pic);
+    const foot=_el('div','context-hw-drawcard-foot');
+    const pot=_el('span','context-hw-pot');
+    pot.innerHTML=_hwPlantSvg((item.name||'a').charAt(0),true);
+    foot.appendChild(pot);
+    const names=_el('div','context-hw-drawcard-names');
+    names.appendChild(_el('div','context-hw-drawcard-name',item.name||'My Character'));
+    names.appendChild(_el('div','context-hw-drawcard-when',_drawingWhen(item.updatedAt||item.createdAt)));
+    foot.appendChild(names);
+    const dots=_el('button','context-hw-drawcard-dots','\u22EF');
+    dots.type='button';
+    dots.title='What would you like?';
+    dots.addEventListener('click',function(ev){ ev.stopPropagation(); openChoice(cardEl); });
+    foot.appendChild(dots);
+    cardEl.appendChild(foot);
+    return cardEl;
   }
   // The door to Bring It Alive — the full-screen Studio overlay
   // (js/bringItAliveStudio.js), opened IN PLACE. "the tool need to
@@ -2654,14 +2673,23 @@ const ContextPanel=(function(){
 
     // The PERMANENT entry, above the kept characters — always present,
     // never only when the shelf is empty (a child with ten characters
-    // still has drawings on paper).
+    // still has drawings on paper). Dressed by the product owner's
+    // drawings style guide: a soft blue banner with an easel, and the
+    // same door it always was.
     if(typeof BringItAliveStudio!=='undefined'){
-      const bring=_el('button','context-library-bring');
+      const bring=_el('button','context-library-bring context-hw-banner-blue');
       bring.type='button';
-      bring.appendChild(_el('span','context-library-bring-icon','✨'));
+      const art=_el('span','context-hw-banner-art');
+      art.innerHTML='<svg viewBox="0 0 40 44" aria-hidden="true">'
+        +'<rect x="10" y="8" width="20" height="16" rx="2" fill="#FDF9EE" stroke="#C9A56A" stroke-width="1.5"/>'
+        +'<path d="M20,10 q-1,5 0,9" stroke="#6FA45E" stroke-width="1.6" fill="none"/>'
+        +'<ellipse cx="17" cy="14" rx="3" ry="2" fill="#8FBF6F" transform="rotate(-25 17 14)"/>'
+        +'<ellipse cx="23" cy="13" rx="3" ry="2" fill="#6FA45E" transform="rotate(20 23 13)"/>'
+        +'<path d="M12,24 L8,40 M28,24 L32,40 M20,24 L20,40" stroke="#C9A56A" stroke-width="2" stroke-linecap="round"/></svg>';
+      bring.appendChild(art);
       const txt=_el('span','context-library-bring-text');
       txt.appendChild(_el('span','context-library-bring-label','Bring a drawing to life'));
-      txt.appendChild(_el('span','context-library-bring-sub','A drawing on paper becomes yours to use.'));
+      txt.appendChild(_el('span','context-library-bring-sub','Draw it on paper and show it to me. I’ll keep it safe in your garden.'));
       bring.appendChild(txt);
       bring.addEventListener('click',_openBringItAlive);
       panelRoot.appendChild(bring);
@@ -2669,9 +2697,24 @@ const ContextPanel=(function(){
 
     const items=(typeof CreatorLibrary!=='undefined' && CreatorLibrary.list) ? CreatorLibrary.list() : [];
     if(items.length){
-      const grid=_el('div','context-collection-picker-grid');
-      items.forEach(function(item){ grid.appendChild(_buildLibraryTile(item)); });
-      panelRoot.appendChild(grid);
+      panelRoot.appendChild(_el('div','context-collection-group-label','🌱 Your Drawings'));
+      panelRoot.appendChild(_el('div','context-hw-line','Your imagination is growing!'));
+      const list=_el('div','context-hw-drawlist');
+      items.forEach(function(item){ list.appendChild(_buildLibraryTile(item)); });
+      panelRoot.appendChild(list);
+      if(typeof BringItAliveStudio!=='undefined'){
+        const more=_el('div','context-hw-morebar');
+        more.appendChild(_el('span','context-hw-morebar-icon','📷'));
+        const mtxt=_el('span','context-hw-morebar-text');
+        mtxt.appendChild(_el('span','context-hw-morebar-title','More drawings, more magic!'));
+        mtxt.appendChild(_el('span','context-hw-morebar-sub','Show me another drawing and I’ll add it to your garden.'));
+        more.appendChild(mtxt);
+        const addBtn=_el('button','context-hw-morebar-btn','📷 Add Drawing');
+        addBtn.type='button';
+        addBtn.addEventListener('click',_openBringItAlive);
+        more.appendChild(addBtn);
+        panelRoot.appendChild(more);
+      }
     }else{
       // Empty is still an invitation, not a dead end — and it opens the
       // same overlay in place. Nothing navigates away, so Decision 23's
@@ -2697,13 +2740,51 @@ const ContextPanel=(function(){
   // tile opens js/handwritingStudio.js armed for that letter. The
   // store is js/handwritingStore.js; every keep flow reopens this room
   // with the tile filled.
+  // Every kept letter grows in its own little pot (the product owner's
+  // style guide: warm storybook tiles, a plant under each letter, a
+  // green check for "grown", seedling invitations for the rest). The
+  // plants are lightweight inline SVG in the garden's own palette —
+  // procedural, never image assets — varied per letter so the shelf
+  // reads as a garden bed, not a stamp sheet.
+  function _hwPlantSvg(ch,grown){
+    const v=ch.charCodeAt(0)%4;
+    const pot='<path d="M10,30 L30,30 L27,40 L13,40 z" fill="#C97B4A"/><path d="M9,28 h22 v3 h-22 z" fill="#B4663C"/>';
+    const stem='<path d="M20,30 q-1,-6 0,-10" stroke="#6FA45E" stroke-width="2" fill="none" stroke-linecap="round"/>';
+    const leaves=[
+      '<ellipse cx="15" cy="20" rx="5" ry="3" fill="#8FBF6F" transform="rotate(-25 15 20)"/><ellipse cx="25" cy="18" rx="5" ry="3" fill="#6FA45E" transform="rotate(20 25 18)"/><ellipse cx="20" cy="14" rx="3.4" ry="2.4" fill="#8FBF6F"/>',
+      '<ellipse cx="14" cy="22" rx="5.5" ry="3.2" fill="#6FA45E" transform="rotate(-30 14 22)"/><ellipse cx="26" cy="21" rx="5.5" ry="3.2" fill="#8FBF6F" transform="rotate(28 26 21)"/>',
+      '<ellipse cx="16" cy="17" rx="4.4" ry="2.8" fill="#8FBF6F" transform="rotate(-40 16 17)"/><ellipse cx="24" cy="16" rx="4.4" ry="2.8" fill="#6FA45E" transform="rotate(35 24 16)"/><ellipse cx="20" cy="21" rx="3.6" ry="2.6" fill="#7FB268"/>',
+      '<ellipse cx="14" cy="20" rx="5" ry="3" fill="#8FBF6F" transform="rotate(-25 14 20)"/><ellipse cx="26" cy="19" rx="5" ry="3" fill="#6FA45E" transform="rotate(22 26 19)"/><circle cx="20" cy="12" r="3.2" fill="#B58AD1"/><circle cx="20" cy="12" r="1.3" fill="#F5C542"/>'
+    ][v];
+    const sprout='<path d="M20,40 q-1,-5 0,-8" stroke="#6FA45E" stroke-width="2" fill="none" stroke-linecap="round"/>'
+      +'<ellipse cx="16.5" cy="30" rx="4" ry="2.6" fill="#8FBF6F" transform="rotate(-30 16.5 30)"/>'
+      +'<ellipse cx="23.5" cy="30" rx="4" ry="2.6" fill="#6FA45E" transform="rotate(30 23.5 30)"/>'
+      +'<path d="M13,41 q7,3 14,0" stroke="#8A6242" stroke-width="3" fill="none" stroke-linecap="round"/>';
+    return '<svg viewBox="0 0 40 44" class="context-hw-plant" aria-hidden="true">'
+      +(grown?(pot+stem+leaves):sprout)+'</svg>';
+  }
+
   function _buildLettersRoom(){
     try{
       if(typeof HandwritingStore!=='undefined' && HandwritingStore.list){
         const kept={};
         HandwritingStore.list().forEach(function(r){ kept[r.ch]=r; });
-        panelRoot.appendChild(_el('div','context-collection-group-label','✍️ My Letters'));
-        panelRoot.appendChild(_el('div','context-hw-line','Tap any letter, write it big on paper, and show it to me — I’ll catch it.'));
+        const banner=_el('div','context-hw-banner');
+        const bArt=_el('div','context-hw-banner-art');
+        bArt.innerHTML='<svg viewBox="0 0 40 44" aria-hidden="true">'
+          +'<path d="M10,30 L30,30 L27,40 L13,40 z" fill="#C97B4A"/><path d="M9,28 h22 v3 h-22 z" fill="#B4663C"/>'
+          +'<path d="M20,30 q-1,-8 0,-13" stroke="#6FA45E" stroke-width="2" fill="none" stroke-linecap="round"/>'
+          +'<ellipse cx="15" cy="18" rx="5" ry="3" fill="#8FBF6F" transform="rotate(-25 15 18)"/>'
+          +'<ellipse cx="25" cy="16" rx="5" ry="3" fill="#6FA45E" transform="rotate(20 25 16)"/>'
+          +'<path d="M31,10 l1.2,2.6 2.8,.4 -2,2 .5,2.8 -2.5,-1.3 -2.5,1.3 .5,-2.8 -2,-2 2.8,-.4 z" fill="#F5C542"/></svg>';
+        banner.appendChild(bArt);
+        const bText=_el('div','context-hw-banner-text');
+        bText.appendChild(_el('div','context-hw-banner-title','Bring a letter to life'));
+        bText.appendChild(_el('div','context-hw-banner-sub','Write it big on paper and show it to me — I’ll catch it and grow it in your garden.'));
+        banner.appendChild(bText);
+        panelRoot.appendChild(banner);
+        panelRoot.appendChild(_el('div','context-collection-group-label','🌱 Your Letters'));
+        panelRoot.appendChild(_el('div','context-hw-line','Letters you’ve grown so far'));
         const GROUPS=['abcdefghijklmnopqrstuvwxyz','ABCDEFGHIJKLMNOPQRSTUVWXYZ','0123456789'];
         GROUPS.forEach(function(group){
           const lGrid=_el('div','context-hw-grid');
@@ -2717,6 +2798,10 @@ const ContextPanel=(function(){
               img.src=(rec.glyph&&rec.glyph.png)||'';
               img.alt='My letter '+ch;
               tile.appendChild(img);
+              const plant=_el('span','context-hw-pot');
+              plant.innerHTML=_hwPlantSvg(ch,true);
+              tile.appendChild(plant);
+              tile.appendChild(_el('span','context-hw-badge','✓'));
               tile.title='Your '+ch;
               // An ACTIVATED tile asks first (the product owner: "the
               // tile which already has a activated letter need option
@@ -2767,6 +2852,9 @@ const ContextPanel=(function(){
               cell.appendChild(remove);
             }else{
               tile.appendChild(_el('span','context-hw-ghost',ch));
+              const seed=_el('span','context-hw-pot');
+              seed.innerHTML=_hwPlantSvg(ch,false);
+              tile.appendChild(seed);
               tile.title='Show me your '+ch;
               tile.addEventListener('click',function(){
                 if(typeof HandwritingStudio!=='undefined') HandwritingStudio.open({ch:ch,onKept:function(){ _showLibraryPicker('letters'); }});

@@ -157,6 +157,16 @@
     g.appendChild(_svg('circle', { cx: 0, cy: 0, r: 2.6, fill: PETAL_C }));
     return _place(x, y, 0, g);
   }
+  // A ripened flower — a small amber fruit hanging from its stem, with
+  // one leaf still on. The vine's late season (~55 captures on).
+  function _fruit(x, y) {
+    const g = _svg('g', {});
+    g.appendChild(_svg('line', { x1: 0, y1: -8, x2: 0, y2: -2, stroke: VINE, 'stroke-width': 1.4 }));
+    g.appendChild(_svg('circle', { cx: 0, cy: 3, r: 5, fill: '#E9A93C' }));
+    g.appendChild(_svg('circle', { cx: -1.6, cy: 1.4, r: 1.4, fill: '#F5C67A' }));
+    g.appendChild(_svg('ellipse', { cx: 3.5, cy: -6, rx: 3.2, ry: 2, fill: LEAF_A, transform: 'rotate(30 3.5 -6)' }));
+    return _place(x, y, 0, g);
+  }
 
   function _reducedMotion() {
     try { return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; }
@@ -276,6 +286,7 @@
       else if (el.k === 'sprig') node = _sprig(pt.x, pt.y, (el.u - 0.5) * 40, s);
       else if (el.k === 'bud') node = _bud(pt.x, pt.y);
       else if (el.k === 'flower') node = _flower(pt.x, pt.y);
+      else if (el.k === 'fruit') node = _fruit(pt.x, pt.y);
       if (!node) return;
       // The breath and the grow-in animate the INNER group only — its
       // local origin is the attachment point by construction — so the

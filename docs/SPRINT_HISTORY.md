@@ -4887,3 +4887,29 @@ seeded rng; the mid-air leaf/bud scatter that produced the floating
 blobs is gone. The look at 26 captures is one clean climbing vine with
 alternating leaves — the visual plan's own calm. Replay reshapes every
 existing garden; build 0592 → 0593; 41 checks green.
+
+**Follow-up 12, same sprint** — the product owner supplied STYLE
+GUIDES for both rooms, and asked the vine's calendar: *"in the vine
+when will we get buds, flowers, fruits maybe birds."* The letters room
+wears the first guide: warm storybook tiles, every grown letter above
+its own little pot (procedural inline SVG in the garden's palette —
+four plant variants, one with a lavender flower — never image assets),
+a green check for "grown", seedling invitations for the rest, and the
+cream "Bring a letter to life" banner (the guide's watering companion
+deliberately left out — companion imagery is canon-governed art, so a
+potted-sprout motif stands in). The drawings room wears the second:
+one-column storybook cards — the picture large on cream, a pastel
+corner ribbon (deterministic per record), a potted sprout beside the
+name and a child-friendly "Today · 10:32 AM" line, and a quiet ⋯ that
+opens the same five-way choice card a tap does (Take out of My Garden
+moved INTO the card; the hover ✕ is gone from drawings); the blue
+easel banner door on top and the "More drawings, more magic!" camera
+bar below, both opening the same scanner. And the vine got its LATE
+SEASON: the calendar is now buds from ~24 captures, flowers from ~40
+(buds opening, oldest vine first), FRUIT from ~55 — an open flower
+now and then ripens into a small amber fruit — and past the density
+ceiling everything keeps ripening (bud → flower → fruit → leaves
+fill). Birds are deliberately NOT built: the sprint's own DO-NOT-BUILD
+names "Garden characters", and a bird is on that line — the product
+owner can amend canon if they want one. Suite 41 green (L6 rewritten
+for the cards and the five-way ask); build 0593 → 0594.
