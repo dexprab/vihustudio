@@ -126,7 +126,13 @@
 
   function ensureWorker() {
     if (worker) return worker;
-    worker = new Worker('js/hwLetterWorker.js');
+    // The worker URL is page-relative, and this module now has two
+    // hosts: the tool page (js/…) and the Studio (studio.html, where
+    // js/ would miss). A host that is not the tool page states the base
+    // through window.HW_WORKER_BASE; the tool page sets nothing and
+    // keeps its own path byte for byte. importScripts inside the worker
+    // resolves against the worker's own URL, so it needs no seam.
+    worker = new Worker((self.HW_WORKER_BASE || 'js/') + 'hwLetterWorker.js');
     worker.onmessage = onVerdict;
     worker.onerror = (e) => {
       (opts.log || noop)('hw letter: frame skipped (' +

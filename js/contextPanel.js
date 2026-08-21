@@ -2629,51 +2629,75 @@ const ContextPanel=(function(){
       panelRoot.appendChild(empty);
     }
 
-    // ---- My Letters — the child's kept handwriting, in the same
-    // garden (the product owner: "my garden caters to both scanned
-    // characters and handwriting"). The store is js/handwritingStore.js
-    // (the library's own plumbing, letter-sized); this panel only
-    // browses it. A letter places through the exact same
-    // _addImageStickerFromDataURL tail a character uses, so the placed
-    // ink is an ordinary object — drag, resize, rotate, publish, all
-    // unchanged by construction. ABSENT rather than empty when no
-    // letters are kept: the section teaches nothing and asks nothing
-    // (Decision 27's no-instruction rule) — it simply appears the day
-    // letters exist.
+    // ---- My Letters — the child's handwriting, in the same garden
+    // (the product owner: "my garden caters to both scanned characters
+    // and handwriting", then, seeing only kept letters listed: "we
+    // discussed about adding this section which kid can fill with
+    // every click"). So this is the WHOLE grid — a–z, A–Z, 0–9 — not a
+    // shelf of finished letters: a kept tile holds the child's real
+    // ink and places it on the page through the exact
+    // _addImageStickerFromDataURL tail a character uses (with ↻ make
+    // it again and ✕ take out as quiet corner affordances, the
+    // existing remove pattern); an empty tile is an invitation — tap
+    // it and js/handwritingStudio.js opens the camera armed for that
+    // letter, the same catch-and-keep the tool page proved. The store
+    // is js/handwritingStore.js; on a keep the picker reopens with the
+    // tile filled.
     try{
-      const letters=(typeof HandwritingStore!=='undefined' && HandwritingStore.list) ? HandwritingStore.list() : [];
-      if(letters.length){
+      if(typeof HandwritingStore!=='undefined' && HandwritingStore.list){
+        const kept={};
+        HandwritingStore.list().forEach(function(r){ kept[r.ch]=r; });
         panelRoot.appendChild(_el('div','context-collection-group-label','✍️ My Letters'));
-        const lGrid=_el('div','context-collection-picker-grid');
-        letters.forEach(function(rec){
-          const cell=_el('div','context-library-cell');
-          const tile=_el('button','context-collection-tile');
-          tile.type='button';
-          const thumb=_el('span','context-collection-tile-thumb');
-          const img=document.createElement('img');
-          img.src=(rec.glyph&&rec.glyph.png)||'';
-          img.alt='My letter '+rec.ch;
-          thumb.appendChild(img);
-          tile.appendChild(thumb);
-          tile.appendChild(_el('span','context-collection-tile-label',rec.ch));
-          tile.addEventListener('click',function(){
-            _addImageStickerFromDataURL(rec.glyph.png,'handwriting.'+rec.id);
+        panelRoot.appendChild(_el('div','context-hw-line','Tap any letter, write it big on paper, and show it to me — I’ll catch it.'));
+        const GROUPS=['abcdefghijklmnopqrstuvwxyz','ABCDEFGHIJKLMNOPQRSTUVWXYZ','0123456789'];
+        GROUPS.forEach(function(group){
+          const lGrid=_el('div','context-hw-grid');
+          group.split('').forEach(function(ch){
+            const rec=kept[ch];
+            const cell=_el('div','context-hw-cell');
+            const tile=_el('button','context-hw-tile'+(rec?' context-hw-tile-kept':''));
+            tile.type='button';
+            if(rec){
+              const img=document.createElement('img');
+              img.src=(rec.glyph&&rec.glyph.png)||'';
+              img.alt='My letter '+ch;
+              tile.appendChild(img);
+              tile.title='Put your '+ch+' on the page';
+              tile.addEventListener('click',function(){
+                _addImageStickerFromDataURL(rec.glyph.png,'handwriting.'+rec.id);
+              });
+              const redo=_el('button','context-hw-redo','↻');
+              redo.type='button';
+              redo.title='Make your '+ch+' again';
+              redo.setAttribute('aria-label','Make your letter '+ch+' again');
+              redo.addEventListener('click',function(ev){
+                ev.stopPropagation();
+                if(typeof HandwritingStudio!=='undefined') HandwritingStudio.open({ch:ch,onKept:function(){ _showLibraryPicker(); }});
+              });
+              cell.appendChild(redo);
+              const remove=_el('button','context-library-remove','✕');
+              remove.type='button';
+              remove.title='Take out of My Garden';
+              remove.setAttribute('aria-label','Take your letter '+ch+' out of My Garden');
+              remove.addEventListener('click',function(ev){
+                ev.stopPropagation();
+                if(!window.confirm('Take your letter “'+ch+'” out of My Garden? Anything already on your pages stays right where it is.')) return;
+                try{ HandwritingStore.remove(rec.id); }catch(e){}
+                _showLibraryPicker();
+              });
+              cell.appendChild(remove);
+            }else{
+              tile.appendChild(_el('span','context-hw-ghost',ch));
+              tile.title='Show me your '+ch;
+              tile.addEventListener('click',function(){
+                if(typeof HandwritingStudio!=='undefined') HandwritingStudio.open({ch:ch,onKept:function(){ _showLibraryPicker(); }});
+              });
+            }
+            cell.insertBefore(tile,cell.firstChild);
+            lGrid.appendChild(cell);
           });
-          cell.appendChild(tile);
-          const remove=_el('button','context-library-remove','✕');
-          remove.type='button';
-          remove.title='Take out of My Garden';
-          remove.setAttribute('aria-label','Take your letter '+rec.ch+' out of My Garden');
-          remove.addEventListener('click',function(ev){
-            ev.stopPropagation();
-            if(!window.confirm('Take your letter “'+rec.ch+'” out of My Garden? Anything already on your pages stays right where it is.')) return;
-            try{ HandwritingStore.remove(rec.id); }catch(e){}
-            _showLibraryPicker();
-          });
-          cell.appendChild(remove);
-          lGrid.appendChild(cell);
+          panelRoot.appendChild(lGrid);
         });
-        panelRoot.appendChild(lGrid);
       }
     }catch(e){}
 

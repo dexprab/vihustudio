@@ -1481,13 +1481,16 @@ handwriting.
 - Out of scope and not implemented: a separate Garden world, scenes,
   quests, characters in the Garden, AI regeneration of child artwork,
   runtime/story/page-model changes, and any Studio redesign.
-- **The Garden holds the letters too.** Kept handwriting lives in the
-  picker's ✍️ My Letters section — the child's real ink, placeable
-  through the same tail a scanned character uses — backed by
-  `js/handwritingStore.js` (the library's plumbing, letter-sized,
-  writing `creator_handwriting`), and the tool's grid hydrates from the
-  same store so kept letters survive a reload. The section is absent,
-  never empty, when no letters exist.
+- **The Garden holds the letters too — the WHOLE grid.** The picker's
+  ✍️ My Letters section is the full a–z · A–Z · 0–9 grid a child fills
+  click by click: a kept tile is their real ink and places on the page
+  through the same tail a scanned character uses (↻ make-again and ✕
+  take-out as quiet corner affordances); an empty tile opens the
+  catcher — `js/handwritingStudio.js`, the handwriting flow's second
+  host, same rule as the drawing flow's — armed for exactly that
+  letter. Backed by `js/handwritingStore.js` (the library's plumbing,
+  letter-sized, writing `creator_handwriting`); the tool's grid
+  hydrates from the same store so kept letters survive a reload.
 - Disclosed: the growth record is local-first per device; a cloud row
   (the `creator_handwriting` pattern) is the follow-up when one garden
   should span devices. Handwriting cloud sync is push-only like the

@@ -4679,3 +4679,34 @@ both tool suites re-run clean. Disclosed: cloud is push-only like the
 library (recall-adoption on a strange device is still ahead), and the
 font path ("My Handwriting" in the font lists) remains the next piece
 of handwriting-into-Studio.
+
+**Follow-up 3, same sprint** — the product owner, shown only kept
+letters listed: *"we discussed about adding this section which kid can
+fill with every click."* The section is the WHOLE grid, and the missing
+piece was the door: the Studio had no way to MAKE a letter — the
+letter journey lived only on the tool page. Two things shipped. The ✍️
+My Letters section in the My Garden picker became the full a–z · A–Z ·
+0–9 grid: a kept tile holds the child's real ink and places it on the
+page (with quiet ↻ make-again and ✕ take-out corner affordances); an
+empty tile is a dashed invitation that opens the catcher armed for
+exactly that letter. And the catcher is `js/handwritingStudio.js` — the
+SECOND HOST of the handwriting capture, precisely as
+`bringItAliveStudio.js` is the drawing flow's ("the same tool page ui
+will not work in studio"): the shared modules do the work (BIACamera
+element-mapped with its square letter window, HWLight, HWLetterLive
+with its worker — which grew a one-line `HW_WORKER_BASE` seam because
+its worker URL was page-relative and the Studio is not the tool page —
+and HWLetter.read for a manual Take), under a Picture-Studio-grammar
+modal: Show me your m → the green light takes the picture by itself →
+Your m! → 🌟 Keep it · 📷 Show me again. Keep stores the letter, grows
+the garden, and reopens the picker with the tile filled. Two Studio
+CSS truths were paid their tax: the global full-width `!important`
+button reset (escaped with the same `!important` sizing every overlay
+documents) and the letter-tile grid got its own compact styles. Suite
+35 checks (the full-grid assertion — 62 tiles, one kept in ink, 61
+invitations — and the catcher opening armed and closing clean); base
+192 and handwriting 162 re-run green. Disclosed: the tool page's
+pencil/eraser fix-up is not in the Studio catcher yet (Show me again is
+the recovery), and the sandbox cannot exercise a live camera — the
+catcher's capture path leans on the tool suites' 162-check proof of the
+shared modules, and wants one real-camera pass on a real machine.

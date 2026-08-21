@@ -277,16 +277,15 @@ function check(cond, name, note) { (cond ? ok : fail)(name, note); }
   });
   await page.waitForTimeout(400);
   const shelf = await page.evaluate(() => {
-    const root = document.body.innerText;
-    const letterTile = Array.from(document.querySelectorAll('.context-collection-tile'))
-      .find((t) => (t.textContent || '').trim() === 'a');
-    return { door: true, hasHeading: /My Letters/.test(root), hasTile: !!letterTile };
+    const tiles = Array.from(document.querySelectorAll('.context-hw-tile'));
+    const keptA = document.querySelector('.context-hw-tile-kept img[alt="My letter a"]');
+    const ghosts = tiles.filter((t) => t.querySelector('.context-hw-ghost')).length;
+    return { hasHeading: /My Letters/.test(document.body.innerText), tiles: tiles.length, keptA: !!keptA, ghosts: ghosts };
   });
-  check(doorClicked && shelf.hasHeading && shelf.hasTile,
-    'L2 the picker shows the ✍️ My Letters section with the kept letter', JSON.stringify(shelf));
+  check(doorClicked && shelf.hasHeading && shelf.tiles === 62 && shelf.keptA && shelf.ghosts === 61,
+    'L2 the picker shows the FULL 62-tile grid — the kept a in ink, 61 invitations', JSON.stringify(shelf));
   const placed = await page.evaluate(() => {
-    const tile = Array.from(document.querySelectorAll('.context-collection-tile'))
-      .find((t) => (t.textContent || '').trim() === 'a');
+    const tile = document.querySelector('.context-hw-tile-kept');
     if (!tile) return false;
     tile.click();
     return true;
@@ -297,7 +296,29 @@ function check(cond, name, note) { (cond ? ok : fail)(name, note); }
     return !!(s && !s.className.includes('selection-action-strip-hidden'));
   });
   check(placed && stripVisible,
-    'L3 tapping the letter places it on the page and selects it (the strip appears)', 'placed=' + placed + ' strip=' + stripVisible);
+    'L3 tapping the kept letter places it on the page and selects it (the strip appears)', 'placed=' + placed + ' strip=' + stripVisible);
+  // An empty tile opens the Studio's own catcher, armed for that letter.
+  await page.evaluate(() => {
+    const d = document.getElementById('selectionActionDeselect');
+    if (d) d.click();   // L3 left the placed letter selected; the Add list needs the neutral panel
+  });
+  await page.waitForTimeout(300);
+  const catcher = await page.evaluate(() => {
+    const door2 = Array.from(document.querySelectorAll('button.context-add-card'))
+      .find((t) => /My Garden/.test(t.textContent || ''));
+    if (door2) door2.click();
+    const ghost = Array.from(document.querySelectorAll('.context-hw-tile'))
+      .find((t) => (t.querySelector('.context-hw-ghost') || {}).textContent === 'b');
+    if (!ghost) return { opened: false, why: 'no b tile' };
+    ghost.click();
+    const modal = document.querySelector('.hw-studio-modal');
+    const title = modal ? modal.querySelector('.hw-studio-title').textContent : '';
+    const ok = !!modal && /Show me your b/.test(title);
+    try { HandwritingStudio.close(); } catch (e) {}
+    return { opened: ok, title: title, closed: !document.querySelector('.hw-studio-modal') };
+  });
+  check(catcher.opened && catcher.closed,
+    'L4 an empty tile opens the catcher armed for that letter, and it closes clean', JSON.stringify(catcher));
   await page.evaluate((id) => { try { HandwritingStore.remove(id); } catch (e) {} }, seeded);
 
   console.log('-- W: the real store, the real seam');
