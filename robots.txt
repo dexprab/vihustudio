@@ -1,0 +1,19 @@
+# VihuPlanet — https://vihuplanet.com
+# The public surface is the universe (/) and the knowledge page (/about).
+# Application, admin and development-tool routes are not for indexes.
+# Policy: docs/INDEXING_POLICY.md
+
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /tools/
+Disallow: /supabase/
+
+# OpenAI's search crawler is explicitly welcome.
+User-agent: OAI-SearchBot
+Allow: /
+Disallow: /admin/
+Disallow: /tools/
+Disallow: /supabase/
+
+Sitemap: https://vihuplanet.com/sitemap.xml

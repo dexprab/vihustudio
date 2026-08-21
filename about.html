@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>About VihuPlanet</title>
+
+<!-- ===============================================================
+     THE ONE PUBLIC KNOWLEDGE PAGE.
+     VihuPlanet's front door (index.html) is a universe, not a
+     document — it explains itself by being explored, which is right
+     for a child and useless for a crawler. This page is the written
+     answer: what VihuPlanet is, what VihuStudio is, what children
+     make here. One page, anchored per entity, rather than seven thin
+     ones — docs/VIHUPLANET_ENTITY_CANON.md is the source of every
+     sentence, and docs/INDEXING_POLICY.md says why this page is the
+     indexable surface. It wears the universe's own night: ink, paper,
+     candlelight, the house handwriting. It is a quiet page about a
+     quiet place; it must never look like an SEO page.
+     =============================================================== -->
+
+<meta name="description" content="VihuPlanet is a creative universe for children — a living world where drawings, stories, characters and ideas become part of an evolving world of their own. VihuStudio is the Hall of Creation inside it.">
+<link rel="canonical" href="https://vihuplanet.com/about">
+<meta name="robots" content="index,follow">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="VihuPlanet">
+<meta property="og:title" content="About VihuPlanet">
+<meta property="og:description" content="VihuPlanet is a creative universe for children — a living world where drawings, stories, characters and ideas become part of an evolving world of their own.">
+<meta property="og:url" content="https://vihuplanet.com/about">
+<meta property="og:locale" content="en_US">
+
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="About VihuPlanet">
+<meta name="twitter:description" content="VihuPlanet is a creative universe for children — a living world where drawings, stories, characters and ideas become part of an evolving world of their own.">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "AboutPage",
+      "@id": "https://vihuplanet.com/about#page",
+      "url": "https://vihuplanet.com/about",
+      "name": "About VihuPlanet",
+      "inLanguage": "en",
+      "isPartOf": { "@id": "https://vihuplanet.com/#website" },
+      "about": { "@id": "https://vihuplanet.com/#vihuplanet" },
+      "description": "What VihuPlanet is, what VihuStudio is, and what children create there."
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://vihuplanet.com/#website",
+      "url": "https://vihuplanet.com/",
+      "name": "VihuPlanet",
+      "inLanguage": "en",
+      "about": { "@id": "https://vihuplanet.com/#vihuplanet" }
+    },
+    {
+      "@type": "Brand",
+      "@id": "https://vihuplanet.com/#vihuplanet",
+      "name": "VihuPlanet",
+      "url": "https://vihuplanet.com/",
+      "description": "VihuPlanet is a creative universe for children — a living world where drawings, stories, characters and ideas become part of an evolving world of their own."
+    },
+    {
+      "@type": "WebApplication",
+      "@id": "https://vihuplanet.com/#vihustudio",
+      "name": "VihuStudio",
+      "alternateName": "The Hall of Creation",
+      "url": "https://vihuplanet.com/about#vihustudio",
+      "isPartOf": { "@id": "https://vihuplanet.com/#website" },
+      "description": "VihuStudio is the Hall of Creation inside VihuPlanet — the studio where children turn their ideas into stories of their own: pages, pictures, words, their own drawings, their own handwriting, their own voice."
+    },
+    {
+      "@type": "Thing",
+      "@id": "https://vihuplanet.com/#my-garden",
+      "name": "My Garden",
+      "url": "https://vihuplanet.com/about#garden",
+      "description": "My Garden is the growing collection inside VihuPlanet where a child's own drawings and handwritten letters are captured and kept — and quietly grow into something more."
+    }
+  ]
+}
+</script>
+
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90' fill='%23E8B871'%3E%E2%9C%BF%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="vihuplanet/assets/fonts/fonts.css">
+
+<style>
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    /* The universe's own night, painted here too — a page about a
+       place should be lit the way the place is. */
+    background:
+      radial-gradient(120% 90% at 50% -10%, #2A3658 0%, #1E2842 46%, #141B30 100%)
+      #1E2842;
+    color: #F1EAD0;
+    font-family: 'Nunito', 'Kalam', system-ui, sans-serif;
+    line-height: 1.65;
+  }
+
+  /* A little procedural starlight — behaviour of the house: gradients
+     and nothing heavy, no images, no libraries. Decorative only. */
+  .sky {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+      radial-gradient(1.5px 1.5px at 12% 18%, rgba(241,234,208,.55) 50%, transparent 51%),
+      radial-gradient(1px 1px at 78% 12%, rgba(241,234,208,.4) 50%, transparent 51%),
+      radial-gradient(1.5px 1.5px at 62% 34%, rgba(232,184,113,.4) 50%, transparent 51%),
+      radial-gradient(1px 1px at 30% 52%, rgba(241,234,208,.32) 50%, transparent 51%),
+      radial-gradient(1.5px 1.5px at 88% 58%, rgba(241,234,208,.4) 50%, transparent 51%),
+      radial-gradient(1px 1px at 44% 80%, rgba(241,234,208,.3) 50%, transparent 51%),
+      radial-gradient(1.5px 1.5px at 8% 84%, rgba(232,184,113,.35) 50%, transparent 51%);
+  }
+
+  main {
+    position: relative;
+    max-width: 42rem;
+    margin: 0 auto;
+    padding: 4.5rem 1.5rem 5rem;
+  }
+
+  h1, h2 {
+    font-family: 'Caveat', 'Kalam', cursive;
+    font-weight: 700;
+    color: #F1EAD0;
+    line-height: 1.2;
+    text-wrap: balance;
+  }
+
+  h1 {
+    font-size: clamp(2.6rem, 2rem + 2.5vw, 3.6rem);
+    margin: 0 0 0.4rem;
+    text-align: center;
+  }
+
+  .lede {
+    text-align: center;
+    font-family: 'Kalam', cursive;
+    font-size: clamp(1.1rem, 1rem + 0.6vw, 1.35rem);
+    color: rgba(241, 234, 208, 0.85);
+    max-width: 34rem;
+    margin: 0 auto 1.6rem;
+    text-wrap: balance;
+  }
+
+  .enter {
+    text-align: center;
+    margin: 0 0 3.2rem;
+  }
+
+  .enter a {
+    display: inline-block;
+    padding: 0.55rem 1.4rem;
+    border-radius: 999px;
+    border: 1px solid rgba(232, 184, 113, 0.45);
+    background: rgba(18, 24, 43, 0.5);
+    color: #E8B871;
+    font-size: 1rem;
+    text-decoration: none;
+    transition: background 220ms ease, border-color 220ms ease;
+  }
+
+  .enter a:hover, .enter a:focus-visible {
+    background: rgba(232, 184, 113, 0.16);
+    border-color: rgba(232, 184, 113, 0.75);
+  }
+
+  .enter a:focus-visible { outline: 2px solid #E8B871; outline-offset: 3px; }
+
+  section {
+    margin: 0 0 2.8rem;
+    scroll-margin-top: 2rem;
+  }
+
+  h2 {
+    font-size: clamp(1.7rem, 1.4rem + 1.2vw, 2.2rem);
+    margin: 0 0 0.5rem;
+  }
+
+  h2 .glyph { margin-right: 0.4rem; }
+
+  h3 {
+    font-family: 'Kalam', cursive;
+    font-size: 1.15rem;
+    color: #E8B871;
+    margin: 1.2rem 0 0.2rem;
+  }
+
+  p { margin: 0 0 0.9rem; color: rgba(241, 234, 208, 0.92); }
+
+  a { color: #E8B871; text-decoration-color: rgba(232, 184, 113, 0.45); }
+  a:hover { text-decoration-color: rgba(232, 184, 113, 0.9); }
+
+  .rule {
+    border: 0;
+    height: 1px;
+    margin: 0 auto 2.8rem;
+    width: min(16rem, 60%);
+    background: linear-gradient(90deg, transparent, rgba(232,184,113,0.4), transparent);
+  }
+
+  footer {
+    text-align: center;
+    font-family: 'Caveat', 'Kalam', cursive;
+    font-size: 1.3rem;
+    color: rgba(241, 234, 208, 0.7);
+    padding-bottom: 1rem;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .enter a { transition: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="sky" aria-hidden="true"></div>
+
+<main>
+  <section id="vihuplanet">
+    <h1>VihuPlanet</h1>
+    <p class="lede">A creative universe for children — a living world where
+    drawings, stories, characters and ideas become part of an evolving world
+    of their own.</p>
+    <p class="enter"><a href="/">✿ Step into VihuPlanet</a></p>
+
+    <p>VihuPlanet is home. It is a night sky a child can turn with their own
+    hands, where every story somebody has chosen to share drifts as a small
+    light, waiting to be discovered. Children don't just visit VihuPlanet —
+    they live there: they are known by their own stars, they make stories in
+    the <a href="#vihustudio">Hall of Creation</a>, they keep what they make
+    in <a href="#garden">their Garden</a>, and what they choose to share
+    joins <a href="#ether">the Ether</a> for other Travellers to find.</p>
+
+    <p>Everything in VihuPlanet begins from something real: a real drawing,
+    real handwriting, a real voice, a real idea. VihuPlanet preserves what is
+    real and makes it beautiful — it never replaces a child's work with
+    something machine-made.</p>
+  </section>
+
+  <hr class="rule">
+
+  <section id="vihustudio">
+    <h2><span class="glyph" aria-hidden="true">✨</span>VihuStudio — the Hall of Creation</h2>
+    <p>VihuStudio is the creative studio inside VihuPlanet where children
+    turn their ideas into <a href="#stories">stories</a>. Page by page, a
+    child builds a story that is entirely their own — with pictures, words,
+    <a href="#characters">characters</a>, their own drawings from paper,
+    their own handwriting, and their own voice reading it aloud.</p>
+    <p>Children visit the Studio; they live in VihuPlanet. The Studio is one
+    place inside the universe — the place where the making happens — and a
+    finished story always belongs to the child who made it.</p>
+  </section>
+
+  <section id="stories">
+    <h2><span class="glyph" aria-hidden="true">📖</span>Stories</h2>
+    <p>A story is the heart of everything here. Children make stories in
+    <a href="#vihustudio">VihuStudio</a> — some set inside crafted
+    <a href="#worlds">Story Worlds</a>, some on pages entirely of their own
+    invention. Finishing a story and sharing it are two different things:
+    every child can always finish their story and take it with them, and
+    sharing it with VihuPlanet is a choice a child makes for themselves,
+    never something required of them.</p>
+    <p>A story that is shared joins <a href="#ether">the Ether</a>, where
+    other Travellers can discover and read it.</p>
+  </section>
+
+  <section id="books">
+    <h2><span class="glyph" aria-hidden="true">📕</span>Books</h2>
+    <p>A finished <a href="#stories">story</a> can become a book — a real,
+    keepable thing: a story book to open and turn the pages of, and keepsakes
+    a family can hold onto. Every child who finishes a story receives their
+    book, with nothing asked and nothing judged.</p>
+  </section>
+
+  <section id="characters">
+    <h2><span class="glyph" aria-hidden="true">🐣</span>Characters</h2>
+    <p>VihuPlanet has living company. <strong>Lumo the Guardian</strong>
+    welcomes every new Traveller and guides their first steps. The
+    <strong>Story Egg</strong> accompanies a child's making without ever
+    speaking — it is company, not a teacher. And every Creator has a
+    <strong>Story Companion</strong> of their own, bonded to them, who lives
+    in their stories and quietly keeps visiting readers company.</p>
+    <p>And then there are the characters children make themselves — drawn on
+    paper, brought into their <a href="#stories">stories</a>, entirely
+    theirs.</p>
+  </section>
+
+  <section id="worlds">
+    <h2><span class="glyph" aria-hidden="true">🌍</span>Story Worlds</h2>
+    <p>Some stories are made inside a crafted world — a place with its own
+    scenery, its own scenes and its own little experiences, ready for a
+    child's story to happen in. A world gives a story somewhere to belong
+    while leaving every important choice to the child making it.</p>
+    <p>And in VihuPlanet itself, worlds are grown, not manufactured: they
+    emerge from a universe that already has stories in it, gathering around
+    the stories children share.</p>
+  </section>
+
+  <section id="garden">
+    <h2><span class="glyph" aria-hidden="true">🌿</span>My Garden</h2>
+    <p>My Garden is where the things a child creates live — a growing
+    collection inside VihuPlanet where their real work is captured and kept.
+    Every new thing a child brings makes the Garden grow a little; nothing in
+    it is counted, scored or compared.</p>
+    <h3>My Drawings</h3>
+    <p>Real drawings on real paper, captured and kept, ready to be placed
+    into <a href="#stories">stories</a> — the drawing stays the child's own,
+    made beautiful, never replaced.</p>
+    <h3>My Letters</h3>
+    <p>The child's own handwritten letters, kept one by one — and together
+    they become something wonderful: the child's very own handwriting, which
+    their stories can be written in.</p>
+  </section>
+
+  <section id="ether">
+    <h2><span class="glyph" aria-hidden="true">🌌</span>The Ether</h2>
+    <p>The Ether is the living space of VihuPlanet. When a child chooses to
+    share a <a href="#stories">story</a>, it drifts into the Ether as a small
+    light among the stars — a Story Spirit — waiting to be discovered. Come
+    close, and the light becomes a story with a name and a maker; open it,
+    and you can read it right there under the sky.</p>
+    <p>The Ether always holds the stories that belong to VihuPlanet itself
+    together with every story its children have shared — so nobody ever
+    arrives in an empty universe.</p>
+  </section>
+
+  <hr class="rule">
+
+  <footer>
+    <p>VihuPlanet lives at <a href="https://vihuplanet.com/">vihuplanet.com</a>.<br>
+    Preserve what is real.</p>
+  </footer>
+</main>
+
+</body>
+</html>

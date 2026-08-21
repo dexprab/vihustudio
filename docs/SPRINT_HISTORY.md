@@ -4933,3 +4933,57 @@ the Add tile and the picker heading: inside are drawings and letters
 growing in little pots, so the door wears a potted plant — the thing
 actually inside. Decision 27's note updated; build 0595 → 0596; suite
 41 green.
+
+## Sprint — VihuPlanet Discoverability & Entity Foundation (build 0596 → 0597)
+
+VihuPlanet answers a crawler now. Before this sprint the public surface
+was invisible on purpose to nobody: `<title>VihuPlanet</title>` and
+nothing else — no description, no canonical, no Open Graph (a shared
+link unfurled to nothing), no structured data, no robots.txt, no
+sitemap, and the one application page that should be kept OUT of
+indexes (studio.html) carried nothing keeping it out — all recorded
+first in `docs/DISCOVERABILITY_AUDIT.md`, written against the
+pre-change tree. The public identity language now has a single source
+of truth, `docs/VIHUPLANET_ENTITY_CANON.md`, every sentence reconciled
+with the Locked Decisions (VihuPlanet is Home and the parent of
+everything; VihuStudio is the Hall of Creation inside it and never
+reads as the parent brand; My Garden holds My Drawings and My Letters;
+the Ether is the living space where shared Stories drift; "publish"
+never child-facing; no counters, levels or blame anywhere public). The
+written answer lives at ONE new public page, `/about` — anchored per
+entity (#vihustudio #stories #books #characters #worlds #garden
+#ether) rather than seven thin routes, a deliberate call recorded in
+`docs/INDEXING_POLICY.md`: the entities are chapters of one
+explanation, and seven near-empty pages would be an SEO posture. The
+page wears the universe's own night — ink, paper, candlelight, the
+house handwriting, a little procedural starlight and nothing heavy —
+and links into itself and back to the universe the way a page about a
+place should. index.html's head (and only its head) gained
+description, canonical `https://vihuplanet.com/`, OG and Twitter
+metadata (no og:image and no twitter:site — no real brand image and no
+real account exist, and nothing is invented; the social image is the
+one remaining asset task), and a JSON-LD @graph (WebSite + Brand;
+/about carries the full graph: AboutPage, WebSite, Brand,
+WebApplication #vihustudio, Thing #my-garden — accuracy over amount,
+nothing marked up that is not on the page). robots.txt allows normal
+crawling, explicitly welcomes OAI-SearchBot, never names Googlebot,
+deliberately says nothing about GPTBot (a policy decision left to the
+product owner), disallows /admin/, /tools/ and /supabase/, and points
+at sitemap.xml, which holds exactly the two canonical URLs. llms.txt
+is the machine front door: entities, relationships, important pages,
+no fluff. studio.html took `noindex` (verified: the entry gate under
+it still bounces a direct load home), as did the legacy Hero chapter
+at /vihuplanet/ and the ether deep-link shim — the whole map in
+`docs/INDEXING_POLICY.md`, and what the surface can now answer in
+`docs/DISCOVERABILITY_TEST.md`. Verified at 1440×900: zero page errors
+on / and /about; heads carry exactly one title, canonical and
+description each, no duplicate og tags; JSON-LD parses with every @id
+defined in-graph; sitemap parses as XML. Visual regression: the
+JS-disabled render of index.html is pixel-IDENTICAL before and after
+(0.000% — the honest control, since the live Ether differs ~19% between
+two runs of the UNCHANGED page; the live before/after diff, 9.0%, sits
+inside that noise, plus the dev build stamp reading 0597). Disclosed:
+the local test server does not emulate GitHub Pages' extensionless
+routes, so /about was verified as /about.html locally; and Search
+Console submission is post-deployment owner work, listed as to-dos —
+no ranking promised anywhere. Decision 28.

@@ -1508,6 +1508,61 @@ handwriting.
   `js/handwritingStore.js` · `js/handwritingStudio.js` ·
   `js/handwritingFont.js` · `tools/garden-test/run-garden-tests.js`.
 
+### 28. The Public Identity Is Canon, and the Application Is Not a Document
+
+Locked in the Discoverability & Entity Foundation sprint. It gives
+VihuPlanet a machine-readable public identity; it changes nothing a
+child sees.
+
+- **`docs/VIHUPLANET_ENTITY_CANON.md` is the single source of every
+  public description** — page copy, meta descriptions, Open Graph,
+  JSON-LD, `llms.txt`. When public copy and it disagree, it wins; when
+  it and this file disagree, this file wins and it gets corrected.
+- **VihuPlanet is the brand and the parent of everything public.
+  VihuStudio must never read as the parent brand** — it is the Hall of
+  Creation inside VihuPlanet, and no public sentence may invert that.
+- **The entity model**: VihuPlanet (parent) → the Ether · VihuStudio
+  (→ Stories · Books · Characters · Story Worlds) · My Garden (→ My
+  Drawings · My Letters). Stories are *made* in VihuStudio and *live*
+  in VihuPlanet — a shared Story joins the Ether.
+- **One public knowledge page, `/about`, anchored per entity** — not
+  seven thin routes. An entity is promoted to its own page only when it
+  has enough real public content to deserve one, recorded in
+  `docs/INDEXING_POLICY.md`.
+- **Machine discoverability is additive and invisible.** index.html
+  gained head metadata only; its visible experience is bit-identical
+  (verified by JS-disabled pixel comparison). No SEO UI, no keyword
+  blocks, no visible change to the home experience, ever.
+- **Public knowledge is indexed; the application is not.** `/` and
+  `/about` are the index surface (the home is never noindexed, under
+  any future change); `studio.html`, the legacy Hero at `/vihuplanet/`
+  and the ether shim carry `noindex`; `/admin/`, `/tools/` and
+  `/supabase/` are robots-disallowed. Every future application page
+  gets `noindex` from its first commit.
+- **Facts only, and canon's own language rules apply in public**: no
+  invented founders, addresses, social accounts, ratings or claims;
+  never "publish" child-facing; the language never blames; no
+  counters, levels or comparisons in any public description.
+- **JSON-LD is accuracy over amount** — stable `@id`s
+  (`#vihuplanet` Brand, `#website` WebSite, `#vihustudio`
+  WebApplication, `#my-garden` Thing), every reference defined
+  in-graph, nothing marked up that is not on the page.
+- **robots.txt welcomes OAI-SearchBot explicitly, never names
+  Googlebot, and deliberately says nothing about GPTBot** — allowing
+  or blocking model-training crawls is the product owner's policy
+  decision, not made here.
+- **Canonical URLs say `https://vihuplanet.com/`** — never the GitHub
+  Pages hostname.
+- Disclosed: no og:image and no twitter:site are set, because no real
+  brand image or social account exists — the social share image is the
+  one remaining asset task, and inventing either is forbidden.
+- Out of scope and not implemented: SEO content farming, blogs,
+  keyword pages, analytics, search-ranking promises, GPTBot policy,
+  and any change to the experience itself.
+- `docs/VIHUPLANET_ENTITY_CANON.md` · `docs/DISCOVERABILITY_AUDIT.md` ·
+  `docs/INDEXING_POLICY.md` · `docs/DISCOVERABILITY_TEST.md` ·
+  `about.html` · `robots.txt` · `sitemap.xml` · `llms.txt`.
+
 ## Roadmap
 
 1. Theme Designer Polish

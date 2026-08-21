@@ -1,0 +1,45 @@
+# VihuPlanet
+
+> VihuPlanet is a creative universe for children — a living world where
+> drawings, stories, characters and ideas become part of an evolving world
+> of their own. Official website: https://vihuplanet.com/
+
+## Core entities
+
+- **VihuPlanet** — the universe itself, and the parent of everything here.
+  Children live in VihuPlanet: they are known by their own stars, they make
+  stories, and what they choose to share drifts in its living space, the
+  Ether.
+- **VihuStudio** — the Hall of Creation: the creative studio inside
+  VihuPlanet where children turn their ideas into stories. VihuStudio is a
+  place inside VihuPlanet, never a separate product or parent brand.
+- **Stories** — what children make in VihuStudio: pages with pictures,
+  words, their own drawings, their own handwriting and their own voice.
+  Finishing a story and sharing it are separate acts; sharing is always the
+  child's own choice.
+- **Books** — what a finished story becomes: a real, keepable story book.
+- **Characters** — Lumo the Guardian (welcomes and guides), the Story Egg
+  (accompanies, never speaks), Story Companions (each bonded to one
+  creator), and the characters children draw themselves.
+- **Story Worlds** — crafted worlds with places, scenes and experiences a
+  story can be made inside. In VihuPlanet, worlds emerge from stories; they
+  are grown, not manufactured.
+- **My Garden** — where the things a child creates live: My Drawings
+  (captured real drawings) and My Letters (kept handwritten letters, which
+  become the child's own handwriting).
+- **The Ether** — the living space of VihuPlanet, holding VihuPlanet's own
+  stories and every story children have shared, each drifting as a Story
+  Spirit waiting to be discovered.
+
+## Relationships
+
+VihuPlanet is the parent. VihuStudio, My Garden and the Ether are places
+inside it. Stories are made in VihuStudio and, when shared, live in the
+Ether. Books are what finished stories become. Characters accompany
+children throughout.
+
+## Important pages
+
+- https://vihuplanet.com/ — VihuPlanet (the universe; the product itself)
+- https://vihuplanet.com/about — what VihuPlanet is, and every entity above
+- https://vihuplanet.com/sitemap.xml — sitemap
