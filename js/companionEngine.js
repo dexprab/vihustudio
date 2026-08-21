@@ -84,6 +84,8 @@
   const SETTLE_CLASS_MS = 520; // matches css/style.css's companion-settle-bounce duration (.5s) + a small margin
   const CLICK_CLASS_MS = 620;
   const GLOW_BOOST_MS = 900;
+  const ROAM_STYLES = ['glide','roll','drift'];
+  const ROAM_MAX_MS = 3400;             // safety net past the slowest style
   const WANDER_HOME_MIN_MS = 30000;
   const WANDER_HOME_MAX_MS = 60000;
   const WANDER_HOME_PROBABILITY = 0.7;   // "not every time"
@@ -944,6 +946,40 @@
       };
       this._root.addEventListener('transitionend',cleanup,{once:true});
       setTimeout(cleanup,WANDER_HOME_TRANSITION_MS+300); // safety net
+    }
+
+    // ---------- Moving of its own accord ----------
+    // The same machinery as _wanderHome above, with two differences
+    // that matter: the destination comes from OUTSIDE (this class knows
+    // nothing about the Studio's layout, and must not learn), and the
+    // position is kept rather than reset — a Companion that drifted
+    // somewhere has arrived, it has not been put back.
+    //
+    // Deliberately does NOT touch _hasCustomPosition or the saved
+    // position: those mean "the child put me here", which is a
+    // different fact from "I went for a wander", and only the child's
+    // choice should survive a reload.
+    //
+    // @param {number} left  viewport px
+    // @param {number} top   viewport px
+    // @param {string} [style] 'glide' | 'roll' | 'drift'
+    roamTo(left,top,style){
+      if(!this._root || this._dragging || this._reducedMotion) return false;
+      const root=this._root;
+      const how='companion-roam-'+(style||'glide');
+      ROAM_STYLES.forEach(function(c){ root.classList.remove('companion-roam-'+c); });
+      root.classList.add('companion-roaming',how);
+      root.style.left=Math.round(left)+'px';
+      root.style.top=Math.round(top)+'px';
+      root.style.right='auto';
+      root.style.bottom='auto';
+      const cleanup=()=>{
+        if(!this._root) return;
+        this._root.classList.remove('companion-roaming',how);
+      };
+      root.addEventListener('transitionend',cleanup,{once:true});
+      setTimeout(cleanup,ROAM_MAX_MS);
+      return true;
     }
 
     _savePosition(){

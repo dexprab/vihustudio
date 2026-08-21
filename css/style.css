@@ -9596,6 +9596,49 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   transition:opacity .28s ease, transform .28s ease, visibility 0s linear 0s,
     left 1.4s cubic-bezier(.45,.05,.15,1), top 1.4s cubic-bezier(.45,.05,.15,1);
 }
+/* ---------- Moving of its own accord: glide, roll, drift ----------
+   Three ways of crossing the workspace, because a creature that always
+   travelled identically would read as a scripted tween rather than as
+   something choosing to move. Each is slower than the drag-clamp nudge
+   above and slower than a child would expect a UI to animate — the
+   point is to be noticed out of the corner of an eye, not to be
+   watched. All three are suppressed entirely under reduced motion,
+   which companionEngine.js's roamTo() refuses before this is reached. */
+.companion-widget.companion-roaming{
+  transition:opacity .28s ease, transform .28s ease, visibility 0s linear 0s;
+}
+/* GLIDE — smooth, level, unhurried. The default way of getting about. */
+.companion-widget.companion-roam-glide{
+  transition:opacity .28s ease, transform .28s ease, visibility 0s linear 0s,
+    left 1.6s cubic-bezier(.4,0,.2,1), top 1.6s cubic-bezier(.4,0,.2,1);
+}
+/* DRIFT — the slowest, easing out as if carried by something. Arrives
+   almost imperceptibly; the one most likely to be missed, on purpose. */
+.companion-widget.companion-roam-drift{
+  transition:opacity .28s ease, transform .28s ease, visibility 0s linear 0s,
+    left 2.8s cubic-bezier(.25,.1,.25,1), top 2.8s cubic-bezier(.25,.1,.25,1);
+}
+/* ROLL — travels with a tumble. Quicker and springier than the other
+   two, and the rotation rides on the portrait rather than the widget
+   so the speech bubble never tips with it. */
+.companion-widget.companion-roam-roll{
+  transition:opacity .28s ease, transform .28s ease, visibility 0s linear 0s,
+    left 1.5s cubic-bezier(.5,-0.15,.4,1.15), top 1.5s cubic-bezier(.5,-0.15,.4,1.15);
+}
+.companion-widget.companion-roam-roll .companion-portrait{
+  animation:companion-roll 1.5s cubic-bezier(.5,-0.15,.4,1.15) 1;
+}
+@keyframes companion-roll{
+  0%{ transform:rotate(0deg); }
+  100%{ transform:rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce){
+  .companion-widget.companion-roam-glide,
+  .companion-widget.companion-roam-drift,
+  .companion-widget.companion-roam-roll{ transition:none; }
+  .companion-widget.companion-roam-roll .companion-portrait{ animation:none; }
+}
+
 /* One-shot "brighter glow" pulse (boostGlow()) — a meaningful-moment
    flourish layered on the glow ring only, never the portrait itself. */
 .companion-widget.companion-glow-boost .companion-glow-ring{

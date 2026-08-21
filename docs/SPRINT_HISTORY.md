@@ -5251,3 +5251,62 @@ rule: a Traveller's play returns movement and no words.
 Verified live with real mouse gestures — hover, click and drag each
 produced their own line in the running Studio, zero page errors. Suite
 35/35. Build 0604 → 0605.
+
+## The Companion Goes Where It Likes (build 0606)
+
+Asked for by the product owner: *"we need to give companion free will to
+move itself in to the free spaces available in studio. it should be able
+to glide, roll, drift in new positions."*
+
+**The one hard rule is that it never covers the child's work.** Where it
+may stand is MEASURED, against the Studio's real elements — the header,
+the page canvas, the object strip, the selection strip, the build stamp,
+the Story Meadow signpost — exactly the discipline `gardenRenderer.js`
+already uses for the Garden's own reserve. A coarse grid of candidate
+positions is filtered against those rects every time, so the set of
+possible homes changes with the window, with the page size and with
+whichever panels are open, which is what makes it read as choosing a
+spot rather than cycling four of them. Measured live at 1440×900: 20
+places free, 34 refused.
+
+**Three ways of travelling, because one would read as a tween.** Glide
+is smooth and level (1.6s), drift is the slowest and eases out as if
+carried (2.8s), roll travels with a full tumble (1.5s, springier) — and
+the rotation rides on the portrait rather than the widget, so the speech
+bubble never tips with it. Never the same style twice running. All three
+suppressed under reduced motion, refused in `roamTo()` before the CSS is
+ever reached.
+
+**Restraint here is a different kind from restraint on speech.** A line
+interrupts and must be earned; a move at the edge of vision costs
+nothing — but a thing that keeps moving while you work is the most
+distracting object on a screen. So: never within 12s of ANYTHING
+happening (typing counts, and typing never reaches `decide()`, so the
+Director tells the Brain directly), at least 45s between moves, and even
+then only half the time. Verified: 30 asks while the child is working
+produce zero moves; once quiet, roughly half are taken.
+
+**It holds still while a dialog is open**, rather than trying to dodge
+overlays — a keep-out list of modals would go stale the day somebody
+adds one, and the honest behaviour is to stop rather than to weave. The
+Brain is told the room is busy, so the quiet period restarts when the
+dialog closes instead of the Companion bolting the instant it does.
+Found by watching a real run drift onto the Gateway's own screen.
+
+**The Engine gained a movement primitive and no judgement.**
+`roamTo(left,top,style)` is `_wanderHome()`'s machinery with the
+destination supplied from outside — this class knows nothing about the
+Studio's layout and must not learn. It deliberately does not touch
+`_hasCustomPosition` or the saved position: "the child put me here" is a
+different fact from "I went for a wander", and only the child's choice
+survives a reload.
+
+**Disclosed: this is the one thing that needed a real timer.** The whole
+point is to move while the child is doing nothing, and when a child is
+doing nothing, nothing fires — so a 7s interval asks the Brain a
+question it almost always answers no to. Every other Companion signal
+still rides a dispatch that was happening anyway.
+
+Verified live: left alone in the running Studio, the Companion moved
+itself from (1309,719) to (1152,158) mid-glide with nobody touching
+anything. Suite 45/45, zero page errors. Build 0605 → 0606.

@@ -53,6 +53,19 @@ const CompanionBrain=(function(){
   const COOLDOWN_MS=45000;   // between any two spoken lines
   const SETTLE_MS=15000;     // quiet on arrival
 
+  // ---------- Moving of its own accord ----------
+  // A creature with a place it likes to be, that sometimes goes
+  // somewhere else. The restraint here is different in kind from the
+  // restraint on speech: a line INTERRUPTS and must be earned, while a
+  // move at the far edge of a child's vision costs them nothing — but a
+  // thing that keeps moving while you are trying to work is the most
+  // distracting object on a screen. So it moves rarely, never while
+  // anything is happening, and never twice in quick succession.
+  const ROAM_GAP_MS=45000;   // at least this long between two moves
+  const ROAM_QUIET_MS=12000; // and only after this long with nothing happening
+  const ROAM_CHANCE=0.5;     // and even then, only sometimes
+  const ROAM_STYLES=['glide','roll','drift'];
+
   // ---------- Platform lines ----------
   // Written to the house rules: never blames, never says "error",
   // "wrong", "invalid" or "you can't", never names a control, never
@@ -156,6 +169,9 @@ const CompanionBrain=(function(){
   // the World Host's greetings already follow.
   const _playAt={};
   const _playLast={};
+  let _roamedAt=0;
+  let _stirredAt=0;      // the last time ANYTHING happened
+  let _roamLast=null;
 
   function _now(){ try{ return Date.now(); }catch(e){ return 0; } }
 
@@ -279,6 +295,7 @@ const CompanionBrain=(function(){
       const cfg=_play[gesture];
       if(!cfg) return {};
       const now=_now();
+      _stirredAt=now;         // a child is right there; do not wander off
       if(_playAt[gesture] && (now-_playAt[gesture])<cfg.gap) return {};
       _playAt[gesture]=now;
 
@@ -325,6 +342,7 @@ const CompanionBrain=(function(){
       if(mode!=='creator') return {};
 
       if(!_startedAt) _startedAt=_now();
+      _stirredAt=_now();      // something happened; the Companion holds still
 
       // GATES 2-4 — settling, cooldown. A quiet tick may still change
       // the Companion's FACE (C1 costs nobody anything); it may not
@@ -341,6 +359,40 @@ const CompanionBrain=(function(){
       return _react(snapshot,event);
     }catch(e){ return {}; }
   }
+
+  /**
+   * May the Companion move somewhere else right now, and how?
+   *
+   * Answers `{}` almost every time it is asked. Four things must all
+   * be true: the arrival settling is over, nothing has happened for a
+   * while, it has not moved recently, and a coin comes up right — that
+   * last one because a creature that moved on a reliable schedule would
+   * be a screensaver.
+   *
+   * The style is never the same twice running, so the three ways of
+   * travelling stay three rather than blurring into one.
+   *
+   * @returns {object} {style} or {}
+   */
+  function roam(){
+    try{
+      const now=_now();
+      if(!_startedAt) _startedAt=now;
+      if((now-_startedAt)<SETTLE_MS) return {};
+      if(_stirredAt && (now-_stirredAt)<ROAM_QUIET_MS) return {};
+      if(_roamedAt && (now-_roamedAt)<ROAM_GAP_MS) return {};
+      if(Math.random()>=ROAM_CHANCE) return {};
+
+      const pool=ROAM_STYLES.filter(function(x){ return x!==_roamLast; });
+      const style=pool[Math.floor(Math.random()*pool.length)];
+      _roamLast=style;
+      _roamedAt=now;
+      return {style:style, source:'roam:'+style};
+    }catch(e){ return {}; }
+  }
+
+  /** The Studio saw the child do something. Holds the Companion still. */
+  function stir(){ _stirredAt=_now(); }
 
   /**
    * Told by the Director whenever ANYTHING was spoken — including the
@@ -398,16 +450,22 @@ const CompanionBrain=(function(){
     for(const k in _said) if(Object.prototype.hasOwnProperty.call(_said,k)) delete _said[k];
     for(const k in _playAt) if(Object.prototype.hasOwnProperty.call(_playAt,k)) delete _playAt[k];
     for(const k in _playLast) if(Object.prototype.hasOwnProperty.call(_playLast,k)) delete _playLast[k];
+    _roamedAt=0; _roamLast=null;
+    _stirredAt=(opts&&opts.aged)?(_now()-ROAM_QUIET_MS-1000):0;
   }
 
   return {
     decide:decide,
     play:play,
+    roam:roam,
+    stir:stir,
     noteSpoken:noteSpoken,
     usePolicy:usePolicy,
     _reset:_reset,
     COOLDOWN_MS:COOLDOWN_MS,
-    SETTLE_MS:SETTLE_MS
+    SETTLE_MS:SETTLE_MS,
+    ROAM_GAP_MS:ROAM_GAP_MS,
+    ROAM_QUIET_MS:ROAM_QUIET_MS
   };
 })();
 try{ window.CompanionBrain=CompanionBrain; }catch(e){}

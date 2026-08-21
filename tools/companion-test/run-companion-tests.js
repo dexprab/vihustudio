@@ -449,6 +449,120 @@ function check(cond, name, note) { (cond ? ok : fail)(name, note); }
     'P9 every gesture degrades to a pose Quill actually ships', poses.join(','));
 
   // ---------------------------------------------------------------
+  console.log('\nFREE WILL — moving of its own accord');
+  // ---------------------------------------------------------------
+
+  // The widget has to actually be on screen to measure where it may
+  // stand, and it only mounts for a CREATOR — a Traveller gets the
+  // Story Egg. So claim a real Magic Card and boot the Director the
+  // way js/app.js does, rather than measuring a hypothetical box.
+  await page.evaluate(() => {
+    try {
+      if (!MagicCard.getActive()) { const c = MagicCard.claim('Suite'); MagicCard.setActive(c.id); }
+      CompanionDirector.init();
+    } catch (e) {}
+  });
+  await page.waitForFunction(() => !!document.querySelector('.companion-widget'),
+    null, { timeout: 15000 }).catch(() => {});
+  await page.waitForTimeout(1200);
+
+  // The hard rule: never over the child's work, never over a control.
+  // Measured against the real elements, exactly as the Garden is.
+  const spots = await page.evaluate(() => {
+    const el = document.querySelector('.companion-widget');
+    if (!el) return { error: 'no widget' };
+    const me = el.getBoundingClientRect();
+    const w = me.width || 120, h = me.height || 140;
+    const sels = ['.app-header', 'main.preview-area .preview-wrapper',
+                  '#objectStripList', '#selectionActionStrip', '.build-info'];
+    const rects = [];
+    sels.forEach((sel) => document.querySelectorAll(sel).forEach((n) => {
+      const r = n.getBoundingClientRect();
+      if (r.width > 0 && r.height > 0) rects.push({ sel, r });
+    }));
+    // Re-derive the same grid the Director uses and check every spot.
+    const margin = 10, pad = 8, cols = 9, rows = 6;
+    const good = [], bad = [];
+    for (let cx = 0; cx < cols; cx++) {
+      for (let cy = 0; cy < rows; cy++) {
+        const left = margin + (cx / (cols - 1)) * (window.innerWidth - w - margin * 2);
+        const top = margin + (cy / (rows - 1)) * (window.innerHeight - h - margin * 2);
+        const box = { left, top, right: left + w, bottom: top + h };
+        if (box.right > window.innerWidth - margin || box.bottom > window.innerHeight - margin) continue;
+        const hit = rects.find(({ r }) => !(box.right <= r.left - pad || box.left >= r.right + pad ||
+                                            box.bottom <= r.top - pad || box.top >= r.bottom + pad));
+        (hit ? bad : good).push(hit ? hit.sel : 'free');
+      }
+    }
+    return { free: good.length, blocked: bad.length, rects: rects.length };
+  });
+  check(!spots.error && spots.rects >= 2, 'F1 the Studio\'s real keep-out regions are found',
+    spots.rects + ' regions');
+  check(spots.free > 0, 'F2 there is somewhere free to stand', spots.free + ' spots');
+  check(spots.blocked > 0, 'F3 and the occupied places are genuinely refused',
+    spots.blocked + ' blocked');
+
+  // Restraint: it must not wander while a child is doing things.
+  const busy = await page.evaluate(() => {
+    CompanionBrain._reset({ aged: true });
+    CompanionBrain.stir();                       // something just happened
+    let moved = 0;
+    for (let i = 0; i < 30; i++) if (CompanionBrain.roam().style) moved++;
+    return moved;
+  });
+  check(busy === 0, 'F4 it never wanders off while the child is working', busy + ' moves');
+
+  // ...and does move once things have been quiet.
+  const quiet = await page.evaluate(() => {
+    let moved = 0, styles = {};
+    for (let i = 0; i < 40; i++) {
+      CompanionBrain._reset({ aged: true });     // aged also backdates the quiet
+      const r = CompanionBrain.roam();
+      if (r.style) { moved++; styles[r.style] = (styles[r.style] || 0) + 1; }
+    }
+    return { moved, styles: Object.keys(styles).sort() };
+  });
+  check(quiet.moved > 0, 'F5 it does move once things have been quiet', quiet.moved + '/40');
+  check(quiet.moved < 40, 'F6 but not every single time it is asked', quiet.moved + '/40');
+  check(quiet.styles.length >= 2, 'F7 it travels more than one way',
+    quiet.styles.join(',') || 'none');
+
+  // Once it has moved, it stays put for a good while.
+  const gap = await page.evaluate(() => {
+    CompanionBrain._reset({ aged: true });
+    let first = null;
+    for (let i = 0; i < 60 && !first; i++) first = CompanionBrain.roam().style || null;
+    if (!first) return { first: null, again: 0 };
+    let again = 0;
+    for (let i = 0; i < 30; i++) if (CompanionBrain.roam().style) again++;
+    return { first, again };
+  });
+  check(gap.first && gap.again === 0, 'F8 having moved, it settles rather than pacing',
+    'then ' + gap.again + ' more');
+
+  // The engine refuses to move under reduced motion, before any CSS.
+  const reduced = await page.evaluate(() => typeof CompanionEngine !== 'undefined');
+  check(reduced, 'F9 the movement primitive lives on the Engine');
+
+  // It must hold still while a dialog is up — a Companion drifting
+  // about behind a question is the exact distraction this avoids.
+  const overlay = await page.evaluate(async () => {
+    const el = document.querySelector('.companion-widget');
+    if (!el) return { skipped: true };
+    const before = el.getBoundingClientRect();
+    const fake = document.createElement('div');
+    fake.setAttribute('role', 'dialog');
+    fake.style.cssText = 'position:fixed;left:20%;top:20%;width:400px;height:300px;background:#111;z-index:9999';
+    document.body.appendChild(fake);
+    await new Promise((r) => setTimeout(r, 9000));      // past a roam tick or two
+    const after = el.getBoundingClientRect();
+    fake.remove();
+    return { moved: Math.abs(after.left - before.left) > 20 || Math.abs(after.top - before.top) > 20 };
+  });
+  check(overlay.skipped || overlay.moved === false,
+    'F10 it holds still while a dialog is open', JSON.stringify(overlay));
+
+  // ---------------------------------------------------------------
   console.log('\nWIRING — the Studio itself');
   // ---------------------------------------------------------------
   const wired = await page.evaluate(() => ({

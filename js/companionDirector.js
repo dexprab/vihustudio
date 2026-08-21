@@ -52,6 +52,7 @@
 
   const IDLE_SLEEP_MS=120000;      // "No interaction for 2 minutes -> sleep." Studio policy, not a companion property.
   const TYPING_COOLDOWN_MS=4000;   // Don't re-fire the typing pose on every keystroke.
+  const ROAM_TICK_MS=7000;         // How often the Companion is ASKED whether it wants to move.
 
   // Real, canonical Companion Packages live at the repo-root assets/
   // folder (assets/lumo/, assets/story-egg/, assets/nimbus/,
@@ -228,7 +229,10 @@
       const now=Date.now();
       if(now<typingCooldownUntil) return;
       typingCooldownUntil=now+TYPING_COOLDOWN_MS;
-      safe(function(){ engine.setState(modeCfg().poses.typing); _holdPose(); });
+      safe(function(){
+        engine.setState(modeCfg().poses.typing); _holdPose();
+        if(typeof CompanionBrain!=='undefined' && CompanionBrain.stir) CompanionBrain.stir();
+      });
     }
 
     function bindGlobalListeners(){
@@ -389,6 +393,155 @@
       });
     }
 
+    // ---------- Free will: finding somewhere to be ----------
+    // The Companion may move itself, and the ONLY hard rule is that it
+    // never puts itself over the child's work or over a control. This
+    // file is the one that knows the Studio's layout (the Engine must
+    // not learn it), so the measuring happens here, against the real
+    // elements, the same discipline js/gardenRenderer.js already uses
+    // for the Garden's own reserve: measured geometry, never a guess
+    // and never a z-index and some judgement.
+    //
+    // Anything in this list is somewhere the Companion may not sit.
+    // A selector that matches nothing is simply skipped, so a Studio
+    // screen without an object strip (or a future one with a new
+    // panel) needs no special case here.
+    const KEEP_OUT=[
+      '.app-header',
+      'main.preview-area .preview-wrapper',
+      '#objectStripList',
+      '#selectionActionStrip',
+      '.build-info',
+      '.creation-scene-signpost'
+    ];
+
+    function _keepOutRects(){
+      const out=[];
+      for(let i=0;i<KEEP_OUT.length;i++){
+        let els=[];
+        try{ els=document.querySelectorAll(KEEP_OUT[i]); }catch(e){ continue; }
+        for(let j=0;j<els.length;j++){
+          const el=els[j];
+          if(!el || !el.offsetParent && el.tagName!=='BODY') continue;
+          const r=el.getBoundingClientRect();
+          if(r.width>0 && r.height>0) out.push(r);
+        }
+      }
+      return out;
+    }
+
+    function _clear(box,rects,pad){
+      for(let i=0;i<rects.length;i++){
+        const r=rects[i];
+        const disjoint = box.right<=r.left-pad || box.left>=r.right+pad ||
+                         box.bottom<=r.top-pad || box.top>=r.bottom+pad;
+        if(!disjoint) return false;
+      }
+      return true;
+    }
+
+    // Every place the Companion could stand right now, measured. A
+    // coarse grid rather than a handful of named corners, so the set of
+    // possible homes changes with the window, with the page size and
+    // with whatever panels happen to be open — which is what makes this
+    // read as choosing a spot rather than cycling four of them.
+    function _freeSpots(){
+      const el=document.querySelector('.companion-widget');
+      if(!el) return [];
+      const me=el.getBoundingClientRect();
+      const w=me.width||120, h=me.height||140;
+      const rects=_keepOutRects();
+      const margin=10, pad=8;
+      const spots=[];
+      const cols=9, rows=6;
+      for(let cx=0;cx<cols;cx++){
+        for(let cy=0;cy<rows;cy++){
+          const left=margin+(cx/(cols-1))*(window.innerWidth-w-margin*2);
+          const top=margin+(cy/(rows-1))*(window.innerHeight-h-margin*2);
+          if(left<margin || top<margin) continue;
+          const box={left:left, top:top, right:left+w, bottom:top+h};
+          if(box.right>window.innerWidth-margin || box.bottom>window.innerHeight-margin) continue;
+          if(!_clear(box,rects,pad)) continue;
+          spots.push({left:left, top:top});
+        }
+      }
+      return spots;
+    }
+
+    // A Companion drifting about behind an open dialog is the wrong
+    // kind of alive — the child is answering a question, and movement
+    // at the edge of the screen is exactly the distraction this whole
+    // feature is supposed to avoid. Rather than trying to DODGE every
+    // overlay (a list that would go stale the day somebody adds one),
+    // it simply holds still while any of them is up.
+    const OVERLAYS=[
+      '.modal', '.creation-flow-overlay', '.gateway-overlay',
+      '.magic-card-overlay', '.hw-studio-modal', '[role="dialog"]'
+    ];
+
+    function _overlayOpen(){
+      for(let i=0;i<OVERLAYS.length;i++){
+        let els=[];
+        try{ els=document.querySelectorAll(OVERLAYS[i]); }catch(e){ continue; }
+        for(let j=0;j<els.length;j++){
+          const el=els[j];
+          if(!el || el.hidden) continue;
+          if(!el.offsetParent) continue;                 // display:none / detached
+          const r=el.getBoundingClientRect();
+          if(r.width>40 && r.height>40) return true;
+        }
+      }
+      return false;
+    }
+
+    function _roam(){
+      if(!ready || !engine || !engine.roamTo) return;
+      safe(function(){
+        if(typeof CompanionBrain==='undefined' || !CompanionBrain.roam) return;
+        if(_overlayOpen()){
+          // Not merely skipped: the Brain is told the room is busy, so
+          // the quiet period starts again once the dialog closes rather
+          // than the Companion bolting the instant it does.
+          if(CompanionBrain.stir) CompanionBrain.stir();
+          return;
+        }
+        const el=document.querySelector('.companion-widget');
+        if(!el) return;
+        const decision=CompanionBrain.roam();
+        if(!decision || !decision.style) return;
+
+        const spots=_freeSpots();
+        if(!spots.length) return;
+        const me=el.getBoundingClientRect();
+
+        // Somewhere genuinely else. A "move" of twenty pixels reads as a
+        // glitch rather than as a decision, so anywhere too close to
+        // where it already is does not count as a destination at all.
+        const far=spots.filter(function(s){
+          const dx=s.left-me.left, dy=s.top-me.top;
+          return Math.sqrt(dx*dx+dy*dy)>140;
+        });
+        const pool=far.length?far:spots;
+        const pick=pool[Math.floor(Math.random()*pool.length)];
+        if(!pick) return;
+        engine.roamTo(pick.left,pick.top,decision.style);
+      });
+    }
+
+    // Roaming is the one thing here that CANNOT ride an existing
+    // signal, and it is worth being plain about the cost: the whole
+    // point is to move while the child is doing nothing, and when a
+    // child is doing nothing, nothing fires. So this is a real timer —
+    // a slow one, doing nothing but asking the Brain a question it
+    // almost always answers no to.
+    let _roamTimer=null;
+    function _watchRoam(){
+      if(_roamTimer) return;
+      _roamTimer=setInterval(function(){
+        safe(function(){ if(!asleep) _roam(); });
+      },ROAM_TICK_MS);
+    }
+
     let _unplay=null;
     function _watchPlay(){
       if(_unplay) return;
@@ -521,6 +674,7 @@
         });
         _watchPage();
         _watchPlay();
+        _watchRoam();
         if(onReady) onReady();
       }).catch(function(){
         engine=null;
