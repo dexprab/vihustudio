@@ -911,8 +911,19 @@ once, and its scope is no longer closed.
   stand down for exactly those — so the first Rite, which reveals
   nothing, meets the Studio it always did. `StudioRite.start(id)` is
   the seam the Studio Home offer will call. **Still not built, in this
-  order:** Rite II's recordings, Rite III, the capability record on the
-  Magic Card, the opt-in, and only then the persistence.
+  order:** Rite III, the capability record on the Magic Card, the
+  opt-in, and only then the persistence.
+- **Rite II needs no recordings, and this amends the order above.**
+  *"for story rite 2 plug the eleven labs lumo voice. we wont be
+  recording it."* — the product owner, at build 0581. Rite II's
+  recordings were listed here as the next thing to build and are
+  **cancelled rather than pending**: every one of its nineteen beats
+  deliberately carries no `audio` field, so each falls through to the
+  generated-voice path and Lumo speaks it in his own configured voice.
+  The real gain is that the spoken path **needs no cues** — a recorded
+  screen carries a hand-measured offset per line, re-measured whenever
+  a line is re-recorded, so rewording a Rite II line is now a one-line
+  edit with nothing to keep in step.
 - **A rite with no recordings is walkable, and always was.** A screen
   with no `audio:{id,cues}` reveals its lines at reading speed and
   plays nothing; the guard that refuses to run is about Lumo's *art*

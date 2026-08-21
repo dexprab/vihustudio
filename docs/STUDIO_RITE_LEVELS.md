@@ -474,11 +474,19 @@ word of it can be written — and it needs beats that play over the Creation
 Flow, or a Rite that starts already on a Scene (§1.1). Neither is content
 work, and neither is on the R1 engineering list.
 
-**The cost is writing, then voice.** Each level needs its own starter
-story written first — a real story, not a tour — and then recorded. Level
-I is 23 screens of dialogue and cost 16 recordings. Level II's draft is 19
-beats. So what is left is **one story to write and two sessions to
-record**.
+**The cost is writing, then voice — but Rite II's voice is settled.**
+Each level needs its own starter story written first — a real story, not
+a tour. Level I is 23 screens of dialogue and cost 16 recordings.
+
+**Rite II is spoken, not recorded** (build 0581, the product owner:
+*"for story rite 2 plug the eleven labs lumo voice. we wont be recording
+it."*). Its nineteen beats are written and in the registry, they carry no
+`audio` field by design, and Lumo speaks them in his own generated voice
+with no cues to measure. So Rite II is **complete** and is not waiting on
+a recording session.
+
+What is left is therefore **one story to write** (Rite III's), and the
+open question of whether it is spoken or recorded.
 
 **Levels II and III are in Release 1**, by the product owner's decision.
 So this is the largest item in R1 by a wide margin, and it is *mostly*
