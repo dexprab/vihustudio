@@ -201,7 +201,7 @@
           // the current mode's own wake pose is the generic
           // equivalent, still calling nothing but the frozen public API.
           engine.setState(cfg.wakePose);
-          if(cfg.speaks) engine.speak(MESSAGES.idleWake);
+          if(cfg.speaks) _say(MESSAGES.idleWake);
         });
       }
       resetIdleTimer();
@@ -228,7 +228,7 @@
       const now=Date.now();
       if(now<typingCooldownUntil) return;
       typingCooldownUntil=now+TYPING_COOLDOWN_MS;
-      safe(function(){ engine.setState(modeCfg().poses.typing); });
+      safe(function(){ engine.setState(modeCfg().poses.typing); _holdPose(); });
     }
 
     function bindGlobalListeners(){
@@ -284,6 +284,77 @@
     // enforced structurally by MODES.traveller.speaks; a Story Companion
     // authored without its own greetings falls back the same way Lumo
     // itself would).
+    // ---------- Companion Intelligence: one voice, one clock ----------
+    // Every spoken line in this file goes through here so that
+    // js/companionBrain.js knows when the Companion last said
+    // something. Without it the Brain would happily notice something
+    // two seconds after the Director's own scripted greeting, and the
+    // child would be talked at twice about different things. The Brain
+    // owns the cooldown; this is how it learns the Director used it.
+    // How long a deliberately-scripted pose is protected from the
+    // Brain's ambient reactions. Adding artwork sets 'celebrate' and
+    // then mutates the page — which fires PageRuntime.notify() in the
+    // same frame — so without this hold the Companion would celebrate
+    // for a few milliseconds and then go back to looking thoughtful,
+    // and nobody would ever see it. Speech has its own, much longer,
+    // cooldown in the Brain; this is only about the face.
+    const SCRIPTED_POSE_HOLD_MS=6000;
+    let poseHeldUntil=0;
+    function _holdPose(){ try{ poseHeldUntil=Date.now()+SCRIPTED_POSE_HOLD_MS; }catch(e){} }
+    function _posesHeld(){ try{ return Date.now()<poseHeldUntil; }catch(e){ return false; } }
+
+    function _say(text,opts){
+      if(!engine) return;
+      engine.speak(text,opts);
+      _holdPose();
+      safe(function(){
+        if(typeof CompanionBrain!=='undefined' && CompanionBrain.noteSpoken) CompanionBrain.noteSpoken();
+      });
+    }
+
+    // ---------- Companion Intelligence: the tick ----------
+    // docs/COMPANION_INTELLIGENCE_ARCHITECTURE.md §6.2. A signal
+    // arrives; ask what is true (CompanionContext), ask what to do
+    // (CompanionBrain), apply it through the Engine's frozen API. The
+    // Brain almost always answers "nothing", which is the point.
+    //
+    // The signal is js/pageRuntime.js's existing observer list — the
+    // same seam js/studioRite.js already watches the child's own
+    // actions through. NO POLLING IS INTRODUCED: notify() already fires
+    // exactly once per meaningful mutation, and this is one more
+    // subscriber on a dispatch that was happening anyway.
+    //
+    // Everything here is optional in the strictest sense. If either new
+    // module is missing, unloaded or throws, this becomes a no-op and
+    // the Studio behaves exactly as it did before Companion
+    // Intelligence existed — the fail-open property is structural
+    // (§3.2), not a setting.
+    function _tick(event){
+      if(!ready || !engine || asleep) return;
+      safe(function(){
+        if(typeof CompanionContext==='undefined' || typeof CompanionBrain==='undefined') return;
+        const cfg=modeCfg();
+        const intent=CompanionBrain.decide(
+          CompanionContext.snapshot(), event||null, {mode:currentMode}
+        );
+        if(!intent) return;
+        // A pose costs nobody anything and never interrupts; a line is
+        // gated by the Brain's own restraint and by this mode's canon
+        // right to speak at all (the Story Egg has none).
+        if(intent.pose && !_posesHeld()) engine.setState(intent.pose);
+        if(intent.say && cfg.speaks) _say(intent.say);
+      });
+    }
+
+    let _unobserve=null;
+    function _watchPage(){
+      if(_unobserve) return;
+      safe(function(){
+        if(typeof PageRuntime==='undefined' || !PageRuntime.observe) return;
+        _unobserve=PageRuntime.observe(function(){ _tick(null); });
+      });
+    }
+
     function pickGreeting(){
       const p=engine.getPersonality();
       if(p && Array.isArray(p.greetings) && p.greetings.length){
@@ -382,7 +453,17 @@
         engine.show();
         const cfg=modeCfg();
         engine.setState(cfg.bootPose);
-        if(cfg.speaks) engine.speak(pickGreeting());
+        if(cfg.speaks) _say(pickGreeting());
+        // The loaded Companion Package's own `lines` overrides and its
+        // `neverSays` policy — which has been documented as "inert,
+        // awaiting a speech feature to respect it" since the first
+        // Companion sprint, and is respected from here on.
+        safe(function(){
+          if(typeof CompanionBrain!=='undefined' && CompanionBrain.usePolicy){
+            CompanionBrain.usePolicy(engine.getPersonality());
+          }
+        });
+        _watchPage();
         if(onReady) onReady();
       }).catch(function(){
         engine=null;
@@ -532,7 +613,7 @@
             const cfg=modeCfg();
             engine.show();
             engine.setState(cfg.bootPose);
-            if(cfg.speaks) engine.speak(pickGreeting());
+            if(cfg.speaks) _say(pickGreeting());
           }).catch(function(){});
           return;
         }
@@ -551,24 +632,25 @@
         const cfg=modeCfg();
         if(event==='story-started'){
           engine.setState(cfg.poses.creating);
-          if(cfg.speaks) engine.speak(MESSAGES.storyStarted);
+          if(cfg.speaks) _say(MESSAGES.storyStarted);
           if(engine.setRichness) engine.setRichness(currentRichness());
         }else if(event==='artwork-added'){
           engine.setState(cfg.poses.artwork);
-          if(cfg.speaks) engine.speak(MESSAGES.artworkAdded);
+          if(cfg.speaks) _say(MESSAGES.artworkAdded);
           // Emotional Behaviour — "user creates first artwork -> brighter
           // glow," a one-shot flourish distinct from the persistent
           // richness level below (which only ever grows with page count).
           if(!firstArtworkSeen && engine.boostGlow){ firstArtworkSeen=true; engine.boostGlow(); }
         }else if(event==='published'){
           engine.setState(cfg.poses.publish);
-          if(cfg.speaks) engine.speak(MESSAGES.published);
+          if(cfg.speaks) _say(MESSAGES.published);
         }else if(event==='page-added'){
           // "New Page -> excited," Story Egg only (see MODES.traveller's
           // own 'newPage' key above) — an event with no mapped pose in
           // the current mode (Creator today) is a safe, silent no-op.
           const pose=cfg.poses.newPage;
-          if(pose) engine.setState(pose);
+          if(pose){ engine.setState(pose); _holdPose(); }
+          _tick('page-added');
           if(engine.setRichness) engine.setRichness(currentRichness());
         }
       });

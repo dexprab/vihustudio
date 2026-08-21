@@ -5054,3 +5054,78 @@ favicon is a downscale of the same file. Checked at 32px (reads clearly)
 and 16px (a bright distinctive disc). Same files, same three pages,
 nothing rewired — the gold star and the spirit before it live only in git
 history. Build 0600 → 0601.
+
+## Companion Intelligence — the Companion Opens Its Eyes (build 0602)
+
+Product owner: *"lets start building it. i think companion intelligence
+will need to be part of R1. we have already started giving voices to
+companion. lets see how it looks."* So Companion Intelligence enters
+Release 1, and Phases 0 (Awareness) and 1 (Noticing) of
+`docs/COMPANION_INTELLIGENCE_ARCHITECTURE.md` are built — the two phases
+that need **no AI, no backend, no new dependency and raise no privacy
+question at all**, and which that document itself identifies as the ones
+that most change how a Companion feels.
+
+**The Companion had a face and no eyes.** It could look delighted,
+curious or sleepy while the page in front of the child was empty or
+full, and it could not tell the difference. The architecture's central
+finding was that almost everything it needed already existed as
+structured data and was simply never routed to it, and that held
+exactly: `js/companionContext.js` computes almost nothing. It PROJECTS
+what `PageRuntime` (what is rendered, what is selected),
+`SlideRenderer`'s `_sceneObject()` normaliser (every object's guardrails,
+already uniform) and `PublishValidator` (friendly, ordered, non-blocking
+nudges) already own. The validator is **called, never reimplemented** —
+its own header already forbids the words a Companion must not use.
+
+**Restraint is the feature, not a limit on it.** §6.3's warning — *"the
+most likely failure mode is not a wrong answer, it is a Companion that
+won't stop talking"* — drove the whole of `js/companionBrain.js`.
+Silence is the default and every rule must earn speech past four gates:
+**Traveller silence is absolute** and is a gate at the TOP (50 loud ticks
+in traveller mode produce zero words), a 15s settling window on arrival,
+a 45s cooldown, and **novelty — a rule speaks at most once per session**,
+which is what actually bounds a session rather than a line counter.
+
+**One clock, not two.** Every spoken line in `companionDirector.js` now
+goes through a `_say()` helper that reports to the Brain, so a scripted
+greeting and a noticed nudge can never talk over each other. **A test
+found the other half of that bug**: the Brain only ever learned the time
+from the Director, so a Brain whose speech went unreported would keep
+talking. It now starts its own cooldown when it decides to speak — *a
+Brain whose restraint depends on somebody else remembering to tell it the
+time is not restrained, it is lucky.*
+
+**A scripted pose is protected for 6s.** Adding artwork sets `celebrate`
+and then mutates the page, which fires `PageRuntime.notify()` in the same
+frame — without the hold the Companion would celebrate for a few
+milliseconds and go back to looking thoughtful, and nobody would ever see
+it.
+
+**`neverSays` is no longer inert.** Documented since the first Companion
+sprint as *"authored policy data for a future AI-driven speech feature to
+respect, disclosed as currently inert"* — every line the Brain proposes is
+now checked against the loaded package's list, and a forbidden line is
+**dropped rather than softened**, because rewriting somebody's authored
+policy line is how a voice drifts. A package's own `lines` map overrides
+platform copy, so adding a companion stays a zero-code act.
+
+**Fail-open is structural.** `CompanionContext` owns no state and
+`PageRuntime.observe()` is an existing dispatch — no polling was
+introduced. With both modules deleted at runtime a real mutation still
+completes; verified, not asserted. `companionEngine.js` was not touched:
+every capability goes through its frozen API, and `getPersonality()` —
+already public — is how the package's policy is read.
+
+**Verified 25/25, zero page errors**, plus a live run in the real Studio:
+a Creator's Companion mounted, greeted in its own voice, and after a page
+was added said *"There's no cover on your story yet."* — unprompted,
+correct, and with no model anywhere in the path. Every line the rules can
+produce was swept for blame and for control names; none blames, none
+names a control. `tools/companion-test/run-companion-tests.js`.
+
+**Not built, and deliberately:** Phase 2 (Pointing & Offering), Phase 3
+(the Model Gateway — still gated on an explicit product decision about
+children's content leaving the device) and Phase 4 (Performing — still
+gated on global undo existing). Creative suggestion stays out of scope
+entirely.

@@ -1568,6 +1568,70 @@ child sees.
   `docs/INDEXING_POLICY.md` · `docs/DISCOVERABILITY_TEST.md` ·
   `about.html` · `robots.txt` · `sitemap.xml` · `llms.txt`.
 
+### 29. The Companion Notices, and Silence Is the Default
+
+Locked by the product owner: *"lets start building it. i think companion
+intelligence will need to be part of R1. we have already started giving
+voices to companion. lets see how it looks."*
+
+- **Companion Intelligence is in Release 1.** It joins Rites II and III
+  (Decision 22) as R1 scope. `docs/COMPANION_INTELLIGENCE_ARCHITECTURE.md`
+  is no longer a proposal awaiting approval; its Phases 0 and 1 are
+  built, and its remaining phases keep the gates that document already
+  put on them.
+- **The Companion had a face and no eyes, and that was the whole
+  problem.** Almost everything it needs already exists as structured
+  data and was simply never routed to it. `js/companionContext.js`
+  computes almost nothing — it projects what `PageRuntime`,
+  `SlideRenderer`'s `_sceneObject()` normaliser and `PublishValidator`
+  already own. **The validator is called, never reimplemented.**
+- **Silence is the default and speech must be earned.** A Companion
+  that comments on everything stops being company and becomes a
+  notification system, which `docs/COMPANION_CANON.md` already forbids
+  (*"not an assistant, a chatbot, a teacher, or an AI tutor"*). Four
+  hard limits sit above every rule: **Traveller silence is absolute**
+  and is a GATE AT THE TOP rather than a filter at the end; a settling
+  window on arrival; a cooldown; and **novelty — a rule speaks at most
+  once per session**, which is what bounds a session rather than a line
+  counter.
+- **One clock, never two.** Every line the Director speaks is reported
+  to the Brain, and the Brain also starts its own cooldown when it
+  decides to speak — *a Brain whose restraint depends on somebody else
+  remembering to tell it the time is not restrained, it is lucky.*
+- **Six of the ten capabilities need no AI at all**, and they are the
+  ones a child feels most. Phase 0 and Phase 1 introduce no model, no
+  backend, no new dependency and no privacy question.
+- **`personality.json`'s `neverSays` is no longer inert.** Every line is
+  checked against the loaded package's list and a forbidden line is
+  **dropped rather than softened** — rewriting somebody's authored
+  policy line is how a voice drifts. A package's own `lines` map
+  overrides platform copy, so adding a companion stays a zero-code act.
+- **The Engine is untouched and stays frozen.** Every capability goes
+  through its existing API. `js/companionDirector.js` remains the ONE
+  Studio-aware file; its `MODES` table became the Brain's baseline
+  rather than the whole decision. No second companion system.
+- **Fail-open is structural, not a setting.** `CompanionContext` owns no
+  state, and `PageRuntime.observe()` is a dispatch that already fired on
+  every mutation — **no polling was introduced**. With both modules
+  removed at runtime the Studio still works; verified, not asserted.
+- **A scripted pose is protected briefly from ambient reaction.**
+  Otherwise the mutation that triggers a celebration immediately
+  overwrites it and nobody ever sees it.
+- **Still gated, and the gates are not formalities.** Phase 3 (the Model
+  Gateway) requires its own explicit, recorded product decision about
+  children's creative content leaving the device — the architecture's
+  highest-rated risk. Phase 4 (the Companion performing an action) is
+  gated on **global undo existing**, which nothing in this codebase has.
+- **Creative suggestion is out of scope permanently**, not deferred:
+  the moment a Companion suggests what happens next, the story stops
+  being wholly the child's.
+- Out of scope and not implemented: multi-turn chat UI, persistent
+  cross-session memory, voice input, companion-generated story content,
+  and any Companion configuration surface.
+- `js/companionContext.js` · `js/companionBrain.js` ·
+  `tools/companion-test/run-companion-tests.js` ·
+  `docs/COMPANION_INTELLIGENCE_ARCHITECTURE.md`
+
 ## Roadmap
 
 1. Theme Designer Polish
