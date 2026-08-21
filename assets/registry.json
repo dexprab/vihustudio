@@ -62,7 +62,7 @@
       "role": "companion",
       "voice": {
         "provider": "elevenlabs",
-        "voiceId": "",
+        "voiceId": "ZzwxEfRMoh8zcJxlMg5p",
         "modelId": "eleven_v3",
         "settings": {
           "stability": 0.6,
