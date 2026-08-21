@@ -273,6 +273,11 @@ function check(cond, name, note) { (cond ? ok : fail)(name, note); }
       .find((t) => /My Garden/.test(t.textContent || '') && t.offsetParent);
     if (!door) return false;
     door.click();
+    // My Garden opens on 🖼 My Drawings; the letters live in their own tab.
+    const tab = Array.from(document.querySelectorAll('.context-hw-tab'))
+      .find((t) => /My Letters/.test(t.textContent || ''));
+    if (!tab) return false;
+    tab.click();
     return true;
   });
   await page.waitForTimeout(400);
@@ -284,19 +289,27 @@ function check(cond, name, note) { (cond ? ok : fail)(name, note); }
   });
   check(doorClicked && shelf.hasHeading && shelf.tiles === 62 && shelf.keptA && shelf.ghosts === 61,
     'L2 the picker shows the FULL 62-tile grid — the kept a in ink, 61 invitations', JSON.stringify(shelf));
+  // A kept tile asks first — put on page · make again · fix up ·
+  // never mind — and "put it on the page" is the gold one.
   const placed = await page.evaluate(() => {
     const tile = document.querySelector('.context-hw-tile-kept');
-    if (!tile) return false;
+    if (!tile) return { ok: false, why: 'no kept tile' };
     tile.click();
-    return true;
+    const card = document.querySelector('.context-hw-choice');
+    if (!card) return { ok: false, why: 'no choice card' };
+    const labels = Array.from(card.querySelectorAll('button')).map((b) => b.textContent.trim());
+    const put = Array.from(card.querySelectorAll('button')).find((b) => /Put it on the page/.test(b.textContent));
+    if (!put) return { ok: false, why: 'no place option', labels: labels };
+    put.click();
+    return { ok: true, labels: labels };
   });
   await page.waitForTimeout(900);
   const stripVisible = await page.evaluate(() => {
     const s = document.getElementById('selectionActionStrip');
     return !!(s && !s.className.includes('selection-action-strip-hidden'));
   });
-  check(placed && stripVisible,
-    'L3 tapping the kept letter places it on the page and selects it (the strip appears)', 'placed=' + placed + ' strip=' + stripVisible);
+  check(placed.ok && placed.labels.length === 4 && stripVisible,
+    'L3 a kept tile asks (place · redo · edit · never mind) and place lands on the page', JSON.stringify(placed) + ' strip=' + stripVisible);
   // An empty tile opens the Studio's own catcher, armed for that letter.
   await page.evaluate(() => {
     const d = document.getElementById('selectionActionDeselect');
@@ -307,6 +320,9 @@ function check(cond, name, note) { (cond ? ok : fail)(name, note); }
     const door2 = Array.from(document.querySelectorAll('button.context-add-card'))
       .find((t) => /My Garden/.test(t.textContent || ''));
     if (door2) door2.click();
+    const tab2 = Array.from(document.querySelectorAll('.context-hw-tab'))
+      .find((t) => /My Letters/.test(t.textContent || ''));
+    if (tab2) tab2.click();
     const ghost = Array.from(document.querySelectorAll('.context-hw-tile'))
       .find((t) => (t.querySelector('.context-hw-ghost') || {}).textContent === 'b');
     if (!ghost) return { opened: false, why: 'no b tile' };
@@ -319,6 +335,51 @@ function check(cond, name, note) { (cond ? ok : fail)(name, note); }
   });
   check(catcher.opened && catcher.closed,
     'L4 an empty tile opens the catcher armed for that letter, and it closes clean', JSON.stringify(catcher));
+
+  // Fix it up: the check screen opens holding the KEPT ink — no camera
+  // involved — with all three tools; a pencil daub edits the mask and
+  // Keep stores the letter and grows the garden.
+  const edited = await page.evaluate(async () => {
+    const eventsBefore = LivingGarden.state().events;
+    const door3 = Array.from(document.querySelectorAll('button.context-add-card'))
+      .find((t) => /My Garden/.test(t.textContent || ''));
+    if (door3) door3.click();
+    const tab3 = Array.from(document.querySelectorAll('.context-hw-tab'))
+      .find((t) => /My Letters/.test(t.textContent || ''));
+    if (tab3) tab3.click();
+    const tile = document.querySelector('.context-hw-tile-kept');
+    if (!tile) return { ok: false, why: 'no kept tile' };
+    tile.click();
+    const fix = Array.from(document.querySelectorAll('.context-hw-choice button'))
+      .find((b) => /Fix it up/.test(b.textContent));
+    if (!fix) return { ok: false, why: 'no fix option' };
+    fix.click();
+    await new Promise((r) => setTimeout(r, 600));
+    const modal = document.querySelector('.hw-studio-modal');
+    if (!modal) return { ok: false, why: 'no modal' };
+    const title = modal.querySelector('.hw-studio-title').textContent;
+    const tools = Array.from(modal.querySelectorAll('.hw-studio-tool')).map((b) => b.textContent.trim());
+    const canvas = modal.querySelector('.hw-studio-check-canvas');
+    const hasInk = (() => {
+      const x = canvas.getContext('2d');
+      const d = x.getImageData(0, 0, canvas.width, canvas.height).data;
+      for (let i = 0; i < d.length; i += 4) if (d[i] < 100) return true;
+      return false;
+    })();
+    // one pencil daub through the real pointer path
+    const r = canvas.getBoundingClientRect();
+    canvas.dispatchEvent(new PointerEvent('pointerdown', { clientX: r.x + r.width / 2, clientY: r.y + r.height / 2, bubbles: true, pointerId: 7 }));
+    canvas.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 7 }));
+    const keep = Array.from(modal.querySelectorAll('.hw-studio-btn')).find((b) => /Keep it/.test(b.textContent));
+    keep.click();
+    await new Promise((r2) => setTimeout(r2, 600));
+    const eventsAfter = LivingGarden.state().events;
+    return { ok: true, title: title, tools: tools, hasInk: hasInk,
+             grew: eventsAfter === eventsBefore + 1,
+             closed: !document.querySelector('.hw-studio-modal') };
+  });
+  check(edited.ok && /Your a/.test(edited.title) && edited.tools.length === 3 && edited.hasInk && edited.grew && edited.closed,
+    'L5 Fix it up opens the check screen holding the kept ink — pencil·eraser·move — and Keep grows the garden', JSON.stringify(edited));
   await page.evaluate((id) => { try { HandwritingStore.remove(id); } catch (e) {} }, seeded);
 
   console.log('-- W: the real store, the real seam');

@@ -2590,11 +2590,28 @@ const ContextPanel=(function(){
     if(typeof BringItAliveStudio==='undefined') return;
     BringItAliveStudio.open({ onKept:function(){ _showLibraryPicker(); } });
   }
-  function _showLibraryPicker(){
+  // My Garden's two rooms — "change my garden into 2 tabs. my
+  // drawings, my letters" (the product owner). The last-visited tab is
+  // remembered for the session; each keep flow reopens onto its own
+  // room so a child lands where their new thing is.
+  let _gardenTab='drawings';
+  function _showLibraryPicker(tab){
+    if(tab==='drawings'||tab==='letters') _gardenTab=tab;
     stickerStudioOpen=true;
     panelRoot.innerHTML='';
     panelRoot.classList.remove('is-empty');
     panelRoot.appendChild(_el('div','context-collection-picker-heading','🌿 My Garden'));
+
+    const tabs=_el('div','context-hw-tabs');
+    [['drawings','🖼 My Drawings'],['letters','✍️ My Letters']].forEach(function(pair){
+      const b=_el('button','context-hw-tab'+(_gardenTab===pair[0]?' context-hw-tab-active':''),pair[1]);
+      b.type='button';
+      b.addEventListener('click',function(){ if(_gardenTab!==pair[0]) _showLibraryPicker(pair[0]); });
+      tabs.appendChild(b);
+    });
+    panelRoot.appendChild(tabs);
+
+    if(_gardenTab==='letters'){ _buildLettersRoom(); _appendDoneBrowsing(); return; }
 
     // The PERMANENT entry, above the kept characters — always present,
     // never only when the shelf is empty (a child with ten characters
@@ -2629,20 +2646,19 @@ const ContextPanel=(function(){
       panelRoot.appendChild(empty);
     }
 
-    // ---- My Letters — the child's handwriting, in the same garden
-    // (the product owner: "my garden caters to both scanned characters
-    // and handwriting", then, seeing only kept letters listed: "we
-    // discussed about adding this section which kid can fill with
-    // every click"). So this is the WHOLE grid — a–z, A–Z, 0–9 — not a
-    // shelf of finished letters: a kept tile holds the child's real
-    // ink and places it on the page through the exact
-    // _addImageStickerFromDataURL tail a character uses (with ↻ make
-    // it again and ✕ take out as quiet corner affordances, the
-    // existing remove pattern); an empty tile is an invitation — tap
-    // it and js/handwritingStudio.js opens the camera armed for that
-    // letter, the same catch-and-keep the tool page proved. The store
-    // is js/handwritingStore.js; on a keep the picker reopens with the
-    // tile filled.
+    _appendDoneBrowsing();
+  }
+
+  // ---- My Letters — the Garden's second room (the product owner: "my
+  // garden caters to both scanned characters and handwriting", then:
+  // "we discussed about adding this section which kid can fill with
+  // every click", then: "change my garden into 2 tabs"). The WHOLE
+  // grid — a–z, A–Z, 0–9: a kept tile holds the child's real ink and
+  // asks first (place · make again · fix up · never mind); an empty
+  // tile opens js/handwritingStudio.js armed for that letter. The
+  // store is js/handwritingStore.js; every keep flow reopens this room
+  // with the tile filled.
+  function _buildLettersRoom(){
     try{
       if(typeof HandwritingStore!=='undefined' && HandwritingStore.list){
         const kept={};
@@ -2662,19 +2678,43 @@ const ContextPanel=(function(){
               img.src=(rec.glyph&&rec.glyph.png)||'';
               img.alt='My letter '+ch;
               tile.appendChild(img);
-              tile.title='Put your '+ch+' on the page';
-              tile.addEventListener('click',function(){
-                _addImageStickerFromDataURL(rec.glyph.png,'handwriting.'+rec.id);
-              });
-              const redo=_el('button','context-hw-redo','↻');
-              redo.type='button';
-              redo.title='Make your '+ch+' again';
-              redo.setAttribute('aria-label','Make your letter '+ch+' again');
-              redo.addEventListener('click',function(ev){
+              tile.title='Your '+ch;
+              // An ACTIVATED tile asks first (the product owner: "the
+              // tile which already has a activated letter need option
+              // of redo & edit") — the tool page's own choice card,
+              // grown one option because this shelf has a page: put it
+              // on the page (the shelf's job, gold), make it again
+              // (the camera), fix it up (the check screen holding the
+              // kept ink), never mind. One card at a time; any choice
+              // or a tap anywhere else closes it.
+              tile.addEventListener('click',function(ev){
                 ev.stopPropagation();
-                if(typeof HandwritingStudio!=='undefined') HandwritingStudio.open({ch:ch,onKept:function(){ _showLibraryPicker(); }});
+                const oldCard=panelRoot.querySelector('.context-hw-choice');
+                if(oldCard){ oldCard.remove(); if(oldCard._forCh===ch) return; }
+                const card=_el('div','context-hw-choice');
+                card._forCh=ch;
+                function opt(cls,label,fn){
+                  const b=_el('button',cls,label);
+                  b.type='button';
+                  b.addEventListener('click',function(e2){ e2.stopPropagation(); card.remove(); fn(); });
+                  card.appendChild(b);
+                }
+                opt('context-hw-choice-gold','🖼 Put it on the page',function(){
+                  _addImageStickerFromDataURL(rec.glyph.png,'handwriting.'+rec.id);
+                });
+                opt('','📷 Make it again',function(){
+                  if(typeof HandwritingStudio!=='undefined') HandwritingStudio.open({ch:ch,onKept:function(){ _showLibraryPicker('letters'); }});
+                });
+                opt('','✏️ Fix it up',function(){
+                  if(typeof HandwritingStudio!=='undefined') HandwritingStudio.open({ch:ch,edit:true,onKept:function(){ _showLibraryPicker('letters'); }});
+                });
+                opt('','Never mind',function(){});
+                cell.appendChild(card);
+                const away=function(e2){
+                  if(!card.contains(e2.target)){ card.remove(); document.removeEventListener('pointerdown',away,true); }
+                };
+                document.addEventListener('pointerdown',away,true);
               });
-              cell.appendChild(redo);
               const remove=_el('button','context-library-remove','✕');
               remove.type='button';
               remove.title='Take out of My Garden';
@@ -2683,14 +2723,14 @@ const ContextPanel=(function(){
                 ev.stopPropagation();
                 if(!window.confirm('Take your letter “'+ch+'” out of My Garden? Anything already on your pages stays right where it is.')) return;
                 try{ HandwritingStore.remove(rec.id); }catch(e){}
-                _showLibraryPicker();
+                _showLibraryPicker('letters');
               });
               cell.appendChild(remove);
             }else{
               tile.appendChild(_el('span','context-hw-ghost',ch));
               tile.title='Show me your '+ch;
               tile.addEventListener('click',function(){
-                if(typeof HandwritingStudio!=='undefined') HandwritingStudio.open({ch:ch,onKept:function(){ _showLibraryPicker(); }});
+                if(typeof HandwritingStudio!=='undefined') HandwritingStudio.open({ch:ch,onKept:function(){ _showLibraryPicker('letters'); }});
               });
             }
             cell.insertBefore(tile,cell.firstChild);
@@ -2700,7 +2740,9 @@ const ContextPanel=(function(){
         });
       }
     }catch(e){}
+  }
 
+  function _appendDoneBrowsing(){
     const btn=_el('button','context-btn','← Done Browsing');
     btn.type='button';
     btn.addEventListener('click',function(){ refresh(); });

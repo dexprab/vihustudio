@@ -4710,3 +4710,47 @@ pencil/eraser fix-up is not in the Studio catcher yet (Show me again is
 the recovery), and the sandbox cannot exercise a live camera — the
 catcher's capture path leans on the tool suites' 162-check proof of the
 shared modules, and wants one real-camera pass on a real machine.
+
+**Follow-up 4, same sprint** — three product-owner reports off the
+first real-camera run. *"center the camera, decorate the background to
+match the studio. the tiles on right needs to be a bit bigger. the
+tile which already has a activated letter need option of redo & edit"*
+— then, seeing the bare check screen: *"erase, pencil, move options
+missing"* — and, watching the margins: *"the growth is happening but
+its not living."* All landed. The catcher: video centred, the panel
+wearing the workspace's own sky (a soft gradient, two clouds, a few
+pale stars — content above it), and the check screen is now the tool
+page's fix-up PORTED WHOLE: the pencil at the letter's measured stroke
+width (HWLetter.strokeWidthOf/2, clamped), the larger eraser, and Move
+— rubber-band a piece, it lifts in warm blue, slide it, put it down —
+with Keep trimming back to ink, exactly the tool's own mechanics
+function for function. The grid: 5 columns, 60px tiles, bigger ghosts.
+An ACTIVATED tile now asks first — the tool's choice card grown one
+option because this shelf has a page: 🖼 Put it on the page (gold) ·
+📷 Make it again · ✏️ Fix it up · Never mind — with Fix it up opening
+the check screen holding the KEPT ink and no camera involved
+(open({ch, edit:true}) rebuilds the mask from the stored PNG's alpha).
+And the garden learned the difference between growing and LIVING:
+attachment — every leaf, bud and flower within reach of its band's
+vine now sits at the end of a short stem drawn FROM the vine, oriented
+outward; each vine's growing tip carries a small curl; and the foliage
+breathes — a barely-there rotation, seconds-slow, staggered per
+element so the garden never moves as one, stilled entirely under
+reduced motion, and sequenced after the grow-in so the two never fight
+over transform. Disclosed deliberately: the sprint wrote "no constant
+movement" and this breath is technically that — chosen in answer to
+"not living", at an amplitude meant to be felt rather than seen, and
+one line to remove if it reads as motion. Suite 36 checks (the choice
+card's four ways, and the full edit journey: kept ink on the check
+screen, three tools present, a real pointer daub, Keep growing the
+garden); base 192 and handwriting 162 re-run green.
+
+**Follow-up 5, same sprint** — *"change my garden into 2 tabs. my
+drawings, my letters"* (the product owner). The picker's one column
+became My Garden's two rooms: 🖼 My Drawings (the bring-entry and the
+kept characters, exactly as they were) and ✍️ My Letters (the full
+grid), a session-remembered tab row under the heading. Every keep flow
+reopens onto its own room — a kept character lands the child in
+Drawings, a kept or fixed letter in Letters — and Done Browsing is the
+shared floor. Suite re-run green (36) with the door now walking
+through the tab.

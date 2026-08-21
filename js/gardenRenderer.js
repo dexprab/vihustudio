@@ -165,6 +165,18 @@
     st.elements.forEach(function (el, ix) {
       if (el.k === 'vine') { const pt = _map(bands, el); if (pt) vineNodes[el.band].push({ pt: pt, ix: ix }); }
     });
+    // "The growth is happening but its not living" (the product owner)
+    // — the difference was ATTACHMENT: a leaf floating near a vine is
+    // decoration; a leaf on a stem FROM the vine is growth. Everything
+    // that can reach its band's vine joins it through a short stem.
+    function _nearestVinePt(band, pt) {
+      let best = null, bd = 1e9;
+      (vineNodes[band] || []).forEach(function (n) {
+        const d = (n.pt.x - pt.x) * (n.pt.x - pt.x) + (n.pt.y - pt.y) * (n.pt.y - pt.y);
+        if (d < bd) { bd = d; best = n.pt; }
+      });
+      return best && bd < 48 * 48 ? best : null;
+    }
     ['left', 'right', 'top'].forEach(function (band) {
       const nodes = vineNodes[band];
       if (nodes.length < 2) return;
@@ -174,6 +186,14 @@
         d += 'Q' + ((a.x + b.x) / 2 + (i % 2 ? 5 : -5)).toFixed(1) + ',' + ((a.y + b.y) / 2).toFixed(1)
            + ' ' + b.x.toFixed(1) + ',' + b.y.toFixed(1) + ' ';
       }
+      // The growing tip carries a small curl — the gesture of a vine
+      // still going somewhere, which is most of what "alive" means.
+      const tip = nodes[nodes.length - 1].pt, prev = nodes[nodes.length - 2].pt;
+      const tdx = tip.x - prev.x, tdy = tip.y - prev.y;
+      const tl = Math.max(1, Math.hypot(tdx, tdy));
+      const ux = tdx / tl, uy = tdy / tl;
+      d += 'q' + (8 * ux - 6 * uy).toFixed(1) + ',' + (8 * uy + 6 * ux).toFixed(1)
+         + ' ' + (2 * ux - 10 * uy).toFixed(1) + ',' + (2 * uy + 10 * ux).toFixed(1) + ' ';
       const path = _svg('path', { d: d, fill: 'none', stroke: VINE, 'stroke-width': 2.2, 'stroke-linecap': 'round', opacity: 0.92 });
       // A capture that extended this vine draws the whole path in — the
       // cheap, calm version of "shoot extends": ~0.9s of line growth.
@@ -191,23 +211,55 @@
       layer.appendChild(path);
     });
 
+    const reduced = _reducedMotion();
     st.elements.forEach(function (el, ix) {
       if (el.k === 'vine') return;
-      const pt = _map(bands, el);
+      let pt = _map(bands, el);
       if (!pt) return;
       let node = null;
       const s = el.s || 1;
-      if (el.k === 'leaf') node = _leaf(pt.x, pt.y, ((el.u * 140 - 70) + (el.band === 'right' ? 140 : 0)), s);
+      // Join the vine where one is in reach: the element sits at the
+      // end of a short stem drawn from the vine's own line, oriented
+      // outward — grown from it, never beside it.
+      const root = _nearestVinePt(el.band, pt);
+      let ang = ((el.u * 140 - 70) + (el.band === 'right' ? 140 : 0));
+      if (root) {
+        let dx = pt.x - root.x, dy = pt.y - root.y;
+        const dl = Math.max(1, Math.hypot(dx, dy));
+        dx /= dl; dy /= dl;
+        const reach = Math.min(dl, 10 + 8 * s);
+        pt = { x: root.x + dx * reach, y: root.y + dy * reach };
+        ang = Math.atan2(dy, dx) * 180 / Math.PI;
+        layer.appendChild(_svg('path', {
+          d: 'M' + root.x.toFixed(1) + ',' + root.y.toFixed(1)
+           + ' Q' + ((root.x + pt.x) / 2 + dy * 3).toFixed(1) + ',' + ((root.y + pt.y) / 2 - dx * 3).toFixed(1)
+           + ' ' + pt.x.toFixed(1) + ',' + pt.y.toFixed(1),
+          fill: 'none', stroke: VINE, 'stroke-width': 1.5, 'stroke-linecap': 'round', opacity: 0.85
+        }));
+      }
+      if (el.k === 'leaf') node = _leaf(pt.x, pt.y, ang, s);
       else if (el.k === 'sprig') node = _sprig(pt.x, pt.y, (el.u - 0.5) * 40, s);
       else if (el.k === 'bud') node = _bud(pt.x, pt.y);
       else if (el.k === 'flower') node = _flower(pt.x, pt.y);
       if (!node) return;
+      node.style.transformOrigin = (root ? root.x : pt.x) + 'px ' + (root ? root.y : pt.y) + 'px';
+      // The breath: a barely-there sway, seconds-slow, staggered so the
+      // garden never moves as one — alive, still calm. Reduced motion
+      // stills it entirely.
+      const breath = reduced ? '' : ('vihuGardenBreath ' + (11 + (ix % 5) * 1.7).toFixed(1) + 's ease-in-out '
+        + (-(ix % 7) * 1.9).toFixed(1) + 's infinite alternate');
       if (ix >= animateFrom) {
-        node.style.transformOrigin = pt.x + 'px ' + pt.y + 'px';
+        // Grow in first (both drive transform, so the breath waits its
+        // turn), then breathe.
         node.style.opacity = '0';
         node.style.transition = 'opacity .5s ease-out .6s, transform .8s ease-out .6s';
         node.style.transform = 'scale(.4)';
         requestAnimationFrame(function () { node.style.opacity = '1'; node.style.transform = 'scale(1)'; });
+        if (breath) setTimeout(function () {
+          if (node.isConnected) { node.style.transition = ''; node.style.transform = ''; node.style.animation = breath; }
+        }, 1700);
+      } else if (breath) {
+        node.style.animation = breath;
       }
       layer.appendChild(node);
     });
