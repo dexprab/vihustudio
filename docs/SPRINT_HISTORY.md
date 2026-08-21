@@ -5159,3 +5159,41 @@ It now says so.
 Verified: `canSpeak` true for lumo, nimbus, quill and leafy, false for
 leosaurus (no id yet) and the Story Egg (canon). Companion suite 25/25,
 zero page errors. Build 0602 → 0603.
+
+## The Companion Said Something Untrue (build 0604)
+
+Reported in testing: Quill told the product owner *"Your story doesn't
+have a name yet"* about a story that clearly had one. The Companion's
+first rule is that what it says must be true, so this is the most
+serious kind of failure this system can have.
+
+**A wrong argument, one word deep.** `PublishValidator.run(slides,
+project)` reads `project.bookTitle`, and the story's name lives at
+`AppState.project.bookTitle` — `js/app.js` writes it there from the
+header field. `js/companionContext.js` handed it `AppState` itself, so
+that read was `undefined` on every story however it was named, and the
+nudge fired unconditionally.
+
+**Nothing else was exercising these rules.** Decision 12 removed the
+readiness check from the finish path, so `PublishValidator` — still
+exported, still correct — has had no callers at all since. Companion
+Intelligence is now its only one, which is why a dormant seam's calling
+convention went unverified the moment it was used again.
+
+**The test agreed with the bug, and that is the lesson worth keeping.**
+The original check compared the Companion's notices against
+`PublishValidator.run(AppState.slides, AppState)` — the suite repeating
+the module's own mistaken call, so both sides were wrong in the same way
+and it passed. It now checks the OUTCOME a child would meet: a story
+WITH a name is never told it has none, and a story with no name still
+gets the nudge. *A test that re-states the implementation cannot catch
+the implementation being wrong.*
+
+**A real finding fell out of the fix.** The validator reads
+`bookTitle || title`, and `project.title` defaults to `'My Adventure'`
+and is hidden from the editor (Decision 1). So with that default
+standing, the "no name yet" line is effectively unreachable in the
+shipped product — the line is correct and no child will meet it.
+Recorded rather than worked around.
+
+Suite 26/26, zero page errors. Build 0603 → 0604.

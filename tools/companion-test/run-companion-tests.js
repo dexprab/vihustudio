@@ -122,14 +122,40 @@ function check(cond, name, note) { (cond ? ok : fail)(name, note); }
   });
   check(stable, 'A4 owns no state — two reads agree');
 
-  // The validator's real notices arrive, in the validator's own words.
-  const notices = await page.evaluate(() => {
-    const s = CompanionContext.snapshot();
-    const direct = PublishValidator.run(AppState.slides, AppState);
-    return { fromCtx: s.notices.length, direct: direct.length, hints: s.notices.map((n) => n.fixHint) };
+  // The validator's real notices arrive — and crucially this is checked
+  // by OUTCOME, not by repeating the same call the code makes. The
+  // original version of this check ran PublishValidator itself with the
+  // same wrong argument the module used, so it agreed with the bug and
+  // passed while the Companion told a child their named story had no
+  // name. A test that re-states the implementation cannot catch the
+  // implementation being wrong.
+  const titleTruth = await page.evaluate(() => {
+    const was = AppState.project.bookTitle;
+    const hints = () => {
+      CompanionContext.invalidate();
+      return CompanionContext.snapshot().notices.map((n) => n.fixHint);
+    };
+    AppState.project.bookTitle = 'The Dragon Who Lost His Shoes';
+    const named = hints();
+    // BOTH, because the validator reads `bookTitle || title` and
+    // `title` defaults to 'My Adventure' and is hidden from the editor
+    // (Decision 1). So in the shipped product this nudge is effectively
+    // unreachable — a real finding, not a test convenience: the line
+    // exists, is correct, and no child will meet it while that default
+    // stands.
+    const wasTitle = AppState.project.title;
+    AppState.project.bookTitle = '';
+    AppState.project.title = '';
+    const blank = hints();
+    AppState.project.bookTitle = was;
+    AppState.project.title = wasTitle;
+    CompanionContext.invalidate();
+    return { named, blank };
   });
-  check(notices.fromCtx === notices.direct,
-    'A5 notices come from the real PublishValidator', notices.fromCtx + ' notices');
+  check(titleTruth.named.indexOf('book-title') === -1,
+    'A5 a story WITH a name is never told it has none', titleTruth.named.join(',') || 'no notices');
+  check(titleTruth.blank.indexOf('book-title') !== -1,
+    'A5b a story with no name still gets the nudge', titleTruth.blank.join(',') || 'no notices');
 
   // It must survive a Studio with the renderer gone.
   const survives = await page.evaluate(() => {

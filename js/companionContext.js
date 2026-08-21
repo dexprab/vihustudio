@@ -129,7 +129,16 @@ const CompanionContext=(function(){
   function _notices(slides){
     try{
       if(typeof PublishValidator==='undefined' || !PublishValidator.run) return [];
-      const project=(typeof AppState!=='undefined')?AppState:null;
+      // THE PROJECT, NOT THE WHOLE APPSTATE. The story's name lives at
+      // AppState.project.bookTitle — js/app.js writes it there from the
+      // header field — and the validator reads `project.bookTitle`.
+      // Handing it AppState made that read undefined, so the "no name
+      // yet" nudge fired on every story however it was named, and the
+      // Companion said something untrue. Since Decision 12 removed the
+      // readiness check from the finish path, this Companion is the
+      // validator's ONLY caller, so nothing else was exercising these
+      // rules and nothing else would have caught it.
+      const project=(typeof AppState!=='undefined' && AppState.project) ? AppState.project : null;
       const list=PublishValidator.run(slides,project);
       return Array.isArray(list)?list:[];
     }catch(e){ return []; }
