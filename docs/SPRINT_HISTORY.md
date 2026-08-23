@@ -5528,3 +5528,22 @@ live headers could not be fetched to confirm — the remaining candidates
 are a Pages deploy that had not landed when it was tested, or WhatsApp's
 own on-device preview cache, which no server-side change can purge.
 Build 0609 → 0610.
+
+## The Garden tile stops being a bookshelf (build 0611)
+
+Reported by the product owner: *"the garden tile is still old we decided
+to change it."* Correct, and the reason is worth recording. `My Library`
+became `My Garden` everywhere the NAME appears — the label, the picker
+heading, the confirms, the emoji in `_addSomethingItems` (🪴) — but the
+Add Something grid does not use that emoji. `ADD_ART[item.id]` overrides
+it with a hand-drawn SVG whenever one exists, and `ADD_ART.library` was
+still three books on a shelf. So the one tile in the grid was arguing
+with its own name, and had been since the rename.
+
+It is now a potted plant in the same flat language as its neighbours —
+the garden's own greens (#6E8F6A stem, #8FAF87 and #5BBE97 leaves), a
+terracotta pot, and one small gold flower in the Studio's #FFD84D. Drawn
+at the same visual weight as the tiles either side of it, checked by
+rendering the real `ADD_ART` map into the real card treatment rather
+than by eye on the source. Garden 47/47, zero page errors. Build
+0610 → 0611.
