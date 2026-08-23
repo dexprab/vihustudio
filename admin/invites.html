@@ -174,6 +174,18 @@ const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c =>
 const BASE = 'https://vihuplanet.com';
 const FN = cfg.url.replace(/\/+$/, '') + '/functions/v1/invite-send';
 
+// BOTH HEADERS, ALWAYS. Supabase's gateway verifies the JWT before an
+// Edge Function is reached, so a call carrying only `apikey` is refused
+// with 401 and the function's own code never runs — which looks exactly
+// like a function that failed to send. js/vihuVoice.js, js/familyAlbum.js
+// and js/skyProtection.js all send this pair; this page did not, and that
+// was the whole of the first failure.
+const FN_HEADERS = {
+  'Content-Type': 'application/json',
+  'Authorization': 'Bearer ' + cfg.anonKey,
+  'apikey': cfg.anonKey,
+};
+
 function when(ts) {
   if (!ts) return '—';
   return new Date(ts).toLocaleDateString(undefined,
@@ -273,11 +285,22 @@ $('sendMail').onclick = async () => {
   for (const to of list) {
     try {
       const token = await mint('email', to, list.length === 1 ? label : '');
-      const res = await fetch(FN, {
+      const raw = await fetch(FN, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', apikey: cfg.anonKey },
+        headers: FN_HEADERS,
         body: JSON.stringify({ to, token, note: extra }),
-      }).then(r => r.json()).catch(() => ({ ok: false, reason: 'unreachable' }));
+      });
+      // A non-2xx from the GATEWAY (401/404) is not JSON and is a
+      // completely different problem from the function declining to
+      // send, so it is reported as itself rather than as "failed".
+      let res;
+      if (!raw.ok) {
+        res = { ok: false, reason: raw.status === 401 ? 'not authorised (401)'
+                          : raw.status === 404 ? 'function not deployed (404)'
+                          : 'gateway ' + raw.status };
+      } else {
+        res = await raw.json().catch(() => ({ ok: false, reason: 'bad response' }));
+      }
 
       // The function answers 200 even when it could not send, so a
       // failure is a sentence rather than an exception — and it is
@@ -286,9 +309,12 @@ $('sendMail').onclick = async () => {
       await sb.rpc('invite_mark_sent', {
         p_token: token, p_error: res.ok ? null : String(res.reason || 'failed'),
       });
-      (res.ok ? done : failed).push(to);
+      if (res.ok) done.push(to);
+      else failed.push(to + ' — ' + (res.reason || 'failed') + (res.detail ? ': ' + res.detail : ''));
     } catch (e) {
-      failed.push(to);
+      // Thrown before the send: almost always invite_create refusing
+      // because this account is not in platform_admins. Say so.
+      failed.push(to + ' — ' + (e && e.message ? e.message : 'could not create the invitation'));
     }
   }
 
@@ -297,9 +323,9 @@ $('sendMail').onclick = async () => {
     note($('mailMsg'), done.length === 1 ? 'Letter sent.' : `${done.length} letters sent.`, true);
     $('mailTo').value = ''; $('mailLabel').value = '';
   } else if (done.length) {
-    note($('mailMsg'), `Sent ${done.length}. Could not send to ${failed.join(', ')}.`);
+    note($('mailMsg'), `Sent ${done.length}. ${failed.join(' · ')}`);
   } else {
-    note($('mailMsg'), `Could not send. ${failed.join(', ')}`);
+    note($('mailMsg'), failed.join(' · '));
   }
   show();
 };
@@ -332,7 +358,7 @@ $('sendWa').onclick = async () => {
     $('waTo').value = ''; $('waLabel').value = '';
     show();
   } catch (e) {
-    note($('waMsg'), 'Could not prepare that one.');
+    note($('waMsg'), (e && e.message) ? e.message : 'Could not prepare that one.');
   }
   $('sendWa').disabled = false;
 };
@@ -342,12 +368,18 @@ $('sendWa').onclick = async () => {
 // ---------------------------------------------------------------
 async function mailState() {
   try {
-    const r = await fetch(FN, {
+    const resp = await fetch(FN, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', apikey: cfg.anonKey },
+      headers: FN_HEADERS,
       body: JSON.stringify({ action: 'ping' }),
-    }).then(x => x.json());
-    if (!r || r.mail === 'none' || r.from === 'unset') {
+    });
+    if (resp.status === 404) throw new Error('not deployed');
+    const r = resp.ok ? await resp.json() : { __status: resp.status };
+    if (r && r.__status === 401) {
+      $('mailState').innerHTML =
+        '<span class="flag">The invite-send function is refusing the key (401)</span> — ' +
+        'it is deployed but rejecting this call.';
+    } else if (!r || r.mail === 'none' || r.from === 'unset') {
       $('mailState').innerHTML =
         '<span class="flag">Email is not configured yet</span> — WhatsApp still works, ' +
         'and so does copying a link by hand. Set RESEND_API_KEY and SKY_FROM_EMAIL on the ' +
