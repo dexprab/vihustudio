@@ -706,6 +706,16 @@ const MagicCard=(function(){
         CreatorProjectStore.claimUnowned(card.id);
       }
     }catch(e){}
+    // AN INVITATION IS ACCEPTED HERE, and nowhere else. The product
+    // owner's own definition: an invite is accepted when the invited
+    // child becomes a Creator, and a Creator is someone holding a
+    // claimed Magic Card (Decision 10). This is the moment that
+    // becomes true, so it is the only honest place to record it.
+    // Nothing about the card is sent — only that the invitation's own
+    // token reached its last stage.
+    try{
+      if(typeof window!=='undefined' && window.Invite) window.Invite.reached('creator');
+    }catch(e){}
     // …and so are the characters they saved to My Library before they
     // had a card — the exact sibling sweep, for the exact reason above
     // (js/creatorLibrary.js's claimUnowned only ever takes unowned

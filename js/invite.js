@@ -120,11 +120,21 @@ const Invite = (function () {
       var t = _token();
       if (!t) return;
       if (_already(stage)) return;
-      _remember(stage);   // before the round trip: a failed send must
-                          // not turn into a retry on every page load
+      // REMEMBERED ONLY ONCE IT LANDED. The first version marked the
+      // stage before the round trip, reasoning that a failed send must
+      // not become a retry on every page load. That was the wrong trade
+      // and it broke the feature outright: the platform client is not
+      // always ready the instant a page loads, and a stage marked
+      // locally is never sent again — so an invitation that was opened
+      // could sit on the roll saying nobody opened it.
+      //
+      // Retrying is cheap and bounded: at most one call per stage per
+      // page load, and `invite_reached` coalesces server-side, so a
+      // late second report writes nothing new.
       _client().then(function (client) {
         if (!client) return;
-        return client.rpc('invite_reached', { p_token: t, p_stage: stage });
+        return client.rpc('invite_reached', { p_token: t, p_stage: stage })
+          .then(function (r) { if (!r || !r.error) _remember(stage); });
       }).catch(function () {});
     } catch (e) {}
   }
@@ -136,6 +146,18 @@ const Invite = (function () {
   function _forget() {
     try { localStorage.removeItem(KEY); localStorage.removeItem(DONE); } catch (e) {}
   }
+
+  // READS ITSELF IN. A page that includes this file has said everything
+  // it needs to say — there is no configuration, and forgetting the one
+  // call is exactly how an invitation gets opened and nobody hears
+  // about it.
+  try {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', function () { capture(); });
+    } else {
+      capture();
+    }
+  } catch (e) {}
 
   return { capture: capture, reached: reached, pending: pending, _forget: _forget };
 })();

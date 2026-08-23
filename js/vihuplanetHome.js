@@ -259,6 +259,12 @@
       }
 
       thresholdCrossed = true;
+      // An invitation that was followed has now actually been ANSWERED —
+      // somebody is in the universe rather than merely on the page. It
+      // is the one moment that distinguishes a letter that was opened
+      // from one that was acted on. Best-effort and never awaited: the
+      // threshold does not wait for a database.
+      try { if (window.Invite) window.Invite.reached('explored'); } catch (e) {}
       if (onThreshold) {
         var run = onThreshold;
         onThreshold = null;
