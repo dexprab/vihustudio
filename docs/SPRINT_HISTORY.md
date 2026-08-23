@@ -5896,3 +5896,31 @@ Suite 100/100 (was 71), zero page errors. Seven acceptance screenshots at
 10 · 30 · 50 · 70 · 100 · 130 · 160 in
 `tools/garden-test/shots/lifecycle/`, and they read young → growing →
 rich → mature → changing → renewing. Build 0614 → 0615.
+
+## Renewal has to renew a KIND (build 0616)
+
+Found while verifying the life-cycle sprint rather than reported: with
+aging in place, **a garden loses its sprigs and can never grow another.**
+
+Every sprig birth site is in a phase that ends at capture 23 — the
+origin, edge travel, the right vine's own foot, and the branching
+fallback. That was harmless while nothing died. Now that sprigs dry and
+go, the measurement is unambiguous and identical on every seed tried:
+2–5 sprigs at capture 100, **zero at 150, and zero forever after**. The
+forked branches that give the plant its structural variety leave and
+nothing can replace them.
+
+It is a real hole in §13 rather than a tuning nit: a garden whose
+composition can only ever lose a vocabulary word is not in equilibrium,
+it is in slow decline — and the sprint's own §7 asks specifically that
+structural branches not disappear aggressively. The blossoming phase can
+now grow one, rarely (12%) and on a vine like everything else, so it is
+a branch off the plant rather than a decoration dropped into a gap
+(§12). Measured after: 5–13 sprigs held for the life of the garden, and
+the density equilibrium is untouched at 79–87 against 77–85 before.
+
+Verified independently of the sprint that shipped it: suite re-run
+100/100, the density curve re-measured to capture 340, and the
+persistence contract confirmed by reading what is actually in storage —
+`{v, seed, events, recentIds}`, 331 bytes for a 340-capture garden with
+a full life cycle. Build 0615 → 0616.

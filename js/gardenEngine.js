@@ -711,6 +711,23 @@
       res.type = 'flower_bloomed';
       return res;
     }
+    // A SPRIG CAN BE BORN HERE, and until now one could not be born at
+    // all past capture 23 — every birth site is in a phase that ends
+    // there. That was harmless while nothing died. With the life cycle
+    // it is not: measured across five seeds, a garden holds 2-5 sprigs
+    // at capture 100, none at 150, and none ever again. The forked
+    // branches that gave it its structural variety leave and cannot be
+    // replaced.
+    //
+    // Renewal (§13) has to be able to renew a KIND, not only a count —
+    // a garden whose composition can only ever lose a vocabulary word
+    // is not in equilibrium, it is in slow decline. Rare on purpose
+    // (12%), and on a vine like everything else, so it is a branch off
+    // the plant rather than a decoration dropped into a gap (§12).
+    if (rnd() < 0.12 && onVine('sprig', { s: 0.8 + rnd() * 0.2, f: rnd() < 0.45 ? 'fork' : 'plain' })) {
+      res.type = 'branch_created';
+      return res;
+    }
     if (rnd() < 0.25 && onVine('bud', { f: rnd() < 0.22 ? 'pair' : 'plain' })) { res.type = 'bud_created'; return res; }
     onVine('leaf', { s: 0.75 + rnd() * 0.25, f: leafForm(0.22, 0.22) });
     res.type = 'leaf_added';
