@@ -5793,3 +5793,106 @@ problem this change exists to fix.
 
 Garden 71/71, and X7 improved on its own — twenty consecutive captures
 now answer 19–20 on screen instead of 18. Build 0613 → 0614.
+
+## My Garden: life cycle and renewal (build 0615)
+
+The sprint's own principle: *"Don't make the Garden bigger forever. Make
+it live."* Elements now grow, mature, age, wither, fall, rest on the
+garden floor and go, and the room that leaves behind is grown into by the
+ordinary growth step. The growth engine is not replaced — every part of
+it the brief locked is untouched: `{seed, events, recentIds}`,
+deterministic replay, `_build(seed, events)`, the Park–Miller stream, one
+capture = one growth, the recent-ids guard, normalized `{band, u, v}`,
+`onVine()`, the six zones, Magic Card scoping and the Traveller claim.
+
+**Aging runs BESIDE a growth step, never instead of one.** That is the
+whole architectural choice and it is the previous sprint's rule taken to
+its conclusion: *structure outranks season*. Because the life cycle never
+competes for the step, it cannot displace a structural move, the growth
+decision tree is byte-for-byte the one it inherited, and every measured
+season pacing (bud 9/13/32, flower 24/25/33, fruit 26/31/43) is exactly
+what it was. It also gets **its own seeded stream**, so where a leaf
+lands cannot perturb what grows next.
+
+**Age is measured in captures, never in wall-clock time** — a child who
+does not visit for a week comes back to the garden they left. `e.b`, the
+step an element was born at, is stamped during replay, so **the
+persistence contract did not move**: a 150-capture garden with a full
+life cycle still stores `{ v, seed, events, recentIds }` and nothing
+else, checked by the suite (LC-I). §17 was never in play.
+
+**Every threshold is in one object, `LIFECYCLE`**, at the top of
+`js/gardenEngine.js` and exposed as `LivingGarden.lifecycle` — the tuning
+surface the brief asked for, and what lets the suite drive a garden into
+density the healthy one never reaches. Each kind leaves its own way: a
+leaf pales, detaches, drifts down and rests on the floor before going; a
+flower fades, drops its petals and **leaves its stem standing** for a
+while; a fruit never yellows at all, it ripens and drops; a sprig dries
+slowly; and **a vine never ages** — every element is placed on one and
+drawn attached to one, so aging the skeleton would not be a season, it
+would be demolition.
+
+**The ceiling became pressure.** Below 70 elements the garden ages at its
+own pace; from 70 to 132 the pressure ramps and every span shortens
+toward half; past 110 a step increasingly deepens instead of adding. The
+result is a genuine equilibrium rather than a wall — measured over five
+seeds at 340 captures each, the count runs 18 · 50 · 69 · 82 · 83 · 79 ·
+82 and then sits at 77–85 forever, with new growth still arriving on
+about two captures in three at capture 300. The old hard cap of 110 is
+never reached by a healthy garden at all; it survives at 132 as a safety
+valve, and the suite proves it holds by suspending aging and packing the
+garden into it deliberately (LC-E: peak 132, then back to 82 when the
+season resumes).
+
+Three things looking at the pictures caught that the checks did not.
+**The first gold was the wrong gold** — the same hue as the flowers and
+the fruit, so a seventy-capture plant read as one yellow mass with
+nothing telling a bloom from an old blade; an aging leaf is now a pale
+yellow-green. **Leaf litter was landing on the plant** — a leaf fell
+straight down onto the foot of its own vine, and the right band's vine
+BEGINS at the floor, so five fallen leaves were invisible inside the
+foliage they had just left; they now drift to the side on the way down.
+And **the garden was aging in cohorts** — the first vine's leaves are all
+born within twenty captures, so nineteen of forty-two turned within a
+couple of steps; each element's thresholds are now shifted by up to eight
+captures, deterministically, from values that are already stable across
+replay.
+
+**A pre-existing fault this made worse, found by measuring and fixed.**
+The blossoming phase's fallback stacks a flower a little higher each time
+it fires and nothing wrapped it — at 340 captures it had walked to
+v = −3.5, three band heights above the workspace, where the child never
+sees it. It was already there (16 off-band elements across five seeds)
+and the old ceiling had been hiding it by stopping that branch running
+past ~90 captures; a garden that now stays under the ceiling forever kept
+firing it (36 off-band). Wrapped, at no cost to any other growth
+decision: 0 off-band.
+
+**Rendering stayed pure and stayed byte-identical.** The phase palette is
+passed INTO the drawing vocabulary rather than painted on afterwards, so
+a settled garden carries no inline styles and two renders still produce
+identical markup; aging is drawn as a cross-fade of the leaf it was over
+the leaf it is. The fall animates the INNER group — the outer carries the
+positioning attribute transform, and a CSS transform there tears every
+blade off its vine, the trap this file has paid for twice. **The life
+cycle never glows**: the light means new growth, and lighting an ending
+would both dilute what the glow says and make it look like a reward.
+
+**Honest limits.** *A garden's very first fall is a short drop* — the
+oldest growth is the lowest growth, because the vine grows upward from
+the floor, so the first leaf to let go has barely any distance to travel;
+the median fall crosses 41% of its band and 28 of 876 are short ones.
+*A still frame understates falling* — the event is a three-second drift
+and reads as a leaf lying lower down in a screenshot. *The bottom of the
+first vine thins* as its oldest leaves go and new growth attaches
+anywhere; renewal does refill it, visibly between 130 and 160 captures,
+but it is a real change in the composition rather than a restoration.
+And **the absent top band is now measurably wider**: 12% of all
+life-cycle events land in a band this workspace does not have (Decision
+27), so they are correctly decided and never drawn. Neither fixable
+without the two things the sprint locks.
+
+Suite 100/100 (was 71), zero page errors. Seven acceptance screenshots at
+10 · 30 · 50 · 70 · 100 · 130 · 160 in
+`tools/garden-test/shots/lifecycle/`, and they read young → growing →
+rich → mature → changing → renewing. Build 0614 → 0615.

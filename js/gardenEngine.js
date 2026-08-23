@@ -59,7 +59,8 @@
 // all exactly what they were.
 //
 // EVERY CAPTURE REPORTS WHAT CHANGED. A step returns
-// { type, added:[ix], transformed:[ix], was:{ix:kind} } — because a
+// { type, added:[ix], transformed:[ix], was:{ix:kind},
+//   aged:[ix], fell:[ix], withered:[ix], removed:[element] } — because a
 // growth event is not always an element appearing, and the renderer
 // used to be told only how many had been added. Measured across five
 // seeds over 120 captures each, 172 of 600 captures added nothing and
@@ -73,15 +74,116 @@
 //   band 'left'   u: 0..1 across the left margin,  v: 0..1 top→bottom
 //   band 'right'  u: 0..1 across the right margin, v: 0..1 top→bottom
 //   band 'top'    u: 0..1 left→right,              v: 0..1 across the top margin
-// The DENSITY CEILING is a hard element cap: past it, growth deepens —
-// buds open into flowers, leaves fill — instead of spreading.
+// DENSITY IS PRESSURE, NOT A CEILING. Past `density.ceiling` a growth
+// step increasingly deepens — buds open into flowers, leaves fill —
+// instead of spreading, and `density.hard` keeps the old cap as a
+// safety valve rather than as the mechanism.
+//
+// AND THE GARDEN HAS A LIFE CYCLE. Grow → mature → age → wither → fall
+// → gone, and the room that leaves behind is grown into by the ordinary
+// growth step. Age is measured in CAPTURES, never in wall-clock time —
+// a garden nobody visits does not decay while its maker is away. Every
+// threshold is in ONE object, LIFECYCLE, so the pace can be tuned in
+// one edit; the growth vocabulary and the six zones below are untouched
+// by it, because aging runs BESIDE a growth step and never in place of
+// one. A step therefore also reports { aged, fell, withered, removed },
+// which is the same extension `transformed` already was: the renderer
+// has to know which elements changed STATE, not only which appeared.
+// None of it is persisted — `e.b` (the step an element was born at) is
+// derived on replay like everything else, so the record is still
+// exactly { seed, events, recentIds }.
 (function () {
   'use strict';
 
   const STORE_PREFIX = 'vihu-living-garden:';
   const TRAVELLER_KEY = STORE_PREFIX + 'traveller';
   const RECENT_IDS_MAX = 40;
-  const DENSITY_CEILING = 110;   // elements; ~60 captures spread, then deepen
+
+  // ---- THE LIFE CYCLE, and the ONE place its timing lives ------------------
+  // Grow → mature → age → wither → fall → gone → and the room that
+  // leaves behind is grown into by the ordinary growth step. Every
+  // number the life cycle turns on is in this object and nowhere else,
+  // because the sprint is explicit that this is an experiment and its
+  // pace will be tuned: "Make the thresholds easy to tune from ONE
+  // configuration object. Do not scatter timing constants."
+  //
+  // AGE IS MEASURED IN CAPTURES, NEVER IN WALL-CLOCK TIME. A child who
+  // does not open the Studio for a week comes back to the garden they
+  // left, not to one that decayed while they were away — the agency is
+  // theirs. `elementAge = stepCount - e.b`, and `e.b` is stamped during
+  // replay, so nothing new is persisted (see §17 in the sprint entry).
+  //
+  // GROWTH IS CAUSED BY CAPTURE; AGING IS CAUSED BY MATURITY. Aging is
+  // therefore NOT a growth branch — it runs beside the growth step, not
+  // instead of it, so it can never displace a structural move. That is
+  // the same rule the seasons already obey ("structure outranks season")
+  // taken to its conclusion: the life cycle never competes for the step
+  // at all.
+  const LIFECYCLE = {
+    // Nothing ages at all until the garden itself is this old. A floor
+    // rather than the active constraint — the youngest span below is far
+    // longer — but it makes "a fresh garden never ages" true by
+    // construction rather than by arithmetic.
+    startAfter: 26,
+
+    // Every element's own thresholds are shifted by up to half of this,
+    // deterministically, from its own coordinate and birth step. Without
+    // it a garden ages in COHORTS: the first vine's leaves are all born
+    // within twenty captures of each other, so they all reach the same
+    // threshold within a couple, and measured at seventy captures
+    // nineteen of forty-two leaves turned at once. A season should
+    // arrive, not be switched on. No rng is involved — the shift is a
+    // function of values that are already stable across replay.
+    spread: 16,
+
+    // How many elements may change life stage in ONE capture. Density
+    // pressure can make a great many elements due at once; without this
+    // a garden crossing the ceiling would yellow all over in a single
+    // step, which reads as a die-off rather than as a season. Oldest
+    // first, one stage each, deterministically.
+    maxPerCapture: 3,
+
+    // DENSITY IS PRESSURE, NOT A WALL (the sprint's §11). Below `soft`
+    // the garden ages at its own unhurried pace. Between `soft` and
+    // `hard` the pressure ramps 0 → 1 and every span below shortens
+    // toward `quicken` of itself. Past `ceiling` a growth step
+    // increasingly DEEPENS (transforms what is there) instead of adding,
+    // and `hard` is the old ceiling kept as a safety valve rather than
+    // as the mechanism. The garden settles where the addition rate and
+    // the departure rate meet — a living equilibrium, self-correcting in
+    // both directions because relief is immediate: pressure falling
+    // lengthens every remaining span again.
+    density: { soft: 70, ceiling: 110, hard: 132 },
+    quicken: 0.5,
+
+    // The stages each kind passes through, as CUMULATIVE ages in
+    // captures at zero pressure. Deliberately long: "the child should
+    // first have enough time to become familiar with a growth element
+    // before it starts disappearing", and "do NOT implement new leaf →
+    // yellow → gone within a few captures".
+    //
+    // Every kind is different, which is the point of §7:
+    //   leaf   fresh → pale gold → detaches, falls, rests on the floor → gone
+    //   flower fades → petals fall and THE STEM REMAINS → gone
+    //   fruit  never yellows; it ripens, drops, rests briefly → gone
+    //   bud    a bud that never opened dries and drops, slowly
+    //   sprig  young → established → dry → gone, and slowest of all,
+    //          because "do not make large structural branches disappear
+    //          too aggressively"
+    //   vine   HAS NO LIFE CYCLE AND NEVER WILL. The vines are the
+    //          garden's skeleton: every leaf, bud and flower is placed
+    //          on one (onVine) and drawn attached to the nearest node,
+    //          and the growth frontier itself is a point on the living
+    //          tip. Aging the structure would not be a season, it would
+    //          be demolition.
+    stages: {
+      leaf:   [{ p: 'age',    at: 52 }, { p: 'fall',   at: 82 },  { p: 'gone', at: 92 }],
+      flower: [{ p: 'age',    at: 40 }, { p: 'wither', at: 66 },  { p: 'gone', at: 84 }],
+      fruit:  [{ p: 'fall',   at: 30 }, { p: 'gone',   at: 40 }],
+      bud:    [{ p: 'age',    at: 50 }, { p: 'fall',   at: 74 },  { p: 'gone', at: 84 }],
+      sprig:  [{ p: 'wither', at: 88 }, { p: 'gone',   at: 118 }]
+    }
+  };
 
   let _listeners = [];
   let _cache = null;             // { key, record }
@@ -136,6 +238,97 @@
     return function () { s = (s * 48271) % 0x7fffffff; return s / 0x7fffffff; };
   }
 
+  // ---- the life cycle, replayed ------------------------------------------
+  // An element is ALIVE (no phase) until it reaches the first stage its
+  // kind has. After that it carries `p` (the phase name), `pi` (the
+  // stage index it has reached, which only ever advances) and `pb` (the
+  // step that phase began). All three are DERIVED during replay from
+  // `e.b`, the step the element was born at — which is itself derived —
+  // so the persisted record is still exactly { seed, events, recentIds }.
+  // Nothing about the life cycle changes the persistence contract.
+  function _pressure(n) {
+    const d = LIFECYCLE.density;
+    if (n <= d.soft) return 0;
+    if (n >= d.hard) return 1;
+    return (n - d.soft) / (d.hard - d.soft);
+  }
+  // The stage index a kind has earned at this age under this pressure.
+  // -1 = whole. Pressure shortens every span toward `quicken` of itself.
+  function _stageAt(e, age, press) {
+    const st = LIFECYCLE.stages[e.k];
+    if (!st) return -1;
+    const q = 1 - (1 - LIFECYCLE.quicken) * press;
+    const sp = LIFECYCLE.spread;
+    const shift = sp ? ((((e.u * 7919) | 0) + (e.b || 0) * 131) % sp) - (sp >> 1) : 0;
+    let out = -1;
+    for (let i = 0; i < st.length; i++) if (age >= Math.round(st[i].at * q) + shift) out = i;
+    return out;
+  }
+  function _alive(e) { return !e.p; }
+
+  // One capture's worth of aging. It runs BESIDE the growth step and
+  // never in place of it, it advances an element by at most ONE stage,
+  // and it moves at most LIFECYCLE.maxPerCapture elements — so nothing
+  // ever goes from green to gone in one capture and no capture is ever
+  // a mass die-off. Oldest first, ties by index: no rng is involved in
+  // WHO ages, only in where a falling thing lands.
+  function _life(g, lrnd) {
+    const el = g.elements;
+    const res = { aged: [], fell: [], withered: [], removed: [] };
+    if (g.stepCount < LIFECYCLE.startAfter) return res;
+    const press = _pressure(el.length);
+    const ready = [];
+    for (let i = 0; i < el.length; i++) {
+      const e = el[i];
+      if (!LIFECYCLE.stages[e.k]) continue;
+      const have = (typeof e.pi === 'number') ? e.pi : -1;
+      const age = g.stepCount - (e.b || 0);
+      if (_stageAt(e, age, press) > have) ready.push({ i: i, age: age, next: have + 1 });
+    }
+    if (!ready.length) return res;
+    ready.sort(function (a, b) { return (b.age - a.age) || (a.i - b.i); });
+    const gone = {};
+    ready.slice(0, LIFECYCLE.maxPerCapture).forEach(function (r) {
+      const e = el[r.i], st = LIFECYCLE.stages[e.k][r.next];
+      e.pi = r.next; e.pb = g.stepCount;
+      if (st.p === 'gone') { gone[r.i] = true; return; }
+      e.p = st.p;
+      if (st.p === 'fall') {
+        // FALLING IS A REAL EVENT, not visible:false. The element keeps
+        // existing — it detaches, drifts down and LIES ON THE GARDEN
+        // FLOOR for a while before it goes. The engine decides both
+        // ends of that journey so the renderer only ever draws a
+        // transition that was already determined (§19).
+        e.o = { u: e.u, v: e.v };
+        e.v = 0.925 + lrnd() * 0.045;
+        // AND IT DRIFTS TO THE SIDE ON THE WAY DOWN. A leaf that fell
+        // straight was landing on the foot of its own vine — measured on
+        // the right band, whose plant BEGINS at the floor, so five
+        // fallen leaves were invisible inside the foliage they had just
+        // left. Litter belongs beside the plant, not under it. Which
+        // side is the side it was already leaning towards.
+        e.u = 0.5 + (e.u < 0.5 ? -1 : 1) * (0.28 + lrnd() * 0.16);
+        res.fell.push(r.i);
+      } else if (st.p === 'wither') res.withered.push(r.i);
+      else res.aged.push(r.i);
+    });
+    const goneIx = Object.keys(gone);
+    if (!goneIx.length) return res;
+    // Compact, and remap — everything this step reports must be an index
+    // into the list the renderer is about to draw.
+    const map = {};
+    const kept = [];
+    for (let i = 0; i < el.length; i++) {
+      if (gone[i]) { res.removed.push(el[i]); continue; }
+      map[i] = kept.length; kept.push(el[i]);
+    }
+    g.elements = kept;
+    ['aged', 'fell', 'withered'].forEach(function (k) {
+      res[k] = res[k].map(function (i) { return map[i]; }).filter(function (i) { return i !== undefined; });
+    });
+    return res;
+  }
+
   // ---- what a growth step REPORTS -----------------------------------------
   // A growth event is not always an element appearing. A bud opening
   // into a flower, a flower ripening into fruit, a leaf filling out —
@@ -163,7 +356,9 @@
     const el = g.elements;
     const res = { type: null, added: [], transformed: [] };
 
-    function push(e) { el.push(e); res.added.push(el.length - 1); return el.length - 1; }
+    // Every element is stamped with the step it was born at — the whole
+    // of the age model, and derived rather than persisted.
+    function push(e) { e.b = g.stepCount; el.push(e); res.added.push(el.length - 1); return el.length - 1; }
     function vineNode(band, u, v) {
       push({ k: 'vine', band: band, u: u, v: v });
       g.tip = { band: band, u: u, v: v };
@@ -173,7 +368,15 @@
     // where a bud used to be — and only a genuine kind change gets a
     // ghost, so promoting a fruit to a pair does not sprout a phantom
     // flower.
-    function change(ix, e) { (res.was || (res.was = {}))[ix] = el[ix].k; el[ix] = e; res.transformed.push(ix); }
+    // A TRANSFORMATION RESTARTS THE CLOCK. A flower that has just opened
+    // is new AS A FLOWER, whatever the bud behind it had already lived
+    // through — otherwise a long-waiting bud would open and fade in the
+    // same handful of captures.
+    function change(ix, e) {
+      (res.was || (res.was = {}))[ix] = el[ix].k;
+      e.b = g.stepCount;
+      el[ix] = e; res.transformed.push(ix);
+    }
     function touch(ix) { if (res.transformed.indexOf(ix) < 0) res.transformed.push(ix); }
     function jitter(x, amt) { return Math.max(0, Math.min(1, x + (rnd() - 0.5) * amt)); }
     // CONTROLLED VARIETY, not decoration. One seeded draw picks how a
@@ -188,11 +391,20 @@
       if (r < curl + pair) return 'pair';
       return 'plain';
     }
+    // GROWTH ONLY EVER TOUCHES THE LIVING. A leaf on its way down does
+    // not fill out; a faded flower does not ripen into fruit. Every
+    // search below goes through these two, so there is no branch in
+    // which a dying element could be promoted back into the season.
     function pickIx(fn) {
       const ixs = [];
-      for (let i = 0; i < el.length; i++) if (fn(el[i])) ixs.push(i);
+      for (let i = 0; i < el.length; i++) if (_alive(el[i]) && fn(el[i])) ixs.push(i);
       return ixs.length ? ixs[Math.floor(rnd() * ixs.length)] : -1;
     }
+    function firstIx(kind) {
+      for (let i = 0; i < el.length; i++) if (_alive(el[i]) && el[i].k === kind) return i;
+      return -1;
+    }
+    function someAlive(fn) { return el.some(function (e) { return _alive(e) && fn(e); }); }
 
     // Past the ceiling the garden DEEPENS instead of spreading — the
     // element count NEVER rises again. What it does instead is a pool
@@ -202,16 +414,27 @@
     // pool — it is the fallback for when nothing is left to transform,
     // because a garden whose only late behaviour is "the same leaves
     // get slightly bigger" has stopped answering the child.
-    if (el.length >= DENSITY_CEILING) {
-      const budIx = el.findIndex(function (e) { return e.k === 'bud'; });
-      const flIx = el.findIndex(function (e) { return e.k === 'flower'; });
+    // THE CEILING IS PRESSURE NOW, NOT A WALL (§11). Under `ceiling` a
+    // step adds as it always did. Between `ceiling` and `hard` a step
+    // increasingly deepens instead — new growth replacing older growth
+    // rather than piling on top of it — and `hard` keeps the old
+    // behaviour as a safety valve. The short-circuit matters: at any
+    // count at or below the ceiling the rng is not consulted at all, so
+    // every garden younger than that is byte-identical to the one this
+    // sprint inherited and the whole measured season pacing is untouched.
+    const D = LIFECYCLE.density;
+    const over = el.length > D.ceiling
+      ? Math.min(1, (el.length - D.ceiling) / Math.max(1, D.hard - D.ceiling)) * 0.9 : 0;
+    if (el.length >= D.hard || (over > 0 && rnd() < over)) {
+      const budIx = firstIx('bud');
+      const flIx = firstIx('flower');
       const pool = [];
       if (budIx >= 0) pool.push('open_bud');
       if (flIx >= 0) pool.push('ripen_flower');
-      if (el.some(function (e) { return e.k === 'leaf' && LEAF_FORMS.indexOf(e.f || 'plain') < LEAF_FORMS.length - 1; })) pool.push('fill_leaf');
-      if (el.some(function (e) { return e.k === 'flower' && FLOWER_FORMS.indexOf(e.f || 'plain') < FLOWER_FORMS.length - 1; })) pool.push('open_flower');
-      if (el.some(function (e) { return e.k === 'fruit' && (e.f || 'plain') === 'plain'; })) pool.push('pair_fruit');
-      if (el.some(function (e) { return e.k === 'sprig' && (e.f || 'plain') === 'plain'; })) pool.push('fork_sprig');
+      if (someAlive(function (e) { return e.k === 'leaf' && LEAF_FORMS.indexOf(e.f || 'plain') < LEAF_FORMS.length - 1; })) pool.push('fill_leaf');
+      if (someAlive(function (e) { return e.k === 'flower' && FLOWER_FORMS.indexOf(e.f || 'plain') < FLOWER_FORMS.length - 1; })) pool.push('open_flower');
+      if (someAlive(function (e) { return e.k === 'fruit' && (e.f || 'plain') === 'plain'; })) pool.push('pair_fruit');
+      if (someAlive(function (e) { return e.k === 'sprig' && (e.f || 'plain') === 'plain'; })) pool.push('fork_sprig');
       const act = pool.length ? pool[Math.floor(rnd() * pool.length)] : 'grow_leaf';
       if (act === 'open_bud') {
         const b = el[budIx];
@@ -241,12 +464,18 @@
         // rearranges one blade rather than doing nothing at all. There
         // is no path out of this branch that reports no change.
         let ix = pickIx(function (e) { return e.k === 'leaf' && (e.s || 1) < 1.35; });
-        if (ix >= 0) { el[ix].s = Math.min(1.35, (el[ix].s || 1) + 0.12); touch(ix); }
+        if (ix >= 0) { el[ix].s = Math.min(1.35, (el[ix].s || 1) + 0.12); touch(ix); res.type = 'leaf_grew'; }
         else {
           ix = pickIx(function (e) { return e.k === 'leaf'; });
-          if (ix >= 0) { el[ix].f = LEAF_FORMS[(LEAF_FORMS.indexOf(el[ix].f || 'plain') + 1) % LEAF_FORMS.length]; touch(ix); }
+          if (ix >= 0) { el[ix].f = LEAF_FORMS[(LEAF_FORMS.indexOf(el[ix].f || 'plain') + 1) % LEAF_FORMS.length]; touch(ix); res.type = 'leaf_grew'; }
+          // A DENSE GARDEN THAT IS ALSO AN OLD ONE can reach this branch
+          // with nothing living left to promote — every leaf on its way
+          // down, every flower faded. Deepening has nothing to deepen,
+          // so the garden GROWS: renewal is what a garden does when its
+          // old growth has left, and there is no path out of this branch
+          // that reports no change.
+          else { onVine('leaf', { s: 0.75 + rnd() * 0.25, f: leafForm(0.22, 0.22) }); res.type = 'leaf_added'; }
         }
-        res.type = 'leaf_grew';
       }
       return res;
     }
@@ -314,7 +543,7 @@
     // rolling again. Same growth step, same vocabulary, chosen rather
     // than won.
     function noneYet(kinds) {
-      return !el.some(function (e) { return kinds.indexOf(e.k) >= 0; });
+      return !el.some(function (e) { return _alive(e) && kinds.indexOf(e.k) >= 0; });
     }
     const forceBud = stage >= BUD_FROM + 5 && noneYet(['bud', 'flower', 'fruit']);
     const forceFlower = stage >= FLOWER_FROM + 6 && noneYet(['flower', 'fruit']);
@@ -378,7 +607,7 @@
       // explicit that 18 is a new chapter. Structure first, colour in
       // the steps structure does not need.
       if (stage >= FLOWER_FROM && (forceFlower || rnd() < 0.5)) {
-        const bIx = el.findIndex(function (e) { return e.k === 'bud'; });
+        const bIx = firstIx('bud');
         if (bIx >= 0) {
           const bb = el[bIx];
           change(bIx, { k: 'flower', band: bb.band, u: bb.u, v: bb.v, f: rnd() < 0.25 ? 'open' : 'plain' });
@@ -406,7 +635,7 @@
       // waited all the way to 40 for its first colour — one seed in
       // five did exactly that. The season is continuous now.
       if (forceFlower || rnd() < 0.32) {
-        const bIx2 = el.findIndex(function (e) { return e.k === 'bud'; });
+        const bIx2 = firstIx('bud');
         if (bIx2 >= 0) {
           const bb2 = el[bIx2];
           change(bIx2, { k: 'flower', band: bb2.band, u: bb2.u, v: bb2.v, f: rnd() < 0.25 ? 'open' : 'plain' });
@@ -415,7 +644,7 @@
         }
       }
       if (stage >= FRUIT_FROM && rnd() < 0.16) {
-        const fIx = el.findIndex(function (e) { return e.k === 'flower'; });
+        const fIx = firstIx('flower');
         if (fIx >= 0) {
           const ff = el[fIx];
           change(fIx, { k: 'fruit', band: ff.band, u: ff.u, v: ff.v, f: rnd() < 0.25 ? 'pair' : 'plain' });
@@ -450,7 +679,7 @@
     // This is the most varied phase by design: every form in the
     // vocabulary is reachable here.
     if (stage >= FRUIT_FROM && rnd() < 0.18) {
-      const fIx = el.findIndex(function (e) { return e.k === 'flower'; });
+      const fIx = firstIx('flower');
       if (fIx >= 0) {
         const f = el[fIx];
         change(fIx, { k: 'fruit', band: f.band, u: f.u, v: f.v, f: rnd() < 0.25 ? 'pair' : 'plain' });
@@ -459,14 +688,26 @@
       }
     }
     if (rnd() < 0.3) {
-      const budIx = el.findIndex(function (e) { return e.k === 'bud'; });
+      const budIx = firstIx('bud');
       if (budIx >= 0) {
         const b = el[budIx];
         change(budIx, { k: 'flower', band: b.band, u: b.u, v: b.v, f: rnd() < 0.3 ? 'open' : 'plain' });
         res.type = 'bud_opened';
         return res;
       }
-      push({ k: 'flower', band: 'left', u: jitter(0.5, 0.2), v: 0.86 - (g.flowers = (g.flowers || 0) + 1) * 0.12, f: rnd() < 0.25 ? 'open' : 'plain' });
+      // BOUNDED, and it was not. This fallback stacks a flower a little
+      // higher each time it fires, and nothing wrapped it: measured at
+      // 340 captures it had walked to v = -3.5, three whole band heights
+      // above the workspace, where _map puts it outside the layer and
+      // the child never sees it. It is a pre-existing fault (16 off-band
+      // elements across five seeds before this sprint) that the life
+      // cycle made worse rather than caused — the old hard ceiling
+      // stopped this branch running at all past ~90 captures, and a
+      // garden that now stays under the ceiling forever keeps firing it
+      // (36 off-band). Wrapping costs nothing, changes no other growth
+      // decision — the same rng draws happen in the same order — and
+      // gives the density budget back its lost elements.
+      push({ k: 'flower', band: 'left', u: jitter(0.5, 0.2), v: 0.86 - ((g.flowers = (g.flowers || 0) + 1) % 6) * 0.12, f: rnd() < 0.25 ? 'open' : 'plain' });
       res.type = 'flower_bloomed';
       return res;
     }
@@ -476,11 +717,32 @@
     return res;
   }
 
+  // THE LIFE CYCLE GETS ITS OWN SEEDED STREAM, and that is deliberate.
+  // A second Park–Miller generator, seeded off the same garden seed, is
+  // just as reproducible as one shared stream — and it keeps the life
+  // cycle's draws OUT of the growth stream, so the season pacing this
+  // sprint inherited (measured across thirteen seeds: bud 9/13/32,
+  // flower 24/25/33, fruit 26/31/43) is not perturbed by a single leaf
+  // deciding where to land. Same seed + same events → the same garden,
+  // the same growth, the same aging and the same fallen leaves.
+  function _lifeSeed(seed) { return ((seed ^ 0x5f3a7c1) >>> 0) % 0x7ffffffe + 1; }
+
   function _build(seed, events) {
     const rnd = _rng(seed);
+    const lrnd = _rng(_lifeSeed(seed));
     const g = { elements: [], tip: null, stepCount: 0, topClosed: false, rightBorn: false };
     let last = null;
-    for (let i = 0; i < events; i++) { last = _step(g, rnd); g.stepCount++; }
+    for (let i = 0; i < events; i++) {
+      // AGING FIRST, then growth — and never instead of it. Doing it in
+      // this order means the compaction has already happened when the
+      // growth step runs, so every index the step reports is an index
+      // into the list the renderer is about to draw.
+      const life = _life(g, lrnd);
+      last = _step(g, rnd);
+      last.aged = life.aged; last.fell = life.fell;
+      last.withered = life.withered; last.removed = life.removed;
+      g.stepCount++;
+    }
     return { elements: g.elements, last: last };
   }
 
@@ -509,7 +771,8 @@
     rec.events += 1;
     _save(rec);
     const built = _build(rec.seed, rec.events);
-    const growth = built.last || { type: null, added: [], transformed: [] };
+    const growth = built.last
+      || { type: null, added: [], transformed: [], aged: [], fell: [], withered: [], removed: [] };
     _listeners.forEach(function (cb) { try { cb({ animate: true, growth: growth }); } catch (e) {} });
     return { ok: true, grew: true, growth: growth };
   }
@@ -522,6 +785,12 @@
     });
   } catch (e) {}
 
-  const api = { state: state, captured: captured, onChange: onChange, claim: claim };
+  // LIFECYCLE is exposed because the sprint asked for its pace to be
+  // tunable from one place and because the suite has to be able to drive
+  // a garden into density pressure that a healthy one never reaches. It
+  // is the tuning surface, not product state: nothing in the Studio
+  // reads it, nothing writes it, and it is not persisted.
+  const api = { state: state, captured: captured, onChange: onChange, claim: claim,
+                lifecycle: LIFECYCLE };
   try { window.LivingGarden = api; } catch (e) {}
 })();

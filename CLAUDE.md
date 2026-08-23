@@ -1593,10 +1593,63 @@ handwriting.
   The engine reports it correctly; there is nowhere to put it. Fixing it
   needs either the engine knowing the workspace's geometry or the band
   mapping changing, and both are frozen.
+- **The Garden has a LIFE CYCLE, and the ceiling became pressure.**
+  Elements grow, mature, age, wither, fall, rest on the garden floor and
+  go, and the room that leaves behind is grown into by ordinary growth.
+  **Growth is caused by capture; aging is caused by maturity** — so
+  aging runs BESIDE a growth step and never in place of one, which is
+  *structure outranks season* taken to its conclusion and is why the
+  growth decision tree and every measured season pacing are untouched.
+  **Age is counted in captures, never in wall-clock time**: a child who
+  does not visit for a week comes back to the garden they left. Nothing
+  new is persisted — an element's birth step is derived on replay, so
+  the record is still exactly `{ seed, events, recentIds }`.
+- **Every threshold lives in ONE object**, `LIFECYCLE` in
+  `js/gardenEngine.js`, exposed as `LivingGarden.lifecycle`. Do not
+  scatter timing constants. **Each kind leaves its own way**: a leaf
+  pales, detaches, drifts down and rests before going; a flower fades,
+  drops its petals and **leaves its stem standing**; a fruit never
+  yellows, it ripens and drops; a sprig dries slowly. **A vine never
+  ages** — every element is placed on one and drawn attached to one, so
+  aging the skeleton would not be a season, it would be demolition.
+- **Density is pressure, not a wall.** Below 70 elements the garden ages
+  at its own pace; the pressure ramps to 132 and shortens every span
+  toward half; past 110 a step increasingly deepens instead of adding.
+  Measured over five seeds at 340 captures each the count runs
+  18 · 50 · 69 · 82 · 83 · 79 · 82 and then **sits at 77–85 forever**
+  while new growth still arrives on two captures in three. The old 110
+  cap is never reached by a healthy garden; 132 survives only as a
+  safety valve.
+- **Aging is natural, never punishing.** Autumnal, gentle, renewal — no
+  brown, no decay, no disease, no sad faces, no warning states, no
+  message of any kind. *"This has had its time"*, not *"something bad
+  happened"*. An aging leaf is a pale yellow-**green**, deliberately not
+  gold: gold was the same hue as the flowers and the fruit, and a
+  seventy-capture plant read as one yellow mass.
+- **The life cycle never glows.** The light means NEW GROWTH and goes
+  out as it settles; lighting an ending would dilute what the glow says
+  and make it look like a reward. Aging is shown by colour and by
+  movement, and by nothing else.
+- **Falling is a real event**, not `visible:false` — detach, drift,
+  rock, land, rest, fade. It animates the INNER group, because the outer
+  carries the positioning attribute transform and a CSS transform there
+  tears every blade off its vine. Disclosed: *a garden's very first fall
+  is a short drop* (the oldest growth is the lowest, since the vine
+  grows upward from the floor); the median fall crosses 41% of its band.
+- **The step reports removals too** — `{ aged, fell, withered, removed }`
+  beside `added` and `transformed`. Same extension `transformed` already
+  was: the renderer must know which elements changed STATE, not only
+  which appeared. Rendering stays pure — the phase palette is passed
+  INTO the drawing vocabulary rather than painted on afterwards, so a
+  settled garden carries no inline styles and two renders are still
+  byte-identical.
 - Disclosed: the growth record is local-first per device; a cloud row
   (the `creator_handwriting` pattern) is the follow-up when one garden
   should span devices. Handwriting cloud sync is push-only like the
   library's.
+- Disclosed, and now measurably wider: **12% of all life-cycle events
+  land in the top band** this workspace does not have, so they are
+  correctly decided and never drawn.
 - `js/gardenEngine.js` · `js/gardenRenderer.js` ·
   `js/handwritingStore.js` · `js/handwritingStudio.js` ·
   `js/handwritingFont.js` · `tools/garden-test/run-garden-tests.js`.

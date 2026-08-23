@@ -705,6 +705,7 @@ function check(cond, name, note) { (cond ? ok : fail)(name, note); }
   }
   const seeds = SEEDS;
   const runs = await runSeeds();
+  const LIFE_MAX = await page.evaluate(() => LivingGarden.lifecycle.maxPerCapture);
   const noChange = runs.reduce((n, r) => n + r.noChange.length, 0);
   const zeroDelta = runs.reduce((n, r) => n + r.zeroDelta.length, 0);
   check(noChange === 0,
@@ -882,15 +883,33 @@ function check(cond, name, note) { (cond ? ok : fail)(name, note); }
              elements: LivingGarden.state().elements.length };
   });
 
+  // A LEAF FILLING OUT NOW NEEDS DENSITY PRESSURE TO HAPPEN AT ALL, and
+  // that is this sprint's doing rather than a regression. `leaf_grew`
+  // was the deepen branch's move and the deepen branch was reached by
+  // hitting a hard ceiling of 110 elements; with a life cycle in place a
+  // healthy garden settles around eighty and never gets there. The
+  // animation is still real and still reachable, so the check drives the
+  // garden to it the only honest way: by suspending aging — the tuning
+  // surface the engine exposes for exactly this — and letting the garden
+  // fill the way it used to.
+  async function suspendAging(on) {
+    await page.evaluate((on) => {
+      if (!window.__gardenStartAfter) window.__gardenStartAfter = LivingGarden.lifecycle.startAfter;
+      LivingGarden.lifecycle.startAfter = on ? 1e9 : window.__gardenStartAfter;
+    }, on);
+  }
+
   const XSEED = 12345;
   const cases = [
     { type: 'bud_opened',     max: 90,  ghost: 'bud',    name: 'X1 a bud OPENS into a flower — the bud is shown giving way' },
     { type: 'flower_ripened', max: 120, ghost: 'flower', name: 'X2 a flower RIPENS into fruit — the flower is shown giving way' },
-    { type: 'leaf_grew',      max: 130, ghost: null,     name: 'X3 a leaf filling out swells where it stands' }
+    { type: 'leaf_grew',      max: 200, ghost: null,     dense: true,
+      name: 'X3 a leaf filling out swells where it stands (under density pressure, where deepening happens)' }
   ];
   for (const c of cases) {
+    if (c.dense) await suspendAging(true);
     const k = await findGrowth(XSEED, c.type, c.max);
-    if (k < 0) { fail(c.name, 'no ' + c.type + ' within ' + c.max + ' captures'); continue; }
+    if (k < 0) { fail(c.name, 'no ' + c.type + ' within ' + c.max + ' captures'); if (c.dense) await suspendAging(false); continue; }
     await setGarden(XSEED, k);
     await page.evaluate(() => GardenRenderer.render());
     await page.waitForTimeout(400);
@@ -903,6 +922,7 @@ function check(cond, name, note) { (cond ? ok : fail)(name, note); }
     check(moved && after.lit >= 1 && after.elements === before.elements &&
           (c.ghost ? after.ghosts >= 1 : true),
       c.name, 'capture ' + (k + 1) + ' · ' + JSON.stringify(after) + ' (was ' + before.elements + ' elements)');
+    if (c.dense) await suspendAging(false);
     if (c.type === 'bud_opened') {
       await page.screenshot({ path: path.join(SHOTS, 'transform-bud-opening.png'),
         clip: { x: 300, y: 100, width: 150, height: 640 } });
@@ -991,6 +1011,397 @@ function check(cond, name, note) { (cond ? ok : fail)(name, note); }
   check(answered + topOnly === 20 && answered >= 14,
     'X7 every one of twenty consecutive captures is answered on screen (bar those that land in the absent top band)',
     answered + ' answered, ' + topOnly + ' top-band-only, unanswered ' + JSON.stringify(unanswered));
+
+  // ---------------------------------------------------------------
+  // LC: THE LIFE CYCLE — grow → mature → age → wither → fall → gone,
+  // and the room that leaves behind grown into by ordinary growth.
+  // The sprint's own scenario list (§20 A-G) run engine-side over five
+  // seeds x 340 captures each, because the interesting part of a life
+  // cycle is what a garden looks like after a very long time.
+  // ---------------------------------------------------------------
+  console.log('-- LC: the life cycle, measured over 5 seeds x 340 captures');
+  const life = await page.evaluate((seeds) => {
+    const MARKS = [10, 30, 50, 70, 100, 130, 160, 220, 280, 340];
+    const out = [];
+    seeds.forEach((seed) => {
+      const key = 'vihu-living-garden:lc-' + seed;
+      localStorage.setItem('vihu-magic-card-active-id', 'lc-' + seed);
+      localStorage.setItem(key, JSON.stringify({ v: 1, seed: seed, events: 0, recentIds: [] }));
+      LivingGarden.state();
+      const row = { seed: seed, at: {}, silent: 0, aged: 0, fell: 0, withered: 0, removed: 0,
+                    firstAge: -1, firstFall: -1, firstGone: -1, earlyLife: 0,
+                    lives: [], phaseOrder: {}, vineAged: 0, maxN: 0, addedAfter150: 0,
+                    perCapture: 0, floorSeen: 0 };
+      const born = {};              // element identity → first step seen alive
+      for (let i = 0; i < 340; i++) {
+        const r = LivingGarden.captured({ id: 'lc-' + seed + '-' + i });
+        const g = r.growth;
+        if ((g.added.length + g.transformed.length) === 0) row.silent++;
+        const moved = g.aged.length + g.fell.length + g.withered.length + g.removed.length;
+        row.perCapture = Math.max(row.perCapture, moved);
+        if (i < 10 && moved) row.earlyLife++;
+        row.aged += g.aged.length; row.fell += g.fell.length;
+        row.withered += g.withered.length; row.removed += g.removed.length;
+        if (row.firstAge < 0 && g.aged.length) row.firstAge = i + 1;
+        if (row.firstFall < 0 && g.fell.length) row.firstFall = i + 1;
+        if (row.firstGone < 0 && g.removed.length) row.firstGone = i + 1;
+        if (g.added.length && i >= 150) row.addedAfter150++;
+        g.removed.forEach((e) => {
+          row.lives.push(i - (e.b || 0));                 // how long it lived, in captures
+          (row.phaseOrder[e.k] || (row.phaseOrder[e.k] = {}))[e.p || 'none'] =
+            ((row.phaseOrder[e.k] || {})[e.p || 'none'] || 0) + 1;
+          if (e.k === 'vine') row.vineAged++;
+        });
+        const els = LivingGarden.state().elements;
+        row.maxN = Math.max(row.maxN, els.length);
+        if (els.some((e) => e.p === 'fall' && e.v > 0.9)) row.floorSeen++;
+        if (MARKS.indexOf(i + 1) >= 0) {
+          const by = {};
+          els.forEach((e) => { const k = e.k + (e.p ? ':' + e.p : ''); by[k] = (by[k] || 0) + 1; });
+          row.at[i + 1] = { n: els.length, by: by, ids: els.map((e) => e.k + '@' + e.b).join('|') };
+        }
+      }
+      out.push(row);
+      localStorage.removeItem(key);
+      localStorage.removeItem('vihu-magic-card-active-id');
+    });
+    return out;
+  }, SEEDS);
+
+  const lcEvery = (fn) => life.every(fn);
+  const curve = (m) => life.map((r) => r.at[m].n);
+
+  // A — a fresh garden has no life cycle at all.
+  check(lcEvery((r) => r.earlyLife === 0),
+    'LC-A a fresh garden never ages — nothing aged, fell or left in the first ten captures',
+    life.map((r) => r.seed + ':' + r.earlyLife).join(' '));
+  check(lcEvery((r) => Object.keys(r.at[10].by).every((k) => k.indexOf(':') < 0)),
+    'LC-A2 and at ten captures every element is whole', JSON.stringify(life[0].at[10].by));
+
+  // B — a mature garden has the whole vocabulary in it.
+  check(lcEvery((r) => { const b = r.at[50].by; return (b.flower || b['flower:age'] || b.fruit || b.bud); }),
+    'LC-B a garden of fifty captures has bloomed', life.map((r) => JSON.stringify(r.at[50].by)).join(' '));
+
+  // C — aging, in order and at a pace a child can follow.
+  check(lcEvery((r) => r.firstAge > 40 && r.firstFall > r.firstAge && r.firstGone > r.firstFall),
+    'LC-C nothing skips a stage: a leaf pales before it falls, and falls before it goes',
+    life.map((r) => r.seed + ' age@' + r.firstAge + ' fall@' + r.firstFall + ' gone@' + r.firstGone).join(' · '));
+  const shortest = Math.min.apply(null, life.map((r) => Math.min.apply(null, r.lives)));
+  check(shortest >= 25,
+    'LC-C2 aging is NOT fast — the shortest life in 1700 captures is ' + shortest + ' captures long',
+    'per-kind stage spans live in ONE config object, LivingGarden.lifecycle');
+  check(lcEvery((r) => r.floorSeen > 40),
+    'LC-C3 a fallen element RESTS on the garden floor rather than vanishing',
+    life.map((r) => r.floorSeen).join(' ') + ' captures with something lying on the floor');
+  check(lcEvery((r) => r.perCapture <= LIFE_MAX),
+    'LC-C4 no capture is a die-off — at most ' + LIFE_MAX + ' elements change stage in one',
+    life.map((r) => r.perCapture).join(' '));
+
+  // D — renewal. The garden breathes rather than filling up.
+  check(lcEvery((r) => r.addedAfter150 > 30),
+    'LC-D new growth keeps arriving long after the garden has stopped getting bigger',
+    life.map((r) => r.addedAfter150 + '/190').join(' ') + ' captures past 150 still added an element');
+  check(lcEvery((r) => r.at[340].n <= r.at[100].n + 6),
+    'LC-D2 density does not endlessly increase — 340 captures is no denser than 100',
+    life.map((r) => r.at[100].n + '→' + r.at[340].n).join(' '));
+  check(lcEvery((r) => r.at[160].ids !== r.at[100].ids && r.at[340].ids !== r.at[160].ids),
+    'LC-D3 and the composition CHANGES — the garden at 160 is not the garden at 100 with more in it');
+
+  // E — a dense garden. Aging keeps a healthy one well under the old
+  // ceiling, so this proves the other half: with the life cycle
+  // suspended the garden still cannot run away, and turning it back on
+  // brings a dense garden down again.
+  const dense = await page.evaluate(() => {
+    const keep = LivingGarden.lifecycle.startAfter;
+    LivingGarden.lifecycle.startAfter = 1e9;                 // aging suspended
+    localStorage.setItem('vihu-magic-card-active-id', 'lc-dense');
+    localStorage.setItem('vihu-living-garden:lc-dense', JSON.stringify({ v: 1, seed: 4242, events: 0, recentIds: [] }));
+    LivingGarden.state();
+    let silent = 0, max = 0;
+    for (let i = 0; i < 260; i++) {
+      const g = LivingGarden.captured({ id: 'dn-' + i }).growth;
+      if ((g.added.length + g.transformed.length) === 0) silent++;
+      max = Math.max(max, LivingGarden.state().elements.length);
+    }
+    const packed = LivingGarden.state().elements.length;
+    LivingGarden.lifecycle.startAfter = keep;                // and the season returns
+    for (let i = 0; i < 120; i++) LivingGarden.captured({ id: 'dn2-' + i });
+    const relieved = LivingGarden.state().elements.length;
+    const els = LivingGarden.state().elements;
+    const kinds = {};
+    els.forEach((e) => { kinds[e.k] = (kinds[e.k] || 0) + 1; });
+    localStorage.removeItem('vihu-living-garden:lc-dense');
+    localStorage.removeItem('vihu-magic-card-active-id');
+    return { max: max, packed: packed, relieved: relieved, silent: silent, kinds: kinds,
+             hard: LivingGarden.lifecycle.density.hard };
+  });
+  check(dense.max <= dense.hard && dense.silent === 0,
+    'LC-E a garden driven past the old ceiling never runs away, and no capture goes unanswered',
+    'peak ' + dense.max + ' elements, hard limit ' + dense.hard + ', ' + dense.silent + ' silent');
+  check(dense.relieved < dense.packed - 15,
+    'LC-E2 aging RELIEVES density — a packed garden comes back down when the season resumes',
+    dense.packed + ' → ' + dense.relieved + ' elements');
+  check(Object.keys(dense.kinds).length >= 4,
+    'LC-E3 and a dense garden stays visually rich rather than thinning to stems', JSON.stringify(dense.kinds));
+
+  // F — replay. Same seed + same events → the same garden, including
+  // every birth step, every phase and every fallen leaf's resting place.
+  const lcDet = await page.evaluate(() => {
+    const run = () => {
+      const id = 'lcdet-' + Math.random();
+      localStorage.setItem('vihu-magic-card-active-id', id);
+      localStorage.setItem('vihu-living-garden:' + id, JSON.stringify({ v: 1, seed: 31337, events: 0, recentIds: [] }));
+      LivingGarden.state();
+      const rep = [];
+      for (let i = 0; i < 200; i++) {
+        const g = LivingGarden.captured({ id: 'r-' + Math.random() }).growth;
+        rep.push(g.type + '|' + g.aged.join('.') + '|' + g.fell.join('.') + '|' + g.withered.join('.')
+                 + '|' + g.removed.map((e) => e.k + e.b).join('.'));
+      }
+      const els = JSON.stringify(LivingGarden.state().elements);
+      localStorage.removeItem('vihu-living-garden:' + id);
+      localStorage.removeItem('vihu-magic-card-active-id');
+      return { rep: rep.join(';'), els: els };
+    };
+    const a = run(), b = run();
+    // and the same thing reached by pure REPLAY rather than by capturing
+    const id = 'lcrep-' + Math.random();
+    localStorage.setItem('vihu-magic-card-active-id', id);
+    localStorage.setItem('vihu-living-garden:' + id, JSON.stringify({ v: 1, seed: 31337, events: 200, recentIds: [] }));
+    const replayed = JSON.stringify(LivingGarden.state().elements);
+    localStorage.removeItem('vihu-living-garden:' + id);
+    localStorage.removeItem('vihu-magic-card-active-id');
+    return { sameRun: a.rep === b.rep, sameEls: a.els === b.els, sameReplay: replayed === a.els, len: a.els.length };
+  });
+  check(lcDet.sameRun && lcDet.sameEls && lcDet.sameReplay,
+    'LC-F same seed + same events = the same garden, the same aging decisions and the same fallen leaves — captured or replayed',
+    JSON.stringify(lcDet));
+
+  // G — one capture is still one growth, life cycle included.
+  const lcDup = await page.evaluate(() => {
+    const id = 'lcdup-' + Math.random();
+    localStorage.setItem('vihu-magic-card-active-id', id);
+    localStorage.setItem('vihu-living-garden:' + id, JSON.stringify({ v: 1, seed: 5150, events: 120, recentIds: [] }));
+    LivingGarden.state();
+    const a = JSON.stringify(LivingGarden.state().elements);
+    const r1 = LivingGarden.captured({ id: 'same-one' });
+    const b = JSON.stringify(LivingGarden.state().elements);
+    const r2 = LivingGarden.captured({ id: 'same-one' });
+    const c = JSON.stringify(LivingGarden.state().elements);
+    localStorage.removeItem('vihu-living-garden:' + id);
+    localStorage.removeItem('vihu-magic-card-active-id');
+    return { grew: r1.grew, again: r2.grew, changed: a !== b, frozen: b === c };
+  });
+  check(lcDup.grew && !lcDup.again && lcDup.changed && lcDup.frozen,
+    'LC-G a repeated capture id ages nothing and grows nothing — the garden is byte-identical', JSON.stringify(lcDup));
+
+  // The structure is never aged, and the persistence contract is intact.
+  check(lcEvery((r) => r.vineAged === 0),
+    'LC-H the vines never age — the garden\'s skeleton is not a season',
+    life.map((r) => r.vineAged).join(' ') + ' vine removals');
+  const record = await page.evaluate(() => {
+    const id = 'lckeys-' + Math.random();
+    localStorage.setItem('vihu-magic-card-active-id', id);
+    localStorage.setItem('vihu-living-garden:' + id, JSON.stringify({ v: 1, seed: 8080, events: 0, recentIds: [] }));
+    LivingGarden.state();
+    for (let i = 0; i < 150; i++) LivingGarden.captured({ id: 'k-' + i });
+    const raw = JSON.parse(localStorage.getItem('vihu-living-garden:' + id));
+    localStorage.removeItem('vihu-living-garden:' + id);
+    localStorage.removeItem('vihu-magic-card-active-id');
+    return Object.keys(raw).sort().join(',');
+  });
+  check(record === 'events,recentIds,seed,v',
+    'LC-I the persistence contract is UNCHANGED — a 150-capture garden with a full life cycle still stores { v, seed, events, recentIds }',
+    record);
+
+  // Each kind's own life cycle, not one shared one.
+  const perKind = {};
+  life.forEach((r) => Object.keys(r.phaseOrder).forEach((k) => {
+    perKind[k] = perKind[k] || {};
+    Object.keys(r.phaseOrder[k]).forEach((p) => { perKind[k][p] = (perKind[k][p] || 0) + r.phaseOrder[k][p]; });
+  }));
+  check(perKind.leaf && perKind.leaf.fall && perKind.flower && perKind.flower.wither
+        && perKind.fruit && perKind.fruit.fall && !(perKind.fruit || {}).age,
+    'LC-J each kind leaves its own way — a leaf falls, a flower is a spent stem, a fruit drops without ever yellowing',
+    JSON.stringify(perKind));
+
+  // Falls are real journeys, everything stays inside its band, and the
+  // top band's absence is COUNTED rather than waved away.
+  const geom = await page.evaluate((seeds) => {
+    const dists = [], off = [];
+    let topLife = 0, allLife = 0;
+    seeds.forEach((seed) => {
+      const key = 'vihu-living-garden:gm-' + seed;
+      localStorage.setItem('vihu-magic-card-active-id', 'gm-' + seed);
+      localStorage.setItem(key, JSON.stringify({ v: 1, seed: seed, events: 0, recentIds: [] }));
+      LivingGarden.state();
+      for (let i = 0; i < 340; i++) {
+        const g = LivingGarden.captured({ id: 'gm-' + seed + '-' + i }).growth;
+        const els = LivingGarden.state().elements;
+        (g.fell || []).forEach((j) => { const e = els[j]; if (e && e.o) dists.push(e.v - e.o.v); });
+        ['aged', 'fell', 'withered'].forEach((f) => (g[f] || []).forEach((j) => {
+          if (!els[j]) return; allLife++; if (els[j].band === 'top') topLife++;
+        }));
+        (g.removed || []).forEach((e) => { allLife++; if (e.band === 'top') topLife++; });
+      }
+      LivingGarden.state().elements.forEach((e) => { if (e.v < -0.01 || e.v > 1.01) off.push(e.k + '@' + e.v.toFixed(2)); });
+      localStorage.removeItem(key);
+      localStorage.removeItem('vihu-magic-card-active-id');
+    });
+    dists.sort((a, b) => a - b);
+    return { n: dists.length, median: dists[dists.length >> 1], tiny: dists.filter((d) => d < 0.05).length,
+             off: off.length, offEx: off.slice(0, 5), topLife: topLife, allLife: allLife };
+  }, SEEDS);
+  check(geom.median > 0.25 && geom.tiny < geom.n * 0.1,
+    'LC-K a fall is a real journey — the middle one crosses ' + Math.round(geom.median * 100) + '% of its band',
+    geom.tiny + ' of ' + geom.n + ' falls are short ones (the oldest growth is the LOWEST growth, so a garden\'s very first fall is a short drop)');
+  check(geom.off === 0,
+    'LC-L nothing walks off the workspace — every element stays inside its own band',
+    geom.off ? geom.offEx.join(' ') : '0 off-band across 5 seeds x 340 captures');
+  console.log('    DISCLOSED: ' + geom.topLife + ' of ' + geom.allLife + ' life-cycle events ('
+    + Math.round(geom.topLife / geom.allLife * 100) + '%) land in the TOP band, which this workspace does not have '
+    + '(Decision 27) and therefore never draws.');
+
+  console.log('    density curve, five seeds: ' +
+    [10, 30, 50, 70, 100, 130, 160, 220, 280, 340].map((m) => m + ':' + curve(m).join('/')).join('  '));
+
+  // ---------------------------------------------------------------
+  // LP: and the life cycle ON THE PAGE. The engine deciding a leaf has
+  // had its time is worth nothing if the screen says nothing about it —
+  // §22's benchmark is a child noticing "that one fell", which is a
+  // claim about pixels, not about a report.
+  // ---------------------------------------------------------------
+  console.log('-- LP: the life cycle animates on the page');
+  // Find the first capture on a seed whose life-cycle event lands
+  // somewhere this workspace can actually draw (the top band never
+  // draws here — see the note above X1).
+  async function findLife(seed, field, maxN) {
+    return page.evaluate(({ seed, field, maxN }) => {
+      for (let k = 30; k < maxN; k++) {
+        localStorage.setItem('vihu-living-garden:lprobe', JSON.stringify({ v: 1, seed: seed, events: k, recentIds: [] }));
+        localStorage.setItem('vihu-magic-card-active-id', 'lprobe');
+        LivingGarden.state();
+        const r = LivingGarden.captured({ id: 'lp-' + seed + '-' + k });
+        const els = LivingGarden.state().elements;
+        const g = r.growth;
+        const hit = field === 'removed'
+          ? (g.removed || []).some((e) => e.band !== 'top')
+          : (g[field] || []).some((j) => els[j] && els[j].band !== 'top');
+        if (hit) {
+          localStorage.removeItem('vihu-living-garden:lprobe');
+          localStorage.removeItem('vihu-magic-card-active-id');
+          return k;
+        }
+      }
+      localStorage.removeItem('vihu-living-garden:lprobe');
+      localStorage.removeItem('vihu-magic-card-active-id');
+      return -1;
+    }, { seed: seed, field: field, maxN: maxN });
+  }
+  const lifeProbe = () => page.evaluate(() => {
+    const layer = document.getElementById('livingGardenLayer');
+    const kids = Array.from(layer.children);
+    let ghostAge = 0, ghostGone = 0, ghostWither = 0, phases = {}, moving = 0, lit = 0, litLife = 0, floorY = 0;
+    const wrapRect = document.querySelector('main.preview-area .preview-wrapper').getBoundingClientRect();
+    kids.forEach((n) => {
+      const gh = n.getAttribute && n.getAttribute('data-garden-ghost');
+      if (gh === 'age') ghostAge++;
+      if (gh === 'gone') ghostGone++;
+      if (gh === 'wither') ghostWither++;
+      const ph = n.getAttribute && n.getAttribute('data-garden-phase');
+      if (ph) phases[ph] = (phases[ph] || 0) + 1;
+      const i = n.firstChild;
+      const t = (i && i.style && i.style.transition) || '';
+      if (/transform/.test(t)) moving++;
+      const isLit = (n.style.filter || '').indexOf('3px') >= 0
+                 || (n.style.transition || '').indexOf('filter') >= 0
+                 || (n.getAttribute && n.getAttribute('stroke') === '#F5C542');
+      if (isLit) lit++;
+      // The one that matters: is anything the LIFE CYCLE touched lit?
+      // The same capture also grows, and that growth is meant to glow.
+      if (isLit && (ph || gh === 'age' || gh === 'gone' || gh === 'wither')) litLife++;
+      if (ph === 'fall') floorY = Math.max(floorY, n.getBoundingClientRect().top - wrapRect.top);
+    });
+    return { ghostAge, ghostGone, ghostWither, phases, moving, lit, litLife, floorY,
+             wrapH: wrapRect.height, total: kids.length };
+  });
+
+  const LSEED = 20250823;
+  const kAge = await findLife(LSEED, 'aged', 200);
+  if (kAge < 0) fail('LP1 a leaf turning gold is drawn turning gold', 'no drawable aging within 200 captures');
+  else {
+    await setGarden(LSEED, kAge);
+    await page.evaluate(() => GardenRenderer.render());
+    await page.waitForTimeout(400);
+    await page.evaluate(() => document.dispatchEvent(new CustomEvent('vihu:creation-captured', { detail: { id: 'lp-age-' + Date.now() } })));
+    await page.waitForTimeout(900);
+    const p1 = await lifeProbe();
+    check(p1.ghostAge >= 1 && (p1.phases.age || 0) >= 1,
+      'LP1 green → gold is drawn as a cross-fade: the leaf it was fades off the gold one underneath',
+      JSON.stringify(p1));
+    check(p1.litLife === 0,
+      'LP2 and the life cycle carries NO light of its own — the glow means new growth, not an ending '
+      + '(the same capture also GREW, and that is what is lit)', JSON.stringify(p1));
+    await page.screenshot({ path: path.join(SHOTS, 'life-aging.png'), clip: { x: 300, y: 100, width: 160, height: 640 } });
+    await page.waitForTimeout(3000);
+    const p1b = await lifeProbe();
+    check(p1b.ghostAge === 0 && (p1b.phases.age || 0) >= 1,
+      'LP3 the cross-fade finishes and leaves the gold leaf behind — nothing left over', JSON.stringify(p1b));
+  }
+
+  const kFall = await findLife(LSEED, 'fell', 220);
+  if (kFall < 0) fail('LP4 a leaf falls', 'no drawable fall within 220 captures');
+  else {
+    await setGarden(LSEED, kFall);
+    await page.evaluate(() => GardenRenderer.render());
+    await page.waitForTimeout(400);
+    await page.evaluate(() => document.dispatchEvent(new CustomEvent('vihu:creation-captured', { detail: { id: 'lp-fall-' + Date.now() } })));
+    await page.waitForTimeout(700);
+    const f1 = await lifeProbe();
+    check((f1.phases.fall || 0) >= 1 && f1.moving >= 1,
+      'LP4 a fallen element is drawn falling — a real journey, not visible:false', JSON.stringify(f1));
+    await page.screenshot({ path: path.join(SHOTS, 'life-falling.png') });
+    await page.waitForTimeout(3600);
+    const f2 = await lifeProbe();
+    check((f2.phases.fall || 0) >= 1 && f2.floorY > f2.wrapH * 0.6,
+      'LP5 and it comes to rest on the garden floor rather than in mid-air',
+      'lowest fallen element at ' + Math.round(f2.floorY) + ' of ' + Math.round(f2.wrapH) + 'px');
+    const badFall = await overlapCount();
+    check(badFall.length === 0, 'LP6 fallen growth still never touches the play area',
+      badFall.length ? badFall.join(' · ') : '0 overlapping nodes');
+  }
+
+  const kGone = await findLife(LSEED, 'removed', 240);
+  if (kGone < 0) fail('LP7 something leaving is shown leaving', 'no drawable removal within 240 captures');
+  else {
+    await setGarden(LSEED, kGone);
+    await page.evaluate(() => GardenRenderer.render());
+    await page.waitForTimeout(400);
+    const before = await page.evaluate(() => LivingGarden.state().elements.length);
+    await page.evaluate(() => document.dispatchEvent(new CustomEvent('vihu:creation-captured', { detail: { id: 'lp-gone-' + Date.now() } })));
+    await page.waitForTimeout(800);
+    const g1 = await lifeProbe();
+    check(g1.ghostGone >= 1, 'LP7 something leaving fades where it lay rather than blinking out', JSON.stringify(g1));
+    await page.waitForTimeout(3200);
+    const g2 = await lifeProbe();
+    const after = await page.evaluate(() => LivingGarden.state().elements.length);
+    check(g2.ghostGone === 0 && after <= before,
+      'LP8 and then it is simply gone — no ghost left, and the garden is no denser for it',
+      before + ' → ' + after + ' elements');
+    // RENDERING REMAINS PURE (§19): a re-render never ages, removes or
+    // creates anything, and animates none of it.
+    const pure = await page.evaluate(() => {
+      const a = JSON.stringify(LivingGarden.state().elements);
+      const e0 = LivingGarden.state().events;
+      GardenRenderer.render(); GardenRenderer.render(); GardenRenderer.render();
+      const b = JSON.stringify(LivingGarden.state().elements);
+      const layer = document.getElementById('livingGardenLayer');
+      const ghosts = layer.querySelectorAll('[data-garden-ghost]').length;
+      return { same: a === b, grew: LivingGarden.state().events !== e0, ghosts: ghosts };
+    });
+    check(pure.same && !pure.grew && pure.ghosts === 0,
+      'LP9 rendering never ages the garden — three renders change nothing and animate nothing', JSON.stringify(pure));
+  }
 
   console.log('-- H: hygiene');
   check(pageErrors.length === 0, 'H1 zero page errors across the whole run', pageErrors.slice(0, 2).join(' | ') || 'clean');

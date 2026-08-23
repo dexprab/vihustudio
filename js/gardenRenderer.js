@@ -19,12 +19,19 @@
 // enforced as geometry, the same reasoning Decision 24 records.
 //
 // GROWTH ANIMATION: the engine reports WHAT CHANGED — which elements
-// appeared and which ones transformed without appearing — and this
-// animates exactly those. A vine segment draws itself in, a leaf
+// appeared, which ones transformed without appearing, and which ones
+// aged, fell, withered or went — and this animates exactly those. A vine segment draws itself in, a leaf
 // unfolds, a bud opens into a flower, a flower ripens into fruit, a
 // leaf swells; every one of them GLOWS while it arrives and goes dark
 // again as it settles. Nothing keeps a light, so there is never a "these
-// are the newest" marker to read backwards from. Suppressed under
+// are the newest" marker to read backwards from.
+//
+// THE LIFE CYCLE NEVER GLOWS, and that is deliberate. The light means
+// NEW GROWTH — it arrives with a thing and goes out as it settles. A
+// leaf turning gold, letting go and drifting to the floor is the
+// opposite event, and lighting it up would both dilute what the glow
+// says and make an ending look like a reward. Aging is shown by colour
+// and by movement, and by nothing else. Suppressed under
 // prefers-reduced-motion (house rule since Decision 10). Re-renders
 // (resize, reopening the Studio) carry no growth report at all, so they
 // animate nothing and light nothing — rendering can never look like
@@ -40,6 +47,38 @@
   const PAGE_GAP = 14;        // px of clear air kept between garden and page
   const VINE = '#6E8F6A', LEAF_A = '#8FAF87', LEAF_B = '#7CA076';
   const PETAL = '#F5C542', PETAL_C = '#E2A93C';
+
+  // ---- THE LIFE CYCLE'S PALETTE -------------------------------------------
+  // Autumnal, gentle, natural — never decay. The sprint is explicit: no
+  // black, no brown, no disease, no drama. "This has had its time", not
+  // "something bad happened". So an aging leaf is a PALE GOLD a shade
+  // off its own green (deliberately subtle — §7 asks for visibly
+  // different and subtle in the same sentence), a fallen one is a warm
+  // autumn gold, and a dried sprig is a sage that has lost its blue.
+  //
+  // The phase palette is passed INTO the drawing vocabulary rather than
+  // painted on afterwards, which is what keeps a settled render free of
+  // inline styles — two renders still produce byte-identical markup, and
+  // rendering still cannot look like growing.
+  const FRESH = { A: LEAF_A, B: LEAF_B, vine: VINE, petal: PETAL, petalC: PETAL_C,
+                  berry: '#E9A93C', berryHi: '#F5C67A', op: 1 };
+  const PHASE_PAL = {
+    // An aging leaf is a pale YELLOW-GREEN, not a gold one. The first
+    // attempt used gold, and looking at the seventy-capture garden it
+    // was wrong twice over: too loud for a stage the sprint asks to be
+    // "visibly different but subtle", and the same hue as the flowers
+    // and the fruit, so a plant halfway through its season read as one
+    // yellow mass with nothing telling a bloom from an old blade. This
+    // is unmistakably paler than the green beside it and unmistakably
+    // not a flower.
+    age:    { A: '#BCC079', B: '#ADB570', vine: '#7E9573', petal: '#F0DFA8', petalC: '#DDC489',
+              berry: '#E0A552', berryHi: '#F0C689', op: 1 },
+    fall:   { A: '#D9BE6E', B: '#CDB165', vine: '#93966F', petal: '#E6D4A0', petalC: '#D2BD8A',
+              berry: '#D69B49', berryHi: '#E7BE84', op: 0.88 },
+    wither: { A: '#B3AE83', B: '#A9A47C', vine: '#9FA279', petal: '#D9CFA6', petalC: '#C6BC96',
+              berry: '#C09A64', berryHi: '#D9C79A', op: 0.9 }
+  };
+  function _pal(phase) { return (phase && PHASE_PAL[phase]) || FRESH; }
   // NEW GROWTH CARRIES LIGHT. Asked for by the product owner: "anything
   // which new grows should have a glow." It is the growth that glows,
   // not the garden — the light arrives with the new leaf, holds for a
@@ -159,12 +198,13 @@
       fill: fill
     });
   }
-  function _leaf(x, y, ang, s, f) {
+  function _leaf(x, y, ang, s, f, pal) {
     // A real BLADE, not a fleck — rounder and fuller than the first two
     // attempts, which read as bare twigs at reading distance.
+    pal = pal || FRESH;
     const g = _svg('g', {});
-    const A = ((x + y) | 0) % 2 ? LEAF_A : LEAF_B;
-    const B = A === LEAF_A ? LEAF_B : LEAF_A;
+    const A = ((x + y) | 0) % 2 ? pal.A : pal.B;
+    const B = A === pal.A ? pal.B : pal.A;
     if (f === 'pair') {
       // Two blades facing off one point. Each is SMALLER than a single
       // leaf, so a pair reads as a different gesture rather than as
@@ -193,72 +233,97 @@
     }
     return _place(x, y, ang, g);
   }
-  function _sprig(x, y, ang, s, f) {
+  function _sprig(x, y, ang, s, f, pal) {
+    pal = pal || FRESH;
     const g = _svg('g', {});
-    g.appendChild(_svg('path', { d: 'M0,0 q' + (8 * s) + ',' + (-14 * s) + ' ' + (4 * s) + ',' + (-30 * s), fill: 'none', stroke: VINE, 'stroke-width': (2 * s).toFixed(1), 'stroke-linecap': 'round' }));
-    g.appendChild(_svg('path', { d: 'M' + (2 * s) + ',' + (-10 * s) + ' Q' + (10 * s) + ',' + (-16 * s) + ' ' + (16 * s) + ',' + (-10 * s) + ' Q' + (9 * s) + ',' + (-5 * s) + ' ' + (2 * s) + ',' + (-10 * s) + ' z', fill: LEAF_A }));
-    g.appendChild(_svg('path', { d: 'M' + (3 * s) + ',' + (-20 * s) + ' Q' + (-5 * s) + ',' + (-27 * s) + ' ' + (-11 * s) + ',' + (-21 * s) + ' Q' + (-4 * s) + ',' + (-15 * s) + ' ' + (3 * s) + ',' + (-20 * s) + ' z', fill: LEAF_B }));
+    g.appendChild(_svg('path', { d: 'M0,0 q' + (8 * s) + ',' + (-14 * s) + ' ' + (4 * s) + ',' + (-30 * s), fill: 'none', stroke: pal.vine, 'stroke-width': (2 * s).toFixed(1), 'stroke-linecap': 'round' }));
+    g.appendChild(_svg('path', { d: 'M' + (2 * s) + ',' + (-10 * s) + ' Q' + (10 * s) + ',' + (-16 * s) + ' ' + (16 * s) + ',' + (-10 * s) + ' Q' + (9 * s) + ',' + (-5 * s) + ' ' + (2 * s) + ',' + (-10 * s) + ' z', fill: pal.A }));
+    g.appendChild(_svg('path', { d: 'M' + (3 * s) + ',' + (-20 * s) + ' Q' + (-5 * s) + ',' + (-27 * s) + ' ' + (-11 * s) + ',' + (-21 * s) + ' Q' + (-4 * s) + ',' + (-15 * s) + ' ' + (3 * s) + ',' + (-20 * s) + ' z', fill: pal.B }));
     if (f === 'fork') {
       // A second stem leaving the first — the smallest structural
       // variation there is, and the one that makes a stand of sprigs
       // stop looking stamped from one template.
-      g.appendChild(_svg('path', { d: 'M' + (5 * s) + ',' + (-13 * s) + ' q' + (-9 * s) + ',' + (-6 * s) + ' ' + (-11 * s) + ',' + (-16 * s), fill: 'none', stroke: VINE, 'stroke-width': (1.6 * s).toFixed(1), 'stroke-linecap': 'round' }));
-      g.appendChild(_svg('path', { d: 'M' + (-6 * s) + ',' + (-29 * s) + ' Q' + (-13 * s) + ',' + (-34 * s) + ' ' + (-17 * s) + ',' + (-27 * s) + ' Q' + (-11 * s) + ',' + (-23 * s) + ' ' + (-6 * s) + ',' + (-29 * s) + ' z', fill: LEAF_A }));
+      g.appendChild(_svg('path', { d: 'M' + (5 * s) + ',' + (-13 * s) + ' q' + (-9 * s) + ',' + (-6 * s) + ' ' + (-11 * s) + ',' + (-16 * s), fill: 'none', stroke: pal.vine, 'stroke-width': (1.6 * s).toFixed(1), 'stroke-linecap': 'round' }));
+      g.appendChild(_svg('path', { d: 'M' + (-6 * s) + ',' + (-29 * s) + ' Q' + (-13 * s) + ',' + (-34 * s) + ' ' + (-17 * s) + ',' + (-27 * s) + ' Q' + (-11 * s) + ',' + (-23 * s) + ' ' + (-6 * s) + ',' + (-29 * s) + ' z', fill: pal.A }));
     }
     return _place(x, y, ang, g);
   }
-  function _bud(x, y, f) {
+  function _bud(x, y, f, pal) {
+    pal = pal || FRESH;
     const g = _svg('g', {});
     if (f === 'pair') {
-      g.appendChild(_svg('line', { x1: 0, y1: 0, x2: 0, y2: -4, stroke: VINE, 'stroke-width': 1.6 }));
-      g.appendChild(_svg('path', { d: 'M0,-4 q-4,-2 -4.6,-5.5', fill: 'none', stroke: VINE, 'stroke-width': 1.3 }));
-      g.appendChild(_svg('path', { d: 'M0,-4 q4,-2 4.4,-5', fill: 'none', stroke: VINE, 'stroke-width': 1.3 }));
-      g.appendChild(_svg('circle', { cx: -5, cy: -11, r: 2.9, fill: PETAL }));
-      g.appendChild(_svg('circle', { cx: 4.8, cy: -10.4, r: 2.5, fill: PETAL }));
+      g.appendChild(_svg('line', { x1: 0, y1: 0, x2: 0, y2: -4, stroke: pal.vine, 'stroke-width': 1.6 }));
+      g.appendChild(_svg('path', { d: 'M0,-4 q-4,-2 -4.6,-5.5', fill: 'none', stroke: pal.vine, 'stroke-width': 1.3 }));
+      g.appendChild(_svg('path', { d: 'M0,-4 q4,-2 4.4,-5', fill: 'none', stroke: pal.vine, 'stroke-width': 1.3 }));
+      g.appendChild(_svg('circle', { cx: -5, cy: -11, r: 2.9, fill: pal.petal }));
+      g.appendChild(_svg('circle', { cx: 4.8, cy: -10.4, r: 2.5, fill: pal.petal }));
     } else {
-      g.appendChild(_svg('line', { x1: 0, y1: 0, x2: 0, y2: -6, stroke: VINE, 'stroke-width': 1.6 }));
-      g.appendChild(_svg('circle', { cx: 0, cy: -8, r: 3.4, fill: PETAL }));
+      g.appendChild(_svg('line', { x1: 0, y1: 0, x2: 0, y2: -6, stroke: pal.vine, 'stroke-width': 1.6 }));
+      g.appendChild(_svg('circle', { cx: 0, cy: -8, r: 3.4, fill: pal.petal }));
     }
     return _place(x, y, 0, g);
   }
-  function _petals(into, n, ring, pr, cr, tx, ty) {
+  function _petals(into, n, ring, pr, cr, tx, ty, pal) {
     for (let k = 0; k < n; k++) {
       const a = (k * (360 / n) - 90) * Math.PI / 180;
-      into.appendChild(_svg('circle', { cx: tx + ring * Math.cos(a), cy: ty + ring * Math.sin(a), r: pr, fill: PETAL }));
+      into.appendChild(_svg('circle', { cx: tx + ring * Math.cos(a), cy: ty + ring * Math.sin(a), r: pr, fill: pal.petal }));
     }
-    into.appendChild(_svg('circle', { cx: tx, cy: ty, r: cr, fill: PETAL_C }));
+    into.appendChild(_svg('circle', { cx: tx, cy: ty, r: cr, fill: pal.petalC }));
   }
-  function _flower(x, y, f) {
+  // A FADED FLOWER IS NOT A REMOVED FLOWER. The sprint is explicit: when
+  // a bloom is done, the petals fall and THE STEM REMAINS, and the stem
+  // goes some time later. So a withered flower still occupies its place
+  // on the vine and still reads as somewhere a flower was — a bare
+  // stalk with the calyx still on it, the smallest honest drawing of
+  // "this has had its time".
+  function _spentFlower(x, y, pal) {
+    const g = _svg('g', {});
+    g.appendChild(_svg('path', { d: 'M0,2 q1.5,-5 0.5,-9', fill: 'none', stroke: pal.vine, 'stroke-width': 1.5, 'stroke-linecap': 'round' }));
+    g.appendChild(_svg('path', { d: 'M-2.6,-7 q2.6,-3.4 5.2,0 q-2.6,2.2 -5.2,0 z', fill: pal.petalC }));
+    return _place(x, y, 0, g);
+  }
+  function _flower(x, y, f, pal) {
+    pal = pal || FRESH;
+    if (pal === PHASE_PAL.wither) return _spentFlower(x, y, pal);
     const g = _svg('g', {});
     if (f === 'open') {
-      _petals(g, 6, 6.6, 3.4, 2.9, 0, 0);
+      _petals(g, 6, 6.6, 3.4, 2.9, 0, 0, pal);
     } else if (f === 'cluster') {
-      _petals(g, 5, 5.5, 3.1, 2.6, 0, 0);
-      _petals(g, 5, 3.4, 1.9, 1.6, -9.5, 5);
-      _petals(g, 5, 3.1, 1.7, 1.5, 8.5, 5.5);
+      _petals(g, 5, 5.5, 3.1, 2.6, 0, 0, pal);
+      _petals(g, 5, 3.4, 1.9, 1.6, -9.5, 5, pal);
+      _petals(g, 5, 3.1, 1.7, 1.5, 8.5, 5.5, pal);
     } else {
-      _petals(g, 5, 5.5, 3.1, 2.6, 0, 0);
+      _petals(g, 5, 5.5, 3.1, 2.6, 0, 0, pal);
     }
     return _place(x, y, 0, g);
   }
   // A ripened flower — a small amber fruit hanging from its stem, with
   // one leaf still on. The vine's late season (~55 captures on).
-  function _fruit(x, y, f) {
+  function _fruit(x, y, f, pal) {
+    pal = pal || FRESH;
     const g = _svg('g', {});
     function berry(cx, cy, r) {
-      g.appendChild(_svg('circle', { cx: cx, cy: cy, r: r, fill: '#E9A93C' }));
-      g.appendChild(_svg('circle', { cx: cx - r * 0.32, cy: cy - r * 0.32, r: r * 0.28, fill: '#F5C67A' }));
+      g.appendChild(_svg('circle', { cx: cx, cy: cy, r: r, fill: pal.berry }));
+      g.appendChild(_svg('circle', { cx: cx - r * 0.32, cy: cy - r * 0.32, r: r * 0.28, fill: pal.berryHi }));
+    }
+    // A DROPPED FRUIT HAS NO STEM. It is off the vine and lying on the
+    // garden floor, so the stalk and the little leaf that held it are
+    // exactly what it no longer has.
+    if (pal === PHASE_PAL.fall) {
+      if (f === 'pair') { berry(-4, 0, 4.1); berry(4.4, 1.4, 3.4); }
+      else berry(0, 0, 5);
+      return _place(x, y, 0, g);
     }
     if (f === 'pair') {
-      g.appendChild(_svg('path', { d: 'M0,-9 q-4,3 -4.6,6', fill: 'none', stroke: VINE, 'stroke-width': 1.3 }));
-      g.appendChild(_svg('path', { d: 'M0,-9 q4.5,3 5,5', fill: 'none', stroke: VINE, 'stroke-width': 1.3 }));
+      g.appendChild(_svg('path', { d: 'M0,-9 q-4,3 -4.6,6', fill: 'none', stroke: pal.vine, 'stroke-width': 1.3 }));
+      g.appendChild(_svg('path', { d: 'M0,-9 q4.5,3 5,5', fill: 'none', stroke: pal.vine, 'stroke-width': 1.3 }));
       berry(-5, 1, 4.1);
       berry(5.4, 2.6, 3.4);
-      g.appendChild(_svg('ellipse', { cx: 3.2, cy: -8.5, rx: 3, ry: 1.9, fill: LEAF_A, transform: 'rotate(30 3.2 -8.5)' }));
+      g.appendChild(_svg('ellipse', { cx: 3.2, cy: -8.5, rx: 3, ry: 1.9, fill: pal.A, transform: 'rotate(30 3.2 -8.5)' }));
     } else {
-      g.appendChild(_svg('line', { x1: 0, y1: -8, x2: 0, y2: -2, stroke: VINE, 'stroke-width': 1.4 }));
+      g.appendChild(_svg('line', { x1: 0, y1: -8, x2: 0, y2: -2, stroke: pal.vine, 'stroke-width': 1.4 }));
       berry(0, 3, 5);
-      g.appendChild(_svg('ellipse', { cx: 3.5, cy: -6, rx: 3.2, ry: 2, fill: LEAF_A, transform: 'rotate(30 3.5 -6)' }));
+      g.appendChild(_svg('ellipse', { cx: 3.5, cy: -6, rx: 3.2, ry: 2, fill: pal.A, transform: 'rotate(30 3.5 -6)' }));
     }
     return _place(x, y, 0, g);
   }
@@ -309,11 +374,33 @@
   // that keeps a CSS transform from overriding the positioning
   // attribute transform and tearing every blade off its vine.
   function _ghostOf(kind, x, y) {
-    if (kind === 'bud') return _bud(x, y, 'plain');
-    if (kind === 'flower') return _flower(x, y, 'plain');
+    if (kind === 'bud') return _bud(x, y, 'plain', FRESH);
+    if (kind === 'flower') return _flower(x, y, 'plain', FRESH);
     if (kind === 'leaf') return null;
     return null;
   }
+
+  // A ghost of ANY element, in any phase — what the life cycle needs to
+  // show something GIVING WAY rather than blinking out. Used three ways:
+  // the green leaf that fades to reveal the gold one underneath (a
+  // colour transition drawn as a cross-fade, so a settled render keeps
+  // no inline styles and two renders stay byte-identical); the petalled
+  // flower that fades and sinks as its stem is left behind; and the last
+  // sight of an element that has gone, fading where it lay.
+  function _ghostEl(el, x, y, ang, phase) {
+    const pal = _pal(phase);
+    const s = el.s || 1;
+    if (el.k === 'leaf') return _leaf(x, y, ang, s, el.f, pal);
+    if (el.k === 'sprig') return _sprig(x, y, (el.u - 0.5) * 40, s, el.f, pal);
+    if (el.k === 'bud') return _bud(x, y, el.f, pal);
+    if (el.k === 'flower') return _flower(x, y, el.f, pal);
+    if (el.k === 'fruit') return _fruit(x, y, el.f, pal);
+    return null;
+  }
+  // A fallen thing lies roughly flat, and it lies at an angle that is
+  // ITS OWN — derived from its own coordinate, so it is the same every
+  // render and nothing here is deciding anything the engine did not.
+  function _restAngle(el) { return (((el.u * 9973) | 0) % 46) - 23; }
 
   function render(opts) {
     const wrap = _wrapper();
@@ -333,6 +420,15 @@
     const addedSet = growth ? new Set(growth.added || []) : null;
     const transSet = growth ? new Set(growth.transformed || []) : null;
     const wasKinds = (growth && growth.was) || null;
+    // The LIFE CYCLE's own report. Exactly like `added` and
+    // `transformed`, these are indices into the list being drawn — the
+    // engine compacts before it grows, so they are never stale — and
+    // `removed` carries whole descriptors, because those elements are
+    // not in the list any more.
+    const agedSet = growth ? new Set(growth.aged || []) : null;
+    const fellSet = growth ? new Set(growth.fell || []) : null;
+    const withSet = growth ? new Set(growth.withered || []) : null;
+    const removedEls = (growth && growth.removed) || [];
 
     // Vines are drawn per band as one path through their nodes, in the
     // order they grew — a vine is a continuation, never scattered dots.
@@ -451,11 +547,21 @@
       const s = el.s || 1;
       const isNew = !!(addedSet && addedSet.has(ix));
       const isChanged = !isNew && !!(transSet && transSet.has(ix));
+      const justAged = !!(agedSet && agedSet.has(ix));
+      const justFell = !!(fellSet && fellSet.has(ix));
+      const justWithered = !!(withSet && withSet.has(ix));
+      const pal = _pal(el.p);
+      // A FALLEN THING IS OFF THE VINE. It gets no stem, no attachment
+      // and no breath: it is lying on the garden floor where the engine
+      // put it, at an angle of its own, waiting to fade. Everything
+      // else — including a faded flower, whose stem is exactly what
+      // remains — is still attached and still joins its vine.
+      const down = el.p === 'fall';
       // Join the vine where one is in reach: the element sits at the
       // end of a short stem drawn from the vine's own line, oriented
       // outward — grown from it, never beside it.
-      const root = _nearestVinePt(el.band, pt);
-      let ang = ((el.u * 140 - 70) + (el.band === 'right' ? 140 : 0));
+      const root = down ? null : _nearestVinePt(el.band, pt);
+      let ang = down ? _restAngle(el) : ((el.u * 140 - 70) + (el.band === 'right' ? 140 : 0));
       if (root) {
         let dx = pt.x - root.x, dy = pt.y - root.y;
         const dl = Math.max(1, Math.hypot(dx, dy));
@@ -484,20 +590,97 @@
           } catch (e) {}
         }
       }
-      if (el.k === 'leaf') node = _leaf(pt.x, pt.y, ang, s, el.f);
-      else if (el.k === 'sprig') node = _sprig(pt.x, pt.y, (el.u - 0.5) * 40, s, el.f);
-      else if (el.k === 'bud') node = _bud(pt.x, pt.y, el.f);
-      else if (el.k === 'flower') node = _flower(pt.x, pt.y, el.f);
-      else if (el.k === 'fruit') node = _fruit(pt.x, pt.y, el.f);
+      if (el.k === 'leaf') node = _leaf(pt.x, pt.y, ang, s, el.f, pal);
+      else if (el.k === 'sprig') node = _sprig(pt.x, pt.y, (el.u - 0.5) * 40, s, el.f, pal);
+      else if (el.k === 'bud') node = _bud(pt.x, pt.y, el.f, pal);
+      else if (el.k === 'flower') node = _flower(pt.x, pt.y, el.f, pal);
+      else if (el.k === 'fruit') node = _fruit(pt.x, pt.y, el.f, pal);
       if (!node) return;
+      if (pal.op !== 1) node.setAttribute('opacity', String(pal.op));
+      if (el.p) node.setAttribute('data-garden-phase', el.p);
       // The breath and the grow-in animate the INNER group only — its
       // local origin is the attachment point by construction — so the
       // outer group's positioning transform is never overridden.
       const inner = node.firstChild;
       inner.style.transformOrigin = '0px 0px';
-      const breath = reduced ? '' : ('vihuGardenBreath ' + (11 + (ix % 5) * 1.7).toFixed(1) + 's ease-in-out '
+      const breath = (reduced || down) ? '' : ('vihuGardenBreath ' + (11 + (ix % 5) * 1.7).toFixed(1) + 's ease-in-out '
         + (-(ix % 7) * 1.9).toFixed(1) + 's infinite alternate');
-      if (isNew && !reduced) {
+      if (justFell && !reduced) {
+        // FALLING IS A REAL EVENT (§8), not visible:false. The outer
+        // group is already at the LANDING point the engine chose, so
+        // the inner group starts displaced to where the leaf let go and
+        // travels home: a tip away from the vine, a slow drift down
+        // with the blade rocking over once, and a settle. Both ends
+        // were decided during replay — this only draws the journey.
+        //
+        // It animates the INNER group on purpose. The outer group
+        // carries the attribute transform that positions it, and a CSS
+        // transform on that same node overrides the attribute and tears
+        // the element off its place entirely — the trap this file has
+        // paid for twice.
+        const from = _map(bands, { band: el.band, u: (el.o || el).u, v: (el.o || el).v });
+        const dx = from ? (from.x - pt.x) : 0, dy = from ? (from.y - pt.y) : -60;
+        // the stem it let go of, fading where it was
+        const oldRoot = from ? _nearestVinePt(el.band, from) : null;
+        if (oldRoot) {
+          const gone = _svg('path', {
+            d: 'M' + oldRoot.x.toFixed(1) + ',' + oldRoot.y.toFixed(1) + ' L' + from.x.toFixed(1) + ',' + from.y.toFixed(1),
+            fill: 'none', stroke: VINE, 'stroke-width': 1.5, 'stroke-linecap': 'round', opacity: 0.85
+          });
+          layer.appendChild(gone);
+          gone.style.transition = 'opacity 1.1s ease-in .35s';
+          requestAnimationFrame(function () { gone.style.opacity = '0'; });
+          setTimeout(function () { if (gone.parentNode) gone.parentNode.removeChild(gone); }, 2200);
+        }
+        inner.style.transform = 'translate(' + dx.toFixed(1) + 'px,' + dy.toFixed(1) + 'px) rotate(' + (-ang - 16).toFixed(0) + 'deg)';
+        inner.style.transition = 'none';
+        requestAnimationFrame(function () {
+          inner.style.transition = 'transform 1.5s cubic-bezier(.4,0,.7,.6)';
+          inner.style.transform = 'translate(' + (dx * 0.42).toFixed(1) + 'px,' + (dy * 0.42).toFixed(1) + 'px) rotate(' + (-ang + 22).toFixed(0) + 'deg)';
+          setTimeout(function () {
+            if (!inner.isConnected) return;
+            inner.style.transition = 'transform 1.6s cubic-bezier(.3,0,.4,1)';
+            inner.style.transform = 'translate(0px,0px) rotate(0deg)';
+            setTimeout(function () {
+              if (inner.isConnected) { inner.style.transition = ''; inner.style.transform = ''; }
+            }, 1800);
+          }, 1500);
+        });
+      } else if (justAged && !reduced) {
+        // GREEN → GOLD, drawn as a cross-fade rather than as a colour
+        // written onto the node: the gold leaf is already there and the
+        // green one it was fades off the top of it. Subtle by
+        // construction — the two colours are a shade apart — and it
+        // leaves no inline paint behind, so a re-render of a settled
+        // garden is still byte-identical markup.
+        const was = _ghostEl(el, pt.x, pt.y, ang, null);
+        if (was) {
+          was.setAttribute('data-garden-ghost', 'age');
+          layer.appendChild(was);
+          was.style.transition = 'opacity 2s ease-in-out .3s';
+          requestAnimationFrame(function () { was.style.opacity = '0'; });
+          setTimeout(function () { if (was.parentNode) was.parentNode.removeChild(was); }, 2600);
+        }
+        if (breath) inner.style.animation = breath;
+      } else if (justWithered && !reduced) {
+        // The petals go and the stem stays. What fades is the bloom it
+        // was, sinking a little as it goes — petals dropping, without
+        // one new object being added to the garden to draw them.
+        const was = _ghostEl(el, pt.x, pt.y, ang, 'age');
+        if (was) {
+          was.setAttribute('data-garden-ghost', 'wither');
+          layer.appendChild(was);
+          const wi = was.firstChild;
+          wi.style.transformOrigin = '0px 0px';
+          wi.style.transition = 'opacity 1.6s ease-in .2s, transform 1.6s ease-in .2s';
+          requestAnimationFrame(function () { wi.style.opacity = '0'; wi.style.transform = 'translate(0px,7px) scale(.7)'; });
+          setTimeout(function () { if (was.parentNode) was.parentNode.removeChild(was); }, 2200);
+        }
+        inner.style.animation = 'vihuGardenOpen 1.4s ease-out .5s both';
+        if (breath) setTimeout(function () {
+          if (inner.isConnected) { inner.style.transition = ''; inner.style.transform = ''; inner.style.animation = breath; }
+        }, 2200);
+      } else if (isNew && !reduced) {
         // The leaf unfolds LAST, slowly — after the quiet beat, the
         // vine's tail and the stem have already grown to meet it.
         inner.style.opacity = '0';
@@ -545,6 +728,27 @@
       }
       layer.appendChild(node);
     });
+
+    // AND THE LAST SIGHT OF WHAT HAS GONE. These elements are no longer
+    // in the garden — the engine removed them before it grew — so they
+    // arrive as descriptors rather than indices and are drawn once,
+    // where they lay, fading. A slight fade and then nothing: no
+    // shrivel, no drama, no message. "This has had its time."
+    if (removedEls.length && !reduced) {
+      removedEls.forEach(function (el) {
+        const pt = _map(bands, el);
+        if (!pt) return;
+        const ghost = _ghostEl(el, pt.x, pt.y, el.p === 'fall' ? _restAngle(el) : 0, el.p || 'fall');
+        if (!ghost) return;
+        ghost.setAttribute('data-garden-ghost', 'gone');
+        layer.appendChild(ghost);
+        const gi = ghost.firstChild;
+        gi.style.transformOrigin = '0px 0px';
+        gi.style.transition = 'opacity 1.8s ease-in .4s, transform 1.8s ease-in .4s';
+        requestAnimationFrame(function () { gi.style.opacity = '0'; gi.style.transform = 'scale(.82)'; });
+        setTimeout(function () { if (ghost.parentNode) ghost.parentNode.removeChild(ghost); }, 2600);
+      });
+    }
   }
 
   let _settle = 0, _growingUntil = 0, _liveGrowth = null;
