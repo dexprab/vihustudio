@@ -20,9 +20,11 @@
 //
 // GROWTH ANIMATION: when the engine reports a capture, only the newly
 // added elements animate — a vine segment draws itself in, a leaf
-// unfolds — about 1.4s total, then the garden is completely still.
-// Suppressed under prefers-reduced-motion (house rule since Decision
-// 10). Re-renders (resize, reopening the Studio) animate nothing.
+// unfolds — and only the new growth GLOWS while it arrives, going dark
+// again as it settles. Nothing keeps a light, so there is never a "these
+// are the newest" marker to read backwards from. Suppressed under
+// prefers-reduced-motion (house rule since Decision 10). Re-renders
+// (resize, reopening the Studio) animate nothing and light nothing.
 //
 // This module reads LivingGarden.state() and knows nothing about
 // captures, cards, or storage. Nothing here is a count, a level, or a
@@ -34,6 +36,23 @@
   const PAGE_GAP = 14;        // px of clear air kept between garden and page
   const VINE = '#6E8F6A', LEAF_A = '#8FAF87', LEAF_B = '#7CA076';
   const PETAL = '#F5C542', PETAL_C = '#E2A93C';
+  // NEW GROWTH CARRIES LIGHT. Asked for by the product owner: "anything
+  // which new grows should have a glow." It is the growth that glows,
+  // not the garden — the light arrives with the new leaf, holds for a
+  // moment, and goes out, leaving the garden exactly as it always is.
+  //
+  // It deliberately does NOT stay. A permanent glow on the newest
+  // elements would be a marker saying "these are the latest ones", and
+  // a child could count backwards from it — which is the quiet kind of
+  // counter Decision 27 rules out ("no counts, scores, levels, badges,
+  // progress bars, percentages, rewards, unlocks or comparisons"). The
+  // garden's own rule is a growth response, then still.
+  //
+  // Suppressed under reduced motion for free: `animateFrom` is already
+  // out of range there, so nothing is ever marked as new.
+  const GLOW = '#F5C542';
+  const GLOW_ON  = 'drop-shadow(0 0 3px rgba(245,197,66,.95)) drop-shadow(0 0 10px rgba(245,197,66,.5))';
+  const GLOW_OFF = 'drop-shadow(0 0 0 rgba(245,197,66,0)) drop-shadow(0 0 0 rgba(245,197,66,0))';
 
   let _layer = null, _pending = 0, _raf = 0;
 
@@ -172,6 +191,34 @@
     try { return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; }
   }
 
+  // Lights one piece of new growth as it arrives, then puts the light
+  // out. The two filter strings have the SAME function count so the
+  // browser interpolates them rather than snapping; a bare '' at either
+  // end would give a hard cut.
+  //
+  // It writes to the OUTER group only. The inner group carries the
+  // unfold transition and later the breath animation, and the handoff
+  // between those clears `style.transition` — a glow living there would
+  // be cut off mid-fade.
+  function _glow(el, delayMs) {
+    try {
+      el.style.filter = GLOW_OFF;
+      el.style.transition = 'filter .9s ease-out ' + (delayMs / 1000).toFixed(2) + 's';
+      requestAnimationFrame(function () { el.style.filter = GLOW_ON; });
+      setTimeout(function () {
+        if (!el.isConnected) return;
+        el.style.transition = 'filter 2.4s ease-in-out';
+        el.style.filter = GLOW_OFF;
+        setTimeout(function () {
+          if (!el.isConnected) return;
+          // Nothing left behind: no filter, no transition, no trace
+          // that this element was ever the new one.
+          el.style.filter = ''; el.style.transition = '';
+        }, 2500);
+      }, delayMs + 1500);
+    } catch (e) {}
+  }
+
   function render(opts) {
     const wrap = _wrapper();
     if (!wrap) return;
@@ -238,6 +285,30 @@
           path.style.strokeDashoffset = String(seg);
           path.style.transition = 'stroke-dashoffset 2.6s ease-in-out .5s';
           requestAnimationFrame(function () { path.style.strokeDashoffset = '0'; });
+          // The light travels with the tip. A SECOND path over the same
+          // line, dashed so only the NEW tail segment is visible — the
+          // established vine keeps no glow at all, which is the whole
+          // point. Pattern is [dash 0][gap old][dash tail][gap 0], so it
+          // covers the path exactly once.
+          try {
+            const glowPath = _svg('path', {
+              d: d, fill: 'none', stroke: GLOW, 'stroke-width': 3,
+              'stroke-linecap': 'round', opacity: '0'
+            });
+            glowPath.style.strokeDasharray = '0 ' + Math.max(0, len - seg).toFixed(1) + ' ' + seg.toFixed(1) + ' 0';
+            glowPath.style.filter = 'drop-shadow(0 0 6px rgba(245,197,66,.85))';
+            glowPath.style.transition = 'opacity 1.1s ease-out .5s';
+            layer.appendChild(glowPath);
+            requestAnimationFrame(function () { glowPath.style.opacity = '.8'; });
+            setTimeout(function () {
+              if (!glowPath.isConnected) return;
+              glowPath.style.transition = 'opacity 2.4s ease-in-out';
+              glowPath.style.opacity = '0';
+              setTimeout(function () {
+                if (glowPath.parentNode) glowPath.parentNode.removeChild(glowPath);
+              }, 2500);
+            }, 3400);
+          } catch (e) {}
           return;
         } catch (e) {}
       }
@@ -279,6 +350,7 @@
             stem.style.strokeDashoffset = String(sl);
             stem.style.transition = 'stroke-dashoffset 1.2s ease-out 2.4s';
             requestAnimationFrame(function () { stem.style.strokeDashoffset = '0'; });
+            _glow(stem, 2400);
           } catch (e) {}
         }
       }
@@ -302,6 +374,9 @@
         inner.style.transition = 'opacity 1.4s ease-out 3.2s, transform 2.2s ease-out 3.2s';
         inner.style.transform = 'scale(.3)';
         requestAnimationFrame(function () { inner.style.opacity = '1'; inner.style.transform = 'scale(1)'; });
+        // The new leaf arrives already lit, and the light goes out as
+        // it settles into the garden.
+        if (!reduced) _glow(node, 3200);
         if (breath) setTimeout(function () {
           if (inner.isConnected) { inner.style.transition = ''; inner.style.transform = ''; inner.style.animation = breath; }
         }, 6200);
@@ -318,7 +393,10 @@
     _raf = requestAnimationFrame(function () {
       _raf = 0;
       render(opts);
-      if (opts && opts.animate) _growingUntil = Date.now() + 6500;
+      // Long enough for the LIGHT to go out too, not just the growth to
+      // finish — a settle re-render at 6.5s would rebuild the layer
+      // mid-fade and snuff every glow at once.
+      if (opts && opts.animate) _growingUntil = Date.now() + 8800;
     });
     // A transform-driven layout (the Rite's beside mode, the gateway
     // standing down) moves the canvas without firing ResizeObserver —

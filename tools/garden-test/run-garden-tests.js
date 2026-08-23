@@ -172,6 +172,71 @@ function check(cond, name, note) { (cond ? ok : fail)(name, note); }
   check(before.events === after.events && before.elements === after.elements,
     'G4 re-rendering grows nothing', 'events ' + before.events + ', elements ' + before.elements);
 
+  // ---------------------------------------------------------------
+  // GL: NEW GROWTH CARRIES LIGHT — and gives it back.
+  // The product owner: "anything which new grows should have a glow."
+  // The two halves are equally load-bearing. A glow that arrives is the
+  // request; a glow that STAYS would be a "these are the newest ones"
+  // marker a child could read backwards from, which is the quiet kind
+  // of counter Decision 27 rules out. So the suite measures both, and
+  // it measures them ON THE CLOCK: the first probe has to land while
+  // the light is up (the fade starts 4.7s in), which is why this
+  // dispatches its own capture instead of using capture()'s 1.8s wait.
+  // ---------------------------------------------------------------
+  console.log('-- GL: the glow on new growth');
+  const glowProbe = () => page.evaluate(() => {
+    const layer = document.getElementById('livingGardenLayer');
+    if (!layer) return { lit: 0, filtered: 0, total: 0, glowPaths: 0 };
+    const kids = Array.from(layer.children);
+    let lit = 0, filtered = 0, glowPaths = 0;
+    kids.forEach((n) => {
+      const f = n.style.filter || '';
+      if (f) filtered++;
+      // the ON state's own blur radius; the OFF state is 0px 0px 0px
+      if (f.indexOf('3px') >= 0) lit++;
+      if (n.getAttribute && n.getAttribute('stroke') === '#F5C542') glowPaths++;
+    });
+    return { lit: lit, filtered: filtered, total: kids.length, glowPaths: glowPaths };
+  });
+  const growNow = () => page.evaluate(() => {
+    document.dispatchEvent(new CustomEvent('vihu:creation-captured',
+      { detail: { id: 'glow-' + Date.now() + '-' + Math.random().toString(36).slice(2) } }));
+  });
+
+  const gDark = await glowProbe();
+  check(gDark.filtered === 0 && gDark.glowPaths === 0,
+    'GL1 a settled garden carries no light at all', JSON.stringify(gDark));
+
+  // A capture can add a vine node and no decoration, so give it a few
+  // tries to produce a lit LEAF rather than only a lit vine tip.
+  let gLit = { lit: 0, filtered: 0, total: 0, glowPaths: 0 };
+  for (let tries = 0; tries < 4 && gLit.lit < 1; tries++) {
+    await growNow();
+    await page.waitForTimeout(900);
+    gLit = await glowProbe();
+    if (gLit.lit < 1) await page.waitForTimeout(8200);   // let it go dark again
+  }
+  check(gLit.lit >= 1, 'GL2 new growth arrives lit', JSON.stringify(gLit));
+  check(gLit.glowPaths >= 1, 'GL3 the growing vine tip carries the light too', JSON.stringify(gLit));
+  check((gLit.lit + gLit.glowPaths) < gLit.total,
+    'GL4 the established garden is NOT lit — only what just grew', JSON.stringify(gLit));
+  await page.screenshot({ path: path.join(SHOTS, 'glow-lit.png') });
+  // and a close crop of the left band, where the light is actually
+  // readable at reading distance rather than a dot in a full frame
+  await page.screenshot({ path: path.join(SHOTS, 'glow-lit-close.png'),
+    clip: { x: 300, y: 380, width: 170, height: 380 } });
+
+  await page.waitForTimeout(8400);          // and the light goes out
+  const gOut = await glowProbe();
+  check(gOut.filtered === 0 && gOut.glowPaths === 0,
+    'GL5 the light goes out and leaves nothing behind', JSON.stringify(gOut));
+
+  await page.evaluate(() => { GardenRenderer.render(); });
+  await page.waitForTimeout(300);
+  const gRe = await glowProbe();
+  check(gRe.filtered === 0 && gRe.glowPaths === 0,
+    'GL6 a plain re-render lights nothing — growth is what glows, not the garden', JSON.stringify(gRe));
+
   console.log('-- S: the acceptance ladder, measured');
   const stages = [5, 15, 30, 60];
   let prevElements = after.elements;

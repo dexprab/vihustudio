@@ -5477,3 +5477,54 @@ forbidden word absent from the rendered text, each starter genuinely
 opening the editor, and the router flipping on `isComplete()` with no
 Magic Card in play. Rite gate 7/7, Companion 50/50, Garden 41/41, zero
 page errors throughout. Build 0608 → 0609.
+
+## New growth carries light, and the WhatsApp letter catches up (build 0610)
+
+Two small things the product owner asked for on the same afternoon.
+
+**The Garden.** *"anything which new grows should have a glow."* The
+growing vine tip, the stem that reaches out to a new leaf and the leaf
+itself now arrive lit in the Studio's own gold and go dark again as they
+settle — about five seconds of light, then the garden exactly as it
+always is. The second half is the load-bearing one: a glow that *stayed*
+would be a "these are the newest" marker a child could read backwards
+from, which is the quiet kind of counter Decision 27 already rules out,
+so nothing keeps a light and a plain re-render lights nothing at all.
+Three implementation notes worth keeping. The light is written to the
+OUTER group only — the inner group carries the unfold transition and
+then the breath animation, and the handoff between those clears
+`style.transition`, so a glow living there would be cut off mid-fade.
+The vine's tail needed a SECOND path over the same line, dashed
+`[0][old][tail][0]` so only the new segment carries the halo; filtering
+the real path would have lit the whole established vine. And
+`_growingUntil` moved 6500 → 8800ms, because a settle re-render at 6.5s
+rebuilt the layer and snuffed every glow at once. The two filter strings
+have matching function counts so the browser interpolates rather than
+snapping. Reduced motion suppresses it for free — `animateFrom` is
+already out of range there, so nothing is ever marked as new. Six new
+checks (GL1–GL6) measure both halves, and they had to be measured *on
+the clock*: the first version sampled 5.3s after the capture, by which
+time the fade had already started, and reported the light as absent
+when it was simply over. Garden 47/47, zero page errors.
+
+**The invite.** The WhatsApp message was still the first draft — written
+before the email became Lumo's paper letter and never updated. It now
+tells the same story the letter tells (the little door, the story with
+no ending, the question) in the shape a chat bubble reads, and carries
+the two Ether books with their own `&story=` deep links. The plain
+invite link stays FIRST on purpose: WhatsApp builds its preview from the
+first URL in a message, so the front door is what unfurls, never a book.
+No `_underscore_` italics — WhatsApp only styles a run that opens and
+closes on one line, so a wrapped one shows its markers as literal
+characters.
+
+**And the preview image.** `og:image` has been correct on `/` and
+`/about` since build 0598 and the file is on `main`; what was missing
+was `og:image:type` and `og:image:secure_url`, which some unfurlers want
+before they will fetch. Both added. A `.nojekyll` file joins them so
+GitHub Pages serves the asset tree verbatim rather than through Jekyll.
+Disclosed: outbound network is blocked from the build sandbox, so the
+live headers could not be fetched to confirm — the remaining candidates
+are a Pages deploy that had not landed when it was tested, or WhatsApp's
+own on-device preview cache, which no server-side change can purge.
+Build 0609 → 0610.

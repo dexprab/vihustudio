@@ -337,6 +337,72 @@ $('sendMail').onclick = async () => {
 // prepared with its own tracked link and WhatsApp is opened with it
 // ready; a human presses send. It is marked as sent at that moment,
 // because that is the last thing this page can honestly know.
+// ---------------------------------------------------------------
+// THE WHATSAPP LETTER
+// ---------------------------------------------------------------
+// The same letter Lumo posts by email, told the way a message is read
+// rather than the way a page is read: short lines, one idea each, and
+// the whole thing legible in a chat bubble without tapping "read more".
+//
+// It is deliberately the SAME STORY as the email — the little door, the
+// story with no ending, the question — because the two are one
+// invitation sent two ways, and a recipient who gets both should not
+// feel they were sent to by two different people.
+//
+// THE FIRST LINK IS THE PLAIN DOOR, and that matters: WhatsApp builds
+// its preview from the first URL in the message, so the front door is
+// what unfurls, never a book. The two books come after, each its own
+// door into its own story (the same `&story=` deep link the email's
+// covers carry).
+//
+// No emoji spray, no bold-marker shouting, no "click here". A message
+// that looks like marketing gets read like marketing.
+const BOOKS = [
+  { name: 'The falling star', id: 'canon_the_falling_star' },
+  { name: 'Little Seed',      id: 'canon_little_seed' },
+];
+
+function waText(link) {
+  const lines = [
+    'Hello — I am Lumo. I look after VihuPlanet.',
+    '',
+    'I found a little door there.',
+    'I opened it. There was a story inside.',
+    'It had a beginning... but no ending.',
+    '',
+    'I thought about finishing it myself.',
+    'But then I wondered: what if *you* finished it?',
+    '',
+    'You could choose what happens. You could change things.',
+    'You could even leave something of your own behind.',
+    '',
+    'So I left the door open:',
+    link,
+    '',
+    'No account. Nothing to pay. Just come in.',
+    '',
+    'Two stories are waiting in the Ether.',
+    'Which will you open first?',
+    '',
+  ];
+  BOOKS.forEach((b) => {
+    lines.push(b.name, link + '&story=' + b.id, '');
+  });
+  lines.push(
+    'With a smile,',
+    'Lumo',
+    'Keeper of VihuPlanet',
+    '',
+    // NO _underscore_ italics here: WhatsApp only styles a run that
+    // opens and closes on ONE line, so a wrapped one shows its markers
+    // as literal characters. One plain paragraph, left to wrap.
+    'For parents: VihuPlanet is a safe creative space where children explore '
+      + 'stories, make choices, and learn to make their own. Best on a laptop '
+      + '— stories are made the wide way.'
+  );
+  return lines.join('\n');
+}
+
 $('sendWa').onclick = async () => {
   const phone = $('waTo').value.replace(/[^\d]/g, '');
   const label = $('waLabel').value.trim();
@@ -346,12 +412,7 @@ $('sendWa').onclick = async () => {
   try {
     const token = await mint('whatsapp', phone, label);
     const link = `${BASE}/?invite=${encodeURIComponent(token)}`;
-    const text =
-      'Hello — I am Lumo. I look after a place called VihuPlanet.\n\n' +
-      'It is a quiet universe where children make stories: their own words, their own ' +
-      'drawings, their own handwriting. No account to make, nothing to pay.\n\n' +
-      'If that sounds like someone in your house, the door is here:\n' + link + '\n\n' +
-      'Best on a laptop — stories are made the wide way.';
+    const text = waText(link);
     await sb.rpc('invite_mark_sent', { p_token: token, p_error: null });
     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`, '_blank', 'noopener');
     note($('waMsg'), 'WhatsApp opened — press send there.', true);

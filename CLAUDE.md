@@ -1550,6 +1550,17 @@ handwriting.
   Kalam fallback so unmade letters borrow a plain one. Publish needed
   nothing new — the renderer resolves families and Publish already
   preloads them (Rule 5).
+- **New growth carries light, and gives it back.** Asked for by the
+  product owner: *"anything which new grows should have a glow."* The
+  vine's growing tip, the stem that reaches out and the leaf at the end
+  of it all arrive lit in the Studio's own gold, and the light goes out
+  as they settle. **It never stays**, and that half is as deliberate as
+  the first: a permanent glow on the newest elements is a *these are the
+  latest ones* marker a child could count backwards from, which is the
+  quiet kind of counter this decision already rules out. The established
+  garden is never lit — only what just grew — and a plain re-render
+  lights nothing at all. Reduced motion suppresses it for free, because
+  nothing is ever marked as new there.
 - Disclosed: the growth record is local-first per device; a cloud row
   (the `creator_handwriting` pattern) is the follow-up when one garden
   should span devices. Handwriting cloud sync is push-only like the
