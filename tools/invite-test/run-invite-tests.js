@@ -6,12 +6,14 @@
 // can paste myself." BOTH halves were true and they had different
 // causes, which is exactly why this is a suite and not a fix.
 //
-//   1. WhatsApp DISCARDS `text` when a file is attached. navigator
-//      .share({files, text}) is a request each target answers as it
-//      likes, and WhatsApp's answer is to keep the picture and drop the
-//      words. So the caption can never ride along, and S4 asserts that
-//      nothing is even asked for — a promise the product cannot keep is
-//      worse than no promise.
+//   1. ONE MESSAGE MEANS THE CAPTION BOX. navigator.share({files,text})
+//      is a request each target answers as it likes, and WhatsApp has
+//      been seen to keep the picture and drop the words. `text` was
+//      removed after that and it was an overcorrection: asking costs
+//      nothing and sometimes fills the caption box outright. S4 asserts
+//      it is asked for; S4b asserts the sender is told where the words
+//      go when it is not, because pasting into the CHAT is what makes
+//      two messages and pasting into the CAPTION BOX is what makes one.
 //   2. clipboard.writeText() needs transient user activation, and
 //      `await navigator.share(...)` SPENDS it. The first version copied
 //      after the share, so every write was rejected — and a bare
@@ -104,10 +106,13 @@ const ck=(c,n,x)=>c?ok(n,x):no(n,x);
      r.clip==='SENTINEL'?'clipboard still holds the sentinel':'clipboard matches');
   ck(r.shared && r.shared.files.length===1, 'S3 the card was handed to the share sheet',
      JSON.stringify(r.shared&&r.shared.files));
-  ck(r.shared && r.shared.text===null,
-     'S4 no `text` is sent with the file — WhatsApp discards it, so it is not claimed',
-     'text='+JSON.stringify(r.shared&&r.shared.text));
-  ck(/paste them under the picture/.test(r.msg), 'S5 the message says what to do next', JSON.stringify(r.msg));
+  ck(r.shared && typeof r.shared.text==='string' && r.shared.text===r.words,
+     'S4 the caption IS asked for with the file — where a target honours it, that is one message for free',
+     'text='+(r.shared&&r.shared.text?r.shared.text.length+' chars':'null'));
+  ck(/caption box/.test(r.msg) && /one message/.test(r.msg),
+     'S4b and the sender is told WHERE it goes — the caption box, not the chat', JSON.stringify(r.msg));
+  ck(/pick who it is for/.test(r.msg) && /BEFORE pressing send/.test(r.msg),
+     'S5 the message names both next actions, in the order they happen', JSON.stringify(r.msg.slice(0,60)+'…'));
 
   console.log('-- the copy button, on its own gesture');
   await page.evaluate(()=>navigator.clipboard.writeText('SENTINEL'));

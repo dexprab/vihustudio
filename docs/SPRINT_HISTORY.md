@@ -5716,3 +5716,33 @@ on, like every other swatch answering the moment it is pressed.
 
 Garden 71/71 including L6, which drives the real Make It Yours path.
 Build 0612 → 0613.
+
+## The invitation goes as one message (build 0613+)
+
+The product owner, with a screenshot of what it should look like:
+*"whatsapp msg should be coming like this. currently the image and
+caption are going out as seperate msg."*
+
+The mechanism was fine; the instruction was wrong, and it is the whole
+difference. WhatsApp shows a preview screen after a picture is chosen,
+with a **caption box under it**. Words typed there go out attached to the
+picture as one message. Words sent afterwards into the chat are a second
+message. The page had said "paste them under the picture", which is true
+of where the caption ends up and useless as an instruction — so the words
+went into the chat and arrived on their own. It now names the caption
+box, says to fill it BEFORE pressing send, and says that is what keeps it
+one message.
+
+`text` also went back into `navigator.share({files, text})`. Removing it
+after the earlier report was an overcorrection: it is a request each
+target answers as it likes, WhatsApp has been seen to drop it, but asking
+costs nothing and on a target that honours it the caption box comes up
+already filled. The copy says to paste only *if the box is empty*, so
+that case cannot end with the words twice.
+
+Disclosed, and it is a product decision rather than a bug: **a single
+image-with-caption message cannot be GUARANTEED from a share sheet.**
+Only the WhatsApp Business Cloud API can compose that message directly,
+and that means automated sending, a Business number and template
+approval — which trades away the "a person picks the recipient and
+presses send" property this flow was built to keep. Suite 9/9.

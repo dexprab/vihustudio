@@ -141,8 +141,9 @@
         <h3>Send by WhatsApp</h3>
         <p class="note">Prepares the invitation with its own link and hands it to
            WhatsApp. You press send — no automated messaging, and the tracking is
-           identical either way. WhatsApp drops a caption when a picture is
-           attached, so the words come back here to paste.</p>
+           identical either way. The words come back here — they go in
+           WhatsApp's own caption box under the picture, which is what makes
+           it arrive as one message rather than two.</p>
         <label for="waTo">Phone number <span style="text-transform:none;letter-spacing:0">(with country code)</span></label>
         <input id="waTo" type="text" placeholder="919876543210">
         <label for="waLabel">Who is this? <span style="text-transform:none;letter-spacing:0">(just for your list)</span></label>
@@ -154,7 +155,7 @@
         </div>
         <p class="msg" id="waMsg"></p>
         <div id="waWordsBox" class="hidden">
-          <label for="waWords">The words for this one</label>
+          <label for="waWords">The words for this one <span style="text-transform:none;letter-spacing:0">(paste into WhatsApp's caption box, under the picture)</span></label>
           <textarea id="waWords" readonly rows="7"></textarea>
           <button id="copyWords" class="ghost">Copy the words</button>
         </div>
@@ -502,12 +503,22 @@ loadCard();
 // Two things were learned the hard way here, both reported from a real
 // send, and both worth keeping written down.
 //
-// 1. WHATSAPP DROPS `text` WHEN A FILE IS ATTACHED. navigator.share
-//    ({files, text}) is a request, not a contract — each share target
-//    decides what it honours, and WhatsApp's takes the picture and
-//    throws the caption away. So the caption is NEVER going to ride
-//    along with the image, and nothing here should be written as though
-//    it might.
+// 1. ONE MESSAGE MEANS THE CAPTION FIELD, and that is the whole of
+//    it. WhatsApp shows a preview screen after a picture is chosen,
+//    with a caption box under it — words typed THERE go out attached to
+//    the picture as one message; words sent afterwards into the chat
+//    are a second message, which is what "the image and caption are
+//    going out as separate msg" was.
+//
+//    navigator.share({files, text}) is a request, not a contract: each
+//    share target decides what it honours, and WhatsApp has been seen
+//    to take the picture and drop the caption. `text` was removed
+//    after that, which was an overcorrection — a thing that sometimes
+//    fills the caption box for free is worth asking for every time,
+//    and where it is ignored nothing is lost. It is asked for again,
+//    and the copy tells the sender to fill the box only if it came up
+//    empty, so a target that DOES honour it cannot end up with the
+//    words twice.
 //
 // 2. THE CLIPBOARD NEEDS THE CLICK. clipboard.writeText() requires
 //    transient user activation, and `await navigator.share(...)` spends
@@ -535,7 +546,8 @@ async function copyWords(text) {
 
 $('copyWords').onclick = async () => {
   const t = $('waWords').value;
-  if (await copyWords(t)) { note($('waMsg'), 'Copied — paste it under the picture.', true); return; }
+  if (await copyWords(t)) { note($('waMsg'), 'Copied — paste it into the caption box under the '
+    + 'picture, before pressing send.', true); return; }
   // Last resort: put it under the cursor so Ctrl+C works.
   $('waWords').focus();
   $('waWords').select();
@@ -582,13 +594,18 @@ $('sendWaCard').onclick = async () => {
     // the click's activation may still be alive.
     showWords(caption);
     const copied = await copyWords(caption);
+    // NAMES THE CAPTION BOX, because that is the difference between one
+    // message and two — and says "if it is empty", because a share
+    // target that honoured the text already filled it.
+    const where = 'If the caption box under the picture is empty, paste them into it '
+                + 'BEFORE pressing send — that is what keeps it one message.';
     const paste = copied
-      ? 'The words are on your clipboard — paste them under the picture.'
-      : 'The words are below — tap Copy the words, then paste them under the picture.';
+      ? 'The words are on your clipboard. ' + where
+      : 'The words are below — tap Copy the words. ' + where;
 
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
       try {
-        await navigator.share({ files: [file] });
+        await navigator.share({ files: [file], text: caption });
         note($('waMsg'), 'Card handed to WhatsApp — pick who it is for. ' + paste, true);
         $('waTo').value = ''; $('waLabel').value = '';
         show();
