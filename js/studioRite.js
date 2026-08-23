@@ -540,6 +540,141 @@ const StudioRite=(function(){
   //   unlocksStudio — writes the completion flag on a genuine full run.
   //                   Exactly one rite is mandatory; the rest are opt-in
   //                   and store nothing.
+  // ---- Rite II: "The Name on the Green" --------------------------------
+  //
+  // Level II's starter story. The brief it was written from is
+  // docs/STUDIO_RITE_LEVEL_II_GARDEN.md; the script and its reasoning
+  // are docs/STUDIO_RITE_LEVEL_II_SCRIPT.md.
+  //
+  // LETTERS FIRST, DRAWING SECOND, by the product owner's decision. The
+  // order does more work than it looks: a letter needs a pen and the
+  // corner of a page, it comes in one at a time, and it teaches the
+  // camera on the smallest possible thing. By the time the story asks
+  // for a whole drawing — the errand that really leaves the room — the
+  // child has already held paper up to the camera once and watched it
+  // work.
+  //
+  // THE CAMERA IS THE ONLY WAY IN and the Photo tile is never mentioned:
+  // it belongs to Level III, and it must not become the escape hatch
+  // when a camera is difficult. Both capture flows are camera-only
+  // already, so nothing here has to steer around an upload.
+  //
+  // NO LINE NAMES A CONTROL (Decision 8). And nothing anywhere says that
+  // any of this makes the garden in the margins grow (Decision 27) —
+  // it will have grown right through this story, and a child noticing
+  // that on their own is the whole design.
+  const MISSION_GARDEN='Our story: a small green place, a name of your own, and somebody to keep it company.';
+
+  const SCREENS_GARDEN=[
+    // ---- Act I — the name
+    {band:true, lines:[
+      {lumo:'talk', egg:'curious',
+       line:{title:'At the far end of everywhere there is a small green place.',
+             subtitle:'Choose a colour for the ground.'}}
+     ], end:{await:'bg-set'}, nudgeDelay:6000},
+
+    // The first letter. The ask is deliberately ONE letter: it is the
+    // smallest thing a child can be sent away for, and the camera is
+    // learned on it.
+    {band:true, lines:[
+      {lumo:'curious', egg:'curious',
+       line:{title:'Nobody has ever said whose it is.'}},
+      {lumo:'talk', egg:'curious',
+       line:{title:'Things that belong to somebody have their name on them. Written by hand.',
+             subtitle:'Write the first letter of your name on paper, and show it to me.'}}
+     ], end:{await:'letter-kept'}, nudgeDelay:9000},
+
+    {band:true, lines:[
+      {lumo:'celebrate', egg:'excited',
+       line:{title:'That is your letter. Nobody else in the world makes that shape.'}},
+      {lumo:'talk', egg:'curious',
+       line:{title:'A name needs all of itself.',
+             subtitle:'Write the rest of your name.'}}
+     ], end:{await:'letters-grown'}, nudgeDelay:12000},
+
+    {band:true, lines:[
+      {lumo:'talk', egg:'happy',
+       line:{title:'Now everyone will know.',
+             subtitle:'Put your name on the green.'}}
+     ], end:{await:'letters-placed'}, nudgeDelay:9000},
+
+    // ---- Act II — somebody to keep it company
+    //
+    // THE LONG ERRAND. This is the beat where the child leaves the
+    // screen, and the wait is written rather than left as dead air —
+    // 25 seconds before Lumo says anything at all, because a child who
+    // is off finding paper is not stuck and must not be treated as if
+    // they were.
+    {band:true, lines:[
+      {lumo:'curious', egg:'idle',
+       line:{title:'It is a lovely green place. It is also very quiet.'}},
+      {lumo:'talk', egg:'curious',
+       line:{title:'Somebody should live here. Somebody nobody has ever seen before.',
+             subtitle:'Draw them on paper, and bring them to me. I will wait.'}}
+     ], end:{await:'drawing-kept'}, nudgeDelay:25000},
+
+    {band:true, lines:[
+      {lumo:'celebrate', egg:'excited',
+       line:{title:'There you are. Nobody has ever made one of those.',
+             subtitle:'Let them into the green.'}}
+     ], end:{await:'drawing-placed'}, nudgeDelay:9000},
+
+    // Unconditional wording, the same discipline Rite III uses: this is
+    // about how big somebody is, never about how big THIS child made
+    // them. Lumo does not judge work he cannot see.
+    {band:true, lines:[
+      {lumo:'talk', egg:'thinking',
+       line:{title:'Nobody is ever quite the right size when they first arrive.',
+             subtitle:'Make them the size they should be.'}}
+     ], end:{await:'sticker-resized'}, nudgeDelay:9000},
+
+    // ---- Act III — and they stayed
+    //
+    // The page is COPIED rather than added blank, for Rite I's own
+    // reason: the green, the name and the new arrival all have to come
+    // with it, or the next beat asks a child to move somebody who is
+    // not there.
+    {band:true, lines:[
+      {lumo:'talk', egg:'curious',
+       line:{title:'And then it was the next day.'}},
+      {lumo:'talk', egg:'curious',
+       line:{title:'Your page can make a copy of itself.',
+             subtitle:'Copy this page.'}}
+     ], end:{await:'page-added'}, nudgeDelay:12000},
+
+    // THE POINT OF THE WHOLE STORY, and it is made without a word about
+    // it: the thing the child drew on paper is still here the next day.
+    // It stayed. That is what My Garden is, and nothing says so.
+    {band:true, lines:[
+      {lumo:'happy', egg:'excited',
+       line:{title:'They are still here. They live here now.',
+             subtitle:'Take them somewhere new.'}}
+     ], end:{await:'sticker-moved'}, nudgeDelay:12000},
+
+    {band:true, lines:[
+      {lumo:'curious', egg:'curious',
+       line:{title:'They found something while you were away.',
+             subtitle:'Add whatever they found.'}}
+     ], end:{await:'sticker-added'}, nudgeDelay:12000},
+
+    // ---- Act IV — it is a story now
+    {band:true, lines:[
+      {lumo:'talk', egg:'happy',
+       line:{title:'This is a story about a green place with your name on it.',
+             subtitle:'Give your story its name.'}}
+     ], end:{await:'story-named'}, nudgeDelay:12000},
+
+    // Ends on PLAYING, never on finishing or sharing. Rite I owns that
+    // ending; this rite is opt-in and must not push a child toward
+    // giving anything away (Decision 12: finishing and sharing are
+    // separate acts, and neither is ever mandatory).
+    {band:true, lines:[
+      {lumo:'celebrate', egg:'excited',
+       line:{title:'Let us see it from the beginning.',
+             subtitle:'Play your story.'}}
+     ], end:{await:'story-played'}, nudgeDelay:6000}
+  ];
+
   const RITES=[
     {id:'the-night-a-star-came-down',
      mission:MISSION,
@@ -562,8 +697,8 @@ const StudioRite=(function(){
     // child at a door that will not open. Writing the story is what
     // makes this rite real; nothing else here has to change.
     {id:'my-garden',
-     mission:null,
-     screens:null,
+     mission:MISSION_GARDEN,
+     screens:SCREENS_GARDEN,
      teaches:['garden','handwriting'],
      reveals:['library'],
      startsBlank:true,
@@ -1102,6 +1237,48 @@ const StudioRite=(function(){
       find:function(){ return _addTile('photo'); },
       hint:'Pictures live with the other things you can add.'
     },
+    // Rite II. Every one of these points at the SAME tile — My Garden —
+    // because that is where both rooms live. What changes is the help,
+    // and the help never names the control: it says where a thing is,
+    // which Decision 8 allows, and never what the control does.
+    'letter-kept':{
+      find:function(){
+        return document.querySelector('.hw-studio-panel') || _addTile('library');
+      },
+      hint:function(){
+        return document.querySelector('.hw-studio-panel')
+          ? 'Hold your letter up so I can see it.'
+          : 'Your letters live on the right, with the things you can add.';
+      }
+    },
+    'letters-grown':{
+      find:function(){
+        return document.querySelector('.hw-studio-panel') || _addTile('library');
+      },
+      hint:function(){
+        return document.querySelector('.hw-studio-panel')
+          ? 'Hold the next one up.'
+          : 'There is a letter waiting for every one you need.';
+      }
+    },
+    'letters-placed':{
+      find:function(){ return _addTile('library'); },
+      hint:'Tap a letter you made, and it will ask where it should go.'
+    },
+    'drawing-kept':{
+      find:function(){
+        return document.querySelector('.bia-studio-panel') || _addTile('library');
+      },
+      hint:function(){
+        return document.querySelector('.bia-studio-panel')
+          ? 'Hold your paper up so I can see it.'
+          : 'When your drawing is ready, it comes in on the right.';
+      }
+    },
+    'drawing-placed':{
+      find:function(){ return _addTile('library'); },
+      hint:'Tap the one you made, and it will ask where it should go.'
+    },
     'blank-page-added':{
       find:function(){ return document.getElementById('addPageBtn'); },
       hint:'Your pages are down the left side.'
@@ -1378,6 +1555,26 @@ const StudioRite=(function(){
                && PublishStudio.getStage()===PublishStudio.STAGES.CELEBRATION;
       }catch(e){ return false; }
     }
+    // ---- My Garden's two rooms (Rite II) --------------------------
+    // A letter kept is a letter kept, whether it is the first or the
+    // fifth: each beat re-baselines, so one condition serves both the
+    // discovering beat and the owning one. They stay two KINDS because
+    // the nudges differ — "your letters are in there" is not the same
+    // help as "there are more letters to write".
+    if(kind==='letter-kept' || kind==='letters-grown'){
+      try{ return HandwritingStore.list().length>(baseline&&baseline.__letters||0); }
+      catch(e){ return false; }
+    }
+    if(kind==='drawing-kept'){
+      try{ return CreatorLibrary.list().length>(baseline&&baseline.__drawings||0); }
+      catch(e){ return false; }
+    }
+    // Anything OUT of My Garden and onto the page arrives as an image
+    // object, letters and drawings alike — the same count `photo-added`
+    // already watches. Two kinds again, for two different hints.
+    if(kind==='letters-placed' || kind==='drawing-placed'){
+      return _kindCount('image')>(baseline&&baseline.__images||0);
+    }
     const list=_stickers();
     if(kind==='sticker-added') return list.length>(baseline&&baseline.__count||0);
     if(!list.length) return false;
@@ -1470,6 +1667,11 @@ const StudioRite=(function(){
     map.__shapes=_kindCount('shape');
     map.__images=_kindCount('image');
     map.__doodles=_drawnDoodleCount();
+    // The two rooms of My Garden. Both stores are synchronous, in-memory
+    // maps, so a beat can ask them the same way it asks the page — no
+    // await inside a condition, and no second source of truth.
+    try{ map.__letters=HandwritingStore.list().length; }catch(e){ map.__letters=0; }
+    try{ map.__drawings=CreatorLibrary.list().length; }catch(e){ map.__drawings=0; }
     try{ map.__plays=StoryPlayer.playCount(); }catch(e){ map.__plays=0; }
     try{ map.__published=!!MagicCard.growthSignals().hasEverPublished; }catch(e){ map.__published=false; }
     return map;
@@ -1741,7 +1943,11 @@ const StudioRite=(function(){
                     // panel has to be showing the PAGE rather than the
                     // object the child has just finished with.
                     'shape-added':1,'doodle-added':1,'photo-added':1,
-                    'blank-page-added':1};
+                    'blank-page-added':1,
+                    // Rite II's four, for the same reason: every one of
+                    // them starts at the page's own Add Something.
+                    'letter-kept':1,'letters-grown':1,'letters-placed':1,
+                    'drawing-kept':1,'drawing-placed':1};
 
   function _showPageControls(){
     try{

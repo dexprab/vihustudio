@@ -178,10 +178,10 @@ function check(cond, name, note) {
   }));
   check(reg.order.join(' > ') === 'the-night-a-star-came-down > my-garden > my-little-house',
     'N1 My Garden is the second step and My Little House the third', reg.order.join(' > '));
-  check(reg.unwrittenStarts === false,
-    'N2 a rite with no story refuses to start rather than opening an empty one');
-  check(/my-garden:no/.test(reg.runnable.join(' ')) && /my-little-house:yes/.test(reg.runnable.join(' ')),
-    'N3 the registry says which rites can actually be walked', reg.runnable.join(' '));
+  check(reg.unwrittenStarts === true,
+    'N2 My Garden has its story now, so it starts — the same call refused while it had none');
+  check(!/:no/.test(reg.runnable.join(' ')),
+    'N3 every rite in the registry can actually be walked', reg.runnable.join(' '));
 
   // The offer on Studio Home must skip the unwritten one and land on the
   // next real door — never on a rite nobody has authored.
@@ -192,8 +192,28 @@ function check(cond, name, note) {
     }
     return null;
   });
-  check(offered === 'my-little-house',
-    'N4 the next door skips the unwritten rite and opens the next real one', String(offered));
+  check(offered === 'my-garden',
+    'N4 the next door is the first opt-in rite in registry ORDER, not a hard-coded id', String(offered));
+
+  // A rite must never take away what an earlier rite taught. My Garden
+  // is now runnable, so it contributes: the third rite shows its tile
+  // without either entry naming the other, and while My Garden had no
+  // story it contributed nothing — which is what kept the tile out of
+  // Rite III in front of a child who had never been taught it.
+  // A FRESH PAGE, because N2 started a rite to prove it starts and
+  // `start()` refuses while one is running — the first version of this
+  // check read an empty class list and looked like a broken feature.
+  await page.goto(BASE + '/studio.html?author=on');
+  await page.waitForFunction(() => typeof StudioRite !== 'undefined', null, { timeout: 20000 });
+  const cumulative = await page.evaluate(() => {
+    StudioRite.start('my-little-house');
+    const shows = Array.prototype.slice.call(document.body.classList)
+      .filter((c) => c.indexOf('studio-rite-shows-') === 0).sort();
+    return shows;
+  });
+  check(cumulative.indexOf('studio-rite-shows-library') >= 0,
+    'N5 the third rite inherits My Garden from the second, with neither naming the other',
+    cumulative.join(' '));
 
   check(pageErrors.length === 0, 'H1 zero page errors',
     pageErrors.slice(0, 2).join(' | '));
