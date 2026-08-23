@@ -169,7 +169,7 @@
       <table>
         <thead><tr>
           <th>Who</th><th>Channel</th><th>Journey</th><th>Where they got to</th>
-          <th>Sent</th><th>Link</th>
+          <th>Sent</th><th>Link</th><th></th>
         </tr></thead>
         <tbody id="rows"></tbody>
       </table>
@@ -177,7 +177,9 @@
     <p class="foot">An invitation is <strong>accepted</strong> when the child finishes their first
        story — that is the only definition here, and it is the product owner's. The two
        stages before it exist so a letter nobody opened can be told apart from one that was
-       opened and never begun. Nothing on this page identifies a child.</p>
+       opened and never begun. Nothing on this page identifies a child.
+       Removing a row deletes the invitation outright — its journey goes with it,
+       and its link stops being an invitation and becomes an ordinary way in.</p>
     <p class="foot" id="mailState"></p>
   </div>
 </div>
@@ -262,8 +264,39 @@ function render(rows) {
       <td class="dim"><code>${esc(r.token)}</code>
           <button class="ghost" style="margin:0 0 0 .4rem;padding:.15rem .5rem;font-size:.74rem"
                   data-copy="${esc(link)}">copy</button></td>
+      <td><button class="ghost rowdel" style="margin:0;padding:.15rem .5rem;font-size:.74rem"
+                  data-del="${esc(r.token)}"
+                  data-who="${esc(r.label || r.recipient)}"
+                  data-got="${r.creator_at ? 'became a Creator' : r.explored_at ? 'started exploring'
+                              : r.opened_at ? 'opened the letter' : ''}"
+                  title="Remove this invitation">&#10005;</button></td>
     </tr>`;
   }).join('');
+
+  // Removing one. The confirm NAMES who it was for and, when the
+  // invitation actually got somewhere, says so — deleting a letter
+  // nobody opened is tidying, and deleting one a child answered throws
+  // away the only record of that. Those are different acts and the
+  // question should not look the same for both.
+  document.querySelectorAll('[data-del]').forEach(b => {
+    b.onclick = async () => {
+      const who = b.dataset.who || 'this one';
+      const got = b.dataset.got;
+      const msg = got
+        ? `Remove the invitation for ${who}?\n\nThey ${got}. That is the only record of it, and it will be gone.`
+        : `Remove the invitation for ${who}?`;
+      if (!window.confirm(msg)) return;
+      b.disabled = true;
+      try {
+        const { error } = await sb.rpc('invite_delete', { p_token: b.dataset.del });
+        if (error) throw new Error(error.message || 'could not remove');
+        show();
+      } catch (e) {
+        b.disabled = false;
+        note($('waMsg'), (e && e.message) ? e.message : 'Could not remove that one.');
+      }
+    };
+  });
 
   document.querySelectorAll('[data-copy]').forEach(b => {
     b.onclick = () => {

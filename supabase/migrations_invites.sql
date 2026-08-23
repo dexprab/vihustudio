@@ -172,6 +172,36 @@ revoke all on function public.invite_reached(text,text) from public;
 grant execute on function public.invite_reached(text,text) to anon, authenticated;
 
 -- ---------------------------------------------------------------
+-- 4b. Throwing one away. Admins only.
+-- ---------------------------------------------------------------
+-- Asked for after real use: the roll fills with tests and mistyped
+-- addresses, and a list you cannot tidy stops being read.
+--
+-- It is a REAL DELETE rather than a hidden flag. This table holds four
+-- timestamps and a recipient — there is nothing here worth keeping
+-- around invisibly, and a soft-delete would mean every future query
+-- had to remember to exclude it. What that costs is stated plainly in
+-- the page: a deleted invitation's journey is gone, and a child who
+-- follows its link afterwards is simply an ordinary visitor, because
+-- `invite_reached` already does nothing for a token it does not know.
+create or replace function public.invite_delete(p_token text)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not public.is_platform_admin() then
+    raise exception 'not permitted';
+  end if;
+  delete from public.invites where token = p_token;
+end;
+$$;
+
+revoke all on function public.invite_delete(text) from public;
+grant execute on function public.invite_delete(text) to authenticated;
+
+-- ---------------------------------------------------------------
 -- 5. The roll, for the admin page.
 -- ---------------------------------------------------------------
 create or replace function public.invite_roll()

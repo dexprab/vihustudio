@@ -6250,3 +6250,35 @@ kitchen is not something 16 checks can answer, and the 25-second wait is
 a reasoned number rather than an observed one.
 
 Rite gate 11 → 16, Studio Home 47/47. Build 0622 → 0623.
+
+## An invitation can be thrown away (build 0624)
+
+The product owner, after real use: *"i need delete action against each
+invite to remove the junk/test invites."* A roll that cannot be tidied
+stops being read, and a roll nobody reads is not tracking anything.
+
+`invite_delete(token)` joins the other four functions in
+`supabase/migrations_invites.sql` — admin-gated, SECURITY DEFINER, the
+same shape as its neighbours. **A real delete rather than a hidden
+flag**: the table holds four timestamps and a recipient, there is
+nothing here worth keeping around invisibly, and a soft-delete would
+mean every future query had to remember to exclude it.
+
+The one piece of design in it is the question. **Deleting a letter
+nobody opened is tidying; deleting one a child actually answered throws
+away the only record that it happened.** Those are different acts, so
+the confirm names who it was for and, when the invitation got anywhere,
+says how far it got and that this is the only record of it. The footnote
+on the page states the other half plainly: a deleted invitation's link
+stops being an invitation and becomes an ordinary way in, because
+`invite_reached` already does nothing for a token it does not know.
+
+New suite, `tools/invite-test/run-roll-tests.js`, 7 checks driving the
+page's own `render(rows)` against fabricated rows — the module cannot run
+in this sandbox (esm.sh is unreachable) and `render` takes exactly what
+`invite_roll` returns, so the markup, ids, wiring and copy under test are
+the shipped ones. D2 exists because a new column is the easiest thing in
+the world to add to the body and forget in the header.
+
+**Needs the migration re-run** — it is safe to re-run and always was.
+Invite suites 9/9 and 7/7. Build 0623 → 0624.
