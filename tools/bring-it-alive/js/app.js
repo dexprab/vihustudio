@@ -328,18 +328,29 @@
   $('toolMark').addEventListener('click', () => setTool('mark'));
   $('toolErase').addEventListener('click', () => setTool('erase'));
   $('toolMove').addEventListener('click', () => setTool('move'));
+  // Choosing a colour means "I want to make a mark" — but never steals
+  // the Fill tool (pick blue, then tap the shape), and while a Mark is
+  // live it means "colour the marked lines NOW"; the mark stays live
+  // so another colour can be tried. One function because it is the
+  // FLOW's rule, and the six curated colours and the any-colour picker
+  // must not be able to disagree about it.
+  const chose = (color, on) => {
+    BIAEditor.setColor(color);
+    for (const o of document.querySelectorAll('.swatch, .swatch-any')) o.classList.toggle('on', o === on);
+    const t = BIAEditor.state.tool;
+    if (t === 'mark') BIAEditor.tintMarked();
+    else if (t !== 'pencil' && t !== 'fill') setTool('pencil');
+  };
   for (const b of document.querySelectorAll('.swatch')) {
-    b.addEventListener('click', () => {
-      BIAEditor.setColor(b.dataset.color);
-      for (const o of document.querySelectorAll('.swatch')) o.classList.toggle('on', o === b);
-      // Choosing a colour means "I want to make a mark" — but never steals
-      // the Fill tool (pick blue, then tap the shape), and while a Mark is
-      // live it means "colour the marked lines NOW"; the mark stays live
-      // so another colour can be tried.
-      const t = BIAEditor.state.tool;
-      if (t === 'mark') BIAEditor.tintMarked();
-      else if (t !== 'pencil' && t !== 'fill') setTool('pencil');
-    });
+    b.addEventListener('click', () => chose(b.dataset.color, b));
+  }
+  const any = $('swatchAny');
+  if (any) {
+    const anyInput = any.querySelector('input');
+    // `input`, not `change`: a child dragging around the picker sees the
+    // colour they are on, the same as every other swatch answering the
+    // moment it is pressed.
+    anyInput.addEventListener('input', () => chose(anyInput.value, any));
   }
   for (const b of document.querySelectorAll('.brush')) {
     b.addEventListener('click', () => {

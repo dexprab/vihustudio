@@ -199,7 +199,7 @@
     BIAEditor.mount(_els.editCanvas, _state.creation, null, _log);
     BIAEditor.setView('mine');
     _setTool('pencil');
-    _setSwatch(_els.swatches[0]);
+    _resetColour();
     _setSize(_els.sizes[0]);
     _els.peekBtn.classList.remove('active');
     _els.peekBtn.textContent = '👀 Peek at the paper';
@@ -214,6 +214,15 @@
   function _setSwatch(btn) {
     BIAEditor.setColor(btn.dataset.color);
     for (const o of _els.swatches) o.classList.toggle('active', o === btn);
+  }
+  // Every open starts on the ink, whatever the last drawing ended on.
+  function _resetColour() {
+    BIAEditor.setColor(SWATCHES[0][0]);
+    if (_els.colourKit && _els.colourKit.colourKitSync) {
+      _els.colourKit.colourKitSync(SWATCHES[0][0], false, false);
+    } else if (_els.swatches.length) {
+      _setSwatch(_els.swatches[0]);
+    }
   }
   function _setSize(btn) {
     BIAEditor.setSize(btn.dataset.size);
@@ -474,23 +483,52 @@
       toolRow.appendChild(b);
     }
     toolRow.appendChild(_el('span', 'bia-studio-toolgap'));
-    for (const [color, title] of SWATCHES) {
-      const b = _btn('bia-studio-swatch', '');
-      b.dataset.color = color;
-      b.style.background = color;
-      b.title = title;
-      b.addEventListener('click', () => {
-        _setSwatch(b);
-        // Choosing a colour means "I want to make a mark" — but never
-        // steals the Fill tool, and while a Mark is live it means
-        // "colour the marked lines NOW" (same rule as the standalone
-        // host, because it is the flow's rule, not a page's).
-        const t = BIAEditor.state.tool;
-        if (t === 'mark') BIAEditor.tintMarked();
-        else if (t !== 'pencil' && t !== 'fill') _setTool('pencil');
+    // THE COLOURS, AND THEN EVERY OTHER COLOUR. The product owner:
+    // "bringing it alive page only have limited colors. we need color
+    // selector in that."
+    //
+    // The six stay: they are the fast path, one tap, and a child
+    // colouring a drawing does not want to go shopping for a red. What
+    // was missing is the door to everything else, and the Studio
+    // already has that widget — CardDesigner.buildColourKit, which is
+    // exported with a comment saying in as many words that it exists so
+    // another surface can reuse the identical control instead of a bare
+    // <input type=color>. So this is now the same swatch row plus the
+    // same rainbow custom button the Card Designer, the Context Panel
+    // and the shape and text pickers all use, rather than a seventh
+    // implementation of choosing a colour.
+    const colourHost = _el('div', 'bia-studio-colours');
+    toolRow.appendChild(colourHost);
+    // Choosing a colour means "I want to make a mark" — but never
+    // steals the Fill tool, and while a Mark is live it means "colour
+    // the marked lines NOW" (the flow's rule, not a page's, which is
+    // why the standalone host has it too).
+    const _chose = (color) => {
+      BIAEditor.setColor(color);
+      const t = BIAEditor.state.tool;
+      if (t === 'mark') BIAEditor.tintMarked();
+      else if (t !== 'pencil' && t !== 'fill') _setTool('pencil');
+    };
+    try {
+      _els.colourKit = window.CardDesigner.buildColourKit(colourHost, {
+        palette: SWATCHES.map((s) => s[0]),
+        value: SWATCHES[0][0],
+        onChange: _chose
       });
-      _els.swatches.push(b);
-      toolRow.appendChild(b);
+    } catch (e) {
+      // The kit lives in the Card Designer, which the Studio always
+      // loads — but a modal that cannot offer a colour is worse than
+      // one that offers only six, so the palette still comes up alone.
+      _els.colourKit = null;
+      for (const [color, title] of SWATCHES) {
+        const b = _btn('bia-studio-swatch', '');
+        b.dataset.color = color;
+        b.style.background = color;
+        b.title = title;
+        b.addEventListener('click', () => { _setSwatch(b); _chose(color); });
+        _els.swatches.push(b);
+        colourHost.appendChild(b);
+      }
     }
     toolRow.appendChild(_el('span', 'bia-studio-toolgap'));
     for (const [size, px] of [['fine', 4], ['medium', 8], ['thick', 13]]) {

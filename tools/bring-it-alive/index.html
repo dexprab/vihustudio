@@ -87,6 +87,23 @@
   .swatch { width:26px; height:26px; padding:0; border-radius:50%;
             border:2px solid var(--line); cursor:pointer; }
   .swatch.on { outline:2px solid var(--gold); outline-offset:2px; }
+  /* Every other colour. The Studio host reuses CardDesigner's shared
+     colour-kit for this; this page is standalone by design (its own
+     styles, no shared stylesheet, no Studio modules), so it gets the
+     same IDEA in its own markup — a seventh circle with a spectrum
+     face hiding a native colour input. Kept here rather than left off
+     so the two hosts do not drift: the colour rule below is the flow's
+     rule, not a page's, and a dev host that cannot reproduce what a
+     child sees is not much of a dev host. */
+  .swatch-any { position:relative; width:26px; height:26px; padding:0;
+                border-radius:50%; border:2px solid var(--line);
+                cursor:pointer; display:inline-block; overflow:hidden;
+                vertical-align:middle; }
+  .swatch-any i { position:absolute; inset:0; border-radius:50%;
+                  background:conic-gradient(red,yellow,lime,cyan,blue,magenta,red); }
+  .swatch-any input { position:absolute; inset:0; width:100%; height:100%;
+                      opacity:0; cursor:pointer; padding:0; margin:0; border:none; }
+  .swatch-any.on { outline:2px solid var(--gold); outline-offset:2px; }
   .brush { width:30px; height:26px; padding:0; background:transparent;
            border:1px solid var(--line); border-radius:6px; color:var(--soft);
            display:inline-flex; align-items:center; justify-content:center; }
@@ -321,6 +338,7 @@
       <button class="swatch" data-color="#30a46c" style="background:#30a46c" title="green"></button>
       <button class="swatch" data-color="#3e63dd" style="background:#3e63dd" title="blue"></button>
       <button class="swatch" data-color="#8e4ec6" style="background:#8e4ec6" title="purple"></button>
+      <label class="swatch-any" id="swatchAny" title="any colour"><i></i><input type="color" value="#1f2430"></label>
       <span class="toolgap"></span>
       <button class="brush on" data-size="fine" title="fine"><i style="width:4px;height:4px"></i></button>
       <button class="brush" data-size="medium" title="medium"><i style="width:8px;height:8px"></i></button>

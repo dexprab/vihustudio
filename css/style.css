@@ -12213,6 +12213,29 @@ body.light-theme .story-action.is-asleep{ background:rgba(255,255,255,.09); }
 .bia-studio-tool:active{ transform:translateY(1px); }
 .bia-studio-tool.active{ background:var(--gold); border-color:var(--gold); color:var(--navy); }
 .bia-studio-toolgap{ width:8px; }
+/* The shared colour-kit, wearing this row's proportions. The widget is
+   the Card Designer's (js/cardDesigner.js -> buildColourKit) and its
+   own defaults are sized for the narrow Context Panel; the tool row
+   here is bigger and its circles were 26px, so only the size is
+   restated — never the behaviour, the states or the rainbow face. */
+.bia-studio-colours{ display:flex; align-items:center; }
+.bia-studio-colours .colour-kit{ flex-direction:row; align-items:center; gap:0; }
+.bia-studio-colours .colour-kit-swatch-row{ gap:8px; flex-wrap:nowrap; }
+.bia-studio-colours .colour-kit-swatch,
+.bia-studio-colours .colour-kit-custom-btn{
+  width:26px !important; height:26px !important; min-width:26px;
+}
+/* …and it has to LOOK the same size as its six neighbours. The kit's
+   custom button wears a dashed border with its face inset 2px, which
+   is right in the Context Panel where it reads as "not a colour yet",
+   and wrong in a row of six solid circles — measured against them it
+   showed about 18px of colour to their 22 and read as a smaller,
+   lesser button. Only the frame changes; the rainbow, the states and
+   the behaviour are the shared widget's. */
+.bia-studio-colours .colour-kit-custom-btn{
+  border-style:solid; border-color:rgba(0,0,0,0.18);
+}
+.bia-studio-colours .colour-kit-custom-preview{ inset:0; }
 .bia-studio-swatch{
   width:26px !important;
   height:26px !important;

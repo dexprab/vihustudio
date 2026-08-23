@@ -5677,3 +5677,42 @@ X1–X7 (the DOM proof: bud opens, flower ripens, leaf swells, a capture
 that adds no element still lights and moves, the light still goes out,
 a re-render animates nothing, and twenty consecutive real captures each
 answered on screen). Build 0611 → 0612.
+
+## Bring It Alive gets every other colour (build 0613)
+
+The product owner: *"my garden bringing it alive page only have limited
+colors. we need color selector in that."*
+
+The six curated colours stay, because they are the fast path — one tap,
+and a child colouring a drawing does not want to go shopping for a red.
+What was missing was the door to everything else, and the Studio already
+had that widget: `CardDesigner.buildColourKit`, exported with a comment
+saying in as many words that it exists so another surface can reuse the
+identical control "instead of a bare `<input type=color>`". The Card
+Designer, the Context Panel, the shape pickers and the text colour row
+all use it. So the Bring It Alive modal now uses it too, rather than
+becoming a seventh implementation of choosing a colour. The rule that
+picking a colour means *make a mark* — never stealing the Fill tool, and
+tinting the marked lines while a Mark is live — moved into the kit's
+`onChange` unchanged.
+
+Two things were restated in CSS and nothing else was: the kit's circles
+are sized for the narrow Context Panel and this tool row's were 26px, and
+the kit's custom button wears a dashed border with its face inset 2px —
+right where it means *not a colour yet*, wrong in a row of six solid
+circles, where it measured about 18px of colour against their 22 and read
+as a smaller, lesser button. Caught by looking at the rendered row, not
+at the source.
+
+The standalone host at `tools/bring-it-alive/` is self-contained by
+design — its own styles, no shared stylesheet, no Studio modules — so it
+gets the same idea in its own markup: a seventh circle with a spectrum
+face over a native colour input. Done rather than skipped because the
+colour rule is the flow's, not a page's, and the two hosts drifting is
+how this subsystem's bugs start; both now route every pick through one
+function so they cannot disagree. Its picker answers on `input` rather
+than `change`, so dragging around the spectrum shows the colour you are
+on, like every other swatch answering the moment it is pressed.
+
+Garden 71/71 including L6, which drives the real Make It Yours path.
+Build 0612 → 0613.
