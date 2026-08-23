@@ -1,3 +1,23 @@
+> **Four levels, locked by the product owner.** Level I the Starter
+> Story · **Level II My Garden** · Level III *My Little House* ·
+> Level IV the World tools. My Garden was moved ahead of *My Little
+> House* (*"lets assign my garden to level 2 and current level 2
+> becomes level 3"*) and the World tools were given their own level
+> (*"lets keep it 4 levels, world tools become level 4"*).
+>
+> The order lives in the rite registry in `js/studioRite.js` and
+> nowhere else — no ordinal is held downstream, and four is today's
+> count rather than the design.
+>
+> | | Level | Story | Teaches | State |
+> |---|---|---|---|---|
+> | I | mandatory | *the night a star came down* | placing, text, pages, finishing, sharing | built |
+> | II | opt-in | — | My Garden: drawings and handwriting | **brief written, story not** |
+> | III | opt-in | *My Little House* | shapes, doodle, photo, blank page | built, no recordings |
+> | IV | opt-in | — | Worlds, Page Style, From This World, Family Photos, Voice | not started |
+>
+> Level II's brief: `docs/STUDIO_RITE_LEVEL_II_GARDEN.md`.
+
 # Studio Rite — Three Levels
 
 **Status: approved in shape by the product owner. Step 1 of §6 is built

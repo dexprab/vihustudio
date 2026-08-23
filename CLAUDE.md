@@ -783,9 +783,10 @@ once, and its scope is no longer closed.
   is the former Level II: Shapes, Doodle, Photo, Add Page and Card
   Designer, the existing *My Little House*. The World Designer, Page
   Style, Page Shape, From This World, Family Photos, Voice and the
-  remaining publish formats move down with it, and whether they are a
-  fourth level or fold into the third is still open — the count was
-  never the design.
+  remaining publish formats become **Level IV**, locked by the product
+  owner (*"lets keep it 4 levels, world tools become level 4"*). Four is
+  today's count, not the design — the registry still holds the order and
+  nothing downstream counts.
 - **The order is a line in the registry, and nothing downstream holds an
   ordinal.** `RITE_NEXT` in `js/creationFlow.js` was a hard-coded
   `'my-little-house'`, which this decision forbids in as many words;

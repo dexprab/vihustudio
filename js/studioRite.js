@@ -564,7 +564,7 @@ const StudioRite=(function(){
     {id:'my-garden',
      mission:null,
      screens:null,
-     teaches:['garden'],
+     teaches:['garden','handwriting'],
      reveals:['library'],
      startsBlank:true,
      unlocksStudio:false},

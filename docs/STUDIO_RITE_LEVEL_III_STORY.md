@@ -1,15 +1,20 @@
-# Rite II — *My Little House*
+# Rite III — *My Little House*
 
 **Status: built and walkable. No recordings.**
 The nineteen beats below are in `js/studioRite.js` as the
 `my-little-house` entry of the rite registry, with every gate they need.
 What is missing is Lumo's voice: no screen carries an `audio` field, and
 none will until there is a recording session (§4).
-Level II's starter story. Companion to
-`docs/STUDIO_RITE_STARTER_STORY.md` (Level I) and
+Level III's starter story — it was Level II until the product owner
+moved My Garden ahead of it (*"lets assign my garden to level 2 and
+current level 2 becomes level 3"*). **Nothing in the story changed; only
+its position did.** Companion to `docs/STUDIO_RITE_STARTER_STORY.md`
+(Level I), `docs/STUDIO_RITE_LEVEL_II_GARDEN.md` (Level II) and
 `docs/STUDIO_RITE_LEVELS.md` (the progression).
 
-> **Level I is about placing things. Level II is about making them.**
+> **Level I is about placing things. Level III is about making them
+> on screen** — and Level II, now ahead of it, is about bringing in
+> something that was already real.
 > That is the whole difference, and this story exists to teach it.
 
 ---

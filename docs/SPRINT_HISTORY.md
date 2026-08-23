@@ -6041,3 +6041,45 @@ moves down, and whether it becomes a fourth level or folds into the third
 is the product owner's to decide. The count was never the design.
 
 Rite gate 11 → 15, Studio Home 47/47. Build 0618 → 0619.
+
+## Four levels, and Level II gets its brief (build 0620)
+
+The product owner: *"lets keep it 4 levels, world tools become level 4.
+also lets write story for new level 2. describe level 2 so that we can
+get a story done for it."*
+
+Four levels locked — I the Starter Story · II My Garden · III *My Little
+House* · IV the World tools. `docs/STUDIO_RITE_LEVEL_II_STORY.md` became
+`docs/STUDIO_RITE_LEVEL_III_STORY.md` with its position corrected and
+**not one word of its story touched**; leaving a file called LEVEL_II
+describing Level III is how a renumbering becomes a bug six months later.
+
+`docs/STUDIO_RITE_LEVEL_II_GARDEN.md` is the brief. Its one sentence:
+**Level I is about placing things, Level III is about making them on
+screen, and Level II is about bringing in something that is already
+real** — which is the Product Vision arriving as a rite for the first
+time.
+
+The thing the brief exists to say, and the thing a script will live or
+die on: **Level II is the first rite that asks a child to put the laptop
+down.** It needs paper, something to draw with and a camera, which means
+a gap in the middle where nothing happens on screen, failure modes that
+are nobody's fault, a child who may come back tomorrow, and a fallback
+that must never read as an error. None of the other three rites has any
+of that.
+
+Two hooks are proposed rather than one: a thing the story needs that **no
+emoji can be**, so the child draws it because the story cannot continue
+otherwise; and a name that has to be **in the child's own hand**. The
+second solves a real design problem — a font with one letter is not a
+font, and "write your name" is a naturally bounded four-to-six letters
+that produces something usable immediately.
+
+`teaches` became `['garden','handwriting']`; `reveals` stays `['library']`
+because both rooms live behind one tile. Four open questions are recorded
+for the product owner rather than assumed, the sharpest being what
+happens when there is no camera at all: the rite can fall back to letters
+alone and still be a complete story, but then a child finishes it having
+never brought a drawing in, and the capability is taught in name only.
+
+Rite gate 15/15. Build 0619 → 0620.
