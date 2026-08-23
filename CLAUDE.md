@@ -901,6 +901,27 @@ once, and its scope is no longer closed.
 - Out of scope: level names shown to a child, badges, progress bars,
   percentages, locked controls, anything comparable between children,
   and required progression of any kind.
+- **The reduction only hides what it NAMES, and that is a standing
+  hazard.** Reported by the product owner looking at Rite I running:
+  *"for a traveller why do we have garden and add creation button?"* My
+  Garden was never in the list — the rules were written before the tile
+  existed under that id — so the one control nobody thought to name
+  stayed on screen through a story that never asks for it. Rite I
+  reveals nothing, and it was offering Emojis · Text · **My Garden**.
+  The same shape of leak as the Background `Picture` one already
+  recorded here, and it will happen again: **every new control in the
+  Add panel must be added to the reduction in the same commit that adds
+  the control.** A tile is visible during a rite by default, which is
+  the wrong default and is not worth redesigning — but it does mean the
+  list is part of the cost of any new capability.
+- **A rite is instrumentation-free even for the people building it.**
+  The Garden's `Add Creation` trigger is Author Mode only (Decision 27)
+  so a real Traveller never meets it — but Author Mode is remembered per
+  browser (Decision 13), so anyone who has ever switched it on walks
+  every later rite with a dev control sitting in a child's first story.
+  It is hidden under `body.studio-rite-running` alongside `#devFooter`.
+  A rite is the one place we watch a child use the product, so it is the
+  one place instrumentation must be invisible to us too.
 - **Step 1 is built** (build 0569): the **rite registry** (`RITES` in
   `js/studioRite.js` — id, mission, screens, `teaches`, `reveals`,
   `unlocksStudio`, found by id and never by ordinal), Rite II's

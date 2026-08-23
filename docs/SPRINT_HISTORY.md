@@ -5968,3 +5968,41 @@ elements (FOLD0). X7's one standing exception — captures allowed to go
 unanswered because their growth landed in the absent top band — is gone,
 and its counter is kept at zero rather than deleted so a regression
 shows up as a number. Suite 100 → 103. Build 0616 → 0617.
+
+## The Rite shows only what it teaches (build 0618)
+
+The product owner, looking at Rite I running: *"for a traveller why do we
+have garden and add creation button?"* Both were real and they were
+different faults.
+
+**My Garden was never named in the reduction.** `body.studio-rite-running`
+hides tiles by listing them, and the list was written before My Garden
+existed under the id `library`, so the one control nobody thought to name
+stayed on screen. Rite I reveals nothing at all and was offering
+Emojis · Text · My Garden. Now Emojis · Text. Gated on its own
+`studio-rite-shows-library` class like every other tile, so a later rite
+hands it over by naming it in `reveals` and no CSS changes — verified
+both ways.
+
+It is the same shape of leak as the Background `Picture` one Decision 22
+already records, and it is a standing hazard rather than a one-off: a
+tile is visible during a rite **by default**. That default is wrong and
+is not worth redesigning, but it means **the reduction list is part of
+the cost of any new Add-panel control** — added in the same commit as the
+control, or the next rite leaks it.
+
+**The Garden's `Add Creation` trigger is Author Mode only**, so a real
+Traveller never meets it — that half was working as designed. But Author
+Mode is remembered per browser (Decision 13), so anyone who has ever
+switched it on walks every later rite with a dev control sitting in the
+middle of a child's first story. Hidden under `studio-rite-running`
+beside `#devFooter`, for the reason that rule already existed: a rite is
+the one place we watch a child use the product, so it is the one place
+instrumentation has to be invisible to us as well as to them.
+
+Four new checks (R1–R4) in the rite gate suite, 7 → 11. They set the
+class directly rather than driving a rite to a particular beat — every
+rule is scoped to `body.studio-rite-running`, so the class IS the
+condition, and a test that waits for choreography tests the choreography.
+R1 asserts the open Studio still offers My Garden, so the check can never
+pass because the tile quietly disappeared everywhere. Build 0617 → 0618.

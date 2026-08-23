@@ -90,6 +90,72 @@ function check(cond, name, note) {
   check(flagged.cards === 0 && flagged.complete === true,
     'G6 a Traveller who finished the Rite keeps the Studio', JSON.stringify(flagged));
 
+  // ---------------------------------------------------------------
+  // R — THE REDUCTION SHOWS ONLY WHAT THE RITE TEACHES.
+  //
+  // Reported by the product owner, looking at Rite I running: "for a
+  // traveller why do we have garden and add creation button?" Both were
+  // real and they were different faults. My Garden was never named in
+  // the reduction — it was written before the tile existed under this
+  // id — so the one control nobody thought to list stayed on screen
+  // through a story that never asks for it. And the Garden's developer
+  // trigger is Author Mode only, which a real Traveller never has, but
+  // Author Mode is remembered per browser: anyone who ever switched it
+  // on walks every later Rite with a dev control in the middle of a
+  // child's first story.
+  //
+  // The class IS the condition — every rule is scoped to
+  // `body.studio-rite-running` — so setting it is the real test, and it
+  // does not depend on where a rite's choreography happens to be.
+  console.log('-- R: the Rite shows only what it teaches');
+  await page.goto(BASE + '/studio.html?author=on');
+  await page.waitForFunction(() => typeof CreationFlow !== 'undefined', null, { timeout: 20000 });
+  for (let i = 0; i < 6; i++) {
+    const gone = await page.evaluate(() => {
+      const o = document.getElementById('gatewayOverlay');
+      if (!o || o.hidden || !o.offsetParent) return true;
+      o.click(); return false;
+    });
+    if (gone) break;
+    await page.waitForTimeout(700);
+  }
+  await page.evaluate(() => { const o = document.getElementById('gatewayOverlay'); if (o) o.style.display = 'none'; });
+  await page.evaluate(() => { try { CreationFlow.startBlank(); } catch (e) {} });
+  await page.waitForFunction(() => document.querySelector('main.preview-area .preview-wrapper'), null, { timeout: 20000 });
+  await page.waitForTimeout(900);
+  await page.evaluate(() => {
+    const t = document.querySelector('.context-add-trigger');
+    if (t && !document.querySelector('.context-add-grid')) t.click();
+  });
+  await page.waitForTimeout(600);
+  const tiles = () => page.evaluate(() => Array.from(document.querySelectorAll('.context-add-card'))
+    .filter((c) => c.offsetParent !== null).map((c) => c.dataset.addId));
+
+  const openStudio = await tiles();
+  check(openStudio.indexOf('library') >= 0,
+    'R1 the open Studio offers My Garden — the reduction is what hides it, never its absence',
+    JSON.stringify(openStudio));
+
+  await page.evaluate(() => document.body.classList.add('studio-rite-running'));
+  await page.waitForTimeout(300);
+  const inRite = await tiles();
+  const devHidden = await page.evaluate(() => {
+    const e = document.querySelector('#gardenDevAdd');
+    return { exists: !!e, visible: !!(e && e.offsetParent !== null) };
+  });
+  check(inRite.indexOf('library') === -1,
+    'R2 a rite that reveals nothing does not offer My Garden', JSON.stringify(inRite));
+  check(!devHidden.visible,
+    'R3 and the Garden dev trigger is not in a child\'s first story, Author Mode or not',
+    JSON.stringify(devHidden));
+
+  await page.evaluate(() => document.body.classList.add('studio-rite-shows-library'));
+  await page.waitForTimeout(300);
+  const revealed = await tiles();
+  check(revealed.indexOf('library') >= 0,
+    'R4 a rite that DOES reveal it gets it back, by naming it and changing no CSS',
+    JSON.stringify(revealed));
+
   check(pageErrors.length === 0, 'H1 zero page errors',
     pageErrors.slice(0, 2).join(' | '));
 

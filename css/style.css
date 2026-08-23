@@ -11098,6 +11098,14 @@ body.studio-rite-running #magicCardBadge{ display:none !important; }
 
 /* The build/release footer. */
 body.studio-rite-running #devFooter{ display:none !important; }
+/* …and the Garden's own developer trigger, for the same reason. It is
+   Author Mode only (Decision 27) so a real Traveller never meets it,
+   but Author Mode is remembered per browser (Decision 13) — so anyone
+   who has ever switched it on walks every later Rite with a dev control
+   sitting in the middle of a child's first story. A rite is the one
+   place instrumentation must be invisible even to the people building
+   it, because it is the only place we watch a child use the product. */
+body.studio-rite-running #gardenDevAdd{ display:none !important; }
 
 /* The Object Strip's own legend — "Shows everything in this page. Tap
    any object to select it." plus the edit/world key. Written for a
@@ -11161,6 +11169,16 @@ body.studio-rite-running:not(.studio-rite-shows-shapes) .context-add-card[data-a
    control that may not be on the screen is a dead end). It rides along
    with Photo from the story that teaches pictures onward, wherever
    pictures can go. docs/STUDIO_RITE_LEVELS.md §1. */
+/* MY GARDEN WAS NEVER IN THIS LIST. Reported by the product owner,
+   looking at Rite I running: "for a traveller why do we have garden".
+   The reduction was written before My Garden existed under this id, so
+   the one tile nobody thought to name stayed on screen through a story
+   that never asks for it — the same shape of leak as the Background
+   `Picture` one Decision 22 already records. Rite I reveals NOTHING
+   (`reveals:[]`), so a control it does not teach must not be there.
+   Gated on its own reveal class like every other tile, so a later rite
+   can hand it over by naming it in `reveals` and no CSS changes. */
+body.studio-rite-running:not(.studio-rite-shows-library) .context-add-card[data-add-id='library'],
 body.studio-rite-running:not(.studio-rite-shows-photo) .context-add-card[data-add-id='photo'],
 body.studio-rite-running:not(.studio-rite-shows-photo) .context-add-card[data-add-id='family'],
 body.studio-rite-running:not(.studio-rite-shows-photo) .context-bg-picture-section{ display:none !important; }
