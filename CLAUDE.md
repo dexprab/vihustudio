@@ -1586,13 +1586,27 @@ handwriting.
   one rAF and the last caller used to win, so a resize could swallow a
   child's answer. The growth report stays live for as long as its
   animation does, and a plain render inside that window redraws *with* it.
-- **Disclosed and measured: this workspace has no top margin.** The page
-  canvas is flush with the top of `.preview-wrapper` at every viewport
-  tried, so the top band never draws and growth committed there — 77 of
-  600 captures, the top arc closing among them — has no answer on screen.
-  The engine reports it correctly; there is nowhere to put it. Fixing it
-  needs either the engine knowing the workspace's geometry or the band
-  mapping changing, and both are frozen.
+- **The top arc folds into the sides, and it is a PRESENTATION
+  decision.** This workspace has no top band and structurally cannot
+  have one: the garden layer lives inside `.preview-wrapper`, and that
+  box is exactly as tall as the page canvas — above and below both
+  measure 0 at 1280, 1440 and 1920. The side bands exist only because
+  the wrapper is *wider* than the canvas, by 113px each side. So growth
+  committed to `top` was decided correctly and drawn nowhere: 12% of all
+  life-cycle events, the connections phase's own arc among them.
+  Resolved by the product owner (*"fold top into side"*): where a top
+  band cannot draw, its left half goes to the top of the left band and
+  its right half to the top of the right band, outermost highest, so the
+  two vines thicken toward each other instead of joining over the page.
+  **The engine still commits to `top` and replay is untouched** — the
+  same seed and history still produce exactly the same garden. Only
+  where an undrawable band is *put* changes, and where a workspace does
+  have a top margin nothing folds and the arc is still an arc.
+  **The tempting alternative was refused on the record:** letting the
+  engine ask which bands are drawable would make one child's garden a
+  different shape on a different screen, and change shape when a window
+  resized. Seed + history → the same garden is the foundation, not a
+  convenience.
 - **The Garden has a LIFE CYCLE, and the ceiling became pressure.**
   Elements grow, mature, age, wither, fall, rest on the garden floor and
   go, and the room that leaves behind is grown into by ordinary growth.
@@ -1647,9 +1661,7 @@ handwriting.
   (the `creator_handwriting` pattern) is the follow-up when one garden
   should span devices. Handwriting cloud sync is push-only like the
   library's.
-- Disclosed, and now measurably wider: **12% of all life-cycle events
-  land in the top band** this workspace does not have, so they are
-  correctly decided and never drawn.
+
 - `js/gardenEngine.js` · `js/gardenRenderer.js` ·
   `js/handwritingStore.js` · `js/handwritingStudio.js` ·
   `js/handwritingFont.js` · `tools/garden-test/run-garden-tests.js`.

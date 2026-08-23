@@ -959,9 +959,55 @@ function check(cond, name, note) { (cond ? ok : fail)(name, note); }
   // X7 — the end-to-end claim, run for real: TWENTY consecutive
   // captures through the shipped event, each one checked on the page.
   // A capture is answered if the layer shows an unfold, an opening, a
-  // swell or a light. The only ones allowed to go unanswered are those
-  // whose whole growth landed in the top band this workspace does not
-  // have — counted, not waved away.
+  // swell or a light. It used to allow one exception — growth whose
+  // every element landed in the top band this workspace does not have.
+  // That exception is GONE: the top arc now folds into the sides
+  // (js/gardenRenderer.js -> _effective), so there is no longer
+  // anywhere for growth to land unseen. `topOnly` is still counted
+  // rather than deleted, and it is expected to be zero; a non-zero
+  // reading means the fold has stopped working.
+  // ---------------------------------------------------------------
+  // FOLD — the top arc has somewhere to go.
+  //
+  // The product owner's decision after the hole was measured: "fold top
+  // into side." This workspace's garden layer sits inside
+  // `.preview-wrapper`, a box exactly as tall as the page canvas, so a
+  // top band cannot exist here and 12% of all life-cycle events were
+  // being decided correctly and drawn nowhere.
+  //
+  // FOLD1 is the check that matters and it is an IDENTITY, not a
+  // threshold: every non-vine element in the garden has a group on the
+  // screen. It only means anything while the garden actually holds
+  // top-band elements, so that is asserted in the same breath.
+  // ---------------------------------------------------------------
+  console.log('-- FOLD: the top arc folds into the sides');
+  await setGarden(XSEED, 70);
+  await page.evaluate(() => { GardenRenderer.render(); });
+  await page.waitForTimeout(400);
+  const fold = await page.evaluate(() => {
+    const st = LivingGarden.state();
+    const layer = document.getElementById('livingGardenLayer');
+    const groups = Array.from(layer.querySelectorAll(':scope > g'));
+    const cv = document.querySelector('main.preview-area .preview-wrapper canvas').getBoundingClientRect();
+    const overPage = groups.filter(function (g) {
+      const r = g.getBoundingClientRect();
+      return r.left > cv.left && r.right < cv.right && r.top > cv.top && r.bottom < cv.bottom;
+    }).length;
+    return {
+      nonVine: st.elements.filter(function (e) { return e.k !== 'vine'; }).length,
+      groups: groups.length,
+      topBand: st.elements.filter(function (e) { return e.band === 'top'; }).length,
+      overPage: overPage
+    };
+  });
+  check(fold.topBand > 0, 'FOLD0 this garden really does commit growth to the top band — the check has something to prove',
+    fold.topBand + ' top-band elements');
+  check(fold.groups === fold.nonVine,
+    'FOLD1 every non-vine element reaches the screen — nothing is decided and then drawn nowhere',
+    fold.groups + ' groups for ' + fold.nonVine + ' elements');
+  check(fold.overPage === 0,
+    'FOLD2 and the folded growth still keeps off the play area', fold.overPage + ' over the page');
+
   console.log('-- X7: twenty consecutive captures, each answered on screen');
   await setGarden(XSEED, 44);
   await page.evaluate(() => {
@@ -1009,7 +1055,7 @@ function check(cond, name, note) { (cond ? ok : fail)(name, note); }
     await page.waitForTimeout(150);
   }
   check(answered + topOnly === 20 && answered >= 14,
-    'X7 every one of twenty consecutive captures is answered on screen (bar those that land in the absent top band)',
+    'X7 every one of twenty consecutive captures is answered on screen — no exceptions left',
     answered + ' answered, ' + topOnly + ' top-band-only, unanswered ' + JSON.stringify(unanswered));
 
   // ---------------------------------------------------------------

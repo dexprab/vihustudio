@@ -5924,3 +5924,47 @@ Verified independently of the sprint that shipped it: suite re-run
 persistence contract confirmed by reading what is actually in storage —
 `{v, seed, events, recentIds}`, 331 bytes for a 340-capture garden with
 a full life cycle. Build 0615 → 0616.
+
+## The top arc folds into the sides (build 0617)
+
+The product owner, after the hole was measured and the options were put
+to him: *"fold top into side."*
+
+**It was never a missing margin — it was the wrong box.** The garden
+layer lives inside `.preview-wrapper`, and that box is exactly as tall
+as the page canvas: measured, above and below are both 0 at 1280, 1440
+and 1920. The left and right bands exist only because the wrapper is
+*wider* than the canvas, by 113px each side; vertically it is an exact
+fit. So a top band could not exist there under any tuning, and 12% of
+all life-cycle events — the connections phase's own arc among them —
+were decided correctly and drawn nowhere.
+
+Where a top band cannot draw, the arc's left half now goes to the top of
+the left band and its right half to the top of the right band, each
+outermost point highest, so the two vines thicken toward each other
+instead of joining over the page. `_effective()` in the renderer is the
+one place it happens, and every band read — vine bucketing, stem
+attachment, the departure ghost — goes through it, or a folded element
+would hunt for a vine in a band it no longer occupies.
+
+**This is a presentation decision and that is the whole reason it is
+allowed.** The engine still commits to `top`, replay is untouched, and
+the same seed and history still produce exactly the same garden. Only
+where an undrawable band is *put* changes. Where a workspace does have a
+top margin, nothing folds and the arc is still an arc.
+
+**The tempting alternative was refused and is recorded as refused:**
+letting the engine ask which bands are drawable would make one child's
+garden a different shape on a different screen, and change shape when a
+window resized. The other two options were costed too — reserving real
+space above the page takes about 60px out of the canvas (522×652 →
+522×592 at 1440) and is a canon change under Rule 5, and deleting the
+top band from the vocabulary loses the join outright.
+
+The check that matters is an identity rather than a threshold: **every
+non-vine element in the garden has a group on the screen** (FOLD1, 58
+for 58), asserted only while the garden really does hold top-band
+elements (FOLD0). X7's one standing exception — captures allowed to go
+unanswered because their growth landed in the absent top band — is gone,
+and its counter is kept at zero rather than deleted so a regression
+shows up as a number. Suite 100 → 103. Build 0616 → 0617.

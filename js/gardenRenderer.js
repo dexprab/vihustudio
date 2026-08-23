@@ -153,9 +153,58 @@
   // ~17px) clear of the band's page-side edge — measured after a leaf
   // at u≈1 grazed the canvas by a pixel in the suite.
   const INSET = 20;
-  function _map(bands, el) {
+  function _drawable(bands, name) {
+    const b = bands[name];
+    return !!b && b.w >= (name === 'top' ? 120 : MIN_BAND) && b.h >= (name === 'top' ? 30 : 80);
+  }
+
+  // THE TOP ARC FOLDS INTO THE SIDES WHEN THERE IS NO TOP.
+  //
+  // Decided by the product owner after the hole was measured: "fold top
+  // into side." This workspace has no top band and structurally cannot
+  // have one — the garden layer lives inside `.preview-wrapper`, and
+  // that box is exactly as tall as the page canvas (above and below both
+  // measure 0 at 1280, 1440 and 1920). The side bands exist only because
+  // the wrapper is WIDER than the canvas, by 113px each side; vertically
+  // it is an exact fit. So growth committed to `top` had nowhere to be
+  // drawn and was silently dropped — 12% of all life-cycle events, the
+  // connections phase's own arc among them.
+  //
+  // THIS IS A PRESENTATION DECISION, NOT A STATE ONE, and that
+  // distinction is the whole reason it is allowed. The engine still
+  // commits to `top`, replay is untouched, and the same seed and history
+  // still produce exactly the same garden — Decision 27 rests on that.
+  // What changes is only where a renderer that cannot draw a top band
+  // puts those elements. The alternative that looked tempting — letting
+  // the engine ask which bands are drawable — was refused for precisely
+  // this reason: it would make one child's garden a different shape on a
+  // different screen, and change shape when a window resized.
+  //
+  // The fold is deterministic and preserves the arc's own order: its
+  // left half goes to the top of the left band and its right half to the
+  // top of the right band, each outermost point highest, so the two
+  // vines thicken toward each other instead of joining over the page.
+  // Where a workspace DOES have a top margin, nothing folds and the arc
+  // is still an arc.
+  const FOLD_TOP = 0.02, FOLD_DEPTH = 0.16;
+  function _effective(bands, el) {
+    if (el.band !== 'top' || _drawable(bands, 'top')) return el;
+    const left = el.u < 0.5;
+    const t = left ? (el.u / 0.5) : ((el.u - 0.5) / 0.5);
+    return {
+      band: left ? 'left' : 'right',
+      // the arc's thickness becomes position ACROSS the side band, kept
+      // off both edges so a folded leaf still has its reach
+      u: 0.15 + Math.max(0, Math.min(1, el.v)) * 0.7,
+      // …and its distance along the arc becomes height, outermost highest
+      v: FOLD_TOP + (left ? t : (1 - t)) * FOLD_DEPTH
+    };
+  }
+
+  function _map(bands, el0) {
+    const el = _effective(bands, el0);
     const b = bands[el.band];
-    if (!b || b.w < (el.band === 'top' ? 120 : MIN_BAND) || b.h < (el.band === 'top' ? 30 : 80)) return null;
+    if (!_drawable(bands, el.band)) return null;
     let pt;
     if (el.band === 'top') pt = { x: b.x + el.u * b.w, y: b.y + el.v * Math.max(1, b.h - INSET) };
     else if (el.band === 'left') pt = { x: b.x + el.u * Math.max(1, b.w - INSET), y: b.y + el.v * b.h };
@@ -434,7 +483,7 @@
     // order they grew — a vine is a continuation, never scattered dots.
     const vineNodes = { left: [], right: [], top: [] };
     st.elements.forEach(function (el, ix) {
-      if (el.k === 'vine') { const pt = _map(bands, el); if (pt) vineNodes[el.band].push({ pt: pt, ix: ix }); }
+      if (el.k === 'vine') { const pt = _map(bands, el); if (pt) vineNodes[_effective(bands, el).band].push({ pt: pt, ix: ix }); }
     });
     // "The growth is happening but its not living" (the product owner)
     // — the difference was ATTACHMENT: a leaf floating near a vine is
@@ -560,8 +609,9 @@
       // Join the vine where one is in reach: the element sits at the
       // end of a short stem drawn from the vine's own line, oriented
       // outward — grown from it, never beside it.
-      const root = down ? null : _nearestVinePt(el.band, pt);
-      let ang = down ? _restAngle(el) : ((el.u * 140 - 70) + (el.band === 'right' ? 140 : 0));
+      const eff = _effective(bands, el);
+      const root = down ? null : _nearestVinePt(eff.band, pt);
+      let ang = down ? _restAngle(el) : ((eff.u * 140 - 70) + (eff.band === 'right' ? 140 : 0));
       if (root) {
         let dx = pt.x - root.x, dy = pt.y - root.y;
         const dl = Math.max(1, Math.hypot(dx, dy));
@@ -621,7 +671,7 @@
         const from = _map(bands, { band: el.band, u: (el.o || el).u, v: (el.o || el).v });
         const dx = from ? (from.x - pt.x) : 0, dy = from ? (from.y - pt.y) : -60;
         // the stem it let go of, fading where it was
-        const oldRoot = from ? _nearestVinePt(el.band, from) : null;
+        const oldRoot = from ? _nearestVinePt(_effective(bands, el).band, from) : null;
         if (oldRoot) {
           const gone = _svg('path', {
             d: 'M' + oldRoot.x.toFixed(1) + ',' + oldRoot.y.toFixed(1) + ' L' + from.x.toFixed(1) + ',' + from.y.toFixed(1),
