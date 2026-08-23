@@ -70,6 +70,15 @@
   .card h3 { margin:0 0 .2rem; font:600 1rem/1.3 inherit; }
   .card p.note { margin:.1rem 0 .4rem; color:var(--faint); font-size:.84rem; }
 
+  /* The WhatsApp card — a preview of the picture that will actually be
+     sent, at roughly the width it lands on a phone. */
+  .wacard { margin:.9rem 0 0; }
+  .wacard img { display:block; width:100%; max-width:15rem; border-radius:8px;
+                border:1px solid var(--line); background:#0f1526; }
+  .wacard .missing { font-size:.82rem; color:var(--warn); line-height:1.5; }
+  .warow { display:flex; gap:.6rem; flex-wrap:wrap; align-items:center; }
+  .warow button { margin-top:1.1rem; }
+
   .counts { display:flex; gap:1.6rem; flex-wrap:wrap; margin:0 0 .6rem; }
   .counts div { display:flex; flex-direction:column; }
   .counts b { font:400 1.6rem/1.1 Georgia,serif; color:var(--gold); }
@@ -130,13 +139,18 @@
 
       <div class="card">
         <h3>Send by WhatsApp</h3>
-        <p class="note">Prepares the message with its own link and opens WhatsApp.
-           You press send — no automated messaging, and the tracking is identical.</p>
+        <p class="note">Prepares the invitation with its own link and hands it to
+           WhatsApp. You press send — no automated messaging, and the tracking is
+           identical either way.</p>
         <label for="waTo">Phone number <span style="text-transform:none;letter-spacing:0">(with country code)</span></label>
         <input id="waTo" type="text" placeholder="919876543210">
         <label for="waLabel">Who is this? <span style="text-transform:none;letter-spacing:0">(just for your list)</span></label>
         <input id="waLabel" type="text" placeholder="Priya">
-        <button id="sendWa">Open WhatsApp</button>
+        <div class="wacard" id="waCard"></div>
+        <div class="warow">
+          <button id="sendWaCard">Send with the card</button>
+          <button id="sendWa" class="ghost">Message only</button>
+        </div>
         <p class="msg" id="waMsg"></p>
       </div>
 
@@ -402,6 +416,155 @@ function waText(link) {
   );
   return lines.join('\n');
 }
+
+// ---------------------------------------------------------------
+// THE CARD
+// ---------------------------------------------------------------
+// wa.me CANNOT carry a picture. Its ?text= parameter is the whole of
+// what a link can hand WhatsApp, and an image with a caption is a
+// different kind of message — normally the Business Cloud API's
+// template with an image header, which this deliberately does not use
+// (no automated messaging: a person picks the recipient and presses
+// send, which is also what keeps the tracking honest).
+//
+// So the picture goes across the way a person would send one: the Web
+// Share API, with the card as a FILE and Lumo's letter as the `text`,
+// which WhatsApp fills in as the caption. The share sheet is the OS's
+// own, so the SENDER chooses the contact there — the token is still
+// minted for whoever was typed above, so the roll is right, but the
+// chat is not pre-opened the way the message-only path does it. That
+// is the trade, and it is why both buttons stay.
+//
+// EVERY FALLBACK IS A REAL PATH, not an apology. A browser with no
+// file sharing (most desktops), a share that is cancelled, a card that
+// has not been added yet — each ends with something the sender can
+// actually use rather than a dead button.
+const CARD_SRC = '../assets/invite/whatsapp-card.jpg';
+let _cardBlob = null;      // fetched once, reused for every send
+
+// WhatsApp truncates an image caption at 1024 characters, so this is
+// the letter told short — the same beats, none of the parents' band
+// (that line lives on the card itself) and nothing after the link that
+// a reader would have to scroll past to reach it.
+function waCaption(link) {
+  return [
+    'Hello. I am Lumo, and I look after VihuPlanet.',
+    '',
+    'I found something there today. A little door had appeared in the Ether. '
+      + 'When I opened it, I found a story inside. It had a beginning... but no ending.',
+    '',
+    'I nearly finished it myself. Then I thought perhaps that would be a mistake. '
+      + 'Perhaps the ending should belong to someone else. Maybe you.',
+    '',
+    'So I left the door open. Inside, two stories are waiting — The Falling Star '
+      + "and Little Seed. I wonder which one you'll open first.",
+    '',
+    'Come and have a look:',
+    link,
+    '',
+    'No account. Nothing to pay. Just a quiet place to explore, make choices, and '
+      + 'leave a little bit of yourself behind.',
+    '',
+    'With a smile,',
+    'Lumo — Keeper of VihuPlanet',
+  ].join('\n');
+}
+
+async function loadCard() {
+  const host = $('waCard');
+  try {
+    const r = await fetch(CARD_SRC, { cache: 'no-store' });
+    if (!r.ok) throw new Error('missing');
+    _cardBlob = await r.blob();
+    if (!/^image\//.test(_cardBlob.type)) throw new Error('not an image');
+    const img = document.createElement('img');
+    img.alt = 'The card that goes with the message';
+    img.src = URL.createObjectURL(_cardBlob);
+    host.appendChild(img);
+  } catch (e) {
+    _cardBlob = null;
+    $('sendWaCard').disabled = true;
+    host.innerHTML = '<p class="missing">No card yet. Add the picture at '
+      + '<code>assets/invite/whatsapp-card.jpg</code> and it will appear here. '
+      + 'Until then the message-only button still works.</p>';
+  }
+}
+loadCard();
+
+// The fallback when the browser cannot hand a file to WhatsApp: put the
+// card in the sender's downloads, put the caption on their clipboard,
+// and open the right chat. Three things they already know how to do,
+// rather than a message telling them their browser is unsupported.
+async function handOver(link, filename) {
+  let copied = false;
+  try { await navigator.clipboard.writeText(waCaption(link)); copied = true; } catch (e) {}
+  try {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(_cardBlob);
+    a.download = filename;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  } catch (e) {}
+  return copied;
+}
+
+$('sendWaCard').onclick = async () => {
+  const phone = $('waTo').value.replace(/[^\d]/g, '');
+  const label = $('waLabel').value.trim();
+  if (phone.length < 8) { note($('waMsg'), 'Needs a number with its country code.'); return; }
+  if (!_cardBlob) { note($('waMsg'), 'There is no card to send yet.'); return; }
+
+  $('sendWaCard').disabled = true;
+  try {
+    const token = await mint('whatsapp', phone, label);
+    const link = `${BASE}/?invite=${encodeURIComponent(token)}`;
+    const name = 'vihuplanet-invite-' + token + '.jpg';
+    const file = new File([_cardBlob], name, { type: _cardBlob.type });
+
+    // MARKED SENT BEFORE the hand-off, and deliberately: from here the
+    // invitation leaves through the OS, and there is no callback that
+    // says it arrived. A share the sender cancels shows as sent and
+    // never opened, which is exactly what the roll's four stages are
+    // for — it is the same shape as the message-only path.
+    await sb.rpc('invite_mark_sent', { p_token: token, p_error: null });
+
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], text: waCaption(link) });
+        note($('waMsg'), 'Handed to WhatsApp — pick who it is for and press send. '
+          + 'If the caption did not come with it, it is on your clipboard.', true);
+        await navigator.clipboard.writeText(waCaption(link)).catch(() => {});
+        $('waTo').value = ''; $('waLabel').value = '';
+        show();
+        $('sendWaCard').disabled = false;
+        return;
+      } catch (e) {
+        // A cancelled share throws AbortError — that is a person
+        // changing their mind, not a failure, and the token stays on
+        // the roll marked sent either way.
+        if (e && e.name === 'AbortError') {
+          note($('waMsg'), 'Nothing sent. The invitation is on the list below when you want it.');
+          $('sendWaCard').disabled = false;
+          show();
+          return;
+        }
+      }
+    }
+
+    const copied = await handOver(link, name);
+    window.open(`https://wa.me/${phone}`, '_blank', 'noopener');
+    note($('waMsg'), copied
+      ? 'This browser cannot hand a picture straight to WhatsApp. The card is in your '
+        + 'downloads and the words are on your clipboard — attach it and paste.'
+      : 'This browser cannot hand a picture straight to WhatsApp. The card is in your '
+        + 'downloads; use Message only for the words.', true);
+    $('waTo').value = ''; $('waLabel').value = '';
+    show();
+  } catch (e) {
+    note($('waMsg'), (e && e.message) ? e.message : 'Could not prepare that one.');
+  }
+  $('sendWaCard').disabled = false;
+};
 
 $('sendWa').onclick = async () => {
   const phone = $('waTo').value.replace(/[^\d]/g, '');

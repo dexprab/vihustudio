@@ -5547,3 +5547,48 @@ at the same visual weight as the tiles either side of it, checked by
 rendering the real `ADD_ART` map into the real card treatment rather
 than by eye on the source. Garden 47/47, zero page errors. Build
 0610 → 0611.
+
+## The WhatsApp invitation becomes a picture and a caption (build 0611+)
+
+Asked for by the product owner, with the artwork: *"can you create
+whatsapp template like this. to use an image and caption."*
+
+The constraint first, because it shaped everything: **`wa.me` cannot
+carry a picture.** Its `?text=` parameter is the whole of what a link
+can hand WhatsApp. An image with a caption is normally the Business
+Cloud API's template with an image header, which this deliberately does
+not use — no automated messaging, a person picks the recipient and
+presses send, which is also what keeps the four-stage tracking honest.
+
+So the picture goes across the way a person would send one: the Web
+Share API, card as a `File`, Lumo's letter as `text`, which WhatsApp
+fills in as the caption. Two buttons now, both real: **Send with the
+card** and **Message only**. They are not a primary and a fallback —
+the card path uses the OS share sheet, so the SENDER picks the contact
+there, while the message-only path opens the right chat directly. The
+token is minted for whoever was typed either way, so the roll is
+correct regardless.
+
+Every fallback is a usable path rather than an apology. A browser with
+no file sharing (most desktops) puts the card in downloads, the caption
+on the clipboard, and opens the right chat. A cancelled share says
+"nothing sent" — that is a person changing their mind, not a failure.
+A card that has not been added yet disables its own button and names
+the file to add. The caption is also copied to the clipboard on the
+successful path, because a share target that ignores `text` would
+otherwise lose the whole letter silently.
+
+`waCaption()` is the letter told short — 700 characters against
+WhatsApp's 1024 limit, dropping the parents' band because that line is
+on the card itself. **The card is the illustration only, never the
+letter rendered as a picture**: body text baked into an image is
+unreadable at phone width and cannot be copied, translated or read
+aloud. `assets/invite/README.md` carries the shape, weight and
+legibility spec.
+
+Disclosed: `assets/invite/whatsapp-card.jpg` is not in the repository —
+it is the product owner's artwork, added the same way `og-image.jpg`
+was. Both branches verified by rendering the real page with and without
+the file present. No `?v=` bump: nothing the Studio loads changed, and
+cache-busting 54 assets to ship an admin page would cost every child a
+re-download for nothing.
