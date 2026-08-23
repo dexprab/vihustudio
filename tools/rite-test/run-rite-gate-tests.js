@@ -156,6 +156,45 @@ function check(cond, name, note) {
     'R4 a rite that DOES reveal it gets it back, by naming it and changing no CSS',
     JSON.stringify(revealed));
 
+  // ---------------------------------------------------------------
+  // N — THE ORDER LIVES IN THE REGISTRY.
+  //
+  // The product owner: "lets assign my garden to level 2 and current
+  // level 2 becomes level 3." Decision 22 says in as many words that
+  // the registry, not an ordinal, is the design — so this is a line
+  // moving in an array, and everything downstream follows it.
+  //
+  // My Garden's story is not written. An entry with no screens is a
+  // PLACE IN THE ORDER, not a door: it refuses to start, the Studio
+  // Home offer skips it, and it contributes nothing to what a later
+  // rite may show — because a rite nobody can walk has taught nobody
+  // anything, and showing its tile in the rite after it would be the
+  // same leak R2 exists to catch.
+  console.log('-- N: the order lives in the registry');
+  const reg = await page.evaluate(() => ({
+    order: StudioRite.rites().map((r) => r.id),
+    runnable: StudioRite.rites().map((r) => r.id + ':' + (r.runnable ? 'yes' : 'no')),
+    unwrittenStarts: StudioRite.start('my-garden')
+  }));
+  check(reg.order.join(' > ') === 'the-night-a-star-came-down > my-garden > my-little-house',
+    'N1 My Garden is the second step and My Little House the third', reg.order.join(' > '));
+  check(reg.unwrittenStarts === false,
+    'N2 a rite with no story refuses to start rather than opening an empty one');
+  check(/my-garden:no/.test(reg.runnable.join(' ')) && /my-little-house:yes/.test(reg.runnable.join(' ')),
+    'N3 the registry says which rites can actually be walked', reg.runnable.join(' '));
+
+  // The offer on Studio Home must skip the unwritten one and land on the
+  // next real door — never on a rite nobody has authored.
+  const offered = await page.evaluate(() => {
+    const list = StudioRite.rites() || [];
+    for (let i = 0; i < list.length; i++) {
+      if (!list[i].mandatory && list[i].runnable) return list[i].id;
+    }
+    return null;
+  });
+  check(offered === 'my-little-house',
+    'N4 the next door skips the unwritten rite and opens the next real one', String(offered));
+
   check(pageErrors.length === 0, 'H1 zero page errors',
     pageErrors.slice(0, 2).join(' | '));
 

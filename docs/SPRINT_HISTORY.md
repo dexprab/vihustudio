@@ -6006,3 +6006,38 @@ rule is scoped to `body.studio-rite-running`, so the class IS the
 condition, and a test that waits for choreography tests the choreography.
 R1 asserts the open Studio still offers My Garden, so the check can never
 pass because the tile quietly disappeared everywhere. Build 0617 → 0618.
+
+## My Garden is the second step (build 0619)
+
+The product owner: *"lets assign my garden to level 2 and current level 2
+becomes level 3."*
+
+Decision 22 says the registry, not an ordinal, is the design — so this
+should have been one line moving in one array. It nearly was. The single
+thing standing in the way was `RITE_NEXT='my-little-house'`, a hard-coded
+id in `js/creationFlow.js`, exactly what that decision forbids by name.
+Studio Home now asks the registry for the first opt-in rite that has a
+story written, so reordering rites is a registry edit and nothing else.
+
+**My Garden's story is not written, and the registry says so rather than
+pretending.** Its entry holds second place with `screens:null`, and
+`_runnable()` is what every offer and every start goes through: it
+refuses to start, the offer skips past it to My Little House, and nothing
+can point a child at a door nobody has authored.
+
+Two things fell out of the ordering that were worth getting right.
+**`reveals` now accumulates in registry order** — a rite must never take
+away a control an earlier rite taught, or the Studio gets *smaller* as a
+child progresses — and neither entry has to name the other. And **only
+runnable rites contribute to that accumulation**: the first version did
+not check, which would have put My Garden's tile into the third rite
+today, in front of a child who has never been taught it. That is the same
+leak the previous build closed, arriving by a different door. It corrects
+itself the moment the story exists.
+
+Still open and recorded rather than assumed: what was Level III — the
+World Designer, Page Style, From This World, Family Photos, Voice —
+moves down, and whether it becomes a fourth level or folds into the third
+is the product owner's to decide. The count was never the design.
+
+Rite gate 11 → 15, Studio Home 47/47. Build 0618 → 0619.

@@ -775,12 +775,32 @@ once, and its scope is no longer closed.
   Studio of five controls and was handed one of forty at the moment they
   were least equipped to read it. The reduction was right; its lifetime
   was wrong.
-- **Three levels, and each one's unlocks are what the previous level's
-  story had no use for.** *Make a story → make it yours → make it live
-  somewhere.* Level I is the existing Starter Story. Level II adds
-  Shapes, Doodle, Photo, Add Page and Card Designer. Level III adds the
-  World Designer, Page Style, Page Shape, From This World, Family
-  Photos, Voice and the remaining publish formats.
+- **Each level's unlocks are what the previous level's story had no use
+  for.** *Make a story → make it yours → make it live somewhere.* Level
+  I is the existing Starter Story. **Level II is My Garden**, assigned
+  by the product owner (*"lets assign my garden to level 2 and current
+  level 2 becomes level 3"*) — its story is not written yet. Level III
+  is the former Level II: Shapes, Doodle, Photo, Add Page and Card
+  Designer, the existing *My Little House*. The World Designer, Page
+  Style, Page Shape, From This World, Family Photos, Voice and the
+  remaining publish formats move down with it, and whether they are a
+  fourth level or fold into the third is still open — the count was
+  never the design.
+- **The order is a line in the registry, and nothing downstream holds an
+  ordinal.** `RITE_NEXT` in `js/creationFlow.js` was a hard-coded
+  `'my-little-house'`, which this decision forbids in as many words;
+  moving My Garden to second would have needed a code change in a file
+  that has nothing to do with rites. Studio Home now asks the registry
+  for the first opt-in rite that has a story written.
+- **A rite with no screens is a place in the order, not a door.** My
+  Garden holds second place with `screens:null`, so it refuses to start,
+  the offer skips it, and it contributes nothing to what a later rite
+  reveals. Writing its story is the only thing that makes it real.
+- **A rite never takes away what an earlier rite taught.** `reveals`
+  accumulates in registry order, so the third rite shows the second
+  rite's controls without either entry naming the other — and **only
+  runnable rites contribute**, or placing My Garden second would put its
+  tile into the third rite in front of a child who was never taught it.
 - **Each level has its own starter story — ONE each, for now.** Not a
   feature tour with a narrative wrapper: a real story that happens to
   need the things that level teaches, because the Rite may show where a

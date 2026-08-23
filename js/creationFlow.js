@@ -696,7 +696,29 @@ const CreationFlow=(function(){
   // and the moment a level has a name a child can compare theirs with a
   // sibling's). The internal ids below are internal.
   const RITE_FIRST='the-night-a-star-came-down';
-  const RITE_NEXT='my-little-house';
+  // THE NEXT DOOR IS WHATEVER THE REGISTRY SAYS IS NEXT. It used to be
+  // this id, hard-coded, which Decision 22 forbids in as many words —
+  // "build a rite registry, never a hard-coded Level I/II/III; three is
+  // today's count, not the design". The product owner moving My Garden
+  // to the second step proved the point: with an id in here, that
+  // reordering would have needed a code change in a file that has
+  // nothing to do with rites.
+  //
+  // It is the first rite that is opt-in AND has a story written. An
+  // entry with no screens is a place in the order, not a door, so the
+  // offer skips it and lands on the next real one — which is how My
+  // Garden can be Level II today without anything pointing at a rite
+  // nobody has authored yet.
+  function _nextRiteId(){
+    try{
+      if(typeof StudioRite==='undefined' || typeof StudioRite.rites!=='function') return null;
+      const list=StudioRite.rites()||[];
+      for(let i=0;i<list.length;i++){
+        if(!list[i].mandatory && list[i].runnable) return list[i].id;
+      }
+    }catch(e){}
+    return null;
+  }
 
   // Fail-open, deliberately: a Studio with no StudioRite at all shows
   // the making screen rather than a Begin button that cannot begin.
@@ -713,7 +735,7 @@ const CreationFlow=(function(){
   function _nextDoorExists(){
     try{
       if(typeof StudioRite==='undefined' || typeof StudioRite.rites!=='function') return false;
-      return (StudioRite.rites()||[]).some(function(r){ return r.id===RITE_NEXT; });
+      return !!_nextRiteId();
     }catch(e){ return false; }
   }
 
@@ -826,7 +848,7 @@ const CreationFlow=(function(){
       door.appendChild(_el('p','creation-flow-door-line','Ready to discover what you can do next?'));
       const btn=_el('button','creation-flow-door-btn','Discover');
       btn.type='button';
-      btn.addEventListener('click',function(){ _enterRite(RITE_NEXT); });
+      btn.addEventListener('click',function(){ const id=_nextRiteId(); if(id) _enterRite(id); });
       door.appendChild(btn);
       content.appendChild(door);
     }

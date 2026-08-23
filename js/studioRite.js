@@ -549,6 +549,26 @@ const StudioRite=(function(){
      reveals:[],
      unlocksStudio:true},
 
+    // MY GARDEN IS THE SECOND STEP, by the product owner's decision:
+    // "lets assign my garden to level 2 and current level 2 becomes
+    // level 3." It sits here rather than in a numbered constant because
+    // Decision 22 is explicit that the registry, not an ordinal, is the
+    // design — moving a rite is moving a line in this array, and
+    // everything downstream follows.
+    //
+    // IT HAS NO SCREENS YET. Its story has not been written, and a rite
+    // with no screens is NOT RUNNABLE — `_runnable()` below is what
+    // every offer and every start goes through, so nothing can point a
+    // child at a door that will not open. Writing the story is what
+    // makes this rite real; nothing else here has to change.
+    {id:'my-garden',
+     mission:null,
+     screens:null,
+     teaches:['garden'],
+     reveals:['library'],
+     startsBlank:true,
+     unlocksStudio:false},
+
     {id:'my-little-house',
      mission:MISSION_HOUSE,
      screens:SCREENS_HOUSE,
@@ -557,6 +577,10 @@ const StudioRite=(function(){
      startsBlank:true,
      unlocksStudio:false}
   ];
+
+  // A rite is runnable when somebody has written its story. An entry
+  // with no screens is a place in the order, not a thing a child can do.
+  function _runnable(r){ return !!(r && r.screens && r.screens.length); }
 
   function _riteById(id){
     for(let i=0;i<RITES.length;i++){ if(RITES[i].id===id) return RITES[i]; }
@@ -2002,9 +2026,36 @@ const StudioRite=(function(){
   // rite that teaches drawing has a drawing control to point at, and the
   // first rite, which reveals nothing, meets exactly the Studio it
   // always has.
+  //
+  // AND THEY ACCUMULATE. A rite must never take away something an
+  // earlier rite already taught: once My Garden is the second step, the
+  // third one has a child who knows it, and hiding the tile there would
+  // be the Studio getting SMALLER as they progress. So a rite reveals
+  // its own list plus every earlier rite's, read from the registry in
+  // order rather than copied into each entry by hand — which is the
+  // same reason the order lives in the array at all. Today this changes
+  // nothing, because the only rite before My Little House that has any
+  // story written reveals nothing at all.
+  // ONLY RUNNABLE RITES CONTRIBUTE. An entry whose story is not written
+  // has taught nobody anything, so it cannot be the reason a later rite
+  // shows a control — otherwise placing My Garden second would put its
+  // tile into the third rite today, in front of a child who has never
+  // been taught it, which is exactly the leak this reduction exists to
+  // prevent. It corrects itself: the moment the story is written the
+  // rite becomes runnable and starts contributing, with no edit here.
+  function _revealsFor(rite){
+    const out=[];
+    for(let i=0;i<RITES.length;i++){
+      if(RITES[i]===rite || _runnable(RITES[i])){
+        (RITES[i].reveals||[]).forEach(function(c){ if(out.indexOf(c)<0) out.push(c); });
+      }
+      if(RITES[i]===rite) break;
+    }
+    return out;
+  }
   function _applyReveals(rite){
     try{
-      ((rite&&rite.reveals)||[]).forEach(function(c){
+      _revealsFor(rite).forEach(function(c){
         document.body.classList.add('studio-rite-shows-'+c);
       });
     }catch(e){}
@@ -2387,7 +2438,11 @@ const StudioRite=(function(){
   function start(id){
     if(_running) return false;
     const rite=_riteById(id);
-    if(!rite) return false;
+    // A rite whose story is not written refuses rather than opening an
+    // empty one. It returns false like every other refusal here, so a
+    // caller that checks — which the Studio Home offer does — falls back
+    // to the screen it always had.
+    if(!_runnable(rite)) return false;
     run(function(){},rite);
     return true;
   }
@@ -2397,7 +2452,8 @@ const StudioRite=(function(){
   // counted to be understood.
   function rites(){
     return RITES.map(function(r){
-      return {id:r.id, teaches:(r.teaches||[]).slice(), mandatory:!!r.unlocksStudio};
+      return {id:r.id, teaches:(r.teaches||[]).slice(), mandatory:!!r.unlocksStudio,
+              runnable:_runnable(r)};
     });
   }
 
