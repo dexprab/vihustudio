@@ -48,9 +48,25 @@
 // child-facing.
 //
 // GROWTH VOCABULARY (the sprint's): vines · sprigs (a short stem with
-// paired leaves) · leaves · buds · occasional flowers, laid through six
-// zones — origin, nearby growth, edge travel, branching, connections,
-// blossoming. Coordinates are NORMALIZED to margin bands around the
+// paired leaves) · leaves · buds · occasional flowers · fruit, laid
+// through six zones — origin, nearby growth, edge travel, branching,
+// connections, blossoming. Each kind also has a small set of FORMS
+// (a leaf is single, curled or paired; a sprig forks; a bud pairs; a
+// flower opens wider or clusters; fruit hangs in twos), chosen by the
+// same seeded rng. A form is a different expression of the same
+// growth, NOT another object: a paired leaf is one leaf drawn as two
+// blades, so the element count, the density ceiling and the replay are
+// all exactly what they were.
+//
+// EVERY CAPTURE REPORTS WHAT CHANGED. A step returns
+// { type, added:[ix], transformed:[ix], was:{ix:kind} } — because a
+// growth event is not always an element appearing, and the renderer
+// used to be told only how many had been added. Measured across five
+// seeds over 120 captures each, 172 of 600 captures added nothing and
+// therefore animated nothing; every capture past the ceiling was among
+// them. The step now names the elements it touched, transformations
+// included, and none of it is persisted — it is derived on replay like
+// everything else. Coordinates are NORMALIZED to margin bands around the
 // play area (the renderer maps them to real pixels around the real
 // page, which is what keeps growth out of the play area whatever shape
 // the page takes):
@@ -120,62 +136,160 @@
     return function () { s = (s * 48271) % 0x7fffffff; return s / 0x7fffffff; };
   }
 
+  // ---- what a growth step REPORTS -----------------------------------------
+  // A growth event is not always an element appearing. A bud opening
+  // into a flower, a flower ripening into fruit, a leaf filling out —
+  // all of those change the garden without changing its SIZE, and the
+  // renderer used to be told only `after.length - before.length`. That
+  // one number was the whole cause of the silent captures: measured on
+  // five seeds, 172 of 600 captures added nothing and therefore
+  // animated nothing, every single capture past the density ceiling
+  // among them.
+  //
+  // So a step now returns WHAT CHANGED — the indices of the elements it
+  // added and the indices of the elements it transformed, plus the name
+  // of the growth. Indices are the right identifier by construction: a
+  // transformation replaces el[i] in place and a scale change mutates
+  // it in place, so the index survives exactly the operations that used
+  // to be invisible. Nothing about this is persisted; it is derived on
+  // replay like everything else.
+  const LEAF_FORMS = ['plain', 'curl', 'pair'];
+  const FLOWER_FORMS = ['plain', 'open', 'cluster'];
+
   // One growth step. `g` is the garden being built: it carries the
   // element list plus the growth frontier (which vine is alive, where
   // its tip is), and each step reads that state to decide what happens.
   function _step(g, rnd) {
     const el = g.elements;
+    const res = { type: null, added: [], transformed: [] };
 
+    function push(e) { el.push(e); res.added.push(el.length - 1); return el.length - 1; }
     function vineNode(band, u, v) {
-      el.push({ k: 'vine', band: band, u: u, v: v });
+      push({ k: 'vine', band: band, u: u, v: v });
       g.tip = { band: band, u: u, v: v };
     }
+    // A transformation remembers WHAT IT WAS. The renderer needs that
+    // to show a bud actually opening rather than a flower appearing
+    // where a bud used to be — and only a genuine kind change gets a
+    // ghost, so promoting a fruit to a pair does not sprout a phantom
+    // flower.
+    function change(ix, e) { (res.was || (res.was = {}))[ix] = el[ix].k; el[ix] = e; res.transformed.push(ix); }
+    function touch(ix) { if (res.transformed.indexOf(ix) < 0) res.transformed.push(ix); }
     function jitter(x, amt) { return Math.max(0, Math.min(1, x + (rnd() - 0.5) * amt)); }
+    // CONTROLLED VARIETY, not decoration. One seeded draw picks how a
+    // leaf expresses itself — a single blade, a young curled one, or a
+    // facing pair. The garden never gains an element for it: a pair is
+    // ONE leaf drawn as two blades, so the density ceiling, the replay
+    // and the element count are all untouched. "Do not make the Garden
+    // grow more. Make the growth more interesting."
+    function leafForm(curl, pair) {
+      const r = rnd();
+      if (r < curl) return 'curl';
+      if (r < curl + pair) return 'pair';
+      return 'plain';
+    }
+    function pickIx(fn) {
+      const ixs = [];
+      for (let i = 0; i < el.length; i++) if (fn(el[i])) ixs.push(i);
+      return ixs.length ? ixs[Math.floor(rnd() * ixs.length)] : -1;
+    }
 
     // Past the ceiling the garden DEEPENS instead of spreading — the
-    // element count NEVER rises again: buds open into flowers, then
-    // existing leaves fill out a little, and that is all.
+    // element count NEVER rises again. What it does instead is a pool
+    // of STATE TRANSFORMATIONS, picked by the seeded rng: a bud opens,
+    // a flower ripens, a leaf fills out, a flower opens wider, fruit
+    // comes in pairs, a sprig forks. Scale is deliberately NOT in that
+    // pool — it is the fallback for when nothing is left to transform,
+    // because a garden whose only late behaviour is "the same leaves
+    // get slightly bigger" has stopped answering the child.
     if (el.length >= DENSITY_CEILING) {
       const budIx = el.findIndex(function (e) { return e.k === 'bud'; });
-      if (budIx >= 0) { el[budIx] = { k: 'flower', band: el[budIx].band, u: el[budIx].u, v: el[budIx].v }; return; }
-      if (rnd() < 0.3) {
-        const fIx = el.findIndex(function (e) { return e.k === 'flower'; });
-        if (fIx >= 0) { el[fIx] = { k: 'fruit', band: el[fIx].band, u: el[fIx].u, v: el[fIx].v }; return; }
+      const flIx = el.findIndex(function (e) { return e.k === 'flower'; });
+      const pool = [];
+      if (budIx >= 0) pool.push('open_bud');
+      if (flIx >= 0) pool.push('ripen_flower');
+      if (el.some(function (e) { return e.k === 'leaf' && LEAF_FORMS.indexOf(e.f || 'plain') < LEAF_FORMS.length - 1; })) pool.push('fill_leaf');
+      if (el.some(function (e) { return e.k === 'flower' && FLOWER_FORMS.indexOf(e.f || 'plain') < FLOWER_FORMS.length - 1; })) pool.push('open_flower');
+      if (el.some(function (e) { return e.k === 'fruit' && (e.f || 'plain') === 'plain'; })) pool.push('pair_fruit');
+      if (el.some(function (e) { return e.k === 'sprig' && (e.f || 'plain') === 'plain'; })) pool.push('fork_sprig');
+      const act = pool.length ? pool[Math.floor(rnd() * pool.length)] : 'grow_leaf';
+      if (act === 'open_bud') {
+        const b = el[budIx];
+        change(budIx, { k: 'flower', band: b.band, u: b.u, v: b.v, f: rnd() < 0.3 ? 'open' : 'plain' });
+        res.type = 'bud_opened';
+      } else if (act === 'ripen_flower') {
+        const f = el[flIx];
+        change(flIx, { k: 'fruit', band: f.band, u: f.u, v: f.v, f: rnd() < 0.25 ? 'pair' : 'plain' });
+        res.type = 'flower_ripened';
+      } else if (act === 'fill_leaf') {
+        const ix = pickIx(function (e) { return e.k === 'leaf' && LEAF_FORMS.indexOf(e.f || 'plain') < LEAF_FORMS.length - 1; });
+        el[ix].f = LEAF_FORMS[LEAF_FORMS.indexOf(el[ix].f || 'plain') + 1];
+        touch(ix); res.type = 'leaf_grew';
+      } else if (act === 'open_flower') {
+        const ix = pickIx(function (e) { return e.k === 'flower' && FLOWER_FORMS.indexOf(e.f || 'plain') < FLOWER_FORMS.length - 1; });
+        el[ix].f = FLOWER_FORMS[FLOWER_FORMS.indexOf(el[ix].f || 'plain') + 1];
+        touch(ix); res.type = 'flower_bloomed';
+      } else if (act === 'pair_fruit') {
+        const ix = pickIx(function (e) { return e.k === 'fruit' && (e.f || 'plain') === 'plain'; });
+        el[ix].f = 'pair'; touch(ix); res.type = 'flower_ripened';
+      } else if (act === 'fork_sprig') {
+        const ix = pickIx(function (e) { return e.k === 'sprig' && (e.f || 'plain') === 'plain'; });
+        el[ix].f = 'fork'; touch(ix); res.type = 'branch_created';
+      } else {
+        // The last resort, and it is still a real change: a leaf that
+        // has room grows into it; a garden with nothing left to promote
+        // rearranges one blade rather than doing nothing at all. There
+        // is no path out of this branch that reports no change.
+        let ix = pickIx(function (e) { return e.k === 'leaf' && (e.s || 1) < 1.35; });
+        if (ix >= 0) { el[ix].s = Math.min(1.35, (el[ix].s || 1) + 0.12); touch(ix); }
+        else {
+          ix = pickIx(function (e) { return e.k === 'leaf'; });
+          if (ix >= 0) { el[ix].f = LEAF_FORMS[(LEAF_FORMS.indexOf(el[ix].f || 'plain') + 1) % LEAF_FORMS.length]; touch(ix); }
+        }
+        res.type = 'leaf_grew';
       }
-      const leaves = el.filter(function (e) { return e.k === 'leaf' && (e.s || 1) < 1.35; });
-      if (leaves.length) { const L = leaves[Math.floor(rnd() * leaves.length)]; L.s = Math.min(1.35, (L.s || 1) + 0.12); }
-      return;
+      return res;
     }
 
     const stage = g.stepCount;
 
     // Zone 1 — the origin: the very first capture plants one sprig at
     // the foot of the left margin. The garden's fixed point, forever.
-    if (stage === 0) { el.push({ k: 'sprig', band: 'left', u: 0.55, v: 0.94, s: 1.1 }); g.tip = { band: 'left', u: 0.5, v: 0.9 }; return; }
+    if (stage === 0) {
+      push({ k: 'sprig', band: 'left', u: 0.55, v: 0.94, s: 1.1 });
+      g.tip = { band: 'left', u: 0.5, v: 0.9 };
+      res.type = 'origin_created';
+      return res;
+    }
 
     // Zone 2 — nearby growth: a young vine curls upward from the origin,
     // SLOWLY, leafing as it goes — at a dozen captures the garden should
     // read as a leafy young cluster, never a floor-to-ceiling wire (the
     // product owner, at 13 captures: the vine had already spanned the
-    // column with bare stretches between tiny leaves).
+    // column with bare stretches between tiny leaves). Leaves are the
+    // whole variation here: the first four captures are about ONE plant
+    // establishing itself, so nothing forks and nothing branches yet.
     if (stage < 5) {
-      // one leaf per node, sides alternating — pairs everywhere read as
-      // clutter in a margin this size (the product owner's "nope")
       const side = (stage % 2 ? 1 : -1) * 0.18;
       vineNode('left', jitter(0.5, 0.18), g.tip.v - 0.045 - rnd() * 0.02);
-      el.push({ k: 'leaf', band: 'left', u: jitter(g.tip.u + side, 0.06), v: g.tip.v, s: 0.8 + rnd() * 0.25 });
-      return;
+      push({ k: 'leaf', band: 'left', u: jitter(g.tip.u + side, 0.06), v: g.tip.v, s: 0.8 + rnd() * 0.25, f: leafForm(0.28, 0) });
+      res.type = 'vine_extended';
+      return res;
     }
 
     // Zone 3 — edge travel: the vine keeps climbing, still unhurried
     // (it reaches the upper half only around twenty captures), leaves
-    // in pairs along the way, a sprig branching now and then.
+    // in pairs along the way, a sprig branching now and then — and a
+    // sprig can now fork, which is the first hint of the branching
+    // phase to come.
     if (stage < 13) {
       const side = (stage % 2 ? 1 : -1) * 0.18;
-      if (g.tip.band === 'left' && g.tip.v > 0.45) { vineNode('left', jitter(0.47, 0.18), g.tip.v - 0.055 - rnd() * 0.025); }
-      else if (rnd() < 0.4) { el.push({ k: 'sprig', band: 'left', u: jitter(0.5, 0.3), v: g.tip.v + 0.15 + rnd() * 0.3, s: 0.8 + rnd() * 0.2 }); }
-      el.push({ k: 'leaf', band: 'left', u: jitter(g.tip.u + side, 0.06), v: jitter(g.tip.v, 0.02), s: 0.8 + rnd() * 0.25 });
-      return;
+      let type = 'leaf_added';
+      if (g.tip.band === 'left' && g.tip.v > 0.45) { vineNode('left', jitter(0.47, 0.18), g.tip.v - 0.055 - rnd() * 0.025); type = 'vine_extended'; }
+      else if (rnd() < 0.4) { push({ k: 'sprig', band: 'left', u: jitter(0.5, 0.3), v: g.tip.v + 0.15 + rnd() * 0.3, s: 0.8 + rnd() * 0.2, f: rnd() < 0.3 ? 'fork' : 'plain' }); type = 'branch_created'; }
+      push({ k: 'leaf', band: 'left', u: jitter(g.tip.u + side, 0.06), v: jitter(g.tip.v, 0.02), s: 0.8 + rnd() * 0.25, f: leafForm(0.2, 0.18) });
+      res.type = type;
+      return res;
     }
 
     // Zone 4 — branching: the left vine finishes its climb; the right
@@ -184,13 +298,32 @@
       const side = (stage % 2 ? 1 : -1) * 0.18;
       if (g.tip.band === 'left' && g.tip.v > 0.14) {
         vineNode('left', jitter(0.47, 0.18), g.tip.v - 0.06 - rnd() * 0.03);
-        el.push({ k: 'leaf', band: 'left', u: jitter(g.tip.u + side, 0.06), v: jitter(g.tip.v, 0.02), s: 0.8 + rnd() * 0.25 });
-        return;
+        push({ k: 'leaf', band: 'left', u: jitter(g.tip.u + side, 0.06), v: jitter(g.tip.v, 0.02), s: 0.8 + rnd() * 0.25, f: leafForm(0.18, 0.22) });
+        res.type = 'vine_extended';
+        return res;
       }
-      if (stage === 18 || (g.tip.band !== 'right' && rnd() < 0.4)) { vineNode('right', jitter(0.5, 0.18), 0.95); return; }
-      if (g.tip.band === 'right' && g.tip.v > 0.5) { vineNode('right', jitter(0.5, 0.18), g.tip.v - 0.06 - rnd() * 0.03); el.push({ k: 'leaf', band: 'right', u: jitter(g.tip.u + side, 0.06), v: g.tip.v, s: 0.8 + rnd() * 0.25 }); return; }
-      el.push({ k: 'sprig', band: rnd() < 0.5 ? 'left' : 'right', u: jitter(0.5, 0.25), v: 0.25 + rnd() * 0.5, s: 0.8 + rnd() * 0.2 });
-      return;
+      // A NEW CHAPTER, not another leaf (the sprint is explicit about
+      // capture 18). The right side does not begin as a bare node — it
+      // arrives with its own foot and its own first blade, so what the
+      // child sees is a second plant starting rather than one more
+      // increment of the first.
+      if (!g.rightBorn && (stage === 18 || (g.tip.band !== 'right' && rnd() < 0.4))) {
+        g.rightBorn = true;
+        vineNode('right', jitter(0.5, 0.18), 0.95);
+        push({ k: 'sprig', band: 'right', u: jitter(0.52, 0.12), v: 0.9, s: 0.9 + rnd() * 0.2, f: 'fork' });
+        push({ k: 'leaf', band: 'right', u: jitter(0.55, 0.1), v: 0.92, s: 0.9 + rnd() * 0.2, f: leafForm(0, 0.4) });
+        res.type = 'vine_born';
+        return res;
+      }
+      if (g.tip.band === 'right' && g.tip.v > 0.5) {
+        vineNode('right', jitter(0.5, 0.18), g.tip.v - 0.06 - rnd() * 0.03);
+        push({ k: 'leaf', band: 'right', u: jitter(g.tip.u + side, 0.06), v: g.tip.v, s: 0.8 + rnd() * 0.25, f: leafForm(0.18, 0.22) });
+        res.type = 'vine_extended';
+        return res;
+      }
+      push({ k: 'sprig', band: rnd() < 0.5 ? 'left' : 'right', u: jitter(0.5, 0.25), v: 0.25 + rnd() * 0.5, s: 0.8 + rnd() * 0.2, f: rnd() < 0.45 ? 'fork' : 'plain' });
+      res.type = 'branch_created';
+      return res;
     }
 
     // Anything that grows from here on grows ON a vine — a leaf or bud
@@ -201,18 +334,29 @@
       if (!vines.length) return false;
       const a = vines[Math.floor(rnd() * vines.length)];
       const side = (Math.floor(rnd() * 2) ? 1 : -1) * 0.16;
-      el.push(Object.assign({ k: kind, band: a.band, u: jitter(a.u + side, 0.05), v: jitter(a.v, 0.02) }, extra || {}));
+      push(Object.assign({ k: kind, band: a.band, u: jitter(a.u + side, 0.05), v: jitter(a.v, 0.02) }, extra || {}));
       return true;
     }
 
     // Zone 5 — connections: the right edge finishes its climb and the
     // top arc closes, so both sides read as ONE garden. First buds.
     if (stage < 40) {
-      if (g.tip.band === 'right' && g.tip.v > 0.12) { vineNode('right', jitter(0.5, 0.18), g.tip.v - 0.09 - rnd() * 0.04); if (rnd() < 0.6) el.push({ k: 'leaf', band: 'right', u: jitter(g.tip.u + 0.16, 0.05), v: g.tip.v, s: 0.8 + rnd() * 0.2 }); return; }
-      if (!g.topClosed) { g.topClosed = true; for (let u = 0.4; u <= 0.96; u += 0.14) el.push({ k: 'vine', band: 'top', u: u, v: jitter(0.5, 0.3) }); return; }
-      if (rnd() < 0.35 && onVine('bud')) return;
-      onVine('leaf', { s: 0.75 + rnd() * 0.25 });
-      return;
+      if (g.tip.band === 'right' && g.tip.v > 0.12) {
+        vineNode('right', jitter(0.5, 0.18), g.tip.v - 0.09 - rnd() * 0.04);
+        if (rnd() < 0.6) push({ k: 'leaf', band: 'right', u: jitter(g.tip.u + 0.16, 0.05), v: g.tip.v, s: 0.8 + rnd() * 0.2, f: leafForm(0.2, 0.2) });
+        res.type = 'vine_extended';
+        return res;
+      }
+      if (!g.topClosed) {
+        g.topClosed = true;
+        for (let u = 0.4; u <= 0.96; u += 0.14) push({ k: 'vine', band: 'top', u: u, v: jitter(0.5, 0.3) });
+        res.type = 'connection_created';
+        return res;
+      }
+      if (rnd() < 0.35 && onVine('bud', { f: rnd() < 0.22 ? 'pair' : 'plain' })) { res.type = 'bud_created'; return res; }
+      onVine('leaf', { s: 0.75 + rnd() * 0.25, f: leafForm(0.22, 0.2) });
+      res.type = 'leaf_added';
+      return res;
     }
 
     // Zone 6 — blossoming, then FRUIT: flowers open where the vine is
@@ -221,35 +365,57 @@
     // will we get buds, flowers, fruits" — the product owner; the
     // vine's seasons are: buds from ~24 captures, flowers from ~40,
     // fruit from ~55, and past the ceiling everything keeps ripening).
+    // This is the most varied phase by design: every form in the
+    // vocabulary is reachable here.
     if (stage >= 55 && rnd() < 0.18) {
-      const fIx = g.elements.findIndex(function (e) { return e.k === 'flower'; });
-      if (fIx >= 0) { const f = g.elements[fIx]; g.elements[fIx] = { k: 'fruit', band: f.band, u: f.u, v: f.v }; return; }
+      const fIx = el.findIndex(function (e) { return e.k === 'flower'; });
+      if (fIx >= 0) {
+        const f = el[fIx];
+        change(fIx, { k: 'fruit', band: f.band, u: f.u, v: f.v, f: rnd() < 0.25 ? 'pair' : 'plain' });
+        res.type = 'flower_ripened';
+        return res;
+      }
     }
     if (rnd() < 0.3) {
-      const budIx = g.elements.findIndex(function (e) { return e.k === 'bud'; });
-      if (budIx >= 0) { const b = g.elements[budIx]; g.elements[budIx] = { k: 'flower', band: b.band, u: b.u, v: b.v }; return; }
-      el.push({ k: 'flower', band: 'left', u: jitter(0.5, 0.2), v: 0.86 - (g.flowers = (g.flowers || 0) + 1) * 0.12 });
-      return;
+      const budIx = el.findIndex(function (e) { return e.k === 'bud'; });
+      if (budIx >= 0) {
+        const b = el[budIx];
+        change(budIx, { k: 'flower', band: b.band, u: b.u, v: b.v, f: rnd() < 0.3 ? 'open' : 'plain' });
+        res.type = 'bud_opened';
+        return res;
+      }
+      push({ k: 'flower', band: 'left', u: jitter(0.5, 0.2), v: 0.86 - (g.flowers = (g.flowers || 0) + 1) * 0.12, f: rnd() < 0.25 ? 'open' : 'plain' });
+      res.type = 'flower_bloomed';
+      return res;
     }
-    if (rnd() < 0.25 && onVine('bud')) return;
-    onVine('leaf', { s: 0.75 + rnd() * 0.25 });
+    if (rnd() < 0.25 && onVine('bud', { f: rnd() < 0.22 ? 'pair' : 'plain' })) { res.type = 'bud_created'; return res; }
+    onVine('leaf', { s: 0.75 + rnd() * 0.25, f: leafForm(0.22, 0.22) });
+    res.type = 'leaf_added';
+    return res;
   }
 
   function _build(seed, events) {
     const rnd = _rng(seed);
-    const g = { elements: [], tip: null, stepCount: 0, topClosed: false };
-    for (let i = 0; i < events; i++) { _step(g, rnd); g.stepCount++; }
-    return g.elements;
+    const g = { elements: [], tip: null, stepCount: 0, topClosed: false, rightBorn: false };
+    let last = null;
+    for (let i = 0; i < events; i++) { last = _step(g, rnd); g.stepCount++; }
+    return { elements: g.elements, last: last };
   }
 
   // ---- public surface ------------------------------------------------------
+  // state() is what a RE-RENDER reads, and it deliberately carries no
+  // growth report: rendering must never look like growing (the sprint's
+  // replay/render safety rule). The growth report travels on the change
+  // event, which only captured() ever fires.
   function state() {
     const rec = _load();
-    return { events: rec.events, elements: _build(rec.seed, rec.events) };
+    return { events: rec.events, elements: _build(rec.seed, rec.events).elements };
   }
 
-  // grown(): how many elements the LAST capture added — the renderer
-  // animates exactly that tail and nothing else.
+  // ONE CAPTURE = ONE GROWTH STEP, and the variety happens INSIDE the
+  // step — never by taking two. What the renderer is handed is the
+  // step's own report: which elements appeared, which ones changed
+  // without appearing, and what the growth was called.
   function captured(detail) {
     const id = detail && detail.id ? String(detail.id) : null;
     const rec = _load();
@@ -258,13 +424,12 @@
       rec.recentIds.push(id);
       if (rec.recentIds.length > RECENT_IDS_MAX) rec.recentIds.splice(0, rec.recentIds.length - RECENT_IDS_MAX);
     }
-    const before = _build(rec.seed, rec.events).length;
     rec.events += 1;
     _save(rec);
-    const after = _build(rec.seed, rec.events).length;
-    const added = Math.max(0, after - before);
-    _listeners.forEach(function (cb) { try { cb({ animate: true, added: added }); } catch (e) {} });
-    return { ok: true, grew: true };
+    const built = _build(rec.seed, rec.events);
+    const growth = built.last || { type: null, added: [], transformed: [] };
+    _listeners.forEach(function (cb) { try { cb({ animate: true, growth: growth }); } catch (e) {} });
+    return { ok: true, grew: true, growth: growth };
   }
 
   function onChange(cb) { if (typeof cb === 'function') _listeners.push(cb); }

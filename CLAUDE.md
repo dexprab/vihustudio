@@ -1561,6 +1561,38 @@ handwriting.
   garden is never lit — only what just grew — and a plain re-render
   lights nothing at all. Reduced motion suppresses it for free, because
   nothing is ever marked as new there.
+- **A growth event is not always an element appearing.** The renderer was
+  told `after.length - before.length`, so a bud opening into a flower, a
+  flower ripening into fruit and a leaf filling out were all read as *no
+  growth* — measured, 172 of 600 captures across five seeds animated
+  nothing, and every capture past the ceiling was among them. A growth
+  step now reports **what changed** (`{type, added, transformed, was}`),
+  the renderer animates the elements it names, and where the KIND changed
+  the old shape is drawn giving way to the new one. Nothing of it is
+  persisted — it is derived on replay like the garden itself.
+- **Variety is a form, never another object.** Each kind has a small
+  seeded set — a leaf is single, curled or paired; a sprig forks; a bud
+  pairs; a flower opens wider or clusters; fruit hangs in twos. A paired
+  leaf is ONE leaf drawn as two blades, so the element count, the density
+  ceiling and the replay are exactly what they were. **Do not make the
+  Garden grow more; make the growth more interesting.**
+- **Past the ceiling the garden MATURES, and scale is the fallback rather
+  than the behaviour.** The pool is state transformations — a bud opens, a
+  flower ripens, a leaf fills out, a flower opens wider, fruit pairs, a
+  sprig forks — and a leaf's scale is reached only when nothing is left to
+  transform. "The same leaves are getting slightly bigger" is what this
+  exists to prevent. No path out of that branch reports no change.
+- **A growth response outranks a re-render.** Captures and re-renders share
+  one rAF and the last caller used to win, so a resize could swallow a
+  child's answer. The growth report stays live for as long as its
+  animation does, and a plain render inside that window redraws *with* it.
+- **Disclosed and measured: this workspace has no top margin.** The page
+  canvas is flush with the top of `.preview-wrapper` at every viewport
+  tried, so the top band never draws and growth committed there — 77 of
+  600 captures, the top arc closing among them — has no answer on screen.
+  The engine reports it correctly; there is nowhere to put it. Fixing it
+  needs either the engine knowing the workspace's geometry or the band
+  mapping changing, and both are frozen.
 - Disclosed: the growth record is local-first per device; a cloud row
   (the `creator_handwriting` pattern) is the follow-up when one garden
   should span devices. Handwriting cloud sync is push-only like the

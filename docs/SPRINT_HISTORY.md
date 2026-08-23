@@ -5592,3 +5592,88 @@ was. Both branches verified by rendering the real page with and without
 the file present. No `?v=` bump: nothing the Studio loads changed, and
 cache-busting 54 assets to ship an admin page would cost every child a
 re-download for nothing.
+
+## My Garden — Living Growth Pass (build 0612)
+
+Asked for by the product owner in one sentence: *"do not make the Garden
+grow more. Make the growth more interesting."* The core architecture is
+untouched — `{seed, events, recentIds}`, deterministic replay, MINSTD,
+one capture = one growth, `onVine()`, the 110-element ceiling, Magic
+Card scoping, the traveller sweep. Nothing migrates.
+
+**The root cause was one subtraction.** `captured()` reported
+`after.length - before.length` and the renderer lit `ix >= animateFrom`
+derived from it. But a bud opening into a flower, a flower ripening into
+fruit and a leaf filling out all change the garden without changing its
+SIZE, so `added === 0` was read as `growth === false`. Measured before
+touching anything, on five seeds over 120 captures each: **172 of 600
+captures added nothing and therefore animated nothing** — none before
+capture ~40, then roughly one in three, and every single capture once
+the ceiling was reached. Re-measured after: **0 of 600 report no
+change**, and 186 of them are element-count-neutral, which is to say the
+transformations are still there and are now the ones a child actually
+watches happen. A step returns `{type, added:[ix], transformed:[ix],
+was:{ix:kind}}`; indices are the right identifier by construction,
+because a transformation replaces `el[i]` in place. None of it is
+persisted — it is derived on replay like everything else.
+
+**Variety without more objects.** Each kind gained a small seeded set of
+FORMS: a leaf is single, curled or paired; a sprig forks; a bud pairs; a
+flower opens wider or clusters; fruit hangs in twos. A form is a
+different expression of the same growth, never another element — a
+paired leaf is ONE leaf drawn as two blades — so the element count, the
+ceiling and the replay are exactly what they were. The six stages keep
+their thresholds and are more distinct for it: captures 1–4 vary only by
+leaf, sprigs may fork from capture 5, and **the right vine is now BORN**
+at capture 18 with its own foot, its own forked sprig and its first
+blade (`vine_born`), guarded so it can happen once. The renderer draws a
+short stub for a band with a single node, so that beginning is visible
+before there are two nodes to draw a path through.
+
+**Past the ceiling, scale is the fallback and not the behaviour.** The
+old branch opened a bud, sometimes ripened a flower, and otherwise crept
+a leaf's scale toward 1.35 — which is "the same leaves are getting
+slightly bigger", and it could also do nothing at all. It is now a pool
+of state transformations picked by the rng (open a bud · ripen a flower ·
+fill a leaf's form · open a flower wider · pair a fruit · fork a sprig),
+with scale reached only when the pool is empty and a form cycle behind
+that, so there is no path out of the branch that reports no change.
+Measured: 1–5 of the last 15 captures on each seed are `leaf_grew`.
+
+**The renderer animates CHANGE.** New growth keeps the unfold it had;
+a transformation gets `vihuGardenOpen` (or `vihuGardenSwell` for a leaf
+filling out) on the inner group and the glow on the outer one, and where
+the KIND changed the previous shape is drawn as a ghost that fades as
+the new one opens — a bud actually giving way rather than a flower
+appearing where a bud used to be. Decision 27's own rule is unchanged
+and re-verified: the light arrives with the growth and goes out as it
+settles, and a plain re-render lights nothing.
+
+**Two real bugs found on the way.** First, a growth response could be
+swallowed: `_scheduleRender` funnelled captures and re-renders through
+one rAF and the last caller won, so a ResizeObserver firing as the right
+panel's banner appeared could replace the animated render, or land a
+moment after it and rebuild the layer with the animation stripped. The
+growth report now stays live for as long as its animation does and any
+plain render inside that window redraws WITH it — geometry stays correct
+and the growth is never lost. Second, and **disclosed rather than
+fixed: this workspace has no top margin.** The page canvas is flush with
+the top of `.preview-wrapper` at 1024, 1280, 1440 and 1920 —
+`(p.top - h.top) - PAGE_GAP` is −14 in all four — so the top band is
+always below the renderer's minimum and draws nothing. Growth the engine
+commits there has no answer on screen: **77 of 600 captures across five
+seeds change only top-band elements**, the top arc closing among them.
+The engine reports every one correctly; there is nowhere to draw them.
+Fixing it means either the engine knowing the workspace's geometry or
+the band mapping changing, and this sprint locked both, so it is
+recorded with its measurement instead of patched sideways.
+
+Suite: 47 → 71 checks, zero page errors. The new blocks are V1–V16 (the
+sprint's §18 matrix and §19 regressions, run engine-side over five seeds
+× 120 captures: no silent captures, the six stages in their windows, the
+ceiling, determinism of both the garden AND the growth decisions,
+`Math.random` absent from the growth path, byte-identical re-renders) and
+X1–X7 (the DOM proof: bud opens, flower ripens, leaf swells, a capture
+that adds no element still lights and moves, the light still goes out,
+a re-render animates nothing, and twenty consecutive real captures each
+answered on screen). Build 0611 → 0612.

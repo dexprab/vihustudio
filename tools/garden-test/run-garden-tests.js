@@ -17,6 +17,16 @@
  *   · a Traveller's garden is swept to a newly claimed card
  *   · the Author Mode "Add Creation" dev trigger exists and works,
  *     and does NOT exist without Author Mode
+ *   · V1-V16 — the Living Growth pass, engine-side over five seeds x
+ *     120 captures: NO silent captures, the six stages in their own
+ *     windows, the seeded form vocabulary, the ceiling, determinism of
+ *     both the garden AND the growth decisions, no Math.random in the
+ *     growth path, byte-identical re-renders
+ *   · X1-X7 — and the same thing proved on the page: a bud opens, a
+ *     flower ripens, a leaf swells, a capture that adds no element
+ *     still lights and moves, the light still goes out, a re-render
+ *     animates nothing, and twenty consecutive real captures are each
+ *     answered on screen
  *   · zero page errors throughout
  *
  * Screenshots at each acceptance stage land in tools/garden-test/shots/.
@@ -649,6 +659,321 @@ function check(cond, name, note) { (cond ? ok : fail)(name, note); }
   });
   check(seam.ok && seam.mid === seam.before + 1 && seam.after === seam.mid,
     'W1 a real CreatorLibrary.save record grows the garden exactly once through the shipped event', JSON.stringify(seam));
+
+  // ---------------------------------------------------------------
+  // V: THE GROWTH VOCABULARY, and the end of the silent capture.
+  //
+  // `added = after.length - before.length` was the wrong signal: a bud
+  // opening into a flower, a flower ripening into fruit and a leaf
+  // filling out all change the garden without changing its size, so a
+  // third of the captures past capture forty animated NOTHING. These
+  // checks are engine-level and run five seeds through 120 captures
+  // each — the sprint's own acceptance matrix (§18) and its regression
+  // list (§19).
+  // ---------------------------------------------------------------
+  console.log('-- V: the growth vocabulary, measured over 5 seeds x 120 captures');
+  const SEEDS = [12345, 777, 20250823, 42, 999983];
+  async function runSeeds() {
+    return page.evaluate((seeds) => {
+      const out = [];
+      seeds.forEach((seed) => {
+        const key = 'vihu-living-garden:vseed-' + seed;
+        localStorage.setItem('vihu-magic-card-active-id', 'vseed-' + seed);
+        localStorage.setItem(key, JSON.stringify({ v: 1, seed: seed, events: 0, recentIds: [] }));
+        LivingGarden.state();      // force the cache onto this key
+        const row = { seed: seed, noChange: [], zeroDelta: [], types: [], counts: [], forms: {} };
+        let prev = 0;
+        for (let i = 0; i < 120; i++) {
+          const r = LivingGarden.captured({ id: 'v-' + seed + '-' + i });
+          const g = r.growth || { added: [], transformed: [] };
+          if ((g.added.length + g.transformed.length) === 0) row.noChange.push(i);
+          row.types.push(g.type);
+          const els = LivingGarden.state().elements;
+          if (els.length === prev) row.zeroDelta.push(i);
+          prev = els.length;
+          row.counts.push(els.length);
+        }
+        LivingGarden.state().elements.forEach(function (e) {
+          if (e.f && e.f !== 'plain') row.forms[e.k + ':' + e.f] = (row.forms[e.k + ':' + e.f] || 0) + 1;
+        });
+        out.push(row);
+        localStorage.removeItem(key);
+        localStorage.removeItem('vihu-magic-card-active-id');
+      });
+      return out;
+    }, seeds);
+  }
+  const seeds = SEEDS;
+  const runs = await runSeeds();
+  const noChange = runs.reduce((n, r) => n + r.noChange.length, 0);
+  const zeroDelta = runs.reduce((n, r) => n + r.zeroDelta.length, 0);
+  check(noChange === 0,
+    'V1 no silent captures — every one of 600 captures reports a change',
+    noChange + ' silent; ' + zeroDelta + ' of them add no element and are reported as transformations');
+  check(zeroDelta > 100,
+    'V1b and the element-count-neutral captures are real and numerous — exactly the ones that used to be invisible',
+    zeroDelta + ' transformations across 600 captures');
+
+  // §18's ladder, stage by stage, on every seed.
+  const ladder = runs.map((r) => {
+    const t = r.types;
+    const inRange = (a, b, fn) => t.slice(a, b).some(fn);
+    return {
+      seed: r.seed,
+      origin: t[0] === 'origin_created',
+      earlyVine: t.slice(1, 5).every((x) => x === 'vine_extended'),
+      travelVariety: new Set(t.slice(5, 13)).size >= 2,
+      newChapter: t.slice(13, 24).indexOf('vine_born') >= 0,
+      connection: inRange(24, 40, (x) => x === 'connection_created'),
+      buds: inRange(24, 40, (x) => x === 'bud_created'),
+      flowers: inRange(40, 60, (x) => x === 'bud_opened' || x === 'flower_bloomed'),
+      fruit: inRange(55, 110, (x) => x === 'flower_ripened'),
+      capped: Math.max.apply(null, r.counts) <= 112,
+      lateAlive: new Set(t.slice(110)).size >= 2,
+      lateNotAllScale: t.slice(105).filter((x) => x === 'leaf_grew').length < t.slice(105).length * 0.6
+    };
+  });
+  const every = (k) => ladder.every((l) => l[k]);
+  check(every('origin'), 'V2 capture 0 is the origin, on every seed');
+  check(every('earlyVine'), 'V3 captures 1-4 establish the first vine, on every seed');
+  check(every('travelVariety'), 'V4 captures 5-12 are not one repeated move — edge travel varies');
+  check(every('newChapter'), 'V5 the right vine is BORN in 13-23 as its own event, not another leaf',
+    ladder.map((l) => l.seed + ':' + l.newChapter).join(' '));
+  check(every('connection'), 'V6 the top arc closes in 24-39 as its own growth');
+  check(every('buds'), 'V7 the first buds arrive in 24-39');
+  check(every('flowers'), 'V8 flowers arrive in 40-59 — and bud → flower is a REPORTED growth, not a silent one');
+  check(every('fruit'), 'V9 fruit ripens from 55 on');
+  check(every('capped'), 'V10 the element count never passes the ceiling',
+    runs.map((r) => Math.max.apply(null, r.counts)).join(' '));
+  check(every('lateAlive'), 'V11 past 110 captures the garden still changes, and in more than one way',
+    runs.map((r) => Array.from(new Set(r.types.slice(110))).join('/')).join(' | '));
+  check(every('lateNotAllScale'), 'V12 late growth is not mostly "the same leaves get bigger" — transformations dominate',
+    runs.map((r) => r.types.slice(105).filter((x) => x === 'leaf_grew').length + '/' + r.types.slice(105).length).join(' '));
+
+  const allForms = {};
+  runs.forEach((r) => Object.keys(r.forms).forEach((k) => { allForms[k] = (allForms[k] || 0) + r.forms[k]; }));
+  const wantForms = ['leaf:curl', 'leaf:pair', 'sprig:fork', 'flower:open', 'fruit:pair'];
+  const missing = wantForms.filter((k) => !allForms[k]);
+  check(missing.length === 0, 'V13 the whole seeded vocabulary actually occurs', JSON.stringify(allForms));
+
+  // §14 — determinism. Same seed, same events, same garden AND the same
+  // growth decisions. Run one seed twice from scratch and compare.
+  const det = await page.evaluate(() => {
+    const run = () => {
+      localStorage.setItem('vihu-magic-card-active-id', 'det-' + Math.random());
+      localStorage.setItem('vihu-living-garden:' + localStorage.getItem('vihu-magic-card-active-id'),
+        JSON.stringify({ v: 1, seed: 24680, events: 0, recentIds: [] }));
+      LivingGarden.state();
+      const types = [];
+      for (let i = 0; i < 90; i++) types.push(LivingGarden.captured({ id: 'd-' + Math.random() }).growth.type);
+      const els = JSON.stringify(LivingGarden.state().elements);
+      localStorage.removeItem('vihu-living-garden:' + localStorage.getItem('vihu-magic-card-active-id'));
+      localStorage.removeItem('vihu-magic-card-active-id');
+      return { types: types.join(','), els: els };
+    };
+    const a = run(), b = run();
+    return { sameTypes: a.types === b.types, sameEls: a.els === b.els, len: a.els.length };
+  });
+  check(det.sameTypes && det.sameEls,
+    'V14 same seed + same event count = same garden AND the same growth decisions', JSON.stringify(det));
+
+  // §14's other half: no Math.random anywhere in the growth path. The
+  // engine does use it ONCE, to mint a seed for a brand-new garden —
+  // which is not growth. Scanned at the source, in the step itself.
+  const engineSrc = fs.readFileSync(path.join(__dirname, '..', '..', 'js', 'gardenEngine.js'), 'utf8');
+  const stepSrc = engineSrc.slice(engineSrc.indexOf('function _step('), engineSrc.indexOf('function _build('));
+  check(stepSrc.indexOf('Math.random') < 0 && (engineSrc.match(/Math\.random/g) || []).length === 1,
+    'V15 growth never touches Math.random — the one use left is minting a new garden\'s seed',
+    (engineSrc.match(/Math\.random/g) || []).length + ' use(s) in the module, 0 in _step');
+
+  // §15 — a re-render must produce byte-identical markup and never grow.
+  const rerender = await page.evaluate(() => {
+    GardenRenderer.render();
+    const a = document.getElementById('livingGardenLayer').innerHTML;
+    const e1 = LivingGarden.state().events;
+    GardenRenderer.render();
+    const b = document.getElementById('livingGardenLayer').innerHTML;
+    return { same: a === b, grew: LivingGarden.state().events !== e1, len: a.length };
+  });
+  check(rerender.same && !rerender.grew,
+    'V16 two renders produce byte-identical markup and grow nothing', JSON.stringify(rerender));
+
+  // ---------------------------------------------------------------
+  // X: A TRANSFORMATION ANIMATES. The DOM proof that the reporting fix
+  // reached the screen — a capture that adds ZERO elements still lights
+  // and moves the element it changed.
+  // ---------------------------------------------------------------
+  console.log('-- X: transformations animate');
+  async function setGarden(seed, events) {
+    await page.evaluate(({ seed, events }) => {
+      localStorage.removeItem('vihu-magic-card-active-id');
+      localStorage.setItem('vihu-living-garden:traveller', JSON.stringify({ v: 1, seed: seed, events: events, recentIds: [] }));
+      localStorage.setItem('vihu-magic-card-active-id', 'x-bust');   // force a cache miss
+      LivingGarden.state();
+      localStorage.removeItem('vihu-magic-card-active-id');
+      LivingGarden.state();
+    }, { seed: seed, events: events });
+  }
+  // Find the first capture on this seed that produces the wanted growth,
+  // by asking the engine rather than by guessing a number.
+  // DISCLOSED, MEASURED, AND NOT THIS SPRINT'S TO FIX: this workspace
+  // has no TOP margin. The page canvas is flush with the top of
+  // .preview-wrapper at every viewport tried (1024/1280/1440/1920 —
+  // (p.top - h.top) - PAGE_GAP is -14 in all four), so the top band is
+  // always narrower than the renderer's own minimum and draws nothing.
+  // Growth the engine commits to that band therefore has no answer on
+  // screen: measured, 77 of 600 captures across five seeds change only
+  // top-band elements. The engine reports every one of them correctly;
+  // there is simply nowhere to draw them. Fixing it means either the
+  // engine knowing the workspace's geometry or the band mapping
+  // changing, and the sprint locks BOTH. So the probes below pick a
+  // case that CAN be drawn, and X7 states the boundary out loud.
+  async function findGrowth(seed, wantType, maxN) {
+    return page.evaluate(({ seed, wantType, maxN }) => {
+      for (let k = 0; k < maxN; k++) {
+        localStorage.setItem('vihu-living-garden:probe', JSON.stringify({ v: 1, seed: seed, events: k, recentIds: [] }));
+        localStorage.setItem('vihu-magic-card-active-id', 'probe');
+        LivingGarden.state();
+        const r = LivingGarden.captured({ id: 'p-' + seed + '-' + k });
+        const els = LivingGarden.state().elements;
+        const affected = (r.growth ? r.growth.added.concat(r.growth.transformed) : []);
+        const drawable = affected.some(function (j) { return els[j] && els[j].band !== 'top'; });
+        if (r.growth && r.growth.type === wantType && drawable) {
+          localStorage.removeItem('vihu-living-garden:probe');
+          localStorage.removeItem('vihu-magic-card-active-id');
+          return k;
+        }
+      }
+      localStorage.removeItem('vihu-living-garden:probe');
+      localStorage.removeItem('vihu-magic-card-active-id');
+      return -1;
+    }, { seed: seed, wantType: wantType, maxN: maxN });
+  }
+  const changeProbe = () => page.evaluate(() => {
+    const layer = document.getElementById('livingGardenLayer');
+    const kids = Array.from(layer.children);
+    let opened = 0, swelled = 0, lit = 0, ghosts = 0;
+    kids.forEach((n) => {
+      const i = n.firstChild;
+      const a = (i && i.style && i.style.animation) || '';
+      if (a.indexOf('vihuGardenOpen') >= 0) opened++;
+      if (a.indexOf('vihuGardenSwell') >= 0) swelled++;
+      if ((n.style.filter || '').indexOf('3px') >= 0) lit++;
+      if (n.getAttribute && n.getAttribute('data-garden-ghost')) ghosts++;
+    });
+    return { opened: opened, swelled: swelled, lit: lit, ghosts: ghosts, total: kids.length,
+             elements: LivingGarden.state().elements.length };
+  });
+
+  const XSEED = 12345;
+  const cases = [
+    { type: 'bud_opened',     max: 90,  ghost: 'bud',    name: 'X1 a bud OPENS into a flower — the bud is shown giving way' },
+    { type: 'flower_ripened', max: 120, ghost: 'flower', name: 'X2 a flower RIPENS into fruit — the flower is shown giving way' },
+    { type: 'leaf_grew',      max: 130, ghost: null,     name: 'X3 a leaf filling out swells where it stands' }
+  ];
+  for (const c of cases) {
+    const k = await findGrowth(XSEED, c.type, c.max);
+    if (k < 0) { fail(c.name, 'no ' + c.type + ' within ' + c.max + ' captures'); continue; }
+    await setGarden(XSEED, k);
+    await page.evaluate(() => GardenRenderer.render());
+    await page.waitForTimeout(400);
+    const before = await changeProbe();
+    await page.evaluate((t) => document.dispatchEvent(new CustomEvent('vihu:creation-captured',
+      { detail: { id: 'x-' + t + '-' + Date.now() } })), c.type);
+    await page.waitForTimeout(1000);
+    const after = await changeProbe();
+    const moved = c.type === 'leaf_grew' ? (after.swelled >= 1) : (after.opened >= 1);
+    check(moved && after.lit >= 1 && after.elements === before.elements &&
+          (c.ghost ? after.ghosts >= 1 : true),
+      c.name, 'capture ' + (k + 1) + ' · ' + JSON.stringify(after) + ' (was ' + before.elements + ' elements)');
+    if (c.type === 'bud_opened') {
+      await page.screenshot({ path: path.join(SHOTS, 'transform-bud-opening.png'),
+        clip: { x: 300, y: 100, width: 150, height: 640 } });
+    }
+    await page.waitForTimeout(6200);   // the light goes out before the next case
+  }
+
+  // The whole point, stated as one check: a capture that adds NOTHING
+  // still has a visible answer on screen.
+  const kSilent = await findGrowth(XSEED, 'flower_ripened', 120);
+  await setGarden(XSEED, kSilent);
+  await page.evaluate(() => GardenRenderer.render());
+  await page.waitForTimeout(400);
+  const sBefore = await changeProbe();
+  await page.evaluate(() => document.dispatchEvent(new CustomEvent('vihu:creation-captured', { detail: { id: 'silent-' + Date.now() } })));
+  await page.waitForTimeout(1000);
+  const sAfter = await changeProbe();
+  check(sAfter.elements === sBefore.elements && (sAfter.opened + sAfter.swelled) >= 1 && sAfter.lit >= 1,
+    'X4 a capture that adds no element is NOT silent — the changed element lights and moves',
+    sBefore.elements + ' → ' + sAfter.elements + ' elements, ' + JSON.stringify(sAfter));
+
+  await page.waitForTimeout(8400);
+  const sSettled = await changeProbe();
+  check(sSettled.lit === 0 && sSettled.ghosts === 0,
+    'X5 the light goes out after a transformation too, and the ghost is gone', JSON.stringify(sSettled));
+  await page.evaluate(() => GardenRenderer.render());
+  await page.waitForTimeout(300);
+  const sRe = await changeProbe();
+  check(sRe.lit === 0 && sRe.opened === 0 && sRe.swelled === 0 && sRe.ghosts === 0,
+    'X6 a plain re-render animates no transformation and lights nothing', JSON.stringify(sRe));
+  await page.screenshot({ path: path.join(SHOTS, 'transform-settled.png'),
+    clip: { x: 300, y: 100, width: 150, height: 640 } });
+
+  // X7 — the end-to-end claim, run for real: TWENTY consecutive
+  // captures through the shipped event, each one checked on the page.
+  // A capture is answered if the layer shows an unfold, an opening, a
+  // swell or a light. The only ones allowed to go unanswered are those
+  // whose whole growth landed in the top band this workspace does not
+  // have — counted, not waved away.
+  console.log('-- X7: twenty consecutive captures, each answered on screen');
+  await setGarden(XSEED, 44);
+  await page.evaluate(() => {
+    window.__lastGrowth = null;
+    LivingGarden.onChange(function (ev) { window.__lastGrowth = ev.growth; });
+    GardenRenderer.render();
+  });
+  await page.waitForTimeout(400);
+  let answered = 0, topOnly = 0, unanswered = [];
+  for (let i = 0; i < 20; i++) {
+    await page.evaluate(() => {
+      document.dispatchEvent(new CustomEvent('vihu:creation-captured', { detail: { id: 'x7-' + Date.now() + '-' + Math.random() } }));
+    });
+    await page.waitForTimeout(950);
+    const probe = await page.evaluate(() => {
+      const layer = document.getElementById('livingGardenLayer');
+      const kids = Array.from(layer.children);
+      let moving = 0, lit = 0;
+      kids.forEach((n) => {
+        const inr = n.firstChild;
+        // A vine tail draws itself on the PATH (no inner group); a leaf,
+        // bud, flower or fruit animates its inner group. Both count.
+        const a = ((inr && inr.style && inr.style.animation) || '') + ' ' + (n.style.animation || '');
+        const t = ((inr && inr.style && inr.style.transition) || '') + ' ' + (n.style.transition || '');
+        if (/vihuGardenOpen|vihuGardenSwell/.test(a) || /opacity|stroke-dashoffset|transform/.test(t)) moving++;
+        if ((n.style.filter || '').indexOf('3px') >= 0 || t.indexOf('filter') >= 0
+            || (n.getAttribute && n.getAttribute('stroke') === '#F5C542')) lit++;
+      });
+      return { moving: moving, lit: lit };
+    });
+    const wasTopOnly = await page.evaluate(() => {
+      const g = window.__lastGrowth;
+      if (!g) return false;
+      const els = LivingGarden.state().elements;
+      const affected = g.added.concat(g.transformed);
+      return affected.length > 0 && affected.every(function (j) { return els[j] && els[j].band === 'top'; });
+    });
+    if (probe.moving >= 1 || probe.lit >= 1) answered++;
+    else if (wasTopOnly) topOnly++;
+    else unanswered.push(await page.evaluate((i) => {
+      const g = window.__lastGrowth, els = LivingGarden.state().elements;
+      const aff = g.added.concat(g.transformed);
+      return i + ':' + g.type + ':' + aff.map(function (j) { return els[j] && (els[j].band + '/' + els[j].k); }).join('+');
+    }, i));
+    await page.waitForTimeout(150);
+  }
+  check(answered + topOnly === 20 && answered >= 14,
+    'X7 every one of twenty consecutive captures is answered on screen (bar those that land in the absent top band)',
+    answered + ' answered, ' + topOnly + ' top-band-only, unanswered ' + JSON.stringify(unanswered));
 
   console.log('-- H: hygiene');
   check(pageErrors.length === 0, 'H1 zero page errors across the whole run', pageErrors.slice(0, 2).join(' | ') || 'clean');

@@ -12449,6 +12449,29 @@ body.dark-theme .bia-studio-btn:hover{ background:rgba(255,255,255,0.08); }
   to{ transform:rotate(1.6deg); }
 }
 
+/* A TRANSFORMATION opening — a bud becoming a flower, a flower ripening
+   into fruit, a sprig forking. The thing was already there, so it does
+   not fade in from nothing the way new growth does: it opens out of
+   itself, overshoots a little the way a real petal does, and settles.
+   Short, local and quiet — no burst, no particles, nothing that reads
+   as a reward. Handed off to the breath by js/gardenRenderer.js when it
+   finishes. */
+@keyframes vihuGardenOpen{
+  0%  { transform:scale(.55); opacity:.35; }
+  38% { transform:scale(1.2);  opacity:1; }
+  72% { transform:scale(.97); }
+  100%{ transform:scale(1);   opacity:1; }
+}
+
+/* A leaf filling out where it already stands — the gentlest change in
+   the vocabulary, and deliberately gentler than an opening: nothing
+   arrives, something just becomes a little more itself. */
+@keyframes vihuGardenSwell{
+  0%  { transform:scale(1); }
+  32% { transform:scale(1.15); }
+  100%{ transform:scale(1); }
+}
+
 /* My Garden's two rooms — the tab row. */
 .context-hw-tabs{ display:flex; gap:8px; margin:0 0 12px; }
 .context-hw-tab{
