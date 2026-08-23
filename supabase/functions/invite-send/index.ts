@@ -73,9 +73,17 @@ const BUILD = '2026-08-23 · paper letter, two Ether books';
 // email clients do not reliably render data: URIs, and Gmail strips
 // them outright. DISCLOSED COUPLING — these mirror canon.json by hand,
 // so adding or renaming a Canon Story means updating this list too.
-const BOOKS: Array<{ name: string; img: string }> = [
-  { name: 'The falling star', img: 'assets/invite/falling-star.png' },
-  { name: 'Little Seed🌻',    img: 'assets/invite/little-seed.png' },
+//
+// `id` IS THE DEEP LINK, and it only works because these are Canon.
+// js/etherFeed.js sets a Story's `projectId` to the record's own id, and
+// js/vihuplanetHome.js opens whatever `?story=` names once the Ether is
+// alive. Canon ships WITH the application, so it sits in everybody's
+// Ether — these two are the only stories on the platform whose link
+// resolves for a total stranger. A child's own story link would not,
+// and must not.
+const BOOKS: Array<{ name: string; img: string; id: string }> = [
+  { name: 'The falling star', img: 'assets/invite/falling-star.png', id: 'canon_the_falling_star' },
+  { name: 'Little Seed🌻',    img: 'assets/invite/little-seed.png',  id: 'canon_little_seed' },
 ];
 
 function json(body: unknown, status = 200): Response {
@@ -135,8 +143,9 @@ function textFor(link: string, note: string): string {
   ];
   if (note) lines.push(note, '');
   lines.push(
-    'Waiting in the Ether: ' + BOOKS.map((b) => '"' + b.name + '"').join(' and ') + '.',
-    'Which one will you open first?',
+    'Two stories are waiting in the Ether. Which will you open first?',
+    '',
+    ...BOOKS.flatMap((b) => ['  ' + b.name, '  ' + link + '&story=' + b.id, '']),
     '',
     'With a smile,',
     'Lumo',
@@ -168,14 +177,30 @@ function htmlFor(link: string, note: string): string {
   // The two books. With images off this still reads — every cover
   // carries its story's name as alt text, and the caption above says
   // what they are.
-  const books = BOOKS.map((b) => `
+  // EVERY BOOK IS ITS OWN DOOR. Three links now go to the same place;
+  // the two covers simply arrive pointing at something. A child drawn
+  // to a particular story should be able to follow that rather than be
+  // told to press a general button instead — and the invite token rides
+  // along on all three, so the journey is recorded whichever they take.
+  //
+  // It does NOT drop them into a reader. VihuPlanet's threshold comes
+  // first, the universe turns, and only then does the camera find that
+  // Spirit — "a link that snaps straight to a Spirit never shows them
+  // where the story lives" (js/vihuplanetHome.js).
+  const books = BOOKS.map((b) => {
+    const to = `${link}&story=${encodeURIComponent(b.id)}`;
+    return `
     <table role="presentation" cellpadding="0" cellspacing="0" width="100%"
            style="margin:0 0 16px;"><tr><td align="center">
-      <img src="${esc(base + '/' + b.img)}" width="150" alt="${esc(b.name)}"
-           style="display:block;width:150px;max-width:100%;height:auto;border:1px solid ${rule};
-                  border-radius:3px;background:${paper};">
-      <div style="margin:7px 0 0;font:400 14px/1.3 Georgia,serif;color:${navy};">${esc(b.name)}</div>
-    </td></tr></table>`).join('');
+      <a href="${esc(to)}" style="text-decoration:none;color:${navy};">
+        <img src="${esc(base + '/' + b.img)}" width="150" alt="${esc(b.name)}"
+             style="display:block;width:150px;max-width:100%;height:auto;border:1px solid ${rule};
+                    border-radius:3px;background:${paper};">
+        <div style="margin:7px 0 0;font:400 14px/1.3 Georgia,serif;color:${navy};
+                    text-decoration:none;">${esc(b.name)}</div>
+      </a>
+    </td></tr></table>`;
+  }).join('');
 
   return `<!doctype html>
 <html><head><meta charset="utf-8">
