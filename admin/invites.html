@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>VihuPlanet · Invites</title>
+<!-- THE INVITE DESK.
+     Asked for by the product owner: "setup a page from where i can send
+     out the invite on email ids and than track if the invite was
+     accepted. same for whatsapp also."
+
+     NOT PART OF THE CHILD PRODUCT. No child reaches it, nothing links to
+     it, and it is robots-disallowed alongside the rest of /admin/
+     (docs/INDEXING_POLICY.md). It uses the SAME sign-in as the Creators
+     console next door — one adult, one verified email, checked against
+     platform_admins by every function this page calls. The anon key is
+     public by design and grants nothing on its own.
+
+     WHAT IT TRACKS, AND WHAT IT REFUSES TO.
+     Four timestamps per INVITATION: sent, opened, explored, became a
+     Creator. That is the whole of it. No child is identified, because
+     there is nothing to identify one with — VihuPlanet has no accounts
+     (Decision 11) and an invite token names an invitation, never a
+     person. This is outreach bookkeeping, not analytics on children,
+     and it must never be allowed to become the latter.
+
+     WHATSAPP HAS NO API HERE, and that is a deliberate choice rather
+     than a gap. The page prepares the message and opens WhatsApp with it
+     ready; a human presses send. That needs no Business account, no
+     approved template and no credentials — and the tracking works
+     identically, because the tracking lives in the LINK. -->
+<style>
+  :root {
+    --bg:#0d1220; --panel:#151c2e; --line:#253048; --rule:#2e3a56;
+    --ink:#e7eaf3; --soft:#a6adbf; --faint:#6e7893; --gold:#dfb169;
+    --warn:#e2917a; --good:#8fbf9f;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+         font:400 15px/1.6 -apple-system,"Segoe UI",Roboto,sans-serif; }
+  .wrap { max-width:70rem; margin:0 auto; padding:2.4rem 1.2rem 5rem; }
+  h1 { font:400 1.7rem/1.2 Georgia,serif; margin:0 0 .3rem; letter-spacing:-.01em; }
+  h2 { font:400 1.15rem/1.3 Georgia,serif; margin:2.4rem 0 .8rem; color:var(--gold); }
+  .sub { color:var(--faint); font-size:.9rem; margin:0 0 2rem; }
+  .hidden { display:none !important; }
+  a { color:var(--gold); }
+
+  .gate { max-width:24rem; background:var(--panel); border:1px solid var(--line);
+          border-radius:8px; padding:1.4rem; }
+  label { display:block; font-size:.78rem; letter-spacing:.08em; text-transform:uppercase;
+          color:var(--faint); margin:.9rem 0 .3rem; }
+  input, select, textarea {
+    width:100%; padding:.6rem .7rem; border-radius:5px; border:1px solid var(--line);
+    background:#0f1526; color:var(--ink); font:inherit; }
+  textarea { resize:vertical; min-height:4.2rem; }
+  button { margin-top:1.1rem; padding:.62rem 1.1rem; border-radius:999px; border:0;
+           background:var(--gold); color:#22314c; font-weight:700; font-size:.9rem;
+           cursor:pointer; }
+  button.ghost { background:transparent; border:1px solid var(--line); color:var(--soft);
+                 font-weight:600; }
+  button:disabled { opacity:.5; cursor:default; }
+  .msg { color:var(--warn); font-size:.86rem; margin:.9rem 0 0; min-height:1.2em; }
+  .msg.ok { color:var(--good); }
+
+  .desk { display:grid; grid-template-columns:repeat(auto-fit,minmax(19rem,1fr)); gap:1rem; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:8px;
+          padding:1.2rem 1.3rem 1.4rem; }
+  .card h3 { margin:0 0 .2rem; font:600 1rem/1.3 inherit; }
+  .card p.note { margin:.1rem 0 .4rem; color:var(--faint); font-size:.84rem; }
+
+  .counts { display:flex; gap:1.6rem; flex-wrap:wrap; margin:0 0 .6rem; }
+  .counts div { display:flex; flex-direction:column; }
+  .counts b { font:400 1.6rem/1.1 Georgia,serif; color:var(--gold); }
+  .counts span { font-size:.78rem; color:var(--faint); }
+
+  table { width:100%; border-collapse:collapse; font-size:.88rem; }
+  th,td { text-align:left; padding:.55rem .7rem .55rem 0; border-bottom:1px solid var(--rule);
+          vertical-align:top; }
+  th { font-size:.7rem; letter-spacing:.11em; text-transform:uppercase; color:var(--faint);
+       font-weight:600; white-space:nowrap; }
+  td.dim { color:var(--faint); }
+  .tablewrap { overflow-x:auto; }
+
+  /* The journey as four lamps: sent, opened, explored, accepted. A lit
+     lamp is a fact; an unlit one is the honest absence of one. */
+  .steps { display:flex; gap:.28rem; align-items:center; }
+  .step { width:.62rem; height:.62rem; border-radius:50%; border:1px solid var(--rule); }
+  .step.on { background:var(--gold); border-color:var(--gold); }
+  .step.win { background:var(--good); border-color:var(--good); }
+  .stage { font-size:.78rem; color:var(--faint); white-space:nowrap; }
+  .stage.win { color:var(--good); }
+  .flag { color:var(--warn); font-size:.78rem; }
+  code { font-family:var(--mono); font-size:.82em; color:var(--soft); }
+  .foot { color:var(--faint); font-size:.82rem; margin:.8rem 0 0; max-width:46rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Invites</h1>
+  <p class="sub">Lumo writes the letter. You choose who it goes to.
+     <a href="index.html">Creators →</a></p>
+
+  <div class="gate" id="gate">
+    <label for="em">Email</label>
+    <input id="em" type="email" autocomplete="username">
+    <label for="pw">Password</label>
+    <input id="pw" type="password" autocomplete="current-password">
+    <button id="go">Sign in</button>
+    <p class="msg" id="msg"></p>
+  </div>
+
+  <div id="desk" class="hidden">
+    <div class="desk">
+
+      <div class="card">
+        <h3>Send by email</h3>
+        <p class="note">Lumo's letter, posted from VihuPlanet. One address at a time,
+           or several separated by commas.</p>
+        <label for="mailTo">Email address</label>
+        <input id="mailTo" type="text" placeholder="someone@example.com">
+        <label for="mailLabel">Who is this? <span style="text-transform:none;letter-spacing:0">(just for your list)</span></label>
+        <input id="mailLabel" type="text" placeholder="Aarav's mum">
+        <label for="mailNote">A line from you <span style="text-transform:none;letter-spacing:0">(optional)</span></label>
+        <textarea id="mailNote" placeholder="Thought your two might like this."></textarea>
+        <button id="sendMail">Send the letter</button>
+        <p class="msg" id="mailMsg"></p>
+      </div>
+
+      <div class="card">
+        <h3>Send by WhatsApp</h3>
+        <p class="note">Prepares the message with its own link and opens WhatsApp.
+           You press send — no automated messaging, and the tracking is identical.</p>
+        <label for="waTo">Phone number <span style="text-transform:none;letter-spacing:0">(with country code)</span></label>
+        <input id="waTo" type="text" placeholder="919876543210">
+        <label for="waLabel">Who is this? <span style="text-transform:none;letter-spacing:0">(just for your list)</span></label>
+        <input id="waLabel" type="text" placeholder="Priya">
+        <button id="sendWa">Open WhatsApp</button>
+        <p class="msg" id="waMsg"></p>
+      </div>
+
+    </div>
+
+    <h2>Who has been invited</h2>
+    <div class="counts" id="counts"></div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr>
+          <th>Who</th><th>Channel</th><th>Journey</th><th>Where they got to</th>
+          <th>Sent</th><th>Link</th>
+        </tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <p class="foot">An invitation is <strong>accepted</strong> when the child finishes their first
+       story — that is the only definition here, and it is the product owner's. The two
+       stages before it exist so a letter nobody opened can be told apart from one that was
+       opened and never begun. Nothing on this page identifies a child.</p>
+    <p class="foot" id="mailState"></p>
+  </div>
+</div>
+
+<script type="module">
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+const cfg = await fetch('../supabase-config.json').then(r => r.json());
+const sb = createClient(cfg.url, cfg.anonKey);
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c =>
+  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+const BASE = 'https://vihuplanet.com';
+const FN = cfg.url.replace(/\/+$/, '') + '/functions/v1/invite-send';
+
+function when(ts) {
+  if (!ts) return '—';
+  return new Date(ts).toLocaleDateString(undefined,
+    { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+function note(el, text, ok) {
+  el.textContent = text || '';
+  el.classList.toggle('ok', !!ok);
+}
+
+// ---------------------------------------------------------------
+// The roll
+// ---------------------------------------------------------------
+async function show() {
+  const { data, error } = await sb.rpc('invite_roll');
+  if (error) { note($('msg'), error.message); return false; }
+  // An empty roll is ambiguous by design — not an administrator, or no
+  // invitations yet — and the function says nothing about which, so a
+  // prober learns nothing. The desk still opens: sending is how the
+  // first row gets here.
+  $('gate').classList.add('hidden');
+  $('desk').classList.remove('hidden');
+  render(data || []);
+  return true;
+}
+
+function render(rows) {
+  const accepted = rows.filter(r => r.creator_at).length;
+  const opened = rows.filter(r => r.opened_at).length;
+  const sent = rows.filter(r => r.sent_at).length;
+  $('counts').innerHTML = [
+    [rows.length, 'invited'], [sent, 'sent'], [opened, 'opened'], [accepted, 'became Creators'],
+  ].map(([n, l]) => `<div><b>${n}</b><span>${l}</span></div>`).join('');
+
+  $('rows').innerHTML = rows.map(r => {
+    const on = [!!r.sent_at, !!r.opened_at, !!r.explored_at, !!r.creator_at];
+    const lamps = on.map((v, i) =>
+      `<span class="step ${v ? (i === 3 ? 'win' : 'on') : ''}"></span>`).join('');
+    const stage = r.creator_at ? 'Became a Creator'
+      : r.explored_at ? 'Exploring'
+      : r.opened_at ? 'Opened the letter'
+      : r.sent_at ? 'Sent'
+      : r.send_error ? 'Did not send' : 'Not sent yet';
+    const link = `${BASE}/?invite=${encodeURIComponent(r.token)}`;
+    return `<tr>
+      <td>${esc(r.label || r.recipient)}${r.label ? `<br><span class="dim" style="font-size:.82em">${esc(r.recipient)}</span>` : ''}</td>
+      <td class="dim">${esc(r.channel)}</td>
+      <td><span class="steps">${lamps}</span></td>
+      <td class="${r.creator_at ? 'stage win' : 'stage'}">${esc(stage)}${
+        r.send_error ? ` <span class="flag" title="${esc(r.send_error)}">!</span>` : ''}</td>
+      <td class="dim">${when(r.sent_at)}</td>
+      <td class="dim"><code>${esc(r.token)}</code>
+          <button class="ghost" style="margin:0 0 0 .4rem;padding:.15rem .5rem;font-size:.74rem"
+                  data-copy="${esc(link)}">copy</button></td>
+    </tr>`;
+  }).join('');
+
+  document.querySelectorAll('[data-copy]').forEach(b => {
+    b.onclick = () => {
+      navigator.clipboard.writeText(b.dataset.copy).then(() => {
+        b.textContent = 'copied'; setTimeout(() => { b.textContent = 'copy'; }, 1400);
+      }).catch(() => {});
+    };
+  });
+}
+
+// ---------------------------------------------------------------
+// Minting an invitation
+// ---------------------------------------------------------------
+// The token comes from the DATABASE, never from here — a browser-chosen
+// token could collide with somebody else's invitation.
+async function mint(channel, recipient, label) {
+  const { data, error } = await sb.rpc('invite_create', {
+    p_channel: channel, p_recipient: recipient, p_label: label || '',
+  });
+  if (error) throw new Error(error.message);
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row || !row.token) throw new Error('no token');
+  return row.token;
+}
+
+// ---------------------------------------------------------------
+// Email
+// ---------------------------------------------------------------
+$('sendMail').onclick = async () => {
+  const raw = $('mailTo').value.trim();
+  const label = $('mailLabel').value.trim();
+  const extra = $('mailNote').value.trim();
+  const list = raw.split(',').map(s => s.trim()).filter(Boolean);
+  if (!list.length) { note($('mailMsg'), 'Who is it going to?'); return; }
+
+  $('sendMail').disabled = true;
+  note($('mailMsg'), 'Sending…');
+  const done = [], failed = [];
+
+  for (const to of list) {
+    try {
+      const token = await mint('email', to, list.length === 1 ? label : '');
+      const res = await fetch(FN, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', apikey: cfg.anonKey },
+        body: JSON.stringify({ to, token, note: extra }),
+      }).then(r => r.json()).catch(() => ({ ok: false, reason: 'unreachable' }));
+
+      // The function answers 200 even when it could not send, so a
+      // failure is a sentence rather than an exception — and it is
+      // recorded against the invitation so the row shows "did not
+      // send" instead of looking like a letter nobody opened.
+      await sb.rpc('invite_mark_sent', {
+        p_token: token, p_error: res.ok ? null : String(res.reason || 'failed'),
+      });
+      (res.ok ? done : failed).push(to);
+    } catch (e) {
+      failed.push(to);
+    }
+  }
+
+  $('sendMail').disabled = false;
+  if (done.length && !failed.length) {
+    note($('mailMsg'), done.length === 1 ? 'Letter sent.' : `${done.length} letters sent.`, true);
+    $('mailTo').value = ''; $('mailLabel').value = '';
+  } else if (done.length) {
+    note($('mailMsg'), `Sent ${done.length}. Could not send to ${failed.join(', ')}.`);
+  } else {
+    note($('mailMsg'), `Could not send. ${failed.join(', ')}`);
+  }
+  show();
+};
+
+// ---------------------------------------------------------------
+// WhatsApp
+// ---------------------------------------------------------------
+// No Business API, deliberately (see the head comment). The message is
+// prepared with its own tracked link and WhatsApp is opened with it
+// ready; a human presses send. It is marked as sent at that moment,
+// because that is the last thing this page can honestly know.
+$('sendWa').onclick = async () => {
+  const phone = $('waTo').value.replace(/[^\d]/g, '');
+  const label = $('waLabel').value.trim();
+  if (phone.length < 8) { note($('waMsg'), 'Needs a number with its country code.'); return; }
+
+  $('sendWa').disabled = true;
+  try {
+    const token = await mint('whatsapp', phone, label);
+    const link = `${BASE}/?invite=${encodeURIComponent(token)}`;
+    const text =
+      'Hello — I am Lumo. I look after a place called VihuPlanet.\n\n' +
+      'It is a quiet universe where children make stories: their own words, their own ' +
+      'drawings, their own handwriting. No account to make, nothing to pay.\n\n' +
+      'If that sounds like someone in your house, the door is here:\n' + link + '\n\n' +
+      'Best on a laptop — stories are made the wide way.';
+    await sb.rpc('invite_mark_sent', { p_token: token, p_error: null });
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`, '_blank', 'noopener');
+    note($('waMsg'), 'WhatsApp opened — press send there.', true);
+    $('waTo').value = ''; $('waLabel').value = '';
+    show();
+  } catch (e) {
+    note($('waMsg'), 'Could not prepare that one.');
+  }
+  $('sendWa').disabled = false;
+};
+
+// ---------------------------------------------------------------
+// Is the post office even open?
+// ---------------------------------------------------------------
+async function mailState() {
+  try {
+    const r = await fetch(FN, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: cfg.anonKey },
+      body: JSON.stringify({ action: 'ping' }),
+    }).then(x => x.json());
+    if (!r || r.mail === 'none' || r.from === 'unset') {
+      $('mailState').innerHTML =
+        '<span class="flag">Email is not configured yet</span> — WhatsApp still works, ' +
+        'and so does copying a link by hand. Set RESEND_API_KEY and SKY_FROM_EMAIL on the ' +
+        'invite-send function.';
+    } else {
+      $('mailState').textContent = `Post office: ${r.mail} · ${r.build || ''}`;
+    }
+  } catch (e) {
+    $('mailState').innerHTML =
+      '<span class="flag">The invite-send function is not deployed yet</span> — ' +
+      'WhatsApp and copied links still work.';
+  }
+}
+
+// ---------------------------------------------------------------
+// Sign in — the same one the Creators console uses.
+// ---------------------------------------------------------------
+$('go').onclick = async () => {
+  note($('msg'), 'Signing in…');
+  const { error } = await sb.auth.signInWithPassword({
+    email: $('em').value.trim(), password: $('pw').value,
+  });
+  if (error) { note($('msg'), error.message); return; }
+  if (await show()) mailState();
+};
+$('pw').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('go').click(); });
+
+const { data: { session } } = await sb.auth.getSession();
+if (session && await show()) mailState();
+</script>
+</body>
+</html>
