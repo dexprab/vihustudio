@@ -6123,3 +6123,77 @@ child's `owner_id`, as `invite_create` and `invite_reached` do — but it
 is a migration, an Edge Function change and a page, not a paragraph.
 
 Build 0620 → 0621.
+
+## A parent hands over a photo album by email (build 0622)
+
+The Magic Card letter gains a passage and one link. That link opens one
+page with one field: paste a Google Photos share link. No account, no
+login, no password, no dashboard — Decisions 11 and 14 forbid every one
+of those by name, and controlling the inbox is the whole of the check,
+exactly as Sky Protection's own recovery already works.
+
+**The obstacle was real, and it was measured rather than argued.**
+`family_albums.owner_id` is `auth.uid()` — the child's browser SESSION —
+so a parent following the link on their own phone is a different
+anonymous session and the row they inserted would be owned by them and
+invisible to the child forever. SELECT already widens for a proven
+recall; INSERT does not. This sprint's suite does not take that on
+trust: it boots a real PostgreSQL, loads `family_albums` and its own
+INSERT policy verbatim from `schema.sql`, and watches the parent's
+session be refused.
+
+**And the crux: the child's `owner_id` IS resolvable at send time.**
+`magic_card_identities` carries its own `owner_id`, stamped from
+`session.user.id` at claim (`js/magicCard.js` → `_pushIdentitySnapshot`)
+— literally the same value `family_albums.owner_id` holds. The letter's
+sender already has the identity in hand, so nothing had to be invented.
+This is deliberately not the mistake recorded above
+`has_magic_recall_grant`, where a join was written inline in a POLICY
+and died under the recaller's own RLS: this one runs inside SECURITY
+DEFINER, which is the fix that comment prescribes, and resolves the
+owner LIVE rather than copying it.
+
+**The token is reusable and never expires, which corrects the estimate
+in the previous entry.** That entry said "a one-shot token", and one-shot
+is wrong for the same reason a second email is wrong: a parent adds the
+holiday album in March and the school play in June, and if the second
+needs a new link it needs a new message — the mailing-list line the
+product owner drew. An expiry is the right instinct for a credential and
+this is not one; what it would reliably achieve is a link that dies
+precisely when a parent finally gets round to it. **A ceiling replaces
+it** (24 albums, then nothing), so a link that escaped runs out rather
+than running forever, and everything it could do is removable from the
+Studio. One link per child, stable across both letters, so a filed letter
+or a bookmark keeps working.
+
+**The link names an album list and is never an identity.** It carries no
+name, no constellation, no card. `family_album_attach` returns exactly
+`{ok, already}` or `{ok, reason}`, so a refusal names no child either;
+the link table has RLS on and no policies at all, and minting is granted
+to `service_role` alone — a browser that names a card cannot mint a link
+for it, or it could attach albums to a stranger's child.
+
+**The same album twice is a success.** ok + already, no second row,
+nothing spent against the ceiling. A parent who forgets is not told off.
+
+**One thing was found rather than built.** `FamilyAlbum.listAlbums()`
+filtered to `auth.uid()` and threw away the widening
+`family_albums_select` already grants for a proven recall. On the
+claiming device the two values are identical so nothing changes; on a
+second device the parent's album would have been invisible even though
+the policy was willing to hand it over. The filter is now applied only
+when an owner is explicitly named.
+
+**Disclosed.** Nothing here reached Supabase, Resend or Google — the
+sandbox has no outbound network, so no letter has been sent and no live
+album fetched. The SQL is genuinely executed; the delivery is not. Two
+simultaneous attaches of the same URL can both pass the duplicate check
+and both insert (one spare row, removable); a unique index was refused
+because the table predates this and failing a migration on somebody's
+real data is worse than the race it would close. `family_album_link_mint`
+must be run before the passage appears — until then the letter goes out
+exactly as it always has, which is the correct handled state.
+
+80/80 across three sections: the SQL executed against real PostgreSQL,
+the letter's composers called, and the page driven on a real browser.
+Build 0621 → 0622.

@@ -546,19 +546,85 @@ experience.
   a parent shares a public Google Photos link and VihuStudio remembers
   the link, never the photos. What the letter adds is a way to hand that
   link over without being sat at the child's laptop.
-  **Disclosed obstacle, measured rather than assumed:** `family_albums`
-  is keyed on `owner_id = auth.uid()` — the child's browser SESSION, not
+  **The obstacle was measured, and it was real:** `family_albums` is
+  keyed on `owner_id = auth.uid()` — the child's browser SESSION, not
   their Magic Card. A parent following a link on their own phone is a
-  different session, so a row they insert would be invisible to the
-  child. SELECT already widens for a recall grant; INSERT does not. The
-  route through is the pattern this codebase already uses twice — a
-  one-shot token plus a SECURITY DEFINER function that writes against
-  the child's `owner_id`, exactly as `invite_create` and
-  `invite_reached` do — and it is more than the paragraph-and-a-link it
-  first looked like.
+  different session, so a row they insert would be owned by them and
+  invisible to the child forever. SELECT already widens for a recall
+  grant; INSERT does not, and should not. Proved rather than reasoned
+  about: the suite runs the real `family_albums_insert` policy against a
+  real PostgreSQL and watches a parent's own session be refused.
+- **The child's `owner_id` IS resolvable at send time, and the join
+  holds.** `magic_card_identities` carries its own `owner_id`, stamped
+  from `session.user.id` when the card was claimed
+  (`js/magicCard.js` → `_pushIdentitySnapshot`) — literally the same
+  `auth.uid()` value `family_albums.owner_id` holds for that child. So
+  the letter's sender, which already has the identity in hand, can name
+  the child's album list exactly. This is **not** the mistake recorded
+  above `has_magic_recall_grant`: that join failed because it was
+  written inline in a POLICY and died under the recaller's own RLS.
+  This one runs inside SECURITY DEFINER — the fix that comment
+  prescribes — and resolves the owner LIVE at attach time rather than
+  copying it, so there is one source of truth and nothing to drift.
+- **The link is REUSABLE and never expires**, which corrects this
+  decision's own earlier note that it would be one-shot. A parent adds
+  the holiday album in March and the school-play album in June, and the
+  second one must not need a second email — that is the very line the
+  clause above draws. An expiry is the right instinct for a credential
+  and this is not one: it appends a URL to one album list, reveals
+  nothing, and grants nothing else. What an expiry would reliably
+  achieve is a link that dies precisely when a parent finally gets round
+  to it. **A ceiling replaces it** — two dozen albums through one link,
+  then nothing — so a link that escaped runs out rather than running
+  forever, and everything it could do is removable from the Studio.
+- **One link per child, stable across letters.** The `protect` letter
+  and a later `recover` letter carry the SAME link, so a filed letter
+  or a bookmark keeps working and nobody has to work out which of two is
+  current. Minted server-side (`family_album_link_mint`, `invite_create`'s
+  rule that a client never chooses a token) and reachable only by the
+  letter's sender: a browser cannot mint a link for a card it names, or
+  it could attach albums to a stranger's child.
+- **The link names an album list. It is never an identity.** It carries
+  no name, no constellation, no card and no session; `family_album_attach`
+  answers only whether it worked, so a refusal names no child either.
+  Nobody can list links or turn one back into a child — RLS on, no
+  policies at all, everything through two SECURITY DEFINER functions,
+  the `story_cheers` discipline.
+- **The same album twice is a success, not a duplicate.** A parent who
+  presses twice, or pastes the same album next month having forgotten,
+  is told the photos are there — which is true — and no second row is
+  made and nothing is spent against the ceiling.
+- **The page is one field and one button**, `family-photos.html`,
+  `noindex`. **The two facts sit ABOVE the field**, not in small print
+  underneath: nothing is uploaded (VihuPlanet keeps the link, the photos
+  stay in the parent's own Google account), and a shared album is shared
+  BY LINK — anyone holding that link can see those photos. Both are in
+  the letter's plain text as much as its HTML, because the plain part is
+  not a fallback, it is the message.
+- **The allow-list is enforced where a page cannot be bypassed.** The
+  same two hosts `js/familyAlbum.js` and the `family-album` function
+  already use, checked again inside `family_album_attach`, so
+  `family_albums` can never come to hold a URL pointing anywhere else.
+  A look-alike host hidden behind userinfo
+  (`https://photos.app.goo.gl@somewhere.else/x`) resolves the way a
+  browser resolves it and is refused.
+- **A deployment without the migration still posts the card.** The mint
+  fails, the token is empty, and the letter goes out as the letter it
+  has always been — no passage, no broken link, nothing claimed. Losing
+  skies is the one thing this feature exists to prevent, and an album
+  offer must never cost one.
+- **`listAlbums()` now lets the policy define the set.** The letter
+  writes against the identity's own `owner_id` — the device that
+  CLAIMED the card — so on that device nothing changes at all. On a
+  second device the client used to filter to `auth.uid()` and throw away
+  the widening `family_albums_select` already grants for a proven
+  recall, hiding an album the policy was willing to hand over. An
+  explicit owner is still honoured exactly as before.
 - Out of scope and not implemented: parent accounts, email/password
   login, OTP verification, family dashboards, child management, cloud
   profile management and Creator accounts.
+- `supabase/migrations_family_album_link.sql` · `family-photos.html` ·
+  `tools/family-photos-test/run-family-photos-tests.js`.
 
 ### 15. The Ether is a Shared Space
 

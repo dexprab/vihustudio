@@ -34,6 +34,12 @@ Marked with `<meta name="robots" content="noindex">` in the page itself:
   one.
 - **`/vihuplanet/ether/`** — a deep-link forwarding shim; renders nothing
   without JavaScript.
+- **`/family-photos.html`** — the page a parent reaches from the Magic Card
+  letter to hand over a family photo album (Decision 14). `noindex,nofollow`:
+  it is reached by a letter, never found, and it does nothing at all without
+  the link that letter carries. It is parent-facing rather than admin, so it
+  is meta-tagged like the other application pages rather than living under
+  `/admin/`.
 
 Blocked from crawling entirely in `robots.txt` (they are internal, and
 there are too many to meta-tag individually):

@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Family photos · VihuPlanet</title>
+
+<!-- ===============================================================
+     ONE PAGE, ONE FIELD.
+
+     A parent hands over a family photo album by email, without an
+     account. This page is the whole of it: paste a Google Photos share
+     link, press one button, done.
+
+     WHAT IT IS NOT, and CLAUDE.md -> Decisions 11 and 14 forbid every
+     one of these by name: an account, a login, a password, a one-time
+     code, a verification step, a dashboard, a profile. There is nothing
+     to sign in to and nothing to sign out of. The link in the Magic
+     Card letter is the only thing needed, and controlling the inbox is
+     the whole of the check — exactly as Sky Protection's own recovery
+     already works.
+
+     IT IS PARENT-FACING, NOT ADMIN. No sign-in gate, and no child ever
+     arrives here. It is noindex/nofollow because it is a page reached
+     by a letter, not a page anybody should find.
+
+     THE TWO FACTS THAT ARE NOT BURIED. A shared Google Photos album is
+     shared BY LINK — anyone holding the link can see those photos — and
+     nothing is uploaded, because VihuPlanet keeps the link and the
+     pictures stay in the parent's own Google account. Both sit ABOVE
+     the field, before anything is pasted, rather than in small print
+     underneath it.
+
+     THE LANGUAGE NEVER BLAMES and uses no technical words. Not
+     "invalid", not "failed", not "unauthorised", not "token", not
+     "API". A link that is not an album link is "a different kind of
+     link"; a page opened without the letter "can't tell whose photos
+     these are".
+
+     IT NEVER CLAIMS AN ALBUM IS ATTACHED WHEN IT IS NOT. An
+     unconfigured or unreachable deployment is a handled state: the
+     press is answered with "couldn't reach VihuPlanet just now",
+     never with Done.
+
+     No framework, no CDN, no esm.sh — one plain fetch to the
+     family_album_attach function, so the page works with nothing
+     external and its handlers can be exercised offline
+     (tools/family-photos-test/).
+     =============================================================== -->
+
+<meta name="robots" content="noindex,nofollow">
+<link rel="stylesheet" href="vihuplanet/assets/fonts/fonts.css">
+
+<style>
+  * { box-sizing: border-box; }
+
+  /* The universe's own night — a page belonging to VihuPlanet is lit
+     the way VihuPlanet is. The gradient lives on <html> ALONE and the
+     body is transparent: painting it on both leaves a visible seam
+     wherever the shorter box ends, which on a page this tall is a pale
+     band across the last screenful. */
+  html {
+    min-height: 100%;
+    background:
+      radial-gradient(120% 90% at 50% -10%, #2A3658 0%, #1E2842 46%, #141B30 100%)
+      #1E2842;
+  }
+
+  body {
+    margin: 0; padding: 0; background: transparent;
+    color: #F1EAD0;
+    font-family: 'Nunito', 'Kalam', system-ui, sans-serif;
+    line-height: 1.65;
+  }
+
+  .sky {
+    position: fixed; inset: 0; pointer-events: none;
+    background-image:
+      radial-gradient(1.5px 1.5px at 12% 18%, rgba(241,234,208,.55) 50%, transparent 51%),
+      radial-gradient(1px 1px at 78% 12%, rgba(241,234,208,.4) 50%, transparent 51%),
+      radial-gradient(1.5px 1.5px at 62% 34%, rgba(232,184,113,.4) 50%, transparent 51%),
+      radial-gradient(1px 1px at 30% 52%, rgba(241,234,208,.32) 50%, transparent 51%),
+      radial-gradient(1.5px 1.5px at 88% 58%, rgba(241,234,208,.4) 50%, transparent 51%),
+      radial-gradient(1px 1px at 44% 80%, rgba(241,234,208,.3) 50%, transparent 51%),
+      radial-gradient(1.5px 1.5px at 8% 84%, rgba(232,184,113,.35) 50%, transparent 51%);
+  }
+
+  main { position: relative; max-width: 34rem; margin: 0 auto;
+         padding: 4rem 1.4rem 5rem; }
+
+  .mark { text-align:center; font-size:.75rem; letter-spacing:.22em;
+          text-transform:uppercase; color:rgba(241,234,208,.5); margin:0 0 1.4rem; }
+
+  h1 { font-family:'Caveat','Kalam',cursive; font-weight:700; line-height:1.15;
+       font-size: clamp(2.3rem, 1.8rem + 2.2vw, 3.1rem); margin:0 0 .5rem;
+       text-align:center; text-wrap:balance; }
+
+  .lede { text-align:center; font-family:'Kalam',cursive;
+          font-size: clamp(1.02rem, .96rem + .4vw, 1.18rem);
+          color:rgba(241,234,208,.85); margin:0 auto 2rem; max-width:28rem;
+          text-wrap:balance; }
+
+  /* THE TWO FACTS. Above the field, not below it. */
+  .plainly { border:1px solid rgba(232,184,113,.28); border-radius:14px;
+             background:rgba(18,24,43,.5); padding:1.1rem 1.2rem; margin:0 0 1.8rem; }
+  .plainly p { margin:0 0 .7rem; font-size:.95rem; color:rgba(241,234,208,.82); }
+  .plainly p:last-child { margin-bottom:0; }
+  .plainly b { color:#F1EAD0; font-weight:700; }
+
+  label { display:block; font-size:.74rem; letter-spacing:.16em; text-transform:uppercase;
+          color:rgba(241,234,208,.55); margin:0 0 .5rem; }
+
+  input[type=url], input[type=text] {
+    width:100%; padding:.85rem .95rem; border-radius:12px;
+    border:1px solid rgba(241,234,208,.22); background:rgba(10,14,26,.6);
+    color:#F1EAD0; font:inherit; font-size:1rem; }
+  input:focus { outline:none; border-color:rgba(232,184,113,.65); }
+  input::placeholder { color:rgba(241,234,208,.34); }
+
+  button { margin-top:1.1rem; width:100%; padding:.85rem 1.2rem; border:0;
+           border-radius:999px; background:#E8B871; color:#22314C;
+           font:inherit; font-weight:800; font-size:1rem; cursor:pointer; }
+  button:disabled { opacity:.5; cursor:default; }
+
+  .msg { min-height:1.4em; margin:1.1rem 0 0; font-size:.95rem;
+         color:rgba(241,234,208,.8); text-wrap:pretty; }
+  .msg.done { color:#BFE3C4; font-weight:700; }
+  .msg-more { margin:.5rem 0 0; font-size:.88rem; color:rgba(241,234,208,.62); }
+
+  .how { margin:2rem 0 0; padding-top:1.6rem;
+         border-top:1px solid rgba(241,234,208,.14); }
+  .how h2 { font-family:'Kalam',cursive; font-weight:700; font-size:1.02rem;
+            margin:0 0 .6rem; color:rgba(241,234,208,.85); }
+  .how ol { margin:0; padding-left:1.2rem; color:rgba(241,234,208,.72);
+            font-size:.93rem; }
+  .how li { margin:0 0 .35rem; }
+
+  .foot { margin:2.4rem 0 0; font-size:.84rem; color:rgba(241,234,208,.45);
+          text-align:center; text-wrap:balance; }
+</style>
+</head>
+<body>
+<div class="sky" aria-hidden="true"></div>
+
+<main>
+  <p class="mark">&#10022; VihuPlanet</p>
+  <h1>Family photos</h1>
+  <p class="lede">Share one Google Photos album, and those pictures will be
+     there the next time a story is being made.</p>
+
+  <div class="plainly">
+    <p><b>Nothing is uploaded.</b> VihuPlanet remembers the link and nothing
+       else. The photos stay in your own Google account, and taking the album
+       down in Google takes it out of here too.</p>
+    <p><b>A shared album is shared by link.</b> Anyone who has that link can
+       see those photos. Choose an album you are happy to share that way.</p>
+  </div>
+
+  <div id="form">
+    <label for="albumUrl">The album link</label>
+    <input id="albumUrl" type="url" inputmode="url" autocomplete="off"
+           spellcheck="false" placeholder="https://photos.app.goo.gl/…">
+    <button id="addBtn" type="button">Add these photos</button>
+  </div>
+
+  <p class="msg" id="msg" role="status" aria-live="polite"></p>
+  <p class="msg-more" id="msgMore"></p>
+
+  <div class="how">
+    <h2>Where the link comes from</h2>
+    <ol>
+      <li>Open the album in Google Photos.</li>
+      <li>Choose <b>Share</b>, then <b>Create link</b>.</li>
+      <li>Copy it, and paste it in the box above.</li>
+    </ol>
+  </div>
+
+  <p class="foot">This page came from the Magic Card email. There is no account
+     here and nothing to sign in to — you can close it whenever you like, and
+     come back to add another album any time.</p>
+</main>
+
+<script>
+(function () {
+  'use strict';
+
+  var $ = function (id) { return document.getElementById(id); };
+
+  // The same allow-list js/familyAlbum.js and the family-album Edge
+  // Function both enforce — and the same one family_album_attach checks
+  // again server-side, because a page can be bypassed and the table
+  // must never come to hold a URL pointing anywhere else.
+  var ALBUM_HOSTS = ['photos.app.goo.gl', 'photos.google.com'];
+
+  var CONFIG_URL = 'supabase-config.json';
+
+  // The link that names whose photos these are. It authorises exactly
+  // one act — appending an album to one child's list — and reveals
+  // nothing, so it is never shown, never stored and never spoken about
+  // on screen.
+  function readToken() {
+    try {
+      return (new URLSearchParams(window.location.search).get('k') || '').trim();
+    } catch (e) { return ''; }
+  }
+
+  function looksLikeAlbum(raw) {
+    try {
+      var u = new URL(String(raw || '').trim());
+      return u.protocol === 'https:' && ALBUM_HOSTS.indexOf(u.hostname) !== -1;
+    } catch (e) { return false; }
+  }
+
+  // One place that writes to the screen, so nothing can announce
+  // success by accident from a branch that did not succeed.
+  function say(text, more, done) {
+    var m = $('msg');
+    m.textContent = text || '';
+    m.className = 'msg' + (done ? ' done' : '');
+    $('msgMore').textContent = more || '';
+  }
+
+  var _cfg = null;
+  function loadConfig() {
+    if (_cfg) return _cfg;
+    _cfg = fetch(CONFIG_URL, { cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (c) { return (c && c.url && c.anonKey) ? c : null; })
+      .catch(function () { return null; });
+    return _cfg;
+  }
+
+  // Resolves { ok, reason, already } and NEVER rejects. An unconfigured
+  // or unreachable deployment resolves { ok:false, reason:'unreachable' }
+  // — which the caller words as "couldn't reach VihuPlanet just now",
+  // never as Done.
+  function attach(token, url) {
+    return loadConfig().then(function (cfg) {
+      if (!cfg) return { ok: false, reason: 'unreachable' };
+      return fetch(cfg.url.replace(/\/+$/, '') + '/rest/v1/rpc/family_album_attach', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': cfg.anonKey,
+          'Authorization': 'Bearer ' + cfg.anonKey
+        },
+        body: JSON.stringify({ p_token: token, p_album_url: url, p_label: '' })
+      }).then(function (r) {
+        if (!r.ok) return { ok: false, reason: 'unreachable' };
+        return r.json().then(function (j) {
+          if (!j || typeof j !== 'object') return { ok: false, reason: 'unreachable' };
+          return j;
+        });
+      }).catch(function () { return { ok: false, reason: 'unreachable' }; });
+    }).catch(function () { return { ok: false, reason: 'unreachable' }; });
+  }
+
+  // Every wording a parent can meet. None of them blames anybody and
+  // none of them is a technical word.
+  function wordFor(reason) {
+    if (reason === 'not_an_album') {
+      return ['That looks like a different kind of link.',
+        'A Google Photos album link starts with photos.app.goo.gl or photos.google.com — open the album in Google Photos, choose Share, then Create link.'];
+    }
+    if (reason === 'no_link') {
+      return ['There is nothing in the box yet.',
+        'Paste the album link above, then press Add these photos.'];
+    }
+    if (reason === 'unknown_link') {
+      return ['This page cannot tell whose photos these are.',
+        'Open the link in the Magic Card email again and it will know. Nothing was changed.'];
+    }
+    if (reason === 'enough_albums') {
+      return ['There are plenty of albums here already.',
+        'Take one out in the Studio and there will be room for this one.'];
+    }
+    return ['Could not reach VihuPlanet just now.',
+      'Nothing was lost and nothing was changed — try again in a moment.'];
+  }
+
+  function submit() {
+    var token = readToken();
+    var url = ($('albumUrl').value || '').trim();
+
+    if (!token) {
+      var w0 = wordFor('unknown_link');
+      say(w0[0], w0[1], false);
+      return Promise.resolve({ ok: false, reason: 'unknown_link' });
+    }
+    if (!url) {
+      var w1 = wordFor('no_link');
+      say(w1[0], w1[1], false);
+      return Promise.resolve({ ok: false, reason: 'no_link' });
+    }
+    // Answered here as well as server-side, so the commonest mistake —
+    // pasting a photo link, or a Drive link — is met instantly and
+    // kindly rather than after a round trip.
+    if (!looksLikeAlbum(url)) {
+      var w2 = wordFor('not_an_album');
+      say(w2[0], w2[1], false);
+      return Promise.resolve({ ok: false, reason: 'not_an_album' });
+    }
+
+    $('addBtn').disabled = true;
+    say('Keeping the link…', '', false);
+
+    return attach(token, url).then(function (res) {
+      $('addBtn').disabled = false;
+      if (res && res.ok) {
+        if (res.already) {
+          say('Those photos are already here.',
+            'Nothing to do — they are waiting in the Studio. You can add a different album any time.', true);
+        } else {
+          say('Done. The photos are waiting in the Studio.',
+            'Nothing was uploaded — VihuPlanet remembers the link, and the pictures stay in your Google account. Come back to this page any time to add another album.', true);
+          $('albumUrl').value = '';
+        }
+        return res;
+      }
+      var w = wordFor(res && res.reason);
+      say(w[0], w[1], false);
+      return res;
+    });
+  }
+
+  // A page opened without the letter's link says so at once, rather
+  // than letting somebody paste an album and only then find out.
+  function greet() {
+    if (!readToken()) {
+      var w = wordFor('unknown_link');
+      say(w[0], w[1], false);
+    }
+  }
+
+  $('addBtn').onclick = submit;
+  $('albumUrl').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { e.preventDefault(); submit(); }
+  });
+  greet();
+
+  // Exposed for tools/family-photos-test/ only — the suite drives the
+  // real handlers on the real markup rather than a copy of them.
+  window.__familyPhotos = {
+    readToken: readToken, looksLikeAlbum: looksLikeAlbum, say: say,
+    attach: attach, submit: submit, wordFor: wordFor, greet: greet
+  };
+})();
+</script>
+</body>
+</html>

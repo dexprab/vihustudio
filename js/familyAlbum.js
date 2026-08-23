@@ -139,11 +139,32 @@
   function listAlbums(opts) {
     return _clientAndUid().then(function (cu) {
       if (!cu) return [];
-      var ownerId = (opts && opts.ownerId) || cu.uid;
-      return cu.client
+      var q = cu.client
         .from(TABLE)
-        .select('id, owner_id, album_url, label, sort_order, updated_at')
-        .eq('owner_id', ownerId)
+        .select('id, owner_id, album_url, label, sort_order, updated_at');
+      // AN EXPLICIT OWNER IS STILL AN EXPLICIT OWNER — the recall path
+      // (contextPanel's slide.recallOwnerId, mirroring
+      // CreatorProjectSync.listByOwner) names one and gets exactly that
+      // list, unchanged.
+      //
+      // WITH NO OWNER NAMED, THE FILTER IS DROPPED AND THE POLICY
+      // DEFINES THE SET. family_albums_select is
+      //   owner_id = auth.uid() or has_magic_recall_grant(owner_id)
+      // so an unfiltered read returns this session's own albums PLUS the
+      // albums of any identity this session has proved a recall for, and
+      // nothing else — there is no row it could return that this browser
+      // has not already earned.
+      //
+      // Until now the client filtered to auth.uid() and threw that
+      // widening away, which had a real cost once a parent could attach
+      // an album by email: the letter's link writes against the
+      // identity's own owner_id — the device that CLAIMED the card
+      // (supabase/migrations_family_album_link.sql) — so on the claiming
+      // device the two are the same value and nothing changes, while the
+      // same child on a second device could not see an album the policy
+      // was already willing to hand over.
+      if (opts && opts.ownerId) q = q.eq('owner_id', opts.ownerId);
+      return q
         .order('sort_order', { ascending: true })
         .order('updated_at', { ascending: true })
         .then(function (res) {

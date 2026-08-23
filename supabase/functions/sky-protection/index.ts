@@ -118,7 +118,7 @@ type Kind = 'protect' | 'recover';
 // ambiguous; `{"action":"ping"}` now answers it outright.
 //
 // Bump this whenever the mail itself changes.
-const BUILD = '2026-08-16 · html emails, ruled grid';
+const BUILD = '2026-08-23 · family album passage';
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -181,7 +181,106 @@ function recallCode(identity: Identity): string {
   return (identity.constellation || '').toUpperCase() + serial.padStart(5, '0');
 }
 
-function cardText(identity: Identity): string {
+// ---------------------------------------------------------------
+// THE FAMILY ALBUM ASK — the one thing this letter carries besides the
+// card itself, and the reason it rides here rather than in a message of
+// its own.
+//
+// A parent is reachable at exactly one moment. Beyond convenience that
+// keeps a line uncrossed: the parent email is STORAGE, not a channel,
+// and a second kind of message to it turns it into a mailing list —
+// with frequency, and unsubscribe, and everything that follows. One
+// letter keeps the line where it is. Asked for by the product owner in
+// those terms: "add it in first email."
+//
+// THE PASSAGE SITS INSIDE THE CARD, not at the foot of the letter. One
+// address may protect several children, so a letter can carry two cards
+// — and "here is a link for photos" under both of them would be a
+// question about which child. Inside the card it is unambiguously
+// Vihaan's link, next to Vihaan's stars.
+//
+// IT IS AN OFFER AND IT SAYS SO. Everything else in the product works
+// without it, the letter says exactly that, and nothing anywhere nags a
+// parent who ignores it.
+//
+// THE TWO FACTS THAT MUST NOT BE BURIED. A shared Google Photos album
+// is shared BY LINK: anybody holding the link can see those photos.
+// And nothing is uploaded — VihuPlanet keeps the link and the pictures
+// stay in the parent's own Google account. Both are in the first three
+// lines of the passage, in the plain text as much as in the HTML,
+// because plenty of people read mail with images off and the plain part
+// is not a fallback here, it is the message.
+const ALBUM_BASE = () =>
+  (secret('SKY_BASE_URL') || 'https://vihuplanet.com').replace(/\/+$/, '');
+
+function albumPageUrl(token: string): string {
+  return `${ALBUM_BASE()}/family-photos.html?k=${encodeURIComponent(token)}`;
+}
+
+// A MISSING LINK IS A HANDLED STATE, and it is the important one: if
+// this deployment has not had migrations_family_album_link.sql run
+// against it, the mint call fails, the token is empty, and the letter
+// goes out as the letter it has always been. The child still gets their
+// card. Nothing anywhere claims an album can be added when it cannot.
+function albumText(identity: Identity, token: string): string {
+  if (!token) return '';
+  const name = identity.nickname || 'them';
+  return [
+    ``,
+    `Family photos for ${name}`,
+    ``,
+    `If you would like ${name}'s own photographs to be there when they`,
+    `make a story, share a Google Photos album and paste the link here:`,
+    ``,
+    `  ${albumPageUrl(token)}`,
+    ``,
+    `Nothing is uploaded. VihuPlanet only remembers the link, and the`,
+    `photos stay in your own Google account.`,
+    ``,
+    `A shared album is shared by link — anyone who has that link can see`,
+    `those photos — so choose an album you are happy to share that way.`,
+    ``,
+    `This is entirely optional, now or ever. Everything else works`,
+    `without it, and you can come back to that page any time to add`,
+    `another album.`,
+  ].join('\n');
+}
+
+function albumHtml(identity: Identity, token: string): string {
+  if (!token) return '';
+  const name = esc(identity.nickname || 'them');
+  const url = albumPageUrl(token);
+  return `
+<tr><td style="padding:18px 0 0 0;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+         style="border-collapse:collapse;border-top:1px solid ${LINE};">
+    <tr><td style="padding:16px 0 0 0;">
+      <div style="font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.5;color:${MUTED};text-transform:uppercase;letter-spacing:.08em;">Family photos for ${name}</div>
+      <div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.65;color:${INK};padding-top:8px;">
+        If you would like ${name}&rsquo;s own photographs to be there when they make a story, share a Google Photos album and paste the link here:
+      </div>
+      <!-- A real, visible URL, not a styled button with the address
+           hidden behind it. A parent may print this letter, may read it
+           in a client that strips links, and may reasonably want to see
+           where they are being sent before they go. -->
+      <div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;padding-top:10px;word-break:break-all;">
+        <a href="${esc(url)}" style="color:${GOLD};font-weight:bold;">${esc(url)}</a>
+      </div>
+      <div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.65;color:${MUTED};padding-top:10px;">
+        <strong style="color:${INK};">Nothing is uploaded.</strong> VihuPlanet only remembers the link, and the photos stay in your own Google account.
+      </div>
+      <div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.65;color:${MUTED};padding-top:6px;">
+        <strong style="color:${INK};">A shared album is shared by link</strong> &mdash; anyone who has that link can see those photos &mdash; so choose an album you are happy to share that way.
+      </div>
+      <div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.65;color:${MUTED};padding-top:6px;">
+        Entirely optional, now or ever. Everything else works without it, and you can come back to that page any time to add another album.
+      </div>
+    </td></tr>
+  </table>
+</td></tr>`;
+}
+
+function cardText(identity: Identity, albumToken = ''): string {
   const name = identity.nickname || 'This Creator';
   const constellation = CONSTELLATION_NAMES[identity.constellation] || identity.constellation;
   const code = recallCode(identity);
@@ -199,6 +298,7 @@ function cardText(identity: Identity): string {
     `The same sky, drawn:`,
     ``,
     skyDiagram(identity.pattern),
+    albumText(identity, albumToken),
   ].join('\n');
 }
 
@@ -329,7 +429,7 @@ function skyHtml(pattern: number[][]): string {
     + ` border="0" style="border-collapse:collapse;">${rows.join('')}</table></td></tr></table>`;
 }
 
-function cardHtml(identity: Identity): string {
+function cardHtml(identity: Identity, albumToken = ''): string {
   const name = esc(identity.nickname || 'This Creator');
   const constellation = esc(
     CONSTELLATION_NAMES[identity.constellation] || identity.constellation || '',
@@ -367,12 +467,17 @@ function cardHtml(identity: Identity): string {
         <div style="font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.5;color:${MUTED};text-transform:uppercase;letter-spacing:.08em;">Card code</div>
         <div style="font-family:'Courier New',Courier,monospace;font-size:15px;line-height:1.4;color:${GOLD};font-weight:bold;padding-top:2px;">${esc(code)}</div>
       </td></tr>` : ''}
+      ${albumHtml(identity, albumToken)}
     </table>
   </td></tr>
 </table>`;
 }
 
-function composeHtml(identities: Identity[], kind: Kind): string {
+// `albumTokens` is parallel to `identities` — one link per child, in the
+// same order — and an empty string at any position simply means that
+// card carries no album passage. It is a plain array rather than a map
+// keyed by id so a caller cannot half-fill it by accident.
+function composeHtml(identities: Identity[], kind: Kind, albumTokens: string[] = []): string {
   const many = identities.length > 1;
   const lede = kind === 'recover'
     ? (many
@@ -387,7 +492,7 @@ function composeHtml(identities: Identity[], kind: Kind): string {
   // reopen another, which is invalid markup — the browser recovered by
   // hoisting the second card out of the container, so with two siblings
   // the second one broke the width of the mail.
-  const blocks = identities.map(cardHtml).join(
+  const blocks = identities.map((idn, i) => cardHtml(idn, albumTokens[i] || '')).join(
     `<div style="height:16px;line-height:16px;font-size:16px;">&nbsp;</div>`,
   );
 
@@ -587,14 +692,52 @@ function admin() {
   return createClient(url, key, { auth: { persistSession: false } });
 }
 
+// ONE LINK PER CHILD, FETCHED OR MINTED, AND NEVER FATAL.
+//
+// `family_album_link_mint` is idempotent — one row per identity — so
+// calling it on every letter returns the link that already exists. The
+// `protect` letter and a later `recover` letter therefore carry the SAME
+// link, which is what makes a filed letter or a bookmark keep working.
+//
+// EVERY FAILURE IS AN EMPTY STRING, deliberately. If
+// migrations_family_album_link.sql has not been run against this
+// deployment the RPC does not exist, and the only correct consequence is
+// that the letter goes out as the letter it has always been: the child
+// still gets their card, and nothing anywhere offers a parent something
+// that would not work. Never let this throw — a missing album passage
+// must not cost a sky.
+async function albumTokensFor(
+  db: ReturnType<typeof createClient>,
+  identities: Identity[],
+): Promise<string[]> {
+  const out: string[] = [];
+  for (const identity of identities) {
+    let token = '';
+    try {
+      const { data, error } = await db.rpc('family_album_link_mint', {
+        p_identity_id: identity.id,
+      });
+      if (!error && typeof data === 'string') token = data;
+    } catch {
+      token = '';
+    }
+    out.push(token);
+  }
+  return out;
+}
+
 // Only ever used to decide whether to bother sending. Never echoed back
 // to the caller — see the note on the `recover` branch.
 function looksLikeEmail(v: unknown): v is string {
   return typeof v === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim()) && v.length < 320;
 }
 
-function compose(identities: Identity[], kind: Kind): string {
-  const parts = identities.map(cardText);
+function compose(identities: Identity[], kind: Kind, albumTokens: string[] = []): string {
+  // THE PLAIN TEXT IS A FIRST-CLASS CITIZEN, not a fallback. Plenty of
+  // people read mail with images off or in a client that strips markup,
+  // and the album passage — including both of the things about it that
+  // must not be buried — is written out in full here, not summarised.
+  const parts = identities.map((idn, i) => cardText(idn, albumTokens[i] || ''));
   const many = identities.length > 1;
   const lede = kind === 'recover'
     ? (many
@@ -648,9 +791,17 @@ Deno.serve(async (req: Request) => {
   // only that a mail feature exists, which the product already says.
   if (action === 'ping') {
     const probe = await db.from('magic_card_identities').select('parent_email').limit(1);
+    // Was migrations_family_album_link.sql ever run here? Without it the
+    // letter is correct and complete but carries no album passage, and
+    // that is indistinguishable from the outside — so it is answered
+    // outright, the same reasoning `parentEmailColumn` above already
+    // used. A boolean and nothing else: never a token, never a child.
+    const albumProbe = await db.from('family_album_links').select('token').limit(1);
     return json({
       ok: true,
       build: BUILD,
+      familyAlbumLinks: !albumProbe.error,
+      albumBase: ALBUM_BASE(),
       // Proof the HTML build is live without sending anything: the
       // length of the message this deployment would actually generate.
       // Zero means an old, text-only copy is running.
@@ -722,11 +873,12 @@ Deno.serve(async (req: Request) => {
       .eq('id', identityId);
 
     const names = [rows[0].nickname || 'Your Creator'];
+    const albumTokens = await albumTokensFor(db, rows);
     const sent = await sendMail(
       to,
       subjectFor(names, 'protect'),
-      compose(rows, 'protect'),
-      composeHtml(rows, 'protect'),
+      compose(rows, 'protect', albumTokens),
+      composeHtml(rows, 'protect', albumTokens),
     );
     if (!sent.ok) return json(sent);
     return json({ ok: true, sent: 1 });
@@ -748,11 +900,12 @@ Deno.serve(async (req: Request) => {
     // either receives an email or does not.
     if (!rows.length) return json({ ok: true, sent: 0 });
 
+    const albumTokens = await albumTokensFor(db, rows);
     const sent = await sendMail(
       to,
       subjectFor(rows.map((r) => r.nickname || 'Your Creator'), 'recover'),
-      compose(rows, 'recover'),
-      composeHtml(rows, 'recover'),
+      compose(rows, 'recover', albumTokens),
+      composeHtml(rows, 'recover', albumTokens),
     );
     if (!sent.ok) return json(sent);
     return json({ ok: true, sent: rows.length });
