@@ -33,10 +33,18 @@ made with their hands and keep it.
 Two capabilities, both living behind **one tile** — 🪴 **My Garden** —
 with two rooms inside it:
 
-| Room | What the child learns |
-|---|---|
-| 🖼 **My Drawings** | A drawing made on paper can come into the story, be coloured in, be kept, and be placed on a page. |
-| ✍️ **My Letters** | Their own handwriting can come in one letter at a time, and then be used as writing. |
+**Letters first, drawing second** — decided by the product owner. The
+order matters more than it looks: letters need only a pen and a scrap of
+paper, they come in one at a time so the camera is learned on the
+smallest possible thing, and a child who stops after them has still
+gained a whole capability. The drawing is the bigger ask — a whole
+picture, made away from the screen — and it lands on a child who has
+already used the camera once and knows it works.
+
+| Order | Room | What the child learns |
+|---|---|---|
+| 1 | ✍️ **My Letters** | Their own handwriting can come in one letter at a time, and then be used as writing. |
+| 2 | 🖼 **My Drawings** | A drawing made on paper can come into the story, be coloured in, be kept, and be placed on a page. |
 
 Registry ids: `teaches: ['garden', 'handwriting']`,
 `reveals: ['library']` — one tile is all that has to stand down, because
@@ -104,10 +112,10 @@ VihuPlanet sends out. Level II is where a child does it literally.
 Decision 22's own success metric: **every capability a level introduces
 is used at least twice — once to discover it, once to own it.**
 
-| Capability | Discover | Own |
-|---|---|---|
-| `garden` (drawings) | Bring one paper drawing in, colour it, keep it, place it. | Meet it again on a later page — placed differently, or joined by a second drawing. The point is that it *stayed*: it is theirs and it is still there. |
-| `handwriting` (letters) | Write one letter and see it land on the page as real ink. | Write the rest of a name, and see the whole name in their own hand. |
+| Order | Capability | Discover | Own |
+|---|---|---|---|
+| 1 | `handwriting` (letters) | Write one letter and see it land on the page as real ink. | Write the rest of a name, and see the whole name in their own hand. |
+| 2 | `garden` (drawings) | Bring one paper drawing in, colour it, keep it, place it. | Meet it again on a later page — placed differently, or joined by a second drawing. The point is that it *stayed*: it is theirs and it is still there. |
 
 ---
 
@@ -116,6 +124,14 @@ is used at least twice — once to discover it, once to own it.**
 - **Never name a control, and never explain what one does** (Decision 8).
   The interface lights the real thing; Lumo does not say "tap My Garden".
   A nudge must bring its target into view first, or not point at all.
+- **The camera is the only way in, and the only one described.** Decided
+  by the product owner: *"send instructions for camera only, ignore the
+  photo button instructions."* Both capture flows are already
+  camera-only — there is no file picker in the letter catcher or in
+  Bring It Alive — so this is really about the **Photo tile** in the Add
+  panel, which is a Level III capability and must not be mentioned,
+  pointed at or worked around. A child who cannot use a camera does not
+  get told about an upload; see §8.3.
 - **Never say that scanning grows the Garden** (Decision 27). The vines
   in the margins will have grown quietly through this whole story. That
   is the reward, and saying so out loud would turn it into a score.
@@ -162,17 +178,21 @@ These change the script materially and are not mine to decide.
 1. **Whose name is written?** The child's own, or a name they invent for
    the thing they drew? Their own is more personal and gives the font
    the letters most likely to be reused; an invented name is more of a
-   story and less of a form.
+   story and less of a form. **Note the ordering makes this sharper:**
+   with letters first, the name is written *before* the thing it might
+   belong to exists, which argues for the child's own.
 2. **How many letters is fair?** Four to six is a name. More is a chore
    for a five-year-old, and the letter grid is always there afterwards
    for a child who wants to fill it.
-3. **What happens if the camera is not available at all?** Level II can
-   fall back to the letters alone and still be a complete story — but
-   then a child finishes it without ever bringing a drawing in, and the
-   capability is taught in name only. The alternative is that the rite
-   waits, which means it can be started and not finished.
+3. **What happens if the camera is not available at all?** Letters-first
+   softens this considerably — a child who never gets the camera working
+   still finishes the letters and gains a real capability, rather than
+   being stopped at the first gate. It does not remove the question: the
+   drawing half would be taught in name only, and the Photo tile is not
+   an escape hatch (§6).
 4. **Does the story assume one sitting?** A child sent to fetch paper may
-   come back in ten minutes or tomorrow.
+   come back in ten minutes or tomorrow. Letters-first helps here too:
+   the first errand is "find a pen", not "draw a whole picture".
 
 ---
 

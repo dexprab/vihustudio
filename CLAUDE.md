@@ -533,6 +533,29 @@ experience.
   the Creator Ceremony after sharing). The address is remembered and
   the card is posted the moment there is one; the wording for that case
   says so rather than pretending it has already gone.
+- **The family photo album is asked for in THAT letter, and in no other.**
+  Decided by the product owner (*"add it in first email"*). A grown-up is
+  reachable at exactly one moment — when the Magic Card arrives — so the
+  album ask rides along with it rather than becoming a second,
+  unsolicited message. This matters beyond convenience: the parent email
+  is STORAGE, not a channel, and the moment a second kind of message is
+  sent to it, it becomes a mailing list and everything that follows
+  (frequency, unsubscribe, what else we might send) starts existing.
+  One letter keeps that line uncrossed.
+  **It is still not an account.** Family Photos already needs no login —
+  a parent shares a public Google Photos link and VihuStudio remembers
+  the link, never the photos. What the letter adds is a way to hand that
+  link over without being sat at the child's laptop.
+  **Disclosed obstacle, measured rather than assumed:** `family_albums`
+  is keyed on `owner_id = auth.uid()` — the child's browser SESSION, not
+  their Magic Card. A parent following a link on their own phone is a
+  different session, so a row they insert would be invisible to the
+  child. SELECT already widens for a recall grant; INSERT does not. The
+  route through is the pattern this codebase already uses twice — a
+  one-shot token plus a SECURITY DEFINER function that writes against
+  the child's `owner_id`, exactly as `invite_create` and
+  `invite_reached` do — and it is more than the paragraph-and-a-link it
+  first looked like.
 - Out of scope and not implemented: parent accounts, email/password
   login, OTP verification, family dashboards, child management, cloud
   profile management and Creator accounts.

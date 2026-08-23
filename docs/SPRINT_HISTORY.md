@@ -6083,3 +6083,43 @@ alone and still be a complete story, but then a child finishes it having
 never brought a drawing in, and the capability is taught in name only.
 
 Rite gate 15/15. Build 0619 → 0620.
+
+## Level II gets its order, and the album ask gets a home (build 0621)
+
+Four decisions from the product owner, recorded rather than built —
+except where recording them changed what the build is.
+
+**Letters first, drawing second.** The order matters more than it looks:
+letters need only a pen and a scrap of paper, they arrive one at a time
+so the camera is learned on the smallest possible thing, and a child who
+stops after them has still gained a whole capability. The drawing is the
+bigger ask and now lands on a child who has already used the camera once
+and knows it works. It also softens two of the brief's four open
+questions — a child whose camera never works still finishes the letters,
+and the first errand is "find a pen" rather than "draw a whole picture".
+
+**Camera only; the Photo tile is not mentioned.** Worth checking rather
+than assuming, and the check was useful: *both capture flows are already
+camera-only* — there is no file picker in the letter catcher or in Bring
+It Alive. So this decision is really about the Add panel's Photo tile,
+which is Level III's and must not be named, pointed at, or used as an
+escape hatch when the camera fails.
+
+**The family photo album is asked for in the Magic Card letter and in no
+other.** A grown-up is reachable at exactly one moment. Beyond
+convenience, it keeps a line uncrossed: the parent email is storage, not
+a channel, and a second kind of message turns it into a mailing list.
+
+**And a correction to my own estimate.** I told the product owner that
+build was "a paragraph and a tokenised link... and a `family_albums`
+insert keyed to the card the token names". The keying was the part I
+glossed: `family_albums.owner_id` is `auth.uid()` — the child's browser
+SESSION, not their Magic Card. A parent following a link on their own
+phone is a different session, so their row would be invisible to the
+child. SELECT already widens for a recall grant; INSERT does not. The
+route through is the pattern this codebase already uses twice — a
+one-shot token plus a SECURITY DEFINER function writing against the
+child's `owner_id`, as `invite_create` and `invite_reached` do — but it
+is a migration, an Edge Function change and a page, not a paragraph.
+
+Build 0620 → 0621.
