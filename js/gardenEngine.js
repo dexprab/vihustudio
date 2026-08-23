@@ -277,6 +277,48 @@
       return res;
     }
 
+    // Anything that grows from here on grows ON a vine — a leaf or bud
+    // in mid-air is decoration, and decoration was the "nope". The
+    // anchor is a real vine node, chosen by the seeded rng.
+    function onVine(kind, extra) {
+      const vines = el.filter(function (e) { return e.k === 'vine'; });
+      if (!vines.length) return false;
+      const a = vines[Math.floor(rnd() * vines.length)];
+      const side = (Math.floor(rnd() * 2) ? 1 : -1) * 0.16;
+      push(Object.assign({ k: kind, band: a.band, u: jitter(a.u + side, 0.05), v: jitter(a.v, 0.02) }, extra || {}));
+      return true;
+    }
+
+    // THE SEASONS COME EARLY NOW, and the STRUCTURE does not move.
+    // Measured on a real garden: buds waited for capture 24, flowers
+    // for 40 and fruit for 55, so a garden anybody actually has — the
+    // product owner's was about twenty — is a plain green vine and
+    // stays one. Every colourful word in the vocabulary was gated
+    // behind more scans than a child will make, which is why a whole
+    // sprint of new growth "does not reflect on my existing growth".
+    //
+    // The pace is HALVED by opening the seasons sooner, never by
+    // compressing the phases. Shortening the windows would starve the
+    // vine's climb — each phase's step size is tuned to reach its own
+    // height in its own number of steps, and the right vine is born
+    // inside a branch that only runs once the left one is done — so
+    // half the captures would have bought a shorter, coarser plant.
+    // The plant is unchanged; it simply flowers younger.
+    const BUD_FROM = 8, FLOWER_FROM = 18, FRUIT_FROM = 26;
+    // A SEASON MUST NOT DEPEND ON THE DICE. Measured across the five
+    // suite seeds, four gardens budded around capture 9-12 and one
+    // waited until 30 — the roll simply kept missing. An average pace
+    // is not a pace: that fifth child gets the plain green vine this
+    // change exists to end. So once a season is well open and the
+    // garden still has nothing of it, the next step TAKES it instead of
+    // rolling again. Same growth step, same vocabulary, chosen rather
+    // than won.
+    function noneYet(kinds) {
+      return !el.some(function (e) { return kinds.indexOf(e.k) >= 0; });
+    }
+    const forceBud = stage >= BUD_FROM + 5 && noneYet(['bud', 'flower', 'fruit']);
+    const forceFlower = stage >= FLOWER_FROM + 6 && noneYet(['flower', 'fruit']);
+
     // Zone 3 — edge travel: the vine keeps climbing, still unhurried
     // (it reaches the upper half only around twenty captures), leaves
     // in pairs along the way, a sprig branching now and then — and a
@@ -285,7 +327,15 @@
     if (stage < 13) {
       const side = (stage % 2 ? 1 : -1) * 0.18;
       let type = 'leaf_added';
+      // The first buds, well before the vine has finished travelling — a
+      // young plant with a bud on it is still a young plant. Placed
+      // AFTER the climb for the same reason as the phase below: the
+      // vine getting where it is going is structure, a bud is season.
       if (g.tip.band === 'left' && g.tip.v > 0.45) { vineNode('left', jitter(0.47, 0.18), g.tip.v - 0.055 - rnd() * 0.025); type = 'vine_extended'; }
+      else if (stage >= BUD_FROM && (forceBud || rnd() < 0.34) && onVine('bud', { f: rnd() < 0.18 ? 'pair' : 'plain' })) {
+        res.type = 'bud_created';
+        return res;
+      }
       else if (rnd() < 0.4) { push({ k: 'sprig', band: 'left', u: jitter(0.5, 0.3), v: g.tip.v + 0.15 + rnd() * 0.3, s: 0.8 + rnd() * 0.2, f: rnd() < 0.3 ? 'fork' : 'plain' }); type = 'branch_created'; }
       push({ k: 'leaf', band: 'left', u: jitter(g.tip.u + side, 0.06), v: jitter(g.tip.v, 0.02), s: 0.8 + rnd() * 0.25, f: leafForm(0.2, 0.18) });
       res.type = type;
@@ -321,26 +371,58 @@
         res.type = 'vine_extended';
         return res;
       }
+      // THE SEASON FILLS WHAT THE STRUCTURE LEAVES, and never the other
+      // way round. These sat at the top of this phase for one run and
+      // seed 777 lost its right vine: a flower opening on capture 18
+      // returned before the birth trigger could fire, and the sprint is
+      // explicit that 18 is a new chapter. Structure first, colour in
+      // the steps structure does not need.
+      if (stage >= FLOWER_FROM && (forceFlower || rnd() < 0.5)) {
+        const bIx = el.findIndex(function (e) { return e.k === 'bud'; });
+        if (bIx >= 0) {
+          const bb = el[bIx];
+          change(bIx, { k: 'flower', band: bb.band, u: bb.u, v: bb.v, f: rnd() < 0.25 ? 'open' : 'plain' });
+          res.type = 'flower_bloomed';
+          return res;
+        }
+      }
+      if (stage >= BUD_FROM && (forceBud || rnd() < 0.4) && onVine('bud', { f: rnd() < 0.2 ? 'pair' : 'plain' })) {
+        res.type = 'bud_created';
+        return res;
+      }
       push({ k: 'sprig', band: rnd() < 0.5 ? 'left' : 'right', u: jitter(0.5, 0.25), v: 0.25 + rnd() * 0.5, s: 0.8 + rnd() * 0.2, f: rnd() < 0.45 ? 'fork' : 'plain' });
       res.type = 'branch_created';
       return res;
     }
 
-    // Anything that grows from here on grows ON a vine — a leaf or bud
-    // in mid-air is decoration, and decoration was the "nope". The
-    // anchor is a real vine node, chosen by the seeded rng.
-    function onVine(kind, extra) {
-      const vines = el.filter(function (e) { return e.k === 'vine'; });
-      if (!vines.length) return false;
-      const a = vines[Math.floor(rnd() * vines.length)];
-      const side = (Math.floor(rnd() * 2) ? 1 : -1) * 0.16;
-      push(Object.assign({ k: kind, band: a.band, u: jitter(a.u + side, 0.05), v: jitter(a.v, 0.02) }, extra || {}));
-      return true;
-    }
-
     // Zone 5 — connections: the right edge finishes its climb and the
     // top arc closes, so both sides read as ONE garden. First buds.
     if (stage < 40) {
+      // …and the first fruit ripens here rather than at 55, so a
+      // garden of thirty captures has had a whole season rather than
+      // only a green one.
+      // MEASURED GAP: this phase grew buds and never opened one, so a
+      // garden whose branching window happened not to roll a flower
+      // waited all the way to 40 for its first colour — one seed in
+      // five did exactly that. The season is continuous now.
+      if (forceFlower || rnd() < 0.32) {
+        const bIx2 = el.findIndex(function (e) { return e.k === 'bud'; });
+        if (bIx2 >= 0) {
+          const bb2 = el[bIx2];
+          change(bIx2, { k: 'flower', band: bb2.band, u: bb2.u, v: bb2.v, f: rnd() < 0.25 ? 'open' : 'plain' });
+          res.type = 'flower_bloomed';
+          return res;
+        }
+      }
+      if (stage >= FRUIT_FROM && rnd() < 0.16) {
+        const fIx = el.findIndex(function (e) { return e.k === 'flower'; });
+        if (fIx >= 0) {
+          const ff = el[fIx];
+          change(fIx, { k: 'fruit', band: ff.band, u: ff.u, v: ff.v, f: rnd() < 0.25 ? 'pair' : 'plain' });
+          res.type = 'flower_ripened';
+          return res;
+        }
+      }
       if (g.tip.band === 'right' && g.tip.v > 0.12) {
         vineNode('right', jitter(0.5, 0.18), g.tip.v - 0.09 - rnd() * 0.04);
         if (rnd() < 0.6) push({ k: 'leaf', band: 'right', u: jitter(g.tip.u + 0.16, 0.05), v: g.tip.v, s: 0.8 + rnd() * 0.2, f: leafForm(0.2, 0.2) });
@@ -367,7 +449,7 @@
     // fruit from ~55, and past the ceiling everything keeps ripening).
     // This is the most varied phase by design: every form in the
     // vocabulary is reachable here.
-    if (stage >= 55 && rnd() < 0.18) {
+    if (stage >= FRUIT_FROM && rnd() < 0.18) {
       const fIx = el.findIndex(function (e) { return e.k === 'flower'; });
       if (fIx >= 0) {
         const f = el[fIx];

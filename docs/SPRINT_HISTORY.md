@@ -5746,3 +5746,50 @@ Only the WhatsApp Business Cloud API can compose that message directly,
 and that means automated sending, a Business number and template
 approval — which trades away the "a person picks the recipient and
 presses send" property this flow was built to keep. Suite 9/9.
+
+## The garden flowers younger (build 0614)
+
+The product owner, with a photograph of his own garden: *"your fixes for
+garden does not reflect on my existing growth."*
+
+It was reflecting — his garden was already drawing the new paired and
+curled leaves, verified by rendering a 20-capture garden and matching it
+against his screenshot. The problem was that everything which would make
+it look DIFFERENT was gated behind captures nobody has. Measured on the
+shipped engine: first bud at capture 34, first flower at 41, first fruit
+at 60, and across five seeds a non-plain leaf form appeared on only 33 of
+the first 100 captures. A real garden is a plain green vine and stays
+one. The previous sprint kept those thresholds because its own §10 said
+to unless the implementation revealed a strong reason; his garden was the
+strong reason, and he chose to halve the pace.
+
+**Halved by opening the seasons sooner, never by compressing the
+phases.** Shortening the windows was tried on paper and rejected: each
+phase's climb step is tuned to reach its own height in its own number of
+steps, and the right vine is born inside a branch that only runs once the
+left one has finished — so half the captures would have bought a shorter,
+coarser plant. `BUD_FROM`/`FLOWER_FROM`/`FRUIT_FROM` are three constants
+at the top of the step; the plant is untouched and simply flowers
+younger. Measured across thirteen seeds: bud 9/13/32, flower 24/25/33,
+fruit 26/31/43 (min/avg/max), against 34/41/60 before.
+
+Two things the measurement caught that reasoning would not have. **A gap:
+the connections phase grew buds and never opened one**, so a garden whose
+branching window happened not to roll a flower waited all the way to 40
+for its first colour — one seed in five did exactly that. And **structure
+has to outrank season**: with the seasonal branches at the top of the
+branching phase, a flower opening on capture 18 returned before the right
+vine's birth could fire, and seed 777 lost its new chapter outright (V5
+caught it). They now fill the steps structure does not need.
+
+**A season must not depend on the dice.** Four of the five suite seeds
+budded around capture 9–12 and one waited until 30, purely on failed
+rolls. An average pace is not a pace, so once a season is well open and
+the garden still has nothing of it, the next step takes it rather than
+rolling again. The one remaining 32 is honest and is the price of
+structure-first: that garden spends its whole branching phase finishing
+one vine and building another, and a plant still being built is not the
+problem this change exists to fix.
+
+Garden 71/71, and X7 improved on its own — twenty consecutive captures
+now answer 19–20 on screen instead of 18. Build 0613 → 0614.

@@ -725,9 +725,26 @@ function check(cond, name, note) { (cond ? ok : fail)(name, note); }
       travelVariety: new Set(t.slice(5, 13)).size >= 2,
       newChapter: t.slice(13, 24).indexOf('vine_born') >= 0,
       connection: inRange(24, 40, (x) => x === 'connection_created'),
-      buds: inRange(24, 40, (x) => x === 'bud_created'),
-      flowers: inRange(40, 60, (x) => x === 'bud_opened' || x === 'flower_bloomed'),
-      fruit: inRange(55, 110, (x) => x === 'flower_ripened'),
+      // THE SEASONS, AT THE PACE A REAL GARDEN GETS. These windows used
+      // to be 24-39 / 40-59 / 55+, which was the original engine's
+      // pacing and is why a twenty-capture garden — the product
+      // owner's — was a plain green vine with none of this sprint's
+      // vocabulary in it. Halved on his decision. The bounds carry
+      // headroom over the measured worst case across seven seeds
+      // (13 seeds: bud 9/13/32, flower 24/25/33, fruit 26/31/43 as
+      // min/avg/max), so this fails if the pacing quietly slips back
+      // rather than only when it breaks outright.
+      //
+      // The 32 is honest and is the cost of a rule this suite also
+      // enforces: STRUCTURE OUTRANKS SEASON (see V5). One seed in
+      // thirteen spends its whole branching phase finishing the left
+      // vine, birthing the right one and climbing it, so its forced
+      // bud has no spare step until the phase after. A garden whose
+      // plant is still being built is not the plain-green-vine problem
+      // this pacing change exists to fix.
+      buds: inRange(0, 34, (x) => x === 'bud_created'),
+      flowers: inRange(0, 36, (x) => x === 'bud_opened' || x === 'flower_bloomed'),
+      fruit: inRange(0, 48, (x) => x === 'flower_ripened'),
       capped: Math.max.apply(null, r.counts) <= 112,
       lateAlive: new Set(t.slice(110)).size >= 2,
       lateNotAllScale: t.slice(105).filter((x) => x === 'leaf_grew').length < t.slice(105).length * 0.6
@@ -740,9 +757,9 @@ function check(cond, name, note) { (cond ? ok : fail)(name, note); }
   check(every('newChapter'), 'V5 the right vine is BORN in 13-23 as its own event, not another leaf',
     ladder.map((l) => l.seed + ':' + l.newChapter).join(' '));
   check(every('connection'), 'V6 the top arc closes in 24-39 as its own growth');
-  check(every('buds'), 'V7 the first buds arrive in 24-39');
-  check(every('flowers'), 'V8 flowers arrive in 40-59 — and bud → flower is a REPORTED growth, not a silent one');
-  check(every('fruit'), 'V9 fruit ripens from 55 on');
+  check(every('buds'), 'V7 buds arrive by capture 34 at worst, ~13 typically — was 34 typically');
+  check(every('flowers'), 'V8 flowers arrive by capture 36 at worst, ~25 typically — was 41; and bud → flower is a REPORTED growth, not a silent one');
+  check(every('fruit'), 'V9 fruit ripens by capture 48 at worst, ~31 typically — was 60');
   check(every('capped'), 'V10 the element count never passes the ceiling',
     runs.map((r) => Math.max.apply(null, r.counts)).join(' '));
   check(every('lateAlive'), 'V11 past 110 captures the garden still changes, and in more than one way',
