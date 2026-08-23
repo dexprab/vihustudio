@@ -53,7 +53,30 @@ const CORS_HEADERS: Record<string, string> = {
 // copy uploaded to the project, not the file in the repository, and
 // there is no CI here that deploys it. `{"action":"ping"}` answers
 // which build is actually live.
-const BUILD = '2026-08-23 · first letter';
+const BUILD = '2026-08-23 · paper letter, two Ether books';
+
+// THE BOOKS ARE REAL, AND THEY ARE CANON.
+//
+// The product owner's design puts two Ether books beside the letter,
+// because "there are already stories here, come choose one" is a
+// different invitation from "come join our creative platform" — and it
+// is the true one.
+//
+// They are CANON STORIES (CLAUDE.md → Decision 13): made by the team,
+// owned by nobody, shipped with the application. A CHILD'S shared story
+// must never appear here — putting somebody's child in an outreach
+// email is not ours to do, whatever the Ether's own visibility rules
+// say.
+//
+// The covers are the stories' own thumbnails, lifted from
+// vihuplanet/canon/ into assets/invite/ so they have a hosted URL:
+// email clients do not reliably render data: URIs, and Gmail strips
+// them outright. DISCLOSED COUPLING — these mirror canon.json by hand,
+// so adding or renaming a Canon Story means updating this list too.
+const BOOKS: Array<{ name: string; img: string }> = [
+  { name: 'The falling star', img: 'assets/invite/falling-star.png' },
+  { name: 'Little Seed🌻',    img: 'assets/invite/little-seed.png' },
+];
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -84,106 +107,174 @@ function esc(s: string): string {
 // has to work whole in that state.
 
 function subjectFor(): string {
-  return 'Somebody left a door open on VihuPlanet';
+  return 'I left a door open for you';
 }
 
 function textFor(link: string, note: string): string {
   const lines = [
-    'Hello.',
+    'Hello,',
     '',
-    'I am Lumo. I look after a place called VihuPlanet.',
+    'I found a little door in VihuPlanet.',
     '',
-    'It is a quiet universe where children make stories — their own',
-    'words, their own drawings, their own handwriting — and, if they',
-    'want to, let those stories drift out into the sky where other',
-    'children can find them.',
+    'I opened it. There was a story inside.',
+    'It had a beginning... but no ending.',
     '',
-    'There is no account to make and nothing to pay. A child follows a',
-    'little story, makes some choices, changes something, and by the',
-    'end they have made something that was not there before.',
+    'I thought about finishing it myself.',
+    'But then I wondered: what if YOU finished it?',
     '',
-    'If that sounds like someone in your house, the door is here:',
+    'You could choose what happens. You could change things.',
+    'You could even leave something of your own behind.',
+    '',
+    'So I left the door open:',
     '',
     link,
     '',
-  ];
-  if (note) {
-    lines.push(note, '');
-  }
-  lines.push(
-    'Best to open it on a laptop — stories are made the wide way.',
+    'You do not need an account. You do not need to pay anything.',
+    'Just come in. I will show you where the story begins.',
     '',
+  ];
+  if (note) lines.push(note, '');
+  lines.push(
+    'Waiting in the Ether: ' + BOOKS.map((b) => '"' + b.name + '"').join(' and ') + '.',
+    'Which one will you open first?',
+    '',
+    'With a smile,',
     'Lumo',
-    'Guardian of Story Companions, VihuPlanet',
+    'Keeper of VihuPlanet',
+    '',
+    '---',
+    'For parents: VihuPlanet is a safe creative space where children can',
+    'explore stories, make choices, and gradually learn to create their own.',
+    'No payment or account is required to begin. Best on a laptop.',
   );
   return lines.join('\n');
 }
 
 function htmlFor(link: string, note: string): string {
+  const base = (secret('INVITE_BASE_URL') || 'https://vihuplanet.com').replace(/\/+$/, '');
+
+  // PAPER, NOT A DASHBOARD. Cream ground, VihuPlanet navy ink, a few
+  // very restrained Ether marks, and small hand-drawn shapes rather
+  // than glowing effects. No gradients, no sparkle graphics, no
+  // character art, no oversized fantasy imagery.
+  const cream = '#F7F3E9', paper = '#FBF8F1', navy = '#1D3457';
+  const ink = '#22314C', soft = '#5C6B84', gold = '#A8762A', rule = '#DCD3C0';
+
   const noteBlock = note
-    ? `<p style="margin:0 0 18px;padding:12px 14px;background:#1d3457;border-left:3px solid #e8b871;
-         color:#f1ead0;font-style:italic">${esc(note)}</p>`
+    ? `<p style="margin:0 0 16px;padding:11px 13px;background:#F2EDE0;border-left:3px solid ${gold};
+         color:${ink};font-style:italic;font-size:14px;line-height:1.55;">${esc(note)}</p>`
     : '';
+
+  // The two books. With images off this still reads — every cover
+  // carries its story's name as alt text, and the caption above says
+  // what they are.
+  const books = BOOKS.map((b) => `
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%"
+           style="margin:0 0 16px;"><tr><td align="center">
+      <img src="${esc(base + '/' + b.img)}" width="150" alt="${esc(b.name)}"
+           style="display:block;width:150px;max-width:100%;height:auto;border:1px solid ${rule};
+                  border-radius:3px;background:${paper};">
+      <div style="margin:7px 0 0;font:400 14px/1.3 Georgia,serif;color:${navy};">${esc(b.name)}</div>
+    </td></tr></table>`).join('');
+
   return `<!doctype html>
-<html><body style="margin:0;padding:0;background:#101d33;">
+<html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  /* Stacks the letter and the books on a phone. Clients that ignore
+     this keep the two columns, which is still readable at 600px. */
+  @media only screen and (max-width:540px){
+    .col{display:block !important;width:100% !important;max-width:100% !important;}
+    .colr{padding-top:22px !important;}
+  }
+</style></head>
+<body style="margin:0;padding:0;background:${navy};">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${navy};">
+ <tr><td align="center" style="padding:26px 12px;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
-         style="background:#101d33;padding:28px 12px;">
-    <tr><td align="center">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
-             style="max-width:520px;background:#1d3457;border-radius:10px;overflow:hidden;
-                    font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+         style="max-width:600px;background:${cream};border-radius:6px;
+                font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
 
-        <tr><td style="padding:30px 30px 6px;text-align:center;">
-          <div style="font-size:34px;line-height:1">✦</div>
-          <h1 style="margin:10px 0 0;font:400 27px/1.2 Georgia,serif;color:#ffe9b8;">
-            VihuPlanet
-          </h1>
-          <p style="margin:6px 0 0;color:#8792af;font-size:13px;">
-            a place where children's stories live
-          </p>
-        </td></tr>
+   <!-- masthead -->
+   <tr><td align="center" style="padding:30px 26px 6px;">
+     <div style="font-size:16px;color:${navy};line-height:1">&#10022;</div>
+     <div style="margin:8px 0 0;font:400 30px/1.15 Georgia,serif;color:${navy};">VihuPlanet</div>
+     <div style="margin:5px 0 0;font-size:12.5px;color:${soft};">
+       a quiet place where children's stories live</div>
+   </td></tr>
 
-        <tr><td style="padding:22px 30px 4px;color:#e7eaf3;font-size:15px;line-height:1.65;">
-          <p style="margin:0 0 14px;">Hello.</p>
-          <p style="margin:0 0 14px;">
-            I am <strong style="color:#ffe9b8;">Lumo</strong>. I look after a place called
-            VihuPlanet.
-          </p>
-          <p style="margin:0 0 14px;">
-            It is a quiet universe where children make stories — their own words, their own
-            drawings, their own handwriting — and, if they want to, let those stories drift
-            out into the sky where other children can find them.
-          </p>
-          <p style="margin:0 0 20px;">
-            There is no account to make and nothing to pay. A child follows a little story,
-            makes some choices, changes something, and by the end they have made something
-            that was not there before.
-          </p>
-          ${noteBlock}
-        </td></tr>
+   <tr><td style="padding:20px 26px 0;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
 
-        <tr><td style="padding:2px 30px 26px;text-align:center;">
-          <a href="${esc(link)}"
-             style="display:inline-block;padding:13px 30px;border-radius:999px;
-                    background:#e8b871;color:#22314c;font-weight:700;font-size:15px;
-                    text-decoration:none;">Open the door</a>
-          <p style="margin:14px 0 0;color:#8792af;font-size:12px;line-height:1.5;">
-            Best on a laptop — stories are made the wide way.
-          </p>
-        </td></tr>
+     <!-- the letter -->
+     <td class="col" width="56%" valign="top"
+         style="padding-right:18px;font-size:14.5px;line-height:1.62;color:${ink};">
+       <div style="font:400 23px/1.2 Georgia,serif;color:${navy};margin:0 0 14px;">Hello,</div>
+       <p style="margin:0 0 12px;">I found a little door in VihuPlanet.</p>
+       <p style="margin:0 0 12px;">I opened it.<br>There was a story inside.<br>
+          It had a beginning&#8230;<br>but no ending.</p>
+       <p style="margin:0 0 12px;">I thought about finishing it myself.</p>
+       <p style="margin:0 0 6px;">But then I wondered:</p>
+       <p style="margin:0 0 14px;font:400 19px/1.3 Georgia,serif;color:${gold};">
+          What if you finished it?</p>
+       <p style="margin:0 0 12px;">You could choose what happens.<br>
+          You could change things.<br>
+          You could even leave something of your own behind.</p>
+       <p style="margin:0 0 18px;">So I left the door open.</p>
+       ${noteBlock}
 
-        <tr><td style="padding:16px 30px 26px;border-top:1px solid #33507e;
-                       color:#8792af;font-size:12px;line-height:1.6;">
-          <p style="margin:0 0 4px;color:#c6cbda;">Lumo</p>
-          <p style="margin:0;">Guardian of Story Companions, VihuPlanet</p>
-          <p style="margin:12px 0 0;word-break:break-all;">
-            If the button does not work: <span style="color:#c6cbda;">${esc(link)}</span>
-          </p>
-        </td></tr>
+       <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 14px;">
+         <tr><td align="center" bgcolor="${navy}" style="border-radius:999px;">
+           <a href="${esc(link)}"
+              style="display:inline-block;padding:13px 30px;font-size:15.5px;font-weight:600;
+                     color:${cream};text-decoration:none;font-family:Georgia,serif;">
+             Open the Door &#9733;</a>
+         </td></tr>
+       </table>
 
-      </table>
-    </td></tr>
+       <p style="margin:0 0 3px;font-size:13.5px;color:${ink};">&#9734; You don't need an account.</p>
+       <p style="margin:0 0 10px;font-size:13.5px;color:${ink};">&#9825; You don't need to pay anything.</p>
+       <p style="margin:0 0 6px;font:400 17px/1.3 Georgia,serif;color:${gold};">Just come in.</p>
+       <p style="margin:0 0 20px;font-size:13.5px;">I'll show you where the story begins.</p>
+
+       <p style="margin:0 0 2px;font-size:13.5px;color:${soft};">With a smile,</p>
+       <p style="margin:0;font:italic 400 21px/1.2 Georgia,serif;color:${navy};">Lumo &#9734;</p>
+       <p style="margin:2px 0 0;font-size:12.5px;color:${soft};">Keeper of VihuPlanet</p>
+     </td>
+
+     <!-- the two books -->
+     <td class="col colr" width="44%" valign="top" style="padding-left:6px;">
+       <p style="margin:0 0 14px;text-align:center;font:400 15px/1.45 Georgia,serif;color:${navy};">
+         Two stories from the Ether<br>are waiting for you.</p>
+       ${books}
+       <p style="margin:4px 0 0;text-align:center;font:400 14px/1.4 Georgia,serif;color:${gold};">
+         Which one will you open first?</p>
+     </td>
+
+    </tr></table>
+   </td></tr>
+
+   <!-- for parents -->
+   <tr><td style="padding:24px 26px 28px;">
+     <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+            style="background:#F1ECDF;border:1px solid ${rule};border-radius:4px;">
+       <tr><td style="padding:14px 16px;">
+         <div style="font-size:13px;font-weight:700;color:${navy};margin:0 0 4px;">For parents</div>
+         <div style="font-size:12.5px;line-height:1.6;color:${soft};">
+           VihuPlanet is a safe creative space where children can explore stories, make choices,
+           and gradually learn to create their own. No payment or account is required to begin.
+           Best opened on a laptop.
+         </div>
+       </td></tr>
+     </table>
+     <p style="margin:14px 0 0;font-size:11.5px;line-height:1.5;color:${soft};word-break:break-all;">
+       If the button does not work: <span style="color:${ink};">${esc(link)}</span>
+     </p>
+   </td></tr>
+
   </table>
+ </td></tr>
+</table>
 </body></html>`;
 }
 
