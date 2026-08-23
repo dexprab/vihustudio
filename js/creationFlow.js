@@ -672,15 +672,195 @@ const CreationFlow=(function(){
     return card;
   }
 
-  // ---------- Screen 1: Choose What To Create ----------
+  // ---------- Screen 1: the child's own journey ----------
+  //
+  // This screen used to be a menu of six features with "Step 1 of 2"
+  // written over it. It is now the one place that answers "where am I in
+  // my own story", and it has exactly two states:
+  //
+  //   A — the first story has not been made yet. No menu at all. One
+  //       door: "A Story Is Waiting", and Begin runs the first rite.
+  //   B — it has. Three named starting points made only of what that
+  //       first story already taught, and, quietly under them, a new
+  //       door to walk through if they feel like it.
+  //
+  // WHAT DECIDES IS StudioRite.isComplete() AND NOTHING ELSE. Not a
+  // Magic Card: a child who made their first story and chose not to
+  // share it holds no card (Canon 6 puts the Creator Ceremony after
+  // sharing), and they have unmistakably made something. Sending them
+  // back to "A Story Is Waiting" would tell them their story did not
+  // count. The product owner reviewed exactly that case and kept it.
+  //
+  // Nothing on either state says rite, level, step, lock or progress,
+  // and nothing counts anything (Decision 22 — "hidden, never locked",
+  // and the moment a level has a name a child can compare theirs with a
+  // sibling's). The internal ids below are internal.
+  const RITE_FIRST='the-night-a-star-came-down';
+  const RITE_NEXT='my-little-house';
+
+  // Fail-open, deliberately: a Studio with no StudioRite at all shows
+  // the making screen rather than a Begin button that cannot begin.
+  function _riteComplete(){
+    try{
+      if(typeof StudioRite==='undefined' || typeof StudioRite.isComplete!=='function') return true;
+      return !!StudioRite.isComplete();
+    }catch(e){ return true; }
+  }
+
+  // The next door, asked of the registry by id — never by ordinal, and
+  // never counted. Absent rather than empty when there is no next one
+  // (Decision 22), which is also what happens if the registry is gone.
+  function _nextDoorExists(){
+    try{
+      if(typeof StudioRite==='undefined' || typeof StudioRite.rites!=='function') return false;
+      return (StudioRite.rites()||[]).some(function(r){ return r.id===RITE_NEXT; });
+    }catch(e){ return false; }
+  }
+
+  // Hand the screen to a rite.
+  //
+  // THE OVERLAY IS DELIBERATELY LEFT EXACTLY WHERE IT IS. The rite's own
+  // stage is a full-bleed overlay at z-index 1600 against this one's
+  // 1000, so it covers this screen completely — and when the rite opens
+  // the editor it calls CreationFlow.startBlank(), which closes this
+  // overlay itself. Hiding it here would mean owning the other half:
+  // a rite that gives up before it ever reaches the editor would leave
+  // a child looking at nothing. Left up, an abandoned rite simply puts
+  // them back on the screen they pressed the button on.
+  function _enterRite(id){
+    try{
+      if(typeof StudioRite==='undefined' || typeof StudioRite.start!=='function') return false;
+      if(!StudioRite.start(id)) return false;
+      // start() answers "I accepted it", not "it is running": a Studio
+      // with no companion package hands straight back. Ask the rite.
+      return !!(StudioRite.isRunning && StudioRite.isRunning());
+    }catch(e){ return false; }
+  }
+
+  // ---------- State A: A Story Is Waiting ----------
+  function _renderJourneyScreen(){
+    _clear();
+    _setAtmosphere(false);
+    _brand();
+    content.appendChild(_el('div','creation-flow-eyebrow','Your journey begins'));
+    content.appendChild(_el('h1','creation-flow-question','A Story Is Waiting'));
+    const lines=_el('div','creation-flow-journey-lines');
+    ['Follow a little story.','Make some choices.','Change something.','Make it yours.']
+      .forEach(function(t){ lines.appendChild(_el('p','creation-flow-journey-line',t)); });
+    content.appendChild(lines);
+    const begin=_el('button','creation-flow-start-btn creation-flow-begin-btn','Begin');
+    begin.type='button';
+    begin.addEventListener('click',function(){
+      // If the guide cannot be reached the child is never stranded on a
+      // door that will not open — they get the whole Studio instead.
+      if(!_enterRite(RITE_FIRST)) _renderCreationTypeScreen();
+    });
+    content.appendChild(begin);
+    // Kept on both states: a child who already has something must be
+    // able to reach it from wherever they are standing. Both render
+    // nothing at all for the common case — a first arrival has no
+    // projects, no Magic Card and nothing to redeem.
+    _myProjectsEntry();
+    _secondaryOptions();
+  }
+
+  // ---------- State B: Now Look What You Can Make ----------
+  //
+  // Three starting points, not three features. Each is made only of what
+  // the first story already taught — emoji, background, text, moving,
+  // resizing, extra pages, a name, finishing, sharing — so none of them
+  // introduces anything a child has not met. They open the editor
+  // directly, on plain paper with no World, for the same reason the
+  // first rite does (Decision 22: Places, Frames and Experiences are
+  // what a later story is about, and a child at this point has no use
+  // for them). Choosing a World is untouched and one tap away inside the
+  // editor, on the header's own World readout.
+  const STARTERS=[
+    {id:'little-story',   type:'story', title:'My Little Story', desc:'Tell a little story of your own.',      icon:'📖', accent:'sand'},
+    {id:'character-card', type:'card',  title:'Character Card',  desc:'Give a character a story to tell.',     icon:'🧸', accent:'sky'},
+    {id:'little-message', type:'card',  title:'Little Message',  desc:'Make something for someone special.',   icon:'💌', accent:'rose'}
+  ];
+
+  function _renderMakeScreen(){
+    _clear();
+    _setAtmosphere(false);
+    _brand();
+    content.appendChild(_el('div','creation-flow-eyebrow','You made something. ✨'));
+    content.appendChild(_el('h1','creation-flow-question','Now Look What You Can Make'));
+    content.appendChild(_el('p','creation-flow-subtitle','Try something new with what you discovered.'));
+    _myProjectsEntry();
+
+    // The starter cards reuse the six-tile grid's own vocabulary —
+    // same card, same icon badge, same accent tints, same stagger — so
+    // this reads as the screen it replaced rather than a new product.
+    // The whole card is the button; "Make" is a span inside it, because
+    // a <button> may not legally contain another one.
+    const grid=_el('div','creation-flow-grid creation-flow-type-grid creation-flow-starter-grid');
+    STARTERS.forEach(function(st){
+      const card=_el('button','creation-flow-card creation-flow-card-accent-'+(st.accent||'sand'));
+      card.type='button';
+      card.appendChild(_el('div','creation-flow-card-icon',st.icon));
+      card.appendChild(_el('div','creation-flow-card-title',st.title));
+      card.appendChild(_el('div','creation-flow-card-desc',st.desc));
+      card.appendChild(_el('span','creation-flow-starter-make','Make'));
+      card.addEventListener('click',function(){
+        _selectedThemeId=null;
+        // The exact blank start the 'Start Something New' tile already
+        // used — one existing path, three names for it. _finishBlank
+        // reads only type.id, which is the project's own record of what
+        // the child set out to make.
+        _finishBlank({id:st.type});
+      });
+      grid.appendChild(card);
+    });
+    content.appendChild(grid);
+
+    // A NEW DOOR, NEVER A GATE. It sits under the making, in the band
+    // treatment "Already have something?" already established, and it
+    // asks nothing: there is no decline, no dismiss, no badge and no
+    // count. A child who never presses it loses nothing at all, forever
+    // (Decision 22). Absent rather than empty when there is no next one.
+    if(_nextDoorExists()){
+      const door=_el('div','creation-flow-door');
+      door.appendChild(_el('div','creation-flow-door-title','A new door is waiting'));
+      door.appendChild(_el('p','creation-flow-door-line','Ready to discover what you can do next?'));
+      const btn=_el('button','creation-flow-door-btn','Discover');
+      btn.type='button';
+      btn.addEventListener('click',function(){ _enterRite(RITE_NEXT); });
+      door.appendChild(btn);
+      content.appendChild(door);
+    }
+
+    _secondaryOptions();
+  }
+
+  // The one entry every caller already used. It is now a router: which
+  // of the two states a child meets, and nothing else.
+  function _renderTypeScreen(){
+    if(_riteComplete()) _renderMakeScreen();
+    else _renderJourneyScreen();
+  }
+
+  // ---------- The six-tile creation menu ----------
   // Fixed 4-column grid (4+2 wrap for six cards) per the storyboard —
   // not an auto-fill grid, which would space unevenly at this card count.
-  function _renderTypeScreen(){
+  //
+  // NO LONGER THE FIRST SCREEN. _renderTypeScreen() above routes to the
+  // journey instead, and this is what is left when the journey cannot be
+  // offered at all — a guide that will not load, a Studio with no
+  // StudioRite module. It is deliberately kept whole rather than deleted:
+  // it is the only entry into Screen 2's World picker, it is what
+  // _handleCardRedeemResult routes a redeemed World into, and a child who
+  // reaches it can still make anything the Studio can make.
+  function _renderCreationTypeScreen(){
     _clear();
     _setAtmosphere(false);
     _brand();
     const header=_el('div','creation-flow-header');
-    header.appendChild(_el('span','creation-flow-step','Step 1 of 2'));
+    // "Step 1 of 2" is GONE. It counted a form, and this screen stopped
+    // being one: what is on it now is where the child is in their own
+    // journey, and a journey does not have a numerator (Decision 22 —
+    // nothing on screen a child could count or compare).
     // The "?" used to be tooltip-only (a bare HTML `title` attribute) —
     // real on desktop hover, but silently inert for the actual primary
     // audience (a child on a touch device never sees it at all, since a
@@ -738,6 +918,14 @@ const CreationFlow=(function(){
     // divider. That grouping (not just per-card styling) is what used to
     // read as "not visualized properly": two flat, ungrouped sections
     // that blended into each other and into the meadow background.
+    _secondaryOptions();
+  }
+
+  // "Already have something?" — the Vihu Card redemption band. Lifted out
+  // of the six-tile screen unchanged so the journey screens can carry it
+  // too: a child who already holds something must be able to reach it
+  // whichever screen they are standing on.
+  function _secondaryOptions(){
     const secondaryCards=[];
     if(typeof window.CardPlatform!=='undefined'){
       secondaryCards.push(_buildCardRedeemWidget());

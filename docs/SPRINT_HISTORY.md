@@ -5388,3 +5388,92 @@ regression itself, a recognised Creator still being grandfathered, a
 stale pointer grandfathering nobody, and a card-less Traveller who
 finished the Rite keeping their Studio. Companion 50/50, Garden 41/41,
 zero page errors. Build 0607 → 0608.
+
+## A Story Is Waiting (build 0609)
+
+The Studio's first screen was a menu of six features with **Step 1 of 2**
+written over it, and a child who had never made anything and a child who
+had made twenty saw exactly the same one. It is now the child's own
+journey, in two states.
+
+**State A, before the first story: no menu at all.** *Your journey
+begins · A Story Is Waiting ·* four short lines — *Follow a little
+story. Make some choices. Change something. Make it yours.* — and one
+door, **Begin**, which runs the first rite. Six tiles offered a child
+with nothing a choice between six kinds of nothing; one door is the
+honest count.
+
+**State B, after it:** *You made something. ✨ · Now Look What You Can
+Make · Try something new with what you discovered.*, then three named
+starting points — **My Little Story · Character Card · Little Message**
+— and, quietly under them, **A new door is waiting · Ready to discover
+what you can do next? · Discover**, which runs the next rite.
+
+**The starters are not capabilities, and that is the whole design.**
+Each is made only of what the first story already taught — emoji,
+background, text, moving, resizing, a name, finishing, sharing — and
+each opens the real editor on plain paper through `_finishBlank()`, the
+same call the *Start Something New* tile already made. One existing path
+with three names for it. Nothing was added to the editor, no World
+authoring, no new architecture, and no starter can show a child a
+control they have not met.
+
+**`StudioRite.isComplete()` is the only thing that decides, and NOT the
+Magic Card.** They look interchangeable and are not: a child who made
+their first story and chose not to share it holds no card, because Canon
+6 puts the Creator Ceremony after sharing rather than after finishing.
+Reading the card would send that child back to *A Story Is Waiting* and
+tell them their story did not count. The product owner reviewed exactly
+that case at 0608 and kept it; this ship depends on it.
+
+**The overlay is deliberately left standing when a rite takes over.**
+The obvious thing was to close it and hand off — and it is wrong,
+because it means owning the other half: a rite that gives up before it
+ever reaches the editor would leave a child looking at nothing. The
+rite's stage is a full-bleed overlay at z-index 1600 against this
+screen's 1000, so it covers it completely, and when the rite opens the
+editor it calls `CreationFlow.startBlank()`, which closes this overlay
+itself. Left up, an abandoned rite simply puts the child back on the
+screen they pressed the button on. `js/studioRite.js` needed no change
+at all; `StudioRite.start(id)` is the seam Decision 22 said it would be.
+
+**Rejected: making the door a prompt.** Decision 22 already settled it —
+*a prompt that must be answered is a nag; a card on a shelf can be
+walked past forever* — so there is no decline, no dismiss, no badge, no
+bar and no count, and the band is absent rather than empty when the
+registry has no next rite. **Also rejected: telling the child what they
+would learn.** *Discover what you can do next* is a door; *Learn shapes
+and drawing* is a syllabus, and this product does not write that
+sentence.
+
+**Nothing on either screen says rite, level, step, unlock, locked or
+progress**, and the suite proves it against the rendered text rather
+than against the source. The forbidden-word check uses real word
+boundaries on purpose: `\brite\b` must not fire on *Write a Poem*, which
+is exactly the false positive a substring check would have produced.
+
+**Disclosed.** The six-tile menu survives whole as
+`_renderCreationTypeScreen` and is what a child gets if the guide cannot
+be reached at all — a Studio with no companion package hands `start()`
+straight back, and `isRunning()` rather than `start()`'s own return value
+is what that is read from. Nobody is ever stranded on a door that will
+not open. But it is no longer a route a child takes by choice, so
+Screen 2's World picker is now reached from inside the editor, on the
+header's own World readout, rather than before it. No control was
+removed from anybody. **And nothing yet records which rite a child has
+taken**, so the new door still stands there after the second rite has
+been walked through — that is the persistence Decision 22 §6 forbids
+shipping early, not an oversight.
+
+**No analytics, and that is deliberate.** The brief this sprint came
+from asked for nine tracking events; they were not approved and are not
+built. There is no telemetry, no event system and no counter anywhere in
+this ship.
+
+New suite `tools/creation-home-test/run-creation-home-tests.js`, 47/47 at
+1440x900 against the real Studio — both states' exact copy, no six-tile
+grid on either, *Step 1 of 2* absent from the whole document, every
+forbidden word absent from the rendered text, each starter genuinely
+opening the editor, and the router flipping on `isComplete()` with no
+Magic Card in play. Rite gate 7/7, Companion 50/50, Garden 41/41, zero
+page errors throughout. Build 0608 → 0609.

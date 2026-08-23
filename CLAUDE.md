@@ -929,6 +929,45 @@ once, and its scope is no longer closed.
   plays nothing; the guard that refuses to run is about Lumo's *art*
   package, not his voice. So a new rite ships silent and a recording
   session adds one field per screen. Never invent placeholder audio ids.
+- **Studio Home is now the child's journey, in two states, and this
+  amends the offer clause above** (build 0609, the Story Rite
+  Progression brief). The screen that was a menu of six creation types
+  under *Step 1 of 2* is gone as a first screen. **`StudioRite.isComplete()`
+  alone decides which state a child meets** — never a Magic Card, because
+  a child who made their first story and chose not to share it holds no
+  card (Canon 6), and sending them back to the beginning would tell them
+  their story did not count. The product owner reviewed exactly that case
+  and kept it.
+  **State A**, before the first story: no menu at all. *Your journey
+  begins · A Story Is Waiting · Follow a little story. Make some
+  choices. Change something. Make it yours. ·* **Begin**, which runs the
+  first rite. **State B**, after it: *You made something. ✨ · Now Look
+  What You Can Make · Try something new with what you discovered.*, then
+  three named starting points — **My Little Story · Character Card ·
+  Little Message** — each a real entry into the existing editor made only
+  of what the first story already taught, and under them the next door.
+  **The invitation's words changed and it no longer names the story.**
+  It reads *A new door is waiting · Ready to discover what you can do
+  next? ·* **Discover**, in place of *A new story is waiting* followed by
+  the story's own name. Everything the offer clause was protecting still
+  holds — one slot, one thing, never two, no decline, no dismiss, no
+  badge, no count, absent rather than empty when there is no next one,
+  and it still never names a capability. What it lost is the story's
+  name, and what it gained is that it is plainly about the child rather
+  than about a title they have not met.
+  **"Step 1 of 2" is deleted.** It counted a form, and this screen
+  stopped being one.
+  **Disclosed, and unchanged by this:** nothing yet records which rite a
+  child has taken, so the door still stands there after Rite II has been
+  walked through. That is the persistence §6 forbids shipping early, not
+  an oversight. **Also disclosed:** the six-tile menu survives whole
+  (`_renderCreationTypeScreen`) and is what a child gets if the guide
+  cannot be reached at all — so nobody is ever stranded on a door that
+  will not open — but it is no longer a route a child takes by choice,
+  which means Screen 2's World picker is now reached from inside the
+  editor (the header's own World readout) rather than before it. No
+  control was removed from anybody.
+  `tools/creation-home-test/run-creation-home-tests.js`.
 - Design and sequencing: `docs/STUDIO_RITE_LEVELS.md`. Rite II's script
   and its engineering notes: `docs/STUDIO_RITE_LEVEL_II_STORY.md`.
 

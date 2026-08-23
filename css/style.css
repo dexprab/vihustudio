@@ -6635,6 +6635,131 @@ body.creation-flow-active .app-header{ display:none; }
   .creation-flow-type-grid{ grid-template-columns:repeat(2,minmax(140px,1fr)); }
 }
 
+/* ---------- Story Rite Progression — Screen 1 is the child's journey,
+   in two states. State A is one door ("A Story Is Waiting"); state B is
+   three named starting points and, quietly under them, a new door.
+   Everything here reuses the creation flow's own warm-paper vocabulary
+   — same card, same icon badge, same accent tints, same dashed band —
+   so this reads as the screen it replaced, not a new product. Nothing
+   counts, ranks, locks or compares anything. ---------- */
+.creation-flow-eyebrow{
+  text-align:center;
+  font-size:13px;
+  font-weight:600;
+  letter-spacing:.05em;
+  color:var(--text-tertiary);
+  margin:0 0 2px;
+}
+/* State A. Four short lines, each on its own, read as a small verse
+   rather than a paragraph of instructions — the four things the first
+   story will actually ask of them, in the order it asks. */
+.creation-flow-journey-lines{
+  max-width:420px;
+  margin:clamp(6px,1.6vh,16px) auto clamp(14px,3vh,30px);
+  text-align:center;
+}
+.creation-flow-journey-line{
+  margin:0 0 6px;
+  font-size:16px;
+  line-height:1.5;
+  color:var(--text-secondary);
+}
+.creation-flow-journey-line:last-child{ margin-bottom:0; color:var(--navy); font-weight:600; }
+.creation-flow-begin-btn{
+  /* .creation-flow-start-btn is declared LATER in this file at equal
+     specificity and carries width:100% for Screen 2's full-width Start
+     Creating — one door in the middle of a quiet screen is not that
+     button's shape, so these three are marked rather than reordered
+     (the same cascade-order trap _renderMyProjectsScreen's own grid
+     already hit once). */
+  display:block !important;
+  width:auto !important;
+  min-width:220px;
+  margin:0 auto !important;
+  height:auto !important;
+}
+.creation-flow-begin-btn:hover{
+  transform:translateY(-2px);
+  box-shadow:0 14px 30px rgba(255,203,69,.42), 0 4px 8px rgba(0,0,0,.08);
+}
+/* State B. Three cards, so the grid narrows rather than leaving the
+   fourth column's worth of air the six-tile layout filled. */
+.creation-flow-starter-grid{
+  max-width:760px;
+}
+/* The 🌸 the six-tile cards carry bottom-right would sit on top of the
+   Make affordance; the card already has one thing in that corner. */
+.creation-flow-starter-grid .creation-flow-card::after{ content:none; }
+.creation-flow-starter-grid .creation-flow-card{
+  padding-bottom:clamp(14px,2.2vh,24px);
+}
+.creation-flow-starter-make{
+  /* Pushed to the foot of the card so all three Makes line up even when
+     one description wraps to a second line. */
+  margin-top:auto;
+  padding:6px 18px;
+  border-radius:999px;
+  background:var(--cf-paper-alt);
+  box-shadow:inset 0 0 0 1px var(--cf-line);
+  color:var(--navy);
+  font-size:12.5px;
+  font-weight:700;
+  letter-spacing:.03em;
+}
+.creation-flow-starter-grid .creation-flow-card:hover .creation-flow-starter-make{
+  background:var(--gold);
+  box-shadow:inset 0 0 0 1px var(--gold);
+}
+/* The new door. Same rule, width and quiet treatment as the
+   "Already have something?" band directly beneath it — it belongs to
+   the bottom of the screen, never to the middle of the making. */
+.creation-flow-door{
+  max-width:640px;
+  margin:26px auto 0;
+  padding-top:20px;
+  border-top:1px dashed var(--cf-line);
+  text-align:center;
+}
+.creation-flow-door-title{
+  font-size:15px;
+  font-weight:700;
+  color:var(--navy);
+  margin:0 0 4px;
+}
+.creation-flow-door-line{
+  font-size:13px;
+  color:var(--text-secondary);
+  margin:0 0 12px;
+}
+.creation-flow-door-btn{
+  /* inline-flex, not the app's default block-level flex button: the
+     band centres its children with text-align, which a block box
+     ignores — the door would otherwise sit hard against the left rule. */
+  display:inline-flex !important;
+  align-items:center;
+  justify-content:center;
+  width:auto !important;
+  height:auto !important;
+  padding:10px 26px;
+  border-radius:999px;
+  border:1px solid var(--cf-line);
+  background:var(--cf-paper);
+  color:var(--navy);
+  font-size:14px;
+  font-weight:700;
+  cursor:pointer;
+  margin:0;
+  transition:border-color .18s ease, transform .18s ease, box-shadow .18s ease;
+}
+.creation-flow-door-btn:hover{
+  border-color:var(--gold);
+  transform:translateY(-2px);
+  box-shadow:0 8px 20px rgba(120,90,40,.12);
+}
+@media (max-width:760px){
+  .creation-flow-starter-grid{ grid-template-columns:repeat(2,minmax(140px,1fr)); }
+}
+
 /* ---------- My Projects — reach an existing project without going
    through "what shall we create today" (Screen 1's own entry point,
    plus its own small list screen). ---------- */
