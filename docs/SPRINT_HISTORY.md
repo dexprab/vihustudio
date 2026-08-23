@@ -6197,3 +6197,56 @@ exactly as it always has, which is the correct handled state.
 80/80 across three sections: the SQL executed against real PostgreSQL,
 the letter's composers called, and the page driven on a real browser.
 Build 0621 → 0622.
+
+## Rite II — *The Name on the Green* (build 0623)
+
+Level II's starter story, written from `docs/STUDIO_RITE_LEVEL_II_GARDEN.md`
+and now walkable: twelve beats in `SCREENS_GARDEN`, five new gates, no
+recordings. Full script and reasoning:
+`docs/STUDIO_RITE_LEVEL_II_SCRIPT.md`.
+
+A small green place nobody has claimed. The child writes their name by
+hand, a letter at a time, and puts it on the green. Then it is quiet, and
+somebody should live there — somebody nobody has ever seen before, who
+therefore cannot be found in any box. They draw them, bring them in, let
+them into the green. The next day comes and **they are still there**.
+That last beat is the whole argument and no line explains it: the thing
+the child drew on paper is still here the next day. It stayed. That is
+what My Garden is, and nothing says so.
+
+**Letters first did more work than the decision looked like it was
+making.** A letter needs a pen and the corner of a page and arrives one
+at a time, so the camera — the genuinely fragile thing in this level — is
+learned on the smallest possible object. By the beat where the child
+really leaves the room, they have held paper up to a camera once and
+watched it work. It also settled an open question outright: with letters
+first, the name is written before the thing it might otherwise belong to
+exists, so it can only be the child's own. And the "how many letters"
+question dissolved — beat 2 asks for one, beat 3 asks for *the rest of
+your name*, and the gate is "more than before", never a count. Counting
+to a number would have built a wall in front of a child called Jo.
+
+**Beat 5 is the only beat in any rite where the child leaves the
+screen.** Its nudge waits 25 seconds against 6–12 everywhere else,
+because a child off finding paper is not stuck. Lumo says *"I will
+wait"* and then does; the gap is written rather than left as dead air.
+
+Five gates, all reading synchronous in-memory stores so a condition asks
+them the way it asks the page. Two pairs share a condition and stay
+separate kinds because their nudges differ.
+
+**Two things changed elsewhere with no edit at all**, which is the
+registry work of the previous build paying for itself: Studio Home's
+offer now opens My Garden, because it asks the registry rather than
+holding an id; and Rite III inherits My Garden's tile, because `reveals`
+accumulates and only runnable rites contribute — so while this story did
+not exist the tile stayed out of Rite III, correctly, and appeared the
+moment it did.
+
+Disclosed, and it matters more here than anywhere: **this is the one rite
+a suite cannot finish verifying.** Every other rite lives entirely on
+screen. What a camera does with a five-year-old's pencil letter in a real
+kitchen is not something 16 checks can answer, and the 25-second wait is
+a reasoned number rather than an observed one.
+
+Rite gate 11 → 16, Studio Home 47/47. Build 0622 → 0623.
