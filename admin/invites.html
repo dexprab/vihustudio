@@ -141,7 +141,8 @@
         <h3>Send by WhatsApp</h3>
         <p class="note">Prepares the invitation with its own link and hands it to
            WhatsApp. You press send — no automated messaging, and the tracking is
-           identical either way.</p>
+           identical either way. WhatsApp drops a caption when a picture is
+           attached, so the words come back here to paste.</p>
         <label for="waTo">Phone number <span style="text-transform:none;letter-spacing:0">(with country code)</span></label>
         <input id="waTo" type="text" placeholder="919876543210">
         <label for="waLabel">Who is this? <span style="text-transform:none;letter-spacing:0">(just for your list)</span></label>
@@ -152,6 +153,11 @@
           <button id="sendWa" class="ghost">Message only</button>
         </div>
         <p class="msg" id="waMsg"></p>
+        <div id="waWordsBox" class="hidden">
+          <label for="waWords">The words for this one</label>
+          <textarea id="waWords" readonly rows="7"></textarea>
+          <button id="copyWords" class="ghost">Copy the words</button>
+        </div>
       </div>
 
     </div>
@@ -491,21 +497,63 @@ async function loadCard() {
 }
 loadCard();
 
-// The fallback when the browser cannot hand a file to WhatsApp: put the
-// card in the sender's downloads, put the caption on their clipboard,
-// and open the right chat. Three things they already know how to do,
-// rather than a message telling them their browser is unsupported.
-async function handOver(link, filename) {
-  let copied = false;
-  try { await navigator.clipboard.writeText(waCaption(link)); copied = true; } catch (e) {}
+// PUTTING THE WORDS SOMEWHERE THE SENDER CAN REACH THEM.
+//
+// Two things were learned the hard way here, both reported from a real
+// send, and both worth keeping written down.
+//
+// 1. WHATSAPP DROPS `text` WHEN A FILE IS ATTACHED. navigator.share
+//    ({files, text}) is a request, not a contract — each share target
+//    decides what it honours, and WhatsApp's takes the picture and
+//    throws the caption away. So the caption is NEVER going to ride
+//    along with the image, and nothing here should be written as though
+//    it might.
+//
+// 2. THE CLIPBOARD NEEDS THE CLICK. clipboard.writeText() requires
+//    transient user activation, and `await navigator.share(...)` spends
+//    it. Writing the clipboard AFTER the share — which is what the
+//    first version did — rejects every time, and the rejection was
+//    swallowed by a bare .catch(), so it failed silently and the page
+//    still claimed the words were copied. Copy FIRST, and report what
+//    actually happened.
+//
+// Even copying first is best-effort (a browser can refuse, a slow mint
+// can outlive the activation window), so the words are ALSO written
+// into a box on the page with its own button. That button's click is a
+// fresh activation, so it always works — and if even that is refused,
+// it selects the text so a plain Ctrl+C finishes the job.
+function showWords(text) {
+  const box = $('waWordsBox');
+  $('waWords').value = text;
+  box.classList.remove('hidden');
+}
+
+async function copyWords(text) {
+  try { await navigator.clipboard.writeText(text); return true; }
+  catch (e) { return false; }
+}
+
+$('copyWords').onclick = async () => {
+  const t = $('waWords').value;
+  if (await copyWords(t)) { note($('waMsg'), 'Copied — paste it under the picture.', true); return; }
+  // Last resort: put it under the cursor so Ctrl+C works.
+  $('waWords').focus();
+  $('waWords').select();
+  note($('waMsg'), 'Selected — press Ctrl+C (or Cmd+C) to copy.', true);
+};
+
+// The fallback when the browser cannot hand a file to WhatsApp at all:
+// put the card in the sender's downloads. The words are handled the
+// same way in every path, so this only deals with the picture.
+function downloadCard(filename) {
   try {
     const a = document.createElement('a');
     a.href = URL.createObjectURL(_cardBlob);
     a.download = filename;
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-  } catch (e) {}
-  return copied;
+    return true;
+  } catch (e) { return false; }
 }
 
 $('sendWaCard').onclick = async () => {
@@ -518,6 +566,7 @@ $('sendWaCard').onclick = async () => {
   try {
     const token = await mint('whatsapp', phone, label);
     const link = `${BASE}/?invite=${encodeURIComponent(token)}`;
+    const caption = waCaption(link);
     const name = 'vihuplanet-invite-' + token + '.jpg';
     const file = new File([_cardBlob], name, { type: _cardBlob.type });
 
@@ -525,15 +574,22 @@ $('sendWaCard').onclick = async () => {
     // invitation leaves through the OS, and there is no callback that
     // says it arrived. A share the sender cancels shows as sent and
     // never opened, which is exactly what the roll's four stages are
-    // for — it is the same shape as the message-only path.
+    // for — the same shape as the message-only path.
     await sb.rpc('invite_mark_sent', { p_token: token, p_error: null });
+
+    // The words go up on the page FIRST, so they are reachable however
+    // the rest of this turns out, and the clipboard is attempted while
+    // the click's activation may still be alive.
+    showWords(caption);
+    const copied = await copyWords(caption);
+    const paste = copied
+      ? 'The words are on your clipboard — paste them under the picture.'
+      : 'The words are below — tap Copy the words, then paste them under the picture.';
 
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
       try {
-        await navigator.share({ files: [file], text: waCaption(link) });
-        note($('waMsg'), 'Handed to WhatsApp — pick who it is for and press send. '
-          + 'If the caption did not come with it, it is on your clipboard.', true);
-        await navigator.clipboard.writeText(waCaption(link)).catch(() => {});
+        await navigator.share({ files: [file] });
+        note($('waMsg'), 'Card handed to WhatsApp — pick who it is for. ' + paste, true);
         $('waTo').value = ''; $('waLabel').value = '';
         show();
         $('sendWaCard').disabled = false;
@@ -551,13 +607,11 @@ $('sendWaCard').onclick = async () => {
       }
     }
 
-    const copied = await handOver(link, name);
+    const got = downloadCard(name);
     window.open(`https://wa.me/${phone}`, '_blank', 'noopener');
-    note($('waMsg'), copied
-      ? 'This browser cannot hand a picture straight to WhatsApp. The card is in your '
-        + 'downloads and the words are on your clipboard — attach it and paste.'
-      : 'This browser cannot hand a picture straight to WhatsApp. The card is in your '
-        + 'downloads; use Message only for the words.', true);
+    note($('waMsg'), (got
+      ? 'This browser cannot hand a picture straight to WhatsApp, so the card is in your downloads — attach it. '
+      : 'This browser cannot hand a picture straight to WhatsApp. ') + paste, true);
     $('waTo').value = ''; $('waLabel').value = '';
     show();
   } catch (e) {
