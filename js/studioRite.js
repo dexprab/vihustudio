@@ -2613,11 +2613,66 @@ const StudioRite=(function(){
           // partial or abandoned Rite can unlock the Studio — and an
           // opt-in rite writes nothing at all, because nothing depends
           // on having taken it (docs/STUDIO_RITE_LEVELS.md §6).
-          if(_rite.unlocksStudio) markComplete();
+          if(_rite.unlocksStudio){
+            markComplete();
+            _teardown();
+            _offerCreatorCeremony();
+            return;
+          }
           _teardown();
         });
       }).catch(abandon);
     }catch(e){ abandon(); }
+  }
+
+  // BECOMING A CREATOR IS FINISHING THE FIRST STORY, not sharing it.
+  //
+  // Decided by the product owner after asking why sharing was the
+  // mandate: *"i will also lean towards 3"* — Rite I's completion
+  // awakens the Magic Card, and sharing keeps its own weight afterwards.
+  //
+  // It reverses a stated principle, so the reasoning belongs here.
+  // Canon 4 said the Ceremony "is never a reward for finishing
+  // onboarding — the child earns it by making something and then giving
+  // it to the world", and that reads well until you notice what a Magic
+  // Card actually IS. It is not a badge. It is identity, and identity is
+  // the only thing that makes a child's work survive: an unclaimed
+  // Traveller's projects are wiped the next time a genuinely new session
+  // starts (js/travellerSaveNotice.js), and a card is what backs them up
+  // and recognises the child on another device (Decision 19).
+  //
+  // So the single thing protecting a child's work was gated behind a
+  // PUBLIC ACT — and it fell hardest on the shy child, the one least
+  // likely to give a story away and most likely to want a private
+  // studio. Decision 22 had already noticed that case and kept it;
+  // this is the same case, decided the other way.
+  //
+  // WHAT SHARING KEEPS: everything else. It is still the only thing that
+  // puts a story in the Ether, still what stamps `publishedAt`, still
+  // what plays the Story Birth. Only WHO holds a card changed, never
+  // what sharing means.
+  //
+  // Order matters. The rite's own overlay comes down first, because the
+  // Ceremony is a full-screen overlay of its own and would otherwise
+  // open underneath one. A short beat after the teardown lets the
+  // rite's closing line land rather than being cut off by a ceremony.
+  //
+  // Idempotent by construction: `shouldOfferAwakening()` is false once a
+  // card exists, so a child who DID share on the rite's last beat
+  // already had their Ceremony there and meets nothing here. This only
+  // ever fires for the child who declined — which is exactly the child
+  // the change is for.
+  function _offerCreatorCeremony(){
+    try{
+      if(typeof MagicCard==='undefined' || typeof MagicCardUI==='undefined') return;
+      if(!MagicCard.shouldOfferAwakening()) return;
+      setTimeout(function(){
+        try{
+          if(!MagicCard.shouldOfferAwakening()) return;
+          MagicCardUI.showAwakening(function(){});
+        }catch(e){}
+      },900);
+    }catch(e){}
   }
 
   // The one entry point js/app.js calls. Never throws, never leaves the

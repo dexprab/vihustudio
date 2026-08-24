@@ -6415,3 +6415,50 @@ keep-button style rather than gold.
 says *"Your book, saved onto this computer. Yours to keep."*
 
 Rite gate 16/16, Studio Home 47/47. Build 0626 → 0627.
+
+## Becoming a Creator is finishing the first story (build 0628)
+
+The product owner asked why sharing had become the mandate for becoming a
+Creator, weighed three ways to change it, and chose: *"i will also lean
+towards 3"* — Rite I's completion awakens the Magic Card, and sharing
+keeps its own weight afterwards.
+
+**It was never introduced as a mandate about sharing.** Canon 4's
+original sequence is `Traveller → Story Egg → Create → First Publish →
+Magic Card awakens`; the card was tied to publishing from the start, back
+when publishing was one act. Canon 6 then made the Rite *end* with
+sharing, and Decision 12 split finishing from sharing and had to move the
+Ceremony to sharing, because `publishedAt` moved there — stamping it on
+finishing was putting every finished story into the Ether without anyone
+choosing to.
+
+**This reverses a stated principle, so the reasoning is recorded in
+full.** Canon 4 said the Ceremony *"is never a reward for finishing
+onboarding — the child earns it by making something and then giving it to
+the world"*, and that reads well until you notice what a Magic Card is.
+It is not a badge. It is identity, and identity is the only thing that
+makes a child's work survive: an unclaimed Traveller's projects are wiped
+the next time a genuinely new session starts, and a card is what backs
+them up and recognises them on another device (Decision 19). So the one
+thing protecting a child's work was gated behind a **public act** — and
+it fell hardest on the shy child, the one least likely to give a story
+away and most likely to want a private studio. Decision 22 had already
+noticed that exact case and kept it; this is the same case, decided the
+other way.
+
+**Sharing keeps everything else.** It is still the only thing that puts a
+story in the Ether, still what stamps `publishedAt`, still what plays the
+Story Birth. Only *who holds a card* changed, never what sharing means.
+
+Two implementation notes. **Order:** the rite's own overlay comes down
+before the Ceremony opens, because the Ceremony is a full-screen overlay
+of its own and would otherwise appear underneath one, and a short beat
+lets the rite's closing line land rather than being cut off.
+**Idempotence is by construction:** `shouldOfferAwakening()` is false once
+a card exists, so a child who DID share on the rite's last beat had their
+Ceremony there and meets nothing here. This only ever fires for the child
+who declined — which is exactly the child the change is for.
+
+Canon 4 and Decision 8 amended in place, both marked as amendments with
+their old wording quoted rather than deleted. Three new checks (C1–C3) in
+the rite gate suite, 16 → 19. Studio Home 47/47. Build 0627 → 0628.

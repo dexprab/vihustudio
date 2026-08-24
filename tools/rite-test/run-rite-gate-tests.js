@@ -215,6 +215,47 @@ function check(cond, name, note) {
     'N5 the third rite inherits My Garden from the second, with neither naming the other',
     cumulative.join(' '));
 
+  // ---------------------------------------------------------------
+  // C — BECOMING A CREATOR IS FINISHING THE FIRST STORY.
+  //
+  // The product owner, having asked why sharing was the mandate, chose
+  // to move it: Rite I's completion awakens the Magic Card, and sharing
+  // keeps its own weight afterwards. The case this exists for is the
+  // child who finishes the Rite and DECLINES to share — before this
+  // they held no card, which meant no backup and no recognition on
+  // another device, because the only thing protecting their work was
+  // gated behind a public act.
+  //
+  // The seam is asserted rather than the ceremony's pixels: what must
+  // be true is that the rite offers the awakening when one is still
+  // available, and never when a card already exists.
+  console.log('-- C: the card comes from finishing, not from sharing');
+  await page.goto(BASE + '/studio.html?author=on');
+  await page.waitForFunction(() => typeof StudioRite !== 'undefined'
+    && typeof MagicCard !== 'undefined', null, { timeout: 20000 });
+
+  const offer = await page.evaluate(() => {
+    localStorage.clear();
+    const before = MagicCard.shouldOfferAwakening();
+    // a child who has finished the Rite and shared nothing
+    StudioRite.markComplete();
+    return { cards: MagicCard.list().length, complete: StudioRite.isComplete(), offerable: before };
+  });
+  check(offer.offerable === true,
+    'C1 a Traveller who has never shared is still owed a Ceremony', JSON.stringify(offer));
+  check(offer.complete === true && offer.cards === 0,
+    'C2 finishing the Rite is recorded without a card existing yet', JSON.stringify(offer));
+
+  // …and once a card exists the offer is spent, so a child who shared on
+  // the rite's last beat meets nothing extra when the rite ends.
+  const spent = await page.evaluate(() => {
+    MagicCard.claim('Test');
+    return { cards: MagicCard.list().length, offerable: MagicCard.shouldOfferAwakening() };
+  });
+  check(spent.cards === 1 && spent.offerable === false,
+    'C3 and once a card exists the Ceremony is spent — a child who shared meets nothing twice',
+    JSON.stringify(spent));
+
   check(pageErrors.length === 0, 'H1 zero page errors',
     pageErrors.slice(0, 2).join(' | '));
 

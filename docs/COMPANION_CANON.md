@@ -174,14 +174,32 @@ The first time a Creator shares a story with VihuPlanet is the **Creator
 Ceremony**, not merely a publish action. It fires at most once, ever
 (`MagicCard.shouldOfferAwakening()`).
 
-For most Creators that moment now arrives at the **end of Studio Rite**
-(Canon 6, Canon 7): the Rite ends with the child choosing to let their
-first story become part of VihuPlanet, and the Ceremony is the
-consequence of that choice. It is never a reward for finishing
-onboarding — the child earns it by making something and then giving it
-to the world. A child who declines simply reaches the Ceremony later, on
-whichever story they do choose to share. The sequence itself is
-unchanged:
+**AMENDED: the Ceremony now arrives on FINISHING the first story, not
+on sharing it.** Decided by the product owner after asking why sharing
+had become the mandate. This paragraph used to read *"it is never a
+reward for finishing onboarding — the child earns it by making something
+and then giving it to the world"*, and that reads well until you notice
+what a Magic Card actually **is**.
+
+It is not a badge. It is identity — and identity is the only thing that
+makes a child's work survive. An unclaimed Traveller's projects are wiped
+the next time a genuinely new session starts, and a card is what backs
+them up and recognises the child on another device (Decision 19). So the
+single thing protecting a child's work was gated behind a **public act**,
+and that fell hardest on the shy child: the one least likely to give a
+story away, and most likely to want a private studio.
+
+So the Ceremony now fires when Rite I completes — a child who made a
+story and chose not to share it is a Creator, and their work is kept
+safe. **Sharing keeps everything else**: it is still the only thing that
+puts a story in the Ether, still what stamps `publishedAt`, still what
+plays the Story Birth. Only *who holds a card* changed, never what
+sharing means.
+
+It remains at most once ever: `shouldOfferAwakening()` is false once a
+card exists, so a child who DOES share on the rite's last beat has their
+Ceremony there and meets nothing extra when the rite ends. The sequence
+itself is otherwise unchanged:
 
 ```
 Traveller
@@ -190,7 +208,7 @@ Story Egg
   ↓
 Create
   ↓
-First Publish
+First story finished  (was: First Publish)
   ↓
 Magic Card awakens
   ↓
