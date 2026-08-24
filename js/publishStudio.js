@@ -1097,6 +1097,7 @@ const PublishStudio=(function(){
   let _celebShareBtn=null;
   let _celebKeepsHost=null;
   let _celebVideo=null;
+  let _celebPlayBtn=null;
   let _celebKeeps=null;
   let _celebVideoURL=null;
 
@@ -1142,16 +1143,44 @@ const PublishStudio=(function(){
     // (single-destination publish, or filming failed), the cover
     // stays exactly as it always was.
     //
-    // `controls` is deliberately on: the Publish click gives the page
-    // sticky user activation so .play() normally succeeds, but if a
-    // browser refuses autoplay anyway the child still has a real play
-    // button rather than a frozen first frame.
+    // NO BROWSER CHROME IN A CHILD'S CELEBRATION. `controls` used to be
+    // on, as a fallback for a browser that refuses autoplay — the right
+    // instinct, the wrong instrument. What it actually put at the
+    // emotional peak of the product was Chrome's own player: a grey
+    // play triangle, a speaker, a fullscreen box, and an overflow menu
+    // offering Download, Picture-in-picture and Playback speed to a
+    // five-year-old. And autoplay IS refused often enough that this was
+    // the ordinary case rather than the fallback.
+    //
+    // The fallback survives in our own language instead: a soft play
+    // button over the film, shown only while it is not playing, which
+    // is also what makes "Watch how your story came to life" an
+    // invitation rather than an instruction pointing at a still frame.
     _celebVideo=document.createElement('video');
     _celebVideo.className='publish-celebration-video hidden';
     _celebVideo.setAttribute('playsinline','');
-    _celebVideo.setAttribute('controls','');
     _celebVideo.loop=false;
     book.appendChild(_celebVideo);
+
+    _celebPlayBtn=document.createElement('button');
+    _celebPlayBtn.type='button';
+    _celebPlayBtn.className='publish-celebration-play hidden';
+    _celebPlayBtn.setAttribute('aria-label','Play');
+    _celebPlayBtn.innerHTML='<span>▶</span>';
+    _celebPlayBtn.addEventListener('click',function(){
+      try{ _celebVideo.play(); }catch(e){}
+    });
+    book.appendChild(_celebPlayBtn);
+    // The button IS the play state, read from the film itself rather
+    // than from anything this module remembers — so a child pausing,
+    // finishing or replaying can never leave it disagreeing.
+    const _syncPlay=function(){
+      const showing=!_celebVideo.classList.contains('hidden');
+      _celebPlayBtn.classList.toggle('hidden',!showing || !_celebVideo.paused);
+    };
+    ['pause','play','ended','loadeddata','emptied'].forEach(function(ev){
+      _celebVideo.addEventListener(ev,_syncPlay);
+    });
     stand.appendChild(book);
     center.appendChild(stand);
 
@@ -1178,8 +1207,23 @@ const PublishStudio=(function(){
     _celebTakeBtn=document.createElement('button');
     _celebTakeBtn.type='button';
     _celebTakeBtn.className='publish-celebration-choice';
+    // BOTH CHOICES SAY WHAT THEY DO, and they say it in the same amount
+    // of space. The product owner: "the intent is to give final positive
+    // push to become creator" — and Decision 12 forbids the obvious way
+    // to do that, because "the moment one takes the gold the other
+    // becomes the thing you skip".
+    //
+    // It is not needed. Sharing was not losing to Taking; it was losing
+    // to NOT KNOWING. Two buttons of four words each, neither of which
+    // said what would happen, and a child cannot choose the one they
+    // cannot picture. So the push is meaning, not weight: same size,
+    // same colour, same border — one line each, and the sharing line
+    // gets to be about a place this child has already SEEN, because
+    // every Traveller arrives through the Ether and watched it turn.
     _celebTakeBtn.innerHTML='<span class="publish-celebration-choice-glyph">📦</span>'+
-      '<span class="publish-celebration-choice-label">Take My Story</span>';
+      '<span class="publish-celebration-choice-label">Take My Story</span>'+
+      '<span class="publish-celebration-choice-say">Your book and your pictures, '+
+      'saved onto this computer.</span>';
     // Always succeeds. Everything the bundle produced already exists by
     // the time this screen is on — this reveals it, it does not
     // generate it, and there is nothing here that can say no.
@@ -1197,8 +1241,12 @@ const PublishStudio=(function(){
     _celebShareBtn=document.createElement('button');
     _celebShareBtn.type='button';
     _celebShareBtn.className='publish-celebration-choice';
+    // "You keep it too" is the load-bearing half. The fear a child has
+    // about sharing is that it means giving away — and it does not.
     _celebShareBtn.innerHTML='<span class="publish-celebration-choice-glyph">🌌</span>'+
-      '<span class="publish-celebration-choice-label">Share with VihuPlanet</span>';
+      '<span class="publish-celebration-choice-label">Share with VihuPlanet</span>'+
+      '<span class="publish-celebration-choice-say">Your story goes up into the sky '+
+      'you came through, where other Travellers can find it. You keep it too.</span>';
     _celebShareBtn.addEventListener('click',function(){ _beginShare(); });
     _celebChoices.appendChild(_celebShareBtn);
 

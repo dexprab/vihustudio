@@ -232,6 +232,39 @@
 
 .publish-celebration-choice-glyph { font-size: 26px; line-height: 1; }
 .publish-celebration-choice-label { line-height: 1.2; text-align: center; }
+/* What the choice DOES. Identical treatment on both, which is the whole
+   point: Decision 12 keeps the two equal, and the way to push a child
+   toward sharing is to make sharing legible, never to make it louder.
+   Widened together so the two buttons stay the same size as each other
+   whatever their lines say. */
+.publish-celebration-choice { max-width: 250px; }
+.publish-celebration-choice-say {
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1.4;
+  text-align: center;
+  opacity: 0.82;
+}
+
+/* Our own play affordance, over the film. Never the browser's. */
+.publish-celebration-book { position: relative; }
+.publish-celebration-play {
+  position: absolute;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  width: 62px !important; height: 62px !important;
+  margin: 0 !important; padding: 0 !important;
+  border: 0; border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--navy, #1E2F5E);
+  font-size: 22px; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(30, 47, 94, 0.28);
+  transition: transform 0.15s, background 0.2s;
+}
+.publish-celebration-play:hover { transform: translate(-50%, -50%) scale(1.06); background: #fff; }
+.publish-celebration-play.hidden { display: none; }
 
 /* Taking the story is not a decision that closes anything, so the
    button stays where it is — it simply stops being the only thing on

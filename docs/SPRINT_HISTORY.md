@@ -6325,3 +6325,53 @@ COVER — *"Tap ▶ to start reading"* — so a child who presses Finish there
 has read nothing. The button is honestly labelled and the screen is
 theirs to page through, but the read-through's own purpose goes
 unfulfilled by default. Build 0624 → 0625.
+
+## The celebration says what its two choices do (build 0626)
+
+The product owner on the finish screen: *"we need to rework this screen
+also. first time traveller view point"*, then the intent behind it —
+*"the intent is to give final positive push to become creator"*.
+
+**Sharing is not a separate path to becoming a Creator; it IS the path,**
+verified in code rather than remembered. `_completeShare()` is the only
+caller of `MagicCard.shouldOfferAwakening()` anywhere, and its own
+comment says why: *"Canon 6 places it here and nowhere else: it is the
+consequence of a child choosing to let their story become part of
+VihuPlanet."* Decision 12 moved the Ceremony there from finishing,
+alongside `publishedAt` and `hasEverPublished`.
+
+So the push had to be toward Share — and Decision 12 forbids the obvious
+way to do it: *"neither is styled as the primary one; the moment one
+takes the gold the other becomes the thing you skip."*
+
+**It was not needed. Sharing was not losing to Taking; it was losing to
+not-knowing.** Two buttons of four words each, neither of which said what
+would happen, and a child cannot choose the one they cannot picture. Both
+now carry one line, in identical treatment, at identical size (measured:
+250×160 each) — the push is meaning, not weight. The sharing line names a
+place this child has already SEEN, because every Traveller arrives
+through the Ether and watched it turn, and it ends *"You keep it too"*,
+which is the half that answers the actual fear: that sharing means giving
+away. Nothing mentions the Creator Ceremony — canon is explicit that it
+is a consequence and never a reward, so it stays the surprise it was
+designed to be.
+
+**And the browser is out of the celebration.** `controls` was set on the
+`<video>` as a fallback for a browser refusing autoplay — the right
+instinct, the wrong instrument. What it actually put at the emotional
+peak of the product was Chrome's own player: a grey triangle, a speaker,
+a fullscreen box and an overflow menu offering Download, Picture-in-
+picture and Playback speed to a five-year-old. And autoplay is refused
+often enough that this was the ordinary case, not the fallback — the
+product owner's own screenshot shows it paused under the words *"Watch
+how your story came to life!"*. Replaced with our own soft play button,
+shown only while the film is not playing, its state read from the film
+itself so it can never disagree.
+
+**A trap found while testing, worth knowing:** `PublishTarget.current()`
+returns CANON whenever Author Mode is on, so anyone testing with
+`?author=on` sees the canon finish flow — where *Take My Story* is
+correctly hidden, because a Canon Story is a product asset nobody takes
+home. Two probes reported a missing button before that was the answer.
+
+Rite gate 16/16, Studio Home 47/47. Build 0625 → 0626.
