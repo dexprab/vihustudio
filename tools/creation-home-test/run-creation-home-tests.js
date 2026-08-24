@@ -194,6 +194,33 @@ const FORBIDDEN = [
   check(door && door.title === 'A new door is waiting', 'B6 "A new door is waiting"', JSON.stringify(door));
   check(door && door.line === 'Ready to discover what you can do next?', 'B7 its one line');
   check(door && door.btn === 'Discover', 'B8 the action is Discover');
+  // A NEW DOOR NEEDS TO BE A DOOR. Drawn, not an emoji: 🚪 is a CLOSED
+  // door, and closed is the one thing this must never look like
+  // (Decision 22 — hidden, never locked).
+  const doorArt = await page.evaluate(() => {
+    const a = document.querySelector('#creationFlowContent .creation-flow-door-art svg');
+    if (!a) return null;
+    const r = a.getBoundingClientRect();
+    const txt = (document.querySelector('#creationFlowContent .creation-flow-door') || {}).innerText || '';
+    return { w: Math.round(r.width), h: Math.round(r.height), paths: a.querySelectorAll('path').length, emoji: /🚪/.test(txt) };
+  });
+  check(doorArt && doorArt.w > 40 && doorArt.h > 40,
+    'B8b it is actually drawn, at a size a child can see', JSON.stringify(doorArt));
+  check(doorArt && doorArt.paths >= 4, 'B8c …as a real drawing, not one flat shape', doorArt && doorArt.paths);
+  check(doorArt && !doorArt.emoji, 'B8d and never the closed-door emoji');
+
+  // The World Card band is hidden for now.
+  const band = await page.evaluate(() => {
+    const t = (document.getElementById('creationFlowContent') || {}).innerText || '';
+    return {
+      label: /Already have something/i.test(t),
+      world: /World Card/i.test(t),
+      section: !!document.querySelector('#creationFlowContent .creation-flow-secondary-options')
+    };
+  });
+  check(!band.world, 'B8e the World Card offer is hidden', JSON.stringify(band));
+  check(!band.section && !band.label,
+    'B8f …and its band is absent rather than empty', JSON.stringify(band));
 
   const oldB = OLD_TILES.filter((t) => textB.indexOf(t) >= 0);
   check(oldB.length === 0, 'B9 the six-tile feature menu is gone from state B too', oldB.join(', '));

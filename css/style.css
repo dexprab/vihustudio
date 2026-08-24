@@ -6670,6 +6670,26 @@ body.creation-flow-active .app-header{ display:none; }
   border-top:1px dashed var(--cf-line);
   text-align:center;
 }
+/* The door is drawn, so the light it throws is the only emphasis it
+   needs — no border, no card, no badge. It lifts a little on hover
+   because a door you are about to walk through should answer, but it
+   never moves on its own: it is a card on a shelf, not a prompt
+   (Decision 22). */
+.creation-flow-door-art{
+  display:flex;
+  justify-content:center;
+  margin:0 0 6px;
+  filter:drop-shadow(0 6px 14px rgba(180,140,60,.22));
+  transition:transform .22s ease, filter .22s ease;
+}
+.creation-flow-door:hover .creation-flow-door-art{
+  transform:translateY(-3px);
+  filter:drop-shadow(0 10px 20px rgba(180,140,60,.34));
+}
+@media (prefers-reduced-motion: reduce){
+  .creation-flow-door-art{ transition:none; }
+  .creation-flow-door:hover .creation-flow-door-art{ transform:none; }
+}
 .creation-flow-door-title{
   font-size:15px;
   font-weight:700;

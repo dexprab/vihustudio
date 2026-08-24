@@ -6826,3 +6826,36 @@ bonded Quill and watches the label follow), rite gate 22/22, creation home
 run of creation-home reported 3 failures with no FAIL lines on either
 re-run — server contention from running four suites in a loop against one
 port, not a product change. Build 0635 → 0636.
+
+## A new door needs to be a door (build 0637)
+
+*"a new door needs to be a door. and hide the world card for now."* —
+the product owner, looking at the running Studio Home.
+
+**The invitation said "door" and drew a dashed rule with a button under
+it**, which is a form asking a question rather than something a child
+could walk through. The copy was already the metaphor; only the picture
+was missing. It is now a drawn archway standing open, with warm light
+coming from the other side and spilling onto the floor.
+
+**Drawn rather than an emoji**, and that is the load-bearing part: 🚪 is
+a *closed* door, and closed is the one thing this must never look like —
+Decision 22's "hidden, never locked" is exactly what a shut door on a
+progression card would contradict. Nothing about it is a badge, a level
+or a count; it lifts a little on hover because a door you are about to
+walk through should answer, and it never moves on its own, because it is
+a card on a shelf and not a prompt. Suppressed under reduced motion.
+
+**The World Card offer is hidden** behind one flag, `SHOW_WORLD_CARD` in
+`js/creationFlow.js`. Not a deleted call: the widget, its constellation
+panel and the whole World Card Platform behind it are untouched and
+shipping, and flipping it back is the entire change needed. It was the
+only card in the "Already have something?" band, so the band now renders
+nothing at all — `_secondaryOptions()` already built nothing from an
+empty list, which is the same *absent rather than empty* rule the door
+follows.
+
+Creation home 52/52 (B8b–B8f are new: the art is really drawn and at a
+size a child can see, it is not the closed-door emoji, and the band is
+absent rather than empty), levels 31/31, rite gate 22/22, zero page
+errors. Build 0636 → 0637.

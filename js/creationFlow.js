@@ -854,6 +854,38 @@ const CreationFlow=(function(){
     // (Decision 22). Absent rather than empty when there is no next one.
     if(_nextDoorExists()){
       const door=_el('div','creation-flow-door');
+      // A NEW DOOR NEEDS TO BE A DOOR. Reported by the product owner
+      // looking at the running Studio: the invitation said "door" and
+      // drew a dashed rule with a button under it, which is a form
+      // asking a question rather than something you could walk through.
+      // The copy was already the metaphor; only the picture was missing.
+      //
+      // Drawn rather than an emoji (🚪 is a closed door, and closed is
+      // the one thing this must never look like — Decision 22: hidden,
+      // never locked). It stands OPEN, with warm light coming from the
+      // other side and spilling onto the floor, and nothing about it is
+      // a badge, a level or a count.
+      const art=_el('div','creation-flow-door-art');
+      art.setAttribute('aria-hidden','true');
+      art.innerHTML=
+        '<svg viewBox="0 0 88 112" width="72" height="92">'+
+        '<defs><linearGradient id="cfDoorGlow" x1="0" y1="0" x2="0" y2="1">'+
+        '<stop offset="0" stop-color="#FFF6DA"/><stop offset="1" stop-color="#FFC94A"/>'+
+        '</linearGradient></defs>'+
+        // the light on the floor, in front of the opening
+        '<path d="M18 100 L74 100 L86 110 L8 110 Z" fill="#FFCB45" opacity=".25"/>'+
+        // the way through
+        '<path d="M14 100 L14 46 A30 30 0 0 1 74 46 L74 100 Z" fill="url(#cfDoorGlow)"/>'+
+        // the door itself, standing open inward — the free edge is
+        // shorter than the hinge edge, which is what makes it recede
+        '<path d="M16 99 L16 44 L40 50 L40 93 Z" fill="#D19566"/>'+
+        '<path d="M22 92 L22 50 L34 53 L34 87 Z" fill="none" stroke="#A96F45" stroke-width="1.6" opacity=".55"/>'+
+        '<circle cx="36.5" cy="70" r="2.4" fill="#8A5A3B"/>'+
+        // the frame last, so it sits over both
+        '<path d="M14 101 L14 46 A30 30 0 0 1 74 46 L74 101" fill="none" '+
+        'stroke="#8A5A3B" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/>'+
+        '</svg>';
+      door.appendChild(art);
       door.appendChild(_el('div','creation-flow-door-title','A new door is waiting'));
       door.appendChild(_el('p','creation-flow-door-line','Ready to discover what you can do next?'));
       const btn=_el('button','creation-flow-door-btn','Discover');
@@ -957,9 +989,21 @@ const CreationFlow=(function(){
   // of the six-tile screen unchanged so the journey screens can carry it
   // too: a child who already holds something must be able to reach it
   // whichever screen they are standing on.
+  // WORLD CARD REDEMPTION IS HIDDEN FOR NOW, by the product owner's
+  // decision ("hide the world card for now"). One flag rather than a
+  // deleted call: the widget, its panel and the whole World Card
+  // Platform behind it are untouched and shipping, and turning this
+  // back to true is the entire change needed to bring it back.
+  //
+  // It is the only card in the "Already have something?" band, so with
+  // it hidden the band renders nothing at all — _secondaryOptions()
+  // already builds nothing when the list is empty, which is the same
+  // "absent rather than empty" rule the door follows.
+  const SHOW_WORLD_CARD=false;
+
   function _secondaryOptions(){
     const secondaryCards=[];
-    if(typeof window.CardPlatform!=='undefined'){
+    if(SHOW_WORLD_CARD && typeof window.CardPlatform!=='undefined'){
       secondaryCards.push(_buildCardRedeemWidget());
     }
     // THE "COME HOME ON A NEW DEVICE" RECALL WIDGET IS GONE FROM HERE.
