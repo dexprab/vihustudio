@@ -1,15 +1,18 @@
 # Rite II — My Garden
 
-**Status: place in the order, no story yet.**
-The `my-garden` entry exists in the rite registry (`js/studioRite.js`)
-with `screens:null`, which makes it unrunnable by construction: it
-refuses to start, the Studio Home offer skips it, and it reveals nothing
-to any later rite. **Writing the story below is the only thing that makes
-it real.** Nothing else has to change.
+**Status: built and walkable.** The story this brief called for is
+written — `docs/STUDIO_RITE_LEVEL_II_SCRIPT.md`, *The Name on the Green*
+— and the `my-garden` entry in the rite registry (`js/studioRite.js`)
+now carries its twelve beats and five gates. It was held at
+`screens:null` until then, which made it unrunnable by construction: it
+refused to start, the Studio Home offer skipped it, and it revealed
+nothing to any later rite. Writing the story was the only thing that had
+to change, and it was.
 
 This document is the brief, not the script. It says what Level II is for,
 what it may and may not do, and the shape a story has to have to teach
-it. The script itself — beats, lines, gates — comes next, in the form
+it. The script itself — beats, lines, gates — is
+`docs/STUDIO_RITE_LEVEL_II_SCRIPT.md`, written in the form
 `docs/STUDIO_RITE_LEVEL_III_STORY.md` uses.
 
 ---

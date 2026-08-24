@@ -6500,3 +6500,46 @@ an untouched DOM. Fixed by asking the real function — the claim was true,
 my way of proving it was not.
 
 Rite gate 19 → 22, Studio Home 47/47. Build 0628 → 0629.
+
+## Story is missing (build 0630)
+
+Reported by the product owner against build 0629, with a screenshot: the
+celebration screen had its headline, its line and its two choices, and
+between them a large empty rounded box and no story name at all.
+
+**`ReferenceError: dest is not defined`.** Build 0627 removed "Get My
+Adventure" from the celebration and, with it, the block that had declared
+`const dest=_publishDestination;` — while two later reads of `dest`
+survived, one wording the headline message and one wording the ready
+line. `_enterCelebration()` threw partway down, so everything after the
+throw never ran: the Magic Creation was never attached to the video
+element, the cover was never rendered into its canvas, and the title was
+never set. The screen was not empty because something was missing — it
+was empty because it stopped halfway. The declaration is restored, with a
+comment saying why it outlived the button it was written for.
+
+**Nothing tested this screen.** Three commits of rework landed on the
+celebration in a row and none of them could have caught this, because no
+suite drove a publish to it. `tools/celebration-test/` now does: a real
+blank story through the real `CreationFlow`, the real Finish Story button
+on the Reading stage, the real bundle (a genuine PDF and a genuine
+Magic Creation), and then sixteen questions of the live screen. It runs
+as a Creator, never in Author Mode — `PublishTarget.current()` answers
+CANON whenever Author Mode is on, and the canon celebration deliberately
+hides Take My Story, so the one sanctioned direct door into the Studio is
+the wrong door for this screen. A Studio entry pass is minted instead,
+which is what the real journey does.
+
+The regression assertion is **zero page errors**, not a missing element:
+a throw mid-render leaves a screen that merely looks bare, so the error
+itself has to be the check. Proved rather than asserted — with the
+declaration commented out again the suite fails C4, C5 and C9. C8 alone
+would not have caught it: the cover element was visible at full size and
+simply never drawn into, so C9b now reads the canvas pixels, because
+visible is not the same as drawn.
+
+Also corrected: `docs/STUDIO_RITE_LEVEL_II_GARDEN.md` still opened with
+"place in the order, no story yet" and `screens:null`, which stopped
+being true when *The Name on the Green* was written.
+
+Celebration 16/16, zero page errors. Build 0629 → 0630.

@@ -1744,7 +1744,12 @@ const PublishStudio=(function(){
     // Sprint 9.0.3's destination-aware download label lived here. It
     // named the button this screen no longer has; the only artifact
     // wording left is Take My Story's own, which is the same whatever
-    // the destination produced.
+    // the destination produced. The destination itself is still needed —
+    // it words the message and the ready line below, and removing the
+    // label took its declaration with it, which threw a ReferenceError
+    // partway through this function and left the celebration with no
+    // cover, no film and no title. Reported as "story is missing".
+    const dest=_publishDestination;
     // Sprint 9.0.5 — destination-aware headline message. Reads
     // right for every destination without polluting the shell
     // with per-destination branches.
