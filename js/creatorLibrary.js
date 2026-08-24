@@ -328,10 +328,34 @@
   // with exactly one card has no ambiguity. Never a delete, and
   // anything unplaceable stays unowned (shown to a card-less
   // Traveller, claimable later).
+  // ONE-SHOT PER DEVICE, NOT PER PAGE LOAD (build 0633).
+  //
+  // `_claimedOnce` is a module variable, so this ran again on every
+  // single load — and the "a device with exactly ONE card has no
+  // ambiguity" branch therefore adopted EVERY orphan that ever appeared
+  // on that device, for ever. Two things follow from that and both are
+  // wrong:
+  //
+  //   · a Traveller's throwaway work became the resident Creator's, so
+  //     nothing an unclaimed session made could ever be swept — which
+  //     is exactly "we cannot have anything persisting from unclaimed
+  //     sessions", reported by the product owner with six leftover test
+  //     stories on screen;
+  //   · and a SECOND child's story on a one-card device was handed to
+  //     the first child's card, which is Decision 19's own promise
+  //     broken in the other direction.
+  //
+  // The word legacy is what settles it: this places work that predates
+  // ownership, and that is a migration, so it happens once and is
+  // finished. Anything unowned after it has run is a Traveller's, and
+  // js/travellerReset.js decides what happens to that.
+  const LEGACY_DONE = 'vihu.library.legacyPlaced';
   let _claimedOnce = false;
   function _claimLegacy() {
     if (_claimedOnce) return;
     _claimedOnce = true;
+    try { if (localStorage.getItem(LEGACY_DONE)) return; } catch (e) {}
+    try { localStorage.setItem(LEGACY_DONE, '1'); } catch (e) {}
     const cards = _cards();
     if (!cards.length) return;
     const byName = {};
@@ -385,6 +409,20 @@
     });
     if (n) _scheduleDrainSoon();
     return { ok: true, claimed: n };
+  }
+
+  // …and stops being anybody's at the end of the session. The mirror of
+  // the sweep above, same one rule: only records nobody owns, so a
+  // Creator's drawings are untouchable however many children share the
+  // machine. js/travellerReset.js is the only caller.
+  function removeUnowned() {
+    let n = 0;
+    listAll().forEach(function (r) {
+      if (!r || r.cardId) return;
+      remove(r.id);
+      n++;
+    });
+    return { ok: true, removed: n };
   }
 
   // ---------------------------------------------------------------
@@ -611,6 +649,7 @@
     save: save,
     remove: remove,
     claimUnowned: claimUnowned,
+    removeUnowned: removeUnowned,
     isAvailable: isAvailable,
     drainPendingSync: drainPendingSync
   };

@@ -848,6 +848,41 @@ from vihupapa was still available in the god."*
   Rite has a child make a Story before they have one, so `claim()`
   sweeps unowned records to the new card — only unowned ones, never
   another Creator's.
+- **AND NOTHING AN UNCLAIMED SESSION LEAVES BEHIND SURVIVES A NEW
+  BROWSER SESSION** (build 0633). Reported by the product owner:
+  *"this browser or session persistance is killing us. we cannot have
+  anything persisting from unclaimed sessions."* `js/travellerReset.js`
+  runs once per browser session from the Studio's bootstrap and removes
+  every record **nobody owns** — Stories, drawings, letters and the
+  garden alike. It is the same one-way rule as the sweep above and it
+  is never a delete of anything owned: work belonging to any card, the
+  Story the session slot currently names, and a Story already shared
+  with VihuPlanet are all kept.
+- **What is NOT wiped is the record that the Rite is complete.** That is
+  a gate the product imposed, not the child's work, and Decision 8 says
+  the Rite is completed exactly once — wiping it would make a child who
+  declined a card walk the whole first chapter again in every new tab,
+  which is a wall rather than a clean slate. What this rule exists for
+  is that no child ever meets another child's leftovers, and that is
+  content.
+- **The wipe that already existed could never fire.**
+  `js/gatewaySequence.js` cleared the WHOLE list, so it could only be
+  allowed to run for a session that owned nothing (`!isReturning`) — and
+  the moment a child held a Magic Card every leftover on the device
+  became permanent. Decision 8's amendment made that nearly every
+  session, since a card is minted the instant Rite I completes. Now
+  ownership exists, the sweep no longer has to choose between everything
+  and nothing, so that block is retired and the "Not Me" path takes
+  unowned records only.
+- **Legacy placement is a MIGRATION, and now runs once per device.**
+  `_claimLegacy()`'s "a device with exactly ONE card has no ambiguity"
+  branch was guarded by a module variable, so it re-ran on every page
+  load and adopted *every* orphan that ever appeared on that device.
+  Two consequences, both wrong: nothing an unclaimed session made could
+  ever be swept, and a second child's story on a one-card device was
+  handed to the first child's card — this decision's own promise broken
+  in the other direction. It places work that predates ownership, which
+  happens once and is finished.
 
 ### 22. The Studio a Child Meets Is the One They Completed a Rite In
 

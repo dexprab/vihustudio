@@ -132,10 +132,34 @@ const CreatorProjectStore=(function(){
   // Traveller who holds no card at all — which is what it is. Nothing
   // is ever deleted by this, so a record that cannot be placed today
   // can still be placed later.
+  // ONE-SHOT PER DEVICE, NOT PER PAGE LOAD (build 0633).
+  //
+  // `_claimedOnce` is a module variable, so this ran again on every
+  // single load — and the "a device with exactly ONE card has no
+  // ambiguity" branch therefore adopted EVERY orphan that ever appeared
+  // on that device, for ever. Two things follow from that and both are
+  // wrong:
+  //
+  //   · a Traveller's throwaway work became the resident Creator's, so
+  //     nothing an unclaimed session made could ever be swept — which
+  //     is exactly "we cannot have anything persisting from unclaimed
+  //     sessions", reported by the product owner with six leftover test
+  //     stories on screen;
+  //   · and a SECOND child's story on a one-card device was handed to
+  //     the first child's card, which is Decision 19's own promise
+  //     broken in the other direction.
+  //
+  // The word legacy is what settles it: this places work that predates
+  // ownership, and that is a migration, so it happens once and is
+  // finished. Anything unowned after it has run is a Traveller's, and
+  // js/travellerReset.js decides what happens to that.
+  var LEGACY_DONE='vihu.projects.legacyPlaced';
   var _claimedOnce=false;
   function _claimLegacy(){
     if(_claimedOnce) return;
     _claimedOnce=true;
+    try{ if(localStorage.getItem(LEGACY_DONE)) return; }catch(e){}
+    try{ localStorage.setItem(LEGACY_DONE,'1'); }catch(e){}
     var cards=_cards();
     if(!cards.length) return;
     var byName={};
@@ -178,6 +202,40 @@ const CreatorProjectStore=(function(){
       n++;
     });
     return {ok:true,claimed:n};
+  }
+
+  // …AND A TRAVELLER'S WORK STOPS BEING ANYBODY'S AT THE END OF THE
+  // SESSION.
+  //
+  // "this browser or session persistance is killing us. we cannot have
+  // anything persisting from unclaimed sessions" — the product owner,
+  // looking at six leftover test stories in My Projects.
+  //
+  // The exact mirror of claimUnowned() above and bound by the same one
+  // rule: ONLY records nobody owns. A Story belonging to any card is
+  // untouchable, so a second child on a shared machine can no more
+  // destroy a Creator's work by walking in than they could take it
+  // (Decision 19 — it is a filter, never a delete, and that still holds
+  // for everything that has an owner).
+  //
+  // Two things are kept even so. `preserveIds` carries the Story the
+  // session slot currently names, because a child mid-story who opens a
+  // new tab must not lose the thing they are making — the same
+  // safeguard js/gatewaySequence.js's own wipe already had. And a Story
+  // that has been SHARED is never removed: it was given to VihuPlanet
+  // on purpose (Decision 15), and taking it back is not this rule's to
+  // make.
+  function removeUnowned(opts){
+    var keep=(opts&&Array.isArray(opts.preserveIds))?opts.preserveIds:[];
+    var n=0;
+    listAll().forEach(function(r){
+      if(!r || r.cardId) return;
+      if(keep.indexOf(r.id)>=0) return;
+      if(r.publishedAt || (r.data && r.data.publishedAt)) return;
+      _cache().removeLocal(r.id);
+      n++;
+    });
+    return {ok:true,removed:n};
   }
 
   // THE STORIES THAT WERE ALREADY SHARED.
@@ -474,6 +532,7 @@ const CreatorProjectStore=(function(){
     list:list,
     listAll:listAll,
     claimUnowned:claimUnowned,
+    removeUnowned:removeUnowned,
     get:get,
     upsert:upsert,
     remove:remove,

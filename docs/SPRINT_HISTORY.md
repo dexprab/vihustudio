@@ -6652,3 +6652,54 @@ zero page errors. Build 0631 → 0632.
 then the column is missing, every recall returns no record, and a
 cross-device Creator is grandfathered — which is the fail-open direction
 and costs nobody a control.
+
+## Unclaimed sessions leave nothing behind (build 0633)
+
+*"this browser or session persistance is killing us. we cannot have
+anything persisting from unclaimed sessions"* — the product owner,
+looking at six leftover test stories filling My Projects.
+
+**The wipe that already existed could never fire.**
+`js/gatewaySequence.js` has cleared My Projects since *"traveller should
+not see projects of previous creators"* — but it cleared the WHOLE list,
+so it could only be allowed to run for a session that owned nothing
+(`!isReturning`). The moment a child holds a Magic Card every leftover on
+that device becomes permanent, and Decision 8's amendment made that
+nearly every session: a card is minted the instant Rite I completes.
+
+Ownership exists now (Decision 19), so the sweep no longer has to choose
+between everything and nothing. `js/travellerReset.js` runs once per
+browser session from the Studio's bootstrap, before a single store is
+read, and removes what **nobody owns** — Stories, drawings, letters and
+the garden through one `removeUnowned()` per store, the exact mirror of
+the `claimUnowned()` each already had. It keeps work belonging to any
+card, the Story the session slot names, and a Story already shared with
+VihuPlanet.
+
+**Not wiped: that the Rite is complete.** That is a gate the product
+imposed, not the child's work, and Decision 8 says the Rite is completed
+exactly once. Wiping it would make a child who declined a card walk the
+whole first chapter again in every new tab — a wall, not a clean slate.
+
+**A second bug found while proving the first.** `_claimLegacy()` was
+guarded by a module variable, so it ran again on every page load — and
+its "a device with exactly ONE card has no ambiguity" branch therefore
+adopted *every* orphan that ever appeared on that device, for ever. A
+Traveller's throwaway work became the resident Creator's, so nothing an
+unclaimed session made could ever be swept; and a second child's story on
+a one-card device was handed to the first child's card, which is Decision
+19's own promise broken the other way. The word *legacy* settles it: it
+places work that predates ownership, which is a migration, so it is now
+one-shot per device.
+
+**Two invalid tests, caught and fixed rather than trusted.** A second
+Playwright context gets its own IndexedDB, so the "new browser session"
+check was passing by measuring an empty store; sessionStorage is the
+actual mechanism, so clearing it in the same storage is the honest
+simulation. And `page.reload()` landed on VihuPlanet — Author Mode is
+stripped from the address bar the moment it is read (Decision 13), so the
+reloaded URL has no param and `js/studioEntry.js` correctly sends it
+home. Both were measuring the wrong thing and both said "pass".
+
+Traveller reset 13/13, levels 31/31, rite gate 22/22, creation home
+47/47, garden 103/103, zero page errors. Build 0632 → 0633.

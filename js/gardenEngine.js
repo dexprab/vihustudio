@@ -807,7 +807,17 @@
   // a garden into density pressure that a healthy one never reaches. It
   // is the tuning surface, not product state: nothing in the Studio
   // reads it, nothing writes it, and it is not persisted.
+  // AND A TRAVELLER'S GARDEN DOES NOT OUTLIVE THEIR SESSION.
+  // "we cannot have anything persisting from unclaimed sessions" — the
+  // product owner. Only ever the unowned record: a garden belonging to
+  // a card is never touched, which is the same one-way rule claim()
+  // above already follows. js/travellerReset.js is the only caller.
+  function forgetTraveller() {
+    try { localStorage.removeItem(TRAVELLER_KEY); return { ok: true }; }
+    catch (e) { return { ok: false }; }
+  }
+
   const api = { state: state, captured: captured, onChange: onChange, claim: claim,
-                lifecycle: LIFECYCLE };
+                forgetTraveller: forgetTraveller, lifecycle: LIFECYCLE };
   try { window.LivingGarden = api; } catch (e) {}
 })();

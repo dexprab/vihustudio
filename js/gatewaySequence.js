@@ -154,10 +154,10 @@
   'use strict';
 
   const ASSETS_BASE='assets/';
-  // sessionStorage marker for "has the Gateway already run once in this
-  // tab's own browser session" -- see the My-Projects-clearing block
-  // inside begin() below.
-  const GATEWAY_SESSION_MARKER='vihu-gateway-session-entered';
+  // The "has the Gateway already run once in this browser session"
+  // marker lived here and had exactly one reader — the My-Projects
+  // wipe, which moved to js/travellerReset.js at build 0633 and keeps
+  // its own once-per-session marker. Nothing else ever asked.
   // A brief settle before anything happens — mounting the very first
   // Gate video takes a beat to fade in.
   const GATE_SETTLE_MS=600;
@@ -699,51 +699,23 @@
         }
       }catch(e){}
 
-      // "if the system has identified its a traveller than all the
-      // caches should be cleared. traveller should not see projects of
-      // previous creators" -- "the cache clean should only be requested
-      // when its entry sequence" (a genuinely NEW browser session, not
-      // every reload) -- scoped to just My Projects (CreatorProjectStore),
-      // per explicit direction. sessionStorage starts empty in every new
-      // tab/window but survives an in-page reload within the same one,
-      // so it's the exact "is this session's very first Gateway entry"
-      // signal needed; the marker is set unconditionally (both paths)
-      // so a Returning Creator boot also correctly counts as "already
-      // entered" for the rest of that tab session.
+      // THIS WIPE MOVED, AND GREW AN OWNER (build 0633).
       //
-      // Task #490 -- a real, confirmed gap: this wipe used to fire
-      // unconditionally for any first-time Traveller, with no way to
-      // tell "a stranger's leftover project on a shared device" (the
-      // wipe's own genuine purpose) apart from "this exact Traveller's
-      // own currently-active, still-in-progress session" -- since
-      // _beginBoot() (and its getSessionStatus() call, which Task #475
-      // taught to fall back to the far more durable
-      // CreatorProjectStore catalog record when the raw session slot has
-      // gone stale) only ever runs AFTER this wipe already fired, a
-      // Traveller reopening the app in a genuinely new browser session
-      // had their own safety net destroyed before it could ever help --
-      // reproducing the exact "restore simply restores blank slate"
-      // complaint. Fixed by reading whichever project id the raw session
-      // slot itself currently names (never trusting ANY OTHER catalog
-      // entry, so a stranger's own leftover project is still wiped
-      // exactly as before) and preserving only that one record through
-      // the wipe.
-      try{
-        const isNewSession=!sessionStorage.getItem(GATEWAY_SESSION_MARKER);
-        sessionStorage.setItem(GATEWAY_SESSION_MARKER,'1');
-        if(isNewSession&&!isReturning&&typeof CreatorProjectStore!=='undefined'&&CreatorProjectStore.clearAll){
-          let activeId=null;
-          try{
-            if(typeof ProjectManager!=='undefined'&&ProjectManager.getSessionStatus){
-              const info=ProjectManager.getSessionStatus();
-              if(info&&info.state==='valid'&&info.data&&info.data.project&&info.data.project.id){
-                activeId=info.data.project.id;
-              }
-            }
-          }catch(e){}
-          CreatorProjectStore.clearAll(activeId?{preserveIds:[activeId]}:undefined);
-        }
-      }catch(e){}
+      // It cleared the whole of My Projects — "traveller should not see
+      // projects of previous creators" — and could therefore only ever
+      // be allowed to run for a session that owned nothing, so it was
+      // gated on `!isReturning`. The moment a child held a Magic Card
+      // every leftover on that device became permanent, and Decision 8's
+      // amendment made that nearly every session: a card is minted the
+      // instant Rite I completes. Reported exactly that way — "we cannot
+      // have anything persisting from unclaimed sessions" — with six
+      // leftover stories on screen.
+      //
+      // Ownership exists now (Decision 19), so the sweep no longer has
+      // to choose between everything and nothing: js/travellerReset.js
+      // takes what NOBODY owns, keeps what anybody does, and runs from
+      // js/app.js's bootstrap before this sequence even begins — for
+      // every session, Traveller or Creator alike.
 
       if(isReturning){
         gateVideoEl=preloadFinalGateVideo(GATE_FINAL_NOEGG_VIDEO_SRC,GATE_FINAL_NOEGG_POSTER_SRC);
@@ -900,7 +872,12 @@
               // declined to be recognized as it would be real data loss.
               try{ if(typeof MagicCard!=='undefined') MagicCard.setActive(null); }catch(e){}
               try{ if(typeof MagicCard!=='undefined') MagicCard.setFlags({awakeningOffered:false}); }catch(e){}
-              try{ if(typeof CreatorProjectStore!=='undefined' && CreatorProjectStore.clearAll) CreatorProjectStore.clearAll(); }catch(e){}
+              // Unowned only, for the same reason the comment above
+              // gives: the Stories belonging to the card this person has
+              // just said is not theirs are still that Creator's, and
+              // they are one recognition away from wanting them. Only
+              // work nobody owns is a stranger's leftover.
+              try{ if(typeof CreatorProjectStore!=='undefined' && CreatorProjectStore.removeUnowned) CreatorProjectStore.removeUnowned(); }catch(e){}
               try{ if(typeof ProjectManager!=='undefined' && ProjectManager.discardSession) ProjectManager.discardSession(); }catch(e){}
               if(gateEls&&gateEls.wrap&&gateEls.wrap.parentNode) gateEls.wrap.parentNode.removeChild(gateEls.wrap);
               try{ if(video) video.pause(); }catch(e){}

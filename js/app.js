@@ -2350,6 +2350,12 @@ function _afterGateway(){
   _riteThenBoot();
 }
 function _runBootstrap(){
+  // NOTHING AN UNCLAIMED TRAVELLER LEAVES BEHIND SURVIVES A NEW BROWSER
+  // SESSION. First of everything, before a single store is read, so no
+  // screen ever renders somebody else's leftovers even for a frame.
+  // Owned work is never touched — see js/travellerReset.js for the four
+  // things it deliberately keeps.
+  try{ if(typeof TravellerReset!=='undefined') TravellerReset.run(); }catch(e){}
   // DECISION 22 — the Studio a child meets is the one they completed a
   // rite in. Written HERE, at the very top of the bootstrap, rather than
   // only on the path through the Rite gate: every route into the Studio

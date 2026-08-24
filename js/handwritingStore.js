@@ -275,6 +275,20 @@
     return { ok: true, claimed: n };
   }
 
+  // …and stops being anybody's at the end of the session. The mirror of
+  // the sweep above, same one rule: only records nobody owns, so a
+  // Creator's own letters are untouchable however many children share
+  // the machine. The unowned FONT row goes with them — a font built
+  // from letters that no longer exist would offer a child handwriting
+  // that is not theirs. js/travellerReset.js is the only caller.
+  function removeUnowned() {
+    let n = 0;
+    const doomed = [];
+    _map.forEach(function (r) { if (r && !r.cardId) doomed.push(r.id); });
+    doomed.forEach(function (id) { remove(id); n++; });
+    return { ok: true, removed: n };
+  }
+
   // save({ch, png, w, h}) — keeping a letter again replaces that
   // card's letter (same id, same cloud row). Same carry-forward
   // discipline as the library's save(): unknown fields survive.
@@ -399,7 +413,7 @@
     list: list, get: get, save: save, remove: remove,
     getFont: getFont, saveFont: saveFont,
     recolorLegacyInk: recolorLegacyInk,
-    claimUnowned: claimUnowned, drainPendingSync: drainPendingSync,
+    claimUnowned: claimUnowned, removeUnowned: removeUnowned, drainPendingSync: drainPendingSync,
     isAvailable: isAvailable
   };
   try { window.HandwritingStore = api; } catch (e) {}
