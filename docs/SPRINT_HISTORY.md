@@ -6789,3 +6789,40 @@ Lumo's closing chapter meets them on it.
 Celebration 28/28 (C14b–C14e are new), rite gate 22/22, creation home
 47/47, levels 31/31, traveller reset 16/16, zero page errors.
 Build 0634 → 0635.
+
+## Back to somebody, not back to a document (build 0636)
+
+*"instead of saying back to story call it back to lumo"* and *"remove
+make another story"* — the product owner.
+
+**The way out names who is waiting.** The instinct is right: a child who
+has just finished something goes back to somebody. It does not always say
+Lumo, though, because outside the Rite that would be a lie —
+`js/companionDirector.js` is explicit that *"Lumo does not bond with any
+kid"*, so the widget in the Studio is the child's own bonded Story
+Companion, and sending them "back to Lumo" would name a character who is
+not on the screen. So it names whoever is actually there: **Lumo during a
+Rite** (he guides it, and the reduction hides the companion widget for
+exactly that reason), the **bonded companion** once one is resolved, and
+Lumo as the fallback anywhere it cannot be — he belongs to VihuPlanet
+itself and attributes nobody (Canon 2), so he is never the wrong answer,
+only sometimes the less specific one.
+
+**Make Another Story is gone**, and it was the only control on that
+screen that threw away what the child was looking at: a `window.confirm`,
+a discarded session and a full page reload, offered in the same small
+grey row as a formats link, at the exact moment a child is least likely
+to read a dialog carefully. Making another story is what Studio Home is
+for and it is one step away. `_makeAnotherStory()` went with it rather
+than being left orphaned — nothing else called it — and the paragraph in
+`js/app.js` that cited it as prior art now describes the mechanism
+instead of pointing at a function that no longer exists.
+
+The celebration's secondary row is down to one thing: 🎨 Other formats →.
+
+Celebration 31/31 (C14b2 and C14e–C14g are new; C14g claims a card with a
+bonded Quill and watches the label follow), rite gate 22/22, creation home
+47/47, levels 31/31, traveller reset 16/16, zero page errors. One batch
+run of creation-home reported 3 failures with no FAIL lines on either
+re-run — server contention from running four suites in a loop against one
+port, not a product change. Build 0635 → 0636.

@@ -460,12 +460,14 @@ if(homeBtnEl){
     // scattered top-level singleton with no single function that resets
     // every field a live session can touch (theme/artworkTheme/
     // creationType/representationId/recallOwnerId/cloudSyncedAt/id/
-    // slides/...) — js/publishStudio.js's own _makeAnotherStory() hit
-    // this exact problem already and solved it the only reliable way:
+    // slides/...) — Publish Studio's own "Make Another Story" hit this
+    // exact problem already and solved it the only reliable way:
     // discard the saved session, then a soft reload for a genuinely
     // blank AppState, reusing that same proven mechanism here rather
     // than hand-resetting fields and risking missing one, the precise
-    // class of gap that caused this bug. The current project is never
+    // class of gap that caused this bug. (That control was retired at
+    // build 0636 and its function went with it; the mechanism it proved
+    // is what this paragraph is about, and it lives on here.) The current project is never
     // actually lost — CreatorProjectStore.upsert() (inside every
     // _writeStorage() autosave, Cloud-Primary Project Storage) already
     // durably keeps a separate copy in "My Projects," independent of

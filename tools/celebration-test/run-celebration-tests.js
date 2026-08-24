@@ -185,12 +185,31 @@ function check(cond, name, note) { (cond ? ok : fail)(name, note); }
         .map((b) => b.textContent.trim())
     };
   });
-  check(exits.worded && exits.label === '← Back to my story',
-    'C14b the way out of the celebration says where it goes', JSON.stringify(exits.label));
+  // It names somebody, not a document — and somebody who is actually
+  // there. Lumo where no bond is resolved (he belongs to VihuPlanet and
+  // attributes nobody); the child's own bonded companion once there is
+  // one, because canon is explicit that Lumo never bonds with anyone.
+  check(exits.worded && /^← Back to \S/.test(exits.label),
+    'C14b the way out of the celebration names who is waiting', JSON.stringify(exits.label));
+  check(exits.label === '← Back to Lumo',
+    'C14b2 …and with no bonded companion resolved, that is Lumo', JSON.stringify(exits.label));
   check(exits.wide > 90, 'C14c …and is drawn as a sentence, not squeezed into a circle', exits.wide + 'px');
   check(!exits.secondary.some((t) => /Keep Editing/i.test(t)),
     'C14d the duplicate that did the identical thing is gone', exits.secondary.join(' / '));
-  check(exits.secondary.length === 2, 'C14e two secondary actions remain', exits.secondary.join(' / '));
+  check(!exits.secondary.some((t) => /Make Another Story/i.test(t)),
+    'C14e the control that threw away the current story is gone', exits.secondary.join(' / '));
+  check(exits.secondary.length === 1, 'C14f one secondary action remains', exits.secondary.join(' / '));
+
+  // A bonded companion is named instead, and the Rite is always Lumo.
+  const named = await page.evaluate(() => {
+    const c = MagicCard.claim('Namer', null, { companionId: 'quill', companionName: 'Quill', companionSpecies: 'quill' });
+    MagicCard.setActive(c.id);
+    PublishStudio._setStage(PublishStudio.STAGES.CELEBRATION);
+    const btn = document.querySelector('.publish-studio-close');
+    return (btn.textContent || '').trim();
+  });
+  check(named === '← Back to Quill',
+    'C14g …and a child with a bonded companion is sent back to THEM', JSON.stringify(named));
 
   // ---- THE RITE'S OWN GATE ------------------------------------------
   // "i clicked take my story, its not moving forward towards the magic

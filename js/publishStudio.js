@@ -1309,12 +1309,16 @@ const PublishStudio=(function(){
     // identical thing is the limbo, not the cure for it. The header
     // control is the one that survives: it is where a hand goes, and it
     // now says where it goes.
-    const another=document.createElement('button');
-    another.type='button';
-    another.className='publish-celebration-secondary-btn';
-    another.innerHTML='<span>📖</span> Make Another Story';
-    another.addEventListener('click',function(){ _makeAnotherStory(); });
-    secondary.appendChild(another);
+    // "📖 MAKE ANOTHER STORY" STOOD HERE AND IS GONE, by the product
+    // owner's decision. It was the only control on this screen that
+    // threw away what the child was looking at — a window.confirm, a
+    // discarded session and a full page reload, offered in the same
+    // small grey row as a formats link, at the exact moment a child is
+    // least likely to read a dialog carefully. Making another story is
+    // what Studio Home is for, and it is one step away.
+    //
+    // _makeAnotherStory() is removed with it rather than left orphaned:
+    // nothing else ever called it.
     // Magic Publish M6 — "Choose Story Destination becomes optional,
     // reachable as 'Other formats' from Celebration for a creator who
     // specifically wants a Carousel or a Reel" (architecture §7.2).
@@ -1879,47 +1883,47 @@ const PublishStudio=(function(){
     _celebSubtitle.textContent=author ? 'by '+author : '';
   }
 
-  function _makeAnotherStory(){
-    // Confirmation — never lose progress without a clear yes.
-    const ok=window.confirm('Start a brand-new story? Your current adventure is already published — this will give you a fresh page to begin.');
-    if(!ok) return;
-    // Reset the project to a clean slate.
+  // -------- Stage state machine -------------------------------------
+  // WHO IS WAITING ON THE OTHER SIDE OF THIS SCREEN.
+  //
+  // "instead of saying back to story call it back to lumo" — the product
+  // owner, and the instinct is right: a child who has just finished
+  // something goes back to somebody, not to a document.
+  //
+  // It names whoever is ACTUALLY there rather than always saying Lumo,
+  // because outside the Rite that would be a lie. Canon is explicit that
+  // "Lumo does not bond with any kid" (js/companionDirector.js ->
+  // _resolveCreatorCompanionId), so the widget in the Studio is the
+  // child's own bonded Story Companion — Quill, Nimbus, whoever hatched
+  // from their Story Egg — and sending them "back to Lumo" would name a
+  // character who is not on the screen.
+  //
+  // During a Rite it IS Lumo: he guides it (Canon 6), and the reduction
+  // hides the companion widget for exactly that reason. And Lumo is the
+  // honest fallback anywhere the bond cannot be resolved — he belongs to
+  // VihuPlanet itself and attributes nobody (Canon 2), so he is never
+  // the wrong answer, only sometimes the less specific one.
+  function _closeCompanionName(){
     try{
-      if(typeof AppState!=='undefined'){
-        AppState.slides=[];
-        AppState.currentSlide=0;
-        if(AppState.project){
-          AppState.project.bookTitle='';
-          AppState.project.title='';
-          AppState.project.author='';
-        }
+      if(typeof StudioRite!=='undefined' && StudioRite.isRunning && StudioRite.isRunning()) return 'Lumo';
+      if(typeof MagicCard!=='undefined' && MagicCard.getActive){
+        const card=MagicCard.getActive();
+        if(card && card.companionName) return String(card.companionName).trim() || 'Lumo';
       }
-      if(typeof ProjectManager!=='undefined' && typeof ProjectManager.discardSession==='function'){
-        ProjectManager.discardSession();
-      }
-      // Soft reload — the simplest path back to a true clean slate. It
-      // has to carry the Studio's entry authority across (js/
-      // studioEntry.js), or the gate at the top of studio.html reads a
-      // clean slate as an unauthorised arrival and lands the child on
-      // VihuPlanet instead of an empty Studio.
-      try{ StudioEntry.renewHere(); }catch(e){}
-      window.location.reload();
-    }catch(e){
-      _close();
-    }
+    }catch(e){}
+    return 'Lumo';
   }
 
-  // -------- Stage state machine -------------------------------------
   // The one place the close control's wording is decided. Worded only on
   // the celebration, and only for a child: an author in Author Mode has
-  // just produced a product asset, and "my story" is not what they are
-  // looking at.
+  // just produced a product asset, and has no companion waiting.
   function _applyCloseLabel(stage){
     if(!_closeBtn) return;
     const worded=(stage===STAGES.CELEBRATION && !_isCanon());
+    const who='Back to '+_closeCompanionName();
     _closeBtn.classList.toggle('is-worded',worded);
-    _closeBtn.textContent=worded ? '← Back to my story' : '✕';
-    _closeBtn.setAttribute('aria-label',worded ? 'Back to my story' : 'Close');
+    _closeBtn.textContent=worded ? '← '+who : '✕';
+    _closeBtn.setAttribute('aria-label',worded ? who : 'Close');
   }
 
   function _setStage(next){
