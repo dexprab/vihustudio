@@ -8549,6 +8549,52 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
 /* The challenge's extra ways forward are CHOICES, not the way out, so
    they are not drawn as the plain underlined link Back is. Same row,
    quieter than the grid, louder than a footnote. */
+/* The camera, in the gate's own panel. Deliberately not VihuPlanet's
+   portal: no Ether behind it, no sweeping line, no reticle and no
+   percentage — it is VihuPlanet looking at the child's stars, and it
+   must never look like scanning a document (Decision 16). */
+.magic-card-scan-window{
+  width:min(360px,80vw);
+  aspect-ratio:4 / 3;
+  margin:4px auto 0;
+  border-radius:18px;
+  overflow:hidden;
+  background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.14);
+  box-shadow:0 10px 30px rgba(0,0,0,.35);
+  transition:border-color .3s ease, box-shadow .3s ease;
+}
+.magic-card-scan-window video{
+  width:100%; height:100%;
+  object-fit:cover;
+  display:block;
+  opacity:0;
+  transition:opacity .5s ease;
+}
+.magic-card-scan-window.is-live video{ opacity:1; }
+/* Stars in view — a warm answer, never a progress bar. */
+.magic-card-scan-window.is-seeing{
+  border-color:rgba(245,197,66,.75);
+  box-shadow:0 10px 34px rgba(245,197,66,.28);
+}
+.magic-card-scan-say{
+  margin-top:12px;
+  font:600 14px/1.4 inherit;
+  color:var(--mc-ink);
+  text-align:center;
+  min-height:20px;
+}
+
+/* Side by side, so the four skies keep the height they need. */
+.magic-card-gate-ways{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  margin-top:12px;
+}
+.magic-card-gate-ways .magic-card-gate-notyou{ margin:0 !important; }
 .magic-card-gate-extra{
   text-decoration:none !important;
   border:1px solid rgba(255,255,255,.18);

@@ -50,20 +50,6 @@
 
   var PARAM = 'story';
   var BORN = 'born';
-  // ⭐ SHOW ME YOUR STARS, ASKED FOR FROM SOMEWHERE ELSE.
-  //
-  // The Studio's own recognition gate can only offer the skies it finds
-  // on THIS device, so a Creator arriving on a machine that has never
-  // met them has nothing to tap. Recognition of that kind lives here and
-  // only here (Decisions 10 and 11: it happens at VihuPlanet, of
-  // everybody, once per arrival), and the camera, the reader and the
-  // drawing board are all on this page. So the Studio sends them back
-  // with an intent rather than growing a second copy of the flow.
-  //
-  // A one-shot INTENT, never state (Decision 23): consumed and stripped
-  // on arrival, exactly as `born` is, so a refresh is an ordinary
-  // arrival and never re-opens the camera on its own.
-  var STARS = 'stars';
 
   // ---------------------------------------------------------------
   // Deep links.  .../vihuplanet/ether/?story=proj_m8x2k1_a7f3
@@ -100,19 +86,6 @@
   function bornProjectId() {
     try { return new URLSearchParams(window.location.search).get(BORN); }
     catch (e) { return null; }
-  }
-
-  function wantsStars() {
-    try { return new URLSearchParams(window.location.search).get(STARS) === '1'; }
-    catch (e) { return false; }
-  }
-
-  function clearStars() {
-    try {
-      var url = new URL(window.location.href);
-      url.searchParams.delete(STARS);
-      window.history.replaceState(null, '', url.toString());
-    } catch (e) {}
   }
 
   function clearBorn() {
@@ -654,16 +627,6 @@
         if (ev.target.closest('[data-bigger-act="away"]') ||
             ev.target.hasAttribute('data-bigger-veil')) closeBigger();
       });
-    }
-
-    // The intent, honoured once the child is actually in the universe.
-    // Behind the threshold, like everything else — Decision 10's turn is
-    // the teaching, and skipping it for an arrival that came from the
-    // Studio would give them less of the universe, not more.
-    if (wantsStars()) {
-      clearStars();
-      if (thresholdCrossed) openCardScan();
-      else onThreshold = openCardScan;
     }
 
     if (actionsEl) {

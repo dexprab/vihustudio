@@ -536,7 +536,17 @@ const MagicCardUI=(function(){
         // answer.
         extras:[
           {label:'⭐ Show me your stars', onTap:function(){
-            try{ window.location.href='index.html?stars=1'; }catch(e){}
+            // IN PLACE, not a trip to VihuPlanet. The hand-off this
+            // shipped with was overruled: "the show me your stars flow
+            // need to open camera right here not redirect to ether."
+            _renderCardScan(panel,{
+              onFound:function(card){
+                _hide();
+                refreshHeaderBadge();
+                onResult(true,card&&card.id);
+              },
+              onCancel:showChallenge
+            });
           }},
           {label:'🌱 Continue as a Traveller', onTap:function(){
             _hide();
@@ -1444,6 +1454,171 @@ const MagicCardUI=(function(){
     panel.style.setProperty('--awaken-density',density.toFixed(3));
   }
 
+  // ---------- ⭐ Show me your stars, IN PLACE ----------
+  //
+  // "the show me your stars flow need to open camera right here not
+  // redirect to ether" — the product owner, overruling the hand-off
+  // this shipped with a build earlier.
+  //
+  // The reason for the hand-off was that recognition belongs at
+  // VihuPlanet (Decisions 10, 11, 16) and a second copy of the flow is
+  // a second thing to keep in step. That concern is real and is
+  // answered a different way here: NO POLICY LIVES IN THIS FUNCTION.
+  // What a sky means is still CreatorRecognition's, what a card looks
+  // like is still MagicCardVision's, and this is a camera, a countdown
+  // and three lines of copy over the top of both. If recognition ever
+  // changes, it changes in those two files and this follows for free.
+  //
+  // Deliberately smaller than VihuPlanet's: no portal, no Ether behind
+  // it, no Lumo dialogue, and it reads the WHOLE frame rather than a
+  // cropped window, because there is no window here to crop to. Same
+  // language rules — never "failed", "invalid" or "not found", only
+  // "I couldn't see your stars yet" (Decision 16).
+  function _renderCardScan(panel,opts){
+    panel.innerHTML='';
+    panel.classList.remove('magic-card-gate-panel--challenge');
+
+    const win=_el('div','magic-card-scan-window');
+    const video=document.createElement('video');
+    video.setAttribute('playsinline','');
+    video.muted=true;
+    video.autoplay=true;
+    win.appendChild(video);
+    panel.appendChild(win);
+
+    const say=_el('div','magic-card-scan-say','✨ Show me your Magic Card ✨');
+    panel.appendChild(say);
+
+    const ways=_el('div','magic-card-gate-ways');
+    panel.appendChild(ways);
+
+    let stream=null, scanner=null, busy=false, capturing=false;
+    let steadyFor=0, counting=null, state=null, dead=false;
+
+    function stop(){
+      dead=true;
+      if(counting){ clearTimeout(counting); counting=null; }
+      try{ if(scanner) scanner.stop(); }catch(e){}
+      try{ if(stream) MagicCardVision.closeCamera(stream); }catch(e){}
+      stream=null; scanner=null;
+    }
+    function leave(fn){ stop(); fn(); }
+
+    function way(label,onTap,extra){
+      const b=_el('button','magic-card-gate-notyou'+(extra?' magic-card-gate-extra':''),label);
+      b.type='button';
+      b.addEventListener('click',onTap);
+      ways.appendChild(b);
+      return b;
+    }
+
+    function offerWaysBack(){
+      ways.innerHTML='';
+      way('🔁 Try again',function(){ leave(function(){ _renderCardScan(panel,opts); }); },true);
+      way('← Back to the skies',function(){ leave(opts.onCancel); });
+    }
+    offerWaysBack();
+
+    function failed(line){
+      busy=false; capturing=false;
+      say.textContent=line;
+      win.classList.remove('is-seeing');
+    }
+
+    // THE CAMERA MAY SIMPLY NOT BE AVAILABLE, and that is a state, not
+    // an error: refused permission, no camera, an insecure origin. The
+    // child is told where they are and handed back, never blamed.
+    if(typeof MagicCardVision==='undefined' || !MagicCardVision.openCamera){
+      say.textContent='I can\u2019t see your Magic Card from here.';
+      return;
+    }
+
+    MagicCardVision.openCamera(video).then(function(s){
+      if(dead){ try{ MagicCardVision.closeCamera(s); }catch(e){} return; }
+      stream=s;
+      win.classList.add('is-live');
+      scanner=MagicCardVision.scan(video,{
+        onState:function(st){
+          win.classList.toggle('is-seeing',st==='stars');
+          if(busy || st===state) return;
+          state=st;
+          if(st==='stars') say.textContent='I can see your stars\u2026';
+          else if(st==='something') say.textContent='Bring it a little closer\u2026';
+          else say.textContent='\u2728 Show me your Magic Card \u2728';
+        },
+        // Steadiness earns the photograph — a picture taken while a
+        // child is waving their card is worth no more than a frame of
+        // video. Same rule VihuPlanet's own reader follows.
+        onSteady:function(move,marks){
+          if(busy||capturing) return;
+          if(move<0.035 && marks>=4){
+            steadyFor++;
+            if(steadyFor>=8 && !counting){
+              counting=setTimeout(function(){ counting=null; shoot(); },700);
+            }
+          }else{
+            steadyFor=0;
+            if(counting){ clearTimeout(counting); counting=null; }
+          }
+        }
+      });
+    }).catch(function(){
+      say.textContent='I can\u2019t see your Magic Card from here.';
+    });
+
+    function shoot(){
+      if(capturing||busy||dead) return;
+      capturing=true;
+      say.textContent='\u2728';
+      const shot=document.createElement('canvas');
+      const w=video.videoWidth||1280, h=video.videoHeight||720;
+      shot.width=w; shot.height=h;
+      try{ shot.getContext('2d').drawImage(video,0,0,w,h); }
+      catch(e){ capturing=false; return; }
+      setTimeout(function(){ readShot(shot); },200);
+    }
+
+    function readShot(shot){
+      let read=null;
+      try{ read=MagicCardVision.readStill(shot); }catch(e){}
+      const list=(read&&read.patterns)||[];
+      capturing=false;
+      if(!list.length){ failed('I couldn\u2019t see your stars yet.'); return; }
+      busy=true;
+      say.textContent='Looking for your sky\u2026';
+
+      // recogniseAny asks about every reading the frame is consistent
+      // with, in one round — the reader resolves the grid exactly and
+      // its vertical phase only approximately (Decision 17), so the
+      // true sky is somewhere in that list rather than reliably first.
+      // A wrong reading matches nobody, so the list can never invent an
+      // identity.
+      if(!CreatorRecognition.recogniseAny){ failed('I couldn\u2019t see your stars yet.'); return; }
+      let settled=false;
+      const giveUp=setTimeout(function(){
+        if(settled) return;
+        settled=true;
+        failed('I couldn\u2019t see your stars yet.');
+      },6000);
+      CreatorRecognition.recogniseAny(list.slice(0,8)).then(function(res){
+        if(settled||dead) return;
+        settled=true; clearTimeout(giveUp);
+        if(res && res.outcome===CreatorRecognition.KNOWN && res.card){
+          say.textContent='I know your stars, '+(res.card.nickname||'Star Traveler')+'.';
+          try{ MagicCard.setActive(res.card.id); }catch(e){}
+          try{ CreatorRecognition.markRecognised(res.card.id); }catch(e){}
+          setTimeout(function(){ leave(function(){ opts.onFound(res.card); }); },900);
+          return;
+        }
+        failed('I couldn\u2019t see your stars yet.');
+      }).catch(function(){
+        if(settled) return;
+        settled=true; clearTimeout(giveUp);
+        failed('I couldn\u2019t see your stars yet.');
+      });
+    }
+  }
+
   // Renders the recognition challenge directly into `panel` (replacing
   // whatever was there), mirroring _renderPatternChallenge's own
   // "replace in place, never a second screen" convention.
@@ -1503,19 +1678,23 @@ const MagicCardUI=(function(){
     const grid=_el('div','magic-card-sky-grid');
     panel.appendChild(grid);
 
-    // The footer. `extras` lets a call site put its own ways out under
-    // the grid without this function knowing what any of them mean —
-    // the Studio's gate needs two that the in-Gateway paths do not.
+    // ONE ROW, NOT A STACK. Reported by the product owner: stacked
+    // vertically, the ways out ate the height the four skies needed and
+    // the fitter answered by shrinking them until they were hard to
+    // tell apart — the whole point of the screen. Side by side they
+    // cost one line instead of three.
+    const ways=_el('div','magic-card-gate-ways');
     (opts.extras||[]).forEach(function(x){
       const b=_el('button','magic-card-gate-notyou magic-card-gate-extra',x.label);
       b.type='button';
       b.addEventListener('click',x.onTap);
-      panel.appendChild(b);
+      ways.appendChild(b);
     });
     const back=_el('button','magic-card-gate-notyou',opts.backLabel||'← Back');
     back.type='button';
     back.addEventListener('click',function(){ opts.onBack(); });
-    panel.appendChild(back);
+    ways.appendChild(back);
+    panel.appendChild(ways);
 
     const allCards=opts.cards||[];
     let batchStart=0;
@@ -1672,11 +1851,39 @@ const MagicCardUI=(function(){
     // ResizeObserver keeps it correct afterward (window resize) without
     // ever needing a fixed vh guess again; it disconnects itself the
     // moment this screen is replaced.
-    _fitSkyChallengeToAvailableSpace(panel,gatekeeper.el,grid);
+    // THE OBSERVER COULD WATCH ITSELF, and this stops it — but it is
+    // NOT what "the screen is flickering" turned out to be, and saying
+    // so is the point of this comment.
+    //
+    // The theory was good: the fitter's first act is to REMOVE every
+    // override it previously set and measure again, so on a panel whose
+    // height follows its content each fit could provoke the observer
+    // that provokes the next fit. Measured at 1360x860 and at 760x580,
+    // with and without these guards: the grid width is identical across
+    // twenty samples every time. It converges. The flicker was the
+    // stale document (js/buildStamp.js), not this.
+    //
+    // Kept anyway, because the hazard is real and the guard costs
+    // nothing: `fitting` drops the callbacks a fit provokes itself, and
+    // the remembered height drops everything that is not a genuine
+    // change in the room available. A future screen with one more
+    // element in it should not have to rediscover this.
+    let fitting=false, lastFitH=-1;
+    function refit(){
+      if(fitting) return;
+      fitting=true;
+      try{ _fitSkyChallengeToAvailableSpace(panel,gatekeeper.el,grid); }catch(e){}
+      lastFitH=Math.round(panel.clientHeight);
+      window.requestAnimationFrame(function(){ fitting=false; });
+    }
+    refit();
     if(typeof ResizeObserver!=='undefined'){
       const ro=new ResizeObserver(function(){
         if(!document.contains(panel)){ ro.disconnect(); return; }
-        _fitSkyChallengeToAvailableSpace(panel,gatekeeper.el,grid);
+        if(fitting) return;
+        const h=Math.round(panel.clientHeight);
+        if(h===lastFitH) return;
+        refit();
       });
       ro.observe(panel);
     }

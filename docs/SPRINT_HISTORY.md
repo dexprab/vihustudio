@@ -6900,3 +6900,54 @@ Back to the Ether, following the stars option, crossing the threshold and
 watching the intent be honoured once and stripped. Gate 10/10, rite gate
 22/22, creation home 52/52, levels 31/31, zero page errors.
 Build 0637 → 0638.
+
+## The camera opens where it was asked for (build 0639)
+
+Four things, from the product owner looking at the gate: *"cache buster
+needed. the screen is flickering between old and new screen. the show me
+your stars flow need to open camera right here not redirect to ether. the
+4 patterns shown has been shurnk. instead of showing vertical menu
+options try horizontal."*
+
+**The flicker is the stale document, and I chased the wrong thing
+first.** My theory was a ResizeObserver feedback loop: the sky fitter's
+first act is to remove every override it set and measure again, so on a
+content-sized panel each fit could provoke the observer that provokes the
+next. It is a real hazard and the guards are kept — but it is not this
+bug. Measured at 1360×860 and 760×580, with and without the guards, the
+grid width is identical across twenty samples every time. It converges.
+What "old screen then new screen" actually describes is what
+`js/buildStamp.js`'s own header already spelled out: `?v=` busts every
+script and **nothing busts the document that names them**, so a browser
+holding a cached page keeps asking for exactly the old scripts it knows
+about. The detector was already right and simply waited to be tapped; it
+now **refetches itself once**, guarded two ways — never while a Rite is
+running (a chapter cannot survive its page being replaced, which is the
+original reason this never reloaded), and never twice for the same target
+build, so a cache that ignores the query costs one wasted load and then
+the badge rather than an endless loop on a blank screen.
+
+**The camera opens in place.** The hand-off to `index.html?stars=1` was
+overruled, and the intent is removed from `js/vihuplanetHome.js` rather
+than left as an unused parameter. The concern that argued for it —
+recognition belongs at VihuPlanet, and a second copy is a second thing to
+keep in step — is answered a different way: **no policy lives in the new
+screen.** What a sky means is still `CreatorRecognition.recogniseAny`'s,
+what a card looks like is still `MagicCardVision`'s, and this is a
+camera, a steadiness countdown and three lines of copy over both.
+Deliberately smaller than VihuPlanet's: no portal, no Ether behind it, no
+Lumo dialogue, and it reads the whole frame because there is no cropped
+window here to read. Same language rules — never "failed", "invalid" or
+"not found", only *"I couldn't see your stars yet."*
+
+**The ways out are one row**, which is also why the four skies had
+shrunk: stacked, they ate the height the grid needed and the fitter
+answered by shrinking the skies until they were hard to tell apart —
+which is the entire job of the screen. Side by side they cost one line
+instead of three, and the skies are back at full size (measured, 96px
+each).
+
+Gate 18/18 — including a real camera through Chrome's fake device, and a
+page pretending to be a build behind, watched navigating to `?b=9999`
+exactly once. Rite gate 22/22, creation home 52/52, levels 31/31,
+traveller reset 16/16, zero page errors. Build 0638 → 0639.

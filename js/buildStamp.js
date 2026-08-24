@@ -119,6 +119,44 @@
       if (!text) return;
       var latest = String(text).trim();
       if (!latest || latest === running) return;
+
+      // IT NOW FIXES ITSELF, ONCE.
+      //
+      // "cache buster needed. the screen is flickering between old and
+      // new screen" — the product owner. The mechanism below was
+      // already right and simply waited to be tapped, so a stale
+      // document stayed stale until somebody noticed a four-character
+      // badge in the corner. What that actually looks like from the
+      // outside is one load showing the old screen and the next showing
+      // the new one, which is exactly the report.
+      //
+      // The original reasoning for never reloading stands and is kept:
+      // a page that reloads under a child mid-story is a worse bug than
+      // the one this solves. So the Rite is the one place it still only
+      // offers — a chapter cannot survive its own page being replaced,
+      // and there is nothing else in the Studio that a refetch costs,
+      // because every edit is already autosaved and StudioEntry's
+      // authority is carried across by refetch().
+      //
+      // ONCE, and the guard is the point. If the fresh document comes
+      // back reporting the same old build — a cache that ignores the
+      // query, a half-finished deploy — a second attempt would loop
+      // forever on a blank screen. Remembering which `latest` we have
+      // already tried turns that into a single wasted load and then the
+      // badge, which is a bad state a person can see and act on rather
+      // than one that hides.
+      var riteRunning = false;
+      try {
+        riteRunning = typeof StudioRite !== 'undefined' && StudioRite.isRunning && StudioRite.isRunning();
+      } catch (e) {}
+      var tried = null;
+      try { tried = sessionStorage.getItem('vihu.buildStamp.tried'); } catch (e) {}
+      if (!riteRunning && tried !== latest) {
+        try { sessionStorage.setItem('vihu.buildStamp.tried', latest); } catch (e) {}
+        refetch(latest);
+        return;
+      }
+
       el.textContent = 'build ' + running + ' → ' + latest + ' · tap to update';
       el.style.cssText = BASE.concat([
         'color:#0f1220',

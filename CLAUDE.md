@@ -348,12 +348,13 @@ changes nothing about the Magic Card itself.
   and that grid can only offer the skies it finds on THIS device — so a
   Creator arriving on a machine that has never met them has literally
   nothing to tap, and three wrong tries later they are a Traveller by
-  default. It now offers **⭐ Show me your stars**, which navigates to
-  `index.html?stars=1`; a one-shot INTENT consumed and stripped on
-  arrival exactly as `?born=` is (Decision 23), honoured behind the
-  threshold so the turn is never skipped. It grows no second recognition
-  flow: the camera, the reader and the drawing board live at VihuPlanet
-  and recognition belongs there, of everybody.
+  default. It now offers **⭐ Show me your stars**, and **the camera
+  opens in place** — stated by the product owner after seeing the first
+  version hand off to VihuPlanet instead. No policy lives in that
+  screen: what a sky means is still `CreatorRecognition`'s and what a
+  card looks like is still `MagicCardVision`'s, so it is a camera, a
+  countdown and three lines of copy over both, and recognition still
+  changes in one place.
   **`← Back` on that screen now leaves for the Ether**, and the small
   "Not able to show your stars right now?" screen it used to open is
   retired — its Try Again was a slower way to do nothing (a wrong tap
