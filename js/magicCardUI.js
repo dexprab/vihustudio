@@ -517,24 +517,45 @@ const MagicCardUI=(function(){
           refreshHeaderBadge();
           onResult(true,cardId);
         },
-        onBack:showChoice
+        // THE CORNER CASE THIS SCREEN COULD NOT ANSWER.
+        //
+        // Reported by the product owner: "add show your stars flow here
+        // also. thats to cover one corner case if creator is new to this
+        // login." This grid can only offer the skies it finds on THIS
+        // device, so a Creator arriving on a machine that has never met
+        // them has literally nothing here to tap — every tile is either
+        // somebody else's or a decoy, and three wrong tries later they
+        // are a Traveller by default. That is the one child this whole
+        // identity system exists for: the card is the bridge, not the
+        // browser (Decision 16).
+        //
+        // It does not grow a second recognition flow here. The camera,
+        // the card reader and the drawing board all live at VihuPlanet
+        // and recognition belongs there of everybody (Decisions 10, 11
+        // and 16), so this hands over an intent and lets the real one
+        // answer.
+        extras:[
+          {label:'⭐ Show me your stars', onTap:function(){
+            try{ window.location.href='index.html?stars=1'; }catch(e){}
+          }},
+          {label:'🌱 Continue as a Traveller', onTap:function(){
+            _hide();
+            onResult(false,null);
+          }}
+        ],
+        // …AND BACK LEAVES, rather than opening one more question.
+        //
+        // "back should take you back to ether" — the product owner. It
+        // used to open a small "Not able to show your stars right now?"
+        // screen offering Try Again and Continue as a Traveller, and
+        // both of those are now on the challenge itself where they cost
+        // no extra screen: a wrong tap already retries in place, so Try
+        // Again was never more than a slower way to do nothing.
+        backLabel:'← Back to the Ether',
+        onBack:function(){
+          try{ window.location.href='index.html'; }catch(e){}
+        }
       });
-    }
-    function showChoice(){
-      panel.innerHTML='';
-      panel.classList.remove('magic-card-gate-panel--challenge');
-      panel.appendChild(_el('div','magic-card-gate-welcome',"Not able to show your stars right now?"));
-      const retryBtn=_el('button','magic-card-gate-continue','🔁 Try Again');
-      retryBtn.type='button';
-      retryBtn.addEventListener('click',showChallenge);
-      panel.appendChild(retryBtn);
-      const travellerBtn=_el('button','magic-card-gate-notyou','🌱 Continue as a Traveller');
-      travellerBtn.type='button';
-      travellerBtn.addEventListener('click',function(){
-        _hide();
-        onResult(false,null);
-      });
-      panel.appendChild(travellerBtn);
     }
     showChallenge();
   }
@@ -1482,7 +1503,16 @@ const MagicCardUI=(function(){
     const grid=_el('div','magic-card-sky-grid');
     panel.appendChild(grid);
 
-    const back=_el('button','magic-card-gate-notyou','← Back');
+    // The footer. `extras` lets a call site put its own ways out under
+    // the grid without this function knowing what any of them mean —
+    // the Studio's gate needs two that the in-Gateway paths do not.
+    (opts.extras||[]).forEach(function(x){
+      const b=_el('button','magic-card-gate-notyou magic-card-gate-extra',x.label);
+      b.type='button';
+      b.addEventListener('click',x.onTap);
+      panel.appendChild(b);
+    });
+    const back=_el('button','magic-card-gate-notyou',opts.backLabel||'← Back');
     back.type='button';
     back.addEventListener('click',function(){ opts.onBack(); });
     panel.appendChild(back);

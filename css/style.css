@@ -8546,6 +8546,19 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
   text-underline-offset:3px;
 }
 .magic-card-gate-notyou:hover{ opacity:1; color:var(--mc-ink); }
+/* The challenge's extra ways forward are CHOICES, not the way out, so
+   they are not drawn as the plain underlined link Back is. Same row,
+   quieter than the grid, louder than a footnote. */
+.magic-card-gate-extra{
+  text-decoration:none !important;
+  border:1px solid rgba(255,255,255,.18);
+  border-radius:999px;
+  padding:8px 16px !important;
+  margin:8px 0 0 !important;
+  color:var(--mc-ink);
+  background:rgba(255,255,255,.06);
+}
+.magic-card-gate-extra:hover{ background:rgba(255,255,255,.12); }
 .magic-card-gate-grid{
   width:100%;
   display:grid;

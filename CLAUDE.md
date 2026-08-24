@@ -342,6 +342,23 @@ changes nothing about the Magic Card itself.
   Studio instantly, because the child drew the sky and pressed Continue
   themselves. A camera claims to know somebody without being asked, so
   that path now shows them the sky it recognised for ten seconds first.
+- **The Studio's own gate can now hand recognition back** (build 0638).
+  Reported by the product owner: pressing ✨ Create Story from the Ether
+  with a card already on the device lands on the Gateway's sky challenge,
+  and that grid can only offer the skies it finds on THIS device — so a
+  Creator arriving on a machine that has never met them has literally
+  nothing to tap, and three wrong tries later they are a Traveller by
+  default. It now offers **⭐ Show me your stars**, which navigates to
+  `index.html?stars=1`; a one-shot INTENT consumed and stripped on
+  arrival exactly as `?born=` is (Decision 23), honoured behind the
+  threshold so the turn is never skipped. It grows no second recognition
+  flow: the camera, the reader and the drawing board live at VihuPlanet
+  and recognition belongs there, of everybody.
+  **`← Back` on that screen now leaves for the Ether**, and the small
+  "Not able to show your stars right now?" screen it used to open is
+  retired — its Try Again was a slower way to do nothing (a wrong tap
+  already retries in place) and its Continue as a Traveller moved onto
+  the challenge itself, one tap instead of two.
 - **Recognition happens ONCE per arrival.** The Traveller Gateway's
   Scene 3 asked a Returning Creator to find their sky again on the way
   into the Studio, which was right while the Studio was the front door

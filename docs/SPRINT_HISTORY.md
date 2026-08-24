@@ -6859,3 +6859,44 @@ Creation home 52/52 (B8b–B8f are new: the art is really drawn and at a
 size a child can see, it is not the closed-door emoji, and the band is
 absent rather than empty), levels 31/31, rite gate 22/22, zero page
 errors. Build 0636 → 0637.
+
+## The gate could not answer for a Creator it had never met (build 0638)
+
+*"this screen comes if i click on create story from ether and there is
+already a logged in account. i would like to add show your stars flow
+here also. thats to cover one corner case if creator is new to this
+login. and back should take you back to ether."* — the product owner.
+
+The Gateway's sky challenge can only offer skies it finds on **this**
+device. So a Creator arriving on a machine that has never met them had
+nothing to tap: every tile was somebody else's or a decoy, three wrong
+tries spent them, and the screen quietly made them a Traveller. That is
+the exact child this identity system exists for — the card is the bridge,
+not the browser (Decision 16).
+
+**⭐ Show me your stars** now sits under the grid and navigates to
+`index.html?stars=1`. It grows no second recognition flow here, which
+would have been the easy and wrong answer: the camera, the card reader
+and the drawing board all live at VihuPlanet, and recognition belongs
+there of everybody (Decisions 10, 11, 16). What crosses is a one-shot
+**intent**, consumed and stripped on arrival exactly as `?born=` is
+(Decision 23 — intent may cross, state may not), and honoured *behind*
+the threshold, because skipping Decision 10's turn for an arrival that
+came from the Studio would give that child less of the universe rather
+than more.
+
+**← Back leaves for the Ether**, and the small "Not able to show your
+stars right now?" screen it used to open is retired. Its **Try Again**
+was a slower way to do nothing — a wrong tap already retries in place —
+and its **Continue as a Traveller** moved onto the challenge itself,
+where it costs one tap instead of two and no extra screen.
+
+`_renderSkyChallenge` gained `extras` and `backLabel`, both optional, so
+the three in-Gateway call sites that still mean "go back to the previous
+panel" are untouched and unaware.
+
+`tools/gate-test/` is new: ten checks driving the real screen, following
+Back to the Ether, following the stars option, crossing the threshold and
+watching the intent be honoured once and stripped. Gate 10/10, rite gate
+22/22, creation home 52/52, levels 31/31, zero page errors.
+Build 0637 → 0638.
