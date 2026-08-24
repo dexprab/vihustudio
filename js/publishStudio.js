@@ -1613,12 +1613,17 @@ const PublishStudio=(function(){
   // story — runs first if this is the child's first time, and then the
   // child is taken to VihuPlanet to watch their Story Spirit be born.
   function _completeShare(projectId){
-    // Is the child part-way through the Studio Rite right now? Its last
-    // beat waits on exactly this moment — `story-shared`, Decision 7 —
-    // and it still has a closing chapter to play and a Studio to unlock
-    // afterwards. Leaving for VihuPlanet here would abandon a child
-    // half-way through their first chapter and, worse, leave the Rite
-    // incomplete so it began again next time.
+    // Is the child part-way through the Studio Rite right now? It still
+    // has a closing chapter to play and a Studio to unlock afterwards.
+    // Leaving for VihuPlanet here would abandon a child half-way through
+    // their first chapter and, worse, leave the Rite incomplete so it
+    // began again next time.
+    //
+    // The rite's own beat no longer waits on this moment — it waits on
+    // FINISHING, which happened before the child ever reached this
+    // choice (Decision 8's amendment: becoming a Creator is finishing
+    // the first story). What it does wait on is this screen coming down,
+    // and the `_close()` below is what does that.
     //
     // A share made during the Rite therefore completes in every way
     // that matters — the Story is in the Ether, the flag is set, the

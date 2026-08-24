@@ -291,26 +291,35 @@ const StudioRite=(function(){
              subtitle:'Watch it from the beginning.'}}
      ], audio:{id:'riteScreen21',cues:[0]}, end:{await:'story-played'}, nudgeDelay:2000},
 
-    // The sharing beat (Decision 7). Declining is a real choice: the
-    // story stays theirs, the Studio still unlocks, and the Creator
-    // Ceremony waits for whichever story they do share.
+    // The finishing beat. Declining is a real choice: the story stays
+    // theirs and the Studio still unlocks.
     //
-    // Sprint VP2 split what this beat used to describe. Finishing a
-    // story is what makes it into something a child can keep — it
-    // produces every artifact and cannot fail. Sharing it is the
-    // separate choice that sends it to VihuPlanet. The line said the
-    // first thing while the beat waited on the second, which was true
-    // when one button did both and is not any more, so it now says
-    // what each act actually is. The control it points at is still the
-    // first one the child needs, and it is still only pointed at,
-    // never explained (Canon 6).
+    // IT WAITED ON SHARING WHILE ITS OWN LINE ASKED FOR FINISHING, and
+    // that gap was the whole of "i clicked take my story, its not moving
+    // forward towards the magic card part". Sprint VP2 split one act
+    // into two and rewrote these lines to say so — Finishing makes a
+    // story yours to keep; Sharing sends it to VihuPlanet — but left the
+    // gate on `story-shared`. So a child who did exactly what Lumo asked
+    // passed nothing: the rite never completed, the Studio never
+    // unlocked, and `markComplete()` never ran.
+    //
+    // That last part is what made it serious. Decision 8's amendment
+    // hangs the Magic Card off rite completion precisely so the shy
+    // child — the one who finishes and does not share — gets an
+    // identity. Builds 0628 and 0629 repaired every link downstream of
+    // completion while the gate upstream still demanded a public act, so
+    // the child that change exists for was stopped one step earlier than
+    // anybody was looking.
+    //
+    // The control it points at is still the first one the child needs,
+    // and it is still only pointed at, never explained (Canon 6).
     {band:true, lines:[
       {lumo:'talk', egg:'curious',
        line:{title:'Right now your story only lives on this screen.'}},
       {lumo:'curious', egg:'excited',
        line:{title:'Finishing it makes it yours to keep.',
              subtitle:'Tap Finish Story.'}}
-     ], audio:{id:'riteScreen22',cues:[0,4.9]}, end:{await:'story-shared', decline:'Not now'}, nudgeDelay:3000},
+     ], audio:{id:'riteScreen22',cues:[0,4.9]}, end:{await:'story-finished', decline:'Not now'}, nudgeDelay:3000},
 
     // The close.
     {band:true, lines:[
@@ -846,6 +855,7 @@ const StudioRite=(function(){
   let _bgTouched=false; // the child actually used the background control
   let _addPageUsed=false;   // the child actually used the make-a-page control
   let _blankPageSeen=false; // a page arrived with nothing on it (latched)
+  let _finishedSeen=false;  // Publish Studio reached its celebration (latched)
   let _rite=null;      // the rite being performed, from RITES below
 
   function _el(tag,cls){
@@ -1549,10 +1559,25 @@ const StudioRite=(function(){
     // can never disagree with what actually happened. Deliberately NOT
     // `story-shared`: sharing is a separate act (CLAUDE.md → Decision 12)
     // and this story ends at finishing.
+    // LATCHED, AND HELD UNTIL THE CELEBRATION COMES DOWN.
+    //
+    // Unlatched, this was true only while the celebration happened to be
+    // on screen: a child who closed it between two polls could never
+    // pass the beat again, on a rite there is no way out of.
+    //
+    // And passing the instant the celebration OPENS is just as wrong the
+    // other way. The closing chapter would play to a child who is
+    // looking at a modal — Lumo speaking over the film, and "Into the
+    // Studio" waiting behind it. Every child leaves that screen somehow
+    // (✕, Keep Editing, Make Another Story, or the share path, which
+    // closes it itself), so the rite simply waits for the screen it is
+    // about to speak on to be free.
     if(kind==='story-finished'){
       try{
-        return typeof PublishStudio!=='undefined' && PublishStudio.isOpen()
-               && PublishStudio.getStage()===PublishStudio.STAGES.CELEBRATION;
+        if(typeof PublishStudio==='undefined') return false;
+        if(PublishStudio.isOpen()
+           && PublishStudio.getStage()===PublishStudio.STAGES.CELEBRATION) _finishedSeen=true;
+        return _finishedSeen && !PublishStudio.isOpen();
       }catch(e){ return false; }
     }
     // ---- My Garden's two rooms (Rite II) --------------------------
@@ -1971,6 +1996,7 @@ const StudioRite=(function(){
       _bgTouched=false;
       _addPageUsed=false;
       _blankPageSeen=false;
+      _finishedSeen=false;
       _startNudge(kind,nudgeDelay);
       const redirect=_redirectText(instruction);
       const startedAt=Date.now();
@@ -2737,7 +2763,24 @@ const StudioRite=(function(){
     markComplete:markComplete,
     gate:gate,
     rites:rites,
-    start:start
+    start:start,
+    // Internal — exposed for the test harness only, the same way
+    // js/publishStudio.js exposes its stage and its artifacts.
+    //
+    // The gate a beat waits on is DATA, and it went wrong precisely
+    // because nothing could read it: Rite I asked a child to finish
+    // while waiting for them to share, and every suite in the product
+    // was blind to the difference. `_gates` makes that readable, and
+    // `_gateMet` lets a suite ask a live condition what it currently
+    // answers — which is the only way to prove a latch.
+    _gates:function(riteId){
+      const r=riteId ? _riteById(riteId) : _mandatoryRite();
+      if(!r || !Array.isArray(r.screens)) return null;
+      return r.screens.map(function(sc){
+        return (sc.end && sc.end.await) || null;
+      });
+    },
+    _gateMet:function(kind,baseline){ return _conditionMet(kind,baseline||null); }
   };
 })();
 try{ window.StudioRite=StudioRite; }catch(e){}

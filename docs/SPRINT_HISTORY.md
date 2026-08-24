@@ -6543,3 +6543,50 @@ Also corrected: `docs/STUDIO_RITE_LEVEL_II_GARDEN.md` still opened with
 being true when *The Name on the Green* was written.
 
 Celebration 16/16, zero page errors. Build 0629 → 0630.
+
+## The rite asked for finishing and waited for sharing (build 0631)
+
+Reported by the product owner walking Rite I: *"i clicked take my story.
+its not moving forward towards the magic card part."*
+
+Rite I's twenty-second beat says **"Finishing it makes it yours to keep.
+Tap Finish Story."** and waited on `story-shared`. Sprint VP2 split one
+act into two and rewrote those lines to say so; the gate underneath them
+was left on the old signal. So a child who did exactly what Lumo asked
+passed nothing — the rite never completed, the Studio never unlocked,
+and `markComplete()` never ran.
+
+**That last part is what made it serious.** Decision 8's amendment hangs
+the Magic Card off rite completion precisely so the shy child — the one
+who finishes and does not share — gets an identity. Builds 0628 and 0629
+repaired every link downstream of completion (`_offerCreatorCeremony()`
+on completion, then on `gate()` so completion is a state rather than an
+event, then the Traveller notice as a route). All three were correct and
+none of them could fire, because the gate upstream still demanded a
+public act. The child that change exists for was stopped one step earlier
+than anybody was looking. Only `decline:'Not now'` kept it from being a
+dead end, and that button sits behind the celebration modal.
+
+The beat now waits on `story-finished`, which already existed and which
+Rite III already used. Two changes to what it means:
+
+**Latched.** It was true only while the celebration happened to be on
+screen, so a child who closed it between two polls could never pass again
+— a second trap, live in Rite III today.
+
+**Held until the celebration comes down.** Passing the instant it opens
+is wrong the other way: the closing chapter would play to a child looking
+at a modal, Lumo speaking over the film with "Into the Studio" waiting
+behind it. Every child leaves that screen somehow — ✕, Keep Editing, Make
+Another Story, or the share path, which closes it itself — so the rite
+waits for the screen it is about to speak on to be free.
+
+`StudioRite._gates()` and `_gateMet()` are exposed for the harness, the
+way `js/publishStudio.js` already exposes its stage and its artifacts.
+The gate a beat waits on is DATA, and this went wrong precisely because
+nothing could read it: every suite in the product was blind to the
+difference between the words on the beat and the signal underneath them.
+
+Celebration 24/24 (C15–C22 are the new gate checks, C19–C21 proving the
+latch against a live celebration), rite gate 22/22, Studio Home 47/47.
+Build 0630 → 0631.

@@ -173,6 +173,46 @@ function check(cond, name, note) { (cond ? ok : fail)(name, note); }
     'C13 the gold duplicate download button is gone');
   check(!/Publish/i.test(seen.body), 'C14 nothing on the screen says Publish to a child');
 
+  // ---- THE RITE'S OWN GATE ------------------------------------------
+  // "i clicked take my story, its not moving forward towards the magic
+  // card part." Rite I asked the child to FINISH and then waited for
+  // them to SHARE, so finishing passed nothing: the rite never
+  // completed, the Studio never unlocked, and the Magic Card — which
+  // Decision 8's amendment hangs off completion precisely for the child
+  // who does not share — was never offered.
+  console.log('-- the rite gate');
+  const gates = await page.evaluate(() => StudioRite._gates());
+  check(Array.isArray(gates) && gates.length > 0, 'C15 the mandatory rite exposes its gates',
+    gates ? gates.length + ' beats' : 'none');
+  check(gates.indexOf('story-shared') === -1,
+    'C16 no beat of the mandatory rite waits on the child sharing',
+    'beat ' + gates.indexOf('story-shared'));
+  check(gates.indexOf('story-finished') >= 0,
+    'C17 the mandatory rite waits on the child finishing');
+  // Finishing is the LAST thing the rite asks for. Anything waiting
+  // after it would be another errand between a child finishing their
+  // first story and being recognised for it.
+  const lastAsk = gates.map((g, i) => (g ? i : -1)).filter((i) => i >= 0).pop();
+  check(lastAsk === gates.indexOf('story-finished'),
+    'C18 finishing is the last thing the mandatory rite waits for',
+    'last=' + lastAsk + ' finish=' + gates.indexOf('story-finished'));
+
+  // The latch, proved against the live celebration rather than reasoned
+  // about: false while the screen is up, true once it comes down, and
+  // it must SURVIVE the screen coming down (unlatched, a child who
+  // closed the celebration between two polls could never pass again).
+  const openNow = await page.evaluate(() => StudioRite._gateMet('story-finished'));
+  check(openNow === false, 'C19 the finishing gate holds while the celebration is on screen', String(openNow));
+  await page.evaluate(() => { PublishStudio.close(); });
+  await page.waitForTimeout(300);
+  const closedNow = await page.evaluate(() => StudioRite._gateMet('story-finished'));
+  check(closedNow === true, 'C20 it passes once the celebration comes down', String(closedNow));
+  const stillNow = await page.evaluate(() => StudioRite._gateMet('story-finished'));
+  check(stillNow === true, 'C21 and it stays passed — the latch survives the screen closing', String(stillNow));
+
+  check(pageErrors.length === 0, 'C22 zero page errors across the whole walk',
+    pageErrors.slice(0, 3).join(' | '));
+
   console.log('\n' + passed + ' passed, ' + failed + ' failed');
   await browser.close();
   process.exit(failed === 0 ? 0 : 1);
