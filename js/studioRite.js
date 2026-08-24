@@ -36,6 +36,13 @@ const StudioRite=(function(){
   // clears storage repeats the Rite — the same thing that already
   // happens to their local projects (js/projectManager.js's own "100%
   // local forever" guarantee).
+  // Owned by this module and read raw in exactly one other place —
+  // js/travellerReset.js, which has to be able to clear it on a page
+  // that does not load this file at all (VihuPlanet). Exported as
+  // FLAG_KEY below so that duplication is a reference rather than a
+  // second literal; the fallback string there is the safety net, and
+  // both ends say so. Same shape as js/studioEntry.js's own documented
+  // duplication with the inline gate in studio.html.
   const FLAG='vihu.studioRite.v1';
 
   function _flagSet(){
@@ -3010,6 +3017,7 @@ const StudioRite=(function(){
     nextOptIn:nextOptIn,
     applyTaught:applyTaught,
     TAUGHT_KEY:TAUGHT_KEY,
+    FLAG_KEY:FLAG,
     // Internal — exposed for the test harness only, the same way
     // js/publishStudio.js exposes its stage and its artifacts.
     //

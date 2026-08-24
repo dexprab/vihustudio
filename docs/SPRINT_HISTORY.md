@@ -6703,3 +6703,53 @@ home. Both were measuring the wrong thing and both said "pass".
 
 Traveller reset 13/13, levels 31/31, rite gate 22/22, creation home
 47/47, garden 103/103, zero page errors. Build 0632 → 0633.
+
+## A Traveller is stateless (build 0634)
+
+*"i would prefer them to walk all 23 beats again. i would like to keep
+travellers stateless. once they are out of vihuplanet once the vihuplanet
+is reloaded, anything not attached with a card lets remove that."* — the
+product owner, overruling the narrower rule build 0633 shipped a few
+hours earlier, which kept the Rite's completion record on the grounds
+that it was a gate rather than the child's work.
+
+So the rule now has no exception worth the name. Stories, drawings,
+letters, the garden, `vihu.studioRite.v1` and the taught record all go
+unless a Magic Card is attached to them. A child who does not claim a
+card arrives new every time.
+
+**The boundary is VihuPlanet's load, and it replaced the session
+marker.** It is the one entrance and is never resumed, only entered
+(Decisions 10 and 23) — so arriving there is already the product's own
+definition of a fresh start, and nothing has to guess what a new session
+is. `index.html` runs the sweep before `js/vihuplanetHome.js`, preserving
+nothing; the Studio runs it at bootstrap preserving the session slot, for
+the stores that only exist there and so an in-Studio reload does not
+delete the page under the child's hands.
+
+**A Creator loses nothing by it**, which is what makes it safe rather
+than merely obedient: `isComplete()` is `_flagSet() || _isCreator()` and
+the taught record is read from the card before the device, so for anybody
+holding one those keys were already dead weight.
+
+**Two corrections found while building it.** The sweep was synchronous
+and two of the four stores hydrate from IndexedDB at boot — it would have
+read an empty map, found nothing unowned and reported a clean success;
+`run()` now returns a promise and waits on each store's own hydration.
+And the `?born=` hand-off would have deleted the Story it was navigating
+to VihuPlanet to show, so the current navigation's intent is the one
+exemption — held for that load, remembered for none.
+
+**Three suites had to change, and each change is the rule showing
+through.** The levels suite seeded the taught record on the device, which
+is now designed not to survive; it seeds a card. Its grandfathered case
+used a bare completion flag, which no longer means anything without a
+card — a card with no taught record is what a pre-existing Creator is.
+And the garden suite reloaded and *then* swept the Traveller's garden to
+a card, so it was testing persistence of exactly what the product now
+throws away; sweeping first asks the question that still has an answer,
+and P3 measures the other half.
+
+Traveller reset 16/16, garden 104/104, levels 31/31, rite gate 22/22,
+creation home 47/47, celebration 24/24, zero page errors.
+Build 0633 → 0634.

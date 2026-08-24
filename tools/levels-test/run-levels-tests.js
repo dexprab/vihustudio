@@ -80,14 +80,16 @@ function check(c, n, note) { (c ? ok : fail)(n, note); }
 
   // ---- B: a child who has done only the first rite
   console.log('-- B: after the first story');
+  // ON A CARD, which is where the record lives for anybody who keeps it.
+  // The device copy exists only for the seconds between Rite I finishing
+  // and the Ceremony minting a card, and js/travellerReset.js removes it
+  // on the next arrival — a Traveller is stateless, so seeding there
+  // would be seeding something designed not to survive.
   await page.evaluate(() => {
-    // Exactly what _grant() writes when Rite I completes, via the real
-    // device record — no card yet, which is the true state at that
-    // moment (the Ceremony mints one a beat later).
-    const r = StudioRite.rites()[0];
-    localStorage.setItem(StudioRite.TAUGHT_KEY, JSON.stringify(
-      ['emoji','background','resize','rotate','move','text','copy-page','story-name','play','finish','share']));
-    return r.id;
+    const c = MagicCard.claim('Rite I', null, null);
+    MagicCard.setActive(c.id);
+    MagicCard.setTaught(
+      ['emoji','background','resize','rotate','move','text','copy-page','story-name','play','finish','share']);
   });
   await boot();
   check(await page.evaluate(() => StudioRite.isGrandfathered()) === false,
@@ -122,8 +124,7 @@ function check(c, n, note) { (c ? ok : fail)(n, note); }
   check(await page.evaluate(() => StudioRite.nextOptIn()) === 'my-garden',
     'C1 a child who has done only the first rite is offered My Garden');
   await page.evaluate(() => {
-    const t = JSON.parse(localStorage.getItem(StudioRite.TAUGHT_KEY));
-    localStorage.setItem(StudioRite.TAUGHT_KEY, JSON.stringify(t.concat(['garden','handwriting','library'])));
+    MagicCard.setTaught(MagicCard.taught().concat(['garden','handwriting','library']));
   });
   await boot();
   check(await page.evaluate(() => StudioRite.nextOptIn()) === 'my-little-house',
@@ -135,11 +136,7 @@ function check(c, n, note) { (c ? ok : fail)(n, note); }
   // ---- D: everything taught
   console.log('-- D: after every rite');
   await page.evaluate(() => {
-    const all = [];
-    StudioRite.rites().forEach(() => {});
-    const t = JSON.parse(localStorage.getItem(StudioRite.TAUGHT_KEY));
-    localStorage.setItem(StudioRite.TAUGHT_KEY,
-      JSON.stringify(t.concat(['shapes','doodle','photo','blank-page'])));
+    MagicCard.setTaught(MagicCard.taught().concat(['shapes','doodle','photo','blank-page']));
   });
   await boot();
   const afterIII = await tiles();
@@ -151,6 +148,12 @@ function check(c, n, note) { (c ? ok : fail)(n, note); }
   // ---- E: the record travels on the card
   console.log('-- E: it travels on the Magic Card');
   const carried = await page.evaluate(() => {
+    // The real window: Rite I's grant writes the device record, and the
+    // Ceremony mints a card moments later in the same page life. Nothing
+    // resets in between — TravellerReset runs at arrival, not mid-story.
+    MagicCard.setActive(null);
+    localStorage.setItem(StudioRite.TAUGHT_KEY,
+      JSON.stringify(['emoji','text','shapes','doodle','photo','blank-page']));
     const c = MagicCard.claim('Test', null, null);
     return { taught: MagicCard.taught(), id: c && c.id };
   });
@@ -181,9 +184,19 @@ function check(c, n, note) { (c ? ok : fail)(n, note); }
   // answers only the first. Widening both hid the whole progression
   // from everybody who used the product before the record existed.
   console.log('-- G: somebody who was here before the record existed');
+  // A CARD WITH NO TAUGHT RECORD is what a pre-existing Creator is now.
+  // Not a bare completion flag: a Traveller is stateless, so
+  // js/travellerReset.js clears that flag on arrival and somebody
+  // holding no card genuinely IS a new child. The card is the only
+  // thing that can say "I was here before the record existed".
   await page.evaluate(() => {
     localStorage.clear();
-    StudioRite.markComplete();   // the Studio has been used; no record
+    const c = MagicCard.claim('Veteran', null, null);
+    MagicCard.setActive(c.id);
+    const cards = JSON.parse(localStorage.getItem('vihu-magic-cards'));
+    cards.forEach(function (x) { delete x.taught; });   // claimed before the record existed
+    localStorage.setItem('vihu-magic-cards', JSON.stringify(cards));
+    localStorage.removeItem(StudioRite.TAUGHT_KEY);
   });
   await boot();
   check(await page.evaluate(() => StudioRite.isGrandfathered()) === true,
@@ -193,9 +206,7 @@ function check(c, n, note) { (c ? ok : fail)(n, note); }
     'G3 …and the next door is still offered — they have walked no story yet');
   // Walking it must record the story, not swallow the whole ladder.
   await page.evaluate(() => {
-    const r = StudioRite.rites()[1];
-    localStorage.setItem(StudioRite.TAUGHT_KEY,
-      JSON.stringify(['legacy-studio', 'garden', 'handwriting', 'library']));
+    MagicCard.setTaught(['legacy-studio', 'garden', 'handwriting', 'library']);
   });
   await boot();
   check((await tiles()).length >= 8, 'G4 after that story they still keep everything');

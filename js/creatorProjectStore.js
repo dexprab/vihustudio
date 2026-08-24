@@ -218,20 +218,23 @@ const CreatorProjectStore=(function(){
   // (Decision 19 — it is a filter, never a delete, and that still holds
   // for everything that has an owner).
   //
-  // Two things are kept even so. `preserveIds` carries the Story the
-  // session slot currently names, because a child mid-story who opens a
-  // new tab must not lose the thing they are making — the same
-  // safeguard js/gatewaySequence.js's own wipe already had. And a Story
-  // that has been SHARED is never removed: it was given to VihuPlanet
-  // on purpose (Decision 15), and taking it back is not this rule's to
-  // make.
+  // `preserveIds` is the only exemption, and it is about the CURRENT
+  // navigation rather than about state: the Story a child is making
+  // right now, or the one the page was opened to show. See
+  // js/travellerReset.js for who passes what.
+  //
+  // A SHARED STORY IS NOT EXEMPT, and briefly was. "anything not
+  // attached with a card lets remove that" — the product owner — and a
+  // shared Story lives in the Ether from the platform's own shared feed
+  // (Decision 15's `is_shared`), so the local record is not what keeps
+  // it in the universe. Removing it takes it out of this device's My
+  // Projects and out of nothing else.
   function removeUnowned(opts){
     var keep=(opts&&Array.isArray(opts.preserveIds))?opts.preserveIds:[];
     var n=0;
     listAll().forEach(function(r){
       if(!r || r.cardId) return;
       if(keep.indexOf(r.id)>=0) return;
-      if(r.publishedAt || (r.data && r.data.publishedAt)) return;
       _cache().removeLocal(r.id);
       n++;
     });

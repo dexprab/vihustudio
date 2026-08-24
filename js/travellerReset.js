@@ -1,58 +1,86 @@
-// travellerReset.js — nothing an unclaimed Traveller leaves behind
-// survives into a new browser session.
+// travellerReset.js — a Traveller is stateless.
 //
-// "this browser or session persistance is killing us. we cannot have
-// anything persisting from unclaimed sessions" — the product owner,
-// looking at six leftover test stories filling My Projects.
+// "i would prefer them to walk all 23 beats again. i would like to keep
+// travellers stateless. once they are out of vihuplanet once the
+// vihuplanet is reloaded, anything not attached with a card lets remove
+// that." — the product owner, overruling the narrower rule this file
+// shipped with at build 0633, which kept the Rite's completion record on
+// the grounds that it was a gate rather than the child's work.
+//
+// So the rule now has no exceptions worth the name: IF IT IS NOT
+// ATTACHED TO A MAGIC CARD, IT DOES NOT SURVIVE. Stories, drawings,
+// letters, the garden, the record that the Rite was completed and the
+// record of what it taught. A Traveller who does not claim a card
+// arrives new every time, and walks the whole first chapter again.
 //
 // ---------------------------------------------------------------
-// WHY THE WIPE THAT ALREADY EXISTED NEVER FIRED
+// WHY VIHUPLANET IS THE BOUNDARY
 //
-// js/gatewaySequence.js has cleared My Projects since "traveller should
-// not see projects of previous creators" — but only for a session it
-// identified as a first-time TRAVELLER (`!isReturning`). The moment a
-// child holds a Magic Card every leftover on that device becomes
-// permanent, because the one thing that cleaned them up stops running.
-// That is exactly the reported case, and Decision 8's amendment made it
-// universal: a card is now minted the moment Rite I completes, so
-// almost every real session is a "returning" one within a day.
+// It is the one entrance and everybody uses it (Decision 10), and it is
+// never resumed — always entered (Decision 23). So arriving there is
+// already the product's own definition of a fresh start, and hanging the
+// reset on it needs no marker, no timer and no guess about what counts
+// as a new session. Reload VihuPlanet and you are new; that is what the
+// screen already meant.
 //
-// It also wiped the WHOLE list — which is why it could only ever be
-// allowed to run for somebody who owned nothing. Ownership exists now
-// (Decision 19), so the honest sweep is possible: take what nobody owns
-// and never touch what anybody does.
+// The Studio sweeps too, for the stores that only exist there
+// (My Garden's drawings and letters, the garden itself). Every Studio
+// arrival is preceded by a VihuPlanet load — Decision 23 enforces it
+// with a one-shot pass — so this is not a second boundary, it is the
+// same one finishing its work where those modules are loaded.
 // ---------------------------------------------------------------
 //
-// WHAT THIS DOES NOT TOUCH, DELIBERATELY:
+// THE ONE THING KEPT, AND IT IS NOT A STATE QUESTION: the Story a child
+// is making RIGHT NOW. In the Studio, `preserveSession` holds whatever
+// the session slot names, so an in-Studio reload — the Home button,
+// Publish's clean slate, the build stamp's refetch — does not delete the
+// page under the child's hands. At VihuPlanet nothing is preserved,
+// because there is nothing in progress there: they have left.
 //
-//   · Anything owned by any Magic Card. Not the active one's, not a
-//     sibling's, not a stranger's. Decision 19 is explicit that
-//     scoping is a FILTER and never a delete, and that still holds for
-//     everything with an owner — a second child cannot destroy the
-//     first one's work by walking in.
-//   · The Story the session slot currently names. A child mid-story who
-//     opens a second tab must not lose the thing they are making; the
-//     same safeguard the Gateway's own wipe already carried.
-//   · A Story that has been SHARED. It was given to VihuPlanet on
-//     purpose (Decision 15) and taking it back is not this rule's to
-//     make.
-//   · The record that the Rite has been completed. That is a gate the
-//     product imposed, not the child's work, and Decision 8 says the
-//     Rite is completed exactly once. Wiping it would make a child who
-//     declined a card walk the whole first chapter again every time
-//     they open a new tab, which is a wall rather than a clean slate.
-//     What this rule is for is that no child ever meets another
-//     child's leftovers — and that is content.
-//
-// Runs ONCE per browser session, from js/app.js's bootstrap, before
-// anything reads the stores. sessionStorage starts empty in a new tab
-// and survives an in-page reload within one, which is exactly the
-// signal wanted — and Decision 23's own "a refresh goes home" path
-// stays inside one session, so a refresh mid-story never triggers it.
+// NEVER a delete of anything OWNED. Work belonging to any card — the
+// active one, a sibling's, a stranger's — is untouchable, which is
+// Decision 19's own rule and the reason this can run for everybody
+// instead of only for a session that happens to hold nothing.
 const TravellerReset = (function () {
   'use strict';
 
-  var MARK = 'vihu.travellerReset.done';
+  // js/studioRite.js owns both of these and exports them; the literals
+  // are the fallback for VihuPlanet, which does not load that file at
+  // all. Documented at both ends.
+  function _riteFlagKey() {
+    try { if (typeof StudioRite !== 'undefined' && StudioRite.FLAG_KEY) return StudioRite.FLAG_KEY; } catch (e) {}
+    return 'vihu.studioRite.v1';
+  }
+  function _taughtKey() {
+    try { if (typeof StudioRite !== 'undefined' && StudioRite.TAUGHT_KEY) return StudioRite.TAUGHT_KEY; } catch (e) {}
+    return 'vihu-rite-taught';
+  }
+
+  function _hasCard() {
+    try {
+      return !!(typeof MagicCard !== 'undefined' && MagicCard.getActive && MagicCard.getActive());
+    } catch (e) { return false; }
+  }
+
+  // THE STORY THIS PAGE WAS OPENED TO SHOW.
+  //
+  // `?born=` plays a Story's arrival in the Ether and `?story=` is a
+  // deep link to one (Decision 23 — intent may cross, state may not).
+  // Deleting the very thing the navigation is about would not be
+  // statelessness, it would be incoherence, so both are held for the
+  // one load that names them. Nothing is remembered: the next load
+  // carries no parameter and the Story goes like anything else unowned.
+  function _intentProjectIds() {
+    var out = [];
+    try {
+      var q = new URLSearchParams(window.location.search);
+      ['born', 'story'].forEach(function (k) {
+        var v = q.get(k);
+        if (v) out.push(v);
+      });
+    } catch (e) {}
+    return out;
+  }
 
   function _sessionProjectId() {
     try {
@@ -65,63 +93,103 @@ const TravellerReset = (function () {
     return null;
   }
 
+  // opts.preserveSession — hold the Story the session slot names. True
+  // inside the Studio, false at VihuPlanet. See the header.
+  //
+  // Returns a Promise, because two of the four stores live in IndexedDB
+  // and hydrate asynchronously at boot: a synchronous sweep would read
+  // an empty map, find nothing unowned and report a clean success. The
+  // caller does not have to wait — nothing downstream depends on the
+  // answer — but the work has to.
+  //
+  // EVERYTHING THAT CAN BE DONE SYNCHRONOUSLY IS, and the rite records
+  // are deliberately among them: they decide whether a child is sent
+  // through the first chapter again, and that question is asked early.
   function run(opts) {
-    var force = !!(opts && opts.force);
-    var out = { ran: false, projects: 0, drawings: 0, letters: 0, garden: false };
-    try {
-      if (!force && sessionStorage.getItem(MARK)) return out;
-      sessionStorage.setItem(MARK, '1');
-    } catch (e) { /* an unreadable browser simply does not sweep */ }
-    out.ran = true;
+    var preserve = !(opts && opts.preserveSession === false);
+    var out = { projects: 0, drawings: 0, letters: 0, garden: false, rite: false };
 
-    // Placement first, removal second. CreatorProjectStore._claimLegacy
-    // runs lazily from list() and is what gives an owner to work that
-    // predates ownership (Decision 19 — by recorded evidence, never by
-    // guessing). Sweeping before it ran would delete exactly the
-    // records it was about to place.
-    try { if (typeof CreatorProjectStore !== 'undefined') CreatorProjectStore.list(); } catch (e) {}
-
+    // THE RITE ITSELF.
+    //
+    // Both records are per-DEVICE, so neither is attached to a card and
+    // both go. A CREATOR LOSES NOTHING BY IT, which is what makes this
+    // safe rather than merely obedient: StudioRite.isComplete() is
+    // `_flagSet() || _isCreator()`, and the taught record is read from
+    // the active card before the device ever gets a look in. So for
+    // anybody holding a card these two keys are already dead weight, and
+    // for a Traveller they are the whole of what "stateless" means.
+    //
+    // The Magic Card FLAGS (awakeningOffered, hasEverPublished) go with
+    // them, but only when no card is active — with one in hand they
+    // belong to that Creator, and `awakeningOffered` is the record that
+    // stops the Ceremony being offered to somebody who already answered.
+    // A Traveller who declined a card is meant to meet that offer again
+    // as a new person, which is exactly what clearing it does.
     try {
-      if (typeof CreatorProjectStore !== 'undefined' && CreatorProjectStore.removeUnowned) {
-        var keep = _sessionProjectId();
-        var r = CreatorProjectStore.removeUnowned(keep ? { preserveIds: [keep] } : undefined);
-        out.projects = (r && r.removed) || 0;
+      localStorage.removeItem(_riteFlagKey());
+      localStorage.removeItem(_taughtKey());
+      out.rite = true;
+      if (!_hasCard() && typeof MagicCard !== 'undefined' && MagicCard.setFlags) {
+        MagicCard.setFlags({ awakeningOffered: false, hasEverPublished: false });
       }
     } catch (e) {}
 
-    try {
-      if (typeof CreatorLibrary !== 'undefined' && CreatorLibrary.removeUnowned) {
-        out.drawings = (CreatorLibrary.removeUnowned() || {}).removed || 0;
-      }
-    } catch (e) {}
-
-    try {
-      if (typeof HandwritingStore !== 'undefined' && HandwritingStore.removeUnowned) {
-        out.letters = (HandwritingStore.removeUnowned() || {}).removed || 0;
-      }
-    } catch (e) {}
-
+    // The garden is a single localStorage record, so it needs nothing.
     try {
       if (typeof LivingGarden !== 'undefined' && LivingGarden.forgetTraveller) {
         out.garden = !!(LivingGarden.forgetTraveller() || {}).ok;
       }
     } catch (e) {}
 
-    // The taught record's own device fallback (js/studioRite.js) exists
-    // only for the seconds between Rite I finishing and the Ceremony
-    // minting a card. Once a card holds it the device copy is noise, and
-    // for a child who never claimed one it is a Studio shaped by work
-    // that no longer exists. Left alone while it is still the only copy.
-    try {
-      var hasCard = typeof MagicCard !== 'undefined' && MagicCard.getActive && MagicCard.getActive();
-      if (hasCard && typeof StudioRite !== 'undefined' && StudioRite.TAUGHT_KEY) {
-        localStorage.removeItem(StudioRite.TAUGHT_KEY);
-      }
-    } catch (e) {}
+    function _ready(mod, fn) {
+      try {
+        if (typeof mod === 'undefined' || !mod || typeof mod[fn] !== 'function') return Promise.resolve();
+        var p = mod[fn]();
+        return (p && typeof p.then === 'function') ? p.catch(function () {}) : Promise.resolve();
+      } catch (e) { return Promise.resolve(); }
+    }
 
-    return out;
+    var projects = _ready(typeof CreatorProjectCache !== 'undefined' ? CreatorProjectCache : null, 'hydrate')
+      .then(function () {
+        // Placement first, removal second. CreatorProjectStore's
+        // _claimLegacy is the one-shot migration that gives an owner to
+        // work predating ownership (Decision 19, by recorded evidence
+        // rather than a guess). Sweeping before it ran would delete
+        // exactly what it was about to place; once it has run, nothing
+        // unowned is legacy any more.
+        try { if (typeof CreatorProjectStore !== 'undefined') CreatorProjectStore.list(); } catch (e) {}
+        try {
+          if (typeof CreatorProjectStore !== 'undefined' && CreatorProjectStore.removeUnowned) {
+            var keep = _intentProjectIds();
+            var sess = preserve ? _sessionProjectId() : null;
+            if (sess && keep.indexOf(sess) < 0) keep.push(sess);
+            var r = CreatorProjectStore.removeUnowned(keep.length ? { preserveIds: keep } : undefined);
+            out.projects = (r && r.removed) || 0;
+          }
+        } catch (e) {}
+      });
+
+    var drawings = _ready(typeof CreatorLibrary !== 'undefined' ? CreatorLibrary : null, 'whenReady')
+      .then(function () {
+        try {
+          if (typeof CreatorLibrary !== 'undefined' && CreatorLibrary.removeUnowned) {
+            out.drawings = (CreatorLibrary.removeUnowned() || {}).removed || 0;
+          }
+        } catch (e) {}
+      });
+
+    var letters = _ready(typeof HandwritingStore !== 'undefined' ? HandwritingStore : null, 'whenReady')
+      .then(function () {
+        try {
+          if (typeof HandwritingStore !== 'undefined' && HandwritingStore.removeUnowned) {
+            out.letters = (HandwritingStore.removeUnowned() || {}).removed || 0;
+          }
+        } catch (e) {}
+      });
+
+    return Promise.all([projects, drawings, letters]).then(function () { return out; });
   }
 
-  return { run: run, MARK: MARK };
+  return { run: run };
 })();
 try { window.TravellerReset = TravellerReset; } catch (e) {}

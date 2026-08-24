@@ -1,13 +1,14 @@
-/* NOTHING AN UNCLAIMED TRAVELLER LEAVES BEHIND SURVIVES A NEW SESSION.
+/* A TRAVELLER IS STATELESS.
  *
- * "this browser or session persistance is killing us. we cannot have
- * anything persisting from unclaimed sessions" — the product owner,
- * looking at six leftover test stories in My Projects.
+ * "i would like to keep travellers stateless. once they are out of
+ * vihuplanet once the vihuplanet is reloaded, anything not attached
+ * with a card lets remove that." — the product owner.
  *
- * The wipe that already existed only ran for a session with no Magic
- * Card, so the moment a child held one every leftover on that device
- * became permanent — and Decision 8's amendment made that nearly every
- * session. This proves the replacement: unowned goes, owned never does.
+ * So: if it is not attached to a Magic Card it does not survive a
+ * VihuPlanet load. Stories, drawings, letters, the garden, and the
+ * record that the Rite was completed — the child walks all 23 beats
+ * again. Owned work is never touched, which is what lets this run for
+ * everybody rather than only for a session holding nothing.
  *
  * Run:
  *   node tools/bring-it-alive/test/serve.js 8781 &
@@ -80,22 +81,28 @@ function check(c, n, note) {
 
   const swept = await page.evaluate(() => {
     // The session slot names p_session, exactly as a child mid-story.
-    const out = TravellerReset.run({ force: true });
-    return { out: out, left: CreatorProjectStore.listAll().map((r) => r.id).sort() };
+    return TravellerReset.run({ preserveSession: false }).then(function (out) {
+      return { out: out, left: CreatorProjectStore.listAll().map((r) => r.id).sort() };
+    });
   });
   check(swept.left.indexOf('p_orphan') < 0,
     'S1 a Story nobody owns is gone', swept.left.join(','));
   check(swept.left.indexOf('p_owned') >= 0,
     'S2 a Story a Magic Card owns is untouched — never a delete (Decision 19)', swept.left.join(','));
-  check(swept.left.indexOf('p_shared') >= 0,
-    'S3 a Story already given to VihuPlanet is kept', swept.left.join(','));
+  // NOT exempt any more. "anything not attached with a card" — and a
+  // shared Story lives in the Ether from the platform's own shared feed
+  // (Decision 15), so the local record is not what keeps it there.
+  check(swept.left.indexOf('p_shared') < 0,
+    'S3 a shared Story with no card behind it goes too', swept.left.join(','));
 
-  // Once per browser session, and only once.
-  const twice = await page.evaluate(() => {
-    const a = TravellerReset.run();       // marker already set by the forced run
-    return a.ran;
-  });
-  check(twice === false, 'S4 it runs once per browser session, not once per call');
+  // THE RITE RECORD GOES WITH IT — the child walks all 23 beats again.
+  const riteGone = await page.evaluate(() => ({
+    flag: localStorage.getItem(StudioRite.FLAG_KEY),
+    taught: localStorage.getItem(StudioRite.TAUGHT_KEY),
+    complete: StudioRite.isComplete()
+  }));
+  check(riteGone.flag === null && riteGone.taught === null && riteGone.complete === false,
+    'S4 a Traveller who did the Rite is asked to walk it again', JSON.stringify(riteGone));
 
   // A brand-new session sweeps again; the same session does not.
   const acrossReload = await page.evaluate(() => {
@@ -114,33 +121,59 @@ function check(c, n, note) {
     const r = CreatorProjectStore.listAll().find((x) => x.id === 'p_second');
     return !!r && !r.cardId;
   }), 'S5b legacy placement does not re-adopt it — that migration is finished');
-  // NOT page.reload(): Author Mode is stripped from the address bar the
-  // moment it is read (Decision 13), so a reload lands on a URL with no
-  // param — and js/studioEntry.js correctly sends that to VihuPlanet,
-  // where this module does not run. Measuring there would have been
-  // measuring the wrong page.
-  await load();
-  check(await page.evaluate(() => CreatorProjectStore.listAll().map((x) => x.id).indexOf('p_second') >= 0),
-    'S6 re-entering the Studio in the SAME session sweeps nothing');
-
-  // A GENUINELY NEW BROWSER SESSION.
+  // THE BOUNDARY IS VIHUPLANET, and this is the reported journey:
+  // make something unclaimed, go home, come back. Deliberately a real
+  // navigation to index.html rather than a simulated "new session" —
+  // there is no marker any more, because arriving at VihuPlanet IS the
+  // fresh start (Decisions 10 and 23) and that is the whole design.
   //
-  // Deliberately NOT a second Playwright context: contexts get their own
-  // IndexedDB, so the store would come up empty and the test would pass
-  // by measuring nothing. sessionStorage IS the mechanism — a new tab
-  // starts with none — so clearing it and reloading is the honest
-  // simulation, in the same storage the first session used.
-  await page.evaluate(() => sessionStorage.clear());
-  await load();
-  const left2 = await page.evaluate(() => CreatorProjectStore.listAll().map((x) => x.id).sort());
-  check(left2.indexOf('p_second') < 0,
-    'S7 a genuinely new browser session sweeps it — the reported case', left2.join(','));
-  check(left2.indexOf('p_owned') >= 0,
-    'S8 …and still never touches what a card owns', left2.join(','));
+  // Not page.reload() for the Studio either: Author Mode is stripped
+  // from the address bar the moment it is read (Decision 13), so a
+  // reload lands on a URL with no param and js/studioEntry.js correctly
+  // sends it home. Measuring there would be measuring the wrong page.
+  await page.evaluate(() => { try { StudioRite.markComplete(); } catch (e) {} });
+  await page.goto(BASE + '/index.html');
+  await page.waitForFunction(() => typeof TravellerReset !== 'undefined', null, { timeout: 20000 });
+  await page.evaluate(() => new Promise((r) => setTimeout(r, 1800)));
+  const atHome = await page.evaluate(() => ({
+    left: CreatorProjectStore.listAll().map((x) => x.id).sort(),
+    rite: localStorage.getItem('vihu.studioRite.v1'),
+    cards: MagicCard.list().length
+  }));
+  check(atHome.left.indexOf('p_second') < 0,
+    'S6 loading VihuPlanet removes what no card is attached to', atHome.left.join(','));
+  check(atHome.left.indexOf('p_owned') >= 0,
+    'S7 …and never what a card owns', atHome.left.join(','));
+  check(atHome.rite === null,
+    'S7b …and the Rite has to be walked again', String(atHome.rite));
   // THE BUG THIS REPLACES: the old wipe only ran when nobody held a
-  // card, so a device with one kept every leftover for ever.
-  check(await page.evaluate(() => MagicCard.list().length > 0),
-    'S9 …with a Magic Card on the device, which is what used to stop it');
+  // card, so one card on the device made every leftover permanent.
+  check(atHome.cards > 0,
+    'S8 …with a Magic Card on the device, which is what used to stop it');
+
+  await load();
+  check(await page.evaluate(() => CreatorProjectStore.listAll().map((x) => x.id).indexOf('p_second') < 0),
+    'S9 coming back to the Studio, it is still gone');
+
+  // THE STORY THE PAGE WAS OPENED TO SHOW survives that one load —
+  // Story Birth (?born=) and a deep link (?story=) would otherwise
+  // delete the thing they exist to display. Intent may cross; state
+  // may not (Decision 23).
+  await page.evaluate(() => {
+    CreatorProjectStore.upsert('p_born', { name: 'born' }, { pages: [] });
+    const r = Object.assign({}, CreatorProjectStore.get('p_born')); delete r.cardId;
+    CreatorProjectCache.putLocal(r);
+  });
+  await page.goto(BASE + '/index.html?born=p_born');
+  await page.waitForFunction(() => typeof TravellerReset !== 'undefined', null, { timeout: 20000 });
+  await page.evaluate(() => new Promise((r) => setTimeout(r, 1800)));
+  check(await page.evaluate(() => CreatorProjectStore.listAll().map((x) => x.id).indexOf('p_born') >= 0),
+    'S9c a Story arriving through ?born= is not deleted out from under itself');
+  await page.goto(BASE + '/index.html');
+  await page.waitForFunction(() => typeof TravellerReset !== 'undefined', null, { timeout: 20000 });
+  await page.evaluate(() => new Promise((r) => setTimeout(r, 1800)));
+  check(await page.evaluate(() => CreatorProjectStore.listAll().map((x) => x.id).indexOf('p_born') < 0),
+    'S9d …and nothing is remembered: the next load takes it');
 
   // The one thing a sweep must never take: the Story being made right
   // now. Tested against the mechanism the reset hands it — a child

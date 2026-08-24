@@ -274,14 +274,13 @@ function check(cond, name, note) { (cond ? ok : fail)(name, note); }
   check(badLate.length === 0, 'C2 still nothing overlaps the play area at 100 captures', badLate.length ? badLate.join(' · ') : '0 overlapping nodes');
   await page.screenshot({ path: path.join(SHOTS, 'stage-100.png') });
 
-  console.log('-- P: persistence');
-  const snapBefore = await page.evaluate(() => JSON.stringify(LivingGarden.state().elements));
-  await bootEditor();
-  const snapAfter = await page.evaluate(() => JSON.stringify(LivingGarden.state().elements));
-  const cReload = await gardenCounts();
-  check(snapBefore === snapAfter, 'P1 the garden survives a full reload IDENTICALLY', cReload.elements + ' elements, ' + cReload.events + ' events');
-  check(cReload.drawn > 0, 'P2 the reloaded garden is actually drawn', cReload.drawn + ' nodes');
-
+  // K BEFORE P, and the card stays on. A Traveller is stateless now
+  // (Decision 19): js/travellerReset.js removes an unowned garden on
+  // every arrival, so "the garden survives a reload" is a question you
+  // can only ask about a garden somebody OWNS. The sweep is what gives
+  // it an owner, so it has to happen first — and the old order, which
+  // reloaded and then swept, was testing persistence of exactly the
+  // thing the product now deliberately throws away.
   console.log('-- K: a Traveller\'s garden follows a newly claimed card');
   const claimed = await page.evaluate(() => {
     const travellerRec = localStorage.getItem('vihu-living-garden:traveller');
@@ -289,13 +288,26 @@ function check(cond, name, note) { (cond ? ok : fail)(name, note); }
     LivingGarden.claim();
     const moved = localStorage.getItem('vihu-living-garden:card-suite-test');
     const stillCount = LivingGarden.state().elements.length;
-    // put things back for the remaining checks
-    localStorage.removeItem('vihu-magic-card-active-id');
-    localStorage.setItem('vihu-living-garden:traveller', moved || travellerRec || '');
     return { had: !!travellerRec, moved: !!moved, stillCount: stillCount };
   });
   check(claimed.had && claimed.moved && claimed.stillCount > 0,
     'K1 claim() sweeps the traveller garden to the new card and nothing is lost', JSON.stringify(claimed));
+
+  console.log('-- P: persistence');
+  const snapBefore = await page.evaluate(() => JSON.stringify(LivingGarden.state().elements));
+  await bootEditor();
+  const snapAfter = await page.evaluate(() => JSON.stringify(LivingGarden.state().elements));
+  const cReload = await gardenCounts();
+  check(snapBefore === snapAfter, 'P1 a garden with an owner survives a full reload IDENTICALLY', cReload.elements + ' elements, ' + cReload.events + ' events');
+  check(cReload.drawn > 0, 'P2 the reloaded garden is actually drawn', cReload.drawn + ' nodes');
+  // …and the other half of the same rule, measured rather than assumed.
+  const travellerGone = await page.evaluate(() => {
+    localStorage.setItem('vihu-living-garden:traveller', JSON.stringify({ seed: 1, events: [1, 2, 3], recentIds: [] }));
+    return TravellerReset.run({ preserveSession: false })
+      .then(function () { return localStorage.getItem('vihu-living-garden:traveller'); });
+  });
+  check(travellerGone === null,
+    'P3 a garden nobody owns does not survive an arrival', String(travellerGone));
 
   console.log('-- D: the developer trigger');
   const devBtn = await page.evaluate(() => !!document.getElementById('gardenDevAdd'));

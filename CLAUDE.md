@@ -848,23 +848,39 @@ from vihupapa was still available in the god."*
   Rite has a child make a Story before they have one, so `claim()`
   sweeps unowned records to the new card — only unowned ones, never
   another Creator's.
-- **AND NOTHING AN UNCLAIMED SESSION LEAVES BEHIND SURVIVES A NEW
-  BROWSER SESSION** (build 0633). Reported by the product owner:
-  *"this browser or session persistance is killing us. we cannot have
-  anything persisting from unclaimed sessions."* `js/travellerReset.js`
-  runs once per browser session from the Studio's bootstrap and removes
-  every record **nobody owns** — Stories, drawings, letters and the
-  garden alike. It is the same one-way rule as the sweep above and it
-  is never a delete of anything owned: work belonging to any card, the
-  Story the session slot currently names, and a Story already shared
-  with VihuPlanet are all kept.
-- **What is NOT wiped is the record that the Rite is complete.** That is
-  a gate the product imposed, not the child's work, and Decision 8 says
-  the Rite is completed exactly once — wiping it would make a child who
-  declined a card walk the whole first chapter again in every new tab,
-  which is a wall rather than a clean slate. What this rule exists for
-  is that no child ever meets another child's leftovers, and that is
-  content.
+- **A TRAVELLER IS STATELESS** (build 0634). Stated by the product
+  owner: *"i would like to keep travellers stateless. once they are out
+  of vihuplanet once the vihuplanet is reloaded, anything not attached
+  with a card lets remove that."* If it is not attached to a Magic Card
+  it does not survive — Stories, drawings, letters, the garden, the
+  record that the Rite was completed, and the record of what it taught.
+  A Traveller who does not claim a card arrives new every time and
+  **walks all 23 beats again.** `js/travellerReset.js`.
+- **VihuPlanet's load is the boundary, and it needs no marker.** It is
+  the one entrance (Decision 10) and is never resumed, only entered
+  (Decision 23), so arriving there is already the product's own
+  definition of a fresh start — nothing has to guess what counts as a
+  new session. The Studio sweeps too, for the stores that only exist
+  there; every Studio arrival is preceded by a VihuPlanet load, so that
+  is the same boundary finishing its work where those modules are
+  loaded.
+- **A Creator loses nothing by it, and that is what makes it safe rather
+  than merely obedient.** `StudioRite.isComplete()` is
+  `_flagSet() || _isCreator()` and the taught record is read from the
+  active card before the device is consulted, so for anybody holding a
+  card those keys were already dead weight. **Work belonging to ANY card
+  — the active one, a sibling's, a stranger's — is never touched.**
+- **The only exemption is the CURRENT NAVIGATION, never state.** The
+  Story a child is making right now survives an in-Studio reload (the
+  Home button, Publish's clean slate, the build stamp's refetch); and
+  the Story a page was opened to show — `?born=` and `?story=` —
+  survives that one load, because deleting the thing the navigation is
+  about is incoherence rather than statelessness. Nothing is remembered:
+  the next load carries no parameter and takes it.
+- **A shared Story with no card behind it goes too.** It lives in the
+  Ether through the platform's own shared feed (Decision 15's
+  `is_shared`), so the local record is not what keeps it in the
+  universe.
 - **The wipe that already existed could never fire.**
   `js/gatewaySequence.js` cleared the WHOLE list, so it could only be
   allowed to run for a session that owned nothing (`!isReturning`) — and

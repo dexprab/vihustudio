@@ -2350,12 +2350,14 @@ function _afterGateway(){
   _riteThenBoot();
 }
 function _runBootstrap(){
-  // NOTHING AN UNCLAIMED TRAVELLER LEAVES BEHIND SURVIVES A NEW BROWSER
-  // SESSION. First of everything, before a single store is read, so no
-  // screen ever renders somebody else's leftovers even for a frame.
-  // Owned work is never touched — see js/travellerReset.js for the four
-  // things it deliberately keeps.
-  try{ if(typeof TravellerReset!=='undefined') TravellerReset.run(); }catch(e){}
+  // A TRAVELLER IS STATELESS. First of everything, before a single
+  // store is read, so no screen ever renders somebody else's leftovers
+  // even for a frame. Work belonging to any Magic Card is never touched.
+  // preserveSession, because an in-Studio reload — the Home button,
+  // Publish's clean slate, the build stamp's refetch — must not delete
+  // the page under the child's hands. VihuPlanet's own call preserves
+  // nothing; see js/travellerReset.js.
+  try{ if(typeof TravellerReset!=='undefined') TravellerReset.run({preserveSession:true}); }catch(e){}
   // DECISION 22 — the Studio a child meets is the one they completed a
   // rite in. Written HERE, at the very top of the bootstrap, rather than
   // only on the path through the Rite gate: every route into the Studio
