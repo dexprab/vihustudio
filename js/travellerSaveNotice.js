@@ -26,14 +26,26 @@
 //     own clearAll() already established, rather than a permanent,
 //     one-time-forever dismiss).
 //
-// Copy note: a Magic Card is never claimed on its own — per direct
-// product correction ("why we are saying claim magic card as there is
-// no other way to claim the card"), the ONLY way a Traveller becomes a
-// Creator is MagicCard.shouldOfferAwakening()'s own ceremony, offered
-// automatically the moment a first Publish actually succeeds
-// (js/publishStudio.js's _finalizePublish). So this notice names exactly
-// one real action — Publish — rather than implying "publish OR claim"
-// are two independent, separately-reachable choices.
+// Copy note, REWRITTEN. It used to say the only way to become a Creator
+// was the ceremony offered automatically on a first Publish, so the
+// notice named exactly one action: Publish. Both halves are now wrong.
+//
+// Becoming a Creator is FINISHING the first story (Canon 4, amended):
+// completing Rite I awakens the card, and js/studioRite.js offers it on
+// any Studio entry where the rite is complete and no card exists. So a
+// child who is going to get a card has one before this notice could
+// ever show, and pressing Finish Story would grant them nothing.
+//
+// WHICH LEAVES EXACTLY ONE AUDIENCE, and it is a real one:
+// `_finishAwakening()` marks the ceremony offered whatever the outcome —
+// Claimed, Maybe Later or Just Exploring — so a child who said Maybe
+// Later is never offered again. And the header badge is hidden while no
+// card is active. No badge, no second offer, no route: a dead end.
+//
+// So this notice is now that route. Its button opens the ceremony
+// directly rather than clicking Finish Story — deliberately bypassing
+// `shouldOfferAwakening()`, because that guard exists to stop the
+// product ASKING twice, and this is the child asking.
 //
 // Placement note: originally a position:fixed floating toast anchored to
 // the viewport — moved into normal document flow, mounted inside
@@ -90,10 +102,10 @@ const TravellerSaveNotice=(function(){
     _el.innerHTML=
       '<div class="traveller-save-notice-row">'+
         '<span class="traveller-save-notice-icon" aria-hidden="true">🌱</span>'+
-        '<span class="traveller-save-notice-text">You’re creating as a Traveller. Finish your story to make sure it’s kept safe.</span>'+
+        '<span class="traveller-save-notice-text">You’re creating as a Traveller. Your stories live only on this computer for now.</span>'+
         '<button type="button" class="traveller-save-notice-dismiss" title="Dismiss for now" aria-label="Dismiss">✕</button>'+
       '</div>'+
-      '<button type="button" class="traveller-save-notice-publish">📖 Finish Story</button>';
+      '<button type="button" class="traveller-save-notice-publish">✨ Make My Magic Card</button>';
 
     // Mount as a normal, in-flow FIRST child of .right-sidebar — never
     // document.body/position:fixed (see the Placement note above for
@@ -122,6 +134,15 @@ const TravellerSaveNotice=(function(){
     const publishBtn=_el.querySelector('.traveller-save-notice-publish');
     if(publishBtn){
       publishBtn.addEventListener('click',function(){
+        // The ceremony itself, not Finish Story. Finishing another story
+        // grants this child nothing — the card comes from the first one,
+        // and theirs has already been finished and declined.
+        try{
+          if(typeof MagicCardUI!=='undefined' && MagicCardUI.showAwakening){
+            MagicCardUI.showAwakening(function(){ refresh(); });
+            return;
+          }
+        }catch(e){}
         const realBtn=document.getElementById('publishBtn');
         if(realBtn) realBtn.click();
       });

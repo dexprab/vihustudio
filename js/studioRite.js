@@ -2686,7 +2686,19 @@ const StudioRite=(function(){
       try{ next(); }catch(e){}
     };
     try{
-      if(isComplete()){ done(); return; }
+      if(isComplete()){
+        // RITE COMPLETE MEANS CREATOR, not "completed just now". Offering
+        // only at the moment the rite ends would leave every child who
+        // finished it BEFORE that rule existed permanently without a
+        // card — the exact population the change was meant to protect.
+        // Stated once, as a property of the state rather than of an
+        // event, so there is nothing to backfill and no migration.
+        // `shouldOfferAwakening()` makes it a no-op for anyone who
+        // already holds one or has already been asked.
+        _offerCreatorCeremony();
+        done();
+        return;
+      }
       run(done);
     }catch(e){ done(); }
   }

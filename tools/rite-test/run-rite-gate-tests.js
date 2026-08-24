@@ -256,6 +256,61 @@ function check(cond, name, note) {
     'C3 and once a card exists the Ceremony is spent — a child who shared meets nothing twice',
     JSON.stringify(spent));
 
+  // C4-C6 — the two populations the amendment created, and the dead end
+  // it exposed. `_finishAwakening()` marks the ceremony offered whatever
+  // the outcome, and the header badge is hidden with no active card, so
+  // a child who said "Maybe Later" had no badge, no second offer and no
+  // route to a card at all.
+  console.log('-- C: nobody is left without a way to a card');
+  await page.goto(BASE + '/studio.html?author=on');
+  await page.waitForFunction(() => typeof StudioRite !== 'undefined'
+    && typeof MagicCard !== 'undefined' && typeof MagicCardUI !== 'undefined',
+    null, { timeout: 20000 });
+
+  // A child who finished the Rite BEFORE the card came from finishing.
+  const legacy = await page.evaluate(() => {
+    localStorage.clear();
+    StudioRite.markComplete();
+    return { complete: StudioRite.isComplete(), cards: MagicCard.list().length,
+             owed: MagicCard.shouldOfferAwakening() };
+  });
+  check(legacy.complete && legacy.cards === 0 && legacy.owed === true,
+    'C4 a child who finished the Rite before this rule existed is still owed a Ceremony',
+    JSON.stringify(legacy));
+
+  // And a child who was offered one and said Maybe Later.
+  const declined = await page.evaluate(() => {
+    MagicCard.markAwakeningOffered();
+    // The badge is hidden BY the refresh, not inherently — the first
+    // version of this check read the untouched DOM and reported a badge
+    // that was simply never updated. Ask the real function.
+    MagicCardUI.refreshHeaderBadge();
+    const badge = document.getElementById('magicCardBadge');
+    return { owed: MagicCard.shouldOfferAwakening(), cards: MagicCard.list().length,
+             badgeVisible: !!(badge && !badge.classList.contains('hidden')) };
+  });
+  check(declined.owed === false && declined.cards === 0 && !declined.badgeVisible,
+    'C5 a child who declined has no card, no further offer and no badge — the dead end',
+    JSON.stringify(declined));
+
+  // The notice is their route, and it opens the ceremony rather than
+  // pressing Finish Story, which would grant them nothing.
+  const route = await page.evaluate(() => {
+    let opened = false;
+    const real = MagicCardUI.showAwakening;
+    MagicCardUI.showAwakening = function(){ opened = true; };
+    try {
+      TravellerSaveNotice.refresh();
+      const btn = document.querySelector('.traveller-save-notice-publish');
+      const label = btn ? btn.textContent.trim() : null;
+      if (btn) btn.click();
+      return { label: label, opened: opened };
+    } finally { MagicCardUI.showAwakening = real; }
+  });
+  check(route.opened === true && !/Finish/i.test(route.label || ''),
+    'C6 and the Traveller notice is that route — it opens the Ceremony, not Finish Story',
+    JSON.stringify(route));
+
   check(pageErrors.length === 0, 'H1 zero page errors',
     pageErrors.slice(0, 2).join(' | '));
 

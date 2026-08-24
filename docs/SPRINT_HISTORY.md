@@ -6462,3 +6462,41 @@ who declined — which is exactly the child the change is for.
 Canon 4 and Decision 8 amended in place, both marked as amendments with
 their old wording quoted rather than deleted. Three new checks (C1–C3) in
 the rite gate suite, 16 → 19. Studio Home 47/47. Build 0627 → 0628.
+
+## Nobody is left without a way to a card (build 0629)
+
+Following the amendment, the product owner: *"bring them in line"* — the
+Traveller save notice's copy and its own header comment both predated the
+change. Bringing them in line found something bigger than stale text.
+
+**Rite complete had to mean Creator, not "completed just now".** The
+first cut offered the Ceremony at the moment the rite ended, which would
+have left every child who finished it before that rule permanently
+cardless — the exact population the amendment exists to protect. It is
+now offered on any Studio entry where the rite is complete and no card
+exists: a property of the state rather than of an event, so there is
+nothing to backfill and no migration.
+
+**And a real dead end came out of the wiring.** `_finishAwakening()`
+marks the ceremony offered whatever the outcome — Claimed, Maybe Later or
+Just Exploring — so `shouldOfferAwakening()` is false forever after. The
+header badge is hidden while no card is active. So a child who said
+*Maybe Later* had **no badge, no second offer and no route to a card at
+all** — while the notice told them to press Finish Story, which after the
+amendment grants them nothing.
+
+The notice is now that route. Its button opens the Ceremony directly,
+deliberately bypassing `shouldOfferAwakening()` — that guard exists to
+stop the product **asking** twice, and this is the child asking. Its copy
+moved with it, from *"Finish your story to make sure it's kept safe"* to
+*"Your stories live only on this computer for now"* with **✨ Make My
+Magic Card**. It also incidentally settles the third of the three Finish
+Story buttons reported earlier: the notice no longer carries one.
+
+**A test caught me overclaiming.** C5 asserted the badge is hidden with
+no active card; it failed, because the badge is hidden *by*
+`refreshHeaderBadge()` rather than inherently, and the check was reading
+an untouched DOM. Fixed by asking the real function — the claim was true,
+my way of proving it was not.
+
+Rite gate 19 → 22, Studio Home 47/47. Build 0628 → 0629.
