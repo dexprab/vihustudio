@@ -6590,3 +6590,65 @@ difference between the words on the beat and the signal underneath them.
 Celebration 24/24 (C15–C22 are the new gate checks, C19–C21 proving the
 latch against a live celebration), rite gate 22/22, Studio Home 47/47.
 Build 0630 → 0631.
+
+## The reduction outlives the rite (build 0632)
+
+Reported by the product owner the moment he finished Rite I: *"the right
+pane is wrong. it should not have options from rites which are yet to
+come."* Nine Add tiles from a story that teaches two. Decision 22's own
+opening sentence, unshipped — `body.studio-rite-running` scoped the
+reduction to the rite *running*, so every control reappeared the instant
+it ended. The reduction was right; its lifetime was wrong.
+
+**What is stored is capabilities, never a rite index.** A grant is
+`teaches` ∪ `reveals`, written when a rite completes, kept on
+`magic_card_identities.taught` and returned by `recall_magic_card()`
+(`supabase/migrations_taught.sql` — built on
+`migrations_recall_returns_pattern.sql`'s body, not schema.sql's, or a
+`create or replace` would have silently dropped the drawing order
+Decision 18 depends on). A device fallback covers the window between
+Rite I finishing and the Ceremony minting a card, and `claim()` sweeps
+it across exactly as it already sweeps projects and the library.
+
+**A second family of classes, never a widening of the first.** During a
+rite the visible set is the rite's own; `studio-gated` is written only
+while none is running, so no shipped in-rite rule changed meaning — 22/22
+still green without an edit. Only the *capability* rules persist: Open,
+Save As, Home, the theme toggle, the card badge and the build footer are
+the room, not what a child can make in it, and they all come back.
+
+**Only what a runnable rite can hand over is gated.** From This World,
+Voice, Page Style and Page Shape belong to a rite nobody has written, so
+hiding them would be the wall Decision 22 forbids rather than the shelf
+it asks for. They have no rule; the commit that writes Rite IV and names
+them in `reveals` closes the tiles and opens the door in one breath.
+
+**Two things this got wrong first, both caught by measuring:**
+
+*Grandfathering by the claimed Magic Card* — Decision 22's own stated
+test — died when Decision 8 was amended. A card is minted the moment Rite
+I completes, so it is true of every brand-new child and would have
+grandfathered the entire population the feature exists for. The record's
+own absence is the honest signal: after this ships, finishing any rite
+writes one.
+
+*Controls and doors are different questions.* The first version widened
+`taught()` for anyone with no record, which is right for controls and
+wrong for doors — it hid the whole progression from everybody who used
+the product before today, and the creation-home suite failed B6–B8 and
+said so. `legacy-studio` is now recorded beside the real capabilities:
+`taught()` expands it, `nextOptIn()` ignores it. An existing Creator
+keeps every control *and* is still offered My Garden.
+
+`tools/levels-test/` is new: 31 checks against the live Add panel,
+measured by geometry rather than read off the class list, across a
+grandfathered Studio, a child after each rite, the card carrying the
+record, and an existing Creator walking an opt-in rite.
+
+Levels 31/31, creation home 47/47, rite gate 22/22, celebration 24/24,
+zero page errors. Build 0631 → 0632.
+
+**The product owner must run `supabase/migrations_taught.sql`.** Until
+then the column is missing, every recall returns no record, and a
+cross-device Creator is grandfathered — which is the fail-open direction
+and costs nobody a control.

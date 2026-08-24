@@ -2350,6 +2350,20 @@ function _afterGateway(){
   _riteThenBoot();
 }
 function _runBootstrap(){
+  // DECISION 22 — the Studio a child meets is the one they completed a
+  // rite in. Written HERE, at the very top of the bootstrap, rather than
+  // only on the path through the Rite gate: every route into the Studio
+  // passes through this function, and a route that skipped it would hand
+  // a child the full Add panel with no rule anywhere saying it should.
+  // The body class it writes survives every re-render below it.
+  //
+  // Fail-open by construction: a grandfathered Creator, a browser that
+  // cannot read its own storage, and a missing js/studioRite.js all end
+  // with no gating at all, so this can only ever remove a control from
+  // somebody who was told what it is.
+  try{
+    if(typeof StudioRite!=='undefined' && StudioRite.applyTaught) StudioRite.applyTaught();
+  }catch(e){}
   // The ONE deliberate exception to "every launch sees the Gateway" —
   // a Home-button-triggered reload (see the click handler's own comment)
   // is not a fresh arrival, it's a mid-session return to the dashboard.

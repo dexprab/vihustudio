@@ -1035,6 +1035,60 @@ once, and its scope is no longer closed.
   It is hidden under `body.studio-rite-running` alongside `#devFooter`.
   A rite is the one place we watch a child use the product, so it is the
   one place instrumentation must be invisible to us too.
+- **THE REDUCTION NOW OUTLIVES THE RITE** (build 0632), which is this
+  decision's own opening sentence finally shipping. Reported by the
+  product owner the moment he finished Rite I: *"the right pane is
+  wrong. it should not have options from rites which are yet to come"* —
+  nine Add tiles from a story that teaches two. **What is stored is a
+  set of capability ids** (`teaches` ∪ `reveals`), granted when a rite
+  completes, kept on `magic_card_identities.taught` and returned by
+  `recall_magic_card()` (`supabase/migrations_taught.sql`), with a
+  device fallback that `MagicCard.claim()` sweeps onto the card — Rite I
+  finishes *before* the Ceremony mints one, so that window is the normal
+  case rather than an edge.
+- **A SECOND FAMILY OF CLASSES, never a widening of the first.** During
+  a rite the visible set is the rite's own (`studio-rite-shows-*`,
+  accumulated in registry order); `studio-gated` + `studio-taught-*` are
+  written only while no rite is running, so not one shipped in-rite rule
+  changes meaning. And **only the "quiet the Studio" rules are left
+  behind** — Open, Save As, Home, the theme toggle, the autosave
+  readout, the card badge, the build footer and the strip's legend all
+  return the instant the rite ends, because none of them is a capability:
+  they are the room, not what a child can make in it.
+- **Only what a runnable rite can hand over is ever gated.** From This
+  World, Voice, Page Style, Page Shape and Story Title belong to a rite
+  nobody has written, so there is no door to them and they are simply
+  never hidden — a shelf, not the wall this decision forbids. The commit
+  that writes Rite IV and names them in `reveals` closes the tiles and
+  opens the door in the same breath, which is the whole reason the
+  registry is the design.
+- **Grandfathering is by the ABSENCE of a record, not by holding a
+  card** — and this corrects this decision's own earlier wording.
+  *"Existing Creators are grandfathered by their claimed Magic Card"*
+  died when Decision 8 was amended: a card is now minted the moment Rite
+  I completes, so *holds a card* is true of every brand-new child and
+  would have grandfathered the entire population the feature is for. The
+  honest signal is the record itself — after this ships, finishing any
+  rite writes one, so a Studio already used with no record anywhere is
+  by construction somebody who was here before it existed. Every
+  unreadable state (no browser storage, a platform that never returned
+  the column, a card recalled onto a deployment predating the migration)
+  reads the same way, so nobody is ever quietly stripped of a control.
+- **Controls and doors are DIFFERENT QUESTIONS, and one value answering
+  both was a real bug.** A grandfathered Creator keeps every control —
+  but they have never *walked* Rite II, so the next door is still
+  waiting for them. Widening both hid the whole progression from
+  everybody who used the product before today. `legacy-studio` is
+  therefore recorded alongside the real capabilities: `taught()` reads
+  it and hands back everything, `nextOptIn()` ignores it and sees only
+  the rites actually taken. It rides in the same list through the card,
+  the sweep, `adopt()` and the column, which is why it is a reserved
+  capability rather than a second field in four places that could
+  disagree.
+- **`RITE_NEXT` is gone from the last place it could hide.** Studio
+  Home's door asks `StudioRite.nextOptIn()`, so a rite already walked
+  stops being offered without anybody storing a rite id — closing the
+  limitation disclosed at build 0609.
 - **Step 1 is built** (build 0569): the **rite registry** (`RITES` in
   `js/studioRite.js` — id, mission, screens, `teaches`, `reveals`,
   `unlocksStudio`, found by id and never by ordinal), Rite II's

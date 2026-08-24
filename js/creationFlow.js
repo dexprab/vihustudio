@@ -711,6 +711,16 @@ const CreationFlow=(function(){
   // nobody has authored yet.
   function _nextRiteId(){
     try{
+      // The registry answers this now, because it is the only thing that
+      // knows what this child has already been taught (Decision 22 —
+      // capabilities, never a rite index). Until the taught record
+      // existed the first runnable opt-in rite was ALWAYS the answer, so
+      // the door stood there offering My Garden to a child who had just
+      // walked through it — disclosed at build 0609 as the persistence
+      // that could not ship yet.
+      if(typeof StudioRite!=='undefined' && typeof StudioRite.nextOptIn==='function'){
+        return StudioRite.nextOptIn();
+      }
       if(typeof StudioRite==='undefined' || typeof StudioRite.rites!=='function') return null;
       const list=StudioRite.rites()||[];
       for(let i=0;i<list.length;i++){

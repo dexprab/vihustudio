@@ -380,6 +380,42 @@ const MagicCard=(function(){
     return card;
   }
 
+  // ---------- What this Creator has been taught ----------
+  //
+  // Decision 22: the record of which CAPABILITIES a child has been
+  // taught "travels on the Magic Card, and is never shown". A
+  // browser-local flag would drop a Creator to Level I on a
+  // grandparent's laptop with their own Level III stories in front of
+  // them — the failure Decision 19 already had to fix for projects.
+  //
+  // `undefined` and `[]` mean different things and must stay different.
+  // A card claimed before this existed has no property at all, and
+  // js/studioRite.js reads that absence as "grandfathered — never take
+  // a control away". A card claimed since always carries an array, even
+  // an empty one. So this returns null for absent and an array for
+  // present, and never invents one.
+  //
+  // NEVER A LEVEL, RANK OR SCORE, and nothing new on the card's face
+  // (js/magicCard.js -> growthSignals()'s stated "no counters, no
+  // levels"). A set of things learned is not a rank: a child's larger
+  // Studio is the only thing they ever see.
+  function taught(){
+    const card=getActive();
+    if(!card) return null;
+    return Array.isArray(card.taught) ? card.taught.slice() : null;
+  }
+  function setTaught(list){
+    const id=getActiveId();
+    if(!id || !Array.isArray(list)) return false;
+    const cards=_readCards();
+    const idx=cards.findIndex(function(c){ return c.id===id; });
+    if(idx===-1) return false;
+    cards[idx].taught=list.slice();
+    _writeCards(cards);
+    _scheduleIdentitySync(id);
+    return true;
+  }
+
   function touch(id){
     if(!id) return;
     const cards=_readCards();
@@ -514,7 +550,11 @@ const MagicCard=(function(){
             // ensureBondedCompanion() retroactively bonds it.
             companion_id:card.companionId||null,
             companion_name:card.companionName||null,
-            companion_species:card.companionSpecies||null
+            companion_species:card.companionSpecies||null,
+            // Nullable, and null is meaningful: a card that predates the
+            // taught record has none, and recall must return that
+            // absence rather than an empty array (see adopt()).
+            taught:Array.isArray(card.taught) ? card.taught : null
           },{onConflict:'id'}).select('serial_no,constellation').then(function(res){
             const row=res&&!res.error&&res.data&&res.data[0];
             if(row&&row.serial_no!=null){
@@ -660,6 +700,20 @@ const MagicCard=(function(){
   // Creator-Companion pair permanently onto the card at the same
   // moment; a companion-less claim (companionFields omitted/null) is a
   // real, honest degrade state, not an error.
+  // The Traveller's own taught record, kept by js/studioRite.js on the
+  // device for the window in which a child has finished a rite and has
+  // no card yet. Read here rather than owned here: StudioRite decides
+  // what a capability is, this only carries it across.
+  function _sweepTaught(){
+    try{
+      const key=(typeof StudioRite!=='undefined' && StudioRite.TAUGHT_KEY) || 'vihu-rite-taught';
+      const raw=localStorage.getItem(key);
+      if(!raw) return [];
+      const v=JSON.parse(raw);
+      return Array.isArray(v) ? v : [];
+    }catch(e){ return []; }
+  }
+
   function claim(nickname,precomputed,companionFields){
     const placed=precomputed||_placeConstellation(_pickConstellationName());
     const now=new Date().toISOString();
@@ -685,7 +739,17 @@ const MagicCard=(function(){
       //
       // It ran on the next _readCards(), which is to say immediately and
       // invisibly, on every new CYGNUS card since that fix shipped.
-      constellationOrderFixed:true
+      constellationOrderFixed:true,
+      // ALWAYS AN ARRAY, EVEN AN EMPTY ONE — the absence of this
+      // property is what tells js/studioRite.js a card predates the
+      // taught record and must never lose a control (isGrandfathered).
+      // A card minted here is by definition new, so it is stamped, and
+      // whatever the child has already learned as a Traveller is swept
+      // onto it in the same breath. Rite I completes BEFORE the Creator
+      // Ceremony mints this card (Decision 8's amendment), so the
+      // Studio-shaped half of their first story is always waiting in
+      // that device record when this runs.
+      taught:_sweepTaught()
     };
     const cards=_readCards();
     cards.push(card);
@@ -999,6 +1063,13 @@ const MagicCard=(function(){
       companionId:remoteResult.companion_id||null,
       companionName:remoteResult.companion_name||'',
       companionSpecies:remoteResult.companion_species||'',
+      // Same rule as claim(), the other way round: absent stays absent.
+      // A deployment whose migration has not been run returns nothing
+      // here, the property is never written, and js/studioRite.js reads
+      // that as grandfathered — so a Creator recalled onto a strange
+      // device gets their whole Studio rather than being quietly
+      // stripped of controls by a missing column. Fail-open, in the one
+      // direction that can never cost a child something they had.
       // Same reasoning as claim(). Either this pattern was kept from a
       // card already on this device — which _readCards() has therefore
       // already migrated — or it was rebuilt just now from the current
@@ -1006,6 +1077,7 @@ const MagicCard=(function(){
       // wants repairing.
       constellationOrderFixed:true
     };
+    if(Array.isArray(remoteResult.taught)) card.taught=remoteResult.taught.slice();
     const cards=cardsBefore;
     const idx=cards.findIndex(function(c){ return c.id===card.id; });
     if(idx===-1) cards.push(card); else cards[idx]=card;
@@ -1142,6 +1214,10 @@ const MagicCard=(function(){
     count:count,
     getActiveId:getActiveId,
     getActive:getActive,
+    // Decision 22 — the taught record. Read and written only by
+    // js/studioRite.js, which owns what a capability means.
+    taught:taught,
+    setTaught:setTaught,
     setActive:setActive,
     touch:touch,
     generatePattern:generatePattern,

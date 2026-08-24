@@ -11134,6 +11134,47 @@ body.studio-rite-running .context-set-tile[data-set-id='storyTitle'],
 body.studio-rite-running .context-set-tile[data-set-id='pageShape'],
 body.studio-rite-running .context-rep-section{ display:none !important; }
 
+/* ---- …AND THE REDUCTION OUTLIVES THE RITE ---------------------------
+   "the right pane is wrong. it should not have options from rites which
+   are yet to come" — the product owner, looking at the Studio he met the
+   moment Rite I ended: all nine Add tiles, from a story that teaches
+   two. Decision 22's opening sentence, exactly. A child made their first
+   story in a Studio of five controls and was handed one of forty at the
+   moment they were least equipped to read it. The reduction was right;
+   its lifetime was wrong.
+
+   A SECOND FAMILY OF CLASSES, deliberately, rather than widening the
+   rules above. During a rite the visible set is the RITE's (accumulated
+   in registry order, `studio-rite-shows-*`), and that behaviour is
+   shipped and verified; `studio-gated` is only ever written while no
+   rite is running (js/studioRite.js -> applyTaught), so not one rule
+   above changes meaning.
+
+   ONLY THE "QUIET THE STUDIO" RULES ARE LEFT BEHIND, and that is the
+   point of the split: Open, Save As, Home, the theme toggle, the
+   autosave readout, the card badge, the build footer and the strip's
+   legend all come back the instant the rite ends, because none of them
+   is a capability — they are the room, not what a child can make in it.
+
+   AND ONLY WHAT A RITE CAN HAND OVER IS GATED. From This World, Voice,
+   Page Style, Page Shape and Story Title belong to a rite nobody has
+   written, so there is no door to them; hiding them would be the wall
+   Decision 22 forbids rather than the shelf it asks for. They have no
+   rule here, so they simply stay. The commit that writes that rite and
+   names them in `reveals` closes the tiles and opens the door in the
+   same breath — which is the whole reason the registry is the design.
+
+   Hidden, never locked (Decision 22): no padlock, no greyed-out tile,
+   no "Level 2" tooltip, no progress bar and nothing comparable with a
+   sibling's. A control not yet taught is simply not there. */
+body.studio-gated:not(.studio-taught-blank-page) #addPageBtn{ display:none !important; }
+body.studio-gated:not(.studio-taught-library) .context-add-card[data-add-id='library'],
+body.studio-gated:not(.studio-taught-doodle) .context-add-card[data-add-id='doodle'],
+body.studio-gated:not(.studio-taught-shapes) .context-add-card[data-add-id='shapes'],
+body.studio-gated:not(.studio-taught-photo) .context-add-card[data-add-id='photo'],
+body.studio-gated:not(.studio-taught-photo) .context-add-card[data-add-id='family'],
+body.studio-gated:not(.studio-taught-photo) .context-bg-picture-section{ display:none !important; }
+
 /* ---- The Rite docks in the left rail --------------------------------
    Approved placement. The conversation leaves the bottom of the screen
    entirely and stands in the column under the page thumbnails — the one

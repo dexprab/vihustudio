@@ -101,6 +101,233 @@ const StudioRite=(function(){
     try{ localStorage.setItem(FLAG,'1'); }catch(e){}
   }
 
+  // ================================================================
+  // WHAT THIS CHILD HAS BEEN TAUGHT
+  // ================================================================
+  //
+  // "the right pane is wrong. it should not have options from rites
+  // which are yet to come" — the product owner, looking at the Studio
+  // he met the moment Rite I ended. It offered all nine Add tiles,
+  // which is Decision 22's opening sentence exactly: *the Rite's
+  // reduction outlives the Rite.* A child made their first story in a
+  // Studio of five controls and was handed one of forty at the moment
+  // they were least equipped to read it. The reduction was right; its
+  // lifetime was wrong.
+  //
+  // WHAT IS STORED IS CAPABILITIES, NEVER A RITE INDEX (Decision 22).
+  // Rites will be added, split and reordered over the product's life,
+  // so a rite index is a moving reference while a capability is stable.
+  // It also settles what happens to a rite abandoned half way: nothing
+  // is granted, the rite is still the next one offered, and the child
+  // simply takes it again — so there is no partly-finished rite to
+  // model, which is what that decision asks for.
+  //
+  // A grant is `teaches` ∪ `reveals`. Two vocabularies, deliberately
+  // both: `teaches` is what the story taught, `reveals` is which
+  // controls stand down, and a future rite may well teach something
+  // whose control is named differently or not gated at all.
+  //
+  // IT TRAVELS ON THE MAGIC CARD. A browser-local flag would drop a
+  // Creator to Level I on a grandparent's laptop with their own Level
+  // III stories in front of them — the failure Decision 19 already had
+  // to fix for projects. The device key below is a FALLBACK for the
+  // window in which a child has finished a rite and has no card yet,
+  // and MagicCard.claim() sweeps it onto the card exactly as it already
+  // sweeps their projects and their library.
+  var TAUGHT_KEY='vihu-rite-taught';
+
+  function _deviceTaught(){
+    try{
+      var raw=localStorage.getItem(TAUGHT_KEY);
+      if(!raw) return null;
+      var v=JSON.parse(raw);
+      return Array.isArray(v) ? v : null;
+    }catch(e){ return null; }
+  }
+  function _writeDeviceTaught(list){
+    try{ localStorage.setItem(TAUGHT_KEY,JSON.stringify(list||[])); }catch(e){}
+  }
+
+  // The card first, the device second. Null — from EITHER — means "no
+  // record at all", which is not the same as "taught nothing"; see
+  // taught() below.
+  function _storedTaught(){
+    try{
+      if(typeof MagicCard!=='undefined' && typeof MagicCard.getActive==='function'
+         && MagicCard.getActive() && typeof MagicCard.taught==='function'){
+        var t=MagicCard.taught();
+        if(Array.isArray(t)) return t;
+        return null;
+      }
+    }catch(e){}
+    return _deviceTaught();
+  }
+
+  // GRANDFATHERED BY THE ABSENCE OF A RECORD, not by holding a card.
+  //
+  // Decision 22 says existing Creators are grandfathered "by their
+  // claimed Magic Card", and that test DIED when Decision 8 was amended:
+  // a card is now minted the moment Rite I completes, so "holds a card"
+  // is true of every brand-new child and would grandfather the entire
+  // population this feature is for. The honest signal is the record
+  // itself. After this ships, finishing any rite writes one — so a
+  // Studio that has been used, with no record anywhere, is by
+  // construction somebody who was here before it existed. They keep
+  // every control they have had for weeks, which is what that clause
+  // was protecting.
+  //
+  // Fail-open in the same direction everywhere else: an unreadable
+  // browser, a platform that never returned the column, a card recalled
+  // onto a device whose deployment predates the migration — all read as
+  // "no record", and nobody is ever quietly stripped of a control.
+  //
+  // LEGACY IS A CAPABILITY, and it has to be, because it must survive
+  // the child taking a rite. The first version of this widened taught()
+  // for anyone with no record — which is right for CONTROLS and wrong
+  // for DOORS, and the two are different questions that were being
+  // answered by one value:
+  //
+  //   controls — an existing Creator keeps everything they have had for
+  //              weeks (Decision 22), so a missing record must widen.
+  //   doors    — that same Creator has never TAKEN Rite II, so the next
+  //              door is still waiting for them. Widening here hid the
+  //              whole progression from everybody who used the product
+  //              before today, which the creation-home suite caught.
+  //
+  // So `legacy-studio` is recorded alongside the real capabilities the
+  // first time a pre-existing Creator finishes any rite. taught() reads
+  // it and hands back everything; nextOptIn() ignores it entirely and
+  // sees only the rites actually walked. It rides in the same list
+  // through the card, the sweep, adopt() and the column with no extra
+  // plumbing anywhere — which is the point of putting it there rather
+  // than adding a second field to four places that could disagree.
+  var LEGACY='legacy-studio';
+
+  function _allCapabilities(){
+    var all=[];
+    RITES.forEach(function(r){
+      (r.teaches||[]).concat(r.reveals||[]).forEach(function(c){
+        if(all.indexOf(c)<0) all.push(c);
+      });
+    });
+    return all;
+  }
+
+  function isGrandfathered(){
+    var t=_storedTaught();
+    if(t===null) return true;
+    return t.indexOf(LEGACY)>=0;
+  }
+
+  // Everything this child can reach. A grandfathered Creator gets the
+  // whole vocabulary rather than a flag anybody downstream has to know
+  // about, so there is exactly one shape of answer.
+  function taught(){
+    var t=_storedTaught();
+    if(t===null) return _allCapabilities();
+    if(t.indexOf(LEGACY)<0) return t.slice();
+    var out=t.slice();
+    _allCapabilities().forEach(function(c){ if(out.indexOf(c)<0) out.push(c); });
+    return out;
+  }
+
+  function _grant(rite){
+    if(!rite) return;
+    var have=_storedTaught();
+    var next;
+    if(have!==null){
+      next=have.slice();
+    }else if(isComplete()){
+      // No record, and this Studio has already been through the
+      // mandatory rite — so this is somebody who was here before the
+      // record existed. Their legacy is written down so it survives
+      // this grant, and only their legacy: what they have actually
+      // WALKED is this rite and nothing else, which is what decides
+      // the next door.
+      next=[LEGACY];
+    }else{
+      // A brand-new child finishing their first story. `_grant` runs
+      // before markComplete(), so an empty record here is exactly what
+      // it looks like: nothing taught yet.
+      next=[];
+    }
+    (rite.teaches||[]).concat(rite.reveals||[]).forEach(function(c){
+      if(next.indexOf(c)<0) next.push(c);
+    });
+    var onCard=false;
+    try{
+      if(typeof MagicCard!=='undefined' && typeof MagicCard.getActive==='function'
+         && MagicCard.getActive() && typeof MagicCard.setTaught==='function'){
+        MagicCard.setTaught(next); onCard=true;
+      }
+    }catch(e){}
+    // Written to the device as well as the card, never instead of it.
+    // The card is the record; this is what MagicCard.claim() sweeps for
+    // a child who finishes Rite I before the Ceremony hands them one,
+    // and it is harmless once a card exists.
+    _writeDeviceTaught(next);
+    if(!onCard){ /* the sweep on claim() will carry it */ }
+    applyTaught();
+  }
+
+  // Has this child already been taught everything a rite offers? Used
+  // to decide which door Studio Home shows next, so a rite already
+  // taken stops being offered without anybody storing a rite id.
+  // Deliberately _storedTaught(), never taught(): a door is about which
+  // stories this child has WALKED, and `legacy-studio` says nothing
+  // about that. No record at all means no rite taken, so the first door
+  // is offered — which is the behaviour every existing Creator already
+  // has and must keep.
+  function _taughtAllOf(rite){
+    var have=_storedTaught();
+    if(have===null) return false;
+    var want=(rite.teaches||[]).concat(rite.reveals||[]);
+    for(var i=0;i<want.length;i++){ if(have.indexOf(want[i])<0) return false; }
+    return want.length>0;
+  }
+
+  // The next opt-in door: the first runnable one whose story this child
+  // has not been through. By id and by capability, never by ordinal.
+  function nextOptIn(){
+    for(var i=0;i<RITES.length;i++){
+      var r=RITES[i];
+      if(r.unlocksStudio || !_runnable(r)) continue;
+      if(_taughtAllOf(r)) continue;
+      return r.id;
+    }
+    return null;
+  }
+
+  // THE REDUCTION, OUTSIDE THE RITE.
+  //
+  // Deliberately a SECOND family of classes rather than reusing
+  // `studio-rite-shows-*`. During a rite the visible set is the rite's
+  // own (accumulated in registry order), and that behaviour is shipped,
+  // verified and unchanged by any of this — `studio-gated` is only ever
+  // on while no rite is running, so not one in-rite rule is touched.
+  //
+  // And only capabilities some RUNNABLE rite can hand over are gated.
+  // From This World, Voice, Page Style and Page Shape belong to a rite
+  // nobody has written, so there is no door to them — hiding them would
+  // be the wall Decision 22 forbids rather than the shelf it asks for.
+  // They have no `:not(.studio-taught-…)` rule, so they simply stay.
+  // The commit that writes that rite and names them in `reveals` closes
+  // the tiles and opens the door in the same breath, which is the whole
+  // point of the registry being the design.
+  function applyTaught(){
+    try{
+      var cl=document.body.classList;
+      Array.prototype.slice.call(cl).forEach(function(c){
+        if(c.indexOf('studio-taught-')===0) cl.remove(c);
+      });
+      cl.remove('studio-gated');
+      if(_running) return;               // the rite owns the Studio's shape
+      if(isGrandfathered()) return;      // nothing is ever taken away
+      cl.add('studio-gated');
+      taught().forEach(function(c){ cl.add('studio-taught-'+c); });
+    }catch(e){}
+  }
+
   // ---------- The script (docs/STUDIO_RITE_SCRIPT.md) ----------
   // Pure data, deliberately — the same discipline
   // CompanionDirector.getCeremonySequence() already uses for the Creator
@@ -700,11 +927,13 @@ const StudioRite=(function(){
     // design — moving a rite is moving a line in this array, and
     // everything downstream follows.
     //
-    // IT HAS NO SCREENS YET. Its story has not been written, and a rite
-    // with no screens is NOT RUNNABLE — `_runnable()` below is what
-    // every offer and every start goes through, so nothing can point a
-    // child at a door that will not open. Writing the story is what
-    // makes this rite real; nothing else here has to change.
+    // Its story is written — `SCREENS_GARDEN`, twelve beats, no
+    // recordings (docs/STUDIO_RITE_LEVEL_II_SCRIPT.md). It was held here
+    // with no screens until then, which made it unrunnable by
+    // construction: `_runnable()` below is what every offer and every
+    // start goes through, so nothing could point a child at a door that
+    // would not open. Writing the story was the only thing that had to
+    // change.
     {id:'my-garden',
      mission:MISSION_GARDEN,
      screens:SCREENS_GARDEN,
@@ -2305,6 +2534,10 @@ const StudioRite=(function(){
   function _teardown(){
     _running=false;
     _clearCues();
+    // The rite's own reveal classes come off below; the child's own
+    // taught set goes on in their place, so the Studio never blinks
+    // through a moment of holding everything.
+    try{ applyTaught(); }catch(e){}
     // The Studio's own content rules own the buttons from here.
     try{ if(typeof window.refreshStoryActions==='function') window.refreshStoryActions(); }catch(e){}
     if(_paperGuard){ try{ _paperGuard(); }catch(e){} _paperGuard=null; }
@@ -2639,6 +2872,14 @@ const StudioRite=(function(){
           // partial or abandoned Rite can unlock the Studio — and an
           // opt-in rite writes nothing at all, because nothing depends
           // on having taken it (docs/STUDIO_RITE_LEVELS.md §6).
+          // The capabilities this story taught are the child's from
+          // here on, whichever rite it was — that is the whole of
+          // Decision 22's "the Rite's reduction outlives the Rite".
+          // Granted BEFORE the teardown so the Studio revealed behind
+          // the closing overlay is already the right size, and before
+          // the Ceremony so the card minted a moment later is swept the
+          // record rather than being handed an empty one.
+          _grant(_rite);
           if(_rite.unlocksStudio){
             markComplete();
             _teardown();
@@ -2764,6 +3005,11 @@ const StudioRite=(function(){
     gate:gate,
     rites:rites,
     start:start,
+    taught:taught,
+    isGrandfathered:isGrandfathered,
+    nextOptIn:nextOptIn,
+    applyTaught:applyTaught,
+    TAUGHT_KEY:TAUGHT_KEY,
     // Internal — exposed for the test harness only, the same way
     // js/publishStudio.js exposes its stage and its artifacts.
     //
