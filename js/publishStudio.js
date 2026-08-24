@@ -45,6 +45,7 @@ const PublishStudio=(function(){
   let _readPrevBtn=null;
   let _readNextBtn=null;
   let _readPublishBtn=null;
+  let _closeBtn=null;
   let _readAnimating=false;
 
   // -------- DOM build (lazy; reuses the same modal across opens) ----
@@ -67,7 +68,17 @@ const PublishStudio=(function(){
     brand.className='publish-studio-brand';
     brand.textContent=_labels().brand;
     header.appendChild(brand);
-    const close=document.createElement('button');
+    // A BARE ✕ IS THE RIGHT CONTROL FOR EVERY STAGE EXCEPT THE LAST
+    // ONE. On the celebration it was the biggest, most reachable thing
+    // on the screen, it said nothing, and it did the exact same thing as
+    // the worded "Keep Editing" a few inches below it — so a child who
+    // had just finished their story pressed the loudest control and
+    // could not have known where it would put them. Reported that way:
+    // "the cross on screen post finish story we should rename it to
+    // something else. right now the kid is left in limbo."
+    // _applyCloseLabel() gives it words there and leaves it alone
+    // everywhere else.
+    const close=_closeBtn=document.createElement('button');
     close.type='button';
     close.className='publish-studio-close';
     close.setAttribute('aria-label','Close');
@@ -1291,12 +1302,13 @@ const PublishStudio=(function(){
     // Secondary actions.
     const secondary=document.createElement('div');
     secondary.className='publish-celebration-secondary';
-    const keep=document.createElement('button');
-    keep.type='button';
-    keep.className='publish-celebration-secondary-btn';
-    keep.innerHTML='<span>✏️</span> Keep Editing';
-    keep.addEventListener('click',function(){ _close(); });
-    secondary.appendChild(keep);
+    // "✏️ Keep Editing" STOOD HERE AND WAS THE SAME BUTTON AS THE ONE IN
+    // THE HEADER — both called _close(), so the screen offered one
+    // action twice, once worded and once as a silent ✕. Naming the ✕ is
+    // what made that visible; two differently-worded controls doing one
+    // identical thing is the limbo, not the cure for it. The header
+    // control is the one that survives: it is where a hand goes, and it
+    // now says where it goes.
     const another=document.createElement('button');
     another.type='button';
     another.className='publish-celebration-secondary-btn';
@@ -1898,9 +1910,22 @@ const PublishStudio=(function(){
   }
 
   // -------- Stage state machine -------------------------------------
+  // The one place the close control's wording is decided. Worded only on
+  // the celebration, and only for a child: an author in Author Mode has
+  // just produced a product asset, and "my story" is not what they are
+  // looking at.
+  function _applyCloseLabel(stage){
+    if(!_closeBtn) return;
+    const worded=(stage===STAGES.CELEBRATION && !_isCanon());
+    _closeBtn.classList.toggle('is-worded',worded);
+    _closeBtn.textContent=worded ? '← Back to my story' : '✕';
+    _closeBtn.setAttribute('aria-label',worded ? 'Back to my story' : 'Close');
+  }
+
   function _setStage(next){
     if(!_modal) return;
     _state.stage=next;
+    _applyCloseLabel(next);
     Object.keys(_bodies).forEach(function(k){
       _bodies[k].classList.toggle('hidden', k!==next);
     });

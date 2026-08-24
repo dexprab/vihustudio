@@ -5341,6 +5341,23 @@ body.dark-theme .publish-studio-brand{ color:var(--gold); }
 .publish-studio-close:hover{ background:rgba(0,0,0,0.08); }
 body.dark-theme .publish-studio-close:hover{ background:rgba(255,255,255,0.08); }
 
+/* …and on the celebration it stops being a glyph and becomes a sentence
+   about where it goes. The !important widths above are what force the
+   circle, so they have to be undone rather than overridden — the global
+   button{width:100%} rule is waiting underneath. */
+.publish-studio-close.is-worded{
+  width:auto !important;
+  height:36px !important;
+  padding:0 16px !important;
+  border-radius:999px;
+  font-size:14px;
+  font-weight:600;
+  white-space:nowrap;
+  background:rgba(0,0,0,0.05);
+  color:var(--text);
+}
+body.dark-theme .publish-studio-close.is-worded{ background:rgba(255,255,255,0.07); }
+
 .publish-studio-stage{
   flex:1;
   min-height:0;

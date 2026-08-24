@@ -6753,3 +6753,39 @@ and P3 measures the other half.
 Traveller reset 16/16, garden 104/104, levels 31/31, rite gate 22/22,
 creation home 47/47, celebration 24/24, zero page errors.
 Build 0633 → 0634.
+
+## The way out of the celebration says where it goes (build 0635)
+
+*"the cross on screen post finish story we should rename it to something
+else. right now the kid is left in limbo."* — the product owner.
+
+The ✕ in the Publish Studio header is right for every stage except the
+last one. On the celebration it was the biggest, most reachable control
+on the screen, it said nothing, and — measured, not assumed — it called
+the identical `_close()` as the worded **✏️ Keep Editing** a few inches
+below it. So a child who had just finished their story pressed the
+loudest thing on the page and could not have known where it would put
+them, while the same action sat elsewhere with a name on it.
+
+On the celebration it is now **← Back to my story**, drawn as a sentence
+rather than squeezed into a 38px circle (the `!important` widths that
+force that circle have to be undone, not overridden — the global
+`button{width:100%}` rule is waiting underneath). Every other stage keeps
+the plain glyph, and so does Author Mode: an author has just produced a
+product asset, and "my story" is not what they are looking at.
+
+**Keep Editing is gone**, which is the direct consequence rather than a
+second change: naming the ✕ is what made the duplication visible, and two
+differently-worded controls doing one identical thing is the limbo, not
+the cure for it. The header control is the one that survives, because it
+is where a hand goes. Make Another Story and Other formats are untouched.
+
+Also disclosed and unchanged: this control is what the Rite's finishing
+beat waits on (build 0631 — the closing chapter must not play over a
+modal), so it is now load-bearing in Rite I as well as being the exit.
+It reads correctly there: the child does go back to their story, and
+Lumo's closing chapter meets them on it.
+
+Celebration 28/28 (C14b–C14e are new), rite gate 22/22, creation home
+47/47, levels 31/31, traveller reset 16/16, zero page errors.
+Build 0634 → 0635.

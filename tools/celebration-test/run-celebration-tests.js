@@ -173,6 +173,25 @@ function check(cond, name, note) { (cond ? ok : fail)(name, note); }
     'C13 the gold duplicate download button is gone');
   check(!/Publish/i.test(seen.body), 'C14 nothing on the screen says Publish to a child');
 
+  // THE WAY OUT SAYS WHERE IT GOES. A bare ✕ was the loudest control on
+  // the screen and did the identical thing as a worded button below it.
+  const exits = await page.evaluate(() => {
+    const c = document.querySelector('.publish-studio-close');
+    return {
+      label: c ? (c.textContent || '').trim() : null,
+      worded: !!(c && c.classList.contains('is-worded')),
+      wide: c ? Math.round(c.getBoundingClientRect().width) : 0,
+      secondary: Array.from(document.querySelectorAll('.publish-celebration-secondary-btn'))
+        .map((b) => b.textContent.trim())
+    };
+  });
+  check(exits.worded && exits.label === '← Back to my story',
+    'C14b the way out of the celebration says where it goes', JSON.stringify(exits.label));
+  check(exits.wide > 90, 'C14c …and is drawn as a sentence, not squeezed into a circle', exits.wide + 'px');
+  check(!exits.secondary.some((t) => /Keep Editing/i.test(t)),
+    'C14d the duplicate that did the identical thing is gone', exits.secondary.join(' / '));
+  check(exits.secondary.length === 2, 'C14e two secondary actions remain', exits.secondary.join(' / '));
+
   // ---- THE RITE'S OWN GATE ------------------------------------------
   // "i clicked take my story, its not moving forward towards the magic
   // card part." Rite I asked the child to FINISH and then waited for
