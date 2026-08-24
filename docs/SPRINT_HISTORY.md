@@ -6375,3 +6375,43 @@ correctly hidden, because a Canon Story is a product asset nobody takes
 home. Two probes reported a missing button before that was the answer.
 
 Rite gate 16/16, Studio Home 47/47. Build 0625 → 0626.
+
+## The celebration stops being a downloads page (build 0627)
+
+The product owner, on the screen AFTER taking: *"take my story pdf
+download, get my adeventure pdf download, save magic creation mp4
+download. everything stays on same screen. only the share with
+vihuplanet is the way to become creator."*
+
+**Two of those three were the same file.** Take My Story called
+`_downloadPublished()` and then revealed *Get My Adventure*, which called
+`_downloadPublished()` again — the same blob, seconds apart. Its own
+comment gave the history away: it still described itself as *"a single
+primary 📖 Get My Book button"*, which is exactly what it was **before**
+Decision 12 split finishing into two choices. Take My Story was put in
+front of it and nobody retired it.
+
+It mattered beyond tidiness. It was the only gold, full-width object on
+the screen, so the moment a child took their story the loudest thing
+became a button they had effectively just pressed — and Share, the one
+choice with anywhere to go, was left competing with it. Since sharing is
+the *only* way to become a Creator (`_completeShare()` is the sole caller
+of `shouldOfferAwakening()`), the screen was loudest about the thing that
+leads nowhere new.
+
+Gone, with its declaration, its reset, its gold CSS and Sprint 9.0.3's
+destination-aware label for a button that no longer exists. Taking again
+is now an underlined word inside the confirmation — *"✓ Saved to this
+computer. Take it again"* — so after taking, Take is dimmed and **Share
+stands alone as the only live choice.**
+
+The third download stays and is not a duplicate: the bundle is exactly
+two artifacts (`PUBLISH_BUNDLE` — book and magic), so *Save the Magic
+Creation* is a genuinely different file, and it was already the quiet
+keep-button style rather than gold.
+
+**Also corrected: my own copy was wrong.** Take My Story's new line said
+*"your book and your pictures"*. There are no pictures in the bundle. It
+says *"Your book, saved onto this computer. Yours to keep."*
+
+Rite gate 16/16, Studio Home 47/47. Build 0626 → 0627.

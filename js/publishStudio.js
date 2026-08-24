@@ -1090,7 +1090,6 @@ const PublishStudio=(function(){
   let _celebCoverCanvas=null;
   let _celebTitle=null;
   let _celebSubtitle=null;
-  let _celebDownloadBtn=null;
   let _celebReadyMsg=null;
   let _celebChoices=null;
   let _celebTakeBtn=null;
@@ -1222,8 +1221,8 @@ const PublishStudio=(function(){
     // every Traveller arrives through the Ether and watched it turn.
     _celebTakeBtn.innerHTML='<span class="publish-celebration-choice-glyph">📦</span>'+
       '<span class="publish-celebration-choice-label">Take My Story</span>'+
-      '<span class="publish-celebration-choice-say">Your book and your pictures, '+
-      'saved onto this computer.</span>';
+      '<span class="publish-celebration-choice-say">Your book, saved onto this '+
+      'computer. Yours to keep.</span>';
     // Always succeeds. Everything the bundle produced already exists by
     // the time this screen is on — this reveals it, it does not
     // generate it, and there is nothing here that can say no.
@@ -1231,10 +1230,7 @@ const PublishStudio=(function(){
       _celebChoices.classList.add('is-taken');
       _celebKeepsHost.classList.remove('hidden');
       const ok=_downloadPublished();
-      if(ok){
-        _celebReadyMsg.classList.remove('hidden');
-        _celebDownloadBtn.classList.add('is-given');
-      }
+      if(ok) _celebReadyMsg.classList.remove('hidden');
     });
     _celebChoices.appendChild(_celebTakeBtn);
 
@@ -1259,22 +1255,29 @@ const PublishStudio=(function(){
     _celebKeepsHost.className='publish-celebration-takes hidden';
     center.appendChild(_celebKeepsHost);
 
-    _celebDownloadBtn=document.createElement('button');
-    _celebDownloadBtn.type='button';
-    _celebDownloadBtn.className='publish-celebration-download';
-    _celebDownloadBtn.innerHTML='<span class="publish-celebration-download-glyph">📥</span><span>Get My Adventure</span>';
-    _celebDownloadBtn.addEventListener('click',function(){
-      const ok=_downloadPublished();
-      if(ok){
-        _celebReadyMsg.classList.remove('hidden');
-        _celebDownloadBtn.classList.add('is-given');
-      }
-    });
-    _celebKeepsHost.appendChild(_celebDownloadBtn);
+    // "GET MY ADVENTURE" LIVED HERE AND WAS A DUPLICATE. Reported by the
+    // product owner looking at the screen after taking: three download
+    // buttons at once, the loudest of them gold. It downloaded the very
+    // same blob Take My Story had already downloaded a moment earlier —
+    // its own comment still called it "a single primary Get My Book
+    // button", which is exactly what it was BEFORE Decision 12 split
+    // finishing into two choices. Take My Story was put in front of it
+    // and nobody retired it.
+    //
+    // It mattered beyond tidiness. It was the only gold, full-width
+    // thing on this screen, so the moment a child took their story the
+    // loudest object became a button they had effectively just pressed
+    // — and Share, the one choice with anywhere to go, was left
+    // competing with it. Taking again is now a quiet word inside the
+    // confirmation, where it belongs.
 
     _celebReadyMsg=document.createElement('div');
     _celebReadyMsg.className='publish-celebration-ready hidden';
-    _celebReadyMsg.innerHTML='<span>✓</span> Your adventure is ready. Download again any time.';
+    _celebReadyMsg.innerHTML='<span>✓</span> <span>Saved to this computer.</span> '+
+      '<button type="button" class="publish-celebration-again">Take it again</button>';
+    _celebReadyMsg.addEventListener('click',function(ev){
+      if(ev.target && ev.target.closest('.publish-celebration-again')) _downloadPublished();
+    });
     _celebKeepsHost.appendChild(_celebReadyMsg);
 
     // Magic Publish M6 — the rest of the bundle. "Downloads remain
@@ -1710,7 +1713,6 @@ const PublishStudio=(function(){
         : '<span class="publish-celebration-emoji">🎉</span> You finished your story!';
     }
     _celebReadyMsg.classList.add('hidden');
-    _celebDownloadBtn.classList.remove('is-given');
     // The two choices come back side by side every time, and the
     // artifacts go back behind Take My Story — a second finish in the
     // same session must not open already answered.
@@ -1739,17 +1741,10 @@ const PublishStudio=(function(){
         already ? 'Already in VihuPlanet' : CL.destination;
     }
 
-    // Sprint 9.0.3 — destination-aware Celebration copy. Story Book →
-    // "Get My Adventure". Story Carousel → "Download Images" (or
-    // "Download Image" for single-page). The blob + filename came
-    // through _publishOutputMeta; the label + glyph are the same
-    // metadata the destination emitted from `finish()`.
-    const dest=_publishDestination;
-    const label=(_publishOutputMeta && _publishOutputMeta.celebrateLabel)
-              || (dest && dest.formats && 'Get My Story')
-              || 'Get My Story';
-    const glyph=(_publishOutputMeta && _publishOutputMeta.celebrateGlyph) || '📥';
-    _celebDownloadBtn.innerHTML='<span class="publish-celebration-download-glyph">'+glyph+'</span><span>'+label+'</span>';
+    // Sprint 9.0.3's destination-aware download label lived here. It
+    // named the button this screen no longer has; the only artifact
+    // wording left is Take My Story's own, which is the same whatever
+    // the destination produced.
     // Sprint 9.0.5 — destination-aware headline message. Reads
     // right for every destination without polluting the shell
     // with per-destination branches.

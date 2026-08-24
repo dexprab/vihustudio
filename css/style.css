@@ -6029,32 +6029,9 @@ body.dark-theme .publish-publishing-cancel:hover{ background:rgba(255,255,255,0.
   color:var(--text-secondary);
 }
 
-.publish-celebration-download{
-  display:inline-flex;
-  align-items:center;
-  gap:10px;
-  padding:14px 36px;
-  border:none;
-  border-radius:32px;
-  background:var(--gold);
-  color:var(--navy);
-  font-size:17px;
-  font-weight:700;
-  cursor:pointer;
-  height:auto !important;
-  width:auto !important;
-  margin:6px 0 0 !important;
-  box-shadow:0 12px 32px rgba(255,203,69,0.50);
-  transition:transform 0.15s, box-shadow 0.15s;
-  animation:publish-pulse 1.8s ease-in-out infinite;
-}
-.publish-celebration-download:hover{ transform:translateY(-1px); }
-.publish-celebration-download:active{ transform:translateY(0); }
-.publish-celebration-download.is-given{
-  animation:none;
-  box-shadow:0 6px 16px rgba(255,203,69,0.30);
-}
-.publish-celebration-download-glyph{ font-size:20px; }
+/* .publish-celebration-download styled "Get My Adventure", a gold
+   duplicate of Take My Story that Decision 12's rework left behind.
+   The button is gone and so are its rules. */
 
 .publish-celebration-ready{
   font-size:13px;

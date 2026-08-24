@@ -266,6 +266,24 @@
 .publish-celebration-play:hover { transform: translate(-50%, -50%) scale(1.06); background: #fff; }
 .publish-celebration-play.hidden { display: none; }
 
+/* Taking the story again — a word inside the confirmation, never a
+   button competing with the one choice that still has somewhere to go. */
+.publish-celebration-again {
+  background: none;
+  border: 0;
+  padding: 0 !important;
+  margin: 0 !important;
+  width: auto !important;
+  height: auto !important;
+  font: inherit;
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  opacity: 0.75;
+  cursor: pointer;
+}
+.publish-celebration-again:hover { opacity: 1; }
+
 /* Taking the story is not a decision that closes anything, so the
    button stays where it is — it simply stops being the only thing on
    screen once the artifacts are showing. */
