@@ -5608,52 +5608,8 @@ body.dark-theme .publish-almost-cover-host{ background:rgba(255,255,255,0.05); }
   color:var(--text-secondary);
 }
 
-.publish-nudges{
-  width:100%;
-  display:flex;
-  flex-direction:column;
-  gap:10px;
-}
-.publish-nudges.hidden{ display:none; }
-
-.publish-nudge-card{
-  display:grid;
-  grid-template-columns:auto 1fr auto;
-  align-items:center;
-  gap:14px;
-  padding:14px 18px;
-  background:var(--bg);
-  border:1px solid var(--line);
-  border-radius:14px;
-}
-.publish-nudge-icon{
-  font-size:22px;
-  line-height:1;
-}
-.publish-nudge-text{
-  font-size:14px;
-  color:var(--text);
-  line-height:1.4;
-}
-.publish-nudge-fix{
-  padding:6px 14px !important;
-  font-size:12px;
-  font-weight:600;
-  border:1px solid var(--line);
-  border-radius:14px;
-  background:transparent;
-  color:var(--text);
-  cursor:pointer;
-  height:auto !important;
-  width:auto !important;
-  margin:0 !important;
-  transition:background 0.12s, border-color 0.12s;
-}
-.publish-nudge-fix:hover{
-  background:rgba(255,203,69,0.10);
-  border-color:rgba(255,203,69,0.45);
-}
-body.dark-theme .publish-nudge-card{ background:var(--panel); }
+/* The finish path's readiness nudges were removed by Decision 12 and
+   their renderer was dead code; these rules went with it. */
 
 .publish-primary-btn{
   display:inline-flex;

@@ -6282,3 +6282,46 @@ the world to add to the body and forget in the header.
 
 **Needs the migration re-run** — it is safe to re-run and always was.
 Invite suites 9/9 and 7/7. Build 0623 → 0624.
+
+## Finishing asks once (build 0625)
+
+The product owner, walking Rite I with screenshots: *"there are 3 finish
+story buttons."* Measured, and he was exactly right — the Studio's own
+**Finish Story**, then the read-through's **📖 Finish My Story**, then a
+third screen whose button read **✨ Finish My Story**. The last two are
+the same words on consecutive screens, which from a child's side is *I
+already finished it, why does it keep asking?*
+
+**The third screen had lost its reason to exist, and the code proved it.**
+ALMOST_READY was the readiness check: it ran `PublishValidator` and
+listed what was wrong with a story before letting a child have it.
+Decision 12 deleted that — *"there is no readiness check, no validation
+and no nudge list on the way to it"* — and what was left was a headline,
+a cover thumbnail **smaller than the one the previous screen had just
+shown**, and a button repeating the one just pressed. A confirmation step
+for a decision canon says cannot be refused.
+
+`_renderAlmostNudges()` was still there, fully written, and **called from
+nowhere** — along with an always-hidden container and forty lines of CSS
+for cards nothing builds. Dead code implementing a thing canon forbids is
+worse than no code: the next person to read the file would reasonably
+assume it runs. All three are gone.
+
+**The stage itself stays, deliberately.** It is where six failure paths
+land and it is the destination picker's own back target; deleting it
+would be a redesign of a frozen subsystem to fix a screen nobody should
+see. It is simply no longer on the way FORWARD — `_makeTheBundle()` is
+the one act of finishing, called from the read-through and from the ready
+screen alike — so a child meets it only when something has gone wrong,
+where *"Your story is ready to finish!"* and a button that finishes it
+are exactly the right things to find.
+
+Walked for real: the read-through's button now takes `read → publishing`
+with no stop between. Rite gate 16/16, Studio Home 47/47, Garden 103/103,
+zero page errors.
+
+**Noticed while there and not fixed:** the read-through opens on the
+COVER — *"Tap ▶ to start reading"* — so a child who presses Finish there
+has read nothing. The button is honestly labelled and the screen is
+theirs to page through, but the read-through's own purpose goes
+unfulfilled by default. Build 0624 → 0625.

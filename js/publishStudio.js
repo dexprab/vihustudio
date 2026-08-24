@@ -146,7 +146,30 @@ const PublishStudio=(function(){
     _readPublishBtn.type='button';
     _readPublishBtn.className='publish-read-publish';
     _readPublishBtn.innerHTML='<span class="publish-read-publish-glyph">📖</span><span class="publish-read-publish-label">Finish My Story</span>';
-    _readPublishBtn.addEventListener('click',function(){ _setStage(STAGES.ALMOST_READY); });
+    // FINISHES, rather than asking the same question again. Reported by
+    // the product owner walking Rite I: three screens in a row said
+    // Finish — the Studio's own control, then this, then a third screen
+    // whose button repeated this one's words exactly. From a child's
+    // side that reads as "I already finished it, why does it keep
+    // asking?"
+    //
+    // The screen it used to lead to had lost its reason to exist.
+    // ALMOST_READY was the readiness check: it ran PublishValidator and
+    // listed what was wrong with the story before letting a child have
+    // it. Decision 12 deleted that — "there is no readiness check, no
+    // validation and no nudge list on the way to it" — and what was
+    // left was a headline, a cover thumbnail SMALLER than the one on
+    // this screen, and a button asking again. A confirmation step for a
+    // decision canon says cannot be refused.
+    //
+    // THE STAGE ITSELF STAYS, deliberately. It is where six different
+    // failure paths land and it is the destination picker's own back
+    // target — deleting it would be a redesign of a frozen subsystem to
+    // fix a screen nobody should see. It is simply no longer on the
+    // way FORWARD, so a child meets it only if something went wrong,
+    // where "Your story is ready to finish!" and a button that finishes
+    // it are exactly the right things to find.
+    _readPublishBtn.addEventListener('click',function(){ _makeTheBundle(); });
     center.appendChild(_readPublishBtn);
 
     body.appendChild(center);
@@ -301,7 +324,6 @@ const PublishStudio=(function(){
   let _almostCoverHost=null;
   let _almostCoverCanvas=null;
   let _almostCoverInfo=null;
-  let _almostNudgeList=null;
   let _almostPublishBtn=null;
 
   function _buildAlmostReadyBody(){
@@ -345,9 +367,6 @@ const PublishStudio=(function(){
     center.appendChild(_almostCoverHost);
 
     // Nudge state — list of cards.
-    _almostNudgeList=document.createElement('div');
-    _almostNudgeList.className='publish-nudges hidden';
-    center.appendChild(_almostNudgeList);
 
     // Primary action — same label whether nudges are present or not.
     // Per the locked spec, never "Publish Anyway"; the choice is the
@@ -361,14 +380,18 @@ const PublishStudio=(function(){
     // the destination picker is still there for a creator who wants a
     // Carousel or a Reel, now reachable as "Other formats" from
     // Celebration rather than sitting in everybody's way.
-    _almostPublishBtn.addEventListener('click',function(){
-      _publishMode='bundle';
-      _setStage(STAGES.PUBLISHING);
-    });
+    _almostPublishBtn.addEventListener('click',function(){ _makeTheBundle(); });
     center.appendChild(_almostPublishBtn);
 
     body.appendChild(center);
     return body;
+  }
+
+  // The one act of finishing, called from the read-through (the way
+  // forward) and from the ready screen (where a retry lands).
+  function _makeTheBundle(){
+    _publishMode='bundle';
+    _setStage(STAGES.PUBLISHING);
   }
 
   // Sprint VP2 — no creative judgement on the way to finishing.
@@ -393,7 +416,6 @@ const PublishStudio=(function(){
     _almostHeadline.textContent=L.commitHeadline;
     _almostMessage.textContent='';
     _almostCoverHost.classList.remove('hidden');
-    _almostNudgeList.classList.add('hidden');
     _renderAlmostCover();
   }
 
@@ -610,28 +632,11 @@ const PublishStudio=(function(){
     });
   }
 
-  function _renderAlmostNudges(nudges){
-    _almostNudgeList.innerHTML='';
-    nudges.forEach(function(n){
-      const card=document.createElement('div');
-      card.className='publish-nudge-card';
-      const icon=document.createElement('div');
-      icon.className='publish-nudge-icon';
-      icon.textContent='💡';
-      card.appendChild(icon);
-      const text=document.createElement('div');
-      text.className='publish-nudge-text';
-      text.textContent=n.message;
-      card.appendChild(text);
-      const action=document.createElement('button');
-      action.type='button';
-      action.className='publish-nudge-fix';
-      action.textContent='Fix in Editor';
-      action.addEventListener('click',function(){ _fixInEditor(n); });
-      card.appendChild(action);
-      _almostNudgeList.appendChild(card);
-    });
-  }
+  // _renderAlmostNudges() lived here and was called from nowhere: it
+  // built the "no cover yet / no name yet / page 3 is empty" cards that
+  // Decision 12 removed from the finish path. Dead code implementing a
+  // thing canon forbids is worse than no code — the next person to read
+  // this file would reasonably assume it runs.
 
   // "Fix in Editor" — close the studio, jump to the offending slide,
   // and route the right pane to the relevant designer. Friendly, never
