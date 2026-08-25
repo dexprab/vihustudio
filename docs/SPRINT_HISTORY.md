@@ -7112,3 +7112,48 @@ start, and is never the door Studio Home offers.
 
 Levels 52/52, rite gate 23/23, creation home 52/52, gate 24/24, zero page
 errors. Build 0642 → 0643.
+
+## Is anything in the Studio rite-less? (build 0644)
+
+*"we need to have each tile, each capability covered under a story rite.
+if we have to increase the number of story rites we will do that, but do
+ensure nothing offered in studio either a tile or a capability is rite
+less."* — the product owner.
+
+That is an invariant, and an invariant nothing checks is a wish. Gating
+today is a hand-written CSS list keyed on ad-hoc selectors, and Decision
+22 already records the hazard in as many words — *"every new control in
+the Add panel must be added to the reduction in the same commit that adds
+the control"*. It has leaked twice already: My Garden's own tile stayed
+on screen through Rite I, and so did the Background panel's Picture row.
+Both were caught by a person looking at a screenshot. Adding twenty more
+hand-written rules makes the guarantee weaker, not stronger.
+
+So the first thing built is the check. `tools/capability-audit/` boots a
+**grandfathered** Studio — everything visible, nothing hidden — walks the
+surfaces a child can reach, and cross-references every control against a
+manifest. A control not in the manifest **fails the run**; a manifest
+entry naming a capability no rite teaches **fails the run**. It cannot
+quietly grow.
+
+**It deliberately hides nothing yet.** Gating a control whose rite has no
+story takes it away with no way to earn it, which is the wall Decision 22
+forbids — so hiding happens rite by rite as the stories are written. What
+this guarantees today is that the list of what is still rite-less is
+always current and always visible.
+
+**The list is 16 controls**, measured rather than reasoned: the Quote and
+Caption tiles, Page Style, and thirteen Refine rows — Size, See Through,
+Font, Weight, Style, Fill Style, Colour, Background Colour, Alignment,
+Width, Picture, Picture Area, Shape. Put a Text object on a page and the
+Refine panel offers eleven rows; exactly one, Spin, is something a rite
+teaches.
+
+**Two findings that shape the work still to come.** Label text alone is
+an ambiguous key — "Size" is a font size on a Text object and a scale on
+a sticker — so the taxonomy needs one measurement pass per object type
+before those rows can be assigned. And the page model holds no flat
+object array, so that pass has to drive the real pickers rather than
+reading `AppState`.
+
+Audit 4/4, zero page errors. Build 0643 → 0644.
