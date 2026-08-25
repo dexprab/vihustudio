@@ -1170,6 +1170,21 @@ once, and its scope is no longer closed.
   means; a card left with nothing has the property deleted rather than
   set to `[]`, so it returns to "no record" instead of being gated down
   to nothing.
+- **And a card that never had a record at all is BACKFILLED, once.**
+  Decided by the product owner after his own identity stayed on the full
+  Studio through the repair above: it predates the record, absence means
+  grandfathered, and nothing was going to change that. Every card
+  standing on the device when the backfill runs is stamped with what the
+  mandatory rite teaches — the Studio those cards have actually earned —
+  on the same fact that makes the repair safe.
+  **Absence-grandfathering survives as the LIVE rule**, and that is the
+  whole reason this is one-shot rather than a change to
+  `isGrandfathered()`: a card recalled tomorrow onto a deployment whose
+  column is missing, or met on a browser that refuses storage, arrives
+  with no record after the backfill has run and keeps every control. The
+  fail-open path is intact; only the population standing there at the
+  time was migrated. `StudioRite` says WHAT (the rite's own capability
+  list), `MagicCard.stampMissingTaught()` says WHERE.
 - **Controls and doors are DIFFERENT QUESTIONS, and one value answering
   both was a real bug.** A grandfathered Creator keeps every control —
   but they have never *walked* Rite II, so the next door is still

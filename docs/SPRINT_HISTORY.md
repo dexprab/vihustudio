@@ -7034,3 +7034,39 @@ Levels 41/41 (J0–J6: the exact pair 0639 left behind, the untouched
 veteran, the Studio that results, and that it is one-shot), rite gate
 22/22, creation home 52/52, gate 24/24, traveller reset 16/16, zero page
 errors. Build 0640 → 0641.
+
+## The cards that never had a record (build 0642)
+
+Build 0641's repair removed `legacy-studio` from cards that had it, and
+correctly did not touch a card that had no `taught` array at all —
+absence is what grandfathering means. The product owner's own identity
+was exactly that: `{"build":"build 0641","taught":null,"gf":true,
+"gated":false,"cards":[{"n":"Vihu01"}]}`. Repaired build, migration run,
+still nine tiles, and nothing was ever going to change it.
+
+**Put to him as a decision rather than fixed quietly**, because the rule
+in the way is load-bearing: absence-grandfathering is also what stops an
+unreadable platform column, a card recalled onto an older deployment, or
+a browser that refuses storage from silently stripping a real Creator of
+controls. He chose to stamp the record-less cards.
+
+`MagicCard.stampMissingTaught(caps)` runs once per device and gives every
+card lacking a `taught` array the capabilities the mandatory rite
+teaches. `StudioRite` supplies the list — this file has no idea what a
+rite teaches and must not learn — and `applyTaught()` is the caller,
+because it already runs at the top of the Studio's bootstrap.
+
+**One-shot is what keeps the promise it was chosen on.** This is not a
+change to `isGrandfathered()`: a card that arrives AFTER the backfill has
+run still finds absence meaning grandfathered and still keeps every
+control (K5/K6 measure exactly that). Only the population standing on the
+device at migration time was moved.
+
+Three older suite cases had to be reframed rather than repaired: they
+seeded a record-less card and expected it to stay grandfathered, which
+was the world before this. They now set the backfill flag first, so they
+test the world from now on — a card arriving afterwards — which is the
+case that still matters.
+
+Levels 47/47 (K1–K6), rite gate 22/22, creation home 52/52, gate 24/24,
+traveller reset 16/16, zero page errors. Build 0641 → 0642.

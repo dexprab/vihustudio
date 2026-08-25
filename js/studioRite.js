@@ -348,7 +348,41 @@ const StudioRite=(function(){
   // The commit that writes that rite and names them in `reveals` closes
   // the tiles and opens the door in the same breath, which is the whole
   // point of the registry being the design.
+  // The capabilities the mandatory rite hands over. The one place that
+  // answers "what does a card with no record deserve", so the backfill
+  // below and any later caller cannot drift apart.
+  function _mandatoryCaps(){
+    var r=_mandatoryRite();
+    if(!r) return [];
+    var out=[];
+    (r.teaches||[]).concat(r.reveals||[]).forEach(function(c){
+      if(out.indexOf(c)<0) out.push(c);
+    });
+    return out;
+  }
+
+  // A card claimed before the record existed has none, and absence means
+  // grandfathered — which left the product owner's own identity on the
+  // full Studio for good. His decision, on his own fact that no card has
+  // started Rite II: stamp what Rite I teaches onto every card standing
+  // here now, which is the Studio those cards have actually earned.
+  //
+  // ONE-SHOT PER DEVICE inside MagicCard, so absence-grandfathering
+  // stays the live rule for everything that arrives afterwards — a card
+  // recalled onto a deployment with no column still keeps every control.
+  //
+  // StudioRite says WHAT, MagicCard says WHERE. It is called from
+  // applyTaught() because that already runs at the top of the Studio's
+  // bootstrap, before anything asks a card what it knows.
+  function _backfillCards(){
+    try{
+      if(typeof MagicCard==='undefined' || !MagicCard.stampMissingTaught) return;
+      MagicCard.stampMissingTaught(_mandatoryCaps());
+    }catch(e){}
+  }
+
   function applyTaught(){
+    _backfillCards();
     try{
       var cl=document.body.classList;
       Array.prototype.slice.call(cl).forEach(function(c){

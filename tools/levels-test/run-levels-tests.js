@@ -191,6 +191,11 @@ function check(c, n, note) { (c ? ok : fail)(n, note); }
   // thing that can say "I was here before the record existed".
   await page.evaluate(() => {
     localStorage.clear();
+    // The backfill (§K) already ran on this device — that is the world
+    // from now on. It stamps only the cards standing there at the moment
+    // it runs; this one arrives afterwards, so absence still means
+    // grandfathered, which is the promise the migration was chosen on.
+    localStorage.setItem('vihu.magicCard.taughtBackfilled', '1');
     const c = MagicCard.claim('Veteran', null, null);
     MagicCard.setActive(c.id);
     const cards = JSON.parse(localStorage.getItem('vihu-magic-cards'));
@@ -279,6 +284,9 @@ function check(c, n, note) { (c ? ok : fail)(n, note); }
                  lastActiveAt: new Date(0).toISOString() });
     localStorage.setItem('vihu-magic-cards', JSON.stringify(cards));
     localStorage.removeItem('vihu.magicCard.legacyRepaired');
+    // The backfill is not what is under test here, and it would stamp
+    // the record-less veteran below before this check could look at it.
+    localStorage.setItem('vihu.magicCard.taughtBackfilled', '1');
     MagicCard.setActive(fresh.id);
     return { taught: MagicCard.taught(), grandfathered: StudioRite.isGrandfathered() };
   });
@@ -301,7 +309,7 @@ function check(c, n, note) { (c ? ok : fail)(n, note); }
   check(JSON.stringify(after.taught) === JSON.stringify(['emoji', 'text', 'story-name']),
     'J3 …and keeps exactly what the rite actually taught it', JSON.stringify(after.taught));
   check(after.vetUntouched,
-    'J4 a veteran with NO record is untouched — absence is what grandfathering means');
+    'J4 the legacy repair leaves a record-less veteran alone');
   const jTiles = await tiles();
   check(jTiles.indexOf('shapes') < 0 && jTiles.indexOf('library') < 0,
     'J5 …and the Studio is the one that rite taught', jTiles.join(','));
@@ -310,6 +318,56 @@ function check(c, n, note) { (c ? ok : fail)(n, note); }
   await boot();
   check(await page.evaluate(() => MagicCard.taught().indexOf('legacy-studio') >= 0),
     'J6 it is one-shot per device — a later legacy mark is left alone');
+
+  // ---- K: THE BACKFILL, for a card that never had a record at all
+  //
+  // "{'taught':null,'gf':true,'gated':false,'cards':[{'n':'Vihu01'}]}" —
+  // the product owner's own identity on build 0641. It predates the
+  // record, absence means grandfathered, and the 0641 repair correctly
+  // did not touch it. His decision, on his own fact that no card has
+  // started Rite II: stamp what Rite I teaches.
+  console.log('-- K: a card that never had a record');
+  await page.evaluate(() => {
+    localStorage.clear();
+    const c = MagicCard.claim('Vihu01', null, null);
+    MagicCard.setActive(c.id);
+    const cards = JSON.parse(localStorage.getItem('vihu-magic-cards'));
+    cards.forEach((x) => delete x.taught);
+    localStorage.setItem('vihu-magic-cards', JSON.stringify(cards));
+    localStorage.removeItem('vihu.magicCard.taughtBackfilled');
+  });
+  await boot();
+  const backfilled = await page.evaluate(() => ({
+    taught: MagicCard.taught(),
+    gf: StudioRite.isGrandfathered(),
+    gated: document.body.classList.contains('studio-gated')
+  }));
+  check(Array.isArray(backfilled.taught) && backfilled.taught.indexOf('emoji') >= 0,
+    'K1 it is stamped with what the first rite teaches', JSON.stringify(backfilled.taught));
+  check(backfilled.taught.indexOf('shapes') < 0 && backfilled.taught.indexOf('library') < 0,
+    'K2 …and with nothing a later rite teaches', JSON.stringify(backfilled.taught));
+  check(backfilled.gf === false && backfilled.gated === true,
+    'K3 …so that Creator is gated rather than grandfathered', JSON.stringify(backfilled));
+  const kTiles = await tiles();
+  check(kTiles.indexOf('shapes') < 0 && kTiles.indexOf('library') < 0 && kTiles.indexOf('stickers') >= 0,
+    'K4 …and meets the Studio the first rite taught', kTiles.join(','));
+
+  // THE PROMISE THE MIGRATION WAS CHOSEN ON: absence-grandfathering
+  // stays the LIVE rule. Only the cards standing there at the moment it
+  // ran are stamped; a card that arrives afterwards — recalled onto a
+  // deployment whose column is missing, say — keeps every control.
+  await page.evaluate(() => {
+    const cards = JSON.parse(localStorage.getItem('vihu-magic-cards'));
+    cards.push({ id: 'card-later', nickname: 'Later', constellation: 'ORION',
+                 pattern: [[1, 1]], claimedAt: new Date().toISOString(),
+                 lastActiveAt: new Date().toISOString() });
+    localStorage.setItem('vihu-magic-cards', JSON.stringify(cards));
+    MagicCard.setActive('card-later');
+  });
+  await boot();
+  check(await page.evaluate(() => StudioRite.isGrandfathered()) === true,
+    'K5 a card arriving AFTER the backfill still keeps every control');
+  check((await tiles()).length >= 8, 'K6 …the fail-open path is intact');
 
   check(pageErrors.length === 0, 'F1 zero page errors', pageErrors.slice(0, 3).join(' | '));
   console.log('\n' + passed + ' passed, ' + failed + ' failed');

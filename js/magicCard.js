@@ -389,6 +389,52 @@ const MagicCard=(function(){
     changed.forEach(function(id){ try{ _scheduleIdentitySync(id); }catch(e){} });
   }
 
+  // ---------- ONE-SHOT BACKFILL: cards that never got a record ----------
+  //
+  // A card claimed before the taught record existed has no `taught`
+  // array, and js/studioRite.js reads that absence as grandfathered —
+  // deliberately, because absence is also what an unreadable platform
+  // column and a wiped browser store look like, and neither must ever
+  // silently strip a Creator of controls (Decision 22).
+  //
+  // That left the product owner's own identity permanently on the full
+  // Studio: "i see this", with all nine Add tiles, on a repaired build.
+  // Decided by him, on the fact that makes it safe — no card has started
+  // Rite II — so every existing card gets the capabilities Rite I
+  // teaches, which is the Studio those cards have actually earned.
+  //
+  // ONCE PER DEVICE, and that is what keeps the promise this migration
+  // was chosen on: absence-grandfathering stays the LIVE rule. A card
+  // recalled tomorrow onto a deployment whose column is missing arrives
+  // with no record, this has already run, and it is grandfathered
+  // exactly as before. Only the cards standing here right now are
+  // stamped.
+  //
+  // MagicCard says WHERE, never WHAT: the capability list is handed in
+  // by js/studioRite.js, which owns the registry. This file has no idea
+  // what a rite teaches and must not learn.
+  var TAUGHT_BACKFILL_KEY='vihu.magicCard.taughtBackfilled';
+  function stampMissingTaught(caps){
+    if(!Array.isArray(caps) || !caps.length) return {ok:false,stamped:0};
+    try{ if(localStorage.getItem(TAUGHT_BACKFILL_KEY)) return {ok:true,stamped:0}; }catch(e){ return {ok:false,stamped:0}; }
+    try{ localStorage.setItem(TAUGHT_BACKFILL_KEY,'1'); }catch(e){}
+    var cards=_readCards();
+    if(!cards.length) return {ok:true,stamped:0};
+    var changed=[];
+    cards.forEach(function(c){
+      if(!c || Array.isArray(c.taught)) return;
+      c.taught=caps.slice();
+      changed.push(c.id);
+    });
+    if(!changed.length) return {ok:true,stamped:0};
+    _writeCards(cards);
+    // The column travels with the identity, so a device that stamps a
+    // card has to tell the platform or a recall would hand the absence
+    // straight back.
+    changed.forEach(function(id){ try{ _scheduleIdentitySync(id); }catch(e){} });
+    return {ok:true,stamped:changed.length};
+  }
+
   function _readFlags(){
     try{
       const raw=localStorage.getItem(FLAGS_KEY);
@@ -1281,6 +1327,7 @@ const MagicCard=(function(){
     // Exposed for the harness only, so the repair can be proved rather
     // than asserted. It is one-shot per device either way.
     _repairInheritedLegacy:_repairInheritedLegacy,
+    stampMissingTaught:stampMissingTaught,
     // Decision 22 — the taught record. Read and written only by
     // js/studioRite.js, which owns what a capability means.
     taught:taught,
