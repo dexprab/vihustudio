@@ -1016,6 +1016,39 @@ const StudioRite=(function(){
      teaches:['shapes','doodle','photo','blank-page'],
      reveals:['shapes','doodle','photo','blank-page'],
      startsBlank:true,
+     unlocksStudio:false},
+
+    // THE WORLD TOOLS. A place in the order, not a door — no screens,
+    // so `_runnable()` refuses to start it, the Studio Home offer skips
+    // it, and it reveals nothing to any earlier rite. Writing its story
+    // is the only thing that makes it real (the same shape My Garden
+    // held before its story existed).
+    //
+    // IT EXISTS NOW BECAUSE ITS CAPABILITIES HAD TO BE NAMED. Reported
+    // by the product owner looking at his Studio after the backfill:
+    // "remove page shape, from this world, voice from here they were
+    // not part of rite 1." They were the last controls left ungated,
+    // deliberately — nothing could teach them, so hiding them looked
+    // like the wall Decision 22 forbids rather than the shelf it asks
+    // for. He read the same screen the other way, and he is right: a
+    // Studio that shows a child three controls their story never
+    // mentions is not a shelf either.
+    //
+    // Being in the registry is what keeps this honest. `_allCapabilities`
+    // walks EVERY entry, runnable or not, so a grandfathered Creator
+    // still keeps all three — without this they would have vanished for
+    // the very people that clause protects. And when the story is
+    // written, the same line already says which controls it hands over.
+    //
+    // Page Style rides with the World rather than being named here: it
+    // only appears once a World is chosen, and a child at this point has
+    // none (Decision 22 — Level I stays on a blank page).
+    {id:'the-world-tools',
+     mission:null,
+     screens:null,
+     teaches:['world','voice','page-shape'],
+     reveals:['world','voice','page-shape'],
+     startsBlank:true,
      unlocksStudio:false}
   ];
 

@@ -174,14 +174,27 @@ function check(cond, name, note) {
   const reg = await page.evaluate(() => ({
     order: StudioRite.rites().map((r) => r.id),
     runnable: StudioRite.rites().map((r) => r.id + ':' + (r.runnable ? 'yes' : 'no')),
-    unwrittenStarts: StudioRite.start('my-garden')
+    unwrittenStarts: StudioRite.start('my-garden'),
+    // A rite with no story must refuse to start and must never be the
+    // door Studio Home offers. That is the invariant — not that every
+    // entry is walkable.
+    worldToolsStart: StudioRite.start('the-world-tools'),
+    nextDoor: StudioRite.nextOptIn()
   }));
-  check(reg.order.join(' > ') === 'the-night-a-star-came-down > my-garden > my-little-house',
-    'N1 My Garden is the second step and My Little House the third', reg.order.join(' > '));
+  check(reg.order.join(' > ') === 'the-night-a-star-came-down > my-garden > my-little-house > the-world-tools',
+    'N1 the order is My Garden, My Little House, then the world tools', reg.order.join(' > '));
   check(reg.unwrittenStarts === true,
     'N2 My Garden has its story now, so it starts — the same call refused while it had none');
-  check(!/:no/.test(reg.runnable.join(' ')),
-    'N3 every rite in the registry can actually be walked', reg.runnable.join(' '));
+  // N3 USED TO ASSERT EVERY RITE WAS WALKABLE, which was true only
+  // because every entry happened to have a story at the time. Decision
+  // 22 is explicit that "a rite with no screens is a place in the order,
+  // not a door", so the real invariant is that an unwritten one refuses
+  // and is never offered — which is what stops a child being pointed at
+  // a door that will not open.
+  check(reg.worldToolsStart === false,
+    'N3 a rite with no story refuses to start', String(reg.worldToolsStart));
+  check(reg.nextDoor !== 'the-world-tools',
+    'N3b …and is never the door Studio Home offers', String(reg.nextDoor));
 
   // The offer on Studio Home must skip the unwritten one and land on the
   // next real door — never on a rite nobody has authored.

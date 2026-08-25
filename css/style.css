@@ -11305,6 +11305,19 @@ body.studio-gated:not(.studio-taught-shapes) .context-add-card[data-add-id='shap
 body.studio-gated:not(.studio-taught-photo) .context-add-card[data-add-id='photo'],
 body.studio-gated:not(.studio-taught-photo) .context-add-card[data-add-id='family'],
 body.studio-gated:not(.studio-taught-photo) .context-bg-picture-section{ display:none !important; }
+/* THE WORLD TOOLS. "remove page shape, from this world, voice from here
+   they were not part of rite 1" — the product owner. These were the last
+   controls left ungated, on the reasoning that no rite could teach them
+   so hiding them would be a wall rather than a shelf. He read the same
+   screen the other way, and he is right: three controls a child's story
+   never mentions are not a shelf either. They are now named by the
+   `the-world-tools` entry in the rite registry, which is a place in the
+   order with no story yet — so a grandfathered Creator still keeps them
+   (js/studioRite.js -> _allCapabilities walks every entry), and the
+   commit that writes that story opens the door in the same breath. */
+body.studio-gated:not(.studio-taught-world) .context-add-card[data-add-id='fromWorld'],
+body.studio-gated:not(.studio-taught-voice) .context-add-card[data-add-id='voice'],
+body.studio-gated:not(.studio-taught-page-shape) .context-set-tile[data-set-id='pageShape']{ display:none !important; }
 
 /* ---- The Rite docks in the left rail --------------------------------
    Approved placement. The conversation leaves the bottom of the screen

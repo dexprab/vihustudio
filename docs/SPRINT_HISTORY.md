@@ -7070,3 +7070,45 @@ case that still matters.
 
 Levels 47/47 (K1–K6), rite gate 22/22, creation home 52/52, gate 24/24,
 traveller reset 16/16, zero page errors. Build 0641 → 0642.
+
+## The world tools were not part of Rite 1 either (build 0643)
+
+*"remove page shape, from this world, voice from here they were not part
+of rite 1"* — the product owner, looking at the Studio the backfill had
+just narrowed to four tiles.
+
+Those three were the last controls left ungated, and deliberately: no
+rite reveals them, so gating them would hide a capability with no way to
+earn it — the wall Decision 22 forbids rather than the shelf it asks for.
+He read the same screen the other way, and he is right. Three controls a
+child's story never mentions are not a shelf either; they are just noise
+in a Studio that is supposed to be the one that rite taught.
+
+**The fix is a registry entry, not a CSS rule.** `the-world-tools` is a
+place in the order with **no story** — the same shape My Garden held
+before its own was written. It refuses to start, Studio Home never
+offers it, and it reveals nothing to any earlier rite. Being in the
+registry is what makes the gating honest rather than a wall:
+`_allCapabilities()` walks every entry, runnable or not, so a
+grandfathered Creator still keeps all three — without that they would
+have vanished for exactly the people that clause protects — and the
+commit that writes the story opens the door in the same breath.
+
+Story Title stays: `story-name` is Rite I's own naming beat. Page Style
+rides with the World rather than being named, because it only appears
+once a World is chosen and a Level I child has none.
+
+Measured on a rebuild of the product owner's own device — one card, no
+record, backfilled at load: **Emojis · Text**, with Story Title and
+Background below. Nothing else.
+
+**Two rite-gate assertions were reframed, not nudged.** N1 pinned the
+exact registry order and simply gains the new entry. N3 asserted that
+*every* rite in the registry can be walked — true only because every
+entry happened to have a story when it was written, and flatly against
+Decision 22's "a rite with no screens is a place in the order, not a
+door". It now asserts the real invariant: an unwritten rite refuses to
+start, and is never the door Studio Home offers.
+
+Levels 52/52, rite gate 23/23, creation home 52/52, gate 24/24, zero page
+errors. Build 0642 → 0643.

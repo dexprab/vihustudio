@@ -109,11 +109,20 @@ function check(c, n, note) { (c ? ok : fail)(n, note); }
     const e = document.querySelector('.context-bg-picture-section');
     return !e || e.getBoundingClientRect().height < 2;
   }), 'B5b the Background panel\'s Picture section rides with Photo');
-  // NOT A WALL: a capability no runnable rite reveals has no door, so
-  // it is never hidden. From This World and Voice stay until the rite
-  // that teaches them exists and names them.
-  check(afterI.indexOf('fromWorld') >= 0 && afterI.indexOf('voice') >= 0,
-    'B6 controls no rite can teach are never hidden — a shelf, not a wall', afterI.join(','));
+  // AND THE WORLD TOOLS GO TOO. They were left visible on the reasoning
+  // that no rite could teach them, so hiding them would be a wall rather
+  // than a shelf; the product owner read the same screen the other way —
+  // "remove page shape, from this world, voice from here they were not
+  // part of rite 1" — and three controls a child's story never mentions
+  // are not a shelf either. They are named by a registry entry that has
+  // no story yet, so the door and the tiles arrive together.
+  check(afterI.indexOf('fromWorld') < 0 && afterI.indexOf('voice') < 0,
+    'B6 From This World and Voice are not there either', afterI.join(','));
+  check(await page.evaluate(() => {
+    const t = document.querySelector('.context-set-tile[data-set-id="pageShape"]');
+    return !t || t.getBoundingClientRect().width < 4;
+  }), 'B6b …and neither is Page Shape');
+  check(afterI.length === 2, 'B6c the first rite\'s Studio is exactly two tiles', afterI.join(','));
   // Hidden, never locked.
   const locks = await page.evaluate(() => (document.querySelector('.context-add-grid') || document.body).innerText);
   check(!/level|lock|🔒|unlock|progress/i.test(locks),
@@ -131,6 +140,7 @@ function check(c, n, note) { (c ? ok : fail)(n, note); }
     'C2 once taught, that door stops being offered and the next one appears');
   const afterII = await tiles();
   check(afterII.indexOf('library') >= 0, 'C3 My Garden is there now', afterII.join(','));
+  check(afterII.indexOf('fromWorld') < 0, 'C3b …and the world tools still are not', afterII.join(','));
   check(afterII.indexOf('shapes') < 0, 'C4 …and the third rite\'s tiles still are not', afterII.join(','));
 
   // ---- D: everything taught
@@ -140,7 +150,13 @@ function check(c, n, note) { (c ? ok : fail)(n, note); }
   });
   await boot();
   const afterIII = await tiles();
-  check(afterIII.length >= 8, 'D1 every tile is back', afterIII.join(','));
+  // Seven, not nine: the world tools belong to a rite nobody has
+  // written, so finishing every rite that EXISTS does not hand them over.
+  check(afterIII.indexOf('shapes') >= 0 && afterIII.indexOf('doodle') >= 0
+        && afterIII.indexOf('photo') >= 0 && afterIII.indexOf('library') >= 0,
+    'D1 every tile the written rites teach is back', afterIII.join(','));
+  check(afterIII.indexOf('fromWorld') < 0 && afterIII.indexOf('voice') < 0,
+    'D1b …and the world tools wait for the story that teaches them', afterIII.join(','));
   check(await addPageVisible(), 'D2 …and + Add Page');
   check(await page.evaluate(() => StudioRite.nextOptIn()) === null,
     'D3 there is no next door, so the offer is absent rather than empty');
@@ -206,7 +222,10 @@ function check(c, n, note) { (c ? ok : fail)(n, note); }
   await boot();
   check(await page.evaluate(() => StudioRite.isGrandfathered()) === true,
     'G1 no record + a Studio already used reads as grandfathered');
-  check((await tiles()).length >= 8, 'G2 they keep every control they have had for weeks');
+  const gTiles = await tiles();
+  check(gTiles.indexOf('fromWorld') >= 0 && gTiles.indexOf('voice') >= 0 && gTiles.length >= 8,
+    'G2 they keep every control they have had for weeks — the world tools included',
+    gTiles.join(','));
   check(await page.evaluate(() => StudioRite.nextOptIn()) === 'my-garden',
     'G3 …and the next door is still offered — they have walked no story yet');
   // Walking it must record the story, not swallow the whole ladder.
@@ -215,6 +234,8 @@ function check(c, n, note) { (c ? ok : fail)(n, note); }
   });
   await boot();
   check((await tiles()).length >= 8, 'G4 after that story they still keep everything');
+  check(await page.evaluate(() => StudioRite.taught().indexOf('world') >= 0),
+    'G4b …including capabilities no written rite teaches');
   check(await page.evaluate(() => StudioRite.nextOptIn()) === 'my-little-house',
     'G5 …and the door after it is offered, not swallowed');
   check(await page.evaluate(() => StudioRite.taught().indexOf('shapes') >= 0),
@@ -255,7 +276,8 @@ function check(c, n, note) { (c ? ok : fail)(n, note); }
     'H1 a brand-new card never inherits somebody else\'s legacy', JSON.stringify(chain.taught));
   await boot();
   const afterOwner = await tiles();
-  check(afterOwner.indexOf('shapes') < 0 && afterOwner.indexOf('library') < 0,
+  check(afterOwner.indexOf('shapes') < 0 && afterOwner.indexOf('library') < 0
+        && afterOwner.indexOf('fromWorld') < 0,
     'H2 …so the Studio after the first rite is the one that rite taught',
     afterOwner.join(','));
   check(await page.evaluate(() => StudioRite.isGrandfathered()) === false,
@@ -349,8 +371,8 @@ function check(c, n, note) { (c ? ok : fail)(n, note); }
   check(backfilled.gf === false && backfilled.gated === true,
     'K3 …so that Creator is gated rather than grandfathered', JSON.stringify(backfilled));
   const kTiles = await tiles();
-  check(kTiles.indexOf('shapes') < 0 && kTiles.indexOf('library') < 0 && kTiles.indexOf('stickers') >= 0,
-    'K4 …and meets the Studio the first rite taught', kTiles.join(','));
+  check(kTiles.length === 2 && kTiles.indexOf('stickers') >= 0 && kTiles.indexOf('text') >= 0,
+    'K4 …and meets the Studio the first rite taught: Emojis and Text', kTiles.join(','));
 
   // THE PROMISE THE MIGRATION WAS CHOSEN ON: absence-grandfathering
   // stays the LIVE rule. Only the cards standing there at the moment it

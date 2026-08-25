@@ -1124,13 +1124,23 @@ once, and its scope is no longer closed.
   readout, the card badge, the build footer and the strip's legend all
   return the instant the rite ends, because none of them is a capability:
   they are the room, not what a child can make in it.
-- **Only what a runnable rite can hand over is ever gated.** From This
-  World, Voice, Page Style, Page Shape and Story Title belong to a rite
-  nobody has written, so there is no door to them and they are simply
-  never hidden — a shelf, not the wall this decision forbids. The commit
-  that writes Rite IV and names them in `reveals` closes the tiles and
-  opens the door in the same breath, which is the whole reason the
-  registry is the design.
+- **THE WORLD TOOLS ARE NAMED, so they are gated too** (build 0643).
+  They were the last controls left visible, on the reasoning that no
+  rite could teach them and hiding them would be the wall this decision
+  forbids rather than the shelf it asks for. The product owner read the
+  same screen the other way — *"remove page shape, from this world,
+  voice from here they were not part of rite 1"* — and he is right:
+  three controls a child's story never mentions are not a shelf either.
+  `the-world-tools` is now a **place in the order with no story**, the
+  same shape My Garden held before its own was written: it refuses to
+  start, Studio Home never offers it, and it reveals nothing to any
+  earlier rite. Being in the registry is what keeps it honest —
+  `_allCapabilities()` walks every entry, runnable or not, so a
+  grandfathered Creator still keeps all three, and the commit that
+  writes the story opens the door in the same breath. **Story Title
+  stays**: `story-name` is Rite I's own naming beat. Page Style rides
+  with the World rather than being named, because it only appears once a
+  World is chosen and a Level I child has none.
 - **Grandfathering is by the ABSENCE of a record, not by holding a
   card** — and this corrects this decision's own earlier wording.
   *"Existing Creators are grandfathered by their claimed Magic Card"*
