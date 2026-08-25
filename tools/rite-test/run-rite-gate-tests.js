@@ -196,6 +196,43 @@ function check(cond, name, note) {
   check(reg.nextDoor !== 'the-world-tools',
     'N3b …and is never the door Studio Home offers', String(reg.nextDoor));
 
+  // EVERY RUNNABLE RITE TEACHES WHAT IT HANDS OVER.
+  //
+  // "they were not part of rite 1" was the complaint, and moving a
+  // capability to a different rite does not answer it — it moves it. A
+  // rite that reveals a control its own story never asks for is the
+  // same bug one rite along. So: for every capability a runnable rite
+  // reveals, some beat of that rite must gate on it.
+  //
+  // The map is the one place this suite knows which gate proves which
+  // capability; anything revealed with no entry here fails, which is
+  // what stops a capability being added to a rite without a beat.
+  const GATE_FOR = {
+    garden: ['drawing-kept', 'drawing-placed', 'letter-kept', 'letters-placed'],
+    voice: ['voice-added'],
+    shapes: ['shape-added'],
+    doodle: ['doodle-added'],
+    photo: ['photo-added'],
+    'blank-page': ['blank-page-added'],
+    'page-shape': ['page-shaped']
+  };
+  const untaught = await page.evaluate((map) => {
+    const bad = [];
+    StudioRite.rites().forEach(function (r) {
+      if (!r.runnable) return;
+      const gates = (StudioRite._gates(r.id) || []).filter(Boolean);
+      (r.teaches || []).forEach(function (cap) {
+        const proofs = map[cap];
+        if (!proofs) return;                     // not a gateable control
+        if (!proofs.some((g) => gates.indexOf(g) >= 0)) bad.push(r.id + '/' + cap);
+      });
+    });
+    return bad;
+  }, GATE_FOR);
+  check(untaught.length === 0,
+    'N6 every runnable rite has a beat for each control it hands over',
+    untaught.join(', ') || 'all taught');
+
   // The offer on Studio Home must skip the unwritten one and land on the
   // next real door — never on a rite nobody has authored.
   const offered = await page.evaluate(() => {

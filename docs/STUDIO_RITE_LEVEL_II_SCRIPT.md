@@ -1,8 +1,8 @@
 # Rite II — *The Name on the Green*
 
 **Status: built and walkable. No recordings.**
-The twelve beats below are in `js/studioRite.js` as `SCREENS_GARDEN`,
-attached to the `my-garden` entry of the rite registry, with five new
+The thirteen beats below are in `js/studioRite.js` as `SCREENS_GARDEN`,
+attached to the `my-garden` entry of the rite registry, with six new
 gates. No screen carries an `audio` field and none will — opt-in rites
 use the generated Lumo voice, so there are no cues to keep in step and
 rewording a line stays a one-line edit.
@@ -34,7 +34,7 @@ That is what My Garden *is*, and nothing says so.
 
 ---
 
-## 2. The twelve beats
+## 2. The thirteen beats
 
 | # | Act | Line | Gate |
 |---|---|---|---|
@@ -48,10 +48,34 @@ That is what My Garden *is*, and nothing says so.
 | 8 | III | *And then it was the next day.* / *Your page can make a copy of itself.* | `page-added` |
 | 9 | III | *They are still here. They live here now.* | `sticker-moved` |
 | 10 | III | *They found something while you were away.* | `sticker-added` |
-| 11 | IV | *This is a story about a green place with your name on it.* | `story-named` |
-| 12 | IV | *Let us see it from the beginning.* | `story-played` |
+| 11 | III | *They have not made a single sound since they arrived.* / *You know what they sound like. Nobody else does.* | `voice-added` |
+| 12 | IV | *This is a story about a green place with your name on it.* | `story-named` |
+| 13 | IV | *Let us see it from the beginning.* | `story-played` |
 
 ---
+
+## 2b. Why the voice beat is here
+
+Voice moved to this rite at build 0646, by the product owner's decision,
+and beat 11 was written for it — because a rite that hands over a control
+its own story never mentions is the complaint this whole progression
+exists to answer, moved one rite along rather than solved.
+
+It belongs to *this* story rather than any other. My Garden is the rite
+about bringing something of the child's **own** into a page: their
+letters, their drawing, and now the third thing of theirs a story can
+carry. And it sits at beat 11 rather than earlier because by then there
+is somebody on the page worth speaking for — the arrival has been given
+a size, taken somewhere new, and found something.
+
+The line never says what the control does (Decision 8). *"You know what
+they sound like. Nobody else does."* is about the child, not the
+microphone. Its nudge points at the Voice tile and says only where it
+lives.
+
+`nudgeDelay` is **15 seconds** — longer than every beat but the drawing
+errand, because a child deciding what a creature sounds like is thinking,
+not stuck.
 
 ## 3. Why the letters come first
 

@@ -1132,12 +1132,27 @@ once, and its scope is no longer closed.
   House is about building something out of parts, so the shape of the
   thing being built belongs with it. The World tools are left holding
   only the World, which is what they are named for.
-  **Disclosed and not yet closed:** neither script teaches its new
-  capability. *The Name on the Green* is twelve beats about letters and
-  a drawing with no Voice beat, and *My Little House* has no Page Shape
-  beat — so each rite currently hands over a control its own story never
-  mentions, which is the same shape as *"they were not part of rite 1"*
-  one rite along. Closing it is writing, not code.
+  **Both stories now teach them** (build 0647). *The Name on the Green*
+  gains a thirteenth beat — *"They have not made a single sound since
+  they arrived."* — placed after the arrival has been sized, moved and
+  given something to find, because by then there is somebody on the page
+  worth speaking for. *My Little House* gains a second beat, before the
+  house exists: *"Some places are tall. Some are wide. This one has not
+  decided yet."* — the first choice a builder makes is how much room
+  there is to build in, and it stops being free once a house is standing
+  on it. **`N6` in `tools/rite-test/` is what keeps this true**: for
+  every capability a runnable rite reveals, some beat of that rite must
+  gate on it, or the run fails.
+- **THE WORLD TOOLS ARE PAUSED, and the registry entry stays.** Stated
+  by the product owner: *"we will put the world tools on pause. that
+  rite is not needed."* Paused is not deleted, and the difference is
+  load-bearing: removing the entry would leave `world` named by no rite,
+  and `_allCapabilities()` walks the registry — so a grandfathered
+  Creator would lose the From This World tile they have always had, and
+  a gated child would have it hidden with nothing able to hand it back.
+  It is also the honest state of the capability: From This World needs a
+  World with collection assets, and every rite runs on a blank page with
+  none, so there is nothing for a story to teach yet.
 - **A capability id is a design artifact, not machinery** (build 0645).
   Decision 27 renamed My Library to **My Garden** child-facing and froze
   every internal id — `creatorLibrary.js`, `creator_library`,

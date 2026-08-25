@@ -689,6 +689,20 @@ const StudioRite=(function(){
              subtitle:'Choose a colour for the ground.'}}
      ], end:{await:'bg-set'}, nudgeDelay:6000},
 
+    // PAGE SHAPE. Added when the capability moved here (build 0646), for
+    // the same reason as My Garden's Voice beat: a rite must teach what
+    // it hands over.
+    //
+    // It sits BEFORE the house rather than after it. This is the rite
+    // about building something out of parts, and the first choice any
+    // builder makes is how much room there is to build in — a decision
+    // that stops being free once there is a house standing on it.
+    {band:true, lines:[
+      {lumo:'curious', egg:'thinking',
+       line:{title:'Some places are tall. Some are wide. This one has not decided yet.',
+             subtitle:'Choose the shape of the page.'}}
+     ], end:{await:'page-shaped'}, nudgeDelay:8000},
+
     {band:true, lines:[
       {lumo:'talk', egg:'curious',
        line:{title:'Someone was going to live here. But first, they needed a house.',
@@ -961,6 +975,24 @@ const StudioRite=(function(){
              subtitle:'Add whatever they found.'}}
      ], end:{await:'sticker-added'}, nudgeDelay:12000},
 
+    // VOICE. Added when the capability moved here (build 0646), because
+    // a rite that hands over a control its own story never mentions is
+    // the complaint this whole progression exists to answer.
+    //
+    // It belongs to THIS story rather than any other: My Garden is about
+    // bringing something of the child's own into a page — their letters,
+    // their drawing — and their voice is the third thing of theirs a
+    // story can carry. It sits here, after the new arrival has been
+    // somewhere and found something, because by now there is somebody
+    // on the page worth speaking for.
+    {band:true, lines:[
+      {lumo:'curious', egg:'curious',
+       line:{title:'They have not made a single sound since they arrived.'}},
+      {lumo:'talk', egg:'excited',
+       line:{title:'You know what they sound like. Nobody else does.',
+             subtitle:'Say something for them.'}}
+     ], end:{await:'voice-added'}, nudgeDelay:15000},
+
     // ---- Act IV — it is a story now
     {band:true, lines:[
       {lumo:'talk', egg:'happy',
@@ -1050,11 +1082,24 @@ const StudioRite=(function(){
      startsBlank:true,
      unlocksStudio:false},
 
-    // THE WORLD TOOLS. A place in the order, not a door — no screens,
-    // so `_runnable()` refuses to start it, the Studio Home offer skips
-    // it, and it reveals nothing to any earlier rite. Writing its story
-    // is the only thing that makes it real (the same shape My Garden
-    // held before its story existed).
+    // THE WORLD TOOLS — PAUSED, and the entry stays exactly because of
+    // that. "we will put the world tools on pause. that rite is not
+    // needed." — the product owner.
+    //
+    // Paused is not deleted, and the difference matters. Removing this
+    // entry would make `world` a capability NO rite names, and
+    // `_allCapabilities()` walks the registry — so a grandfathered
+    // Creator would lose the From This World tile they have had all
+    // along, and a gated child would have it hidden with nothing
+    // anywhere able to hand it back. Keeping the entry with no screens
+    // is what holds the tile in the vocabulary while nobody writes its
+    // story: `_runnable()` refuses to start it, Studio Home never offers
+    // it, and it reveals nothing to any earlier rite.
+    //
+    // It is also the honest state of the capability. From This World
+    // needs a World with collection assets, and every rite deliberately
+    // runs on a blank page with none — so there is nothing for a story
+    // to teach yet even if somebody wrote one.
     //
     // IT EXISTS NOW BECAUSE ITS CAPABILITIES HAD TO BE NAMED. Reported
     // by the product owner looking at his Studio after the backfill:
@@ -1663,6 +1708,18 @@ const StudioRite=(function(){
       find:function(){ return document.getElementById('shareBtn'); },
       hint:'It is up at the top, next to Play My Story.'
     },
+    // Where, never what — Decision 8. Both point at a real control and
+    // say where it lives; neither says what it does.
+    'voice-added':{
+      find:function(){ return _addTile('voice'); },
+      hint:'It is on the right, with the things you can add.'
+    },
+    'page-shaped':{
+      find:function(){
+        return document.querySelector('.context-set-tile[data-set-id="pageShape"]');
+      },
+      hint:'It is on the right, under the things you can add.'
+    },
     // A page the child has emptied — by deleting what they made, which
     // exploring children do — used to leave these three beats with
     // nothing to point at and no way to pass, on a Rite there is no way
@@ -1841,6 +1898,21 @@ const StudioRite=(function(){
     }).join('|');
   }
 
+  function _narratedPages(){
+    try{
+      return (AppState.slides||[]).filter(function(s){
+        return !!(s && s.metadata && s.metadata.narration);
+      }).length;
+    }catch(e){ return 0; }
+  }
+  function _shapedPages(){
+    try{
+      return (AppState.slides||[]).filter(function(s){
+        return !!(s && s.metadata && s.metadata.aspect);
+      }).length;
+    }catch(e){ return 0; }
+  }
+
   function _conditionMet(kind,baseline){
     // The child naming their story. Reads the same
     // AppState.project.bookTitle that #bookTitle's own input handler
@@ -1945,6 +2017,21 @@ const StudioRite=(function(){
            && PublishStudio.getStage()===PublishStudio.STAGES.CELEBRATION) _finishedSeen=true;
         return _finishedSeen && !PublishStudio.isOpen();
       }catch(e){ return false; }
+    }
+    // THE CHILD'S OWN VOICE on a page. Per-page narration is stored at
+    // slide.metadata.narration (js/contextPanel.js), so this counts
+    // pages carrying one — the same shape as every other gate here, and
+    // it can never disagree with what a child actually recorded.
+    if(kind==='voice-added'){
+      try{ return _narratedPages()>(baseline&&baseline.__narrated||0); }
+      catch(e){ return false; }
+    }
+    // The page's own shape, stored at slide.metadata.aspect. Counted
+    // rather than compared, because a child who tries two shapes and
+    // comes back to the first has still chosen one.
+    if(kind==='page-shaped'){
+      try{ return _shapedPages()>(baseline&&baseline.__shaped||0); }
+      catch(e){ return false; }
     }
     // ---- My Garden's two rooms (Rite II) --------------------------
     // A letter kept is a letter kept, whether it is the first or the
@@ -2063,6 +2150,8 @@ const StudioRite=(function(){
     // await inside a condition, and no second source of truth.
     try{ map.__letters=HandwritingStore.list().length; }catch(e){ map.__letters=0; }
     try{ map.__drawings=CreatorLibrary.list().length; }catch(e){ map.__drawings=0; }
+    map.__narrated=_narratedPages();
+    map.__shaped=_shapedPages();
     try{ map.__plays=StoryPlayer.playCount(); }catch(e){ map.__plays=0; }
     try{ map.__published=!!MagicCard.growthSignals().hasEverPublished; }catch(e){ map.__published=false; }
     return map;
@@ -2338,7 +2427,11 @@ const StudioRite=(function(){
                     // Rite II's four, for the same reason: every one of
                     // them starts at the page's own Add Something.
                     'letter-kept':1,'letters-grown':1,'letters-placed':1,
-                    'drawing-kept':1,'drawing-placed':1};
+                    'drawing-kept':1,'drawing-placed':1,
+                    // Voice and Page Shape both live on the page panel —
+                    // one in Add Something, one in the Set tiles under
+                    // it — so both need the panel showing the PAGE.
+                    'voice-added':1,'page-shaped':1};
 
   function _showPageControls(){
     try{

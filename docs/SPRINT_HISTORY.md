@@ -7222,3 +7222,52 @@ again.
 
 Levels 59/59, rite gate 23/23, capability audit 4/4, creation home 52/52,
 gate 24/24, zero page errors. Build 0645 → 0646.
+
+## Every rite teaches what it hands over (build 0647)
+
+*"we will put the world tools on pause. that rite is not needed. lets
+update the stories with every rite to reflect the changes."* — the
+product owner.
+
+**The world tools are paused, and the entry stays.** Paused is not
+deleted, and the difference is load-bearing: removing it would leave
+`world` named by no rite, and `_allCapabilities()` walks the registry —
+so a grandfathered Creator would lose the From This World tile they have
+always had, and a gated child would have it hidden with nothing anywhere
+able to hand it back. Keeping a no-screens entry holds the tile in the
+vocabulary while nobody writes its story. It is also the honest state of
+the capability: From This World needs a World with collection assets, and
+every rite runs on a blank page with none.
+
+**Two beats written, one per moved capability.**
+
+*The Name on the Green* gains a thirteenth beat — *"They have not made a
+single sound since they arrived." / "You know what they sound like.
+Nobody else does."* → `voice-added`. It belongs to this story rather than
+any other: My Garden is the rite about bringing something of the child's
+own into a page, and their voice is the third such thing after their
+letters and their drawing. It sits at beat 11 because by then there is
+somebody on the page worth speaking for. 15-second nudge — a child
+deciding what a creature sounds like is thinking, not stuck.
+
+*My Little House* gains a second beat, before the house exists — *"Some
+places are tall. Some are wide. This one has not decided yet."* →
+`page-shaped`. The placement is the argument: this is the rite about
+building from parts, and the first choice a builder makes is how much
+room there is to build in, which stops being free the moment a house is
+standing on it.
+
+Both gates read what the real controls write — `slide.metadata.narration`
+and `slide.metadata.aspect` — so neither can disagree with what a child
+actually did. Both are `PAGE_LEVEL`, since both controls live on the page
+panel.
+
+**And the rule is now enforced rather than remembered.** `N6` walks every
+runnable rite and fails when a capability it reveals has no beat gating on
+it. Proved by removing the Voice beat and watching it report
+`my-garden/voice`. That is what stops "they were not part of rite 1"
+happening again one rite along — which is exactly how it happened this
+time.
+
+Rite gate 24/24, levels 59/59, capability audit 4/4, creation home 52/52,
+zero page errors. Build 0646 → 0647.

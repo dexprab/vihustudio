@@ -296,3 +296,21 @@ the consequence of a first share (`docs/COMPANION_CANON.md` → Canon 6).
 Level II ends at Finish Story; the child may of course share afterwards
 from the celebration, by their own choice, with no ceremony repeated.
 Recorded here so nobody adds sharing back into the script later.
+
+## Page Shape — added at build 0646
+
+Page Shape moved to this rite by the product owner's decision, and a beat
+was written for it in the same commit: *"Some places are tall. Some are
+wide. This one has not decided yet."* → `page-shaped`.
+
+It is the **second** beat, before the house exists, and the placement is
+the argument. This is the rite about building something out of parts, and
+the first choice any builder makes is how much room there is to build in
+— a decision that stops being free the moment there is a house standing
+on it. Choosing the page's shape after the fact would be rebuilding, not
+deciding.
+
+The gate reads `slide.metadata.aspect`, which is what the Page Shape tile
+writes. It counts pages carrying a shape rather than comparing values, so
+a child who tries tall, then wide, then comes back to tall has still
+chosen one.
