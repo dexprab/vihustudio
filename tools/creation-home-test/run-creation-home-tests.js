@@ -290,6 +290,220 @@ const FORBIDDEN = [
   await page.screenshot({ path: path.join(SHOTS, 'state-b-starter-opens-editor.png') });
   console.log('     shot: shots/state-b-starter-opens-editor.png');
 
+  /* ---------------- F: the unfinished story, and the door in the rail ----
+   *
+   * "whenever i return to vihuplanet, it always takes me in to studio
+   * where i get discard and restore prompt. so i have no way to know
+   * there is something called door." Restore went straight into the
+   * editor, so a returning child — which is every child, since they
+   * always have a saved session — never met this screen at all.
+   *
+   * Two things are guarded here. That a saved session now lands ON
+   * Studio Home rather than behind a modal, and that the Studio itself
+   * carries the same door for a child who never leaves it.
+   */
+  console.log('\n-- F: coming back');
+
+  // A real saved session, written through ProjectManager itself rather
+  // than hand-forged into localStorage — a forged one would pass this
+  // suite and fail the product.
+  async function bootWithSession(){
+    await page.goto(BASE + '/studio.html?author=on');
+    await page.waitForFunction(() =>
+      typeof CreationFlow !== 'undefined' && typeof StudioRite !== 'undefined' &&
+      typeof ProjectManager !== 'undefined' && typeof MagicCard !== 'undefined',
+      null, { timeout: 20000 });
+    await page.evaluate(() => {
+      localStorage.clear();
+      // A Creator, because that is who comes back. A Traveller is
+      // stateless by Decision 19 and does not have a story waiting for
+      // them on the next arrival — which is the design, not a gap.
+      MagicCard.claim('Vihu');
+      const gw = document.getElementById('gatewayOverlay');
+      if (gw) gw.style.display = 'none';
+      document.querySelectorAll('.studio-rite-overlay').forEach((n) => n.remove());
+    });
+    // Make a story, name it, let it save.
+    await page.evaluate(() => { try { CreationFlow.startBlank(); } catch (e) {} });
+    await page.waitForTimeout(900);
+    // Named through the real header field, not by poking AppState — the
+    // input syncs back into the project on its own events, so a direct
+    // assignment is overwritten by the next autosave and the suite would
+    // be testing a title the product never stored.
+    await page.evaluate(() => {
+      const t = document.getElementById('bookTitle');
+      if (t) {
+        t.value = 'Half a Story';
+        t.dispatchEvent(new Event('input', { bubbles: true }));
+        t.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    });
+    await page.waitForTimeout(300);
+    await page.evaluate(() => { try { ProjectManager.saveToLocalStorage(); } catch (e) {} });
+    await page.waitForTimeout(400);
+    return page.evaluate(() => {
+      const i = ProjectManager.getSessionStatus();
+      return {
+        state: i.state,
+        title: (i.data && i.data.project && i.data.project.bookTitle) || '',
+        creator: StudioRite.isComplete()
+      };
+    });
+  }
+
+  const sess = await bootWithSession();
+  check(sess.state === 'valid' && sess.title === 'Half a Story' && sess.creator === true,
+    'F0 the setup is a genuine saved session, written by ProjectManager', JSON.stringify(sess));
+
+  // The Studio's own rail door, while a story is open.
+  const railDoor = await page.evaluate(() => {
+    try { refreshStudioDoor(); } catch (e) {}
+    const d = document.getElementById('studioDoor');
+    if (!d) return { present: false };
+    const r = d.getBoundingClientRect();
+    return {
+      present: true,
+      hidden: d.hidden,
+      onScreen: r.width > 0 && r.height > 0,
+      text: (d.innerText || '').replace(/\s+/g, ' ').trim(),
+      inHeader: !!d.closest('.app-header'),
+      inAddPanel: !!d.closest('#objectStrip, .object-strip, #contextPanel'),
+      next: StudioRite.nextOptIn()
+    };
+  });
+  check(railDoor.present && !railDoor.hidden && railDoor.onScreen,
+    'F1 the Studio itself carries the door', JSON.stringify(railDoor));
+  check(/A new door is waiting/.test(railDoor.text) && /Discover/.test(railDoor.text),
+    'F2 it says the same thing Studio Home\'s door says', railDoor.text);
+  check(railDoor.inHeader === false && railDoor.inAddPanel === false,
+    'F3 not in the header (the product owner\'s instruction) and not in the Add panel (Decision 22)',
+    JSON.stringify({ h: railDoor.inHeader, a: railDoor.inAddPanel }));
+  FORBIDDEN.forEach(([word, re]) => {
+    check(!re.test(railDoor.text), 'F4 the rail door never says "' + word + '"',
+      (railDoor.text.match(re) || [''])[0]);
+  });
+
+  // Absent rather than empty when there is nothing behind it.
+  const noNext = await page.evaluate(() => {
+    const all = StudioRite.rites().filter((r) => r.runnable).map((r) => r.id);
+    const caps = [];
+    StudioRite.rites().forEach((r) => {
+      (r.teaches || []).forEach((c) => caps.push(c));
+      (r.reveals || []).forEach((c) => caps.push(c));
+    });
+    // Onto the CARD, because a card is active and the card is read
+    // first — writing the device key would be shadowed and the check
+    // would pass for the wrong reason.
+    try { MagicCard.setTaught(caps); } catch (e) {}
+    try { localStorage.setItem(StudioRite.TAUGHT_KEY, JSON.stringify(caps)); } catch (e) {}
+    try { refreshStudioDoor(); } catch (e) {}
+    const d = document.getElementById('studioDoor');
+    const r = d.getBoundingClientRect();
+    return { next: StudioRite.nextOptIn(), hidden: d.hidden, h: Math.round(r.height),
+             rites: all.length, caps: caps.length };
+  });
+  check(!noNext.next && noNext.hidden === true && noNext.h === 0 && noNext.rites > 0,
+    'F5 absent rather than empty once every rite is taught', JSON.stringify(noNext));
+
+  // Never while a rite is running: a chapter owns the screen.
+  const whileRunning = await page.evaluate(() => {
+    try { MagicCard.setTaught([]); } catch (e) {}
+    try { localStorage.setItem(StudioRite.TAUGHT_KEY, JSON.stringify([])); } catch (e) {}
+    document.body.classList.add('studio-rite-running');
+    try { refreshStudioDoor(); } catch (e) {}
+    const d = document.getElementById('studioDoor');
+    const css = getComputedStyle(d).display;
+    document.body.classList.remove('studio-rite-running');
+    return { css: css, next: StudioRite.nextOptIn() };
+  });
+  check(whileRunning.css === 'none',
+    'F6 the door never shows while a rite is running', JSON.stringify(whileRunning));
+
+  // And now the return itself — the REAL one. Not a hand-called boot:
+  // a genuine page load, the Gateway cinematic skipped the way a child
+  // skips it (a tap), and whatever the Studio's own boot then decides.
+  // Everything this sprint changed lives in that decision, so nothing
+  // short of taking it is worth checking.
+  //
+  // Scene 3 asks a Returning Creator for their sky. Decision 11's own
+  // one-shot recognition note is what a child arriving from VihuPlanet
+  // carries, so the suite leaves the same note rather than reaching
+  // around the Gateway.
+  await page.evaluate(() => {
+    try { CreatorRecognition.markRecognised(MagicCard.getActive().id); } catch (e) {}
+  });
+  await page.goto(BASE + '/studio.html?author=on');
+  await page.waitForFunction(() =>
+    typeof CreationFlow !== 'undefined' && typeof ProjectManager !== 'undefined',
+    null, { timeout: 20000 });
+  const bootState = await page.evaluate(() => {
+    const i = ProjectManager.getSessionStatus();
+    return { state: i.state, complete: StudioRite.isComplete() };
+  });
+  // Tap through the cinematic. It listens for a click anywhere on its
+  // own overlay; a few, spaced, cover each segment that re-arms.
+  for (let i = 0; i < 14; i++) {
+    const done = await page.evaluate(() => {
+      const gw = document.getElementById('gatewayOverlay');
+      if (!gw || gw.classList.contains('hidden') ||
+          getComputedStyle(gw).display === 'none') return true;
+      gw.click();
+      return false;
+    });
+    if (done) break;
+    await page.waitForTimeout(700);
+  }
+  await page.waitForFunction(() =>
+    document.body.classList.contains('creation-flow-active') ||
+    !document.getElementById('creationFlowOverlay').classList.contains('hidden'),
+    null, { timeout: 25000 }).catch(() => {});
+  await page.waitForTimeout(800);
+  const back = await page.evaluate(() => {
+    const c = document.getElementById('creationFlowContent');
+    const r = c ? c.querySelector('.creation-flow-resume') : null;
+    return {
+      onStudioHome: document.body.classList.contains('creation-flow-active'),
+      resume: r ? (r.innerText || '').replace(/\s+/g, ' ').trim() : null,
+      modal: !!document.querySelector('.modal-overlay:not(.hidden), #restoreModal:not(.hidden)'),
+      restoreWord: /Restore Previous Project/.test(document.body.innerText),
+      door: !!(c && c.querySelector('.creation-flow-door'))
+    };
+  });
+  check(bootState.state === 'valid',
+    'F6b the boot really did see a valid saved session', JSON.stringify(bootState));
+  check(back.onStudioHome === true,
+    'F7 coming back lands on Studio Home, not straight in the editor', JSON.stringify(back));
+  check(back.modal === false && back.restoreWord === false,
+    'F8 no Restore/Discard modal stands in front of it', JSON.stringify(back));
+  check(!!back.resume && /Half a Story/.test(back.resume) && /Carry on/.test(back.resume),
+    'F9 their own story is on the screen, named, one tap away', back.resume);
+  check(back.door === true,
+    'F10 and the door is there too — which is the whole point of moving it', String(back.door));
+  FORBIDDEN.forEach(([word, re]) => {
+    check(!re.test(back.resume || ''), 'F11 the resume card never says "' + word + '"',
+      ((back.resume || '').match(re) || [''])[0]);
+  });
+
+  await page.screenshot({ path: path.join(SHOTS, 'coming-back.png') });
+  console.log('     shot: shots/coming-back.png');
+
+  // Carry on actually opens the story it names.
+  const carried = await page.evaluate(() => {
+    const b = document.querySelector('.creation-flow-resume-btn');
+    if (!b) return null;
+    b.click();
+    return true;
+  });
+  await page.waitForFunction(() =>
+    !document.body.classList.contains('creation-flow-active'), null, { timeout: 15000 }).catch(() => {});
+  const opened = await page.evaluate(() => ({
+    inEditor: !document.body.classList.contains('creation-flow-active'),
+    title: (AppState.project && AppState.project.bookTitle) || '',
+    pages: (AppState.slides || []).length
+  }));
+  check(carried && opened.inEditor && opened.title === 'Half a Story' && opened.pages > 0,
+    'F12 Carry on opens the story it named', JSON.stringify(opened));
+
   /* ---------------- the router itself ---------------- */
   console.log('\n-- D: what decides');
   const flips = await page.evaluate(() => {

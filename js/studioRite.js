@@ -3222,7 +3222,14 @@ const StudioRite=(function(){
   // counted to be understood.
   function rites(){
     return RITES.map(function(r){
-      return {id:r.id, teaches:(r.teaches||[]).slice(), mandatory:!!r.unlocksStudio,
+      return {id:r.id, teaches:(r.teaches||[]).slice(),
+              // What an EARLIER rite's story hands back on top of what it
+              // teaches. Projected here for the same reason `teaches` is:
+              // a caller deciding what a child has been through needs the
+              // whole set, and reading it off the registry is the only way
+              // to do that without hard-coding an ordinal.
+              reveals:(r.reveals||[]).slice(),
+              mandatory:!!r.unlocksStudio,
               runnable:_runnable(r)};
     });
   }

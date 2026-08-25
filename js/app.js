@@ -830,6 +830,10 @@ window.refreshStoryActions=function(){
   }catch(e){}
   _setActionAsleep(playStoryBtn, riteHold || !content);
   _setActionAsleep(shareBtn,     riteHold || !content || !named);
+  // The rail's door rides this same pulse: it already fires on every
+  // page mutation and when a rite starts or ends, which is exactly when
+  // whether there IS a next door can change.
+  try{ refreshStudioDoor(); }catch(e){}
 };
 try{
   if(typeof PageRuntime!=='undefined' && PageRuntime.observe) PageRuntime.observe(window.refreshStoryActions);
@@ -2111,7 +2115,59 @@ function _refreshRepositoryWithTimeout(){
     ]);
   }catch(e){ return Promise.resolve(); }
 }
-function _startCreationFlow(){
+// THE DOOR, IN THE STUDIO'S LEFT RAIL.
+//
+// Studio Home's door is the offer between stories; this is the same
+// offer while one is being made, because a child who never leaves the
+// Studio never meets the other one. Placed in the rail rather than the
+// header on the product owner's instruction, and never in the Add panel
+// — Decision 22 closed that surface by name, since a tile there reads as
+// *more tools* rather than as an invitation.
+//
+// Everything Decision 22 requires of the Studio Home door holds here
+// too: one slot, one thing, never two, no decline, no dismiss, no badge,
+// no count, nothing that says level or rite or progress, and ABSENT
+// rather than empty when there is no next rite. It never interrupts and
+// never asks, so it needs no answer to stop.
+function refreshStudioDoor(){
+  const host=document.getElementById('studioDoor');
+  if(!host) return;
+  let next=null;
+  try{
+    if(typeof StudioRite!=='undefined' && StudioRite.nextOptIn) next=StudioRite.nextOptIn();
+  }catch(e){}
+  // Not while a rite is running: a chapter owns the screen, and offering
+  // the next one mid-story is the interruption this must never be.
+  let running=false;
+  try{ running=!!(typeof StudioRite!=='undefined' && StudioRite.isRunning && StudioRite.isRunning()); }catch(e){}
+  if(!next || running){ host.hidden=true; host.innerHTML=''; return; }
+  if(host.getAttribute('data-for')===next && !host.hidden) return;
+  host.setAttribute('data-for',next);
+  host.hidden=false;
+  host.innerHTML=
+    '<div class="studio-door-art" aria-hidden="true">'+
+      '<svg viewBox="0 0 88 112" width="46" height="58">'+
+      '<defs><linearGradient id="stDoorGlow" x1="0" y1="0" x2="0" y2="1">'+
+      '<stop offset="0" stop-color="#FFF6DA"/><stop offset="1" stop-color="#FFC94A"/>'+
+      '</linearGradient></defs>'+
+      '<path d="M18 100 L74 100 L86 110 L8 110 Z" fill="#FFCB45" opacity=".25"/>'+
+      '<path d="M14 100 L14 46 A30 30 0 0 1 74 46 L74 100 Z" fill="url(#stDoorGlow)"/>'+
+      '<path d="M16 99 L16 44 L40 50 L40 93 Z" fill="#D19566"/>'+
+      '<circle cx="36.5" cy="70" r="2.4" fill="#8A5A3B"/>'+
+      '<path d="M14 101 L14 46 A30 30 0 0 1 74 46 L74 101" fill="none" '+
+      'stroke="#8A5A3B" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/>'+
+      '</svg>'+
+    '</div>'+
+    '<div class="studio-door-title">A new door is waiting</div>'+
+    '<button type="button" class="studio-door-btn">Discover</button>';
+  const btn=host.querySelector('.studio-door-btn');
+  if(btn) btn.addEventListener('click',function(){
+    try{ if(typeof StudioRite!=='undefined' && StudioRite.start) StudioRite.start(next); }catch(e){}
+  });
+}
+try{ window.refreshStudioDoor=refreshStudioDoor; }catch(e){}
+
+function _startCreationFlow(opts){
   // Show Creation Flow immediately — CreationFlow.start() is what hides
   // #app (the raw editor), so waiting on the repository refresh here
   // was leaving the editor visibly flashing on screen for up to 4s
@@ -2122,7 +2178,11 @@ function _startCreationFlow(){
   // still reaches Screen 2 with up-to-date themes for the common case
   // where the user takes any time at all to get there.
   if(typeof CreationFlow!=='undefined'){
-    try{ CreationFlow.start(_homeReturnPending?{screen:'myProjects'}:undefined); }catch(e){}
+    try{
+      var o=_homeReturnPending ? {screen:'myProjects'} : undefined;
+      if(opts && opts.resume) o=Object.assign({},o||{},{resume:opts.resume});
+      CreationFlow.start(o);
+    }catch(e){}
   }
   _homeReturnPending=false;
   _refreshRepositoryWithTimeout();
@@ -2195,104 +2255,38 @@ function _beginBoot(){
   if(!window.ProjectManager){ setAutosaveStatus('saved'); _startCreationFlow(); return; }
   const info=ProjectManager.getSessionStatus();
   if(info.state==='valid'){
-    const hasPages=(info.pageCount||0)>0;
-    const body=hasPages
-      ? 'Continue working on “'+(info.title||'Untitled')+'” from your last session?'
-      : 'Pick up where you left off on “'+(info.title||'Untitled')+'” — your project setup is saved.';
-    // Real, confirmed bug: "i was authoring a project in landscape mode.
-    // i hard refreshed the page and clicked on restore, the scene came
-    // back as portrait mode. when i clicked home, went into projects
-    // and reopened the project it came back as landscape as it was
-    // supposed to be." Root cause, traced end to end: an Official-
-    // Repository-backed (or World-Card-redeemed) Artwork Theme is only
-    // ever (re-)registered into ThemeRegistry via
-    // _refreshRepositoryWithTimeout()/ThemeRegistry.rehydrateRedeemed()
-    // — both of which run ONLY from inside _startCreationFlow(), never
-    // on this "valid saved session -> show the restore modal" path. A
-    // hard refresh wipes ThemeRegistry's entire in-memory catalog clean
-    // (module state doesn't survive a reload — only localStorage/
-    // IndexedDB do, and refreshFromRepository()'s own header comment
-    // confirms Personal-repository themes aren't even re-registered by
-    // it at all — Official only), so ThemeEngine.applyArtworkTheme()'s
-    // own ThemeRegistry.hasTheme(id) check — called from inside
-    // deserialize() — silently resolved to null the instant this
-    // project's own World hadn't been re-registered yet:
-    // AppState.project.artworkTheme dropped to null, renderer/
-    // slideRenderer.js's _layoutTheme(s) found no active World, and the
-    // Scene fell back to its default portrait viewport. "Home -> My
-    // Projects -> reopen" never hit this, because that whole navigation
-    // reloads through _startCreationFlow() first (the Home button's own
-    // discardSession()+reload(), landing on "Continue a Project"), which
-    // DOES call the repository refresh before the project is ever
-    // reopened — by the time a real human clicks through to a project
-    // card, the network round trip has very likely already settled.
+    // THE RESTORE MODAL IS GONE, and this is the whole of the change.
     //
-    // Fired here, in parallel with the modal appearing (never delaying
-    // its first paint), then explicitly awaited inside onPrimary right
-    // before restoreSession() actually resolves the theme — a slow or
-    // unreachable repository still only ever costs the same bounded
-    // ~4s timeout this function already uses for the Creation Flow
-    // path, and the modal itself is never held up by it.
+    // "whenever i return to vihuplanet, it always takes me in to studio
+    // where i get discard and restore prompt. so i have no way to know
+    // there is something called door." Reported by the product owner,
+    // and measured: onPrimary called restoreSession() and went straight
+    // into the editor — _startCreationFlow() was reached only from its
+    // catch. So Studio Home, and the door on it, was skipped on every
+    // return a child actually makes, since a returning child always has
+    // a saved session. Discard was the only route to it.
     //
-    // needsWorldRefresh — gated on the saved session actually carrying
-    // an artworkTheme: only THAT case has anything at risk of dropping
-    // to null on this path (a plain Story-Theme-only project has no
-    // World reference for a hard refresh to lose in the first place).
-    // Without this gate, every single Restore click would block on the
-    // same up-to-~4s network race regardless of whether it could ever
-    // matter — exactly the "jittery session" this whole codebase's own
-    // established convention (see _startCreationFlow()'s own comment
-    // just above, which deliberately runs this same refresh in the
-    // BACKGROUND rather than blocking first paint) works hard to avoid.
-    // Both refresh calls are still always FIRED unconditionally, in the
-    // background, regardless of this gate — a Story-only restore still
-    // benefits from a freshly-populated ThemeRegistry for anything it
-    // touches afterward; only whether onPrimary's own restore *waits*
-    // on them is gated.
-    const needsWorldRefresh=!!(info.data && info.data.project && info.data.project.artworkTheme);
-    const repoRefreshPromise=_refreshRepositoryWithTimeout();
-    try{ if(typeof ThemeRegistry!=='undefined' && typeof ThemeRegistry.rehydrateRedeemed==='function') ThemeRegistry.rehydrateRedeemed(); }catch(e){}
-    showRestoreModal({
-      title:'Restore Previous Project?',
-      body:body,
-      primary:'Restore',
-      secondary:'Discard',
-      onPrimary:async ()=>{
-        try{
-          if(needsWorldRefresh) await repoRefreshPromise;
-          await ProjectManager.restoreSession();
-          setAutosaveStatus('saved');
-          // Cloud-Primary Project Storage, Phase 5 — the moment a saved
-          // session is about to be offered for restore, per the plan's
-          // own §5, is exactly here: the Project isn't already open/
-          // being edited (by construction, we're mid-restore), so a
-          // background check against the cloud is safe to run now.
-          try{ checkStudioCloudFreshness(info.data.project && info.data.project.id); }catch(e){}
-        }
-        catch(e){
-          // Task #475 — a real, confirmed data-loss cause: this used to
-          // call ProjectManager.discardSession() on ANY exception here —
-          // including a plain rendering hiccup inside deserialize(), now
-          // separately guarded against its own destructive fallout (see
-          // that function's own updated comment) — permanently deleting a
-          // saved session the user never asked to delete, then leaving
-          // #app on whatever half-restored/blank DOM state the failed
-          // attempt left behind, since _startCreationFlow() was never
-          // called in this branch either. The ONLY thing that should ever
-          // remove a saved session is the explicit, deliberate Discard
-          // button below — never an exception. Recover into a real,
-          // working screen instead, landing on "Continue a Project" (the
-          // still-safe durable CreatorProjectStore catalog copy — see
-          // projectManager.js's own _writeStorage()/getSessionStatus()
-          // comments — is very likely fine even when this one in-memory
-          // restore attempt hit a snag) rather than a blank stranded #app.
-          setAutosaveStatus('failed');
-          _homeReturnPending=true;
-          _startCreationFlow();
-        }
-      },
-      onSecondary:()=>{ ProjectManager.discardSession(); setAutosaveStatus('saved'); _startCreationFlow(); }
-    });
+    // Resuming now happens ON Studio Home rather than in front of it
+    // (js/creationFlow.js -> _resumeEntry): the child lands there every
+    // time, their story is the first thing on the screen, carrying on
+    // is one tap, and the door is simply also there. It removes a modal
+    // from a five-year-old's path rather than adding a surface.
+    //
+    // DISCARD NEEDS NO BUTTON ANY MORE. The session slot is a pointer,
+    // not the story — the story itself lives in CreatorProjectStore and
+    // is listed in My Projects either way. A child who picks anything
+    // else on Studio Home starts a project, which overwrites the slot,
+    // so discarding happens by choosing rather than by being asked.
+    //
+    // The World refresh that Restore used to await is fired here in the
+    // background for the same reason it always was: a hard refresh wipes
+    // ThemeRegistry, and an Artwork Theme not re-registered before
+    // deserialize() drops the project to a default viewport. Firing it
+    // now gives it the whole time a child spends on Studio Home, which
+    // is strictly more than the modal ever did.
+    try{ _refreshRepositoryWithTimeout(); }catch(e){}
+    setAutosaveStatus('saved');
+    _startCreationFlow({resume:info});
   }else if(info.state==='corrupt'){
     showRestoreModal({
       title:'Saved Session Unavailable',

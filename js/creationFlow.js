@@ -774,6 +774,7 @@ const CreationFlow=(function(){
     _clear();
     _setAtmosphere(false);
     _brand();
+    _resumeEntry();
     content.appendChild(_el('div','creation-flow-eyebrow','Your journey begins'));
     content.appendChild(_el('h1','creation-flow-question','A Story Is Waiting'));
     const lines=_el('div','creation-flow-journey-lines');
@@ -817,6 +818,7 @@ const CreationFlow=(function(){
     _clear();
     _setAtmosphere(false);
     _brand();
+    _resumeEntry();
     content.appendChild(_el('div','creation-flow-eyebrow','You made something. ✨'));
     content.appendChild(_el('h1','creation-flow-question','Now Look What You Can Make'));
     content.appendChild(_el('p','creation-flow-subtitle','Try something new with what you discovered.'));
@@ -1976,10 +1978,27 @@ const CreationFlow=(function(){
   // Type screen when there's nothing to continue yet, mirroring the
   // exact "never a dead-end" precedent _deleteProjectRecord already
   // established for the last-project-deleted case.
+  // THE UNFINISHED STORY, OFFERED HERE INSTEAD OF IN FRONT OF HERE.
+  //
+  // "whenever i return to vihuplanet, it always takes me in to studio
+  // where i get discard and restore prompt. so i have no way to know
+  // there is something called door." — the product owner, and he is
+  // right: js/app.js's Restore went straight into the editor and only
+  // its ERROR path ever reached this screen, so a returning child —
+  // which is to say every child, since they always have a saved
+  // session — never met Studio Home or the door on it.
+  //
+  // The fix is not another surface. It is that resuming belongs WITH
+  // the other ways in rather than as a modal before them: the child
+  // lands here every time, their story is the first thing on the
+  // screen, carrying on is one tap, and the door is simply also there.
+  // One fewer modal in front of a five-year-old, too.
+  var _resume=null;
   function start(opts){
     _ensureDom();
     _mode='new';
     _selectedThemeId=null;
+    _resume=(opts && opts.resume) || null;
     document.body.classList.add('creation-flow-active');
     overlay.classList.remove('hidden');
     if(opts && opts.screen==='myProjects' && _myProjects().length){
@@ -1987,6 +2006,37 @@ const CreationFlow=(function(){
     }else{
       _renderTypeScreen();
     }
+  }
+
+  // Their own story, at the top of whichever state they land in. Named
+  // by the story rather than by the word "session", and the action says
+  // what happens: they carry on.
+  function _resumeEntry(){
+    if(!_resume || !_resume.data || !_resume.data.project) return;
+    const title=(_resume.data.project.bookTitle||_resume.data.project.title||'').trim();
+    const card=_el('div','creation-flow-resume');
+    card.appendChild(_el('div','creation-flow-resume-eyebrow','You were making something'));
+    card.appendChild(_el('div','creation-flow-resume-title',title||'Your story'));
+    const btn=_el('button','creation-flow-resume-btn','Carry on');
+    btn.type='button';
+    btn.addEventListener('click',function(){
+      btn.disabled=true;
+      // Exactly what the modal's Restore did, minus the modal. The
+      // failure path is the same one js/app.js already established:
+      // never discard on an exception, land on a real screen instead.
+      try{
+        Promise.resolve(ProjectManager.restoreSession()).then(function(){
+          _closeOverlay();
+          try{ if(typeof PageRuntime!=='undefined') PageRuntime.openPage(AppState.currentSlide); }catch(e){}
+          try{ if(typeof setAutosaveStatus==='function') setAutosaveStatus('saved'); }catch(e){}
+        }).catch(function(){
+          btn.disabled=false;
+          btn.textContent='That one would not open — try another?';
+        });
+      }catch(e){ btn.disabled=false; }
+    });
+    card.appendChild(btn);
+    content.appendChild(card);
   }
 
   // Starts a blank project directly, skipping Screen 1 entirely — the

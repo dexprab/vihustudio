@@ -7271,3 +7271,67 @@ time.
 
 Rite gate 24/24, levels 59/59, capability audit 4/4, creation home 52/52,
 zero page errors. Build 0646 → 0647.
+
+## The Door in the Studio, and the Modal That Hid It (build 0648)
+
+*"whenever i return to vihuplanet, it always takes me in to studio where
+i get discard and restore prompt. so i have no way to know there is
+something called door. and actually the door is a good concept can we not
+get it in the studio too?"*
+
+Both halves were true, and the first was worse than it sounded. Measured
+rather than reasoned about: `_beginBoot()`'s Restore called
+`restoreSession()` and went straight into the editor —
+`_startCreationFlow()` was reached only from its CATCH. A returning child
+always has a saved session, so Studio Home, and the invitation on it, was
+skipped on **every return a child actually makes**. Discard was the only
+route to it: the only way to meet the next rite was to throw away the last
+story. I had claimed earlier in the session that the door was on their
+path; it was not, and the product owner was right to challenge it.
+
+The fix is not another surface. Resuming now happens ON Studio Home
+rather than in front of it — the child lands there every time, their own
+story is the first thing on the screen (*You were making something · its
+name ·* **Carry on**), and the door is simply also there. One fewer modal
+in a five-year-old's path rather than one more button in it.
+
+Discard needed no replacement. The session slot is a POINTER, not the
+story — the story lives in `CreatorProjectStore` and is in My Projects
+either way — so choosing anything else on Studio Home overwrites the slot,
+and discarding happens by choosing. The World refresh that Restore used to
+await (the landscape-came-back-portrait bug: a hard refresh wipes
+`ThemeRegistry`, and an Artwork Theme not re-registered before
+`deserialize()` drops the project to a default viewport) still fires at
+the same point in the background, and now has the whole time a child
+spends on Studio Home rather than the time they take to press a button.
+Corrupt and unreadable sessions keep their own modals — those are
+technical facts with nothing to carry on to.
+
+The second half is the door itself, in the Studio's **left rail** — the
+product owner's placement, not the header. That rail is the one column
+nothing else claims and is where the Rite's own band docks while a story
+is told, so a door to the next rite sits where rites already happen. Never
+in the Add panel, which Decision 22 closed by name. Everything asked of
+Studio Home's door holds unchanged: one slot, one thing, no decline, no
+dismiss, no badge, no count, absent rather than empty, and hidden while a
+rite is running — in `refreshStudioDoor()` and again in CSS, because a
+chapter owns the screen. It rides `refreshStoryActions`, which already
+fires on every page mutation and when a rite starts or ends, so nothing
+new polls.
+
+`rites()` now projects `reveals` beside `teaches` — a caller deciding what
+a child has been through needs the whole set, and reading it off the
+registry is the only way to do that without hard-coding an ordinal.
+
+Two things this sprint found in its own tree rather than in the product: a
+duplicated `}else if(info.state==='corrupt'){` left by the edit, caught by
+`node --check` before it ever ran; and a first attempt at the coming-back
+test that called a boot function which is not global (all of `js/app.js`
+lives inside a `DOMContentLoaded` callback). The suite now does the real
+thing — a genuine page load with the Gateway skipped the way a child skips
+it, a tap — and both halves were proved by reverting the fix: without the
+rail element F1–F3 fail, without the resume wiring F9 and F12 fail.
+
+Creation home 78/78 (was 52), levels 59/59, rite gate 24/24, gate 24/24,
+capability audit 4/4, celebration 31/31, traveller reset 16/16, garden
+104/104, zero page errors throughout. Build 0647 → 0648.

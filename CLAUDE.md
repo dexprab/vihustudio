@@ -1320,6 +1320,64 @@ once, and its scope is no longer closed.
   editor (the header's own World readout) rather than before it. No
   control was removed from anybody.
   `tools/creation-home-test/run-creation-home-tests.js`.
+- **THE DOOR IS IN THE STUDIO TOO, AND THE RESTORE MODAL IS GONE**
+  (build 0648). Reported by the product owner: *"whenever i return to
+  vihuplanet, it always takes me in to studio where i get discard and
+  restore prompt. so i have no way to know there is something called
+  door. and actually the door is a good concept can we not get it in
+  the studio too?"* Both halves were true and the first was the worse
+  one — measured, `_beginBoot()`'s Restore called `restoreSession()` and
+  went straight into the editor, and `_startCreationFlow()` was reached
+  only from its CATCH. So Studio Home, and the invitation on it, was
+  skipped on every return a child actually makes, since a returning
+  child always has a saved session. **Discard was the only route to the
+  door**, which is to say the only way to meet the next rite was to
+  throw away the last story.
+- **Resuming belongs WITH the other ways in, not as a modal in front of
+  them.** The child lands on Studio Home every time, their own story is
+  the first thing on it — *You were making something · <its name> ·*
+  **Carry on** — and the door is simply also there. This removes a
+  modal from a five-year-old's path rather than adding a surface, which
+  is why it was preferred to keeping the modal and bolting a third
+  button onto it.
+- **DISCARD NEEDS NO BUTTON.** The session slot is a POINTER, never the
+  story: the story itself lives in `CreatorProjectStore` and is listed
+  in My Projects either way. A child who picks anything else on Studio
+  Home starts a project, which overwrites the slot — so discarding now
+  happens by choosing, which is what a child was doing anyway.
+- **The World refresh Restore used to await still runs, and gets more
+  time than it did.** A hard refresh wipes `ThemeRegistry`, and an
+  Artwork Theme not re-registered before `deserialize()` drops a project
+  to a default viewport — the landscape-came-back-portrait bug. It is
+  fired in the background at the same point, and now has the whole time
+  a child spends on Studio Home rather than the time they take to press
+  a button. Corrupt and unreadable sessions keep their own modals: those
+  are technical facts with nothing to carry on to.
+- **The Studio's own door lives in the LEFT RAIL, and never in the
+  header.** Placed there on the product owner's instruction. The rail is
+  the one column nothing else claims and is where the Rite's own band
+  docks while a story is being told, so a door offering the next rite
+  sits exactly where rites already happen. **Never in the Add panel** —
+  this decision closed that surface by name, since a tile there reads as
+  *more tools*. Everything required of Studio Home's door holds here
+  unchanged: one slot, one thing, never two, no decline, no dismiss, no
+  badge, no count, nothing that says level or rite or progress, and
+  **absent rather than empty** when there is no next rite. It is hidden
+  while a rite is running, in `refreshStudioDoor()` and again in CSS: a
+  chapter owns the screen, and offering the next one mid-story is the
+  interruption this must never be.
+- **It rides `refreshStoryActions`, so nothing new polls.** That pulse
+  already fires on every page mutation and when a rite starts or ends,
+  which is exactly when whether there IS a next door can change.
+- **`rites()` now projects `reveals` beside `teaches`.** A caller
+  deciding what a child has been through needs the whole set, and
+  reading it off the registry is the only way to do that without
+  hard-coding an ordinal — which is this decision's own rule.
+- `tools/creation-home-test/` (78) covers both halves, through a real
+  page load with the Gateway skipped the way a child skips it: the door
+  in the rail, absent once every rite is taught, gone while a rite runs;
+  and coming back landing on Studio Home with the story named, one tap
+  away, no modal in front of it.
 - Design and sequencing: `docs/STUDIO_RITE_LEVELS.md`. Rite II's script
   and its engineering notes: `docs/STUDIO_RITE_LEVEL_II_STORY.md`.
 
