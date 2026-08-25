@@ -6996,3 +6996,41 @@ Levels 34/34 (H1–H3 reproduce the reported chain: an old card in hand,
 the grant, the new card, the Studio it opens), gate 24/24, rite gate
 22/22, creation home 52/52, traveller reset 16/16, zero page errors.
 Build 0639 → 0640.
+
+## The legacy mark is repaired, not just stopped (build 0641)
+
+*"so my current minted card will keep showing everything although it is
+not supposed to"* — and then, decisively, *"as of now there is no card
+which has started story rite 2. i would suggest migration."*
+
+Build 0640 closed both routes by which `legacy-studio` spread; it could
+not un-stamp a card already written, so the card the product owner had
+just minted kept the whole Studio permanently.
+
+**I argued against a migration and was wrong, on a fact I did not have.**
+The objection was sound as far as it went: once the mark is on a card,
+a correctly-marked legacy card and a wrongly inherited one are
+indistinguishable, and stripping a real Creator of controls they have had
+for weeks is the one thing Decision 22 forbids. That risk exists only if
+somebody has progressed past Rite I. Nobody has. So the worst this can do
+to a correctly-marked card is hand it the Studio that Rite I teaches —
+which is the Studio that card has actually earned.
+
+`MagicCard._repairInheritedLegacy()` runs once per device at load and
+drops the mark from every card's record. Narrow by construction: a card
+with **no `taught` array is untouched**, because absence is what
+grandfathering means and a veteran who has finished no rite since keeps
+everything; a card left with nothing after the mark is removed has the
+property **deleted** rather than set to `[]`, so it returns to "no
+record" instead of being gated down to no capabilities at all. Changed
+cards schedule an identity sync, or a recall would hand the mark straight
+back from the platform column.
+
+It runs at module load and **never from `_readCards()`** — that function
+states in as many words that reading a card must never write to it, and
+a card's stars are the child's identity.
+
+Levels 41/41 (J0–J6: the exact pair 0639 left behind, the untouched
+veteran, the Studio that results, and that it is one-shot), rite gate
+22/22, creation home 52/52, gate 24/24, traveller reset 16/16, zero page
+errors. Build 0640 → 0641.

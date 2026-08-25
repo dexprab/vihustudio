@@ -256,6 +256,61 @@ function check(c, n, note) { (c ? ok : fail)(n, note); }
   check(await page.evaluate(() => StudioRite.isGrandfathered()) === false,
     'H3 …and that child is gated, not grandfathered');
 
+  // ---- J: THE REPAIR, for cards build 0639 already stamped
+  //
+  // "as of now there is no card which has started story rite 2. i would
+  // suggest migration." — the product owner, and that fact is what makes
+  // it safe: the worst it can do to a correctly-marked legacy card is
+  // hand it the Studio Rite I teaches, which is the one that card has
+  // actually earned.
+  console.log('-- J: repairing a card that inherited legacy');
+  const before = await page.evaluate(() => {
+    localStorage.clear();
+    // Exactly what 0639 left behind: an older card correctly marked,
+    // and a brand-new one that inherited the mark through the sweep.
+    const rec = ['legacy-studio', 'emoji', 'text', 'story-name'];
+    const old = MagicCard.claim('Old', null, null);
+    const fresh = MagicCard.claim('New', null, null);
+    const cards = JSON.parse(localStorage.getItem('vihu-magic-cards'));
+    cards.forEach(function (c) { c.taught = rec.slice(); });
+    // …and a veteran who has finished no rite since: no record at all.
+    cards.push({ id: 'card-veteran', nickname: 'Vet', constellation: 'ORION',
+                 pattern: [[0, 0]], claimedAt: new Date(0).toISOString(),
+                 lastActiveAt: new Date(0).toISOString() });
+    localStorage.setItem('vihu-magic-cards', JSON.stringify(cards));
+    localStorage.removeItem('vihu.magicCard.legacyRepaired');
+    MagicCard.setActive(fresh.id);
+    return { taught: MagicCard.taught(), grandfathered: StudioRite.isGrandfathered() };
+  });
+  check(before.grandfathered === true,
+    'J0 the card 0639 minted is grandfathered before the repair', JSON.stringify(before.taught));
+
+  await boot();   // the repair runs once at load
+  const after = await page.evaluate(() => {
+    const cards = JSON.parse(localStorage.getItem('vihu-magic-cards'));
+    const vet = cards.find(function (c) { return c.id === 'card-veteran'; });
+    return {
+      taught: MagicCard.taught(),
+      grandfathered: StudioRite.isGrandfathered(),
+      anyLegacy: cards.some(function (c) { return (c.taught || []).indexOf('legacy-studio') >= 0; }),
+      vetUntouched: !!vet && !('taught' in vet)
+    };
+  });
+  check(after.anyLegacy === false, 'J1 no card carries the inherited mark any more');
+  check(after.grandfathered === false, 'J2 …so that child is gated again');
+  check(JSON.stringify(after.taught) === JSON.stringify(['emoji', 'text', 'story-name']),
+    'J3 …and keeps exactly what the rite actually taught it', JSON.stringify(after.taught));
+  check(after.vetUntouched,
+    'J4 a veteran with NO record is untouched — absence is what grandfathering means');
+  const jTiles = await tiles();
+  check(jTiles.indexOf('shapes') < 0 && jTiles.indexOf('library') < 0,
+    'J5 …and the Studio is the one that rite taught', jTiles.join(','));
+  // One-shot: it must not keep running and must not fight a later grant.
+  await page.evaluate(() => MagicCard.setTaught(MagicCard.taught().concat(['legacy-studio'])));
+  await boot();
+  check(await page.evaluate(() => MagicCard.taught().indexOf('legacy-studio') >= 0),
+    'J6 it is one-shot per device — a later legacy mark is left alone');
+
   check(pageErrors.length === 0, 'F1 zero page errors', pageErrors.slice(0, 3).join(' | '));
   console.log('\n' + passed + ' passed, ' + failed + ' failed');
   await browser.close();

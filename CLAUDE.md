@@ -1156,6 +1156,20 @@ once, and its scope is no longer closed.
   shipped. **A card minted now can never be grandfathered either**: the
   sweep drops `legacy-studio`, so a new card cannot inherit an older
   one's legacy through the device record.
+- **A card already stamped is REPAIRED, once per device.** Build 0639's
+  mark could not be undone by build 0640's fix, so a card that inherited
+  it kept the whole Studio for ever. The migration
+  (`MagicCard._repairInheritedLegacy`) drops `legacy-studio` from every
+  card's record at load. **The product owner supplied the fact that made
+  it safe** — *"as of now there is no card which has started story rite
+  2"* — which answers the objection that a correctly-marked card and a
+  wrongly inherited one are indistinguishable: with nobody past Rite I,
+  the worst it can do to a correctly-marked card is hand it the Studio
+  Rite I teaches, which is the one that card has earned. A card with **no
+  `taught` array is untouched**, because absence is what grandfathering
+  means; a card left with nothing has the property deleted rather than
+  set to `[]`, so it returns to "no record" instead of being gated down
+  to nothing.
 - **Controls and doors are DIFFERENT QUESTIONS, and one value answering
   both was a real bug.** A grandfathered Creator keeps every control —
   but they have never *walked* Rite II, so the next door is still

@@ -335,6 +335,60 @@ const MagicCard=(function(){
     catch(e){ return false; }
   }
 
+  // ---------- A ONE-SHOT REPAIR: legacy that was inherited ----------
+  //
+  // Build 0639 stamped `legacy-studio` onto records it should not have.
+  // A child finishing a rite with an older card still in hand had the
+  // grant take its legacy branch (js/studioRite.js), which wrote the
+  // mark to the active card AND to the device record — and the brand-new
+  // card the Creator Ceremony minted a beat later copied that record
+  // verbatim. Build 0640 stopped both routes; neither could un-stamp a
+  // card already written, and a grandfathered card keeps the whole
+  // Studio for ever.
+  //
+  // I ARGUED AGAINST A MIGRATION AND WAS WRONG, and the reason is worth
+  // recording because it was a fact I did not have: "as of now there is
+  // no card which has started story rite 2" — the product owner. My
+  // objection was that a correctly-marked legacy card and a wrongly
+  // inherited one are indistinguishable, so any repair risks stripping a
+  // real Creator of controls they have had for weeks (which Decision 22
+  // forbids). That risk is real only if somebody has progressed past
+  // Rite I. Nobody has. So the worst this can do to a correctly-marked
+  // card is hand it the Studio that Rite I teaches — which is the Studio
+  // that card has actually earned.
+  //
+  // Deliberately NARROW even so:
+  //   · a card with NO `taught` array is untouched. Absence is what
+  //     grandfathering means (Decision 22), and a veteran who has not
+  //     finished a rite since the record shipped keeps everything.
+  //   · a card left with nothing after the mark is removed has the
+  //     property DELETED rather than set to [], putting it back to "no
+  //     record" instead of gating it down to no capabilities at all.
+  //   · once per device, and it never runs on a read — _readCards() is
+  //     explicitly never allowed to mutate.
+  var LEGACY_REPAIR_KEY='vihu.magicCard.legacyRepaired';
+  function _repairInheritedLegacy(){
+    try{ if(localStorage.getItem(LEGACY_REPAIR_KEY)) return; }catch(e){ return; }
+    try{ localStorage.setItem(LEGACY_REPAIR_KEY,'1'); }catch(e){}
+    var cards=_readCards();
+    if(!cards.length) return;
+    var changed=[];
+    cards.forEach(function(c){
+      if(!c || !Array.isArray(c.taught)) return;
+      if(c.taught.indexOf('legacy-studio')<0) return;
+      var kept=c.taught.filter(function(t){ return t!=='legacy-studio'; });
+      if(kept.length) c.taught=kept;
+      else delete c.taught;
+      changed.push(c.id);
+    });
+    if(!changed.length) return;
+    _writeCards(cards);
+    // The column travels with the identity, so a device that repairs a
+    // card has to tell the platform or a recall would hand the mark
+    // straight back.
+    changed.forEach(function(id){ try{ _scheduleIdentitySync(id); }catch(e){} });
+  }
+
   function _readFlags(){
     try{
       const raw=localStorage.getItem(FLAGS_KEY);
@@ -1224,6 +1278,9 @@ const MagicCard=(function(){
     count:count,
     getActiveId:getActiveId,
     getActive:getActive,
+    // Exposed for the harness only, so the repair can be proved rather
+    // than asserted. It is one-shot per device either way.
+    _repairInheritedLegacy:_repairInheritedLegacy,
     // Decision 22 — the taught record. Read and written only by
     // js/studioRite.js, which owns what a capability means.
     taught:taught,
@@ -1261,5 +1318,9 @@ const MagicCard=(function(){
     setFlags:setFlags
   };
   try{ window.MagicCard=api; }catch(e){}
+  // Once per device, at load, before anything asks a card what it was
+  // taught. Never from _readCards(): reading a card must never write to
+  // it, which is a rule this file states in as many words.
+  try{ _repairInheritedLegacy(); }catch(e){}
   return api;
 })();
