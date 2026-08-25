@@ -1124,6 +1124,20 @@ once, and its scope is no longer closed.
   readout, the card badge, the build footer and the strip's legend all
   return the instant the rite ends, because none of them is a capability:
   they are the room, not what a child can make in it.
+- **Voice belongs to My Garden; Page Shape belongs to My Little House**
+  (build 0646). Moved by the product owner, and both sit better than
+  they did: My Garden is the rite about bringing something of the
+  child's OWN into a story — their handwriting, their drawing — and
+  their voice is the third thing of theirs a story can carry; My Little
+  House is about building something out of parts, so the shape of the
+  thing being built belongs with it. The World tools are left holding
+  only the World, which is what they are named for.
+  **Disclosed and not yet closed:** neither script teaches its new
+  capability. *The Name on the Green* is twelve beats about letters and
+  a drawing with no Voice beat, and *My Little House* has no Page Shape
+  beat — so each rite currently hands over a control its own story never
+  mentions, which is the same shape as *"they were not part of rite 1"*
+  one rite along. Closing it is writing, not code.
 - **A capability id is a design artifact, not machinery** (build 0645).
   Decision 27 renamed My Library to **My Garden** child-facing and froze
   every internal id — `creatorLibrary.js`, `creator_library`,

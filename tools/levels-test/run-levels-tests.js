@@ -132,21 +132,29 @@ function check(c, n, note) { (c ? ok : fail)(n, note); }
   console.log('-- C: which door Studio Home offers next');
   check(await page.evaluate(() => StudioRite.nextOptIn()) === 'my-garden',
     'C1 a child who has done only the first rite is offered My Garden');
+  // FROM THE REGISTRY, never repeated here. Hardcoding a rite's
+  // capabilities in the suite means the suite drifts the moment one
+  // moves — which it just did, when Voice moved to My Garden.
   await page.evaluate(() => {
-    MagicCard.setTaught(MagicCard.taught().concat(['garden','handwriting']));
+    const r = StudioRite.rites().find((x) => x.id === 'my-garden');
+    MagicCard.setTaught(MagicCard.taught().concat(r.teaches));
   });
   await boot();
   check(await page.evaluate(() => StudioRite.nextOptIn()) === 'my-little-house',
     'C2 once taught, that door stops being offered and the next one appears');
   const afterII = await tiles();
   check(afterII.indexOf('library') >= 0, 'C3 My Garden is there now', afterII.join(','));
-  check(afterII.indexOf('fromWorld') < 0, 'C3b …and the world tools still are not', afterII.join(','));
+  check(afterII.indexOf('voice') >= 0,
+    'C3b …and so is Voice, which now belongs to this rite', afterII.join(','));
+  check(afterII.indexOf('fromWorld') < 0,
+    'C3c …while the World itself still waits', afterII.join(','));
   check(afterII.indexOf('shapes') < 0, 'C4 …and the third rite\'s tiles still are not', afterII.join(','));
 
   // ---- D: everything taught
   console.log('-- D: after every rite');
   await page.evaluate(() => {
-    MagicCard.setTaught(MagicCard.taught().concat(['shapes','doodle','photo','blank-page']));
+    const r = StudioRite.rites().find((x) => x.id === 'my-little-house');
+    MagicCard.setTaught(MagicCard.taught().concat(r.teaches));
   });
   await boot();
   const afterIII = await tiles();
@@ -155,8 +163,12 @@ function check(c, n, note) { (c ? ok : fail)(n, note); }
   check(afterIII.indexOf('shapes') >= 0 && afterIII.indexOf('doodle') >= 0
         && afterIII.indexOf('photo') >= 0 && afterIII.indexOf('library') >= 0,
     'D1 every tile the written rites teach is back', afterIII.join(','));
-  check(afterIII.indexOf('fromWorld') < 0 && afterIII.indexOf('voice') < 0,
-    'D1b …and the world tools wait for the story that teaches them', afterIII.join(','));
+  check(afterIII.indexOf('fromWorld') < 0,
+    'D1b …and the World waits for the story that teaches it', afterIII.join(','));
+  check(await page.evaluate(() => {
+    const t = document.querySelector('.context-set-tile[data-set-id="pageShape"]');
+    return !!t && t.getBoundingClientRect().width > 4;
+  }), 'D1c Page Shape arrives with My Little House, which now teaches it');
   check(await addPageVisible(), 'D2 …and + Add Page');
   check(await page.evaluate(() => StudioRite.nextOptIn()) === null,
     'D3 there is no next door, so the offer is absent rather than empty');
@@ -230,7 +242,8 @@ function check(c, n, note) { (c ? ok : fail)(n, note); }
     'G3 …and the next door is still offered — they have walked no story yet');
   // Walking it must record the story, not swallow the whole ladder.
   await page.evaluate(() => {
-    MagicCard.setTaught(['legacy-studio', 'garden', 'handwriting']);
+    const r = StudioRite.rites().find((x) => x.id === 'my-garden');
+    MagicCard.setTaught(['legacy-studio'].concat(r.teaches));
   });
   await boot();
   check((await tiles()).length >= 8, 'G4 after that story they still keep everything');

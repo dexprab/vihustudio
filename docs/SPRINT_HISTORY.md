@@ -7192,3 +7192,33 @@ rather than after somebody has.
 Levels 57/57 (L1–L5, including that the tile still answers to its old
 data attribute), rite gate 23/23, capability audit 4/4, creation home
 52/52, gate 24/24, zero page errors. Build 0644 → 0645.
+
+## Voice to My Garden, Page Shape to My Little House (build 0646)
+
+*"move voice to rite 2, and page shape to rite 3."* — the product owner.
+
+Both land better than they were. My Garden is the rite about bringing
+something of the child's **own** into a story — their handwriting, their
+drawing — and their voice is the third thing of theirs a story can carry.
+My Little House is about building something out of parts, so the shape of
+the thing being built belongs with it. The World tools are left holding
+only the World, which is what they are named for.
+
+**Disclosed, and it is the same complaint one rite along.** Neither
+script teaches its new capability. *The Name on the Green* is twelve
+beats about letters and a drawing with no Voice beat; *My Little House*
+has no Page Shape beat. So each rite now hands over a control its own
+story never mentions — which is exactly *"they were not part of rite 1"*,
+moved down the registry rather than solved. Closing it is writing: a beat
+where the green place gets a sound, and a beat where the house decides
+what shape its page is. The code is one line each.
+
+**A second drift caught while doing it.** The levels suite hardcoded each
+rite's capability list to seed its states, so the moment Voice moved, the
+suite was asserting against a registry that no longer said that — four
+failures that were the suite being wrong, not the product. The seeds now
+read `StudioRite.rites()` for the rite under test, so they cannot drift
+again.
+
+Levels 59/59, rite gate 23/23, capability audit 4/4, creation home 52/52,
+gate 24/24, zero page errors. Build 0645 → 0646.

@@ -1018,16 +1018,35 @@ const StudioRite=(function(){
      //
      // `handwriting` stays: it is a real second room and a later rite
      // may want to hand over letters without drawings, or the reverse.
-     teaches:['garden','handwriting'],
-     reveals:['garden'],
+     // VOICE MOVED HERE from the world tools, by the product owner's
+     // decision. It sits well: this is the rite about bringing something
+     // of the child's own into a story — their handwriting, their
+     // drawing — and their voice is the third thing of theirs a story
+     // can carry.
+     //
+     // DISCLOSED: the script does not teach it yet. `The Name on the
+     // Green` is twelve beats about letters and a drawing, and none of
+     // them mentions Voice — so a child finishing it gains a tile their
+     // story never showed them, which is the same shape of complaint as
+     // "they were not part of rite 1", one rite along. Closing that is
+     // writing, not code: a beat where the green place gets a sound.
+     teaches:['garden','handwriting','voice'],
+     reveals:['garden','voice'],
      startsBlank:true,
      unlocksStudio:false},
 
     {id:'my-little-house',
      mission:MISSION_HOUSE,
      screens:SCREENS_HOUSE,
-     teaches:['shapes','doodle','photo','blank-page'],
-     reveals:['shapes','doodle','photo','blank-page'],
+     // PAGE SHAPE MOVED HERE from the world tools, by the product
+     // owner's decision. This is the rite about building something out
+     // of parts, so the shape of the thing being built belongs to it.
+     //
+     // DISCLOSED, same as My Garden's Voice above: `My Little House`
+     // has no Page Shape beat, so today it hands over a control its
+     // story never mentions.
+     teaches:['shapes','doodle','photo','blank-page','page-shape'],
+     reveals:['shapes','doodle','photo','blank-page','page-shape'],
      startsBlank:true,
      unlocksStudio:false},
 
@@ -1059,8 +1078,12 @@ const StudioRite=(function(){
     {id:'the-world-tools',
      mission:null,
      screens:null,
-     teaches:['world','voice','page-shape'],
-     reveals:['world','voice','page-shape'],
+     // Down to one, and it is the one this rite is actually named for:
+     // Voice went to My Garden and Page Shape to My Little House, both
+     // by the product owner's decision, leaving the World tools holding
+     // only the World.
+     teaches:['world'],
+     reveals:['world'],
      startsBlank:true,
      unlocksStudio:false}
   ];
