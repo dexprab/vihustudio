@@ -215,6 +215,47 @@ function check(c, n, note) { (c ? ok : fail)(n, note); }
   check(await page.evaluate(() => StudioRite.taught().indexOf('shapes') >= 0),
     'G6 legacy widens the controls');
 
+  // ---- H: A CARD LEFT ACTIVE FROM AN EARLIER RUN
+  //
+  // "my studio post rite 1. same issue. am seeing tiles for next rites
+  // already activated." The grant asked isComplete() to decide whether
+  // this Studio predated the record — and since build 0634 wipes the
+  // rite flag on every arrival, at that moment isComplete() means
+  // exactly "is a Magic Card in hand", which is the test Decision 22
+  // already recorded as dead.
+  console.log('-- H: a card already in hand when the first rite finishes');
+  await page.evaluate(() => {
+    localStorage.clear();
+    // An older card, claimed before the record existed.
+    const old = MagicCard.claim('Old', null, null);
+    MagicCard.setActive(old.id);
+    const cards = JSON.parse(localStorage.getItem('vihu-magic-cards'));
+    cards.forEach(function (c) { delete c.taught; });
+    localStorage.setItem('vihu-magic-cards', JSON.stringify(cards));
+    localStorage.removeItem(StudioRite.TAUGHT_KEY);
+  });
+  const chain = await page.evaluate(() => {
+    // Exactly what Rite I's completion does, in order: the grant lands
+    // on the device while the OLD card is still active, and the
+    // Ceremony mints a new one a beat later.
+    const RITE_I = ['emoji','background','resize','rotate','move','text',
+                    'copy-page','story-name','play','finish','share'];
+    // (the grant's own legacy branch, reached through the real path)
+    localStorage.setItem(StudioRite.TAUGHT_KEY, JSON.stringify(['legacy-studio'].concat(RITE_I)));
+    const fresh = MagicCard.claim('New', null, null);
+    MagicCard.setActive(fresh.id);
+    return { taught: MagicCard.taught() };
+  });
+  check(chain.taught && chain.taught.indexOf('legacy-studio') < 0,
+    'H1 a brand-new card never inherits somebody else\'s legacy', JSON.stringify(chain.taught));
+  await boot();
+  const afterOwner = await tiles();
+  check(afterOwner.indexOf('shapes') < 0 && afterOwner.indexOf('library') < 0,
+    'H2 …so the Studio after the first rite is the one that rite taught',
+    afterOwner.join(','));
+  check(await page.evaluate(() => StudioRite.isGrandfathered()) === false,
+    'H3 …and that child is gated, not grandfathered');
+
   check(pageErrors.length === 0, 'F1 zero page errors', pageErrors.slice(0, 3).join(' | '));
   console.log('\n' + passed + ' passed, ' + failed + ' failed');
   await browser.close();

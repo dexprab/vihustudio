@@ -1478,12 +1478,28 @@ const MagicCardUI=(function(){
     panel.innerHTML='';
     panel.classList.remove('magic-card-gate-panel--challenge');
 
+    // THE CARD'S OWN PROPORTIONS, AND SOMEWHERE TO HOLD IT.
+    //
+    // "decorate the camera window like it is in the other show me your
+    // stars" — the product owner, looking at a landscape webcam view of
+    // his own face. The window was 4:3, which is the shape of a room; a
+    // Magic Card is 700x980, and a window that shape says what to put
+    // in it before any line of copy does. The same decoration
+    // css/vihuplanet-home.css's .vp-scan-window carries, in this
+    // panel's own palette.
+    //
+    // The hold guide is a soft breathing rectangle, NEVER a reticle: no
+    // corner brackets, no sweeping line, no percentage (Decision 16 —
+    // it must never look like scanning). It says "about here", because
+    // the reader tolerates a card held roughly, and it brightens rather
+    // than counts when the stars come into view.
     const win=_el('div','magic-card-scan-window');
     const video=document.createElement('video');
     video.setAttribute('playsinline','');
     video.muted=true;
     video.autoplay=true;
     win.appendChild(video);
+    win.appendChild(_el('div','magic-card-scan-hold'));
     panel.appendChild(win);
 
     const say=_el('div','magic-card-scan-say','✨ Show me your Magic Card ✨');
@@ -1512,9 +1528,47 @@ const MagicCardUI=(function(){
       return b;
     }
 
+    // ✏️ DRAW YOUR STARS IS FIRST-CLASS, and that is a canon rule
+    // rather than a courtesy: Decision 16 says it is "the way in
+    // whenever the camera cannot be used — permission refused, no
+    // camera, card not to hand, or the child simply preferring it — and
+    // it is never styled as an error state." So it carries the same
+    // weight as Try again, it is there from the first second rather
+    // than appearing after something goes wrong, and nothing about it
+    // says fallback.
+    //
+    // It is the board this file already owns (_renderPatternChallenge),
+    // pointed at CreatorRecognition — device first, platform second,
+    // matched as a SET. No second matcher, and no policy here.
+    function drawYourStars(){
+      leave(function(){
+        _renderPatternChallenge(panel,{
+          skipSpeech:true,
+          subtitle:'Draw the constellation from your Magic Card.',
+          verify:function(pattern){
+            return CreatorRecognition.recognise(pattern).then(function(res){
+              return (res && res.outcome===CreatorRecognition.KNOWN && res.card)
+                ? {ok:true, card:res.card}
+                : {ok:false};
+            }).catch(function(){ return {ok:false}; });
+          },
+          onSuccess:function(result){
+            const card=result&&result.card;
+            try{ if(card) MagicCard.setActive(card.id); }catch(e){}
+            try{ if(card) CreatorRecognition.markRecognised(card.id); }catch(e){}
+            _hide();
+            refreshHeaderBadge();
+            opts.onFound(card);
+          },
+          onBack:opts.onCancel
+        });
+      });
+    }
+
     function offerWaysBack(){
       ways.innerHTML='';
       way('🔁 Try again',function(){ leave(function(){ _renderCardScan(panel,opts); }); },true);
+      way('✏️ Draw your stars',drawYourStars,true);
       way('← Back to the skies',function(){ leave(opts.onCancel); });
     }
     offerWaysBack();
@@ -1530,7 +1584,8 @@ const MagicCardUI=(function(){
     // child is told where they are and handed back, never blamed.
     if(typeof MagicCardVision==='undefined' || !MagicCardVision.openCamera){
       say.textContent='I can\u2019t see your Magic Card from here.';
-      return;
+      win.classList.add('is-blind');
+      return;   // Draw your stars is already on screen — see offerWaysBack.
     }
 
     MagicCardVision.openCamera(video).then(function(s){
@@ -1563,7 +1618,10 @@ const MagicCardUI=(function(){
         }
       });
     }).catch(function(){
+      // Permission refused, no camera, an insecure origin. A state, not
+      // an error, and never a dead end: the board is already offered.
       say.textContent='I can\u2019t see your Magic Card from here.';
+      win.classList.add('is-blind');
     });
 
     function shoot(){

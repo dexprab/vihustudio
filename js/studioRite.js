@@ -238,15 +238,42 @@ const StudioRite=(function(){
     return out;
   }
 
+  // WAS THIS STUDIO IN USE BEFORE THE RECORD EXISTED?
+  //
+  // It asked isComplete(), and that was the dead test wearing a
+  // different hat. `isComplete()` is `_flagSet() || _isCreator()`, and
+  // build 0634 wipes the flag on every arrival — so at the moment
+  // _grant runs it means, precisely, "is a Magic Card in hand", which
+  // Decision 22 already records as the test that died when the Creator
+  // Ceremony moved to Rite I completion.
+  //
+  // Reported by the product owner: "my studio post rite 1. same issue.
+  // am seeing tiles for next rites already activated." A card left
+  // active from an earlier run made him a pre-existing Creator by that
+  // test, so his brand-new record was stamped `legacy-studio` and
+  // taught() handed back the whole vocabulary.
+  //
+  // The honest signal is the one Decision 22 states: the ABSENCE of a
+  // record. Since MagicCard.claim() always stamps an array — even an
+  // empty one — a card with no `taught` at all cannot have been minted
+  // since this shipped, so it genuinely predates it.
+  function _cardPredatesTheRecord(){
+    try{
+      if(typeof MagicCard==='undefined' || !MagicCard.getActive) return false;
+      var card=MagicCard.getActive();
+      return !!card && !Array.isArray(card.taught);
+    }catch(e){ return false; }
+  }
+
   function _grant(rite){
     if(!rite) return;
     var have=_storedTaught();
     var next;
     if(have!==null){
       next=have.slice();
-    }else if(isComplete()){
-      // No record, and this Studio has already been through the
-      // mandatory rite — so this is somebody who was here before the
+    }else if(_cardPredatesTheRecord()){
+      // No record anywhere, and there is a Magic Card in hand that has
+      // none either — so this is somebody who was here before the
       // record existed. Their legacy is written down so it survives
       // this grant, and only their legacy: what they have actually
       // WALKED is this rite and nothing else, which is what decides

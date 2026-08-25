@@ -126,22 +126,51 @@ function check(c, n, note) {
     'G8 the language never blames', JSON.stringify(scan.say));
   check(scan.ways.some((t) => /Back to the skies/i.test(t)),
     'G8b there is a way back to the skies', scan.ways.join(' / '));
+  // Decision 16: Draw Your Stars is the way in whenever the camera
+  // cannot be used, and is NEVER styled as an error state — so it is
+  // there from the first second, at the same weight as Try again.
+  check(scan.ways.some((t) => /Draw your stars/i.test(t)),
+    'G8c ✏️ Draw your stars is offered, before anything goes wrong', scan.ways.join(' / '));
+  const decor = await page.evaluate(() => {
+    const w = document.querySelector('.magic-card-scan-window');
+    const r = w.getBoundingClientRect();
+    const hold = w.querySelector('.magic-card-scan-hold');
+    const txt = (document.querySelector('.magic-card-gate-panel') || {}).innerText || '';
+    return { ratio: +(r.width / r.height).toFixed(2), hold: !!hold, pct: /\d+\s*%/.test(txt) };
+  });
+  // 700/980 = 0.714 — the Magic Card's own shape, not a room's.
+  check(Math.abs(decor.ratio - 0.714) < 0.05,
+    'G8d the window is the card\'s shape, not a landscape webcam', String(decor.ratio));
+  check(decor.hold, 'G8e …with somewhere to hold it');
+  check(!decor.pct, 'G8f …and it never counts at the child');
   await page.screenshot({ path: path.join(SHOTS, 'scan.png') });
 
-  // Back returns to the challenge, and the camera is released.
+  // Draw your stars opens the board this file already owns.
   await page.evaluate(() => {
     Array.from(document.querySelectorAll('.magic-card-gate-notyou'))
-      .find((b) => /Back to the skies/i.test(b.textContent)).click();
+      .find((b) => /Draw your stars/i.test(b.textContent)).click();
   });
-  // The prompt is typewritten, so this waits for the sentence rather
-  // than for a guessed number of milliseconds.
-  await page.waitForFunction(() => {
-    const p = document.querySelector('.magic-card-gate-panel');
-    return p && /skies is yours\. Can you find it\?/.test(p.innerText || '');
-  }, null, { timeout: 15000 });
-  check(await page.evaluate(() => !document.querySelector('.magic-card-scan-window')
-    && /skies is yours/i.test((document.querySelector('.magic-card-gate-panel') || {}).innerText || '')),
-    'G9 …and it comes back to the four skies');
+  await page.waitForTimeout(1200);
+  check(await page.evaluate(() => !!document.querySelector('.magic-card-tapgrid-board')
+    && !document.querySelector('.magic-card-scan-window')),
+    'G8g it opens the drawing board, and the camera is released');
+  await page.screenshot({ path: path.join(SHOTS, 'draw.png') });
+
+  // …and Back from the board returns to the skies. EXACT text: the
+  // challenge's own way out reads "← Back to the Ether", and a loose
+  // /← Back/ match would leave the Studio the moment the board is
+  // gone — which is a race, not a test.
+  await page.evaluate(() => {
+    const b = Array.from(document.querySelectorAll('.magic-card-gate-notyou'))
+      .find((x) => x.textContent.trim() === '← Back');
+    if (b) b.click();
+  });
+  await page.waitForFunction(() => !!document.querySelector('.magic-card-sky-grid'),
+    null, { timeout: 15000 });
+  check(/studio\.html/.test(page.url()) === true, 'G8h Back from the board stays in the Studio', page.url());
+  check(await page.evaluate(() => !!document.querySelector('.magic-card-sky-grid')
+    && !document.querySelector('.magic-card-tapgrid-board')),
+    'G8i …and returns to the four skies');
 
   // THE WAYS OUT ARE ONE ROW, not a stack that eats the skies' height.
   const layout = await page.evaluate(() => {

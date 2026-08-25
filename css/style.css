@@ -8554,28 +8554,63 @@ body.dark-theme .context-add-card-soon{ background:rgba(255,255,255,0.10); }
    percentage — it is VihuPlanet looking at the child's stars, and it
    must never look like scanning a document (Decision 16). */
 .magic-card-scan-window{
-  width:min(360px,80vw);
-  aspect-ratio:4 / 3;
+  position:relative;
+  /* THE CARD'S OWN PROPORTIONS, so what the child is holding and what
+     they are looking at are the same shape. 4:3 is the shape of a room,
+     and a landscape window full of a child's own face is what this
+     screen looked like before. Same aspect css/vihuplanet-home.css's
+     .vp-scan-window uses. */
+  width:min(300px,74vw);
+  aspect-ratio:700 / 980;
+  max-height:52vh;
   margin:4px auto 0;
   border-radius:18px;
   overflow:hidden;
-  background:rgba(255,255,255,.04);
-  border:1px solid rgba(255,255,255,.14);
-  box-shadow:0 10px 30px rgba(0,0,0,.35);
-  transition:border-color .3s ease, box-shadow .3s ease;
+  background:rgba(10,14,28,.7);
+  box-shadow:0 0 0 1px rgba(241,234,208,.16), 0 18px 50px rgba(4,7,16,.6);
 }
 .magic-card-scan-window video{
   width:100%; height:100%;
   object-fit:cover;
   display:block;
+  /* The camera arrives when it arrives, so the window is never a black
+     rectangle waiting for permission. */
   opacity:0;
-  transition:opacity .5s ease;
+  transition:opacity .62s ease;
 }
 .magic-card-scan-window.is-live video{ opacity:1; }
-/* Stars in view — a warm answer, never a progress bar. */
-.magic-card-scan-window.is-seeing{
-  border-color:rgba(245,197,66,.75);
-  box-shadow:0 10px 34px rgba(245,197,66,.28);
+
+/* WHERE TO HOLD IT: a breathing glow, not a target. It says "about
+   here" and never "align precisely", because the reader tolerates a
+   card held roughly (Decision 17). No brackets, no reticle, no sweeping
+   line and no percentage — this must never look like scanning a
+   document (Decision 16). */
+.magic-card-scan-hold{
+  position:absolute;
+  inset:7%;
+  border-radius:12px;
+  border:1.5px dashed rgba(232,184,113,.5);
+  box-shadow:inset 0 0 40px rgba(232,184,113,.12);
+  pointer-events:none;
+  animation:magic-card-scan-breathe 3.4s ease-in-out infinite;
+}
+@keyframes magic-card-scan-breathe{
+  0%,100%{ opacity:.55; }
+  50%{ opacity:.95; }
+}
+/* Brightens as the stars come into view — the only feedback there is,
+   and it is light rather than a number. */
+.magic-card-scan-window.is-seeing .magic-card-scan-hold{
+  border-color:rgba(255,240,200,.95);
+  box-shadow:inset 0 0 70px rgba(255,226,160,.34);
+  animation:none;
+}
+/* No camera at all. The guide would be asking for something that
+   cannot arrive. */
+.magic-card-scan-window.is-blind .magic-card-scan-hold{ display:none; }
+@media (prefers-reduced-motion: reduce){
+  .magic-card-scan-hold{ animation:none; opacity:.75; }
+  .magic-card-scan-window video{ transition:none; }
 }
 .magic-card-scan-say{
   margin-top:12px;

@@ -710,7 +710,17 @@ const MagicCard=(function(){
       const raw=localStorage.getItem(key);
       if(!raw) return [];
       const v=JSON.parse(raw);
-      return Array.isArray(v) ? v : [];
+      if(!Array.isArray(v)) return [];
+      // A CARD MINTED RIGHT NOW CANNOT PREDATE THE RECORD, so it can
+      // never be grandfathered — whatever the device record happens to
+      // say. It can legitimately say `legacy-studio`: a child finishing
+      // a rite while an older card is still active has that written to
+      // the device on the way past (js/studioRite.js -> _grant), and
+      // without this the brand-new card the Ceremony mints a moment
+      // later would inherit somebody else's legacy and open the whole
+      // Studio. Reported as "am seeing tiles for next rites already
+      // activated".
+      return v.filter(function(c){ return c!=='legacy-studio'; });
     }catch(e){ return []; }
   }
 

@@ -6951,3 +6951,48 @@ Gate 18/18 — including a real camera through Chrome's fake device, and a
 page pretending to be a build behind, watched navigating to `?b=9999`
 exactly once. Rite gate 22/22, creation home 52/52, levels 31/31,
 traveller reset 16/16, zero page errors. Build 0638 → 0639.
+
+## Draw your stars, the card's own window, and the legacy test that came back (build 0640)
+
+*"yes we should add draw your stars here. and decorate the camera window
+like it is in the other show me your stars"* — and, mid-build, *"my
+studio post rite 1. same issue. am seeing tiles for next rites already
+activated."*
+
+**✏️ Draw your stars is on the camera screen from the first second**, at
+the same weight as Try again, because Decision 16 says it is the way in
+whenever the camera cannot be used and is *never styled as an error
+state*. It is the board this file already owns
+(`_renderPatternChallenge`) pointed at `CreatorRecognition.recognise` —
+no second matcher, no policy. It is also what a refused camera lands on,
+so that state is never a dead end.
+
+**The window is the Magic Card's own shape.** It was 4:3 — the shape of a
+room, and what the product owner actually saw was a landscape webcam view
+of his own face. It is now 700×980 with the breathing hold guide
+`css/vihuplanet-home.css` already uses: dashed, warm, inset 7%,
+brightening rather than counting when stars come into view. No brackets,
+no reticle, no sweeping line, no percentage.
+
+**And the dead test came back one line lower.** `_grant`'s legacy branch
+asked `isComplete()` to decide whether this Studio predated the taught
+record. `isComplete()` is `_flagSet() || _isCreator()`, and build 0634
+wipes that flag on every arrival — so at the moment the grant runs it
+means, exactly, *is a Magic Card in hand*. That is the test Decision 22
+already records as having died when the Creator Ceremony moved to Rite I
+completion, and I reintroduced it while writing the clause that says so.
+A card left active from an earlier run stamped the brand-new record
+`legacy-studio`, and `taught()` handed back the whole vocabulary.
+
+Two fixes, because there were two ways for legacy to spread. The branch
+now asks whether the **active card** has no record of its own — and since
+`claim()` always stamps an array, even an empty one, a card with none
+cannot have been minted since this shipped. And `claim()`'s sweep now
+**drops `legacy-studio`**: a card minted right now cannot predate the
+record whatever the device says, so the new card the Ceremony mints a
+beat later can never inherit an older card's legacy.
+
+Levels 34/34 (H1–H3 reproduce the reported chain: an old card in hand,
+the grant, the new card, the Studio it opens), gate 24/24, rite gate
+22/22, creation home 52/52, traveller reset 16/16, zero page errors.
+Build 0639 → 0640.

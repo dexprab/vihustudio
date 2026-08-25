@@ -1143,6 +1143,19 @@ once, and its scope is no longer closed.
   unreadable state (no browser storage, a platform that never returned
   the column, a card recalled onto a deployment predating the migration)
   reads the same way, so nobody is ever quietly stripped of a control.
+- **"Was this Studio here before the record?" is asked of the CARD, not
+  of `isComplete()`.** The grant's legacy branch asked `isComplete()`,
+  which is `_flagSet() || _isCreator()` — and Decision 19's Traveller
+  reset wipes that flag on every arrival, so at the moment the grant
+  runs it means precisely *is a Magic Card in hand*, which is the test
+  this decision already records as dead. A card left active from an
+  earlier run therefore stamped every brand-new record `legacy-studio`
+  and reopened the whole Studio. It now asks whether the ACTIVE CARD has
+  no record of its own — and since `claim()` always stamps an array,
+  even an empty one, a card with none cannot have been minted since this
+  shipped. **A card minted now can never be grandfathered either**: the
+  sweep drops `legacy-studio`, so a new card cannot inherit an older
+  one's legacy through the device record.
 - **Controls and doors are DIFFERENT QUESTIONS, and one value answering
   both was a real bug.** A grandfathered Creator keeps every control —
   but they have never *walked* Rite II, so the next door is still
