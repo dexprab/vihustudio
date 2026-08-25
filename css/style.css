@@ -6670,19 +6670,33 @@ body.creation-flow-active .app-header{ display:none; }
    name. Quiet by construction: no badge, no count, nothing that says
    level or progress, and it is removed from the DOM entirely when there
    is no next rite rather than sitting there empty. */
+/* The rail's door gets the same warmth as Studio Home's, for the same
+   reason: a dashed rule and a plain button read as the end of a list,
+   not as somewhere to go. Narrower and quieter here, because it shares
+   the column with the page thumbnails and must never out-shout them. */
 .studio-door{
-  margin-top:18px;
-  padding:14px 12px 16px;
-  border-top:1px dashed var(--cf-line,rgba(0,0,0,.12));
+  margin:18px 4px 4px;
+  padding:12px 10px 14px;
+  border-radius:16px;
+  border:1px solid rgba(245,197,66,.42);
+  background:
+    radial-gradient(120% 92% at 50% 0%,
+      rgba(255,214,110,.32) 0%,
+      rgba(255,214,110,.11) 48%,
+      rgba(255,255,255,0) 78%),
+    var(--panel,#fff);
+  box-shadow:0 8px 20px rgba(180,140,60,.14);
   display:flex;
   flex-direction:column;
   align-items:center;
-  gap:6px;
+  gap:5px;
   text-align:center;
 }
 .studio-door[hidden]{ display:none; }
 .studio-door-art{
-  filter:drop-shadow(0 4px 10px rgba(180,140,60,.22));
+  display:flex;
+  justify-content:center;
+  filter:drop-shadow(0 4px 10px rgba(180,140,60,.26));
   transition:transform .22s ease;
 }
 .studio-door:hover .studio-door-art{ transform:translateY(-2px); }
@@ -6697,19 +6711,28 @@ body.creation-flow-active .app-header{ display:none; }
   line-height:1.3;
 }
 .studio-door-btn{
+  display:inline-flex !important;
+  align-items:center;
+  justify-content:center;
   width:auto !important;
   height:auto !important;
-  margin:4px 0 0 !important;
-  padding:7px 18px;
+  margin:3px 0 0 !important;
+  padding:7px 20px;
   border-radius:999px;
   border:1px solid var(--gold,#F5C542);
-  background:transparent;
-  color:var(--text,#1E2F5E);
+  background:linear-gradient(180deg,#FFF6DC 0%,#FFE7A6 100%);
+  color:#1E2F5E;
   font-weight:700;
   font-size:12.5px;
   cursor:pointer;
+  box-shadow:0 3px 9px rgba(180,140,60,.18);
+  transition:background .18s ease, transform .18s ease;
 }
-.studio-door-btn:hover{ background:var(--gold,#F5C542); }
+.studio-door-btn:hover{ background:var(--gold,#F5C542); transform:translateY(-1px); }
+@media (prefers-reduced-motion: reduce){
+  .studio-door-btn{ transition:none; }
+  .studio-door-btn:hover{ transform:none; }
+}
 /* The Rite quiets the Studio, and its own band docks in this rail — a
    door to the NEXT rite while one is being walked is the interruption
    this must never be. js/app.js also refuses to render it then; this is
@@ -6720,51 +6743,105 @@ body.studio-rite-running .studio-door{ display:none !important; }
    front of it. First thing on the screen, because it is the thing the
    child came back for — and quieter than the starting points, because
    carrying on is one tap rather than a decision. */
+/* ONE ROW, NOT A CARD. The first draft stacked eyebrow, title and
+   button and stood ~130px tall — measured against the real screen it
+   pushed the whole of "Now Look What You Can Make" past the fold, which
+   is the opposite of what putting the story here was for. A pill says
+   the same three things in the height of its own button. */
 .creation-flow-resume{
-  max-width:640px;
-  margin:0 auto 22px;
-  padding:16px 20px;
+  max-width:520px;
+  margin:0 auto clamp(10px,2vh,18px);
+  padding:8px 10px 8px 20px;
+  display:flex;
+  flex-direction:row;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  border:1px solid var(--cf-line);
+  border-radius:999px;
+  background:var(--cf-paper);
+  text-align:left;
+}
+.creation-flow-resume-text{
   display:flex;
   flex-direction:column;
-  align-items:center;
-  gap:6px;
-  border:1px solid var(--cf-line);
-  border-radius:16px;
-  background:var(--cf-paper);
-  text-align:center;
+  gap:1px;
+  min-width:0;
 }
 .creation-flow-resume-eyebrow{
-  font-size:12px;
+  font-size:10.5px;
   letter-spacing:.06em;
   text-transform:uppercase;
   color:var(--text-secondary);
+  line-height:1.3;
 }
+/* A long story name shortens rather than wrapping the pill into a box. */
 .creation-flow-resume-title{
-  font-size:17px;
+  font-size:14.5px;
   font-weight:700;
   color:var(--navy);
+  line-height:1.25;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
 }
 .creation-flow-resume-btn{
   display:inline-flex !important;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 auto;
   width:auto !important;
   height:auto !important;
-  margin-top:8px !important;
-  padding:9px 24px;
+  margin:0 !important;
+  padding:8px 22px;
   border-radius:999px;
   border:1px solid var(--gold);
   background:var(--gold);
   color:var(--navy);
   font-weight:700;
-  font-size:14px;
+  font-size:13px;
   cursor:pointer;
 }
 .creation-flow-resume-btn:disabled{ opacity:.6; cursor:default; }
+@media (max-width:560px){
+  .creation-flow-resume{
+    flex-direction:column;
+    align-items:center;
+    border-radius:18px;
+    padding:12px 16px;
+    gap:8px;
+    text-align:center;
+  }
+  .creation-flow-resume-text{ align-items:center; }
+  .creation-flow-resume-title{ white-space:normal; }
+}
 
+/* A LIT DOORWAY, NOT A FORM FOOTER. Reported by the product owner:
+   "the door needs to be more inviting." It was a dashed rule with a
+   drawn door and a grey outline button under it — every part of that
+   treatment says *end of the page*, and a door you are invited through
+   should look like somewhere warm is on the other side.
+   So the band became the light: a soft alcove with the glow falling
+   from the top, the way it would if it were coming through the opening.
+   Nothing about it moves on its own — it is still a card on a shelf and
+   never a prompt (Decision 22) — and it still carries no badge, no
+   count and no name for what is behind it. */
 .creation-flow-door{
-  max-width:640px;
-  margin:26px auto 0;
-  padding-top:20px;
-  border-top:1px dashed var(--cf-line);
+  max-width:400px;
+  margin:20px auto 0;
+  padding:12px 24px 16px;
+  border-radius:22px;
+  border:1px solid rgba(245,197,66,.45);
+  /* The glow is centred on the DOORWAY, not spread across the top edge:
+     a wash from the top reads as a tinted card, and a pool of light
+     around the opening reads as light coming through it. */
+  background:
+    radial-gradient(64% 46% at 50% 30%,
+      rgba(255,206,88,.42) 0%,
+      rgba(255,214,110,.16) 55%,
+      rgba(255,255,255,0) 100%),
+    var(--cf-paper);
+  box-shadow:0 12px 30px rgba(180,140,60,.16);
   text-align:center;
 }
 /* The door is drawn, so the light it throws is the only emphasis it
@@ -6775,8 +6852,8 @@ body.studio-rite-running .studio-door{ display:none !important; }
 .creation-flow-door-art{
   display:flex;
   justify-content:center;
-  margin:0 0 6px;
-  filter:drop-shadow(0 6px 14px rgba(180,140,60,.22));
+  margin:0 0 2px;
+  filter:drop-shadow(0 6px 14px rgba(180,140,60,.26));
   transition:transform .22s ease, filter .22s ease;
 }
 .creation-flow-door:hover .creation-flow-door-art{
@@ -6796,35 +6873,69 @@ body.studio-rite-running .studio-door{ display:none !important; }
 .creation-flow-door-line{
   font-size:13px;
   color:var(--text-secondary);
-  margin:0 0 12px;
+  margin:0 0 14px;
 }
 .creation-flow-door-btn{
   /* inline-flex, not the app's default block-level flex button: the
      band centres its children with text-align, which a block box
-     ignores — the door would otherwise sit hard against the left rule. */
+     ignores — the door would otherwise sit hard against the left rule.
+     Warm rather than grey-outlined, and deliberately a shade lighter
+     than Carry on's solid gold: this is an invitation on the same
+     screen as the child's own unfinished story, and it must never be
+     the louder of the two. */
   display:inline-flex !important;
   align-items:center;
   justify-content:center;
   width:auto !important;
   height:auto !important;
-  padding:10px 26px;
+  padding:10px 28px;
   border-radius:999px;
-  border:1px solid var(--cf-line);
-  background:var(--cf-paper);
+  border:1px solid var(--gold);
+  background:linear-gradient(180deg,#FFF6DC 0%,#FFE7A6 100%);
   color:var(--navy);
   font-size:14px;
   font-weight:700;
   cursor:pointer;
   margin:0;
-  transition:border-color .18s ease, transform .18s ease, box-shadow .18s ease;
+  box-shadow:0 4px 12px rgba(180,140,60,.18);
+  transition:background .18s ease, transform .18s ease, box-shadow .18s ease;
 }
 .creation-flow-door-btn:hover{
-  border-color:var(--gold);
+  background:var(--gold);
   transform:translateY(-2px);
-  box-shadow:0 8px 20px rgba(120,90,40,.12);
+  box-shadow:0 10px 22px rgba(160,120,40,.24);
 }
 @media (max-width:760px){
   .creation-flow-starter-grid{ grid-template-columns:repeat(2,minmax(140px,1fr)); }
+}
+
+/* ---- A SHORT WINDOW STILL SHOWS THE WHOLE SCREEN --------------------
+   "need sizing fix." Measured at 1359x600 — a 1366x768 laptop once the
+   browser's own chrome is taken off — this screen stood 746px tall and
+   the Discover button was below the fold, which for an invitation
+   nobody is told about is the same as not being there.
+   The trim is DECORATION FIRST and content last: the wordmark's tagline
+   and its divider go, every band's own breathing room tightens, and the
+   drawn door shrinks — but not one word, tile or control is removed, so
+   a short window sees the same screen rather than a lesser one. Every
+   value here is a measurement; see the sprint entry for the budget. */
+@media (max-height:760px){
+  .creation-flow-brand{ margin-bottom:8px; }
+  .creation-flow-brand-tagline,
+  .creation-flow-brand-divider{ display:none; }
+  .creation-flow-resume{ margin-bottom:8px; }
+  .creation-flow-subtitle{ margin-bottom:8px; }
+  .creation-flow-myprojects-entry{ margin-bottom:8px; }
+  .creation-flow-type-grid{ gap:10px clamp(14px,2vw,28px); }
+  .creation-flow-type-grid .creation-flow-card{ padding:11px 16px; gap:5px; }
+  .creation-flow-card-icon{ width:44px; height:44px; font-size:24px; }
+  .creation-flow-door{ margin-top:12px; padding:8px 22px 12px; }
+  /* The drawn door scales with the window rather than switching to a
+     second layout: one door, one treatment, at whatever size fits. */
+  .cf-door-svg{ width:64px; height:68px; }
+  .creation-flow-door-title{ margin-bottom:2px; }
+  .creation-flow-door-line{ margin-bottom:9px; }
+  .creation-flow-door-btn{ padding:8px 26px; }
 }
 
 /* ---------- My Projects — reach an existing project without going

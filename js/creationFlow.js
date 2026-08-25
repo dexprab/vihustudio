@@ -869,11 +869,21 @@ const CreationFlow=(function(){
       // a badge, a level or a count.
       const art=_el('div','creation-flow-door-art');
       art.setAttribute('aria-hidden','true');
+      // The viewBox is deliberately larger than the door: the halo needs
+      // room to fall off to nothing, and clipping a glow at the edge of
+      // the box is exactly what makes drawn light look like a rectangle.
       art.innerHTML=
-        '<svg viewBox="0 0 88 112" width="72" height="92">'+
+        '<svg viewBox="-22 -14 132 140" class="cf-door-svg" width="96" height="102">'+
         '<defs><linearGradient id="cfDoorGlow" x1="0" y1="0" x2="0" y2="1">'+
         '<stop offset="0" stop-color="#FFF6DA"/><stop offset="1" stop-color="#FFC94A"/>'+
-        '</linearGradient></defs>'+
+        '</linearGradient>'+
+        '<radialGradient id="cfDoorHalo" cx="50%" cy="50%" r="50%">'+
+        '<stop offset="0" stop-color="#FFD873" stop-opacity=".62"/>'+
+        '<stop offset=".55" stop-color="#FFD873" stop-opacity=".20"/>'+
+        '<stop offset="1" stop-color="#FFD873" stop-opacity="0"/>'+
+        '</radialGradient></defs>'+
+        // the light the doorway throws into the room it is standing in
+        '<ellipse cx="44" cy="64" rx="62" ry="60" fill="url(#cfDoorHalo)"/>'+
         // the light on the floor, in front of the opening
         '<path d="M18 100 L74 100 L86 110 L8 110 Z" fill="#FFCB45" opacity=".25"/>'+
         // the way through
@@ -2015,8 +2025,13 @@ const CreationFlow=(function(){
     if(!_resume || !_resume.data || !_resume.data.project) return;
     const title=(_resume.data.project.bookTitle||_resume.data.project.title||'').trim();
     const card=_el('div','creation-flow-resume');
-    card.appendChild(_el('div','creation-flow-resume-eyebrow','You were making something'));
-    card.appendChild(_el('div','creation-flow-resume-title',title||'Your story'));
+    // One row: what they were doing on the left, the way back to it on
+    // the right. Stacked, this stood tall enough to push the rest of
+    // the screen past the fold.
+    const text=_el('div','creation-flow-resume-text');
+    text.appendChild(_el('div','creation-flow-resume-eyebrow','You were making something'));
+    text.appendChild(_el('div','creation-flow-resume-title',title||'Your story'));
+    card.appendChild(text);
     const btn=_el('button','creation-flow-resume-btn','Carry on');
     btn.type='button';
     btn.addEventListener('click',function(){

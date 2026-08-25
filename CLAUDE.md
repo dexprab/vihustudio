@@ -1373,7 +1373,39 @@ once, and its scope is no longer closed.
   deciding what a child has been through needs the whole set, and
   reading it off the registry is the only way to do that without
   hard-coding an ordinal — which is this decision's own rule.
-- `tools/creation-home-test/` (78) covers both halves, through a real
+- **A DOOR SHOULD LOOK LIKE SOMEWHERE WARM IS BEHIND IT** (build 0649).
+  Reported by the product owner: *"need sizing fix. also the door needs
+  to be more inviting."* The door was a dashed rule, a drawn door and a
+  grey outline button — every part of that treatment says *end of the
+  page*. It is now a lit alcove: the glow is centred on the DOORWAY
+  rather than washed across the top edge, because a wash reads as a
+  tinted card and a pool of light reads as light coming through an
+  opening. Its button is warm, and deliberately a shade LIGHTER than
+  Carry on's solid gold — this is an invitation sharing a screen with
+  the child's own unfinished story, and it must never be the louder of
+  the two. **Nothing about it moves on its own**: still a card on a
+  shelf, never a prompt. The rail's door gets the same treatment at rail
+  size, so there is one door in the product and not two.
+- **The resume pill is ONE ROW, and that was a real fit bug.** Stacked,
+  it stood ~130px and pushed *Now Look What You Can Make* past the fold
+  — the opposite of what putting the story on this screen was for. It is
+  now the height of its own button, with a long story name shortening
+  rather than wrapping the pill into a box.
+- **A SHORT WINDOW SEES THE WHOLE SCREEN, NOT A LESSER ONE.** Measured
+  at 1359×600 — a 1366×768 laptop once the browser's chrome is off — the
+  screen stood 746px tall and Discover sat below the fold, which for an
+  invitation nobody is told about is the same as not being there. The
+  trim is **decoration first and content last**: under 760px tall the
+  wordmark's tagline and divider go, every band's breathing room
+  tightens and the drawn door shrinks, but not one word, tile or control
+  is removed. 746 → 600, zero overflow. Guarded by `F13`–`F15`, proved
+  by disabling the media query and watching Discover fall 44px below the
+  fold.
+- **Decision 21 sets a minimum WIDTH and says nothing about height, and
+  that stays true.** This is a layout that fits its window, not a second
+  gate: a short window is never refused, told to resize, or shown a
+  reduced Studio.
+- `tools/creation-home-test/` (81) covers both halves, through a real
   page load with the Gateway skipped the way a child skips it: the door
   in the rail, absent once every rite is taught, gone while a rite runs;
   and coming back landing on Studio Home with the story named, one tap

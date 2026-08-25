@@ -2146,10 +2146,19 @@ function refreshStudioDoor(){
   host.hidden=false;
   host.innerHTML=
     '<div class="studio-door-art" aria-hidden="true">'+
-      '<svg viewBox="0 0 88 112" width="46" height="58">'+
+      // Same drawing as Studio Home's, at rail size, with the same halo —
+      // the viewBox is larger than the door so the light can fall off to
+      // nothing instead of being clipped into a rectangle.
+      '<svg viewBox="-22 -14 132 140" width="58" height="62">'+
       '<defs><linearGradient id="stDoorGlow" x1="0" y1="0" x2="0" y2="1">'+
       '<stop offset="0" stop-color="#FFF6DA"/><stop offset="1" stop-color="#FFC94A"/>'+
-      '</linearGradient></defs>'+
+      '</linearGradient>'+
+      '<radialGradient id="stDoorHalo" cx="50%" cy="50%" r="50%">'+
+      '<stop offset="0" stop-color="#FFD873" stop-opacity=".62"/>'+
+      '<stop offset=".55" stop-color="#FFD873" stop-opacity=".20"/>'+
+      '<stop offset="1" stop-color="#FFD873" stop-opacity="0"/>'+
+      '</radialGradient></defs>'+
+      '<ellipse cx="44" cy="64" rx="62" ry="60" fill="url(#stDoorHalo)"/>'+
       '<path d="M18 100 L74 100 L86 110 L8 110 Z" fill="#FFCB45" opacity=".25"/>'+
       '<path d="M14 100 L14 46 A30 30 0 0 1 74 46 L74 100 Z" fill="url(#stDoorGlow)"/>'+
       '<path d="M16 99 L16 44 L40 50 L40 93 Z" fill="#D19566"/>'+

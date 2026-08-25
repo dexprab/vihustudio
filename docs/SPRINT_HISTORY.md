@@ -7335,3 +7335,50 @@ rail element F1–F3 fail, without the resume wiring F9 and F12 fail.
 Creation home 78/78 (was 52), levels 59/59, rite gate 24/24, gate 24/24,
 capability audit 4/4, celebration 31/31, traveller reset 16/16, garden
 104/104, zero page errors throughout. Build 0647 → 0648.
+
+## The Door Made Inviting, and a Screen That Fits (build 0649)
+
+*"need sizing fix. also the door needs to be more inviting."*
+
+Two things, and the second was the more interesting one. The door was a
+dashed rule, a drawn door and a grey outline button under it — every part
+of that treatment says *end of the page*. A door somebody is invited
+through should look like somewhere warm is behind it.
+
+So the band became the light. The glow is centred on the DOORWAY rather
+than washed across the top edge: a wash from the top reads as a tinted
+card, and a pool of light around the opening reads as light coming
+through it. The drawn door gained a halo, on a viewBox deliberately
+larger than the door itself — clipping a glow at the edge of its box is
+what makes drawn light look like a rectangle. The button went warm, and
+deliberately a shade LIGHTER than Carry on's solid gold: this is an
+invitation sharing a screen with the child's own unfinished story, and it
+must never be the louder of the two. Nothing about it moves on its own —
+still a card on a shelf, never a prompt (Decision 22). The rail's door in
+the Studio got the same treatment at rail size, so there is one door in
+the product rather than two.
+
+The sizing half was a real fit bug with two causes. The resume pill,
+shipped yesterday stacked, stood ~130px and pushed *Now Look What You Can
+Make* past the fold — the opposite of what putting the story on this
+screen was for. It is now one row, the height of its own button, with a
+long story name shortening rather than wrapping the pill into a box.
+
+And the screen itself did not fit. Measured at 1359×600 — a 1366×768
+laptop once the browser's chrome is off — it stood 746px tall and
+Discover sat 44px below the fold, which for an invitation nobody is told
+about is the same as not being there. Under 760px tall the wordmark's
+tagline and divider go, every band's breathing room tightens and the
+drawn door shrinks to 64px. Decoration first, content last: not one word,
+tile or control is removed, so a short window sees the same screen rather
+than a lesser one. 746 → 600, zero overflow, Discover at 575.
+
+Decision 21 sets a minimum WIDTH and says nothing about height, and that
+stays true — this is a layout that fits its window, not a second gate. A
+short window is never refused, told to resize, or shown a reduced Studio.
+
+`F13`–`F15` guard the fit, and were proved by disabling the short-window
+media query and watching the overflow come back at 146px with Discover
+below the fold. Creation home 81/81, levels 59/59, rite gate 24/24, gate
+24/24, celebration 31/31, traveller reset 16/16, capability audit 4/4,
+zero page errors. Build 0648 → 0649.

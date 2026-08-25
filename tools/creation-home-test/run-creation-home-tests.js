@@ -487,6 +487,40 @@ const FORBIDDEN = [
   await page.screenshot({ path: path.join(SHOTS, 'coming-back.png') });
   console.log('     shot: shots/coming-back.png');
 
+  // THE WHOLE SCREEN FITS A SHORT WINDOW. "need sizing fix" — measured
+  // at 1359x600 (a 1366x768 laptop once the browser's chrome is off)
+  // this screen stood 746px tall and Discover sat below the fold, which
+  // for an invitation nobody is told about is the same as not being
+  // there. Checked with the resume pill present, which is the tallest
+  // this screen ever gets.
+  await page.setViewportSize({ width: 1359, height: 600 });
+  await page.waitForTimeout(500);
+  const short = await page.evaluate(() => {
+    const c = document.getElementById('creationFlowContent');
+    const d = c.querySelector('.creation-flow-door');
+    const r = c.querySelector('.creation-flow-resume');
+    const btn = d ? d.querySelector('.creation-flow-door-btn') : null;
+    return {
+      overflow: c.scrollHeight - window.innerHeight,
+      doorBtnBottom: btn ? Math.round(btn.getBoundingClientRect().bottom) : null,
+      resumeH: r ? Math.round(r.getBoundingClientRect().height) : null,
+      vh: window.innerHeight
+    };
+  });
+  check(short.overflow <= 0,
+    'F13 the whole screen fits a 600px-tall window — nothing is below the fold',
+    JSON.stringify(short));
+  check(short.doorBtnBottom !== null && short.doorBtnBottom <= short.vh,
+    'F14 Discover itself is on screen, which is the part that matters',
+    JSON.stringify(short));
+  check(short.resumeH !== null && short.resumeH <= 64,
+    'F15 the resume pill is one row, not a card — it stood 130px stacked',
+    JSON.stringify(short));
+  await page.screenshot({ path: path.join(SHOTS, 'coming-back-short.png') });
+  console.log('     shot: shots/coming-back-short.png');
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.waitForTimeout(400);
+
   // Carry on actually opens the story it names.
   const carried = await page.evaluate(() => {
     const b = document.querySelector('.creation-flow-resume-btn');
