@@ -7382,3 +7382,43 @@ media query and watching the overflow come back at 146px with Discover
 below the fold. Creation home 81/81, levels 59/59, rite gate 24/24, gate
 24/24, celebration 31/31, traveller reset 16/16, capability audit 4/4,
 zero page errors. Build 0648 → 0649.
+
+## The Door Is Docked, Never Pushed (build 0650)
+
+*"is there no better location in studio. now with every page add the door
+will slide down."*
+
+Exactly right, and it was a defect in the placement rather than a
+preference. The left rail was one block box that scrolled as a whole, so
+the door sat after the page list and every new page moved it further out
+of reach. Measured at 1359×900: one page put it at 274, four at 538,
+twelve at 1242 and thirty at **2826 — over two thousand pixels below the
+fold**. A door you have to scroll to find is the same failure as a door
+behind a modal, one build later.
+
+The answer was not a different location. The rail is a flex column now,
+and the PAGE LIST owns the scroll: it takes the free height and scrolls
+inside itself, so PAGES and + Add Page stay put as well, and the door is
+pinned to the foot of the column. Its top margin is `auto` rather than a
+fixed value, which matters — with a fixed margin the door would still
+drift down as pages were added and only stop once the column happened to
+fill. `auto` puts it in the same corner from the very first page. A
+control a five-year-old has to look for is one they do not use.
+
+Measured at 1, 4, 12 and 30 pages: one position (top 727 at 900px, 427 at
+600px), on screen at every one of them, and the rail itself never scrolls.
+A thumbnail deep in a scrolled list still selects its page, with the
+scroll position and the door both holding.
+
+The rite's own `--rite-list-max` cap on `#slideList` still wins on
+specificity, so the reduction is untouched. And a claim from build 0648
+is corrected here: that entry justified the rail by saying the Rite's own
+band docks in it. Measured, it does not — the band is a separate overlay,
+and the rail collapses to zero width while a rite runs (verified
+identical with and without this change). The placement is the product
+owner's instruction, which needs no second reason.
+
+`F5a`–`F5c` guard it, proved by reverting the rail to a scrolling block
+and watching the door reach 2826px at thirty pages. Creation home 84/84,
+levels 59/59, rite gate 24/24, gate 24/24, celebration 31/31, traveller
+reset 16/16, capability audit 4/4, zero page errors. Build 0649 → 0650.

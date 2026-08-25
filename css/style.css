@@ -6670,12 +6670,52 @@ body.creation-flow-active .app-header{ display:none; }
    name. Quiet by construction: no badge, no count, nothing that says
    level or progress, and it is removed from the DOM entirely when there
    is no next rite rather than sitting there empty. */
+/* THE DOOR IS DOCKED, NEVER PUSHED. Reported by the product owner:
+   "now with every page add the door will slide down." Exactly right —
+   the rail was a plain block box that scrolled as one, so the door sat
+   after the page list and every new page moved it further out of reach.
+   A door you have to scroll to find is the same problem as a door
+   behind a modal, one build later.
+   The rail is now a flex column: the page list takes the free height
+   and owns the scroll, so PAGES and + Add Page stay put too, and the
+   door is pinned to the foot of the column whatever the page count.
+   Same rail, same placement — it simply no longer moves. */
+.left-sidebar{
+  display:flex;
+  flex-direction:column;
+  /* the page list scrolls now, not the whole column */
+  overflow-y:hidden;
+}
+.left-sidebar > .sidebar-section{
+  display:flex;
+  flex-direction:column;
+  /* without this a flex child refuses to shrink below its content, and
+     the list would push the door off the bottom exactly as before */
+  min-height:0;
+}
+.left-sidebar > .sidebar-section[hidden]{ display:none; }
+.left-sidebar #slideList{
+  flex:1 1 auto;
+  min-height:0;
+  overflow-y:auto;
+  /* room for the thumbnails' own selected-page ring at the edges, and a
+     little air at the end of the list so the last page can scroll clear
+     of the door instead of ending hard against it */
+  padding:2px 2px 12px;
+  margin:-2px -2px 0;
+}
 /* The rail's door gets the same warmth as Studio Home's, for the same
    reason: a dashed rule and a plain button read as the end of a list,
    not as somewhere to go. Narrower and quieter here, because it shares
    the column with the page thumbnails and must never out-shout them. */
 .studio-door{
-  margin:18px 4px 4px;
+  flex:0 0 auto;
+  /* auto, not a fixed top margin: the door sits at the FOOT of the rail
+     from the very first page, so it is always in the same corner rather
+     than drifting down as pages are added and then stopping once the
+     column fills. A control a five-year-old has to look for is one they
+     do not use. */
+  margin:auto 4px 4px;
   padding:12px 10px 14px;
   border-radius:16px;
   border:1px solid rgba(245,197,66,.42);

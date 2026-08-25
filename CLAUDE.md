@@ -1355,9 +1355,11 @@ once, and its scope is no longer closed.
   are technical facts with nothing to carry on to.
 - **The Studio's own door lives in the LEFT RAIL, and never in the
   header.** Placed there on the product owner's instruction. The rail is
-  the one column nothing else claims and is where the Rite's own band
-  docks while a story is being told, so a door offering the next rite
-  sits exactly where rites already happen. **Never in the Add panel** —
+  the one column nothing else claims. (Build 0648 justified it here by
+  saying the Rite's own band docks in this rail; measured, it does not —
+  the band is a separate overlay and the rail collapses to zero width
+  while a rite runs. The placement is the product owner's instruction,
+  which needs no second reason.) **Never in the Add panel** —
   this decision closed that surface by name, since a tile there reads as
   *more tools*. Everything required of Studio Home's door holds here
   unchanged: one slot, one thing, never two, no decline, no dismiss, no
@@ -1405,7 +1407,31 @@ once, and its scope is no longer closed.
   that stays true.** This is a layout that fits its window, not a second
   gate: a short window is never refused, told to resize, or shown a
   reduced Studio.
-- `tools/creation-home-test/` (81) covers both halves, through a real
+- **THE DOOR IS DOCKED, NEVER PUSHED** (build 0650). Reported by the
+  product owner: *"is there no better location in studio. now with every
+  page add the door will slide down."* Exactly right, and it was a
+  defect in the placement rather than a preference: the rail was one
+  block box that scrolled as a whole, so the door sat after the page
+  list and every new page moved it further out of reach. Measured at
+  1359×900 — one page put it at 274, four at 538, twelve at 1242 and
+  thirty at **2826, over two thousand pixels below the fold**. A door
+  you have to scroll to find is the same failure as a door behind a
+  modal, one build later.
+- **The rail is a flex column now, and the PAGE LIST owns the scroll.**
+  The list takes the free height and scrolls inside itself, so PAGES and
+  + Add Page stay put as well, and the door is pinned to the foot of the
+  column. Its top margin is `auto` rather than a fixed value, so it sits
+  in the same corner from the FIRST page instead of drifting down and
+  then stopping once the column happens to fill — **a control a
+  five-year-old has to look for is one they do not use.** Measured at 1,
+  4, 12 and 30 pages: one position, on screen at every one of them, and
+  the rail itself never scrolls.
+- **The location did not change, only its anchoring.** The rail is still
+  the product owner's placement and the Add panel is still closed by
+  name; nothing was moved to a new surface to fix this.
+- `F5a`–`F5c` guard it, proved by reverting the rail to a scrolling
+  block and watching the door reach 2826px at thirty pages.
+- `tools/creation-home-test/` (84) covers both halves, through a real
   page load with the Gateway skipped the way a child skips it: the door
   in the rail, absent once every rite is taught, gone while a rite runs;
   and coming back landing on Studio Home with the story named, one tap

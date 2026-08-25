@@ -383,6 +383,44 @@ const FORBIDDEN = [
       (railDoor.text.match(re) || [''])[0]);
   });
 
+  // THE DOOR IS DOCKED, NEVER PUSHED. "now with every page add the door
+  // will slide down" — it did: the rail was one scrolling block, so the
+  // door sat after the page list and every new page moved it further
+  // out of reach. A door you have to scroll to find is the same problem
+  // as a door behind a modal, one build later. It is pinned to the foot
+  // of the rail now, so its position is the SAME at one page and at
+  // thirty, and the rail itself never scrolls.
+  const pinned = [];
+  for (const target of [1, 4, 12, 30]) {
+    await page.evaluate((n) => {
+      while ((AppState.slides || []).length < n) {
+        try { PageOps.addAfter(AppState.slides.length - 1); } catch (e) { break; }
+      }
+    }, target);
+    await page.waitForTimeout(400);
+    pinned.push(await page.evaluate(() => {
+      try { refreshStudioDoor(); } catch (e) {}
+      const d = document.getElementById('studioDoor');
+      const rail = document.querySelector('.left-sidebar');
+      const b = d.getBoundingClientRect();
+      return {
+        pages: (AppState.slides || []).length,
+        top: Math.round(b.top),
+        onScreen: b.top >= 0 && b.bottom <= window.innerHeight + 1,
+        railScroll: rail.scrollHeight - rail.clientHeight
+      };
+    }));
+  }
+  const tops = pinned.map((p) => p.top);
+  check(new Set(tops).size === 1,
+    'F5a the door does not move as pages are added — 1, 4, 12, 30 pages, one position',
+    JSON.stringify(pinned));
+  check(pinned.every((p) => p.onScreen),
+    'F5b …and it is on screen at every one of them', JSON.stringify(tops));
+  check(pinned.every((p) => p.railScroll === 0),
+    'F5c the rail itself never scrolls — the page list owns the scroll',
+    JSON.stringify(pinned.map((p) => p.railScroll)));
+
   // Absent rather than empty when there is nothing behind it.
   const noNext = await page.evaluate(() => {
     const all = StudioRite.rites().filter((r) => r.runnable).map((r) => r.id);
