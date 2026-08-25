@@ -47,7 +47,7 @@ const BASE = 'http://127.0.0.1:' + PORT;
 const MANIFEST = {
   add: {
     stickers: 'emoji', text: 'text', shapes: 'shapes', doodle: 'doodle',
-    photo: 'photo', family: 'photo', library: 'library',
+    photo: 'photo', family: 'photo', library: 'garden',
     fromWorld: 'world', voice: 'voice'
   },
   set: {

@@ -11242,7 +11242,7 @@ body.studio-rite-running:not(.studio-rite-shows-shapes) .context-add-card[data-a
    (`reveals:[]`), so a control it does not teach must not be there.
    Gated on its own reveal class like every other tile, so a later rite
    can hand it over by naming it in `reveals` and no CSS changes. */
-body.studio-rite-running:not(.studio-rite-shows-library) .context-add-card[data-add-id='library'],
+body.studio-rite-running:not(.studio-rite-shows-garden) .context-add-card[data-add-id='library'],
 body.studio-rite-running:not(.studio-rite-shows-photo) .context-add-card[data-add-id='photo'],
 body.studio-rite-running:not(.studio-rite-shows-photo) .context-add-card[data-add-id='family'],
 body.studio-rite-running:not(.studio-rite-shows-photo) .context-bg-picture-section{ display:none !important; }
@@ -11299,7 +11299,7 @@ body.studio-rite-running .context-rep-section{ display:none !important; }
    no "Level 2" tooltip, no progress bar and nothing comparable with a
    sibling's. A control not yet taught is simply not there. */
 body.studio-gated:not(.studio-taught-blank-page) #addPageBtn{ display:none !important; }
-body.studio-gated:not(.studio-taught-library) .context-add-card[data-add-id='library'],
+body.studio-gated:not(.studio-taught-garden) .context-add-card[data-add-id='library'],
 body.studio-gated:not(.studio-taught-doodle) .context-add-card[data-add-id='doodle'],
 body.studio-gated:not(.studio-taught-shapes) .context-add-card[data-add-id='shapes'],
 body.studio-gated:not(.studio-taught-photo) .context-add-card[data-add-id='photo'],

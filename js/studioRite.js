@@ -1005,8 +1005,21 @@ const StudioRite=(function(){
     {id:'my-garden',
      mission:MISSION_GARDEN,
      screens:SCREENS_GARDEN,
+     // ONE TILE, ONE CAPABILITY. `library` used to be a third id here,
+     // for the tile itself, while `garden` and `handwriting` named the
+     // two rooms behind it — three entries for what a child sees as one
+     // thing. It was also named after a word the product stopped using
+     // (Decision 27 renamed My Library to My Garden child-facing and
+     // deliberately left every internal id alone). That rule is right
+     // for `creatorLibrary.js` and `data-add-id='library'`, which are
+     // machinery; it is wrong for a capability id, which is a product
+     // design artifact a person reads while deciding what a rite
+     // teaches. Collapsed by the product owner's decision.
+     //
+     // `handwriting` stays: it is a real second room and a later rite
+     // may want to hand over letters without drawings, or the reverse.
      teaches:['garden','handwriting'],
-     reveals:['library'],
+     reveals:['garden'],
      startsBlank:true,
      unlocksStudio:false},
 

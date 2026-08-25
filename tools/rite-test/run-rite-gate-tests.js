@@ -149,7 +149,7 @@ function check(cond, name, note) {
     'R3 and the Garden dev trigger is not in a child\'s first story, Author Mode or not',
     JSON.stringify(devHidden));
 
-  await page.evaluate(() => document.body.classList.add('studio-rite-shows-library'));
+  await page.evaluate(() => document.body.classList.add('studio-rite-shows-garden'));
   await page.waitForTimeout(300);
   const revealed = await tiles();
   check(revealed.indexOf('library') >= 0,
@@ -224,7 +224,7 @@ function check(cond, name, note) {
       .filter((c) => c.indexOf('studio-rite-shows-') === 0).sort();
     return shows;
   });
-  check(cumulative.indexOf('studio-rite-shows-library') >= 0,
+  check(cumulative.indexOf('studio-rite-shows-garden') >= 0,
     'N5 the third rite inherits My Garden from the second, with neither naming the other',
     cumulative.join(' '));
 

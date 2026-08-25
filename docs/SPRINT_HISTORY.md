@@ -7157,3 +7157,38 @@ object array, so that pass has to drive the real pickers rather than
 reading `AppState`.
 
 Audit 4/4, zero page errors. Build 0643 → 0644.
+
+## What is a library? (build 0645)
+
+*"rite 2 has library in orange. what is library? do we have any library
+tile?"* — the product owner, reading the capability map.
+
+There is no Library tile. `library` was the internal id of the 🪴 **My
+Garden** tile, left over from before Decision 27 renamed the feature.
+That decision deliberately froze every internal id — `creatorLibrary.js`,
+`creator_library`, `data-add-id='library'` — and it is right to: those
+are machinery, and renaming machinery for a child-facing word is churn.
+
+**A capability id is not machinery.** It is a product design artifact
+somebody reads while deciding what a rite teaches — and the first person
+to read this one asked what a library was. Rite II carried three ids for
+what a child sees as one tile with two rooms: `garden` and `handwriting`
+for the rooms, `library` for the tile itself, one of them named after a
+word the product had stopped using.
+
+Collapsed to `garden` on the product owner's decision. `handwriting`
+stays: it is a real second room, and a later rite may want to hand over
+letters without drawings or the reverse. The tile's own `data-add-id`
+is untouched, so Decision 27 holds exactly where it was meant to — the
+CSS still selects `[data-add-id='library']`, only the class in front of
+it changed.
+
+`MagicCard._renameLibraryToGarden()` rewrites any stored record once per
+device, on its own flag rather than the backfill's, so a device that has
+already run that one still runs this. Today it is a no-op everywhere —
+nobody has walked Rite II — which is what makes it cheap to ship now
+rather than after somebody has.
+
+Levels 57/57 (L1–L5, including that the tile still answers to its old
+data attribute), rite gate 23/23, capability audit 4/4, creation home
+52/52, gate 24/24, zero page errors. Build 0644 → 0645.

@@ -1124,6 +1124,20 @@ once, and its scope is no longer closed.
   readout, the card badge, the build footer and the strip's legend all
   return the instant the rite ends, because none of them is a capability:
   they are the room, not what a child can make in it.
+- **A capability id is a design artifact, not machinery** (build 0645).
+  Decision 27 renamed My Library to **My Garden** child-facing and froze
+  every internal id — `creatorLibrary.js`, `creator_library`,
+  `data-add-id='library'` — which is right, because those are plumbing.
+  A capability id is not: it is what a person reads while deciding what a
+  rite teaches, and the product owner read `library` and asked what a
+  library was. Rite II carried **three** ids for one tile — `garden` and
+  `handwriting` for its two rooms, `library` for the tile — one of them
+  named after a word the product had stopped using. Collapsed to
+  `garden` on his decision; `handwriting` stays, because a later rite may
+  want to hand over letters without drawings. The tile's own
+  `data-add-id` is untouched, so Decision 27 holds exactly where it was
+  meant to. `MagicCard._renameLibraryToGarden()` rewrites any stored
+  record once per device.
 - **THE WORLD TOOLS ARE NAMED, so they are gated too** (build 0643).
   They were the last controls left visible, on the reasoning that no
   rite could teach them and hiding them would be the wall this decision

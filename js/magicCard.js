@@ -389,6 +389,45 @@ const MagicCard=(function(){
     changed.forEach(function(id){ try{ _scheduleIdentitySync(id); }catch(e){} });
   }
 
+  // ---------- ONE-SHOT RENAME: library became garden ----------
+  //
+  // `library` was a capability id for the 🪴 My Garden tile, left over
+  // from before Decision 27 renamed the feature child-facing. That
+  // decision deliberately froze every INTERNAL id — `creatorLibrary.js`,
+  // `creator_library`, `data-add-id='library'` — and it is right to,
+  // because those are machinery. A capability id is not machinery: it is
+  // a product design artifact somebody reads while deciding what a rite
+  // teaches, and the product owner read it and asked what a library was.
+  //
+  // Collapsed on his decision. The tile's own `data-add-id` is untouched
+  // — the CSS still selects it — so this rewrites nothing but the stored
+  // capability lists.
+  //
+  // Its own flag, not the backfill's: a device that already ran that one
+  // must still run this.
+  var LIBRARY_RENAME_KEY='vihu.magicCard.libraryToGarden';
+  function _renameLibraryToGarden(){
+    try{ if(localStorage.getItem(LIBRARY_RENAME_KEY)) return; }catch(e){ return; }
+    try{ localStorage.setItem(LIBRARY_RENAME_KEY,'1'); }catch(e){}
+    var cards=_readCards();
+    if(!cards.length) return;
+    var changed=[];
+    cards.forEach(function(c){
+      if(!c || !Array.isArray(c.taught)) return;
+      if(c.taught.indexOf('library')<0) return;
+      var next=[];
+      c.taught.forEach(function(t){
+        var v=(t==='library') ? 'garden' : t;
+        if(next.indexOf(v)<0) next.push(v);
+      });
+      c.taught=next;
+      changed.push(c.id);
+    });
+    if(!changed.length) return;
+    _writeCards(cards);
+    changed.forEach(function(id){ try{ _scheduleIdentitySync(id); }catch(e){} });
+  }
+
   // ---------- ONE-SHOT BACKFILL: cards that never got a record ----------
   //
   // A card claimed before the taught record existed has no `taught`
@@ -1327,6 +1366,7 @@ const MagicCard=(function(){
     // Exposed for the harness only, so the repair can be proved rather
     // than asserted. It is one-shot per device either way.
     _repairInheritedLegacy:_repairInheritedLegacy,
+    _renameLibraryToGarden:_renameLibraryToGarden,
     stampMissingTaught:stampMissingTaught,
     // Decision 22 — the taught record. Read and written only by
     // js/studioRite.js, which owns what a capability means.
@@ -1369,5 +1409,6 @@ const MagicCard=(function(){
   // taught. Never from _readCards(): reading a card must never write to
   // it, which is a rule this file states in as many words.
   try{ _repairInheritedLegacy(); }catch(e){}
+  try{ _renameLibraryToGarden(); }catch(e){}
   return api;
 })();

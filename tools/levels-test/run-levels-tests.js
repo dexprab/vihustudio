@@ -133,7 +133,7 @@ function check(c, n, note) { (c ? ok : fail)(n, note); }
   check(await page.evaluate(() => StudioRite.nextOptIn()) === 'my-garden',
     'C1 a child who has done only the first rite is offered My Garden');
   await page.evaluate(() => {
-    MagicCard.setTaught(MagicCard.taught().concat(['garden','handwriting','library']));
+    MagicCard.setTaught(MagicCard.taught().concat(['garden','handwriting']));
   });
   await boot();
   check(await page.evaluate(() => StudioRite.nextOptIn()) === 'my-little-house',
@@ -230,7 +230,7 @@ function check(c, n, note) { (c ? ok : fail)(n, note); }
     'G3 …and the next door is still offered — they have walked no story yet');
   // Walking it must record the story, not swallow the whole ladder.
   await page.evaluate(() => {
-    MagicCard.setTaught(['legacy-studio', 'garden', 'handwriting', 'library']);
+    MagicCard.setTaught(['legacy-studio', 'garden', 'handwriting']);
   });
   await boot();
   check((await tiles()).length >= 8, 'G4 after that story they still keep everything');
@@ -390,6 +390,38 @@ function check(c, n, note) { (c ? ok : fail)(n, note); }
   check(await page.evaluate(() => StudioRite.isGrandfathered()) === true,
     'K5 a card arriving AFTER the backfill still keeps every control');
   check((await tiles()).length >= 8, 'K6 …the fail-open path is intact');
+
+  // ---- L: library became garden
+  //
+  // One tile, one capability. `library` named the 🪴 My Garden tile and
+  // was left over from before Decision 27 renamed the feature; `garden`
+  // and `handwriting` named the two rooms behind it. Three ids for what
+  // a child sees as one thing, one of them a word the product stopped
+  // using. The tile's own data-add-id is untouched — that is machinery,
+  // and Decision 27 froze it deliberately.
+  console.log('-- L: library collapsed into garden');
+  check(await page.evaluate(() => {
+    const r = StudioRite.rites().find((x) => x.id === 'my-garden');
+    return r && r.teaches.indexOf('library') < 0;
+  }), 'L1 no rite names `library` any more');
+  const renamed = await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem('vihu.magicCard.taughtBackfilled', '1');
+    const c = MagicCard.claim('Walked', null, null);
+    MagicCard.setActive(c.id);
+    MagicCard.setTaught(['emoji', 'text', 'garden', 'handwriting', 'library']);
+    localStorage.removeItem('vihu.magicCard.libraryToGarden');
+    return MagicCard.taught();
+  });
+  check(renamed.indexOf('library') >= 0, 'L2 a card that walked Rite II carries the old id', JSON.stringify(renamed));
+  await boot();
+  const afterRename = await page.evaluate(() => MagicCard.taught());
+  check(afterRename.indexOf('library') < 0 && afterRename.indexOf('garden') >= 0,
+    'L3 the migration rewrites it, once, at load', JSON.stringify(afterRename));
+  check(afterRename.filter((t) => t === 'garden').length === 1,
+    'L4 …and does not leave a duplicate behind', JSON.stringify(afterRename));
+  check((await tiles()).indexOf('library') >= 0,
+    'L5 the tile itself still answers to data-add-id="library" — that is machinery, not a capability');
 
   check(pageErrors.length === 0, 'F1 zero page errors', pageErrors.slice(0, 3).join(' | '));
   console.log('\n' + passed + ' passed, ' + failed + ' failed');
