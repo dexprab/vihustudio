@@ -2648,10 +2648,23 @@ the standard this product will be held to when it is.
   how the project actually deploys. **A security fix that lands only
   under one deploy tool is not a fix**, so each function now imports
   `./edgeAuth.js` from its own folder. The cost is five copies and it is
-  paid for by a test: every copy must be byte-identical to
-  `_shared/edgeAuth.js`, so drift is a failing check rather than one
+  paid for by a test: every copy must match what the generator produces
+  from `_shared/edgeAuth.js`, so drift is a failing check rather than one
   function quietly enforcing something different from its neighbours.
   `node tools/edge-auth-test/sync-shared.js` regenerates them.
+- **The copy is a build artifact and is deliberately small.** Two thirds
+  of the canonical module is prose explaining why each decision was made;
+  that belongs in the repository, not shipped five times to an edge
+  runtime. Each copy is the module with its full-line comments removed —
+  26KB becomes 10KB — which matters because the Dashboard editor kept a
+  second file beside voice-speak's 11KB index and refused to keep one
+  beside sky-protection's 46KB. The stripper is line-based rather than a
+  real parser, because misreading a string or a regex in an authorization
+  module is a far worse outcome than a large file, and it **refuses**
+  rather than guesses on the one case it cannot read. It is not trusted
+  on that reasoning: the suite imports a VENDORED COPY and re-runs the
+  gate's real assertions against it, so what is proved is the artifact
+  that actually deploys.
 - **A migration is inert; its verification is a separate file.** Reported
   by the product owner running the migration and reading its own first
   probe — `{"allowed": true, "remaining": 1}` — as an error. It was the
