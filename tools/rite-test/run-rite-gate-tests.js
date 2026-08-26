@@ -955,56 +955,6 @@ function check(cond, name, note) {
   check(tErrors.length === 0, 'T7 zero page errors', tErrors.slice(0, 2).join(' | '));
   await tp.close();
 
-  /* ---- U: a beat never asks for a control that is asleep -------------
-   *
-   * "play story is greyed out in its beat." The Rite holds Play My Story
-   * and Finish Story shut for its whole run — "the story is not finished
-   * until Lumo says so" — and only a screen carrying `unlock:true` wakes
-   * them. Rite II's own play beat did not carry it, so its LAST beat
-   * asked a child to press a greyed-out button: a rite that could not be
-   * finished.
-   *
-   * Static, and deliberately so — it covers every runnable rite for the
-   * price of one read, including the one this suite does not walk. A
-   * beat gating on an action the Rite holds shut must be at or after the
-   * beat that wakes it.
-   */
-  console.log('\n-- U: no beat asks for a control that is asleep');
-
-  const HELD_SHUT = ['story-played', 'story-finished', 'story-shared'];
-  const asleep = await page.evaluate((held) => {
-    const bad = [];
-    StudioRite.rites().forEach(function (r) {
-      if (!r.runnable) return;
-      const beats = StudioRite._beats(r.id) || [];
-      let woken = false;
-      beats.forEach(function (b, i) {
-        if (b.unlock) woken = true;
-        if (b.gate && held.indexOf(b.gate) >= 0 && !woken) {
-          bad.push(r.id + ' beat ' + (i + 1) + ' (' + b.gate + ')');
-        }
-      });
-    });
-    return bad;
-  }, HELD_SHUT);
-  check(asleep.length === 0,
-    'U1 every beat that asks for Play or Finish comes after the beat that wakes them',
-    asleep.join(', ') || 'all woken in time');
-
-  /* ---- Z: a rite left half done is kept, offered back, and resumed ---
-   *
-   * "why dont we allow resume from studio home for rite 2 & 3 this way
-   * it will never enter projects or show in projects till completely
-   * done, child does not have any work lost on account of not able to
-   * complete in single seating." Measured before this: three abandoned
-   * starts left three empty stories in My Projects.
-   *
-   * Where the child had got to is DERIVED from the story, never stored
-   * — Decision 22's own rule that rites get added, split and reordered
-   * is exactly why a saved beat number would rot.
-   */
-  console.log('\n-- Z: a rite left half done');
-
   // Satisfy exactly the gate the story is standing on. Reading the gate
   // (StudioRite._awaitingGate) rather than guessing at every control is
   // what makes a real walk possible: a driver that pokes everything on
@@ -1068,6 +1018,165 @@ function check(cond, name, note) {
     try { PageRuntime.notify(); ProjectManager.markDirty(); } catch (e) {}
     return gate;
   };
+
+  /* ---- S: a voice is REPLACED, not added -----------------------------
+   *
+   * "added the voice but still i did it button did not came." A page
+   * holds ONE narration clip, so recording again replaces it — and this
+   * gate counted PAGES carrying a voice. Voice is revealed for the whole
+   * of Rite II, so a child who recorded on any earlier beat arrived at
+   * the voice beat with the count already at 1 and could never pass it.
+   *
+   * The same hazard was latent on `page-shaped`, which this covers too:
+   * a page holds one shape, so changing it moves no count either.
+   */
+  console.log('\n-- S: a voice is replaced, not added');
+
+  const sp = await browser.newPage({ viewport: { width: 1359, height: 800 } });
+  const sErrors = [];
+  sp.on('pageerror', (e) => sErrors.push(String(e)));
+  await sp.goto(BASE + '/studio.html?author=on');
+  await sp.waitForFunction(() =>
+    typeof StudioRite !== 'undefined' && typeof MagicCard !== 'undefined' &&
+    typeof CreationFlow !== 'undefined', null, { timeout: 20000 });
+  await sp.evaluate(() => {
+    localStorage.clear();
+    const c = MagicCard.claim('Vihu');
+    MagicCard.setActive(c.id);
+    const r1 = StudioRite.rites().find((r) => r.mandatory);
+    MagicCard.setTaught((r1.teaches || []).concat(r1.reveals || []));
+    const gw = document.getElementById('gatewayOverlay');
+    if (gw) gw.style.display = 'none';
+    document.querySelectorAll('.studio-rite-overlay').forEach((n) => n.remove());
+  });
+  await sp.evaluate(() => { try { StudioRite.start('my-garden'); } catch (e) {} });
+  await sp.waitForTimeout(3000);
+  const sGate = async () => {
+    for (let i = 0; i < 40; i++) {
+      const g = await sp.evaluate(() => StudioRite._awaitingGate && StudioRite._awaitingGate());
+      if (g) return g;
+      await sp.waitForTimeout(250);
+    }
+    return null;
+  };
+  const sDone = async () => {
+    for (let i = 0; i < 15; i++) {
+      await sp.waitForTimeout(400);
+      if (await sp.evaluate(() => !!document.querySelector('.studio-rite-done'))) return true;
+    }
+    return false;
+  };
+
+  // Walk to the voice beat, recording a voice EARLY on the way — which
+  // a child can do on any beat, because Voice is revealed all rite.
+  let recordedEarly = false;
+  for (let i = 0; i < 25; i++) {
+    const g = await sGate();
+    if (!g || g === 'voice-added') break;
+    if (g === 'sticker-added' && !recordedEarly) {
+      await sp.evaluate(() => {
+        const pg = PageRuntime.getActivePage();
+        pg.metadata = pg.metadata || {};
+        pg.metadata.narration = { ref: 'vihu-asset:early', durationMs: 3000 };
+        PageRuntime.notify(); ProjectManager.markDirty();
+      });
+      recordedEarly = true;
+      await sp.waitForTimeout(400);
+    }
+    await sp.evaluate((a) => eval('(' + a.fn + ')')(a.g), { fn: SATISFY.toString(), g: g });
+    await sp.waitForTimeout(600);
+    await sp.evaluate(() => { const d = document.querySelector('.studio-rite-done'); if (d) d.click(); });
+    await sp.waitForTimeout(500);
+  }
+
+  const atVoice = await sp.evaluate(() => ({
+    gate: StudioRite._awaitingGate(),
+    narrated: (AppState.slides || []).filter((s) => s && s.metadata && s.metadata.narration).length,
+    done: !!document.querySelector('.studio-rite-done')
+  }));
+  check(atVoice.gate === 'voice-added' && atVoice.narrated === 1 && atVoice.done === false,
+    'S1 the setup is the reported one: a page that already has a voice on it',
+    JSON.stringify(atVoice));
+
+  // "Record Again" — the only thing the panel offers on a page that
+  // already has a voice.
+  await sp.evaluate(() => {
+    const pg = PageRuntime.getActivePage();
+    pg.metadata = pg.metadata || {};
+    pg.metadata.narration = { ref: 'vihu-asset:again', durationMs: 5000 };
+    PageRuntime.notify(); ProjectManager.markDirty();
+  });
+  const cleared = await sDone();
+  check(cleared === true,
+    'S2 recording again clears the beat — the clip changed, even though no count did',
+    String(cleared));
+
+  // Taking the only voice away is not saying something.
+  await sp.evaluate(() => {
+    (AppState.slides || []).forEach((s) => { if (s.metadata) delete s.metadata.narration; });
+    PageRuntime.notify(); ProjectManager.markDirty();
+  });
+  await sp.waitForTimeout(1800);
+  const removed = await sp.evaluate(() => ({
+    narrated: (AppState.slides || []).filter((s) => s && s.metadata && s.metadata.narration).length,
+    done: !!document.querySelector('.studio-rite-done')
+  }));
+  check(removed.narrated === 0 && removed.done === false,
+    'S3 …and taking the only voice off the page does not — a signature alone is not enough',
+    JSON.stringify(removed));
+  check(sErrors.length === 0, 'S4 zero page errors', sErrors.slice(0, 2).join(' | '));
+  await sp.close();
+
+  /* ---- U: a beat never asks for a control that is asleep -------------
+   *
+   * "play story is greyed out in its beat." The Rite holds Play My Story
+   * and Finish Story shut for its whole run — "the story is not finished
+   * until Lumo says so" — and only a screen carrying `unlock:true` wakes
+   * them. Rite II's own play beat did not carry it, so its LAST beat
+   * asked a child to press a greyed-out button: a rite that could not be
+   * finished.
+   *
+   * Static, and deliberately so — it covers every runnable rite for the
+   * price of one read, including the one this suite does not walk. A
+   * beat gating on an action the Rite holds shut must be at or after the
+   * beat that wakes it.
+   */
+  console.log('\n-- U: no beat asks for a control that is asleep');
+
+  const HELD_SHUT = ['story-played', 'story-finished', 'story-shared'];
+  const asleep = await page.evaluate((held) => {
+    const bad = [];
+    StudioRite.rites().forEach(function (r) {
+      if (!r.runnable) return;
+      const beats = StudioRite._beats(r.id) || [];
+      let woken = false;
+      beats.forEach(function (b, i) {
+        if (b.unlock) woken = true;
+        if (b.gate && held.indexOf(b.gate) >= 0 && !woken) {
+          bad.push(r.id + ' beat ' + (i + 1) + ' (' + b.gate + ')');
+        }
+      });
+    });
+    return bad;
+  }, HELD_SHUT);
+  check(asleep.length === 0,
+    'U1 every beat that asks for Play or Finish comes after the beat that wakes them',
+    asleep.join(', ') || 'all woken in time');
+
+  /* ---- Z: a rite left half done is kept, offered back, and resumed ---
+   *
+   * "why dont we allow resume from studio home for rite 2 & 3 this way
+   * it will never enter projects or show in projects till completely
+   * done, child does not have any work lost on account of not able to
+   * complete in single seating." Measured before this: three abandoned
+   * starts left three empty stories in My Projects.
+   *
+   * Where the child had got to is DERIVED from the story, never stored
+   * — Decision 22's own rule that rites get added, split and reordered
+   * is exactly why a saved beat number would rot.
+   */
+  console.log('\n-- Z: a rite left half done');
+
 
   const zp = await browser.newPage({ viewport: { width: 1359, height: 800 } });
   const zErrors = [];

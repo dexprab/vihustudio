@@ -7858,6 +7858,50 @@ one. The merge itself was clean in every source file (the two sprints
 touched disjoint code); the only conflicts were regenerated test
 screenshots, resolved by re-running the suites against the merged tree.
 
+## A Voice Is Replaced, Not Added (build 0660)
+
+*"added the voice but still i did it button did not came."*
+
+Reproduced rather than guessed. A page holds ONE narration clip, so
+recording again replaces it — and `voice-added` counted PAGES carrying a
+voice. Voice is revealed for the whole of Rite II, so a child who
+recorded on any earlier beat arrived at the voice beat with the count
+already at 1, and *Record Again* — the only thing the panel offers on a
+page that already has a voice — could never move it.
+
+```
+voice beat start   narratedPages:1   done:false
+after Record Again narratedPages:1   done:false   ← before
+after Record Again narratedPages:1   done:true    ← after
+after removing     narratedPages:0   done:false
+```
+
+It is the letters bug one beat along: a gate on a pool where the child's
+natural action replaces rather than adds. The letters beat was answered
+by letting the child declare it done, which is what its line promised.
+This one is answered by reading what the beat is actually about — the
+baseline keeps a **signature** of which page holds which clip instead of a
+tally, so a new recording counts whoever it replaced. Removing the only
+voice would also change a signature, so one narrated page must still be
+there: taking the voice off the page is not saying something.
+
+`page-shaped` had the identical bug, latent. A page holds one shape, so
+changing it moves no count either, and Page Shape is revealed for the
+whole of Rite III — the same wall was waiting there for whoever tried a
+shape before its beat. Fixed the same way rather than waiting for it to
+be reported.
+
+The lesson worth keeping: **a count is the wrong reading whenever the
+control it watches REPLACES.** `bg-set` already knew this — it carries its
+own `bg !== baseline.__bg` comparison and a touched-the-control flag —
+while voice and shape were written as tallies and both were wrong for it.
+
+`S1`–`S4` reproduce the reported setup exactly (a voice recorded on an
+earlier beat, then Record Again), proved by putting the count back and
+watching S2 fail. Rite gate 95/95 (was 91), gate 25/25, levels 59/59,
+creation home 84/84, celebration 31/31, traveller reset 16/16, capability
+audit 4/4, zero page errors. Build 0659 → 0660.
+
 ---
 
 ## Sprint 1B — Deterministic Companion Memory
@@ -7958,4 +8002,13 @@ the thing under test being absent.
 
 **Nothing reads the store yet**, deliberately. The Companion's behaviour
 is exactly what it was; it simply now has a past. Companion memory 58/58,
-companion 50/50, garden 104/104, zero page errors. Build 0659 → 0660.
+companion 50/50, garden 104/104, edge auth 127/127, traveller reset
+16/16, zero page errors. Build 0660 → 0661.
+
+**A note on the number, again.** This sprint stamped 0660 and so did the
+voice-beat fix above, shipped from another session while this one was in
+flight. Same resolution as last time: a version stamp is a cache buster
+and two ships cannot share one, so this one moved to 0661 on merging. The
+merge itself touched nothing but the script lists in the two entry pages
+— verified rather than assumed: the whole diff between the two heads for
+`studio.html` and `index.html` was this sprint's own two `<script>` tags.
