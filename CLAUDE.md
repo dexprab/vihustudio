@@ -1659,6 +1659,27 @@ once, and its scope is no longer closed.
   resume at the beat they stopped on with the work intact, then finish
   and watch the story enter My Projects — and only then. Proved by
   removing the filter and the replay separately.
+- **A BEAT MAY NEVER ASK FOR A CONTROL THAT IS ASLEEP** (build 0657).
+  Reported by the product owner on Rite II's last beat: *"play story is
+  greyed out in its beat."* The Rite holds Play My Story and Finish
+  Story shut for its whole run — *the story is not finished until Lumo
+  says so* — and only a screen carrying `unlock:true` wakes them.
+  **Rite II's play beat did not carry it**, so its final beat asked a
+  child to press a greyed-out button: a rite that could not be finished.
+  Rite I's and Rite III's play beats both carry it; this one was simply
+  missed.
+- **The suite could not see it because the suite reached around it.**
+  The walker built one build earlier fell back to `StoryPlayer.open()`
+  when the button was disabled, so it finished a rite no child could.
+  **A walker that reaches around a dead control cannot see a dead
+  control** — it uses the real button and nothing else now, and stalls
+  exactly where a child would.
+- **`U1` is static, and covers the rite this suite does not walk.** For
+  every runnable rite, a beat gating on an action the Rite holds shut
+  must come at or after the beat that wakes it. `_beats(riteId)` joins
+  the harness reads because nothing could previously read the gate and
+  the unlock flag together — which is why two facts that were each
+  visible made an invisible bug.
 - Design and sequencing: `docs/STUDIO_RITE_LEVELS.md`. Rite II's script
   and its engineering notes: `docs/STUDIO_RITE_LEVEL_II_STORY.md`.
 

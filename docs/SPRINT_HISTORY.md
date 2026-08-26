@@ -7759,3 +7759,38 @@ Place* — and only then. Proved by removing the filter and the replay
 separately. Rite gate 83/83 (was 67), gate 25/25, levels 59/59, creation
 home 84/84, celebration 31/31, traveller reset 16/16, capability audit
 4/4, zero page errors. Build 0655 → 0656.
+
+## A Beat May Never Ask for a Control That Is Asleep (build 0657)
+
+*"play story is greyed out in its beat."*
+
+Rite II's last beat says *Let us see it from the beginning. / Play your
+story.* — and Play My Story was greyed out. The Rite holds that button
+and Finish Story shut for its whole run (`js/app.js` →
+`refreshStoryActions`: *the story is not finished until Lumo says so*),
+and only a screen carrying `unlock:true` wakes them. Rite I's play beat
+carries it. Rite III's play beat carries it. Rite II's did not, so the
+rite could not be finished by anybody.
+
+**The suite finished it anyway, and that is the more useful half of this
+entry.** The walker written one build earlier fell back to
+`StoryPlayer.open()` when the button was disabled — a convenience that
+made a green run out of a rite no child could complete. A walker that
+reaches around a dead control cannot see a dead control. It uses the real
+button and nothing else now, and stalls exactly where a child would;
+reverting the fix makes `Z8`/`Z9` fail alongside the new check rather
+than passing as before.
+
+`U1` is the general guard, and static on purpose: for every runnable
+rite, a beat gating on an action the Rite holds shut must come at or
+after the beat that wakes it. That covers Rite III, which this suite does
+not walk, for the price of one read. `_beats(riteId)` joins
+`_gates`/`_gateMet`/`_nudgeTarget`/`_awaitingGate` as a harness read
+because nothing could previously see the gate and the unlock flag
+together — two facts each individually visible, adding up to an invisible
+bug. Proved by putting the bug back: `U1` names `my-garden beat 13
+(story-played)` exactly.
+
+Rite gate 84/84, gate 25/25, levels 59/59, creation home 84/84,
+celebration 31/31, traveller reset 16/16, capability audit 4/4, zero page
+errors. Build 0656 → 0657.

@@ -1043,7 +1043,15 @@ const StudioRite=(function(){
     // ending; this rite is opt-in and must not push a child toward
     // giving anything away (Decision 12: finishing and sharing are
     // separate acts, and neither is ever mandatory).
-    {band:true, lines:[
+    //
+    // `unlock:true` IS THE BEAT, not decoration. The Rite holds Play My
+    // Story and Finish Story shut for its whole run — "the story is not
+    // finished until Lumo says so" (js/app.js -> refreshStoryActions) —
+    // and only a screen carrying this wakes them. Without it this beat
+    // asked a child to press a control that was greyed out, which is a
+    // rite that cannot be finished. Rite I and Rite III both carry it on
+    // their own play beat; this one did not.
+    {band:true, unlock:true, lines:[
       {lumo:'celebrate', egg:'excited',
        line:{title:'Let us see it from the beginning.',
              subtitle:'Play your story.'}}
@@ -3759,6 +3767,22 @@ const StudioRite=(function(){
       if(!r || !Array.isArray(r.screens)) return null;
       return r.screens.map(function(sc){
         return (sc.end && sc.end.await) || null;
+      });
+    },
+    // Harness only. The gate each beat waits on AND whether that beat
+    // wakes the header's two story actions, in order.
+    //
+    // The Rite holds Play My Story and Finish Story shut for its whole
+    // run, and only a screen carrying `unlock:true` wakes them. Rite
+    // II's own play beat did not carry it, so its last beat asked a
+    // child to press a control that was greyed out — a rite that could
+    // not be finished. Nothing could see that, because nothing could
+    // read the two facts together.
+    _beats:function(riteId){
+      const r=riteId ? _riteById(riteId) : _mandatoryRite();
+      if(!r || !Array.isArray(r.screens)) return null;
+      return r.screens.map(function(sc){
+        return {gate:(sc.end && sc.end.await)||null, unlock:!!sc.unlock};
       });
     },
     _gateMet:function(kind,baseline){ return _conditionMet(kind,baseline||null); }

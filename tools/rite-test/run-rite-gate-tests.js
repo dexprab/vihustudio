@@ -816,6 +816,42 @@ function check(cond, name, note) {
   check(yErrors.length === 0, 'Y6 zero page errors', yErrors.slice(0, 2).join(' | '));
   await yp.close();
 
+  /* ---- U: a beat never asks for a control that is asleep -------------
+   *
+   * "play story is greyed out in its beat." The Rite holds Play My Story
+   * and Finish Story shut for its whole run — "the story is not finished
+   * until Lumo says so" — and only a screen carrying `unlock:true` wakes
+   * them. Rite II's own play beat did not carry it, so its LAST beat
+   * asked a child to press a greyed-out button: a rite that could not be
+   * finished.
+   *
+   * Static, and deliberately so — it covers every runnable rite for the
+   * price of one read, including the one this suite does not walk. A
+   * beat gating on an action the Rite holds shut must be at or after the
+   * beat that wakes it.
+   */
+  console.log('\n-- U: no beat asks for a control that is asleep');
+
+  const HELD_SHUT = ['story-played', 'story-finished', 'story-shared'];
+  const asleep = await page.evaluate((held) => {
+    const bad = [];
+    StudioRite.rites().forEach(function (r) {
+      if (!r.runnable) return;
+      const beats = StudioRite._beats(r.id) || [];
+      let woken = false;
+      beats.forEach(function (b, i) {
+        if (b.unlock) woken = true;
+        if (b.gate && held.indexOf(b.gate) >= 0 && !woken) {
+          bad.push(r.id + ' beat ' + (i + 1) + ' (' + b.gate + ')');
+        }
+      });
+    });
+    return bad;
+  }, HELD_SHUT);
+  check(asleep.length === 0,
+    'U1 every beat that asks for Play or Finish comes after the beat that wakes them',
+    asleep.join(', ') || 'all woken in time');
+
   /* ---- Z: a rite left half done is kept, offered back, and resumed ---
    *
    * "why dont we allow resume from studio home for rite 2 & 3 this way
@@ -875,11 +911,18 @@ function check(cond, name, note) {
         if (t) { t.value = 'The Green Place'; t.dispatchEvent(new Event('input', { bubbles: true })); }
         break; }
       case 'story-played': {
-        // The player counts a reading when it OPENS, so opening and
-        // closing it again is exactly one reading.
+        // THE REAL BUTTON, AND NOTHING ELSE. This used to fall back to
+        // StoryPlayer.open() when the button was disabled — which is
+        // exactly what hid "play story is greyed out in its beat" from
+        // this suite while a child could not finish the rite at all. A
+        // walker that reaches around a dead control cannot see a dead
+        // control. The player counts a reading when it OPENS, so
+        // opening and closing it again is one reading.
         const b = document.getElementById('playStoryBtn');
-        if (b && !b.disabled) b.click(); else { try { StoryPlayer.open({}); } catch (e) {} }
-        setTimeout(() => { try { StoryPlayer.close(); } catch (e) {} }, 300);
+        if (b && !b.disabled) {
+          b.click();
+          setTimeout(() => { try { StoryPlayer.close(); } catch (e) {} }, 300);
+        }
         break; }
       default: break;
     }
