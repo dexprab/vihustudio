@@ -2651,6 +2651,21 @@ the standard this product will be held to when it is.
   that cannot be added cannot be depended on, and one file cannot
   half-arrive. It is also what every function in this repository was
   before this sprint touched them.
+- **This project deploys single-file from the Dashboard, and it already
+  had a convention for it.** `family-album/dashboard-paste.ts` —
+  *"index.ts + parse.js merged into ONE file, for deploying via the
+  Supabase Dashboard's in-browser editor (no CLI needed)"* — was sitting
+  in that folder the whole time. Finding it three attempts late is why
+  there were three attempts; the deploy path is a property of the project
+  and should have been read before `_shared/` was introduced.
+- **A hand-mirrored copy of a security boundary is a promise nobody can
+  keep.** That file's own note said to keep it in lockstep BY HAND, and by
+  the time this sprint hardened `index.ts` it carried no gate at all — so
+  pasting it would have deployed an UNHARDENED function, which is worse
+  than a failed deploy because it looks like success. It is generated now:
+  `index.ts` with every local import inlined, and a function with nothing
+  local to inline gets no variant at all, because a duplicate of
+  `index.ts` would be one more thing to keep in step.
 - **The inlined block is generated, and the deployed code is what is
   tested.** `_shared/edgeAuth.js` stays the readable original with every
   decision explained; `node tools/edge-auth-test/sync-shared.js` writes

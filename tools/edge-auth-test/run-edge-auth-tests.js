@@ -445,6 +445,36 @@ function fakeDb(spec) {
         'C1b2 ' + n + ' has no stale copy left on disk');
     });
 
+    // THE FILE PEOPLE ACTUALLY PASTE. This repository already had a
+    // convention for Dashboard deployment before this sprint — family-
+    // album/dashboard-paste.ts, "index.ts + parse.js merged into ONE
+    // file" — and its own note said to keep it in lockstep BY HAND. By
+    // the time index.ts was hardened it carried no gate at all, so
+    // pasting it would have deployed an unhardened function: worse than
+    // a failed deploy, because it looks like success. It is generated
+    // now, and checked here.
+    {
+      const paste = path.join(ROOT, 'supabase', 'functions', 'family-album', 'dashboard-paste.ts');
+      check(fs.existsSync(paste), 'C2a family-album keeps a single-file paste variant');
+      const src = fs.readFileSync(paste, 'utf8');
+      check(/BEGIN GENERATED edgeAuth/.test(src) && /guard\(req/.test(src),
+        'C2b THE PASTE VARIANT CARRIES THE GATE — it is what gets deployed');
+      check(!/from '\.\//.test(src),
+        'C2c and imports nothing local, so nothing can fail to arrive');
+      check(/BEGIN INLINED parse\.js/.test(src),
+        'C2d parse.js travels inside it');
+      check(/GENERATED — do not edit/.test(src),
+        'C2e it says it is generated rather than inviting a hand edit');
+
+      // A function with nothing local to inline must NOT grow a variant:
+      // a duplicate of index.ts would be a second thing to keep in step,
+      // which is the failure this whole mechanism exists to remove.
+      ['voice-speak', 'sky-protection', 'invite-send', 'creator-born'].forEach((n) => {
+        check(!fs.existsSync(path.join(ROOT, 'supabase', 'functions', n, 'dashboard-paste.ts')),
+          'C2f ' + n + ' needs no variant — its index.ts is the paste');
+      });
+    }
+
     // ONE SOURCE OF TRUTH. Asked of the REAL generator rather than a
     // reimplementation of it: a second copy of the inlining rule in this
     // file could disagree with the one that writes the files, and then

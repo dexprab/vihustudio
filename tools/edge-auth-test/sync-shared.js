@@ -164,6 +164,85 @@ FUNCTIONS.forEach((name) => {
   console.log('  removed ' + path.relative(ROOT, stale));
 });
 
+// ---------------------------------------------------------------
+// THE SINGLE-FILE PASTE VARIANT
+//
+// This repository already solved Dashboard deployment before this sprint
+// existed, and the answer was sitting in family-album's own folder:
+// dashboard-paste.ts, "index.ts + parse.js merged into ONE file, for
+// deploying via the Supabase Dashboard's in-browser editor (no CLI
+// needed)". That is how this project deploys. Finding it three attempts
+// late is the whole reason those attempts happened.
+//
+// Its own note said to "keep in lockstep ... by hand", and by the time
+// this sprint hardened index.ts it had drifted: it carried no gate at
+// all, so pasting it would have deployed an UNHARDENED family-album —
+// worse than a failed deploy, because it looks like success.
+//
+// So it is generated now. A hand-mirrored copy of a security boundary is
+// a promise nobody can keep.
+const PASTE_HEADER = (name) => [
+  '// ============================================================================',
+  '// ' + name + ' — DASHBOARD-PASTE VARIANT (single file)',
+  '// ============================================================================',
+  '// GENERATED — do not edit. This is index.ts with every local import',
+  '// inlined, for deploying via the Supabase Dashboard\'s in-browser editor',
+  '// (no CLI needed):',
+  '//',
+  '//   Dashboard → Edge Functions → Deploy a new function → Via Editor',
+  '//   → name it exactly:  ' + name,
+  '//   → replace the template with this entire file → Deploy',
+  '//   (leave "Verify JWT" at its default ON — the function does its own',
+  '//    caller check on top of it; see CLAUDE.md → Decision 30)',
+  '//',
+  '// Regenerate: node tools/edge-auth-test/sync-shared.js',
+  '// ============================================================================',
+  '',
+].join('\n');
+
+// Any remaining `import {...} from './something.js'` is a local file the
+// Dashboard would have to carry separately — exactly what does not
+// reliably arrive. Inlined here instead.
+const LOCAL_IMPORT_RE = /^import \{[^}]*\} from '\.\/([A-Za-z0-9_.-]+\.js)';$/gm;
+
+FUNCTIONS.forEach((name) => {
+  const dir = path.join(ROOT, 'supabase', 'functions', name);
+  const src = fs.readFileSync(path.join(dir, 'index.ts'), 'utf8');
+  const locals = [...src.matchAll(LOCAL_IMPORT_RE)];
+  const dest = path.join(dir, 'dashboard-paste.ts');
+  const rel = path.relative(ROOT, dest);
+
+  // Nothing left to inline: index.ts IS the paste. A variant that merely
+  // duplicated it would be a second thing to keep in step, which is the
+  // failure this whole section exists to remove.
+  if (!locals.length) {
+    if (fs.existsSync(dest)) {
+      if (checkOnly) { console.log('  STALE   ' + rel + ' (index.ts needs no variant)'); drifted++; return; }
+      fs.unlinkSync(dest); console.log('  removed ' + rel);
+    }
+    return;
+  }
+
+  let merged = src;
+  locals.forEach((m) => {
+    const file = fs.readFileSync(path.join(dir, m[1]), 'utf8').replace(/^export /gm, '');
+    merged = merged.replace(m[0], [
+      '// ===== BEGIN INLINED ' + m[1] + ' =====',
+      file.replace(/\n+$/, ''),
+      '// ===== END INLINED ' + m[1] + ' =====',
+    ].join('\n'));
+  });
+  merged = PASTE_HEADER(name) + merged;
+
+  const same = fs.existsSync(dest) && fs.readFileSync(dest, 'utf8') === merged;
+  if (same) { console.log('  ok      ' + rel); return; }
+  drifted++;
+  if (checkOnly) { console.log('  DRIFTED ' + rel); return; }
+  fs.writeFileSync(dest, merged);
+  written++;
+  console.log('  written ' + rel);
+});
+
 if (checkOnly && drifted) {
   console.log('\n' + drifted + ' file(s) differ from what this script produces.');
   console.log('Run: node tools/edge-auth-test/sync-shared.js');
