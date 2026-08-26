@@ -8012,3 +8012,96 @@ and two ships cannot share one, so this one moved to 0661 on merging. The
 merge itself touched nothing but the script lists in the two entry pages
 — verified rather than assumed: the whole diff between the two heads for
 `studio.html` and `index.html` was this sprint's own two `<script>` tags.
+
+---
+
+## Sprint 1C — Companion Canon + Leafy Personality Foundation
+
+Before an LLM is connected to a Companion, the whole of what it would be
+told ought to be readable by a person. This sprint writes that down and
+connects nothing: **no model, no data leaving VihuPlanet, and no
+Companion behaviour changed.**
+
+Two documents and a program that reads them.
+`assets/canon/vihuplanet.canon.json` is the machine-readable canon in
+fifteen conceptual sections — VihuPlanet, the Ether, Creator, World and
+Story, Companion, Companion Self, Companion Life, Creator ↔ Companion,
+creation philosophy, Traveller and World Host, Companion ↔ Companion,
+memory, the knowledge boundary, silence, and the behaviour line.
+`docs/COMPANION_CANON.md` gained **Canon 8** saying the same things in
+prose and stays the human source of truth; Canons 1–7 are untouched.
+The canon is worldview and is checked for it: no database, no provider,
+no interface vocabulary, no file path, thirty-five terms — and on WHOLE
+WORDS, because the first draft reported "auth" and "prompt" in a canon
+whose only sins were *authorship* and *unprompted*. A check that cries
+wolf on its own vocabulary is one somebody eventually switches off.
+
+**Canon answers *what is a Companion*; personality answers *how does
+this one behave*.** Two files, loaded independently, neither merged into
+the other. The suite fails on a canon line copied into a personality,
+and on the word *Leafy* appearing in the canon.
+
+The file the brief named — `assets/leafy/personality.json` — **did not
+exist.** Only Lumo had one, five fields of `traits`, `neverSays` and
+`greetings`, and no Story Companion had any. Nothing was replaced: that
+shape's inert fields are kept and seventeen qualitative characteristics
+sit on top of them, from temperament and energy through to how Leafy
+answers uncertainty, disagreement and being a World Host. Every one is a
+sentence. `curiosity: 87` invites tuning and invites comparison, which
+this product refuses everywhere else, so the suite fails on a number.
+
+**The file changes no behaviour, and that is engineered rather than
+intended.** Four keys in a personality file are acted on by the running
+Studio — `greetings` (the Director's boot line), `neverSays`, `play` and
+`lines` (the Brain's voice policy) — and Leafy had no file at all, so
+shipping any of them would have changed what Leafy says. All four are
+deliberately absent, the file says so itself, and the check reads the
+acted-on list **out of the Studio's own code** rather than from a list in
+the test that could go stale. It is then measured end to end: the real
+engine loads the real file, and every line Leafy can say is compared with
+and without it — fifteen across three gates, identical. `neverSays` is
+left out for a real reason as well as an obedient one: it is matched as a
+substring against platform copy, so adding phrases can silently mute
+lines Leafy is meant to say.
+
+**A personality holds no memory and no story.** Leafy is the same Leafy
+for every Creator; what makes one child's Leafy different is what the two
+of them did together, and that lives in the memory store. The suite fails
+on a character name appearing in the file — **including the brief's own
+example**, which used *Spark*, a real character from a real child's
+story and exactly the leak the rule forbids. The examples name nobody.
+
+The rules worth repeating, all now written where a future model will read
+them: a Companion may only ever claim an experience VihuPlanet actually
+recorded, and since nothing records the time between visits, today it
+must say nothing about it — *"I was thinking about you all night"* is
+never allowed. Warmth is allowed; manipulation is not, and the test is
+whether the sentence would still be kind if the Creator never came back.
+VihuPlanet truth outranks general knowledge from outside it. A Traveller
+has no Companion. Companions meeting Companions is named so nobody
+invents it later, and does not exist.
+
+`tools/companion-mind-preview/` assembles `{canon, personality}` and
+prints it, with `leafy.mind.json` and `leafy.mind.txt` committed so the
+package is reviewable in a pull request without running anything.
+`memories`, `currentContext` and `conversation` are **unreachable from
+that program**, not filtered out of it — so "makes no external network
+call" is proved by running it with `fetch`, `WebSocket` and every socket
+module deleted, and watching it build the package anyway.
+
+One check had to be rescued from being vacuous. E4 compares every line
+Leafy can say with and without the personality file, and its first
+version read `intent.text` where the Brain writes `intent.say` — so it
+compared two empty sets and passed. It now fails on an empty pool before
+it compares anything. **A check that can be satisfied by finding nothing
+is not a check**, and the same family as the one this project already
+recorded for the rite walker that reached around a dead control.
+
+Four open questions are recorded in the canon rather than answered: what
+VihuPlanet should record about a Companion's time between visits;
+whether a Companion may mention a memory unprompted; what a hosting
+Companion may say about the Creator whose Story is being visited, beyond
+nothing; and whether it keeps any memory of the visit.
+
+Canon 60/60, companion 50/50, companion memory 56/56, garden 104/104,
+zero page errors. Build 0661 → 0662.

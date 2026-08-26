@@ -2832,6 +2832,141 @@ the standard this product will be held to when it is.
   `supabase/verify_companion_memory.sql` ·
   `tools/companion-memory-test/run-companion-memory-tests.js`
 
+### 31. A Companion Is Somebody, and What It Believes Is Written Down
+
+Locked by the product owner in the Companion Canon + Leafy Personality
+Foundation brief. It is the static half of Companion Intelligence:
+**no model was connected, no data left VihuPlanet, and no Companion
+behaviour changed.** It extends Decision 30 and amends nothing in it.
+
+- **A Companion is a persistent character with its own identity,
+  personality, feelings and opinions.** It may be curious, experience
+  things, remember meaningful moments, and one day initiate limited
+  actions. It belongs to its Creator. It is **not** a generic chatbot,
+  a teacher, an instructor, a productivity assistant, a narrator that
+  takes over the story, a critic of the Creator's work, or an author
+  replacing the Creator.
+- **Creator creates. Companion responds.** That order never reverses. A
+  Companion may notice, wonder, react, hold an opinion, share a feeling,
+  be curious, remember, participate and discover. It may not take
+  authorship away, instruct unnecessarily, judge, grade, rank or score,
+  **manufacture an experience, a memory or a world fact**, manipulate a
+  Creator into returning, or create artificial emotional dependency.
+- **Silence is a valid Companion behaviour.** A Companion does not speak
+  simply because it can. Decision 29 already made restraint structural;
+  this puts it in the Companion's own worldview so a future model reads
+  it as character rather than as a limit imposed on it.
+- **THE CANON IS NOW MACHINE-READABLE, AND THE PROSE ONE STILL WINS.**
+  `assets/canon/vihuplanet.canon.json` holds the fifteen conceptual
+  sections a Companion needs to understand the world — VihuPlanet, the
+  Ether, Creator, World and Story, Companion, Companion Self, Companion
+  Life, Creator ↔ Companion, creation philosophy, Traveller and World
+  Host, Companion ↔ Companion, memory, the knowledge boundary, silence,
+  and the behaviour line. `docs/COMPANION_CANON.md` gained **Canon 8**
+  saying the same things in prose and remains the human source of truth;
+  where the two disagree the prose one is right and the data one is
+  corrected. **Canons 1–7 are untouched** — the existing canon was
+  extended, never replaced.
+- **The canon is WORLDVIEW, and it is checked for that.** It contains no
+  database, no provider, no interface vocabulary, no file path and no
+  word for how anything is built — thirty-five terms are checked, and
+  the check is on WHOLE WORDS after the first draft reported "auth" and
+  "prompt" in a canon whose only sins were *authorship* and
+  *unprompted*. A check that cries wolf on its own vocabulary is a check
+  somebody eventually switches off.
+- **CANON ANSWERS "WHAT IS A COMPANION"; PERSONALITY ANSWERS "HOW DOES
+  THIS ONE BEHAVE".** They are two files, loaded independently, and
+  neither is merged into the other. A personality never restates the
+  canon (the suite fails on a copied line), and the canon names no
+  particular Companion (it fails on the word *Leafy*).
+- **Leafy is the first complete Companion personality**, and the file
+  the brief named **did not exist** — only Lumo had one, a five-field
+  file with `traits`, `neverSays` and `greetings`. Nothing was replaced;
+  that shape's inert fields are kept and seventeen qualitative
+  characteristics were added on top.
+- **Qualitative, never sliders.** `curiosity: 87` invites tuning and
+  invites comparison, and this product refuses both everywhere else
+  (Decision 20's "no counters, no levels"). Every characteristic is a
+  sentence, and the suite fails on a number.
+- **THE FILE CHANGES NO BEHAVIOUR, AND THAT IS ENGINEERED RATHER THAN
+  INTENDED.** Four keys in a `personality.json` are acted on by the
+  running Studio — `greetings` (the Director's boot line), `neverSays`,
+  `play` and `lines` (the Brain's voice policy). Leafy had **no**
+  personality file at all, so shipping any of them would have changed
+  what Leafy says. All four are deliberately absent, the file says so
+  itself, and the check reads the acted-on list **out of the Studio's own
+  code** rather than from a list in the test that could go stale. It is
+  also measured end to end: the real engine loads the real file and
+  every line Leafy can say is compared with and without it — fifteen
+  lines across three gates, identical.
+- **`neverSays` is left out for a real reason, not only an obedient
+  one.** It is matched as a substring against platform copy, so adding
+  phrases can silently mute lines Leafy is meant to say. Leafy's
+  prohibitions live in the specification as prose; mapping them onto the
+  runtime list is a separate decision with its own testing.
+- **A personality holds no memory and no story.** Leafy is the same
+  Leafy for every Creator; what makes one child's Leafy different is
+  what the two of them did together, and that lives in the memory store
+  (Decision 30). The suite fails on a character name, a story name or a
+  remembered moment appearing in the file — **including the brief's own
+  example**, which used *Spark*: a real character from a real child's
+  story, and exactly the leak this rule forbids. The examples were
+  rewritten to name nobody.
+- **A COMPANION MAY ONLY EVER CLAIM AN EXPERIENCE VIHUPLANET ACTUALLY
+  RECORDED.** A Companion continues to exist between visits and may one
+  day have experiences of its own — but nothing records them today, so
+  today it must say nothing about the time in between. *"I found
+  something in the garden while you were away"* becomes allowed the day
+  that finding is recorded. *"I was thinking about you all night"* is
+  never allowed: it is an invented experience, and it is the shape of
+  every sentence this rule exists to prevent.
+- **Warmth is allowed; emotional manipulation is not.** No guilt, no
+  need, no loneliness, no fear of being left, no exclusivity, never
+  *"you must come back"*. The test is whether the sentence would still
+  be kind if the Creator never came back.
+- **VihuPlanet truth outranks outside knowledge.** The order is canon →
+  the Creator's own World → what the two of them share → the Story in
+  front of them → what is being said now → **and last, general knowledge
+  from outside VihuPlanet.** Outside knowledge is never introduced as a
+  fact about this world; where the two disagree, VihuPlanet is right
+  inside VihuPlanet. There is no search and no external retrieval, and
+  adding one is a canon change. *"I don't know"* is a complete answer
+  and is always better than a plausible one.
+- **A Traveller has no Companion.** The Companion a Traveller meets is
+  the Story owner's, hosting them (Decision 24) — hosting makes nobody a
+  Creator and makes that Companion nobody else's. A hosting Companion
+  shares nothing private about its own Creator.
+- **Companions meeting Companions is named so nobody invents it later.**
+  It does not exist. A Companion has no friendships with other
+  Companions, no history with them and no news of them, and never makes
+  one up.
+- **The mind package is inspectable before anything is connected.**
+  `tools/companion-mind-preview/` assembles `{canon, personality}` and
+  prints it, with the committed `leafy.mind.json` / `leafy.mind.txt`
+  reviewable in a pull request. `memories`, `currentContext` and
+  `conversation` are **unreachable from that program**, not filtered out
+  of it — which is why "makes no external network call" is proved by
+  running it with `fetch`, `WebSocket` and every socket module deleted
+  rather than asserted.
+- **Four open questions are recorded rather than answered**, in the
+  canon itself: what VihuPlanet should record about a Companion's time
+  between visits; whether a Companion may mention a memory unprompted;
+  what a hosting Companion may say about the Creator whose Story is
+  being visited, beyond nothing; and whether it keeps any memory of the
+  visit.
+- Out of scope and not implemented: OpenAI, `companion-chat`, a
+  Companion Mind runtime, prompt execution, model calls, streaming, a
+  conversation UI, voice conversation, Bond Moment interpretation,
+  semantic memory, memory extraction, an autonomous Companion, and any
+  new Companion behaviour. **Creative suggestion remains permanently out
+  of scope** (Decision 29), and Companion-initiated actions remain
+  blocked on global undo.
+- `docs/COMPANION_CANON.md` → Canon 8 ·
+  `assets/canon/vihuplanet.canon.json` ·
+  `assets/leafy/personality.json` ·
+  `tools/companion-mind-preview/` ·
+  `tools/companion-canon-test/run-companion-canon-tests.js`
+
 ## Roadmap
 
 1. Theme Designer Polish
