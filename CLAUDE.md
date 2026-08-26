@@ -1511,6 +1511,22 @@ once, and its scope is no longer closed.
   `studioRite.js` is not the file that owns them.
 - `W1`–`W7` walk Rite II for real to the letter beat and open My Garden
   the way a child does, proved by reverting each half separately.
+- **A RITE STANDS BEHIND A CATCHER, NEVER OVER IT** (build 0653).
+  Reported by the product owner mid-Rite II: the band was sitting
+  straight over the letter catcher, covering the camera and its buttons.
+  `.hw-studio-modal` opens at z-index 1000 and the Rite's dock sits at
+  1400 — the identical stacking `_watchForModal` was written for when
+  Publish hit it, arriving from a screen nobody had listed. It is worse
+  here than for Publish: the beat says *hold your letter up so I can see
+  it* while Lumo covers the very camera it is asking them to hold it up
+  to. Both catchers join the same list, so there is one definition of *a
+  modal the Rite must stand behind* rather than a second rule.
+- **The catcher is its own chapter**, with its own instruction, its own
+  camera and its own button, so the Rite stands all the way down and
+  comes back the moment it closes — the same *two guides at once* rule,
+  not a new one. **A future full-screen step belongs in that list, in
+  the commit that adds the step**, exactly as a new Add tile belongs in
+  the reduction.
 - Design and sequencing: `docs/STUDIO_RITE_LEVELS.md`. Rite II's script
   and its engineering notes: `docs/STUDIO_RITE_LEVEL_II_STORY.md`.
 

@@ -7528,3 +7528,47 @@ check in the repo.
 Rite gate 50/50 (was 43), levels 59/59, creation home 84/84, gate 24/24,
 celebration 31/31, traveller reset 16/16, capability audit 4/4, zero page
 errors. Build 0651 → 0652.
+
+## The Rite Stands Behind the Catcher (build 0653)
+
+Reported mid-Rite II, with a screenshot: the Rite's band sitting straight
+over the letter catcher, covering the camera and its buttons.
+
+`.hw-studio-modal` opens at z-index 1000 and the Rite's dock sits at
+1400. That is the identical stacking `_watchForModal` was written for
+when Publish Studio hit it — its own comment says so — arriving from a
+screen nobody had listed. It is worse here than it is for Publish: the
+beat says *hold your letter up so I can see it* while Lumo covers the
+very camera it is asking them to hold it up to.
+
+Both catchers join the same list, so there is one definition of *a modal
+the Rite must stand behind* rather than a second rule beside it. The
+catcher is its own chapter — its own instruction, its own camera, its own
+button — so the Rite stands all the way down and comes back the moment it
+closes. A future full-screen step in a rite belongs in that list, in the
+commit that adds the step, exactly as a new Add tile belongs in the
+reduction. `W8`/`W9` guard it, proved by removing the catchers from the
+list and watching the band stay up over an open camera.
+
+**And the sky challenge's fitter had a real blind spot**, found while
+chasing a reported scrollbar on that screen. Its ResizeObserver guard
+keyed on `panel.clientHeight` alone — and that panel's height is CAPPED,
+so the moment its content grows past the cap the clientHeight stops
+changing and every later refit was dropped. That is exactly the state a
+scrollbar appears in: content taller than the box, box no longer growing.
+The signature is both numbers now, and the observer watches the
+gatekeeper and the grid as well as the panel, plus a capturing `load`
+listener for a pose image landing after the fit.
+
+**The reported scrollbar itself was not reproduced, and that is stated
+rather than implied.** Measured at 1359×594 (the screenshot's shape) and
+at 800, 520 and 470: panel and content identical before and after a tap,
+on both the correct-tap and wrong-tap paths, with the pose image swapping
+and with a 1.2s network delay forced on it. The only overflow found is at
+420px tall, where the density solver is already at its floor — and it is
+there before any tile is tapped. The fix above is a real defect closed on
+its own merits; the reported one is still open.
+
+Rite gate 52/52 (was 50), levels 59/59, creation home 84/84, gate 24/24,
+celebration 31/31, traveller reset 16/16, capability audit 4/4, zero page
+errors. Build 0652 → 0653.

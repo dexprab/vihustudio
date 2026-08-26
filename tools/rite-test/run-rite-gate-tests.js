@@ -511,6 +511,48 @@ function check(cond, name, note) {
     'W6 in the wrong room, the nudge points at the right one — never at the tile already tapped',
     JSON.stringify(points));
   check(wErrors.length === 0, 'W7 zero page errors', wErrors.slice(0, 2).join(' | '));
+
+  /* ---- and the Rite stands behind the catcher ------------------------
+   * The band was sitting straight over the letter catcher, covering the
+   * camera and its buttons — `.hw-studio-modal` opens at z-index 1000
+   * and the Rite's dock sits at 1400, the identical stacking the yield
+   * watcher was written for when Publish hit it. Worse here: the beat
+   * says "hold your letter up so I can see it" while Lumo covers the
+   * camera it is asking them to hold it up to.
+   */
+  await wp.evaluate(() => {
+    const t = document.querySelector(".context-hw-tab[data-room='letters']");
+    if (t) t.click();
+  });
+  await wp.waitForTimeout(500);
+  await wp.evaluate(() => {
+    const t = document.querySelector('.context-hw-tile');
+    if (t) t.click();
+  });
+  await wp.waitForTimeout(1600);
+  const covered = await wp.evaluate(() => {
+    const ov = document.querySelector('.studio-rite-overlay');
+    return {
+      catcher: !!document.querySelector('.hw-studio-modal'),
+      band: ov ? getComputedStyle(ov).display : null,
+      yielded: ov ? ov.classList.contains('studio-rite-yield') : null
+    };
+  });
+  check(covered.catcher === true && covered.band === 'none',
+    'W8 the Rite stands behind the letter catcher — never over the camera it asked for',
+    JSON.stringify(covered));
+  await wp.evaluate(() => {
+    const x = document.querySelector('.hw-studio-close');
+    if (x) x.click();
+  });
+  await wp.waitForTimeout(900);
+  const back = await wp.evaluate(() => {
+    const ov = document.querySelector('.studio-rite-overlay');
+    return { catcher: !!document.querySelector('.hw-studio-modal'),
+             band: ov ? getComputedStyle(ov).display : null };
+  });
+  check(back.catcher === false && back.band === 'block',
+    'W9 …and comes back the moment it closes', JSON.stringify(back));
   await wp.close();
 
   // The offer on Studio Home must skip the unwritten one and land on the

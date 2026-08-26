@@ -2899,15 +2899,43 @@ const StudioRite=(function(){
   // this stylesheet depends on :has() yet and a silent failure here
   // would be invisible, while an observer over the whole body is a lot
   // of machinery for one boolean.
+  //
+  // AND THE TWO CATCHERS ARE THE SAME SITUATION. Reported by the product
+  // owner mid-Rite II: the band was sitting straight over the letter
+  // catcher, covering the camera and its buttons. `.hw-studio-modal`
+  // opens at z-index 1000 and the dock sits at 1400 — the identical
+  // stacking the Publish note above describes, arriving from a screen
+  // nobody had listed. It is worse here than it is for Publish: the beat
+  // says *hold your letter up so I can see it* while Lumo covers the
+  // very camera it is asking them to hold it up to.
+  //
+  // The catcher is its own chapter and carries its own instruction
+  // ("Show me your k", a camera, Take the picture), so the Rite stands
+  // all the way down and comes back the moment it closes — the same
+  // "two guides at once" rule, not a new one.
+  //
+  // The list is the one place this is written down. A future full-screen
+  // step in a rite belongs in it, in the commit that adds the step.
+  const YIELD_TO=[
+    // Publish opens hidden and is toggled, so its own hidden flag decides.
+    {sel:'.publish-studio-modal', open:function(m){ return !m.classList.contains('hidden'); }},
+    // The catchers are built when they open and removed when they close,
+    // so their presence IS the answer.
+    {sel:'.hw-studio-modal'},
+    {sel:'.bia-studio-modal'}
+  ];
   function _watchForModal(){
     if(_yieldTimer) return;
     _yieldTimer=setInterval(function(){
       if(!_els){ return; }
       let covered=false;
-      try{
-        const m=document.querySelector('.publish-studio-modal');
-        covered=!!(m && !m.classList.contains('hidden'));
-      }catch(e){}
+      for(let i=0;i<YIELD_TO.length && !covered;i++){
+        try{
+          const spec=YIELD_TO[i];
+          const m=document.querySelector(spec.sel);
+          covered=!!(m && (!spec.open || spec.open(m)));
+        }catch(e){}
+      }
       try{ _els.overlay.classList.toggle('studio-rite-yield',covered); }catch(e){}
     },350);
   }

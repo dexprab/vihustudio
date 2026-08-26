@@ -1926,12 +1926,23 @@ const MagicCardUI=(function(){
     // the remembered height drops everything that is not a genuine
     // change in the room available. A future screen with one more
     // element in it should not have to rediscover this.
-    let fitting=false, lastFitH=-1;
+    // THE GUARD COULD NOT SEE THE CASE IT MOST NEEDED TO. It keyed on
+    // `panel.clientHeight` alone — and the panel's height is CAPPED
+    // (max-height), so the moment its content grows past that cap the
+    // clientHeight stops changing and every later refit was dropped.
+    // Which is exactly the state a scrollbar appears in: content taller
+    // than the box, box no longer growing. The signature is both
+    // numbers, so an overflow that leaves the box the same size is a
+    // change this can see.
+    let fitting=false, lastFit='';
+    function signature(){
+      return Math.round(panel.clientHeight)+'x'+Math.round(panel.scrollHeight);
+    }
     function refit(){
       if(fitting) return;
       fitting=true;
       try{ _fitSkyChallengeToAvailableSpace(panel,gatekeeper.el,grid); }catch(e){}
-      lastFitH=Math.round(panel.clientHeight);
+      lastFit=signature();
       window.requestAnimationFrame(function(){ fitting=false; });
     }
     refit();
@@ -1939,12 +1950,26 @@ const MagicCardUI=(function(){
       const ro=new ResizeObserver(function(){
         if(!document.contains(panel)){ ro.disconnect(); return; }
         if(fitting) return;
-        const h=Math.round(panel.clientHeight);
-        if(h===lastFitH) return;
+        if(signature()===lastFit) return;
         refit();
       });
+      // The panel for the room available, and its two growable children
+      // for the content inside it: Lumo's portrait arrives from the
+      // network and the bubble rewraps on every mood, so neither is the
+      // size it was when the first fit ran.
       ro.observe(panel);
+      ro.observe(gatekeeper.el);
+      ro.observe(grid);
     }
+    // A pose image landing after the fit is the one change a
+    // ResizeObserver on the panel can miss entirely — the portrait box
+    // is a fixed size, so swapping its picture resizes nothing until the
+    // picture is bigger than the box. Refit when one arrives.
+    try{
+      panel.addEventListener('load',function(ev){
+        if(ev.target && ev.target.tagName==='IMG') refit();
+      },true);
+    }catch(e){}
   }
 
   // ---------- Screens 5-7 — The Awakening ceremony ----------
