@@ -1711,6 +1711,29 @@ once, and its scope is no longer closed.
   *"nothing to press yet"* — true, and exactly the wall. It now asserts
   the opposite. When behaviour is corrected, the test that encoded the
   old behaviour is part of the fix.
+- **A VOICE IS REPLACED, NOT ADDED — AND THE COUNT NEVER MOVED** (build
+  0660). Reported by the product owner on Rite II's voice beat: *"added
+  the voice but still i did it button did not came."* Reproduced: a page
+  holds ONE narration clip, so recording again REPLACES it, and the gate
+  counted PAGES carrying a voice. Voice is revealed for the whole of
+  Rite II, so a child who recorded on any earlier beat reached this one
+  with the count already at 1 and **Record Again could never move it**.
+- **The same shape as the letters, one beat along.** Both are gates on a
+  pool where the child's natural action replaces rather than adds. The
+  letters beat was answered by letting the child declare it done; this
+  one is answered by reading what the beat is actually about — the
+  baseline now keeps a SIGNATURE of which page holds which clip instead
+  of a tally, so a new recording counts whoever it replaced.
+- **Removing the only voice is not saying something.** A signature alone
+  would call that a change, so one narrated page must still be there.
+- **`page-shaped` had the identical bug, latent.** A page holds one
+  shape, so changing it moves no count either, and Page Shape is
+  revealed for the whole of Rite III. Fixed the same way rather than
+  waiting for it to be reported.
+- **The lesson worth keeping: a count is the wrong reading whenever the
+  control it watches REPLACES.** `bg-set` already knew this and carried
+  its own `bg!==baseline.__bg` comparison; voice and shape were written
+  as tallies and both were wrong for it.
 - Design and sequencing: `docs/STUDIO_RITE_LEVELS.md`. Rite II's script
   and its engineering notes: `docs/STUDIO_RITE_LEVEL_II_STORY.md`.
 

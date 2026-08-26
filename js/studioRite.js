@@ -2010,6 +2010,28 @@ const StudioRite=(function(){
       }).length;
     }catch(e){ return 0; }
   }
+  // WHICH page holds WHICH clip, as one comparable string. A page can
+  // only carry one narration, so this changes when a clip arrives, when
+  // one is replaced, and when one is taken away — everything a count of
+  // pages misses.
+  function _narrationSig(){
+    try{
+      return ((AppState&&AppState.slides)||[]).map(function(s,i){
+        const n=s&&s.metadata&&s.metadata.narration;
+        if(!n) return '';
+        return i+':'+(n.ref||'')+':'+(n.durationMs||0);
+      }).join('|');
+    }catch(e){ return ''; }
+  }
+  // The same, for the shape a page has been given.
+  function _shapeSig(){
+    try{
+      return ((AppState&&AppState.slides)||[]).map(function(s,i){
+        const a=s&&s.metadata&&s.metadata.aspect;
+        return a ? (i+':'+a) : '';
+      }).join('|');
+    }catch(e){ return ''; }
+  }
   function _shapedPages(){
     try{
       return (AppState.slides||[]).filter(function(s){
@@ -2127,16 +2149,41 @@ const StudioRite=(function(){
     // slide.metadata.narration (js/contextPanel.js), so this counts
     // pages carrying one — the same shape as every other gate here, and
     // it can never disagree with what a child actually recorded.
+    // A VOICE IS REPLACED, NOT ADDED, AND THE COUNT NEVER MOVED.
+    //
+    // Reported by the product owner on this beat: "added the voice but
+    // still i did it button did not came." Reproduced — a page can only
+    // hold ONE narration clip, so recording again REPLACES it, and this
+    // gate counted PAGES carrying a voice. Voice is revealed for the
+    // whole of Rite II, so a child who recorded on any earlier beat
+    // reached this one with the count already at 1 and could never get
+    // past it: Record Again changes the clip and moves no number.
+    //
+    // The honest reading of "say something for them" is that a NEW
+    // recording exists, whoever it replaced — so the baseline keeps a
+    // signature of which page holds which clip rather than a tally.
+    // Removing a voice changes the signature too, which is why one has
+    // to still be there: taking the only voice off the page is not
+    // saying something.
     if(kind==='voice-added'){
-      try{ return _narratedPages()>(baseline&&baseline.__narrated||0); }
-      catch(e){ return false; }
+      try{
+        return _narratedPages()>0 && _narrationSig()!==(baseline&&baseline.__voice);
+      }catch(e){ return false; }
     }
     // The page's own shape, stored at slide.metadata.aspect. Counted
     // rather than compared, because a child who tries two shapes and
     // comes back to the first has still chosen one.
+    // The same hazard, and it was latent rather than reported: a page
+    // holds ONE shape, so choosing a different one replaces it and a
+    // count of shaped pages does not move. Page Shape is revealed for
+    // the whole of Rite III, so a child who tried a shape before its
+    // beat would have hit exactly the wall the voice beat did. A
+    // signature reads "this page's shape is not what it was", which is
+    // what the beat is actually about.
     if(kind==='page-shaped'){
-      try{ return _shapedPages()>(baseline&&baseline.__shaped||0); }
-      catch(e){ return false; }
+      try{
+        return _shapedPages()>0 && _shapeSig()!==(baseline&&baseline.__shape);
+      }catch(e){ return false; }
     }
     // ---- My Garden's two rooms (Rite II) --------------------------
     // A letter kept is a letter kept, whether it is the first or the
@@ -2366,8 +2413,9 @@ const StudioRite=(function(){
     // await inside a condition, and no second source of truth.
     try{ map.__letters=HandwritingStore.list().length; }catch(e){ map.__letters=0; }
     try{ map.__drawings=CreatorLibrary.list().length; }catch(e){ map.__drawings=0; }
-    map.__narrated=_narratedPages();
-    map.__shaped=_shapedPages();
+    // Signatures, not tallies — see the voice and shape conditions above.
+    map.__voice=_narrationSig();
+    map.__shape=_shapeSig();
     try{ map.__plays=StoryPlayer.playCount(); }catch(e){ map.__plays=0; }
     try{ map.__published=!!MagicCard.growthSignals().hasEverPublished; }catch(e){ map.__published=false; }
     return map;
