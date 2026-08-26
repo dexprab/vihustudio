@@ -7560,15 +7560,73 @@ The signature is both numbers now, and the observer watches the
 gatekeeper and the grid as well as the panel, plus a capturing `load`
 listener for a pose image landing after the fit.
 
-**The reported scrollbar itself was not reproduced, and that is stated
-rather than implied.** Measured at 1359×594 (the screenshot's shape) and
-at 800, 520 and 470: panel and content identical before and after a tap,
-on both the correct-tap and wrong-tap paths, with the pose image swapping
-and with a 1.2s network delay forced on it. The only overflow found is at
-420px tall, where the density solver is already at its floor — and it is
-there before any tile is tapped. The fix above is a real defect closed on
-its own merits; the reported one is still open.
+**The reported scrollbar itself was not reproduced here, and that was
+stated rather than implied at the time.** Measured at 1359×594 (the
+screenshot's shape) and at 800, 520 and 470: panel and content identical
+before and after a tap, on both paths, with the pose image swapping and
+with a 1.2s network delay forced on it. The only overflow found was at
+420px tall, where the density solver is already at its floor, and it was
+there before any tile was tapped.
+
+**Confirmed closed by the product owner on 0653** — *"checked in 653 not
+happening any more"* — so the blind spot above was the cause after all;
+it simply did not reproduce on a local server where nothing arrives late.
+A sweep of 49 window shapes (1024–1920 × 560–900) then found zero
+overflow, and `S1` in the gate suite now guards six shapes on both tap
+paths so it cannot come back unnoticed.
 
 Rite gate 52/52 (was 50), levels 59/59, creation home 84/84, gate 24/24,
 celebration 31/31, traveller reset 16/16, capability audit 4/4, zero page
 errors. Build 0652 → 0653.
+
+## A Name, One Letter at a Time (build 0654)
+
+*"if we write all the letters on single paper it will not work. the beat
+should be fill the garden with your name letters one at a time. once done
+click i did it."*
+
+Rite II's naming beat read *Write the rest of your name*, and that
+describes something the tool cannot do. The catcher is armed for ONE
+letter — `HandwritingStudio.open({ch})` — reads that letter, and reopens
+the letters room so the next tile is one tap away. A beat may never ask
+for something the tool cannot take.
+
+It now reads *One letter at a time, until your whole name is in your
+garden. Tell me when it is all there.* The second sentence carries the
+rest of the fix: only the child knows when their name is finished, so
+this beat cannot end on a count. The gate still passes on one more letter
+and then the Rite's own **I did it!** sits there waiting, dropping and
+re-offering itself each time they go back for another — exactly the shape
+asked for, and it needed no new machinery. The subtitle invites that press
+without naming it; the button already says what it is, and Lumo does not
+read out the interface.
+
+**And Lumo steps aside while the garden grows.** *"the lumo should
+disappear or get to a side so that child can see the garden grow in front
+of himself."* Measured at 1359×800: `.preview-wrapper` starts at x=296
+and the band sits at x=296, 231px wide — covering the whole of the left
+growth band Decision 27 puts the garden in. A child told their letter is
+being kept in their garden could not watch it happen.
+
+A moment, not a relocation. Growth answers in about 1.5s, so the band
+recedes for 2.2s and comes straight back; docking Lumo elsewhere for the
+whole beat would cost his words for the whole beat to fix one second of
+it. Never `display:none` — a Lumo who vanishes and reappears is a glitch,
+one who leans out of the way is being polite. It rides
+`vihu:creation-captured`, the same single event the Garden itself grows
+on, so it learns nothing about letters, drawings or cameras and a future
+capture source gets it for free. Reduced motion suppresses it, because
+the growth animation is suppressed there and there is nothing to step
+aside for.
+
+One measurement worth keeping: the class went on and off correctly and
+**nothing moved**. The docked band's own entry animation
+(`studio-rite-beside-in … both`) holds opacity and transform at its end
+state, and an animation outranks a plain declaration however specific.
+`X8` exists because of that — asserting the class is present proves
+nothing about whether a child can see past it.
+
+`X1`–`X9` walk Rite II to the naming beat for real. Rite gate 61/61 (was
+52), gate 25/25, levels 59/59, creation home 84/84, celebration 31/31,
+traveller reset 16/16, capability audit 4/4, zero page errors. Build
+0653 → 0654.

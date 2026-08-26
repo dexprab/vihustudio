@@ -555,6 +555,149 @@ function check(cond, name, note) {
     'W9 …and comes back the moment it closes', JSON.stringify(back));
   await wp.close();
 
+  /* ---- X: a name arrives one letter at a time -----------------------
+   *
+   * "if we write all the letters on single paper it will not work. the
+   * beat should be fill the garden with your name letters one at a
+   * time. once done click i did it." The line read *Write the rest of
+   * your name*, which describes something the catcher cannot do — it is
+   * armed for ONE letter, reads that letter, and reopens the letters
+   * room so the next tile is one tap away.
+   *
+   * Only the child knows when their name is finished, so the beat ends
+   * on their word rather than on a count: the gate passes on one more
+   * letter and the Rite's own "I did it!" then waits for them.
+   */
+  console.log('\n-- X: a name arrives one letter at a time');
+
+  const xp = await browser.newPage({ viewport: { width: 1359, height: 800 } });
+  const xErrors = [];
+  xp.on('pageerror', (e) => xErrors.push(String(e)));
+  await xp.goto(BASE + '/studio.html?author=on');
+  await xp.waitForFunction(() =>
+    typeof StudioRite !== 'undefined' && typeof MagicCard !== 'undefined' &&
+    typeof CreationFlow !== 'undefined' && typeof HandwritingStore !== 'undefined',
+    null, { timeout: 20000 });
+  await xp.evaluate(() => {
+    localStorage.clear();
+    MagicCard.claim('Vihu');
+    const r1 = StudioRite.rites().find((r) => r.mandatory);
+    const caps = (r1.teaches || []).concat(r1.reveals || []);
+    MagicCard.setTaught(caps);
+    try { localStorage.setItem(StudioRite.TAUGHT_KEY, JSON.stringify(caps)); } catch (e) {}
+    const gw = document.getElementById('gatewayOverlay');
+    if (gw) gw.style.display = 'none';
+    document.querySelectorAll('.studio-rite-overlay').forEach((n) => n.remove());
+  });
+  await xp.evaluate(() => { try { CreationFlow.startBlank(); } catch (e) {} });
+  await xp.waitForTimeout(1200);
+  await xp.evaluate(() => { try { StudioRite.start('my-garden'); } catch (e) {} });
+  await xp.waitForTimeout(2500);
+
+  const xBeat = () => xp.evaluate(() => ({
+    sub: (document.querySelector('.studio-rite-line .gateway-greeting-subtitle') || {}).textContent || '',
+    done: !!document.querySelector('.studio-rite-done'),
+    doneText: (document.querySelector('.studio-rite-done') || {}).textContent || '',
+    letters: (function () { try { return HandwritingStore.list().length; } catch (e) { return -1; } })()
+  }));
+
+  // Walk to the naming beat, keeping one letter wherever the story asks
+  // for one, and taking the beat's own confirmation each time.
+  for (let i = 0; i < 30; i++) {
+    const b = await xBeat();
+    if (/One letter at a time/.test(b.sub)) break;
+    await xp.evaluate(() => {
+      try {
+        const pg = PageRuntime.getActivePage();
+        if (pg) {
+          pg.metadata = pg.metadata || {};
+          pg.metadata.cardOverrides = pg.metadata.cardOverrides || {};
+          pg.metadata.cardOverrides.background = '#2E7D32';
+        }
+      } catch (e) {}
+      try {
+        if (StudioRite.wantsRoom() === 'letters') {
+          const n = HandwritingStore.list().length;
+          HandwritingStore.save({ ch: String.fromCharCode(97 + n),
+            png: 'data:image/png;base64,iVBORw0KGgo=', w: 40, h: 40 });
+        }
+      } catch (e) {}
+      const d = document.querySelector('.studio-rite-done');
+      if (d) d.click();
+    });
+    await xp.waitForTimeout(700);
+  }
+
+  const naming = await xBeat();
+  check(/One letter at a time/.test(naming.sub) && /Tell me when it is all there/.test(naming.sub),
+    'X1 the naming beat asks for one letter at a time, and for the child to say when',
+    naming.sub);
+  check(!/rest of your name/i.test(naming.sub),
+    'X2 …and no longer asks for a whole name on one paper — the catcher reads ONE letter',
+    naming.sub);
+  check(naming.done === false,
+    'X3 nothing to press yet — a name with no more letters in it is not finished',
+    JSON.stringify({ done: naming.done, letters: naming.letters }));
+
+  await xp.evaluate(() => {
+    try {
+      const n = HandwritingStore.list().length;
+      HandwritingStore.save({ ch: String.fromCharCode(97 + n),
+        png: 'data:image/png;base64,iVBORw0KGgo=', w: 40, h: 40 });
+    } catch (e) {}
+  });
+  // The confirmation waits on a short stillness AND on the beat's own
+  // poll, so it is offered within a beat or two rather than instantly.
+  // Polled rather than slept on: a fixed wait either flakes or is slow.
+  let afterLetter = null;
+  for (let i = 0; i < 20; i++) {
+    await xp.waitForTimeout(400);
+    afterLetter = await xBeat();
+    if (afterLetter.done) break;
+  }
+  check(afterLetter.done === true && afterLetter.doneText === 'I did it!',
+    'X4 one more letter, and the beat waits on the child\'s own word', JSON.stringify(afterLetter));
+  check(afterLetter.letters === naming.letters + 1,
+    'X5 …on ONE letter, never on a count of them', JSON.stringify({
+      before: naming.letters, after: afterLetter.letters }));
+  check(xErrors.length === 0, 'X6 zero page errors', xErrors.slice(0, 2).join(' | '));
+
+  /* ---- and Lumo steps aside while the garden grows -------------------
+   * "the lumo should disappear or get to a side so that child can see
+   * the garden grow in front of himself." Measured at 1359x800: the
+   * wrapper starts at x=296 and the band sits at x=296, 231px wide — it
+   * covers the whole of the left growth band Decision 27 puts the
+   * garden in. A moment, not a relocation: it rides the same
+   * `vihu:creation-captured` the Garden itself grows on, so it learns
+   * nothing about letters, drawings or cameras.
+   */
+  const aside = await xp.evaluate(() => new Promise((done) => {
+    const ov = document.querySelector('.studio-rite-overlay');
+    const pan = document.querySelector('.studio-rite-overlay .studio-rite-panel');
+    const read = () => ({
+      aside: ov.classList.contains('studio-rite-aside'),
+      opacity: Number(getComputedStyle(pan).opacity).toFixed(2),
+      shown: getComputedStyle(ov).display
+    });
+    const before = read();
+    document.dispatchEvent(new CustomEvent('vihu:creation-captured', { detail: { id: 'suite-1' } }));
+    setTimeout(() => {
+      const during = read();
+      setTimeout(() => done({ before: before, during: during, after: read() }), 2400);
+    }, 700);
+  }));
+  check(aside.before.aside === false && aside.during.aside === true,
+    'X7 a capture steps the band aside so the child can watch their garden grow',
+    JSON.stringify(aside));
+  check(Number(aside.during.opacity) < 0.5,
+    'X8 …and it really recedes — the class alone proved nothing, an animation was pinning it',
+    JSON.stringify({ idle: aside.before.opacity, growing: aside.during.opacity }));
+  check(aside.during.shown !== 'none' && aside.after.aside === false &&
+        Number(aside.after.opacity) > 0.9,
+    'X9 it leans out of the way and comes back — never vanishes, which reads as a glitch',
+    JSON.stringify(aside.after));
+  await xp.close();
+
   // The offer on Studio Home must skip the unwritten one and land on the
   // next real door — never on a rite nobody has authored.
   const offered = await page.evaluate(() => {

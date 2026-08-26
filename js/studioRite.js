@@ -905,12 +905,27 @@ const StudioRite=(function(){
              subtitle:'Write the first letter of your name on paper, and show it to me.'}}
      ], end:{await:'letter-kept'}, nudgeDelay:9000},
 
+    // ONE LETTER AT A TIME, AND THE CHILD SAYS WHEN. Reported by the
+    // product owner walking this beat: "if we write all the letters on
+    // single paper it will not work." He is right, and it is a fact
+    // about the catcher rather than a matter of taste — it is armed for
+    // ONE letter (`HandwritingStudio.open({ch})`), reads that letter,
+    // and reopens the letters room on its own so the next tile is one
+    // tap away. A line asking for "the rest of your name" describes
+    // something the tool cannot do.
+    //
+    // And only the child knows when their name is finished, so this
+    // beat cannot count: the gate passes on one more letter and then
+    // the Rite's own "I did it!" waits for them, which is exactly the
+    // shape asked for. The subtitle invites that press without naming
+    // it — the button says what it is, and Lumo does not read out the
+    // interface (Decision 8).
     {band:true, lines:[
       {lumo:'celebrate', egg:'excited',
        line:{title:'That is your letter. Nobody else in the world makes that shape.'}},
       {lumo:'talk', egg:'curious',
        line:{title:'A name needs all of itself.',
-             subtitle:'Write the rest of your name.'}}
+             subtitle:'One letter at a time, until your whole name is in your garden. Tell me when it is all there.'}}
      ], end:{await:'letters-grown'}, nudgeDelay:12000},
 
     {band:true, lines:[
@@ -1261,6 +1276,7 @@ const StudioRite=(function(){
   let _actionsUnlocked=false;
   let _horizonWatch=null;     // keeps the cast on the horizon across resizes
   let _yieldTimer=null;       // watches for a modal the Rite must stand behind
+  let _growthWatch=null;      // steps the band aside while the Garden grows
   let _cueTimers=[];          // line reveals scheduled against a recording
   let _dockWatch=null;        // resize handler that re-places the dock
   let _dockUnobserve=null;    // page-list observer that re-places the dock
@@ -1728,7 +1744,9 @@ const StudioRite=(function(){
       hint:function(){
         if(document.querySelector('.hw-studio-panel')) return 'Hold the next one up.';
         if(_gardenRoomTab('letters')) return 'Your letters are in the other room.';
-        return 'There is a letter waiting for every one you need.';
+        // Says the shape of the work without counting anything: there
+        // is a tile per letter, and a child takes them one at a time.
+        return 'There is a place waiting for every letter, one at a time.';
       }
     },
     'letters-placed':{
@@ -2833,6 +2851,11 @@ const StudioRite=(function(){
     if(_paperGuard){ try{ _paperGuard(); }catch(e){} _paperGuard=null; }
     if(_bandRO){ try{ _bandRO.disconnect(); }catch(e){} _bandRO=null; }
     if(_yieldTimer){ clearInterval(_yieldTimer); _yieldTimer=null; }
+    if(_stepTimer){ clearTimeout(_stepTimer); _stepTimer=null; }
+    if(_growthWatch){
+      try{ document.removeEventListener('vihu:creation-captured',_growthWatch); }catch(e){}
+      _growthWatch=null;
+    }
     if(_horizonWatch){ try{ window.removeEventListener('resize',_horizonWatch); }catch(e){} _horizonWatch=null; }
     if(_dockWatch){ try{ window.removeEventListener('resize',_dockWatch); }catch(e){} _dockWatch=null; }
     if(_dockUnobserve){ try{ _dockUnobserve(); }catch(e){} _dockUnobserve=null; }
@@ -2863,6 +2886,7 @@ const StudioRite=(function(){
     _els.overlay.classList.add('studio-rite-has-mission');
     _placeDock();
     _watchForModal();
+    _watchForGrowth();
     if(!_dockWatch){
       _dockWatch=function(){ _placeDock(); };
       try{ window.addEventListener('resize',_dockWatch); }catch(e){}
@@ -2924,6 +2948,48 @@ const StudioRite=(function(){
     {sel:'.hw-studio-modal'},
     {sel:'.bia-studio-modal'}
   ];
+  // LUMO STEPS ASIDE WHILE THE GARDEN GROWS.
+  //
+  // "the lumo should disappear or get to a side so that child can see
+  // the garden grow in front of himself" — the product owner, watching
+  // Rite II. Measured at 1359x800: `.preview-wrapper` starts at x=296
+  // and the band sits at x=296, 231px wide, so it covers the WHOLE of
+  // the left growth band Decision 27 puts the garden in. The child is
+  // told their letter is being kept in their garden and then cannot see
+  // it happen.
+  //
+  // A moment, never a relocation. Growth answers in about 1.5s, so the
+  // band goes quiet for a little longer than that and comes straight
+  // back — the alternative, docking Lumo somewhere else for the whole
+  // beat, costs his words for the entire beat to fix one second of it.
+  //
+  // It rides `vihu:creation-captured`, the SAME one event the Garden
+  // itself grows on (Decision 27: one event, a capture id, deliberately
+  // no type field), so this learns nothing about cameras, letters or
+  // drawings and a future capture source gets the behaviour for free.
+  //
+  // Reduced motion suppresses the growth animation entirely, so there
+  // is nothing to step aside FOR — and stepping aside would then just
+  // be Lumo vanishing for no reason.
+  const STEP_ASIDE_MS=2200;
+  let _stepTimer=null;
+  function _watchForGrowth(){
+    if(_growthWatch) return;
+    _growthWatch=function(){
+      if(!_els) return;
+      try{
+        if(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      }catch(e){}
+      try{ _els.overlay.classList.add('studio-rite-aside'); }catch(e){}
+      if(_stepTimer) clearTimeout(_stepTimer);
+      _stepTimer=setTimeout(function(){
+        _stepTimer=null;
+        try{ if(_els) _els.overlay.classList.remove('studio-rite-aside'); }catch(e){}
+      },STEP_ASIDE_MS);
+    };
+    try{ document.addEventListener('vihu:creation-captured',_growthWatch); }catch(e){}
+  }
+
   function _watchForModal(){
     if(_yieldTimer) return;
     _yieldTimer=setInterval(function(){

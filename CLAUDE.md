@@ -1527,6 +1527,41 @@ once, and its scope is no longer closed.
   not a new one. **A future full-screen step belongs in that list, in
   the commit that adds the step**, exactly as a new Add tile belongs in
   the reduction.
+- **A NAME ARRIVES ONE LETTER AT A TIME, AND THE CHILD SAYS WHEN**
+  (build 0654). Reported by the product owner walking Rite II's naming
+  beat: *"if we write all the letters on single paper it will not work.
+  the beat should be fill the garden with your name letters one at a
+  time. once done click i did it."* The line read *Write the rest of
+  your name*, which describes something the catcher cannot do — it is
+  armed for ONE letter, reads that letter, and reopens the letters room
+  so the next tile is one tap away. **A beat may never ask for something
+  the tool cannot take.**
+- **The beat cannot count, because only the child knows when their name
+  is finished.** The gate still passes on one more letter and then the
+  Rite's own **I did it!** waits for them, dropping and re-offering
+  itself each time they go back for another — which is exactly the shape
+  asked for and needed no new machinery. The subtitle invites that press
+  without naming it: the button already says what it is, and Lumo does
+  not read out the interface (Decision 8).
+- **LUMO STEPS ASIDE WHILE THE GARDEN GROWS.** Asked for by the product
+  owner: *"the lumo should disappear or get to a side so that child can
+  see the garden grow in front of himself."* Measured at 1359×800,
+  `.preview-wrapper` starts at x=296 and the band sits at x=296, 231px
+  wide — it covers the **whole** of the left growth band Decision 27
+  puts the garden in, so a child told their letter is being kept in
+  their garden could not watch it happen.
+- **A moment, never a relocation.** Growth answers in about 1.5s, so the
+  band recedes for a little longer than that and comes straight back.
+  Docking Lumo elsewhere for the whole beat would cost his words for the
+  whole beat to fix one second of it. It never uses `display:none`: a
+  Lumo who vanishes and reappears is a glitch, one who leans out of the
+  way is being polite.
+- **It rides `vihu:creation-captured`** — the same single event the
+  Garden itself grows on (Decision 27: one event, a capture id,
+  deliberately no type field) — so it learns nothing about letters,
+  drawings or cameras, and a future capture source gets the behaviour
+  for free. Suppressed under reduced motion, where the growth animation
+  is suppressed too and there is nothing to step aside for.
 - Design and sequencing: `docs/STUDIO_RITE_LEVELS.md`. Rite II's script
   and its engineering notes: `docs/STUDIO_RITE_LEVEL_II_STORY.md`.
 
