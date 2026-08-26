@@ -2649,6 +2649,14 @@ the standard this product will be held to when it is.
   world-callable, metered LLM. The pattern is now one shared module:
   **the caller is derived from the verified session and client-supplied
   identity is never trusted for ownership.**
+- **VERIFIED IN PRODUCTION, not just in a suite.** The migration was
+  applied and all five functions deployed, and the public anon key —
+  the exact credential every client used to send — was run against the
+  four browser-facing ones. All four answered
+  `401 {"ok":false,"reason":"unauthorized"}`; all four answered 200 to
+  that same key the day before. `creator-born` is not in that list
+  because it carries no CORS headers at all: nothing in a browser may
+  reach it, which is a stronger result than a 401.
 - **Rate limiting exists before the endpoint that needs it**, in
   Postgres, with one configuration point. No Redis, no external service,
   no second database — the same posture every other decision here takes
@@ -2662,32 +2670,55 @@ the standard this product will be held to when it is.
   page deletion warns that it *"cannot be undone"*). That gate is
   `docs/COMPANION_INTELLIGENCE_ARCHITECTURE.md` §7.4's and it is
   unchanged.
-- **The gate is ONE module, vendored into each function, never a shared
-  import.** `_shared/` is a CLI-only bundling convention and is not
-  carried by a deploy made from the Supabase Dashboard — measured, on
-  this project: *Module not found "file:///tmp/user_fn_…/_shared/
-  edgeAuth.js"*. Every other function in this repository has always been
-  self-contained, and `_shared/` was introduced without first checking
-  how the project actually deploys. **A security fix that lands only
-  under one deploy tool is not a fix**, so each function now imports
-  `./edgeAuth.js` from its own folder. The cost is five copies and it is
-  paid for by a test: every copy must match what the generator produces
-  from `_shared/edgeAuth.js`, so drift is a failing check rather than one
-  function quietly enforcing something different from its neighbours.
-  `node tools/edge-auth-test/sync-shared.js` regenerates them.
-- **The copy is a build artifact and is deliberately small.** Two thirds
-  of the canonical module is prose explaining why each decision was made;
-  that belongs in the repository, not shipped five times to an edge
-  runtime. Each copy is the module with its full-line comments removed —
-  26KB becomes 10KB — which matters because the Dashboard editor kept a
-  second file beside voice-speak's 11KB index and refused to keep one
-  beside sky-protection's 46KB. The stripper is line-based rather than a
-  real parser, because misreading a string or a regex in an authorization
-  module is a far worse outcome than a large file, and it **refuses**
-  rather than guesses on the one case it cannot read. It is not trusted
-  on that reasoning: the suite imports a VENDORED COPY and re-runs the
-  gate's real assertions against it, so what is proved is the artifact
-  that actually deploys.
+- **The gate is ONE module, INLINED into each function — one file, no
+  imports.** Two attempts at fewer copies both failed on the real
+  deploy, and both are recorded because both were measured. `_shared/`
+  is a CLI-only bundling convention and is not carried by a Dashboard
+  deploy: *Module not found "file:///tmp/user_fn_…/_shared/edgeAuth.js"*.
+  A sibling `./edgeAuth.js` then worked for three functions and not the
+  other two, where the second file *"just keeps vanishing"* from the
+  editor — **and an EMPTY file vanishes too**, so it is neither size nor
+  content: those functions simply will not take a second file. A file
+  that cannot be added cannot be depended on, and one file cannot
+  half-arrive. It is also what every function in this repository was
+  before this sprint touched them.
+- **This project deploys single-file from the Dashboard, and it already
+  had a convention for it.** `family-album/dashboard-paste.ts` —
+  *"index.ts + parse.js merged into ONE file, for deploying via the
+  Supabase Dashboard's in-browser editor (no CLI needed)"* — was sitting
+  in that folder the whole time. Finding it three attempts late is why
+  there were three attempts; the deploy path is a property of the project
+  and should have been read before `_shared/` was introduced.
+- **A hand-mirrored copy of a security boundary is a promise nobody can
+  keep.** That file's own note said to keep it in lockstep BY HAND, and by
+  the time this sprint hardened `index.ts` it carried no gate at all — so
+  pasting it would have deployed an UNHARDENED function, which is worse
+  than a failed deploy because it looks like success. It is generated now:
+  `index.ts` with every local import inlined, and a function with nothing
+  local to inline gets no variant at all, because a duplicate of
+  `index.ts` would be one more thing to keep in step.
+- **The inlined block is generated, and the deployed code is what is
+  tested.** `_shared/edgeAuth.js` stays the readable original with every
+  decision explained; `node tools/edge-auth-test/sync-shared.js` writes
+  it into each `index.ts` between markers, with full-line comments
+  removed and `export` dropped. The suite asks the REAL generator whether
+  anything drifted — a second copy of the rule in the test could disagree
+  with the thing that writes the files — and then EXTRACTS the block from
+  a real `index.ts`, imports it, and re-runs the gate's own assertions
+  against it. What is proved is the code that actually deploys.
+- **Two things can fail SILENTLY once this is live, so a file looks for
+  them.** Everything else about the hardening fails loudly — a browser
+  that cannot authenticate gets a 401 it can see, and a child hears
+  silence instead of a voice. Not these: `creator-born` is service-only
+  now, and its only caller sends whatever key sits in
+  `platform_settings.creator_born_key` — the ANON key worked there before
+  and does not now, and the symptom is no email when a child becomes a
+  Creator. `invite-send` is administrators-only, so an empty
+  `platform_admins` refuses everybody. `supabase/verify_edge_auth_deployed.sql`
+  answers both in one word each, and decodes only the `role` claim out of
+  the stored JWT — the key itself never reaches the result, because
+  reading a secret out of the database and putting it on screen would be
+  a worse habit than the one this sprint fixed.
 - **A migration is inert; its verification is a separate file.** Reported
   by the product owner running the migration and reading its own first
   probe — `{"allowed": true, "remaining": 1}` — as an error. It was the

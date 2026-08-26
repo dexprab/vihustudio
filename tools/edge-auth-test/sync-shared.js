@@ -1,28 +1,36 @@
 /* tools/edge-auth-test/sync-shared.js — one source of truth, five copies.
  *
- * Copies supabase/functions/_shared/edgeAuth.js into each Edge Function's
- * own folder as edgeAuth.js, byte for byte.
+ * INLINES supabase/functions/_shared/edgeAuth.js into each Edge
+ * Function's own index.ts, between markers, so every function is ONE
+ * FILE and the deploy needs nothing beside it.
  *
- * WHY THERE ARE COPIES AT ALL. `_shared/` is a CLI-only bundling
- * convention and is not carried by a deploy made from the Supabase
- * Dashboard — measured, on this project:
+ * WHY ONE FILE, after two attempts at fewer copies:
  *
- *   Module not found "file:///tmp/user_fn_<ref>_<uuid>_4/_shared/
- *   edgeAuth.js" at .../source/index.ts:60:31
+ *   1. `../_shared/edgeAuth.js` — `_shared/` is a CLI-only bundling
+ *      convention and is not carried by a Dashboard deploy. Measured:
+ *      Module not found "file:///tmp/user_fn_<ref>_<uuid>_4/_shared/
+ *      edgeAuth.js" at .../source/index.ts:60:31
  *
- * Every other function in this repository has always been self-contained.
- * A security fix that only lands if you happen to deploy with one
- * particular tool is not a fix, so the functions import `./edgeAuth.js`
- * and the deploy stops caring which tool you used.
+ *   2. `./edgeAuth.js` beside index.ts — worked for three functions and
+ *      not the other two, where the second file "just keeps vanishing"
+ *      from the editor. AN EMPTY FILE VANISHES TOO, so it is not size
+ *      and not content: those functions simply will not take a second
+ *      file. That killed the payload theory this script previously
+ *      carried, and it is written down here because it was measured
+ *      rather than reasoned about.
  *
- * THE COPIES ARE NOT MAINTAINED BY HAND. Run this after any edit to the
- * canonical file. run-edge-auth-tests.js asserts every copy is
- * byte-identical, so forgetting is a failing test rather than one
- * function quietly enforcing something different from its neighbours —
- * which, for an authorization module, is the failure that matters.
+ * One file cannot half-arrive. It is also what every function in this
+ * repository was before this sprint touched them.
+ *
+ * NOTHING IS MAINTAINED BY HAND. Run this after any edit to the
+ * canonical file. run-edge-auth-tests.js asserts each index.ts matches
+ * what this script produces AND runs the gate's real assertions against
+ * the inlined block, so drift is a failing test rather than one function
+ * quietly enforcing something different from its neighbours — which, for
+ * an authorization module, is the failure that matters.
  *
  * Run:
- *   node tools/edge-auth-test/sync-shared.js          copy, and report
+ *   node tools/edge-auth-test/sync-shared.js          inline, and report
  *   node tools/edge-auth-test/sync-shared.js --check  report only, exit 1 on drift
  */
 'use strict';
@@ -91,37 +99,154 @@ function strip(text) {
     kept.push(l);
   });
 
-  return [
-    '// GENERATED — do not edit. The readable original, with every',
-    '// decision explained, is supabase/functions/_shared/edgeAuth.js.',
-    '// Regenerate: node tools/edge-auth-test/sync-shared.js',
-    '',
-  ].join('\n') + kept.join('\n').replace(/^\n+/, '');
+  // No banner here — the caller owns the header, so the block carries
+  // exactly one rather than two stacked on top of each other.
+  return kept.join('\n').replace(/^\n+/, '').replace(/\n+$/, '\n');
 }
 
 if (!fs.existsSync(CANON)) {
   console.error('canonical module missing: ' + path.relative(ROOT, CANON));
   process.exit(1);
 }
-const source = Buffer.from(strip(fs.readFileSync(CANON, 'utf8')), 'utf8');
+
+const BEGIN = '// ===== BEGIN GENERATED edgeAuth — do not edit below this line =====';
+const END   = '// ===== END GENERATED edgeAuth =====';
+
+// `export` is dropped: inlined at the top level of the function module
+// these are ordinary declarations, and re-exporting them from an Edge
+// Function would put the gate's internals on that module's public
+// surface for no reason.
+const BLOCK = [
+  BEGIN,
+  '// Generated from supabase/functions/_shared/edgeAuth.js, which is the',
+  '// readable original with every decision explained. Regenerate with:',
+  '//   node tools/edge-auth-test/sync-shared.js',
+  strip(fs.readFileSync(CANON, 'utf8')).replace(/^export /gm, ''),
+  END,
+].join('\n');
+
+// Where the block goes: replacing an existing block if one is there,
+// otherwise replacing the import line that used to pull the module in.
+const IMPORT_RE = /^import \{[^}]*\} from '\.\/edgeAuth\.js';$/m;
+const BLOCK_RE = new RegExp(BEGIN.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') +
+  '[\\s\\S]*?' + END.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'm');
+
+function inlined(src) {
+  if (BLOCK_RE.test(src)) return src.replace(BLOCK_RE, BLOCK);
+  if (IMPORT_RE.test(src)) return src.replace(IMPORT_RE, BLOCK);
+  throw new Error('no marker block and no ./edgeAuth.js import to replace');
+}
 
 let drifted = 0, written = 0;
 FUNCTIONS.forEach((name) => {
-  const dest = path.join(ROOT, 'supabase', 'functions', name, 'edgeAuth.js');
+  const dest = path.join(ROOT, 'supabase', 'functions', name, 'index.ts');
   const rel = path.relative(ROOT, dest);
-  const same = fs.existsSync(dest) && fs.readFileSync(dest).equals(source);
+  const before = fs.readFileSync(dest, 'utf8');
+  let after;
+  try { after = inlined(before); }
+  catch (e) { console.log('  ERROR   ' + rel + ' — ' + e.message); drifted++; return; }
+
+  if (after === before) { console.log('  ok      ' + rel); return; }
+  drifted++;
+  if (checkOnly) { console.log('  DRIFTED ' + rel); return; }
+  fs.writeFileSync(dest, after);
+  written++;
+  console.log('  written ' + rel);
+});
+
+// The separate copies this script used to write are gone; a stale one
+// left on disk would be dead code that still looks authoritative.
+FUNCTIONS.forEach((name) => {
+  const stale = path.join(ROOT, 'supabase', 'functions', name, 'edgeAuth.js');
+  if (!fs.existsSync(stale)) return;
+  if (checkOnly) { console.log('  STALE   ' + path.relative(ROOT, stale)); drifted++; return; }
+  fs.unlinkSync(stale);
+  console.log('  removed ' + path.relative(ROOT, stale));
+});
+
+// ---------------------------------------------------------------
+// THE SINGLE-FILE PASTE VARIANT
+//
+// This repository already solved Dashboard deployment before this sprint
+// existed, and the answer was sitting in family-album's own folder:
+// dashboard-paste.ts, "index.ts + parse.js merged into ONE file, for
+// deploying via the Supabase Dashboard's in-browser editor (no CLI
+// needed)". That is how this project deploys. Finding it three attempts
+// late is the whole reason those attempts happened.
+//
+// Its own note said to "keep in lockstep ... by hand", and by the time
+// this sprint hardened index.ts it had drifted: it carried no gate at
+// all, so pasting it would have deployed an UNHARDENED family-album —
+// worse than a failed deploy, because it looks like success.
+//
+// So it is generated now. A hand-mirrored copy of a security boundary is
+// a promise nobody can keep.
+const PASTE_HEADER = (name) => [
+  '// ============================================================================',
+  '// ' + name + ' — DASHBOARD-PASTE VARIANT (single file)',
+  '// ============================================================================',
+  '// GENERATED — do not edit. This is index.ts with every local import',
+  '// inlined, for deploying via the Supabase Dashboard\'s in-browser editor',
+  '// (no CLI needed):',
+  '//',
+  '//   Dashboard → Edge Functions → Deploy a new function → Via Editor',
+  '//   → name it exactly:  ' + name,
+  '//   → replace the template with this entire file → Deploy',
+  '//   (leave "Verify JWT" at its default ON — the function does its own',
+  '//    caller check on top of it; see CLAUDE.md → Decision 30)',
+  '//',
+  '// Regenerate: node tools/edge-auth-test/sync-shared.js',
+  '// ============================================================================',
+  '',
+].join('\n');
+
+// Any remaining `import {...} from './something.js'` is a local file the
+// Dashboard would have to carry separately — exactly what does not
+// reliably arrive. Inlined here instead.
+const LOCAL_IMPORT_RE = /^import \{[^}]*\} from '\.\/([A-Za-z0-9_.-]+\.js)';$/gm;
+
+FUNCTIONS.forEach((name) => {
+  const dir = path.join(ROOT, 'supabase', 'functions', name);
+  const src = fs.readFileSync(path.join(dir, 'index.ts'), 'utf8');
+  const locals = [...src.matchAll(LOCAL_IMPORT_RE)];
+  const dest = path.join(dir, 'dashboard-paste.ts');
+  const rel = path.relative(ROOT, dest);
+
+  // Nothing left to inline: index.ts IS the paste. A variant that merely
+  // duplicated it would be a second thing to keep in step, which is the
+  // failure this whole section exists to remove.
+  if (!locals.length) {
+    if (fs.existsSync(dest)) {
+      if (checkOnly) { console.log('  STALE   ' + rel + ' (index.ts needs no variant)'); drifted++; return; }
+      fs.unlinkSync(dest); console.log('  removed ' + rel);
+    }
+    return;
+  }
+
+  let merged = src;
+  locals.forEach((m) => {
+    const file = fs.readFileSync(path.join(dir, m[1]), 'utf8').replace(/^export /gm, '');
+    merged = merged.replace(m[0], [
+      '// ===== BEGIN INLINED ' + m[1] + ' =====',
+      file.replace(/\n+$/, ''),
+      '// ===== END INLINED ' + m[1] + ' =====',
+    ].join('\n'));
+  });
+  merged = PASTE_HEADER(name) + merged;
+
+  const same = fs.existsSync(dest) && fs.readFileSync(dest, 'utf8') === merged;
   if (same) { console.log('  ok      ' + rel); return; }
   drifted++;
   if (checkOnly) { console.log('  DRIFTED ' + rel); return; }
-  fs.writeFileSync(dest, source);
+  fs.writeFileSync(dest, merged);
   written++;
   console.log('  written ' + rel);
 });
 
 if (checkOnly && drifted) {
-  console.log('\n' + drifted + ' copy/copies differ from the canonical module.');
+  console.log('\n' + drifted + ' file(s) differ from what this script produces.');
   console.log('Run: node tools/edge-auth-test/sync-shared.js');
   process.exit(1);
 }
-console.log('\n' + (written ? written + ' copied' : 'all copies already match') +
+console.log('\n' + (written ? written + ' rewritten' : 'every function already matches') +
   ' — canonical: ' + path.relative(ROOT, CANON));

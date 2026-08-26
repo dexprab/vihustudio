@@ -23,12 +23,24 @@
  *      section and it is labelled as such below rather than dressed up.
  *
  * WHAT THIS SANDBOX CANNOT PROVE, stated rather than papered over:
- * nothing here reaches Supabase. No Edge Function has been deployed, no
- * GoTrue has issued a token, and the migration has not been run against
- * the live project. The SQL is real and the module's logic is real; the
- * deployment is not. Section C's own assertions are about source text,
- * which is the one place in this file where passing is weaker evidence
- * than elsewhere.
+ * nothing here reaches Supabase. No GoTrue has issued a token to this
+ * process. The SQL is real and the module's logic is real; the
+ * deployment is not exercised from here. Section C's own assertions are
+ * about source text, which is the one place in this file where passing
+ * is weaker evidence than elsewhere.
+ *
+ * AND IT HAS NOW BEEN PROVED WHERE THIS FILE CANNOT REACH. The migration
+ * was applied and the five functions deployed to the live project, and
+ * the product owner ran the public anon key against each of the four
+ * browser-facing ones:
+ *
+ *   voice-speak · sky-protection · family-album · invite-send
+ *     -> 401 {"ok":false,"reason":"unauthorized"}   (all four)
+ *
+ * Every one of those answered 200 to that same key the day before. That
+ * is the whole sprint, observed in production rather than argued for
+ * here. creator-born is deliberately absent from that list: it carries
+ * no CORS headers at all, because nothing in a browser may reach it.
  *
  * Run:
  *   NODE_PATH=/opt/node22/lib/node_modules node tools/edge-auth-test/run-edge-auth-tests.js
@@ -381,9 +393,16 @@ function fakeDb(spec) {
         const row = psql(pg, `select public.${name}('${args.p_bucket}','${args.p_subject}',${args.p_limit},${args.p_window_seconds});`);
         return { data: JSON.parse(row.trim()), error: null };
       } };
-      const r1 = await A.checkRateLimit(realDb, 'voice-speak', 'sub-d', { get: () => '2' });
-      const r2 = await A.checkRateLimit(realDb, 'voice-speak', 'sub-d', { get: () => '2' });
-      const r3 = await A.checkRateLimit(realDb, 'voice-speak', 'sub-d', { get: () => '2' });
+      // THE MAX ONLY. A stub answering '2' to every name also set
+      // EDGE_LIMIT_VOICE_SPEAK_WINDOW=2, so this ran against a TWO-SECOND
+      // window and failed whenever the three calls straddled a rollover —
+      // once in eight runs, measured. The same rollover hazard B3/B5
+      // already guard against with a long window, arriving through the
+      // env stub instead. "Flake" was not the root cause.
+      const maxOnly = { get: (n) => (/_MAX$/.test(n) ? '2' : '') };
+      const r1 = await A.checkRateLimit(realDb, 'voice-speak', 'sub-d', maxOnly);
+      const r2 = await A.checkRateLimit(realDb, 'voice-speak', 'sub-d', maxOnly);
+      const r3 = await A.checkRateLimit(realDb, 'voice-speak', 'sub-d', maxOnly);
       check(r1.allowed && r2.allowed && !r3.allowed,
         'B8  checkRateLimit() drives the real SQL to a real refusal');
 
@@ -395,6 +414,38 @@ function fakeDb(spec) {
         'B9  RATE LIMIT EXCEEDED -> 429 {ok:false,reason:"rate_limited"}');
       check(typeof g.body.retryAfter === 'number' && !('remaining' in g.body),
         'B9b the 429 body says when to retry and reveals no usage figures');
+
+      // THE POST-DEPLOY CHECK. Two things can now fail SILENTLY —
+      // creator-born refusing the trigger because platform_settings
+      // holds the anon key, and invite-send refusing everybody because
+      // platform_admins is empty. Nobody notices either until they go
+      // looking, so there is a file that looks, and it is exercised here
+      // against both a misconfigured project and a healthy one.
+      psql(pg, 'create table if not exists public.platform_settings(key text primary key, value text)');
+      psql(pg, 'create table if not exists public.platform_admins(email text primary key)');
+      const jwtFor = (role) => jwt({ iss: 'supabase', role: role });
+      const deployCheck = () => psqlFile(pg, path.join(ROOT, 'supabase', 'verify_edge_auth_deployed.sql'));
+
+      psql(pg, "insert into public.platform_settings values ('creator_born_key','" + jwtFor('anon') +
+               "'),('creator_born_url','https://x.supabase.co/functions/v1/creator-born') " +
+               "on conflict (key) do update set value = excluded.value");
+      const sick = deployCheck();
+      check(/creator_born_key[^|]*\|[^|]*\|\s*anon\s*\|\s*FAIL/.test(sick.replace(/\n/g, '')) || /anon.*FAIL/.test(sick),
+        'B11 the deploy check names the ANON key in the trigger as a failure');
+      check(/EMPTY — invite-send will refuse everybody/.test(sick),
+        'B11b and an empty platform_admins as a failure');
+
+      const svc = jwtFor('service_role');
+      psql(pg, "update public.platform_settings set value = '" + svc + "' where key = 'creator_born_key'");
+      psql(pg, "insert into public.platform_admins values ('boss@vihuplanet.com') on conflict do nothing");
+      const well = deployCheck();
+      check(/── OVERALL ──[^\n]*all checks pass[^\n]*PASS/.test(well),
+        'B12 and passes outright once both are configured correctly');
+      check(well.indexOf(svc) === -1,
+        'B12b WITHOUT EVER PRINTING THE KEY — only the role claim it decoded');
+
+      psql(pg, 'drop table public.platform_settings');
+      psql(pg, 'drop table public.platform_admins');
 
       // Broken limiter must not take the product down.
       const brokenDb = { async rpc() { return { data: null, error: { message: 'relation does not exist' } }; } };
@@ -413,82 +464,109 @@ function fakeDb(spec) {
     const fn = (n) => fs.readFileSync(path.join(ROOT, 'supabase', 'functions', n, 'index.ts'), 'utf8');
 
     const gated = ['voice-speak', 'sky-protection', 'family-album', 'invite-send', 'creator-born'];
+
+    // ONE FILE PER FUNCTION. Two attempts at fewer copies both failed on
+    // the real deploy: `../_shared/` is CLI-only, and a sibling
+    // `./edgeAuth.js` "just keeps vanishing" from two of the five
+    // functions — an EMPTY one vanishes too, so it is neither size nor
+    // content. A file that cannot be added cannot be depended on, and a
+    // single file cannot half-arrive.
     gated.forEach((n) => {
       const src = fn(n);
-      check(/from '\.\/edgeAuth\.js'|import\('\.\/edgeAuth\.js'\)/.test(src) && /guard\(/.test(src),
-        'C1  ' + n + ' calls the gate from its own folder');
+      check(/BEGIN GENERATED edgeAuth/.test(src) && /END GENERATED edgeAuth/.test(src),
+        'C1  ' + n + ' carries the gate inline');
+      check(/guard\(req/.test(src), 'C1a ' + n + ' calls it');
     });
 
-    // DEPLOY PORTABILITY. `_shared/` is a CLI-only bundling convention and
-    // is NOT carried by a Dashboard deploy — measured, on this project:
-    //   Module not found "file:///tmp/user_fn_<ref>_<uuid>_4/_shared/
-    //   edgeAuth.js" at .../source/index.ts:60:31
-    // A security fix that lands only under one deploy tool is not a fix,
-    // so no function may reach outside its own folder for code.
+    // Nothing may be imported from a file the deploy might not carry.
+    // `./parse.js` is family-album's own, predates this sprint and has
+    // always deployed — the rule is about files THIS sprint added.
     gated.forEach((n) => {
-      const src = fn(n).replace(/^\s*\/\/.*$/gm, '');   // comments may DISCUSS ../_shared
-      check(!/from '\.\.\//.test(src) && !/import\('\.\.\//.test(src),
-        'C1b ' + n + ' imports nothing from outside its own folder');
+      const src = fn(n).replace(/^\s*\/\/.*$/gm, '');
+      check(!/edgeAuth\.js'/.test(src),
+        'C1b ' + n + ' imports no separate auth file at all');
+      check(!fs.existsSync(path.join(ROOT, 'supabase', 'functions', n, 'edgeAuth.js')),
+        'C1b2 ' + n + ' has no stale copy left on disk');
     });
 
-    // ONE SOURCE OF TRUTH, FIVE COPIES, AND THEY MUST NOT DRIFT. For an
-    // authorization module, one function quietly enforcing something
-    // different from its neighbours is the failure that matters.
-    //
-    // Asked of the REAL generator rather than a reimplementation of it:
-    // a second copy of the stripping rule in this file could disagree
-    // with the one that actually writes the files, and then this check
-    // would be passing on its own opinion.
+    // THE FILE PEOPLE ACTUALLY PASTE. This repository already had a
+    // convention for Dashboard deployment before this sprint — family-
+    // album/dashboard-paste.ts, "index.ts + parse.js merged into ONE
+    // file" — and its own note said to keep it in lockstep BY HAND. By
+    // the time index.ts was hardened it carried no gate at all, so
+    // pasting it would have deployed an unhardened function: worse than
+    // a failed deploy, because it looks like success. It is generated
+    // now, and checked here.
+    {
+      const paste = path.join(ROOT, 'supabase', 'functions', 'family-album', 'dashboard-paste.ts');
+      check(fs.existsSync(paste), 'C2a family-album keeps a single-file paste variant');
+      const src = fs.readFileSync(paste, 'utf8');
+      check(/BEGIN GENERATED edgeAuth/.test(src) && /guard\(req/.test(src),
+        'C2b THE PASTE VARIANT CARRIES THE GATE — it is what gets deployed');
+      check(!/from '\.\//.test(src),
+        'C2c and imports nothing local, so nothing can fail to arrive');
+      check(/BEGIN INLINED parse\.js/.test(src),
+        'C2d parse.js travels inside it');
+      check(/GENERATED — do not edit/.test(src),
+        'C2e it says it is generated rather than inviting a hand edit');
+
+      // A function with nothing local to inline must NOT grow a variant:
+      // a duplicate of index.ts would be a second thing to keep in step,
+      // which is the failure this whole mechanism exists to remove.
+      ['voice-speak', 'sky-protection', 'invite-send', 'creator-born'].forEach((n) => {
+        check(!fs.existsSync(path.join(ROOT, 'supabase', 'functions', n, 'dashboard-paste.ts')),
+          'C2f ' + n + ' needs no variant — its index.ts is the paste');
+      });
+    }
+
+    // ONE SOURCE OF TRUTH. Asked of the REAL generator rather than a
+    // reimplementation of it: a second copy of the inlining rule in this
+    // file could disagree with the one that writes the files, and then
+    // this check would be passing on its own opinion.
     let synced = true;
     try { sh('node ' + JSON.stringify(path.join(ROOT, 'tools', 'edge-auth-test', 'sync-shared.js')) + ' --check'); }
     catch (e) { synced = false; }
-    check(synced, 'C1c every vendored copy matches what the generator produces');
+    check(synced, 'C1c every inlined block matches what the generator produces');
 
-    gated.forEach((n) => {
-      const copy = path.join(ROOT, 'supabase', 'functions', n, 'edgeAuth.js');
-      const src = fs.existsSync(copy) ? fs.readFileSync(copy, 'utf8') : '';
-      check(/GENERATED — do not edit/.test(src),
-        'C1d ' + n + '/edgeAuth.js says it is generated and where to read the original');
-    });
-
-    // THE ARTIFACT THAT DEPLOYS IS THE ONE UNDER TEST. The copies are
-    // the canonical module with its full-line comments removed, and
-    // "same behaviour" is asserted by RUNNING them rather than by
-    // trusting the stripper. Every gate decision this suite makes above
-    // is re-made here against a real vendored file.
-    const V = await import('file://' +
-      path.join(ROOT, 'supabase', 'functions', 'sky-protection', 'edgeAuth.js'));
+    // THE CODE THAT DEPLOYS IS THE CODE UNDER TEST. The block is the
+    // canonical module with its full-line comments removed and `export`
+    // dropped; "same behaviour" is asserted by RUNNING what is actually
+    // in index.ts, not by trusting the generator.
+    const block = (() => {
+      const src = fn('sky-protection');
+      const a = src.indexOf('BEGIN GENERATED edgeAuth');
+      const b = src.indexOf('// ===== END GENERATED edgeAuth =====');
+      return src.slice(src.indexOf('\n', a) + 1, b);
+    })();
+    const tmp = path.join(require('os').tmpdir(), 'vihu-inlined-gate.mjs');
+    fs.writeFileSync(tmp, block +
+      '\nexport { LIMITS, resolveCaller, authorizeCardAccess, guard, limitFor };\n');
+    const V = await import('file://' + tmp);
 
     check(JSON.stringify(V.LIMITS) === JSON.stringify(A.LIMITS),
-      'C1e the vendored copy carries the same LIMITS table');
+      'C1e the inlined gate carries the same LIMITS table');
 
     const vAnon = await V.resolveCaller(withToken(ANON_KEY), ENV, { fetchImpl: stubFetch() });
     check(vAnon.ok === false && vAnon.reason === 'unauthorized',
-      'C1f the vendored copy refuses the public anon key');
+      'C1f the inlined gate refuses the public anon key');
 
     const vUser = await V.resolveCaller(withToken(USER_TOKEN), ENV, { fetchImpl: stubFetch() });
     check(vUser.ok === true && vUser.userId === 'user-aaaa',
-      'C1g the vendored copy derives the caller from the auth server');
+      'C1g the inlined gate derives the caller from the auth server');
 
     const vDb = fakeDb({
       magic_card_identities: [{ id: 'card-a', owner_id: 'user-aaaa' }, { id: 'card-b', owner_id: 'user-bbbb' }],
       magic_card_recalls: [],
     });
-    const vMine = await V.authorizeCardAccess(vDb, 'card-a', vUser);
-    const vTheirs = await V.authorizeCardAccess(vDb, 'card-b', vUser);
-    check(vMine.ok === true && vTheirs.ok === false,
-      'C1h the vendored copy enforces card ownership identically');
+    check((await V.authorizeCardAccess(vDb, 'card-a', vUser)).ok === true &&
+          (await V.authorizeCardAccess(vDb, 'card-b', vUser)).ok === false,
+      'C1h the inlined gate enforces card ownership identically');
 
     const vGuard = await V.guard(req({}), { env: ENV, require: 'user', fetchImpl: stubFetch() });
     check(vGuard.ok === false && vGuard.status === 401 &&
           JSON.stringify(vGuard.body) === '{"ok":false,"reason":"unauthorized"}',
       'C1i and refuses with the same safe body');
-
-    // Payload matters — it is why the copies are stripped at all.
-    gated.forEach((n) => {
-      const bytes = fs.statSync(path.join(ROOT, 'supabase', 'functions', n, 'edgeAuth.js')).size;
-      check(bytes < 12000, 'C1j ' + n + '/edgeAuth.js stays small enough to paste', bytes + ' bytes');
-    });
+    fs.unlinkSync(tmp);
 
     check(/require:\s*'service'/.test(fn('creator-born')),
       'C2  creator-born is service-only — no browser session may reach it');
