@@ -146,7 +146,7 @@ begin
   -- by how many windows one subject has used, so it stays cheap and
   -- never turns a rate-limit check into a table scan. Global cleanup of
   -- subjects that never return is a scheduled job's business, not this
-  -- function's — see the note under VERIFY below.
+  -- function’s — see supabase/verify_edge_rate_limit.sql.
   delete from public.edge_rate_limits
    where bucket = p_bucket
      and subject = p_subject
@@ -173,29 +173,29 @@ grant execute on function public.edge_rate_limit_hit(text, text, integer, intege
 commit;
 
 -- ---------------------------------------------------------------
--- VERIFY — run these after committing.
+-- VERIFYING IT — and why that is a SEPARATE FILE
 -- ---------------------------------------------------------------
-
--- Expect rowsecurity = true and zero policies.
-select relname, relrowsecurity from pg_class
- where oid = 'public.edge_rate_limits'::regclass;
-select count(*) as policy_count from pg_policies
- where schemaname = 'public' and tablename = 'edge_rate_limits';
-
--- Expect allowed=true twice, then allowed=false, with remaining
--- counting down and retry_after inside the window.
-select public.edge_rate_limit_hit('verify', 'subject-a', 2, 60);
-select public.edge_rate_limit_hit('verify', 'subject-a', 2, 60);
-select public.edge_rate_limit_hit('verify', 'subject-a', 2, 60);
-
--- Expect allowed=true — a different subject has its own allowance.
-select public.edge_rate_limit_hit('verify', 'subject-b', 2, 60);
-
-delete from public.edge_rate_limits where bucket = 'verify';
-
+-- Run supabase/verify_edge_rate_limit.sql after this one.
+--
+-- The checks used to live at the foot of this file, and pasting the
+-- whole thing into the Supabase SQL Editor is how that turned out to be
+-- wrong. The editor shows ONE result panel, so a script whose last four
+-- statements each return a similar-looking JSON blob gives the person
+-- running it no way to tell a pass from a failure — the first probe's
+-- {"allowed": true, "remaining": 1} is indistinguishable, at a glance,
+-- from something having gone wrong. Reported as exactly that.
+--
+-- Worse, the probes WROTE ROWS into the live table to do it. A
+-- migration should be inert: paste it, get "Success. No rows returned",
+-- and know that nothing was counted against anybody.
+--
+-- So this file now only migrates, and the verifier answers in one word
+-- per check.
+--
+-- ---------------------------------------------------------------
 -- OPTIONAL HOUSEKEEPING. Rows for subjects that never come back are
--- left behind by the per-subject sweep above. They are tiny and
--- harmless, but if pg_cron is available on this project:
+-- left behind by the per-subject sweep inside the function. They are
+-- tiny and harmless, but if pg_cron is available on this project:
 --
 --   select cron.schedule('edge-rate-limit-sweep', '17 4 * * *',
 --     $$delete from public.edge_rate_limits

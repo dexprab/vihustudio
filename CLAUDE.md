@@ -2608,9 +2608,20 @@ the standard this product will be held to when it is.
   page deletion warns that it *"cannot be undone"*). That gate is
   `docs/COMPANION_INTELLIGENCE_ARCHITECTURE.md` §7.4's and it is
   unchanged.
+- **A migration is inert; its verification is a separate file.** Reported
+  by the product owner running the migration and reading its own first
+  probe — `{"allowed": true, "remaining": 1}` — as an error. It was the
+  check passing. The Supabase SQL Editor shows ONE result panel, so a
+  script ending in four similar JSON blobs cannot be told from a failure
+  at a glance, and those probes wrote rows into the live table to produce
+  them. `supabase/verify_edge_rate_limit.sql` now answers in one word per
+  check with an overall verdict on top, writes to a reserved bucket no
+  Edge Function uses, and deletes what it wrote — so it is safe to run on
+  a live project at any time. The migration returns nothing at all.
 - `docs/COMPANION_CANON.md` → Canon 5 ·
   `supabase/functions/_shared/edgeAuth.js` ·
   `supabase/migrations_edge_rate_limit.sql` ·
+  `supabase/verify_edge_rate_limit.sql` ·
   `tools/edge-auth-test/run-edge-auth-tests.js`
 
 ## Roadmap
