@@ -816,6 +816,237 @@ function check(cond, name, note) {
   check(yErrors.length === 0, 'Y6 zero page errors', yErrors.slice(0, 2).join(' | '));
   await yp.close();
 
+  /* ---- Z: a rite left half done is kept, offered back, and resumed ---
+   *
+   * "why dont we allow resume from studio home for rite 2 & 3 this way
+   * it will never enter projects or show in projects till completely
+   * done, child does not have any work lost on account of not able to
+   * complete in single seating." Measured before this: three abandoned
+   * starts left three empty stories in My Projects.
+   *
+   * Where the child had got to is DERIVED from the story, never stored
+   * — Decision 22's own rule that rites get added, split and reordered
+   * is exactly why a saved beat number would rot.
+   */
+  console.log('\n-- Z: a rite left half done');
+
+  // Satisfy exactly the gate the story is standing on. Reading the gate
+  // (StudioRite._awaitingGate) rather than guessing at every control is
+  // what makes a real walk possible: a driver that pokes everything on
+  // every beat fights the beats it is not on — measured, it put sixty
+  // objects on a page and still never passed beat nine.
+  const SATISFY = function (gate) {
+    const pg = PageRuntime.getActivePage();
+    pg.metadata = pg.metadata || {};
+    const put = (kind) => {
+      pg.metadata.stickers = pg.metadata.stickers || [];
+      pg.metadata.stickers.push({ id: 'k' + Date.now() + Math.random(), kind: kind,
+        x: 20, y: 20, w: 60, h: 60, rotation: 0 });
+    };
+    switch (gate) {
+      case 'bg-set':
+        pg.metadata.cardOverrides = pg.metadata.cardOverrides || {};
+        pg.metadata.cardOverrides.background = '#2E7D32'; break;
+      case 'letter-kept': case 'letters-grown': {
+        const n = HandwritingStore.list().length;
+        HandwritingStore.save({ ch: String.fromCharCode(97 + n),
+          png: 'data:image/png;base64,iVBORw0KGgo=', w: 40, h: 40 });
+        break; }
+      case 'letters-placed': case 'drawing-placed': case 'photo-added': put('image'); break;
+      case 'drawing-kept':
+        try { CreatorLibrary.save({ name: 'c' + Date.now(), png: 'data:image/png;base64,iVBORw0KGgo=' }); } catch (e) {}
+        break;
+      case 'sticker-added': put('emoji'); break;
+      case 'text-added': put('text'); break;
+      case 'shape-added': put('shape'); break;
+      case 'sticker-resized': (pg.metadata.stickers || []).forEach((x) => { x.w = (x.w || 60) + 11; x.h = (x.h || 60) + 11; }); break;
+      case 'sticker-moved': (pg.metadata.stickers || []).forEach((x) => { x.x = (x.x || 0) + 17; x.y = (x.y || 0) + 17; }); break;
+      case 'sticker-rotated': (pg.metadata.stickers || []).forEach((x) => { x.rotation = (x.rotation || 0) + 15; }); break;
+      case 'page-added': PageOps.duplicatePage(AppState.currentSlide); break;
+      case 'blank-page-added': PageOps.addAfter(AppState.slides.length - 1); break;
+      case 'voice-added':
+        (AppState.slides || []).forEach((sl) => { sl.metadata = sl.metadata || {}; sl.metadata.narration = { src: 'x' }; });
+        break;
+      case 'page-shaped':
+        (AppState.slides || []).forEach((sl) => { sl.metadata = sl.metadata || {}; sl.metadata.aspect = 'tall'; });
+        break;
+      case 'story-named': {
+        const t = document.getElementById('bookTitle');
+        if (t) { t.value = 'The Green Place'; t.dispatchEvent(new Event('input', { bubbles: true })); }
+        break; }
+      case 'story-played': {
+        // The player counts a reading when it OPENS, so opening and
+        // closing it again is exactly one reading.
+        const b = document.getElementById('playStoryBtn');
+        if (b && !b.disabled) b.click(); else { try { StoryPlayer.open({}); } catch (e) {} }
+        setTimeout(() => { try { StoryPlayer.close(); } catch (e) {} }, 300);
+        break; }
+      default: break;
+    }
+    try { PageRuntime.notify(); ProjectManager.markDirty(); } catch (e) {}
+    return gate;
+  };
+
+  const zp = await browser.newPage({ viewport: { width: 1359, height: 800 } });
+  const zErrors = [];
+  zp.on('pageerror', (e) => zErrors.push(String(e)));
+  async function zBoot() {
+    await zp.goto(BASE + '/studio.html?author=on');
+    await zp.waitForFunction(() =>
+      typeof StudioRite !== 'undefined' && typeof MagicCard !== 'undefined' &&
+      typeof CreationFlow !== 'undefined' && typeof CreatorProjectStore !== 'undefined',
+      null, { timeout: 20000 });
+    await zp.evaluate(() => {
+      const gw = document.getElementById('gatewayOverlay');
+      if (gw) gw.style.display = 'none';
+      document.querySelectorAll('.studio-rite-overlay').forEach((n) => n.remove());
+    });
+    await zp.waitForTimeout(500);
+  }
+
+  // Wait for the beat to actually be ASKING. `_awaitingGate()` is null
+  // while a screen is still revealing its lines, so reading it too early
+  // satisfies nothing and the walk silently stalls — measured, it left
+  // the letter beat unsatisfied and the resume then correctly landed
+  // there, which read as a resume bug and was a walker bug.
+  async function zSatisfyCurrent() {
+    for (let t = 0; t < 40; t++) {
+      const gate = await zp.evaluate(() => StudioRite._awaitingGate && StudioRite._awaitingGate());
+      if (gate) {
+        await zp.evaluate((fn) => {
+          const g = StudioRite._awaitingGate();
+          if (g) eval('(' + fn + ')')(g);
+        }, SATISFY.toString());
+        return gate;
+      }
+      if (await zp.evaluate(() => !StudioRite.isRunning())) return null;
+      await zp.waitForTimeout(250);
+    }
+    return null;
+  }
+
+  const zState = () => zp.evaluate(() => ({
+    myProjects: CreatorProjectStore.list().length,
+    names: CreatorProjectStore.list().map((r) => r.name),
+    held: (CreatorProjectStore.listAll() || []).filter((r) => r.riteInProgress).length,
+    records: (CreatorProjectStore.listAll() || []).length,
+    running: StudioRite.isRunning(),
+    beat: (document.querySelector('.studio-rite-line .gateway-greeting-title') || {}).textContent || ''
+  }));
+
+  await zBoot();
+  await zp.evaluate(() => {
+    localStorage.clear();
+    const c = MagicCard.claim('Vihu');
+    MagicCard.setActive(c.id);
+    const r1 = StudioRite.rites().find((r) => r.mandatory);
+    MagicCard.setTaught((r1.teaches || []).concat(r1.reveals || []));
+  });
+
+  // --- sitting one: two beats, then walk away
+  await zBoot();
+  await zp.evaluate(() => { try { StudioRite.start('my-garden'); } catch (e) {} });
+  await zp.waitForTimeout(3000);
+  const walked = [];
+  for (let i = 0; i < 2; i++) {
+    const g = await zSatisfyCurrent();
+    if (g) walked.push(g);
+    await zp.waitForTimeout(600);
+    await zp.evaluate(() => { const d = document.querySelector('.studio-rite-done'); if (d) d.click(); });
+    await zp.waitForTimeout(500);
+  }
+  check(walked.join(',') === 'bg-set,letter-kept',
+    'Z0 the setup really walked the first two beats', walked.join(',') || '(none)');
+  await zp.evaluate(() => { try { ProjectManager.saveToLocalStorage(); } catch (e) {} });
+  await zp.waitForTimeout(400);
+  const stopped = await zState();
+  check(stopped.myProjects === 0 && stopped.held === 1,
+    'Z1 a rite\'s story is held, not in My Projects', JSON.stringify(stopped));
+
+  // --- and again, and again: never a second story
+  for (let round = 0; round < 2; round++) {
+    await zBoot();
+    await zp.evaluate(() => { try { StudioRite.start('my-garden'); } catch (e) {} });
+    await zp.waitForTimeout(4000);
+  }
+  const again = await zState();
+  check(again.records === 1 && again.myProjects === 0 && again.held === 1,
+    'Z2 coming back reuses the held story — never a second one', JSON.stringify(again));
+
+  // --- the offer reads as a door left open, and only once
+  await zBoot();
+  const zOffer = await zp.evaluate(() => {
+    try { CreationFlow.start({ resume: ProjectManager.getSessionStatus() }); } catch (e) {}
+    const c = document.getElementById('creationFlowContent');
+    const d = c.querySelector('.creation-flow-door');
+    return {
+      door: d ? (d.innerText || '').replace(/\s+/g, ' ').trim() : null,
+      resumePill: !!c.querySelector('.creation-flow-resume'),
+      session: ProjectManager.getSessionStatus().state
+    };
+  });
+  check(/left a door open/i.test(zOffer.door || '') && /Carry on/.test(zOffer.door || ''),
+    'Z3 Studio Home offers it back as a door left open', JSON.stringify(zOffer));
+  check(zOffer.session === 'valid' && zOffer.resumePill === false,
+    'Z4 …and only once — the session slot names the same story, and two offers for one story is not one thing',
+    JSON.stringify(zOffer));
+  // Decision 22's language rule, checked against the real rendered text
+  // rather than the source. `\brite\b` deliberately does not match
+  // "write".
+  [['rite', /\brite\b/i], ['level', /\blevels?\b/i], ['unlock', /\bunlock/i],
+   ['locked', /\blocked\b/i], ['progress', /\bprogress/i], ['step', /\bstep \d/i]
+  ].forEach(([word, re]) => {
+    check(!re.test(zOffer.door || ''), 'Z5 the offer never says "' + word + '"',
+      ((zOffer.door || '').match(re) || [''])[0]);
+  });
+
+  // --- resuming lands where they stopped, with the work intact
+  await zp.evaluate(() => { try { StudioRite.start('my-garden'); } catch (e) {} });
+  // Wait for the beat it lands on to start ASKING — the gate is null
+  // while a screen is still revealing its lines, which is not the same
+  // thing as landing in the wrong place.
+  let resumed = null;
+  for (let t = 0; t < 40; t++) {
+    await zp.waitForTimeout(400);
+    resumed = await zp.evaluate(() => ({
+      beat: (document.querySelector('.studio-rite-line .gateway-greeting-title') || {}).textContent || '',
+      gate: StudioRite._awaitingGate && StudioRite._awaitingGate(),
+      letters: HandwritingStore.list().length,
+      bg: ((PageRuntime.getActivePage().metadata || {}).cardOverrides || {}).background || null
+    }));
+    if (resumed.gate) break;
+  }
+  check(resumed.gate === 'letters-grown',
+    'Z6 it resumes at the beat they stopped on — derived from the story, never a stored beat number',
+    JSON.stringify(resumed));
+  check(resumed.letters >= 1 && !!resumed.bg,
+    'Z7 …with the work they had already done still there', JSON.stringify(resumed));
+
+  // --- finishing releases it into My Projects
+  for (let i = 0; i < 40; i++) {
+    if (await zp.evaluate(() => !StudioRite.isRunning())) break;
+    await zSatisfyCurrent();
+    await zp.waitForTimeout(500);
+    await zp.evaluate(() => { const d = document.querySelector('.studio-rite-done'); if (d) d.click(); });
+    await zp.waitForTimeout(350);
+  }
+  await zp.waitForTimeout(2000);
+  const zDone = await zp.evaluate(() => ({
+    running: StudioRite.isRunning(),
+    myProjects: CreatorProjectStore.list().length,
+    names: CreatorProjectStore.list().map((r) => r.name),
+    held: (CreatorProjectStore.listAll() || []).filter((r) => r.riteInProgress).length,
+    records: (CreatorProjectStore.listAll() || []).length,
+    taughtGarden: StudioRite.taught().indexOf('garden') >= 0,
+    next: StudioRite.nextOptIn()
+  }));
+  check(zDone.running === false && zDone.held === 0 && zDone.myProjects === 1,
+    'Z8 finishing releases the story into My Projects, and only then', JSON.stringify(zDone));
+  check(zDone.records === 1 && zDone.taughtGarden === true && zDone.next === 'my-little-house',
+    'Z9 one story, the capabilities granted, and the door moved on', JSON.stringify(zDone));
+  check(zErrors.length === 0, 'Z10 zero page errors', zErrors.slice(0, 3).join(' | '));
+  await zp.close();
+
   // The offer on Studio Home must skip the unwritten one and land on the
   // next real door — never on a rite nobody has authored.
   const offered = await page.evaluate(() => {

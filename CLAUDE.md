@@ -1586,6 +1586,79 @@ once, and its scope is no longer closed.
   drawings or cameras, and a future capture source gets the behaviour
   for free. Suppressed under reduced motion, where the growth animation
   is suppressed too and there is nothing to step aside for.
+- **AN OPT-IN RITE CAN BE PUT DOWN AND PICKED BACK UP** (build 0656).
+  Proposed by the product owner: *"why dont we allow resume from studio
+  home for rite 2 & 3 this way it will never enter projects or show in
+  projects till completely done, child does not have any work lost on
+  account of not able to complete in single seating."* It amends this
+  decision's assumption that a rite is walked in one sitting, and it
+  fixed a measured defect: a rite opens a blank story the instant it
+  starts, so every abandoned attempt left one in My Projects — three
+  starts, three empty stories.
+- **HELD, NEVER DELETED.** The alternative considered first was to keep
+  a blank project out of My Projects until something was in it, and it
+  only solved the litter. This solves both: the story is kept, offered
+  back, and resumed. A child who spent a quarter of an hour on Rite II
+  and had to stop loses nothing — which is the half that matters, since
+  Decision 19's rule is *a filter and never a delete*.
+- **The flag lives on the STORY, not the Magic Card.**
+  `riteInProgress` is a field on the project record, carried forward on
+  every autosave exactly as `publishedAt`, `creatorName` and `cardId`
+  are — a field not carried forward is wiped the moment editing
+  continues. It buys four things at once: `CreatorProjectStore.list()`
+  filters those records out, it already syncs to the cloud so a resume
+  works on another device with no new column and no migration, it is
+  inherently one-per-story, and pressing the door again reuses the held
+  story rather than making a second one.
+- **WHERE THE CHILD HAD GOT TO IS DERIVED, NEVER STORED.** This
+  decision's own rule is that rites will be added, split and reordered
+  over the product's life — which is exactly why capabilities are
+  stored and not a rite index. A saved beat number would rot on the
+  first reorder, and Rite II has gained or reworded beats twice. So the
+  rite replays from beat one and auto-advances past every beat the
+  story itself can account for. The gates were already the truth about
+  what a child has done.
+- **A COUNT, never a yes.** Gates repeat — Rite III has four
+  `shape-added` beats and four `doodle-added` ones — so a boolean
+  reading would replay a child who drew one shape past all four,
+  landing them in a story about a house they never built. And the count
+  is kept **per pool, not per gate**: `letter-kept` and `letters-grown`
+  both read the letters a child has made, and counted separately one
+  letter satisfied both and walked them a beat too far (measured).
+- **RETOLD, not replayed.** A beat already lived through shows its
+  lines at once and moves on — no voice, no cues, no waiting. Speaking
+  it again would take as long as the first sitting, which is the
+  opposite of picking up where you left off. Ten beats is about five
+  seconds.
+- **Disclosed limit.** `sticker-moved`, `sticker-resized` and
+  `sticker-rotated` cannot be read back from a saved story: it records
+  where the star IS, which is equally consistent with never having been
+  touched. They are treated as done when there is anything on the page,
+  because sending a child back to redo work they already did is the
+  worse of the two failures. Each appears at most once per rite today;
+  a second occurrence would be indistinguishable from the first.
+- **The mandatory rite is deliberately NOT held.** Its story is the
+  child's first — the thing they finish, share and get a Magic Card for
+  (Decision 8) — and a Traveller walking it holds no card and is
+  stateless anyway (Decision 19), so there is nothing to resume onto.
+- **The offer is the same one slot, worded for what it is.** *You left
+  a door open · Your story is still there, waiting for you. · Carry on*
+  in place of *A new door is waiting · Discover*. Everything the door
+  already had holds: one thing, never two, no decline, no dismiss, no
+  badge, no count, absent rather than empty, and it still names no
+  rite, level or capability. Both doors — Studio Home's and the rail's
+  — read it, because there is one door in the product and not two.
+- **Never two offers for one story.** A held rite story is also what
+  the session slot names, so Studio Home would have offered it once as
+  a story to carry on with and again as a door left open — and the two
+  are not interchangeable: opening it as a plain project drops the
+  child into the editor with no Lumo and no beats, which is not what
+  they left. The resume pill stands down; the door is the one that
+  knows how to give it back.
+- `Z0`–`Z10` walk Rite II for real: two beats, leave, come back twice,
+  resume at the beat they stopped on with the work intact, then finish
+  and watch the story enter My Projects — and only then. Proved by
+  removing the filter and the replay separately.
 - Design and sequencing: `docs/STUDIO_RITE_LEVELS.md`. Rite II's script
   and its engineering notes: `docs/STUDIO_RITE_LEVEL_II_STORY.md`.
 

@@ -742,6 +742,15 @@ const CreationFlow=(function(){
   // The next door, asked of the registry by id — never by ordinal, and
   // never counted. Absent rather than empty when there is no next one
   // (Decision 22), which is also what happens if the registry is gone.
+  // Whether the next door already has a story behind it, half made.
+  function _riteHeld(){
+    try{
+      const id=_nextRiteId();
+      return !!(id && typeof StudioRite!=='undefined' &&
+                StudioRite.hasHeldStory && StudioRite.hasHeldStory(id));
+    }catch(e){ return false; }
+  }
+
   function _nextDoorExists(){
     try{
       if(typeof StudioRite==='undefined' || typeof StudioRite.rites!=='function') return false;
@@ -898,9 +907,20 @@ const CreationFlow=(function(){
         'stroke="#8A5A3B" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/>'+
         '</svg>';
       door.appendChild(art);
-      door.appendChild(_el('div','creation-flow-door-title','A new door is waiting'));
-      door.appendChild(_el('p','creation-flow-door-line','Ready to discover what you can do next?'));
-      const btn=_el('button','creation-flow-door-btn','Discover');
+      // A DOOR LEFT OPEN READS DIFFERENTLY FROM A NEW ONE. A child who
+      // started this story and did not finish it is not being offered
+      // something new, and telling them so would be a small lie about
+      // their own work. Same slot, same one thing, still no decline and
+      // still nothing that names a rite, a level or a capability — only
+      // the words change, and "Carry on" is the same verb the resume
+      // pill above uses, because it is the same act.
+      const held=_riteHeld();
+      door.appendChild(_el('div','creation-flow-door-title',
+        held?'You left a door open':'A new door is waiting'));
+      door.appendChild(_el('p','creation-flow-door-line',
+        held?'Your story is still there, waiting for you.'
+            :'Ready to discover what you can do next?'));
+      const btn=_el('button','creation-flow-door-btn',held?'Carry on':'Discover');
       btn.type='button';
       btn.addEventListener('click',function(){ const id=_nextRiteId(); if(id) _enterRite(id); });
       door.appendChild(btn);
@@ -2023,6 +2043,20 @@ const CreationFlow=(function(){
   // what happens: they carry on.
   function _resumeEntry(){
     if(!_resume || !_resume.data || !_resume.data.project) return;
+    // NEVER TWO OFFERS FOR ONE STORY. A rite the child did not finish
+    // leaves its story in the session slot as well as held by the rite,
+    // so without this the screen would offer it once as a story to carry
+    // on with and again as a door left open — and the two are not
+    // interchangeable: opening it as a plain project drops them into the
+    // editor with no Lumo and no beats, which is not what they left.
+    // The door is the one that knows how to give it back.
+    try{
+      const id=_resume.data.project.id;
+      if(id && typeof CreatorProjectStore!=='undefined'){
+        const rec=CreatorProjectStore.get(id);
+        if(rec && rec.riteInProgress) return;
+      }
+    }catch(e){}
     const title=(_resume.data.project.bookTitle||_resume.data.project.title||'').trim();
     const card=_el('div','creation-flow-resume');
     // One row: what they were doing on the left, the way back to it on
@@ -2076,6 +2110,11 @@ const CreationFlow=(function(){
   return {
     start:start,
     startBlank:startBlank,
+    // Stand this screen down without starting anything. A rite resuming
+    // its own held story reopens it through ProjectManager rather than
+    // through any of the paths here, so it needs the overlay out of the
+    // way and nothing else — startBlank() would make it a second story.
+    close:_closeOverlay,
     changeRepresentation:changeRepresentation,
     currentRepresentations:currentRepresentations
   };

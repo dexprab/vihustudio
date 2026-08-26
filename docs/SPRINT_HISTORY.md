@@ -7677,3 +7677,85 @@ no longer occurs there.
 Rite gate 67/67 (was 61), gate 25/25, levels 59/59, creation home 84/84,
 celebration 31/31, traveller reset 16/16, capability audit 4/4, zero page
 errors. Build 0654 → 0655.
+
+## A Rite Can Be Put Down and Picked Back Up (build 0656)
+
+*"why dont we allow resume from studio home for rite 2 & 3 this way it
+will never enter projects or show in projects till completely done, child
+does not have any work lost on account of not able to complete in single
+seating."*
+
+It began as a report: every reload of VihuPlanet produced another project.
+Traced and measured — a rite opens a blank story the instant it starts
+(`StudioRite.start` → `_blankStart` → `CreationFlow.startBlank` →
+`markDirty` → autosave → `CreatorProjectStore.upsert`), so the record
+exists seconds before the child has touched anything. Three abandoned Rite
+II starts, three empty "My Adventure" stories.
+
+The product owner's own understanding was half right and worth recording:
+**a rite genuinely cannot be saved part way** — verified, there is no
+partial-rite state anywhere, the flag and the taught array are written
+only at the completion beat — but **"so a rite story cannot have a
+project" does not follow**, and would break the mandatory rite: Decision 8
+makes becoming a Creator *finishing* the first story, Decision 12's
+artifacts come from a project, and Decision 19's `claim()` sweeps a rite's
+story onto a new card precisely because the Rite has a child make one
+before they have a card. The first proposal here was narrower — don't
+enter My Projects until something is in it — and it only solved the
+litter. His counter-proposal solved both halves, and is what shipped.
+
+**Held, never deleted.** `riteInProgress` is a field on the project
+record, carried forward on every autosave exactly as `publishedAt`,
+`creatorName` and `cardId` are. On the story rather than the Magic Card,
+which buys four things at once: `list()` filters those records out, it
+already syncs to the cloud so a resume works on another device with no new
+column and no migration, it is inherently one-per-story, and pressing the
+door again reuses the held story rather than making a second one.
+
+**Where the child had got to is derived, never stored.** Decision 22's own
+rule is that rites get added, split and reordered — which is why the
+product stores capabilities and not a rite index, and a saved beat number
+would rot on the first reorder. So the rite replays from beat one and
+auto-advances past every beat the story itself can account for. Two things
+that had to be got right, both found by measuring rather than reasoning:
+
+- **A count, not a yes.** Rite III has four `shape-added` beats; a boolean
+  reading would replay a child who drew one shape past all four.
+- **Counted per pool, not per gate.** `letter-kept` and `letters-grown`
+  both read the letters a child has made — counted separately, one letter
+  satisfied both and the resume landed a beat past where they stopped.
+
+**Retold, not replayed.** A beat already lived through shows its lines at
+once and moves on, no voice and no waiting; ten beats is about five
+seconds. Speaking it again would take as long as the first sitting.
+
+**Disclosed:** `sticker-moved`, `sticker-resized` and `sticker-rotated`
+cannot be read back from a saved story — it records where the star IS,
+which is equally consistent with never having been touched. Treated as
+done when anything is on the page, because sending a child back to redo
+work is the worse of the two failures.
+
+The offer reads *You left a door open · Your story is still there, waiting
+for you. · Carry on*, in both the Studio Home door and the rail one. And
+the resume pill stands down for a held story: the session slot names the
+same story, and opening it as a plain project would drop the child into
+the editor with no Lumo and no beats, which is not what they left.
+
+Two of the harder bugs were in the test, not the product. A driver that
+poked every control on every beat put sixty objects on a page and never
+passed beat nine — so `_awaitingGate()` joins `_gates`/`_gateMet`/
+`_nudgeTarget` as a harness read, and the walk now satisfies exactly what
+is being asked. And reading that gate too early returns null, because a
+screen is still revealing its lines; the walk polls for it. Both looked
+like resume failures and were not. One real product fact surfaced on the
+way: beat 8 says *copy this page*, and a copy carries the creature, which
+is why beat 9 can ask for it to be moved — the probe had been adding blank
+pages.
+
+`Z0`–`Z10` walk Rite II for real: two beats, leave, come back twice,
+resume at the beat they stopped on with the letter and background intact,
+then finish and watch the story arrive in My Projects as *The Green
+Place* — and only then. Proved by removing the filter and the replay
+separately. Rite gate 83/83 (was 67), gate 25/25, levels 59/59, creation
+home 84/84, celebration 31/31, traveller reset 16/16, capability audit
+4/4, zero page errors. Build 0655 → 0656.

@@ -100,6 +100,10 @@ const StudioRite=(function(){
   // The gate the story is standing on right now, or null between beats.
   // Read by wantsRoom() below; see its comment.
   var _awaiting=null;
+  // The story this run of the rite is attached to, held out of My
+  // Projects until the rite finishes. Null for the mandatory rite,
+  // which is never held — see _holdStory().
+  var _riteProjectId=null;
 
   // False for the whole story, true from the finale onward. js/app.js
   // reads it to decide whether the header's two story buttons are
@@ -325,6 +329,20 @@ const StudioRite=(function(){
 
   // The next opt-in door: the first runnable one whose story this child
   // has not been through. By id and by capability, never by ordinal.
+  // Is the next door one the child has already stepped through and not
+  // come back out of? The offer reads differently then — a door left
+  // open rather than a new one — and nothing else about it changes: one
+  // slot, no decline, no dismiss, absent rather than empty.
+  //
+  // Answered here rather than at the two call sites so "which story
+  // belongs to which rite" stays one question with one answer.
+  function hasHeldStory(riteId){
+    try{
+      if(!riteId || typeof CreatorProjectStore==='undefined') return false;
+      return !!(CreatorProjectStore.riteStory && CreatorProjectStore.riteStory(riteId));
+    }catch(e){ return false; }
+  }
+
   function nextOptIn(){
     for(var i=0;i<RITES.length;i++){
       var r=RITES[i];
@@ -653,6 +671,9 @@ const StudioRite=(function(){
   // ("Let's Begin", "That is my story", "Into the Studio") -- never
   // "Next", which is what a tutorial says.
   const DONE_LABEL='I did it!';
+  // The name every project is born with (js/state.js). Read here so a
+  // replay can tell "still called what it was called" from "named".
+  const DEFAULT_TITLE='My Adventure';
   // Beats with nothing to settle — they happen once, in an instant.
   const DISCRETE={'page-added':1,'story-played':1,'story-shared':1,
                   'blank-page-added':1,'story-finished':1};
@@ -2153,6 +2174,117 @@ const StudioRite=(function(){
     return true;
   }
 
+  // WHAT A SAVED STORY CAN STILL TELL YOU.
+  //
+  // Every gate above is a DELTA: one more letter than before, the
+  // background changed since the beat began. That is exactly right
+  // while a child is working, and useless on a resume, where there is
+  // no "before" — a replay reading those would either stall on beat one
+  // or skip the whole story.
+  //
+  // So a rite being replayed to its position asks this instead: how
+  // many of the thing does the story ITSELF already hold. A COUNT, not
+  // a yes — because gates repeat. Rite III has four `shape-added` beats
+  // and four `doodle-added` ones, and a boolean reading would replay a
+  // child who drew one shape past all four, landing them in a story
+  // about a house they never built. The replay compares this against
+  // how many times the gate has come round, so the fourth shape beat
+  // needs a fourth shape.
+  //
+  // Deliberately a separate table rather than a flag threaded through
+  // _conditionMet: the live gates are shipped and verified, and must
+  // not change shape because a second caller wanted a different
+  // question answered. Only ever consulted while replaying (see the
+  // reduce in run()); the moment the child is back in charge,
+  // _conditionMet takes over with a real baseline.
+  // WHICH POOL A GATE READS, so two gates that watch the same quantity
+  // share one counter. `letter-kept` and `letters-grown` both read the
+  // letters a child has made; counted separately, one letter satisfies
+  // BOTH and the replay walks past a beat the child never reached —
+  // measured, it landed them two beats ahead. Same for the three gates
+  // that watch images and the two that watch pages.
+  const DONE_POOL={
+    'story-named':'title',
+    'page-added':'pages', 'blank-page-added':'pages',
+    'bg-set':'bg',
+    'text-added':'texts',
+    'shape-added':'shapes',
+    'doodle-added':'doodles',
+    'voice-added':'narration',
+    'page-shaped':'aspect',
+    'letter-kept':'letters', 'letters-grown':'letters',
+    'drawing-kept':'drawings',
+    'photo-added':'images', 'letters-placed':'images', 'drawing-placed':'images',
+    'sticker-added':'stickers',
+    'sticker-moved':'touched', 'sticker-resized':'touched', 'sticker-rotated':'touched'
+  };
+  function _donePool(kind){ return DONE_POOL[kind] || ('@'+kind); }
+
+  function _doneCount(kind){
+    try{
+      switch(kind){
+        // A project is BORN with a name, so "has a name" is true before
+        // a child touches anything — the same trap _conditionMet's own
+        // comment records. Named means CHANGED from the seed.
+        case 'story-named':{
+          const n=_titleNow();
+          return (n.length>0 && n!==DEFAULT_TITLE)?1:0;
+        }
+        // Pages BEYOND the one every story starts with.
+        case 'page-added':
+        case 'blank-page-added':  return Math.max(0,_pageCount()-1);
+        case 'bg-set':            return _bgPages();
+        case 'text-added':        return _textCount();
+        case 'shape-added':       return _kindCount('shape');
+        case 'photo-added':       return _kindCount('image');
+        case 'doodle-added':      return _drawnDoodleCount();
+        case 'voice-added':       return _narratedPages();
+        case 'page-shaped':       return _shapedPages();
+        case 'letter-kept':
+        case 'letters-grown':     return HandwritingStore.list().length;
+        case 'drawing-kept':      return CreatorLibrary.list().length;
+        // Both read "something out of My Garden is on the page", which
+        // is also what photo-added reads. No rite carries a photo beat
+        // and a garden-placing beat, so they cannot collide today; one
+        // that did would need a narrower reading than an image count.
+        case 'letters-placed':
+        case 'drawing-placed':    return _kindCount('image');
+        case 'sticker-added':     return _stickers().length;
+        // DISCLOSED, AND THE HONEST CHOICE OF TWO WRONG ONES. A saved
+        // story cannot tell you whether the star was ever moved,
+        // resized or turned — only where it is now, which is equally
+        // consistent with never having been touched. Treated as done
+        // when there is anything on the page at all, because the other
+        // reading sends a child back to redo work they already did, and
+        // being asked to repeat yourself is a worse failure than being
+        // let past. Each of these appears at most once per rite, so the
+        // count never has to mean anything; a second occurrence would
+        // be indistinguishable from the first and would need a real
+        // signal recorded at the time.
+        case 'sticker-moved':
+        case 'sticker-resized':
+        case 'sticker-rotated':   return _stickers().length?1:0;
+        // The ending. A rite that reached these was finished, so its
+        // story is not held and there is nothing to replay past.
+        case 'story-played':
+        case 'story-finished':
+        case 'story-shared':      return 0;
+      }
+    }catch(e){}
+    return 0;
+  }
+
+  // Pages carrying a background the child chose. Counted rather than
+  // read off the active page, because `bg-set` comes round once per page
+  // in the rite that makes a second one.
+  function _bgPages(){
+    try{
+      return ((AppState&&AppState.slides)||[]).filter(function(s){
+        return !!(s&&s.metadata&&s.metadata.cardOverrides&&s.metadata.cardOverrides.background);
+      }).length;
+    }catch(e){ return 0; }
+  }
+
   // Reads the live field first and AppState second — #bookTitle's own
   // handler mirrors one into the other while it is being typed, and
   // serialize() already prefers the DOM, so this matches what the
@@ -2713,7 +2845,13 @@ const StudioRite=(function(){
   // `next` is handed in rather than looked up, because this module has
   // no screen cursor to consult — the walk is a reduce over the rite's
   // own array. Passing it keeps that true.
-  function _playScreen(screen,next){
+  // How long a beat the child has already lived through stays on screen
+  // while the story is retold back to where they stopped. Short: this is
+  // the thread being handed back, not the chapter being performed again.
+  // Ten beats at this pace is about five seconds.
+  const REPLAY_HOLD_MS=550;
+
+  function _playScreen(screen,next,fast){
     _clearCues();
     _applyStageBg(!!screen.bg && !screen.band);
     if(screen.band) _toBandMode();
@@ -2723,6 +2861,15 @@ const StudioRite=(function(){
     }
     _hush();          // never let the previous screen's voice bleed in
     _clearConvo();
+    // RETOLD, NOT REPLAYED. A beat the child already finished shows its
+    // lines at once and moves on — no voice, no cues, and no waiting on
+    // a gate they have already satisfied. Speaking it again would take
+    // as long as the first sitting did, which is the opposite of picking
+    // up where you left off.
+    if(fast){
+      screen.lines.forEach(_showLine);
+      return new Promise(function(r){ _timer=setTimeout(r,REPLAY_HOLD_MS); });
+    }
     const rec=screen.audio && screen.audio.cues
               && screen.audio.cues.length===screen.lines.length
               && typeof LumoVoice!=='undefined' && LumoVoice.play;
@@ -2785,11 +2932,94 @@ const StudioRite=(function(){
     try{
       if(typeof CreationFlow!=='undefined' && CreationFlow.startBlank) CreationFlow.startBlank();
     }catch(e){}
+    _holdStory();
     _plainPaper();
     try{
       if(typeof PageRuntime!=='undefined' && PageRuntime.observe)
         _paperGuard=PageRuntime.observe(_plainPaper);
     }catch(e){}
+  }
+
+  // A STORY MADE INSIDE A RITE IS HELD UNTIL THE RITE IS DONE.
+  //
+  // "why dont we allow resume from studio home for rite 2 & 3 this way
+  // it will never enter projects or show in projects till completely
+  // done, child does not have any work lost on account of not able to
+  // complete in single seating" — the product owner. A rite opens a
+  // blank story the moment it starts, so every abandoned attempt used
+  // to leave one in My Projects (measured: three abandoned starts,
+  // three empty stories). Held rather than deleted, which is the other
+  // half of what he asked for.
+  //
+  // The mandatory rite is deliberately NOT held. It ends in the
+  // Ceremony and its story is the child's first — the thing they
+  // finish, share and get a Magic Card for (Decision 8) — and a
+  // Traveller walking it holds no card and is stateless anyway
+  // (Decision 19), so there is nothing to resume onto.
+  //
+  // The save is forced rather than waited for: startBlank() only marks
+  // the project dirty, so without this the record would not exist for
+  // another AUTOSAVE_DEBOUNCE_MS and the stamp would land on nothing.
+  function _holdStory(){
+    if(!_rite || _rite.unlocksStudio) return;
+    try{
+      if(typeof ProjectManager==='undefined' || typeof CreatorProjectStore==='undefined') return;
+      ProjectManager.saveToLocalStorage();
+      const id=ProjectManager.ensureProjectId && ProjectManager.ensureProjectId();
+      if(!id) return;
+      CreatorProjectStore.markRiteInProgress(id,_rite.id);
+      _riteProjectId=id;
+    }catch(e){}
+  }
+
+  // Reopen the story this rite is already holding, if there is one.
+  //
+  // Resolves false when there is nothing to resume, so the caller makes
+  // a blank one exactly as it always did — a first sitting, a rite that
+  // was finished, or any deployment where the store is unavailable all
+  // take that path unchanged.
+  //
+  // The plain-paper guard is armed either way: a resumed story was made
+  // on paper and must stay that way for the rest of the rite.
+  function _openHeld(){
+    try{
+      if(typeof CreatorProjectStore==='undefined' || typeof ProjectManager==='undefined')
+        return Promise.resolve(false);
+      if(!_rite || _rite.unlocksStudio) return Promise.resolve(false);
+      const held=CreatorProjectStore.riteStory && CreatorProjectStore.riteStory(_rite.id);
+      if(!held) return Promise.resolve(false);
+      return Promise.resolve(ProjectManager.openProjectRecord(held)).then(function(ok){
+        if(!ok) return false;
+        _riteProjectId=held.id;
+        // Re-stamped: openProjectRecord() saves, and a save rebuilds the
+        // record — the field is carried forward, but the id is the one
+        // thing this run must be certain of.
+        try{ CreatorProjectStore.markRiteInProgress(held.id,_rite.id); }catch(e){}
+        _plainPaper();
+        try{
+          if(typeof PageRuntime!=='undefined' && PageRuntime.observe)
+            _paperGuard=PageRuntime.observe(_plainPaper);
+        }catch(e){}
+        try{
+          if(typeof CreationFlow!=='undefined' && CreationFlow.close) CreationFlow.close();
+        }catch(e){}
+        return true;
+      }).catch(function(){ return false; });
+    }catch(e){ return Promise.resolve(false); }
+  }
+
+  // Finished. The story stops being held and becomes an ordinary one —
+  // it appears in My Projects at this moment and never before, which is
+  // exactly "till completely done".
+  function _releaseStory(){
+    try{
+      if(typeof CreatorProjectStore==='undefined') return;
+      const id=_riteProjectId ||
+        (typeof ProjectManager!=='undefined' && ProjectManager.ensureProjectId &&
+         ProjectManager.ensureProjectId());
+      if(id) CreatorProjectStore.clearRiteInProgress(id);
+    }catch(e){}
+    _riteProjectId=null;
   }
 
   // What the Studio shows while THIS rite runs. The reduction in
@@ -3286,18 +3516,52 @@ const StudioRite=(function(){
         // own blank story here, the way the first rite makes one on the
         // screen that boots the Studio. Same call, same plain-paper
         // guard, same reason: these stories run on paper, with no World.
+        // An opt-in rite may already be holding a story from a sitting
+        // the child did not finish. That one is reopened rather than a
+        // second one being made — see _openHeld(). Awaited, because the
+        // beats that follow read the page it puts back.
+        var opened=Promise.resolve();
         if(_rite.startsBlank){
           handOff();
-          _blankStart();
-          try{ if(typeof window.refreshStoryActions==='function') window.refreshStoryActions(); }catch(e){}
+          opened=_openHeld().then(function(resumed){
+            if(!resumed) _blankStart();
+            try{ if(typeof window.refreshStoryActions==='function') window.refreshStoryActions(); }catch(e){}
+            return resumed;
+          });
         }
-        // The first screen has nobody playing ahead of it, so it is
-        // primed here. A recorded rite is a no-op: _primeScreen returns
-        // immediately for any screen that has its own audio.
+        return opened.then(function(resumed){
+        // WHERE THE CHILD HAD GOT TO IS DERIVED, NEVER STORED.
+        //
+        // Decision 22's own rule is that rites will be added, split and
+        // reordered over the product's life — which is exactly why the
+        // product stores CAPABILITIES and not a rite index. A saved beat
+        // number would rot on the first reorder, and Rite II has gained
+        // or reworded beats twice already. The gates are the truth about
+        // what a child has done, so the position is read back off the
+        // story itself.
+        //
+        // `seen` is what makes a repeated gate work: the fourth
+        // `shape-added` beat needs a fourth shape, not any shape.
+        // Stops at the first beat the story cannot account for — that
+        // is where they were — and from there it is an ordinary rite
+        // with a real baseline.
+        var replaying=!!resumed;
+        var seen={};
         _primeScreen(_rite.screens[0]);
         return _rite.screens.reduce(function(chain,screen,i){
           return chain.then(function(){
-            return _playScreen(screen,_rite.screens[i+1]).then(function(){
+            var fast=false;
+            if(replaying){
+              var kind=screen.end && screen.end.await;
+              if(kind){
+                // Counted per POOL, not per gate — see DONE_POOL.
+                var pool=_donePool(kind);
+                seen[pool]=(seen[pool]||0)+1;
+                fast=_doneCount(kind)>=seen[pool];
+              }
+              if(!fast) replaying=false;   // this is where they stopped
+            }
+            return _playScreen(screen,_rite.screens[i+1],fast).then(function(){
               // The screen the child says "Yes" on is the one that opens
               // the Studio: boot it underneath, then open a blank page
               // directly — no type screen, no World picker, and no Theme
@@ -3323,6 +3587,9 @@ const StudioRite=(function(){
           // the Ceremony so the card minted a moment later is swept the
           // record rather than being handed an empty one.
           _grant(_rite);
+          // The story becomes the child's own at the same moment the
+          // capabilities do — one event, two consequences.
+          _releaseStory();
           if(_rite.unlocksStudio){
             markComplete();
             _teardown();
@@ -3330,6 +3597,7 @@ const StudioRite=(function(){
             return;
           }
           _teardown();
+        });
         });
       }).catch(abandon);
     }catch(e){ abandon(); }
@@ -3458,11 +3726,19 @@ const StudioRite=(function(){
     taught:taught,
     isGrandfathered:isGrandfathered,
     nextOptIn:nextOptIn,
+    hasHeldStory:hasHeldStory,
     wantsRoom:wantsRoom,
     // Harness only, beside _gates and _gateMet: which element a nudge
     // would actually light for a gate right now. A nudge that points at
     // the control a child has already tapped is the failure this was
     // added to catch, and nothing else could see it.
+    // Harness only, beside _gates/_gateMet/_nudgeTarget: which gate the
+    // story is standing on right now. A suite that can read this can
+    // walk a rite by satisfying exactly the thing being asked for,
+    // instead of guessing at every control and fighting the beats it is
+    // not on — which is how a driver ends up adding sixty objects to a
+    // page and still never passing.
+    _awaitingGate:function(){ return _awaiting; },
     _nudgeTarget:function(kind){
       try{ return (NUDGE[kind] && NUDGE[kind].find()) || null; }catch(e){ return null; }
     },
