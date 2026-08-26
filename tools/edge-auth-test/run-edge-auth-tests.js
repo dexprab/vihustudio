@@ -381,9 +381,16 @@ function fakeDb(spec) {
         const row = psql(pg, `select public.${name}('${args.p_bucket}','${args.p_subject}',${args.p_limit},${args.p_window_seconds});`);
         return { data: JSON.parse(row.trim()), error: null };
       } };
-      const r1 = await A.checkRateLimit(realDb, 'voice-speak', 'sub-d', { get: () => '2' });
-      const r2 = await A.checkRateLimit(realDb, 'voice-speak', 'sub-d', { get: () => '2' });
-      const r3 = await A.checkRateLimit(realDb, 'voice-speak', 'sub-d', { get: () => '2' });
+      // THE MAX ONLY. A stub answering '2' to every name also set
+      // EDGE_LIMIT_VOICE_SPEAK_WINDOW=2, so this ran against a TWO-SECOND
+      // window and failed whenever the three calls straddled a rollover —
+      // once in eight runs, measured. The same rollover hazard B3/B5
+      // already guard against with a long window, arriving through the
+      // env stub instead. "Flake" was not the root cause.
+      const maxOnly = { get: (n) => (/_MAX$/.test(n) ? '2' : '') };
+      const r1 = await A.checkRateLimit(realDb, 'voice-speak', 'sub-d', maxOnly);
+      const r2 = await A.checkRateLimit(realDb, 'voice-speak', 'sub-d', maxOnly);
+      const r3 = await A.checkRateLimit(realDb, 'voice-speak', 'sub-d', maxOnly);
       check(r1.allowed && r2.allowed && !r3.allowed,
         'B8  checkRateLimit() drives the real SQL to a real refusal');
 
