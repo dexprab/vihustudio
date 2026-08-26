@@ -23,12 +23,24 @@
  *      section and it is labelled as such below rather than dressed up.
  *
  * WHAT THIS SANDBOX CANNOT PROVE, stated rather than papered over:
- * nothing here reaches Supabase. No Edge Function has been deployed, no
- * GoTrue has issued a token, and the migration has not been run against
- * the live project. The SQL is real and the module's logic is real; the
- * deployment is not. Section C's own assertions are about source text,
- * which is the one place in this file where passing is weaker evidence
- * than elsewhere.
+ * nothing here reaches Supabase. No GoTrue has issued a token to this
+ * process. The SQL is real and the module's logic is real; the
+ * deployment is not exercised from here. Section C's own assertions are
+ * about source text, which is the one place in this file where passing
+ * is weaker evidence than elsewhere.
+ *
+ * AND IT HAS NOW BEEN PROVED WHERE THIS FILE CANNOT REACH. The migration
+ * was applied and the five functions deployed to the live project, and
+ * the product owner ran the public anon key against each of the four
+ * browser-facing ones:
+ *
+ *   voice-speak · sky-protection · family-album · invite-send
+ *     -> 401 {"ok":false,"reason":"unauthorized"}   (all four)
+ *
+ * Every one of those answered 200 to that same key the day before. That
+ * is the whole sprint, observed in production rather than argued for
+ * here. creator-born is deliberately absent from that list: it carries
+ * no CORS headers at all, because nothing in a browser may reach it.
  *
  * Run:
  *   NODE_PATH=/opt/node22/lib/node_modules node tools/edge-auth-test/run-edge-auth-tests.js

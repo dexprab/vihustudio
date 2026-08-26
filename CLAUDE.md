@@ -2626,6 +2626,14 @@ the standard this product will be held to when it is.
   world-callable, metered LLM. The pattern is now one shared module:
   **the caller is derived from the verified session and client-supplied
   identity is never trusted for ownership.**
+- **VERIFIED IN PRODUCTION, not just in a suite.** The migration was
+  applied and all five functions deployed, and the public anon key —
+  the exact credential every client used to send — was run against the
+  four browser-facing ones. All four answered
+  `401 {"ok":false,"reason":"unauthorized"}`; all four answered 200 to
+  that same key the day before. `creator-born` is not in that list
+  because it carries no CORS headers at all: nothing in a browser may
+  reach it, which is a stronger result than a 401.
 - **Rate limiting exists before the endpoint that needs it**, in
   Postgres, with one configuration point. No Redis, no external service,
   no second database — the same posture every other decision here takes
