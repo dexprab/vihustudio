@@ -1680,6 +1680,37 @@ once, and its scope is no longer closed.
   the harness reads because nothing could previously read the gate and
   the unlock flag together — which is why two facts that were each
   visible made an invisible bug.
+- **"TELL ME WHEN" MEANS THE CHILD DECIDES, NOT A COUNTER** (build
+  0658). Asked by the product owner: *"tell me rescanning same letter
+  does it or does it not clears the beat."* Measured — it does not.
+  `HandwritingStore.save({ch})` reuses the existing record's id, so a
+  re-scan **replaces** a letter rather than adding one and the count
+  never moves. Every letter beat compares a count against the count
+  when the beat began.
+- **Which made the naming beat a wall.** Its gate is *more letters than
+  before*, so a child whose name is one letter — or who simply redoes
+  the letter they already made — could never reach **I did it!**, and
+  the nudge would just repeat itself. That is the wall this decision
+  forbids, and it broke the beat's own promise: *Tell me when it is all
+  there* says the child decides, and a counter was deciding.
+- **A beat may declare itself child-ended** (`end:{await:…,
+  declared:true}`). The gate stays — it is what the nudge points at and
+  what the replay reads — and only the CONFIRMATION stops waiting on
+  it. A declared beat also never finishes itself: being asked to say
+  when you are done and then having it decided for you is worse than
+  either alone.
+- **The beat before it is untouched.** `letter-kept` still waits for a
+  real letter, because something has to arrive before there is anything
+  to declare.
+- **Disclosed.** A child who declares done and later resumes lands back
+  on that beat — the declaration is not recorded on the story, and the
+  replay reads counts. It costs one press to declare again, and the
+  alternative (replaying past a beat on a smaller count) would push a
+  child who was mid-name past the beat that asks for it.
+- **A check that asserts the defect is worse than no check.** `X3` read
+  *"nothing to press yet"* — true, and exactly the wall. It now asserts
+  the opposite. When behaviour is corrected, the test that encoded the
+  old behaviour is part of the fix.
 - Design and sequencing: `docs/STUDIO_RITE_LEVELS.md`. Rite II's script
   and its engineering notes: `docs/STUDIO_RITE_LEVEL_II_STORY.md`.
 

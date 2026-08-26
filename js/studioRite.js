@@ -947,7 +947,7 @@ const StudioRite=(function(){
       {lumo:'talk', egg:'curious',
        line:{title:'A name needs all of itself.',
              subtitle:'One letter at a time, until your whole name is in your garden. Tell me when it is all there.'}}
-     ], end:{await:'letters-grown'}, nudgeDelay:12000},
+     ], end:{await:'letters-grown', declared:true}, nudgeDelay:12000},
 
     {band:true, lines:[
       {lumo:'talk', egg:'happy',
@@ -2569,7 +2569,7 @@ const StudioRite=(function(){
   function _playEnd(end,nudgeDelay,instruction){
     if(end.move) return _awaitClick(end.move);
     if(end.choice) return _awaitClick(end.choice,'studio-rite-choice-primary');
-    if(end.await) return _awaitAction(end.await,nudgeDelay,instruction,end.decline);
+    if(end.await) return _awaitAction(end.await,nudgeDelay,instruction,end.decline,end.declared);
     return Promise.resolve();
   }
 
@@ -2664,7 +2664,7 @@ const StudioRite=(function(){
   // beat — used only by the sharing beat, where saying no is a real
   // answer rather than a failure to comply. It resolves the beat exactly
   // as completing it would: the Rite carries on and the Studio unlocks.
-  function _awaitAction(kind,nudgeDelay,instruction,declineLabel){
+  function _awaitAction(kind,nudgeDelay,instruction,declineLabel,declared){
     return new Promise(function(resolve){
       _awaiting=kind;
       // The dock reads the beat (see _prefersRail), so it is re-placed
@@ -2763,7 +2763,25 @@ const StudioRite=(function(){
       };
 
       const check=function(){
-        if(!_conditionMet(kind,baseline)){
+        const met=_conditionMet(kind,baseline);
+        // A DECLARED BEAT IS ONE WHOSE OWN LINE ASKS THE CHILD TO SAY
+        // WHEN THEY ARE DONE, and its confirmation is therefore never
+        // withheld by a counter.
+        //
+        // Reported by the product owner, asking what re-scanning the
+        // same letter does. Measured: `HandwritingStore.save({ch})`
+        // reuses the existing record's id, so a re-scan REPLACES a
+        // letter rather than adding one and the count does not move.
+        // The naming beat's gate is "more letters than when this beat
+        // began", so a child whose name is one letter — or who simply
+        // redoes the letter they already made — could never reach
+        // "I did it!". That is the wall Decision 22 forbids, and it
+        // also broke this beat's own promise: "Tell me when it is all
+        // there" says the child decides, and the counter was deciding.
+        //
+        // The gate stays: it is what the nudge points at and what the
+        // replay reads. Only the confirmation stops waiting on it.
+        if(!met && !declared){
           if(settleTimer){ clearTimeout(settleTimer); settleTimer=null; }
           dropConfirm();
           rearmIdle();
@@ -2778,7 +2796,10 @@ const StudioRite=(function(){
           }
           return;
         }
-        if(!settles){ finish(); return; }
+        // A declared beat always waits for the press, never finishes
+        // itself — being asked to say when you are done and then having
+        // it decided for you is worse than either alone.
+        if(!settles && met && !declared){ finish(); return; }
         // Armed. Now wait for the child to actually stop.
         if(!settleTimer){ armSettle(); return; }
         const sig=_workSignature();
