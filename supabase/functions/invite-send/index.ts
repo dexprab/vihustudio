@@ -45,7 +45,7 @@
 
 // Sprint 1A, CLAUDE.md -> Decision 30 — see the ADMINISTRATORS ONLY
 // note inside Deno.serve() below.
-import { guard, isPlatformAdmin, restDb } from '../_shared/edgeAuth.js';
+import { guard, isPlatformAdmin, restDb } from './edgeAuth.js';
 
 const CORS_HEADERS: Record<string, string> = {
   'Access-Control-Allow-Origin': '*',

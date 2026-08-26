@@ -415,9 +415,34 @@ function fakeDb(spec) {
     const gated = ['voice-speak', 'sky-protection', 'family-album', 'invite-send', 'creator-born'];
     gated.forEach((n) => {
       const src = fn(n);
-      check(/_shared\/edgeAuth\.js/.test(src) && /guard\(/.test(src),
-        'C1  ' + n + ' calls the shared gate');
+      check(/from '\.\/edgeAuth\.js'|import\('\.\/edgeAuth\.js'\)/.test(src) && /guard\(/.test(src),
+        'C1  ' + n + ' calls the gate from its own folder');
     });
+
+    // DEPLOY PORTABILITY. `_shared/` is a CLI-only bundling convention and
+    // is NOT carried by a Dashboard deploy — measured, on this project:
+    //   Module not found "file:///tmp/user_fn_<ref>_<uuid>_4/_shared/
+    //   edgeAuth.js" at .../source/index.ts:60:31
+    // A security fix that lands only under one deploy tool is not a fix,
+    // so no function may reach outside its own folder for code.
+    gated.forEach((n) => {
+      const src = fn(n).replace(/^\s*\/\/.*$/gm, '');   // comments may DISCUSS ../_shared
+      check(!/from '\.\.\//.test(src) && !/import\('\.\.\//.test(src),
+        'C1b ' + n + ' imports nothing from outside its own folder');
+    });
+
+    // ONE SOURCE OF TRUTH, FIVE COPIES, AND THEY MUST NOT DRIFT. For an
+    // authorization module, one function quietly enforcing something
+    // different from its neighbours is the failure that matters.
+    const canonModule = fs.readFileSync(
+      path.join(ROOT, 'supabase', 'functions', '_shared', 'edgeAuth.js'));
+    gated.forEach((n) => {
+      const copy = path.join(ROOT, 'supabase', 'functions', n, 'edgeAuth.js');
+      check(fs.existsSync(copy) && fs.readFileSync(copy).equals(canonModule),
+        'C1c ' + n + '/edgeAuth.js is byte-identical to the canonical module');
+    });
+    check(fs.existsSync(path.join(ROOT, 'tools', 'edge-auth-test', 'sync-shared.js')),
+      'C1d and one command regenerates them all');
 
     check(/require:\s*'service'/.test(fn('creator-born')),
       'C2  creator-born is service-only — no browser session may reach it');

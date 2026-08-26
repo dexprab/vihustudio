@@ -57,7 +57,7 @@
 // not the settings, not the cache keys, not the audio format, not the
 // 200-with-a-reason convention, not the timing contract js/vihuVoice.js
 // depends on. This is a gate in front of the same function.
-import { guard, restDb } from '../_shared/edgeAuth.js';
+import { guard, restDb } from './edgeAuth.js';
 
 const BUILD = '2026-08-26 · vihu voice · caller verified';
 const TTS_ROOT = 'https://api.elevenlabs.io/v1/text-to-speech';

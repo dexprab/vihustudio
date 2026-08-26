@@ -28,8 +28,11 @@
 //
 // Deploy (from the repo root, one-time Supabase CLI setup assumed):
 //   supabase functions deploy family-album --project-ref <your-project-ref>
-// Calls authenticate with the project's anon key (Authorization: Bearer +
-// apikey headers), which satisfies the default verify_jwt gate.
+// Callers send their own Supabase SESSION as Authorization and the anon
+// key as `apikey` (the gateway routes on it and it authorises nothing).
+// This note used to say the anon key was the credential "which satisfies
+// the default verify_jwt gate" — an accurate description of a gate that
+// let anybody through, since that key is public. See Decision 30.
 
 import JSON5 from 'npm:json5@2.2.3';
 import { extractInitData, parseAlbumData } from './parse.js';
@@ -81,7 +84,7 @@ function isAllowedImageUrl(raw: string): boolean {
 // description of a gate that let anybody through, since that key is
 // public. This is an outbound fetcher and an image proxy on our own
 // name, so it now asks who is calling and bounds how often.
-import { guard, restDb } from '../_shared/edgeAuth.js';
+import { guard, restDb } from './edgeAuth.js';
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });

@@ -128,7 +128,7 @@ async function sendViaResend(to: string, subject: string, text: string, html: st
 // constant time and refuses everything else, including a perfectly
 // valid child's session.
 async function serviceOnly(req: Request) {
-  const { guard } = await import('../_shared/edgeAuth.js');
+  const { guard } = await import('./edgeAuth.js');
   return await guard(req, {
     env: {
       supabaseUrl: env('SUPABASE_URL'),

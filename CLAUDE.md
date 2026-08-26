@@ -2608,6 +2608,19 @@ the standard this product will be held to when it is.
   page deletion warns that it *"cannot be undone"*). That gate is
   `docs/COMPANION_INTELLIGENCE_ARCHITECTURE.md` §7.4's and it is
   unchanged.
+- **The gate is ONE module, vendored into each function, never a shared
+  import.** `_shared/` is a CLI-only bundling convention and is not
+  carried by a deploy made from the Supabase Dashboard — measured, on
+  this project: *Module not found "file:///tmp/user_fn_…/_shared/
+  edgeAuth.js"*. Every other function in this repository has always been
+  self-contained, and `_shared/` was introduced without first checking
+  how the project actually deploys. **A security fix that lands only
+  under one deploy tool is not a fix**, so each function now imports
+  `./edgeAuth.js` from its own folder. The cost is five copies and it is
+  paid for by a test: every copy must be byte-identical to
+  `_shared/edgeAuth.js`, so drift is a failing check rather than one
+  function quietly enforcing something different from its neighbours.
+  `node tools/edge-auth-test/sync-shared.js` regenerates them.
 - **A migration is inert; its verification is a separate file.** Reported
   by the product owner running the migration and reading its own first
   probe — `{"allowed": true, "remaining": 1}` — as an error. It was the
