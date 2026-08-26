@@ -2675,6 +2675,19 @@ the standard this product will be held to when it is.
   with the thing that writes the files — and then EXTRACTS the block from
   a real `index.ts`, imports it, and re-runs the gate's own assertions
   against it. What is proved is the code that actually deploys.
+- **Two things can fail SILENTLY once this is live, so a file looks for
+  them.** Everything else about the hardening fails loudly — a browser
+  that cannot authenticate gets a 401 it can see, and a child hears
+  silence instead of a voice. Not these: `creator-born` is service-only
+  now, and its only caller sends whatever key sits in
+  `platform_settings.creator_born_key` — the ANON key worked there before
+  and does not now, and the symptom is no email when a child becomes a
+  Creator. `invite-send` is administrators-only, so an empty
+  `platform_admins` refuses everybody. `supabase/verify_edge_auth_deployed.sql`
+  answers both in one word each, and decodes only the `role` claim out of
+  the stored JWT — the key itself never reaches the result, because
+  reading a secret out of the database and putting it on screen would be
+  a worse habit than the one this sprint fixed.
 - **A migration is inert; its verification is a separate file.** Reported
   by the product owner running the migration and reading its own first
   probe — `{"allowed": true, "remaining": 1}` — as an error. It was the

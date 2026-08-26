@@ -403,6 +403,38 @@ function fakeDb(spec) {
       check(typeof g.body.retryAfter === 'number' && !('remaining' in g.body),
         'B9b the 429 body says when to retry and reveals no usage figures');
 
+      // THE POST-DEPLOY CHECK. Two things can now fail SILENTLY —
+      // creator-born refusing the trigger because platform_settings
+      // holds the anon key, and invite-send refusing everybody because
+      // platform_admins is empty. Nobody notices either until they go
+      // looking, so there is a file that looks, and it is exercised here
+      // against both a misconfigured project and a healthy one.
+      psql(pg, 'create table if not exists public.platform_settings(key text primary key, value text)');
+      psql(pg, 'create table if not exists public.platform_admins(email text primary key)');
+      const jwtFor = (role) => jwt({ iss: 'supabase', role: role });
+      const deployCheck = () => psqlFile(pg, path.join(ROOT, 'supabase', 'verify_edge_auth_deployed.sql'));
+
+      psql(pg, "insert into public.platform_settings values ('creator_born_key','" + jwtFor('anon') +
+               "'),('creator_born_url','https://x.supabase.co/functions/v1/creator-born') " +
+               "on conflict (key) do update set value = excluded.value");
+      const sick = deployCheck();
+      check(/creator_born_key[^|]*\|[^|]*\|\s*anon\s*\|\s*FAIL/.test(sick.replace(/\n/g, '')) || /anon.*FAIL/.test(sick),
+        'B11 the deploy check names the ANON key in the trigger as a failure');
+      check(/EMPTY — invite-send will refuse everybody/.test(sick),
+        'B11b and an empty platform_admins as a failure');
+
+      const svc = jwtFor('service_role');
+      psql(pg, "update public.platform_settings set value = '" + svc + "' where key = 'creator_born_key'");
+      psql(pg, "insert into public.platform_admins values ('boss@vihuplanet.com') on conflict do nothing");
+      const well = deployCheck();
+      check(/── OVERALL ──[^\n]*all checks pass[^\n]*PASS/.test(well),
+        'B12 and passes outright once both are configured correctly');
+      check(well.indexOf(svc) === -1,
+        'B12b WITHOUT EVER PRINTING THE KEY — only the role claim it decoded');
+
+      psql(pg, 'drop table public.platform_settings');
+      psql(pg, 'drop table public.platform_admins');
+
       // Broken limiter must not take the product down.
       const brokenDb = { async rpc() { return { data: null, error: { message: 'relation does not exist' } }; } };
       const open = await A.checkRateLimit(brokenDb, 'voice-speak', 'sub-e', null);
