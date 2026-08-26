@@ -3050,6 +3050,29 @@ const StudioRite=(function(){
 
     try{
       try{ document.body.classList.add('studio-rite-running'); }catch(e){}
+      // THE RITE OWNS THE STUDIO'S SHAPE, AND HAS TO TAKE IT.
+      //
+      // Reported by the product owner walking Rite II: beat 2 says "your
+      // letters live on the right, with the things you can add" and My
+      // Garden was not there. Measured, the body carried BOTH families
+      // of classes at once — `studio-rite-shows-garden` from the rite,
+      // and `studio-gated` with no `studio-taught-garden` from the
+      // child's own record. Both are `display:none !important` rules on
+      // the same tile and neither knows about the other, so the gate
+      // simply won and the rite could not hand its own subject over.
+      //
+      // It is the exact hazard Decision 22 records for these two
+      // families, arriving from the direction nobody watched: not a rule
+      // that names the wrong capability, but two correct rules left
+      // switched on together. Rite II was unwalkable for precisely the
+      // population it exists for — a child who has finished Rite I and
+      // therefore HAS a record to be gated by.
+      //
+      // applyTaught() already encodes the right answer (it strips both
+      // `studio-gated` and every `studio-taught-*`, then returns early
+      // while a rite is running), so calling it here is one source of
+      // truth rather than a second rule that could disagree with it.
+      try{ applyTaught(); }catch(e){}
       _applyReveals(_rite);
       _els=_buildStage();
 

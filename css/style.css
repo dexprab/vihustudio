@@ -11459,8 +11459,20 @@ body.studio-rite-running:not(.studio-rite-shows-blank-page) #addPageBtn{ display
 
 /* Add Something keeps only what the story being made asks for.
 
-   From This World and Voice belong to a story about Worlds, which no
-   rite tells yet, so nothing reveals them.
+   VOICE IS RITE II'S NOW, AND THIS RULE STILL SAID OTHERWISE. Build
+   0646 moved Voice to My Garden and Page Shape to My Little House, and
+   0647 wrote the beats that teach them — but both were still hidden
+   here UNCONDITIONALLY, on the old reasoning that they "belong to a
+   story about Worlds, which no rite tells yet". So Rite II's own Voice
+   beat pointed at a control that was not on the screen. Every one of
+   these gates on its reveal class now, exactly like the tiles below, so
+   moving a capability between rites is a registry edit and never a CSS
+   edit again — which was the whole point of `reveals` being data.
+
+   From This World still shows in no rite, and that is the same rule
+   rather than an exception: `the-world-tools` is paused (no story), so
+   nothing reveals `world` and nothing can. Writing that story opens the
+   door here with no change to this file.
 
    Doodle and Shapes are hidden for the first story and revealed by the
    one that is ABOUT them. The first story asks for a star, a tree, a
@@ -11469,8 +11481,8 @@ body.studio-rite-running:not(.studio-rite-shows-blank-page) #addPageBtn{ display
    on the beat that says "add a star" is a wrong turn the story then has
    to talk the child back from. In the story that builds a house out of
    parts, the same triangle is the point. */
-body.studio-rite-running .context-add-card[data-add-id='fromWorld'],
-body.studio-rite-running .context-add-card[data-add-id='voice']{ display:none !important; }
+body.studio-rite-running:not(.studio-rite-shows-world) .context-add-card[data-add-id='fromWorld'],
+body.studio-rite-running:not(.studio-rite-shows-voice) .context-add-card[data-add-id='voice']{ display:none !important; }
 body.studio-rite-running:not(.studio-rite-shows-doodle) .context-add-card[data-add-id='doodle']{ display:none !important; }
 body.studio-rite-running:not(.studio-rite-shows-shapes) .context-add-card[data-add-id='shapes']{ display:none !important; }
 
@@ -11509,9 +11521,17 @@ body.studio-rite-running:not(.studio-rite-shows-photo) .context-bg-picture-secti
  * Rite deliberately runs on a blank page with NO World at all
  * (docs/STUDIO_RITE_STARTER_STORY.md), so these either do nothing or
  * offer a look the story did not ask for. */
-body.studio-rite-running .context-set-tile[data-set-id='storyTitle'],
-body.studio-rite-running .context-set-tile[data-set-id='pageShape'],
-body.studio-rite-running .context-rep-section{ display:none !important; }
+/* Story Title stays hidden in EVERY rite, and that is a decision rather
+   than an oversight — see just above: two doors to one idea is the
+   confusion a first morning cannot afford, and the naming beat already
+   points at #bookTitle in the header.
+   Page Shape is My Little House's now (build 0646) and gates on its own
+   reveal class. Page Style rides with the World rather than being named
+   (Decision 22), so it gates on `world` — which nothing reveals while
+   that rite is paused, leaving it exactly as hidden as it was. */
+body.studio-rite-running .context-set-tile[data-set-id='storyTitle']{ display:none !important; }
+body.studio-rite-running:not(.studio-rite-shows-page-shape) .context-set-tile[data-set-id='pageShape']{ display:none !important; }
+body.studio-rite-running:not(.studio-rite-shows-world) .context-rep-section{ display:none !important; }
 
 /* ---- …AND THE REDUCTION OUTLIVES THE RITE ---------------------------
    "the right pane is wrong. it should not have options from rites which

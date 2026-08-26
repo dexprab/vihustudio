@@ -1436,6 +1436,53 @@ once, and its scope is no longer closed.
   in the rail, absent once every rite is taught, gone while a rite runs;
   and coming back landing on Studio Home with the story named, one tap
   away, no modal in front of it.
+- **BOTH OPT-IN RITES WERE UNWALKABLE, AND NOTHING CAUGHT IT** (build
+  0651). Reported by the product owner walking Rite II: *"story 2. beat
+  2. how would i show?"* — beat 2 says *your letters live on the right,
+  with the things you can add*, and My Garden was not there. Measured,
+  two independent causes, and the second was worse than the first.
+- **`studio-gated` survived into the running rite.** The body carried
+  BOTH families at once — `studio-rite-shows-garden` saying show it, and
+  `studio-gated` with no `studio-taught-garden` saying hide it. Both are
+  `display:none !important` and neither knows about the other, so the
+  gate simply won and a rite could not hand over its own subject. Rite
+  III was in the same state with **every one of its five controls
+  hidden**. This is the exact hazard this decision already records for
+  the two families, arriving from the direction nobody watched: not a
+  rule naming the wrong capability, but two correct rules left switched
+  on together.
+- **It broke for precisely the population the rites exist for.** A
+  grandfathered Creator has no record, so `studio-gated` is never
+  written and they saw nothing wrong; a child who has actually finished
+  Rite I is the one who gets gated, and they are the only one the door
+  is ever offered to.
+- **`applyTaught()` already encoded the right answer** — it strips
+  `studio-gated` and every `studio-taught-*`, then returns early while a
+  rite is running — so `run()` calls it rather than growing a second
+  rule that could disagree. One source of truth for what shape the
+  Studio is in.
+- **Voice and Page Shape were still hidden UNCONDITIONALLY in every
+  rite**, on a comment written before build 0646 moved them into Rites
+  II and III. Every gateable control now stands down on its own
+  `studio-rite-shows-<capability>` class, so moving a capability between
+  rites is a registry edit and never a CSS edit — which was the whole
+  point of `reveals` being data. From This World still appears in no
+  rite, and that is now the same rule rather than an exception: nothing
+  reveals `world` while that rite is paused, and writing its story opens
+  the door with no change to the stylesheet.
+- **N6 proves a beat exists; it cannot prove a child can SEE what the
+  beat is about.** `V0`–`V6` close that: every runnable rite is walked
+  for real as a gated child, and every capability it reveals must
+  resolve to a control that is not `display:none`. Proved by reverting
+  each fix separately.
+- **A check that reads its expectations from the thing it is checking
+  proves nothing.** The first version of `V` derived the capability →
+  selector map from the stylesheet's own `:not(.studio-rite-shows-X)`
+  rules — elegant, and blind in exactly the direction that shipped: a
+  control hidden unconditionally has no such rule, so it fell out of the
+  map and was never looked at. The map is written down now, a revealed
+  capability missing from it fails, and the stylesheet is cross-checked
+  against it instead of trusted.
 - Design and sequencing: `docs/STUDIO_RITE_LEVELS.md`. Rite II's script
   and its engineering notes: `docs/STUDIO_RITE_LEVEL_II_STORY.md`.
 

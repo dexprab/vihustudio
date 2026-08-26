@@ -7422,3 +7422,62 @@ owner's instruction, which needs no second reason.
 and watching the door reach 2826px at thirty pages. Creation home 84/84,
 levels 59/59, rite gate 24/24, gate 24/24, celebration 31/31, traveller
 reset 16/16, capability audit 4/4, zero page errors. Build 0649 → 0650.
+
+## Both Opt-In Rites Were Unwalkable (build 0651)
+
+*"story 2. beat 2. how would i show?"*
+
+Beat 2 of *The Name on the Green* says **your letters live on the right,
+with the things you can add**. My Garden was not there. Two independent
+causes, and the second was worse than the first.
+
+**`studio-gated` survived into the running rite.** Measured, the body
+carried both families of classes at once — `studio-rite-shows-garden`
+from the rite saying show it, and `studio-gated` with no
+`studio-taught-garden` from the child's own record saying hide it. Both
+are `display:none !important`, neither knows about the other, and the
+gate simply won. Rite III was in the same state with **every one of its
+five controls hidden**, so both opt-in rites were unwalkable.
+
+It broke for precisely the population the rites exist for. A
+grandfathered Creator has no record, so `studio-gated` is never written
+and nothing looked wrong; a child who has actually finished Rite I is the
+one who gets gated, and they are the only one the door is ever offered
+to. Decision 22 already records this hazard for these two families — it
+arrived from the direction nobody watched: not a rule naming the wrong
+capability, but two correct rules left switched on together.
+`applyTaught()` already encoded the right answer (strip both, then return
+early while a rite runs), so `run()` calls it rather than growing a
+second rule that could disagree.
+
+**Voice and Page Shape were still hidden unconditionally in every rite**,
+on a comment written before build 0646 moved them into Rites II and III.
+Rite II's own Voice beat pointed at a control that was not on the screen.
+Every gateable control stands down on its own reveal class now, so moving
+a capability between rites is a registry edit and never a CSS edit —
+which was the whole point of `reveals` being data. From This World still
+shows in no rite, and that is the same rule rather than an exception:
+nothing reveals `world` while that rite is paused, and writing its story
+opens the door with no change to the stylesheet.
+
+**N6 proves a beat exists; it cannot prove a child can see what the beat
+is about.** `V0`–`V6` close that gap: every runnable rite is walked for
+real, as a gated child, and every capability it reveals must resolve to a
+control that is not `display:none`.
+
+And a note on the check itself, because the first version was wrong in an
+instructive way. It derived the capability → selector map from the
+stylesheet's own `:not(.studio-rite-shows-X)` rules — elegant, and blind
+in exactly the direction that shipped: a control hidden *unconditionally*
+has no such rule, so it fell out of the map and was never looked at. With
+the voice fix reverted it reported 40 passed, 0 failed. **A check that
+reads its expectations from the thing it is checking proves nothing.**
+The map is written down now, a revealed capability missing from it fails,
+and the stylesheet is cross-checked against it rather than trusted.
+
+Proved by reverting each fix separately: without `applyTaught()` in
+`run()`, V3 fails on all three rites and V5 lists every hidden control;
+without the reveal-class gating, V0 names voice, page-shape and world and
+V5 catches them in both rites. Rite gate 43/43 (was 24), levels 59/59,
+creation home 84/84, gate 24/24, celebration 31/31, traveller reset
+16/16, capability audit 4/4, zero page errors. Build 0650 → 0651.

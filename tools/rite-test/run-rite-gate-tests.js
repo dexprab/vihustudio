@@ -233,6 +233,167 @@ function check(cond, name, note) {
     'N6 every runnable rite has a beat for each control it hands over',
     untaught.join(', ') || 'all taught');
 
+  /* ---- V: the control a beat points at is actually ON THE SCREEN -----
+   *
+   * N6 proves a beat exists. It cannot prove the child can see what the
+   * beat is talking about, and that gap shipped: walking Rite II, beat 2
+   * says "your letters live on the right, with the things you can add"
+   * and My Garden was not there. Two independent causes, both invisible
+   * to every check in this repo:
+   *
+   *   1. `studio-gated` survived into the running rite. Both families of
+   *      classes were on <body> at once — `studio-rite-shows-garden`
+   *      saying show it, `studio-gated` with no `studio-taught-garden`
+   *      saying hide it — and both are display:none !important, so the
+   *      gate won. Rite II was unwalkable for exactly the population it
+   *      is for: a child who finished Rite I and therefore HAS a record.
+   *   2. Voice and Page Shape were hidden UNCONDITIONALLY in every rite,
+   *      on a comment written before build 0646 moved them into Rites II
+   *      and III.
+   *
+   * So this walks each runnable rite for real, as a gated child, and
+   * checks that every capability the rite reveals resolves to a control
+   * that is not display:none. The capability -> selector map is READ OUT
+   * OF THE STYLESHEET rather than written here, so it cannot drift from
+   * the rules it is checking: every `:not(.studio-rite-shows-X) SEL`
+   * pair in css/style.css is one entry.
+   */
+  console.log('\n-- V: what a rite reveals is what a child can see');
+
+  // THE MAP IS EXPLICIT, AND THAT IS THE POINT. A first version of this
+  // check read the capability -> selector pairs out of the stylesheet's
+  // own `:not(.studio-rite-shows-X) SEL` rules, which is elegant and
+  // blind in exactly the direction that shipped: a control hidden
+  // UNCONDITIONALLY has no such pair, so it fell out of the map and was
+  // never checked — the voice bug would have passed. A check that reads
+  // its expectations from the thing it is checking proves nothing.
+  //
+  // So this map is written down. A capability a runnable rite reveals
+  // with no entry here FAILS, the same discipline N6 already uses, and
+  // the stylesheet is then cross-checked against it rather than trusted.
+  const CONTROL_FOR = {
+    garden: ".context-add-card[data-add-id='library']",
+    voice: ".context-add-card[data-add-id='voice']",
+    shapes: ".context-add-card[data-add-id='shapes']",
+    doodle: ".context-add-card[data-add-id='doodle']",
+    photo: ".context-add-card[data-add-id='photo']",
+    'blank-page': '#addPageBtn',
+    'page-shape': ".context-set-tile[data-set-id='pageShape']",
+    world: ".context-add-card[data-add-id='fromWorld']",
+    // Handwriting is a ROOM inside My Garden, not a control of its own —
+    // there is no tile to look for, and its beats reach it through the
+    // garden tile. Null is the entry, so it is declared rather than
+    // silently missing.
+    handwriting: null
+  };
+
+  const gateRules = await (async () => {
+    const cp = await browser.newPage();
+    await cp.goto(BASE + '/css/style.css');
+    const text = await cp.evaluate(() => document.body.innerText);
+    await cp.close();
+    const map = {};
+    text.split('}').forEach((chunk) => {
+      const head = chunk.split('{')[0];
+      if (head.indexOf('studio-rite-running') < 0) return;
+      head.split(',').forEach((sel) => {
+        const m = sel.match(/studio-rite-shows-([a-z-]+)\)\s*(.*)$/);
+        if (!m || !m[2].trim()) return;
+        (map[m[1]] = map[m[1]] || []).push(m[2].trim());
+      });
+    });
+    return map;
+  })();
+
+  // Every capability with a control must be gated on its OWN reveal
+  // class in the stylesheet. An unconditional hide is what broke Voice
+  // and Page Shape when build 0646 moved them between rites, and it is
+  // invisible to a live check that only looks at the rites in play.
+  const ungated = Object.keys(CONTROL_FOR).filter((cap) => {
+    const sel = CONTROL_FOR[cap];
+    if (!sel) return false;
+    return !(gateRules[cap] || []).some((s) => s === sel);
+  });
+  check(ungated.length === 0,
+    'V0 every gateable control is hidden by its OWN reveal class, never unconditionally',
+    ungated.join(', ') || Object.keys(gateRules).join(', '));
+
+    const runnableIds = await page.evaluate(() =>
+    StudioRite.rites().filter((r) => r.runnable).map((r) => r.id));
+
+  for (const riteId of runnableIds) {
+    const rp = await browser.newPage({ viewport: { width: 1359, height: 800 } });
+    const rErrors = [];
+    rp.on('pageerror', (e) => rErrors.push(String(e)));
+    await rp.goto(BASE + '/studio.html?author=on');
+    await rp.waitForFunction(() =>
+      typeof StudioRite !== 'undefined' && typeof MagicCard !== 'undefined' &&
+      typeof CreationFlow !== 'undefined', null, { timeout: 20000 });
+    // A GATED child, which is the case that was broken: a Magic Card,
+    // and a taught record holding exactly what the rites before this one
+    // hand over. A grandfathered child (no record) was never affected,
+    // which is why nothing caught this.
+    await rp.evaluate((id) => {
+      localStorage.clear();
+      MagicCard.claim('Vihu');
+      const caps = [];
+      for (const r of StudioRite.rites()) {
+        if (r.id === id) break;
+        (r.teaches || []).forEach((c) => caps.push(c));
+        (r.reveals || []).forEach((c) => caps.push(c));
+      }
+      MagicCard.setTaught(caps);
+      try { localStorage.setItem(StudioRite.TAUGHT_KEY, JSON.stringify(caps)); } catch (e) {}
+      StudioRite.applyTaught();
+      const gw = document.getElementById('gatewayOverlay');
+      if (gw) gw.style.display = 'none';
+      document.querySelectorAll('.studio-rite-overlay').forEach((n) => n.remove());
+    }, riteId);
+    await rp.evaluate(() => { try { CreationFlow.startBlank(); } catch (e) {} });
+    await rp.waitForTimeout(1200);
+    const wasGated = await rp.evaluate(() => document.body.classList.contains('studio-gated'));
+    await rp.evaluate((id) => { try { StudioRite.start(id); } catch (e) {} }, riteId);
+    await rp.waitForTimeout(3000);
+    const seen = await rp.evaluate((map) => {
+      const shows = Array.from(document.body.classList)
+        .filter((c) => c.indexOf('studio-rite-shows-') === 0)
+        .map((c) => c.replace('studio-rite-shows-', ''));
+      const hidden = [], absent = [], unmapped = [];
+      shows.forEach((cap) => {
+        if (!(cap in map)) { unmapped.push(cap); return; }
+        const sel = map[cap];
+        if (!sel) return;                       // declared as having no control
+        const el = document.querySelector(sel);
+        // A section that only renders when its own panel is open is
+        // absent rather than hidden — reported, never failed.
+        if (!el) { absent.push(cap + ' ' + sel); return; }
+        if (getComputedStyle(el).display === 'none') hidden.push(cap + ' ' + sel);
+      });
+      return {
+        running: StudioRite.isRunning(),
+        gated: document.body.classList.contains('studio-gated'),
+        taughtClasses: Array.from(document.body.classList)
+          .filter((c) => c.indexOf('studio-taught-') === 0).length,
+        shows: shows, hidden: hidden, absent: absent, unmapped: unmapped
+      };
+    }, CONTROL_FOR);
+    check(seen.running === true, 'V1 ' + riteId + ' actually runs', JSON.stringify(seen.running));
+    check(wasGated === true || riteId === runnableIds[0],
+      'V2 ' + riteId + ' was reached by a child the Studio really was gating',
+      String(wasGated));
+    check(seen.gated === false && seen.taughtClasses === 0,
+      'V3 ' + riteId + ' takes the Studio\'s shape — no gate class survives into it',
+      JSON.stringify({ gated: seen.gated, taught: seen.taughtClasses }));
+    check(seen.unmapped.length === 0,
+      'V4 ' + riteId + ' — nothing it reveals is unknown to this suite',
+      seen.unmapped.join(', ') || 'all mapped');
+    check(seen.hidden.length === 0,
+      'V5 ' + riteId + ' — every control it reveals is on the screen',
+      seen.hidden.join(' | ') || (seen.absent.length ? 'not rendered: ' + seen.absent.join(' | ') : 'all shown'));
+    check(rErrors.length === 0, 'V6 ' + riteId + ' — zero page errors', rErrors.slice(0, 2).join(' | '));
+    await rp.close();
+  }
+
   // The offer on Studio Home must skip the unwritten one and land on the
   // next real door — never on a rite nobody has authored.
   const offered = await page.evaluate(() => {
