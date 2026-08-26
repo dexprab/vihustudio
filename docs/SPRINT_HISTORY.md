@@ -7857,3 +7857,105 @@ merging: a version stamp is a cache buster and two ships cannot share
 one. The merge itself was clean in every source file (the two sprints
 touched disjoint code); the only conflicts were regenerated test
 screenshots, resolved by re-running the suites against the merged tree.
+
+---
+
+## Sprint 1B — Deterministic Companion Memory
+
+A Companion that has known a child for six months and a Companion that
+met them a minute ago behaved identically, because nothing in the product
+remembered anything. This sprint gives them a past — and puts **no model
+anywhere near it**. Decision 30 said the memory store was out of scope
+for the security sprint; this is that store, and it is deliberately
+stupid: it records facts the application can already prove, retrieves
+them by exact id, and interprets nothing.
+
+`js/companionMemory.js` stores and retrieves. `js/companionMemoryEvents.js`
+decides what is true enough to store — six recorders, each naming a
+record the Studio already keeps: this card owns a story, owns a
+character, one of their stories carries `publishedAt`, a story of theirs
+has cheers, the open story was last touched a fortnight before this
+session began, the card carries a bonded Companion. **Nothing is
+inferred.** "Created a dragon" never becomes "likes dragons"; no
+preference, emotion, personality or relationship meaning is derived from
+any of it, and `remember()` refuses a memory marked `inferred` rather
+than trusting one not to arrive. The CREATOR memory type therefore has no
+producer at all, which is the correct outcome rather than a gap:
+everything that would fill it is an interpretation, and interpretation is
+what a model is for under Decision 30's gate — where what it proposes
+still has to be validated against these same records before anything is
+stored.
+
+**It derives; it does not listen.** The obvious shape is a listener per
+moment, and it was refused for three reasons. Hooking `notify()` would
+mean editing `js/companionDirector.js`, which this sprint may not touch.
+A listener fires once and can be missed — a tab closed mid-write, a
+listener bound late — while a derivation asked twice gives the same
+answer, so nothing is lost by being late. And it is this codebase's own
+idiom: `js/studioRite.js`'s gates are not events either, they compare
+live state against a baseline on a tick that was already happening.
+`sync()` rides `PageRuntime.observe()`, so no polling was introduced and
+not one existing Studio file changed to make memory happen.
+
+**Deduplication is the constraint, not a habit.** Every memory carries a
+deterministic name for its moment — `first-story`, `returned:proj_x` —
+and there is one row per (card, key), in the client and as
+`unique (card_id, dedupe_key)` in Postgres. Decision 20's Cheer
+discipline, and the reason it matters here is not tidiness: a store where
+repeating an action cannot grow the record is a store that cannot become
+an activity log by accident, which is the whole difference between memory
+and surveillance.
+
+A Traveller is not written and later swept — they are never written.
+`remember()` refuses without an active card and `card_id` is NOT NULL, so
+a Traveller memory is not a thing that can exist. `forgetTraveller()`
+joins `js/travellerReset.js`'s sweep anyway, because a record predating a
+card must never outlive its session and that has to be true of any store
+rather than only the ones somebody remembered to list.
+
+`supabase/migrations_companion_memory.sql` mirrors `creator_library`'s
+shape: owner-scoped CRUD against the verified session, SELECT widening
+only for a proven Magic Card recall, and **no public branch at all** —
+`creator_projects` has one because a shared Story is meant to be seen; a
+memory is the opposite. RLS separates browsers; `cardId` separates
+Creators within a browser, and that second half is a filter rather than a
+policy — the same disclosed boundary a child's own stories already live
+with, stated plainly rather than implied.
+
+What a future model would receive is four fields — type, content,
+importance, confidence — and no identifier of any kind. That shape is
+produced here rather than trusted to a later caller to trim. Retrieval is
+arithmetic: `entities` are real stable ids, so a match is exact where an
+embedding would be approximate, and a linear scan over a store bounded at
+120 is sub-millisecond. A question about one thing is never answered with
+another — a memory matching none of the asked-for entities is excluded,
+not ranked lower, because falling back to recency there is exactly how a
+Companion ends up saying something true about the wrong thing.
+
+Over the ceiling the oldest unprotected memory steps back to dormant.
+Never deleted, and never a protected one: a first story is the whole
+reason for having a memory at all, so a cleanup that could take it would
+make the store worse the longer it was used.
+
+`tools/companion-memory-test/` walks the real Studio and a real
+PostgreSQL. Section A is a proof rather than an assertion — every
+cross-Creator attempt is performed **by that other Creator**, as the
+`anon` role with their own `auth.uid()`, against the real policies:
+Creator B cannot read, write, change or delete Creator A's memories; a
+session holding no card reads nothing; a proven recall widens SELECT and
+nothing else. Proved by flipping the SELECT policy to `true` and watching
+both the suite and `supabase/verify_companion_memory.sql` go red, and by
+disabling the dedupe check and watching three checks fail.
+
+One harness bug worth recording, because it produced a green-looking
+skip: the cluster constants sat at the foot of the file beside the
+helpers, and section A is the first thing the async block runs — so a
+`const` further down was still in its temporal dead zone, every cluster
+command threw a ReferenceError into a catch, and the suite reported "no
+PostgreSQL available". Same family as the unwrapped `pg_ctl stop` in
+`tools/edge-auth-test`: the harness failing quietly looks exactly like
+the thing under test being absent.
+
+**Nothing reads the store yet**, deliberately. The Companion's behaviour
+is exactly what it was; it simply now has a past. Companion memory 58/58,
+companion 50/50, garden 104/104, zero page errors. Build 0659 → 0660.

@@ -2642,6 +2642,8 @@ the standard this product will be held to when it is.
   itself, Bond Moment detection, the Companion Mind, `companion-chat`,
   any OpenAI call, any Companion input surface, Companion autonomy,
   Companion ↔ Companion, and any change to Companion behaviour.
+  **The memory store is now built** — see THE MEMORY EXISTS below; the
+  rest of that list is untouched and still out of scope.
 - **Companion-initiated actions remain blocked on global undo**, which
   this codebase does not have (verified: undo is per-tool only; even
   page deletion warns that it *"cannot be undone"*). That gate is
@@ -2706,11 +2708,106 @@ the standard this product will be held to when it is.
   check with an overall verdict on top, writes to a reserved bucket no
   Edge Function uses, and deletes what it wrote — so it is safe to run on
   a live project at any time. The migration returns nothing at all.
+- **THE MEMORY EXISTS, AND THERE IS STILL NO MODEL IN IT.** Built after
+  the security foundation above, in that order deliberately: a
+  conversation endpoint that copied the old pattern would have been a
+  free, world-callable, metered LLM, so nothing was allowed to reach for
+  one until the caller was derived from the verified session everywhere.
+  What shipped is a store and a set of recorders — `js/companionMemory.js`
+  and `js/companionMemoryEvents.js`. **Nothing reads it yet**: the
+  Companion's behaviour is exactly what it was, it simply now has a past.
+- **A memory is only ever a FACT the application can already prove.**
+  Six recorders, and each names a record: this card owns a story · this
+  card owns a character · one of their stories carries `publishedAt` · a
+  story of theirs has cheers · the open story was last touched a
+  fortnight ago · the card carries a bonded Companion. **Nothing is
+  inferred** — "created a dragon" never becomes "likes dragons", and no
+  preference, emotion, personality or relationship meaning is derived
+  from any of it. `remember()` REFUSES a memory marked `inferred` rather
+  than trusting one not to arrive, so the rule is enforced at the door
+  and not by everybody remembering it.
+- **The CREATOR type therefore has no producer, and that is the correct
+  outcome rather than a gap.** Everything that would fill it ("they
+  prefer…", "they always…") is an interpretation, which is what a model
+  is for under this decision's own gate — and what it proposes will
+  still have to be validated against these same records before anything
+  is stored.
+- **IT DERIVES; IT DOES NOT LISTEN.** The obvious shape is a listener per
+  moment, and it was refused for three reasons: hooking `notify()` would
+  mean editing `js/companionDirector.js`, which this sprint may not
+  touch; a listener fires once and can be missed, while a derivation
+  asked twice gives the same answer; and it is this codebase's own idiom
+  — `js/studioRite.js`'s 21 gates are not events, they compare live state
+  against a baseline on a tick that was already happening. `sync()` rides
+  `PageRuntime.observe()`, which already fired on every meaningful
+  mutation, so **no polling was introduced and no existing Studio file
+  changed to make memory happen.**
+- **DEDUPLICATION IS THE CONSTRAINT, NOT A HABIT.** Every memory carries
+  a deterministic name for its moment — `first-story`, `returned:proj_x`
+  — and there is one row per (card, key), in the client AND as
+  `unique (card_id, dedupe_key)` in Postgres. Decision 20's Cheer
+  discipline: the rule IS the key, so there is no flag kept elsewhere
+  that could disagree. **A store where repeating an action cannot grow
+  the record is a store that cannot become an activity log by accident**,
+  which is the whole difference between memory and surveillance.
+- **A TRAVELLER IS NOT WRITTEN AND LATER SWEPT — THEY ARE NEVER
+  WRITTEN.** `remember()` refuses without an active card and `card_id`
+  is NOT NULL, so a Traveller memory is not a thing that can exist.
+  `forgetTraveller()` exists anyway and joins `js/travellerReset.js`'s
+  sweep, for the reason that file exists at all: a record predating a
+  card must never outlive its session, and that has to be true of any
+  store rather than only the ones somebody remembered to list.
+- **RLS separates BROWSERS; `cardId` separates CREATORS WITHIN a
+  browser**, and that second half is a filter rather than a policy —
+  stated plainly because it is the same disclosed boundary a child's own
+  STORIES already live with (Decision 19: "a filter and never a
+  delete"). A Magic Card is not an authenticated principal and RLS has
+  nothing to check it against; `schema.sql` says so of
+  `magic_card_identities` in as many words.
+- **THERE IS NO PUBLIC BRANCH.** `creator_projects` has one — `is_shared`
+  — because a shared Story is meant to be seen by everybody (Decision
+  15). A memory is the opposite: it is the private history between one
+  child and their Companion. SELECT widens for a proven Magic Card
+  recall and nothing else, and it widens SELECT ONLY, so a memory
+  recalled on a grandmother's laptop is read there and never rewritten.
+- **What leaves the store is four fields** — type, content, importance,
+  confidence — and no identifier of any kind: no id, no key, no
+  `cardId`, no `companionId`, no timestamps. That is what the Privacy /
+  Relevance Gate will one day hand a model, so the smallest true thing
+  is what this file produces rather than what a later caller is trusted
+  to trim.
+- **Retrieval is arithmetic, not a model.** `entities` are real stable
+  ids (`project:<id>`, `library:<id>`, `companion:leafy`), so a match is
+  EXACT where an embedding would be approximate, and a linear scan over
+  a store bounded at 120 is sub-millisecond. **A question about one thing
+  is never answered with another**: if entities were asked for, a memory
+  matching none of them is excluded rather than ranked lower — falling
+  back to recency there is exactly how a Companion ends up saying
+  something true about the wrong thing. No embeddings, no vector store,
+  no ranking model, and none is needed.
+- **The lifecycle is pressure, not deletion.** Over the ceiling the
+  OLDEST unprotected active memory steps back to dormant — never
+  deleted, and never a protected one. A first story is the whole reason
+  for having a memory at all, so a cleanup that could take it would make
+  the store worse the longer it was used. Deliberately NOT the Garden's
+  full life cycle: consolidation belongs to a sprint that has something
+  to consolidate.
+- Verified against a real PostgreSQL as a real second session, not
+  asserted: Creator B cannot read, write, change or delete Creator A's
+  memories; a session holding no card reads nothing; a proven recall
+  widens SELECT and nothing else. Proved by flipping the SELECT policy
+  to `true` and watching the suite and the verifier both fail.
+  `supabase/verify_companion_memory.sql` answers in one word per check
+  and leaves nothing behind.
 - `docs/COMPANION_CANON.md` → Canon 5 ·
   `supabase/functions/_shared/edgeAuth.js` ·
   `supabase/migrations_edge_rate_limit.sql` ·
   `supabase/verify_edge_rate_limit.sql` ·
-  `tools/edge-auth-test/run-edge-auth-tests.js`
+  `tools/edge-auth-test/run-edge-auth-tests.js` ·
+  `js/companionMemory.js` · `js/companionMemoryEvents.js` ·
+  `supabase/migrations_companion_memory.sql` ·
+  `supabase/verify_companion_memory.sql` ·
+  `tools/companion-memory-test/run-companion-memory-tests.js`
 
 ## Roadmap
 
