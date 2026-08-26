@@ -75,8 +75,28 @@ function isAllowedImageUrl(raw: string): boolean {
   }
 }
 
+// Sprint 1A, CLAUDE.md -> Decision 30. The deploy note above says this
+// function "authenticate[s] with the project's anon key ... which
+// satisfies the default verify_jwt gate" — which was an accurate
+// description of a gate that let anybody through, since that key is
+// public. This is an outbound fetcher and an image proxy on our own
+// name, so it now asks who is calling and bounds how often.
+import { guard, restDb } from '../_shared/edgeAuth.js';
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
+
+  const SUPA_URL = Deno.env.get('SUPABASE_URL') || '';
+  const SERVICE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+  const pass = await guard(req, {
+    env: { supabaseUrl: SUPA_URL, anonKey: Deno.env.get('SUPABASE_ANON_KEY') || '', serviceKey: SERVICE },
+    require: 'user',
+    bucket: 'family-album',
+    db: restDb(SUPA_URL, SERVICE),
+    envGet: (n: string) => Deno.env.get(n) || '',
+  });
+  if (!pass.ok) return json(pass.body, pass.status);
+
   try {
     const u = new URL(req.url);
 

@@ -78,6 +78,14 @@
 // "we could not post it right now", never to a broken share.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+// Sprint 1A, CLAUDE.md -> Decision 30. See the AUTHORIZATION note at
+// the head of the request handler below for what this closes and why it
+// was the most serious of the three findings. (Deliberately NOT naming
+// the serve call here: tools/family-photos-test cuts this file at the
+// first occurrence of that literal in order to load the letter
+// composers, so a comment mentioning it truncates the file and takes
+// the whole letter section down. Learned the hard way.)
+import { guard, authorizeCardAccess } from '../_shared/edgeAuth.js';
 
 const CORS_HEADERS: Record<string, string> = {
   'Access-Control-Allow-Origin': '*',
@@ -778,6 +786,55 @@ Deno.serve(async (req: Request) => {
 
   const action = String(body.action || 'protect');
 
+  // ---------------------------------------------------------------
+  // AUTHORIZATION (Sprint 1A, CLAUDE.md -> Decision 30)
+  //
+  // THE HOLE THIS CLOSES, stated plainly because it was real and it
+  // was ours: `protect` took an `identityId` straight from the request
+  // body, looked up whatever card carried it, WROTE the caller's chosen
+  // address onto that card, and posted the card — nickname,
+  // constellation and serial — to the address they gave. The only thing
+  // in front of it was Supabase's verify_jwt gate, which the PUBLIC
+  // anon key satisfies. So anybody who read supabase-config.json could
+  // point a stranger's child's Magic Card at their own inbox and be
+  // sent it.
+  //
+  // The comment on the `parent_email` write below has always said this
+  // was safe "so `recover` can never be pointed at a card by anybody
+  // who did not just prove they hold it." Nothing proved anything. Now
+  // something does.
+  //
+  //   protect  the caller must own the identity, or have PROVEN a
+  //            recall of it (js/magicCard.js's adopt() keeps the
+  //            original identity_id and never re-stamps owner_id, so a
+  //            Creator recognised at their grandmother's house is
+  //            legitimately not its owner — magic_card_recalls is what
+  //            makes them entitled anyway).
+  //   recover  any real session. There is nothing to own: this is the
+  //            path for a child on a brand-new device with no card at
+  //            all, and Decision 14 is explicit that controlling the
+  //            inbox is the whole of the check. What it gains is a
+  //            rate limit, because it sends mail.
+  //   ping     any real session. Its own note below says it is
+  //            "deliberately reachable with the anon key"; that is no
+  //            longer true of anything here, and it loses nothing — it
+  //            reports booleans about this deployment and every browser
+  //            in the product holds a session.
+  const pass = await guard(req, {
+    env: {
+      supabaseUrl: Deno.env.get('SUPABASE_URL') || '',
+      anonKey: Deno.env.get('SUPABASE_ANON_KEY') || '',
+      serviceKey: Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '',
+    },
+    require: 'user',
+    // A deployment probe costs nothing and must not be able to exhaust
+    // the allowance that letters need.
+    bucket: action === 'ping' ? '' : 'sky-protection',
+    db,
+    envGet: (n: string) => Deno.env.get(n) || '',
+  });
+  if (!pass.ok) return json(pass.body, pass.status);
+
   // A deployment check, and nothing else. Five different things make
   // this feature say "I could not reach them just now", and from a
   // browser they are indistinguishable — so there is one call that
@@ -855,6 +912,14 @@ Deno.serve(async (req: Request) => {
   if (action === 'protect') {
     const identityId = String(body.identityId || '');
     if (!identityId) return json({ ok: false, error: 'bad_request' }, 400);
+
+    // OWNERSHIP, BEFORE ANYTHING IS READ OR WRITTEN. A card that does
+    // not exist and a card belonging to somebody else answer
+    // identically — the same reasoning `recover` below already uses for
+    // addresses, so this cannot become an oracle for which Magic Card
+    // ids are real.
+    const owns = await authorizeCardAccess(db, identityId, pass.caller, COLUMNS);
+    if (!owns.ok) return json({ ok: false, reason: 'forbidden' }, 403);
 
     const { data, error } = await db
       .from('magic_card_identities')

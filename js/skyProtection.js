@@ -130,19 +130,48 @@ const SkyProtection = (function () {
     } catch (e) {}
   }
 
+  // THE SESSION, NOT THE ANON KEY (Sprint 1A, CLAUDE.md -> Decision 30).
+  //
+  // The function now proves the caller owns the Magic Card it is being
+  // asked to post, and it can only do that if it knows who called. The
+  // browser already holds a real anonymous Supabase session — the same
+  // one whose auth.uid() owns this card's row in the first place — so
+  // sending its access token is the whole change here. Nothing a child
+  // sees, nothing new to sign into.
+  function _token() {
+    try {
+      if (typeof ThemeRepositoryClient === 'undefined' || !ThemeRepositoryClient.getSession) {
+        return Promise.resolve(null);
+      }
+      return ThemeRepositoryClient.getSession()
+        .then(function (s) { return (s && s.access_token) ? s.access_token : null; })
+        .catch(function () { return null; });
+    } catch (e) { return Promise.resolve(null); }
+  }
+
   function _call(payload) {
-    return _config().then(function (cfg) {
+    return Promise.all([_config(), _token()]).then(function (both) {
+      var cfg = both[0], token = both[1];
       if (!cfg) {
         var missing = { ok: false, error: 'not_configured' };
         _note(payload.action, missing);
         return missing;
+      }
+      // No session, no call. Reported as the same handled state every
+      // other unreachable-platform case already is, so the child still
+      // shares their story and VihuPlanet never claims a sky is safe
+      // when it is not (Decision 14).
+      if (!token) {
+        var noSession = { ok: false, error: 'not_configured' };
+        _note(payload.action, noSession);
+        return noSession;
       }
       var url = cfg.url.replace(/\/+$/, '') + '/functions/v1/' + FN_NAME;
       var status = 0;
       return fetch(url, {
         method: 'POST',
         headers: {
-          'Authorization': 'Bearer ' + cfg.anonKey,
+          'Authorization': 'Bearer ' + token,
           'apikey': cfg.anonKey,
           'Content-Type': 'application/json'
         },

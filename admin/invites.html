@@ -203,11 +203,23 @@ const FN = cfg.url.replace(/\/+$/, '') + '/functions/v1/invite-send';
 // like a function that failed to send. js/vihuVoice.js, js/familyAlbum.js
 // and js/skyProtection.js all send this pair; this page did not, and that
 // was the whole of the first failure.
-const FN_HEADERS = {
-  'Content-Type': 'application/json',
-  'Authorization': 'Bearer ' + cfg.anonKey,
-  'apikey': cfg.anonKey,
-};
+// SPRINT 1A (CLAUDE.md -> Decision 30): the ADMINISTRATOR's session,
+// not the anon key. invite-send now checks platform_admins against the
+// email the auth server returns for this token, so the credential this
+// page already holds — it signs in with a real password below — is the
+// one that has to travel. Sending the public anon key made an open mail
+// relay out of a function only administrators were ever meant to reach.
+//
+// `apikey` stays the anon key: the gateway routes on it and it
+// authorises nothing.
+async function FN_HEADERS() {
+  const { data: { session } } = await sb.auth.getSession();
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer ' + ((session && session.access_token) || cfg.anonKey),
+    'apikey': cfg.anonKey,
+  };
+}
 
 function when(ts) {
   if (!ts) return '—';
@@ -341,7 +353,7 @@ $('sendMail').onclick = async () => {
       const token = await mint('email', to, list.length === 1 ? label : '');
       const raw = await fetch(FN, {
         method: 'POST',
-        headers: FN_HEADERS,
+        headers: await FN_HEADERS(),
         body: JSON.stringify({ to, token, note: extra }),
       });
       // A non-2xx from the GATEWAY (401/404) is not JSON and is a
@@ -698,7 +710,7 @@ async function mailState() {
   try {
     const resp = await fetch(FN, {
       method: 'POST',
-      headers: FN_HEADERS,
+      headers: await FN_HEADERS(),
       body: JSON.stringify({ action: 'ping' }),
     });
     if (resp.status === 404) throw new Error('not deployed');

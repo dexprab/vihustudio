@@ -123,6 +123,10 @@
      lives only in <code>supabase/functions/voice-speak</code>.</p>
 </div>
 
+<!-- SPRINT 1A: voice-speak now verifies the caller's session
+     (CLAUDE.md -> Decision 30), and js/themeRepositoryClient.js is
+     what establishes one. Without it this room would be silent. -->
+<script src="../../js/themeRepositoryClient.js?v=0654"></script>
 <script src="../../js/companionEngine.js?v=0589"></script>
 <script src="../../js/lumoVoice.js?v=0589"></script>
 <script src="../../js/vihuVoice.js?v=0589"></script>
@@ -281,13 +285,26 @@
   // Ground truth, from the provider rather than from anybody's memory:
   // the exact model ids this account may use, and which of them the
   // provider itself says take a `style` setting.
+  // The session, not the anon key — the function now asks who is
+  // calling. ThemeRepositoryClient holds (or creates) the anonymous
+  // session every VihuPlanet page already has.
+  function _authHeaders(cfg) {
+    var t = (typeof ThemeRepositoryClient !== 'undefined' && ThemeRepositoryClient.getSession)
+      ? ThemeRepositoryClient.getSession().then(function (s) { return (s && s.access_token) || ''; })
+                                          .catch(function () { return ''; })
+      : Promise.resolve('');
+    return t.then(function (token) {
+      return { Authorization: 'Bearer ' + (token || cfg.anonKey), apikey: cfg.anonKey };
+    });
+  }
+
   $('models2').addEventListener('click', function () {
     $('fn').textContent = 'asking…';
     fetch('../../supabase-config.json', { cache: 'no-store' })
       .then(function (r) { return r.json(); })
-      .then(function (cfg) {
+      .then(async function (cfg) {
         return fetch(cfg.url.replace(/\/+$/, '') + '/functions/v1/voice-speak?models=1', {
-          headers: { Authorization: 'Bearer ' + cfg.anonKey, apikey: cfg.anonKey }
+          headers: await _authHeaders(cfg)
         }).then(function (r) { return r.text(); });
       })
       .then(function (t) {
@@ -308,10 +325,10 @@
   // an old copy is otherwise invisible.
   fetch('../../supabase-config.json', { cache: 'no-store' })
     .then(function (r) { return r.json(); })
-    .then(function (cfg) {
+    .then(async function (cfg) {
       if (!cfg || !cfg.url) throw new Error('no platform configured');
       return fetch(cfg.url.replace(/\/+$/, '') + '/functions/v1/voice-speak', {
-        headers: { Authorization: 'Bearer ' + cfg.anonKey, apikey: cfg.anonKey }
+        headers: await _authHeaders(cfg)
       }).then(function (r) { return r.text(); });
     })
     .then(function (t) { $('fn').textContent = t; })

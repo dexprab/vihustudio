@@ -330,7 +330,13 @@ function loadLetter() {
   const file = path.join(ROOT, 'supabase', 'functions', 'sky-protection', 'index.ts');
   let src = fs.readFileSync(file, 'utf8');
   src = src.replace(/^import .*$/gm, '');
-  src = src.slice(0, src.indexOf('Deno.serve('));
+  // The REAL serve call, at the start of a line — not the first
+  // mention of it in a comment. Cutting on a bare indexOf meant any
+  // comment naming the handler truncated the file and took every
+  // assertion below down with it, which is exactly what happened
+  // when Sprint 1A added an authorization note to that function.
+  const cut = src.search(/^Deno\.serve\(/m);
+  src = src.slice(0, cut === -1 ? src.indexOf('Deno.serve(') : cut);
   src += `
 globalThis.Deno = { env: { get: (n) => (n === 'SKY_BASE_URL' ? 'https://vihuplanet.com' : '') } };
 module.exports = { compose, composeHtml, cardText, albumPageUrl, BUILD };

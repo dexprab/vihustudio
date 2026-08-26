@@ -38,8 +38,28 @@
 //
 // Leave JWT verification ON. This spends money per call, so an
 // unauthenticated one is somebody else's bill.
+//
+// ---------------------------------------------------------------
+// AND THAT NOTE WAS TRUE AND NOT ENOUGH (Sprint 1A, Decision 30).
+//
+// Supabase's verify_jwt gate is satisfied by the PUBLIC anon key, which
+// this site serves from supabase-config.json out of a public
+// repository — so "leave JWT verification on" meant "anybody who views
+// source may spend our ElevenLabs balance." Nothing here asked who had
+// come through the gate.
+//
+// It now does, through supabase/functions/_shared/edgeAuth.js: the
+// caller is resolved from their real Supabase session (anonymous is
+// fine — every browser has one) and counted against the 'voice-speak'
+// allowance in that module's own LIMITS table.
+//
+// NOTHING ELSE CHANGED. Not the generation, not the ElevenLabs call,
+// not the settings, not the cache keys, not the audio format, not the
+// 200-with-a-reason convention, not the timing contract js/vihuVoice.js
+// depends on. This is a gate in front of the same function.
+import { guard, restDb } from '../_shared/edgeAuth.js';
 
-const BUILD = '2026-08-18 · vihu voice · models probe';
+const BUILD = '2026-08-26 · vihu voice · caller verified';
 const TTS_ROOT = 'https://api.elevenlabs.io/v1/text-to-speech';
 const MAX_CHARS = 600; // a spoken line, not a chapter
 
@@ -100,8 +120,33 @@ async function storage(path: string, method: 'GET' | 'POST', body?: Uint8Array) 
   });
 }
 
+// The gate, in one place, for every method that is not a preflight.
+// A preflight carries no credentials by definition — refusing it would
+// mean the browser never sends the real request and the caller sees
+// "TypeError: Failed to fetch" with no further detail, which is the
+// exact class of bug the CORS note above was written about.
+async function gate(req: Request, bucket: string) {
+  const url = env('SUPABASE_URL');
+  const serviceKey = env('SUPABASE_SERVICE_ROLE_KEY');
+  return await guard(req, {
+    env: { supabaseUrl: url, anonKey: env('SUPABASE_ANON_KEY'), serviceKey },
+    require: 'user',
+    bucket,
+    db: restDb(url, serviceKey),
+    envGet: (n: string) => Deno.env.get(n) || '',
+  });
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
+
+  // Identity first, before a single byte of the body is read and long
+  // before the provider is touched. Only a POST is counted against the
+  // allowance — the GET branches are a deployment probe that costs
+  // nothing, and spending a child's speech allowance on a status check
+  // would make the diagnostic the thing that breaks the product.
+  const pass = await gate(req, req.method === 'POST' ? 'voice-speak' : '');
+  if (!pass.ok) return json(pass.body, pass.status);
 
   if (req.method === 'GET') {
     // ?models=1 — WHICH MODELS DOES THIS ACCOUNT ACTUALLY HAVE?
