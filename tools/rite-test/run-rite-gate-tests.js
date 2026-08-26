@@ -662,16 +662,71 @@ function check(cond, name, note) {
       before: naming.letters, after: afterLetter.letters }));
   check(xErrors.length === 0, 'X6 zero page errors', xErrors.slice(0, 2).join(' | '));
 
-  /* ---- and Lumo steps aside while the garden grows -------------------
-   * "the lumo should disappear or get to a side so that child can see
-   * the garden grow in front of himself." Measured at 1359x800: the
-   * wrapper starts at x=296 and the band sits at x=296, 231px wide — it
-   * covers the whole of the left growth band Decision 27 puts the
-   * garden in. A moment, not a relocation: it rides the same
-   * `vihu:creation-captured` the Garden itself grows on, so it learns
-   * nothing about letters, drawings or cameras.
+  await xp.close();
+
+  /* ---- Y: on a garden beat Lumo stands in the left pane -------------
+   * "lumo screen is still there. you can collapse it and just keep i
+   * did it button, or move lumo and idid it button to left pane as
+   * there is only single page there." The 2.2s step-aside a capture
+   * triggers is right for the growth itself and does nothing for the
+   * rest of the beat, which is where a child spends most of it.
+   *
+   * Beside-the-page is the product owner's OWN earlier preference and
+   * stays the default; this overrides it only where the two collide —
+   * beats whose whole subject is a garden growing in the gutter Lumo is
+   * standing in.
    */
-  const aside = await xp.evaluate(() => new Promise((done) => {
+  console.log('\n-- Y: on a garden beat, Lumo stands in the left pane');
+
+  const yp = await browser.newPage({ viewport: { width: 1359, height: 800 } });
+  const yErrors = [];
+  yp.on('pageerror', (e) => yErrors.push(String(e)));
+  await yp.goto(BASE + '/studio.html?author=on');
+  await yp.waitForFunction(() =>
+    typeof StudioRite !== 'undefined' && typeof MagicCard !== 'undefined' &&
+    typeof CreationFlow !== 'undefined', null, { timeout: 20000 });
+  await yp.evaluate(() => {
+    localStorage.clear();
+    MagicCard.claim('Vihu');
+    const r1 = StudioRite.rites().find((r) => r.mandatory);
+    MagicCard.setTaught((r1.teaches || []).concat(r1.reveals || []));
+    const gw = document.getElementById('gatewayOverlay');
+    if (gw) gw.style.display = 'none';
+    document.querySelectorAll('.studio-rite-overlay').forEach((n) => n.remove());
+  });
+  await yp.evaluate(() => { try { CreationFlow.startBlank(); } catch (e) {} });
+  await yp.waitForTimeout(1200);
+  await yp.evaluate(() => { try { StudioRite.start('my-garden'); } catch (e) {} });
+  await yp.waitForTimeout(3000);
+
+  const dock = () => yp.evaluate(() => {
+    const pan = document.querySelector('.studio-rite-overlay .studio-rite-panel');
+    const b = pan.getBoundingClientRect();
+    const w = document.querySelector('.preview-wrapper').getBoundingClientRect();
+    return {
+      wants: StudioRite.wantsRoom(),
+      beside: document.body.classList.contains('studio-rite-beside'),
+      clearsWorkspace: b.right <= w.x + 1,
+      x: Math.round(b.x), width: Math.round(b.width)
+    };
+  });
+
+  const bgBeat = await dock();
+  check(bgBeat.wants === null && bgBeat.beside === true,
+    'Y1 a beat that is not about the garden keeps beside-the-page — his own earlier preference',
+    JSON.stringify(bgBeat));
+
+  /* Beside the page is where a capture CAN still catch him in the way —
+   * My Garden is revealed for the whole rite, so a child may wander in
+   * and keep something on any beat. There he leans out of the way for
+   * as long as the growth answers, and comes back.
+   *
+   * One measurement worth keeping: the class went on and off correctly
+   * and NOTHING MOVED. The docked band's own entry animation holds
+   * opacity and transform at its end state, and an animation outranks a
+   * plain declaration however specific — so asserting the class is
+   * present proves nothing about whether a child can see past him. */
+  const aside = await yp.evaluate(() => new Promise((done) => {
     const ov = document.querySelector('.studio-rite-overlay');
     const pan = document.querySelector('.studio-rite-overlay .studio-rite-panel');
     const read = () => ({
@@ -687,16 +742,79 @@ function check(cond, name, note) {
     }, 700);
   }));
   check(aside.before.aside === false && aside.during.aside === true,
-    'X7 a capture steps the band aside so the child can watch their garden grow',
+    'Y1a beside the page, a capture steps him aside so the garden can be watched',
     JSON.stringify(aside));
   check(Number(aside.during.opacity) < 0.5,
-    'X8 …and it really recedes — the class alone proved nothing, an animation was pinning it',
+    'Y1b …and he really recedes — the class alone proves nothing, an animation was pinning it',
     JSON.stringify({ idle: aside.before.opacity, growing: aside.during.opacity }));
   check(aside.during.shown !== 'none' && aside.after.aside === false &&
         Number(aside.after.opacity) > 0.9,
-    'X9 it leans out of the way and comes back — never vanishes, which reads as a glitch',
+    'Y1c he leans out of the way and comes back — never vanishes, which reads as a glitch',
     JSON.stringify(aside.after));
-  await xp.close();
+
+  for (let i = 0; i < 20; i++) {
+    if (await yp.evaluate(() => StudioRite.wantsRoom())) break;
+    await yp.evaluate(() => {
+      try {
+        const pg = PageRuntime.getActivePage();
+        if (pg) {
+          pg.metadata = pg.metadata || {};
+          pg.metadata.cardOverrides = pg.metadata.cardOverrides || {};
+          pg.metadata.cardOverrides.background = '#2E7D32';
+        }
+      } catch (e) {}
+      const d = document.querySelector('.studio-rite-done');
+      if (d) d.click();
+    });
+    await yp.waitForTimeout(600);
+  }
+  await yp.waitForTimeout(700);
+  const gardenBeat = await dock();
+  check(gardenBeat.wants !== null && gardenBeat.beside === false,
+    'Y2 a garden beat moves him to the left pane', JSON.stringify(gardenBeat));
+  check(gardenBeat.clearsWorkspace === true,
+    'Y3 …and the whole workspace is clear, growth bands included',
+    JSON.stringify(gardenBeat));
+
+  // The confirmation goes with him — a button left behind in the old
+  // place would be the one control this beat ends on, stranded.
+  await yp.evaluate(() => {
+    try { HandwritingStore.save({ ch: 'h', png: 'data:image/png;base64,iVBORw0KGgo=', w: 40, h: 40 }); } catch (e) {}
+  });
+  let doneBtn = null;
+  for (let i = 0; i < 20; i++) {
+    await yp.waitForTimeout(400);
+    doneBtn = await yp.evaluate(() => {
+      const b = document.querySelector('.studio-rite-done');
+      if (!b) return null;
+      const br = b.getBoundingClientRect();
+      const pr = document.querySelector('.studio-rite-overlay .studio-rite-panel').getBoundingClientRect();
+      const w = document.querySelector('.preview-wrapper').getBoundingClientRect();
+      return {
+        text: b.textContent,
+        insidePanel: br.left >= pr.left - 1 && br.right <= pr.right + 1,
+        onScreen: br.bottom <= window.innerHeight + 1 && br.top >= 0,
+        clearsWorkspace: br.right <= w.x + 1
+      };
+    });
+    if (doneBtn) break;
+  }
+  check(!!doneBtn && doneBtn.text === 'I did it!' && doneBtn.insidePanel &&
+        doneBtn.onScreen && doneBtn.clearsWorkspace,
+    'Y4 the confirmation travels with him and fits the pane', JSON.stringify(doneBtn));
+
+  // And the capture step-aside stands down there: fading a guide who is
+  // already out of the way is a guide vanishing for no visible reason.
+  const noAside = await yp.evaluate(() => new Promise((done) => {
+    const ov = document.querySelector('.studio-rite-overlay');
+    document.dispatchEvent(new CustomEvent('vihu:creation-captured', { detail: { id: 'suite-2' } }));
+    setTimeout(() => done({ aside: ov.classList.contains('studio-rite-aside') }), 700);
+  }));
+  check(noAside.aside === false,
+    'Y5 the capture step-aside stands down in the pane — nothing to step aside from',
+    JSON.stringify(noAside));
+  check(yErrors.length === 0, 'Y6 zero page errors', yErrors.slice(0, 2).join(' | '));
+  await yp.close();
 
   // The offer on Studio Home must skip the unwritten one and land on the
   // next real door — never on a rite nobody has authored.

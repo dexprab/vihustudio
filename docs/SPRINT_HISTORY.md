@@ -7630,3 +7630,50 @@ nothing about whether a child can see past it.
 52), gate 25/25, levels 59/59, creation home 84/84, celebration 31/31,
 traveller reset 16/16, capability audit 4/4, zero page errors. Build
 0653 → 0654.
+
+## Lumo Stands in the Left Pane While the Garden Grows (build 0655)
+
+*"lumo screen is still there. you can collapse it and just keep i did it
+button, or move lumo and idid it button to left pane as there is only
+single page there."*
+
+The step-aside shipped in 0654 is right for the growth itself and does
+nothing for the rest of the beat — which is where a child spends most of
+it, going back for the next letter and looking at the garden in between.
+For those seconds Lumo was back in front of it.
+
+Of the two options offered, the second is the one that keeps the story's
+voice: collapsing to a bare button would take Lumo out of a rite he is
+guiding. So on a garden beat the dock takes the left pane, which is the
+observation the product owner made — a rite runs on a blank page, so that
+column holds one thumbnail and a great deal of nothing.
+
+**Beside-the-page is his own earlier preference and stays the default.**
+This overrides it only where the two collide: beats whose whole subject
+is a garden growing in the very gutter Lumo is standing in.
+`_prefersRail()` reads `wantsRoom()` — the same question the picker asks
+for its room — so it follows the story rather than a list of gate ids
+kept in step by hand, and the dock is re-placed when the beat changes
+rather than only on a resize. Measured at 1359×800: beside-the-page puts
+the panel at x=296, the wrapper's own left edge; the pane puts it at
+x=16, width 248, with the whole workspace clear and both growth bands
+visible. The **I did it!** button travels with him, because it lives in
+the same panel — a confirmation left behind in the old place would be the
+one control the beat ends on, stranded.
+
+The capture step-aside stays for the case it still serves: My Garden is
+revealed for the whole rite, so a child may keep something on any beat,
+and beside-the-page he would still be in the way. It stands down in the
+pane, where he is already clear — fading a guide for no reason a child
+can see is worse than not fading one.
+
+`Y1`–`Y6` guard both halves, proved by removing the rail preference and
+watching the panel go back to x=296 with the workspace covered. `X7`–`X9`
+from 0654 moved into `Y1a`–`Y1c` rather than being deleted: they were
+written against the naming beat, which is now exactly where the
+step-aside correctly does NOT fire, so they were asserting a state that
+no longer occurs there.
+
+Rite gate 67/67 (was 61), gate 25/25, levels 59/59, creation home 84/84,
+celebration 31/31, traveller reset 16/16, capability audit 4/4, zero page
+errors. Build 0654 → 0655.

@@ -1550,12 +1550,36 @@ once, and its scope is no longer closed.
   wide — it covers the **whole** of the left growth band Decision 27
   puts the garden in, so a child told their letter is being kept in
   their garden could not watch it happen.
-- **A moment, never a relocation.** Growth answers in about 1.5s, so the
-  band recedes for a little longer than that and comes straight back.
-  Docking Lumo elsewhere for the whole beat would cost his words for the
-  whole beat to fix one second of it. It never uses `display:none`: a
+- **THE LEFT PANE, FOR THE WHOLE OF A GARDEN BEAT** (build 0655).
+  Reported by the product owner after the step-aside shipped: *"lumo
+  screen is still there. you can collapse it and just keep i did it
+  button, or move lumo and idid it button to left pane as there is only
+  single page there."* He is right: the 2.2s step-aside is correct for
+  the growth itself and does nothing for the rest of the beat, which is
+  where a child spends most of it — going back for the next letter,
+  looking at the garden in between.
+- **Beside-the-page is his own earlier preference and stays the
+  default.** This overrides it only where the two collide: the beats
+  whose whole subject is a garden growing in the very gutter Lumo is
+  standing in. `_prefersRail()` reads `wantsRoom()`, so it follows the
+  story rather than a list of gate ids kept in step by hand, and the
+  dock is re-placed when the beat changes rather than only on a resize.
+  Measured at 1359×800: beside-the-page x=296 (the wrapper's own left
+  edge), the left pane x=16 width 248 — the whole workspace clear,
+  growth bands included. The **I did it!** button travels with him,
+  because it lives in the same panel.
+- **A rite runs on a blank page with one thumbnail in it**, which is the
+  observation that makes the pane free — and it is exactly the one the
+  product owner made.
+- **A moment, never a relocation** — this is the other half, and it
+  still applies where the band IS beside the page (My Garden is revealed
+  for the whole rite, so a child may keep something on any beat).
+  Growth answers in about 1.5s, so the band recedes for a little longer
+  than that and comes straight back. It never uses `display:none`: a
   Lumo who vanishes and reappears is a glitch, one who leans out of the
-  way is being polite.
+  way is being polite. **It stands down in the pane**, where he is
+  already out of the way — fading a guide for no reason a child can see
+  is worse than not fading one.
 - **It rides `vihu:creation-captured`** — the same single event the
   Garden itself grows on (Decision 27: one event, a capture id,
   deliberately no type field) — so it learns nothing about letters,

@@ -2527,6 +2527,9 @@ const StudioRite=(function(){
   function _awaitAction(kind,nudgeDelay,instruction,declineLabel){
     return new Promise(function(resolve){
       _awaiting=kind;
+      // The dock reads the beat (see _prefersRail), so it is re-placed
+      // whenever the beat changes rather than only on a resize.
+      try{ _placeDock(); }catch(e){}
       if(PAGE_LEVEL[kind]) _showPageControls();
       const baseline=_baseline();
       _bgTouched=false;
@@ -2980,6 +2983,15 @@ const StudioRite=(function(){
       try{
         if(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
       }catch(e){}
+      // Only when the band is actually in the way. On a garden beat it
+      // is docked in the rail (see _prefersRail) and the workspace is
+      // already clear, so fading Lumo there would be a guide vanishing
+      // for no reason a child could see. True rail mode is the docked
+      // class WITHOUT the beside one.
+      try{
+        const cl=_els.overlay.classList;
+        if(cl.contains('studio-rite-rail') && !cl.contains('studio-rite-beside')) return;
+      }catch(e){}
       try{ _els.overlay.classList.add('studio-rite-aside'); }catch(e){}
       if(_stepTimer) clearTimeout(_stepTimer);
       _stepTimer=setTimeout(function(){
@@ -3006,6 +3018,29 @@ const StudioRite=(function(){
     },350);
   }
 
+  // THE LEFT RAIL WINS ON A GARDEN BEAT.
+  //
+  // "lumo screen is still there. you can collapse it and just keep i did
+  // it button, or move lumo and idid it button to left pane as there is
+  // only single page there." — the product owner, on the naming beat.
+  // The 2.2s step-aside a capture triggers is right for the growth
+  // itself and does nothing for the rest of the beat, which is where a
+  // child spends most of it: going back for the next letter, watching
+  // the garden between times.
+  //
+  // Beside-the-page is his OWN earlier preference and stays the default
+  // for every other beat — this only overrides it where the two
+  // preferences actually collide, which is the beats whose whole subject
+  // is a garden growing in the very gutter Lumo is standing in. The rail
+  // is empty on a rite: a rite runs on a blank page with one thumbnail
+  // in it, which is exactly the observation he made.
+  function _prefersRail(){
+    // wantsRoom() is non-null on precisely the garden beats, so this
+    // reads the story rather than a list of gate ids kept in step by
+    // hand.
+    return !!wantsRoom();
+  }
+
   function _placeDock(){
     if(!_els) return;
     const ov=_els.overlay;
@@ -3015,6 +3050,7 @@ const StudioRite=(function(){
       const canvas=document.getElementById('previewCanvas');
       const sidebar=document.querySelector('.sidebar:not(.right-sidebar)');
       const list=document.getElementById('slideList');
+      const railFirst=_prefersRail();
 
       // 1. BESIDE THE PAGE — the product owner's preference, and the
       //    closest Lumo can stand to the thing he is talking about.
@@ -3027,7 +3063,7 @@ const StudioRite=(function(){
       //    and costs the page nothing: it keeps its full height either
       //    way. The Selection Action Strip still has its own room on the
       //    far side (it needs 160px past the canvas; there are 332).
-      if(area&&canvas){
+      if(area&&canvas&&!railFirst){
         const ar=area.getBoundingClientRect();
         const cr=canvas.getBoundingClientRect();
         const gutter=Math.round(ar.width-cr.width-32);
