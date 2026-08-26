@@ -394,6 +394,125 @@ function check(cond, name, note) {
     await rp.close();
   }
 
+  /* ---- W: My Garden has two rooms, and the story is in one of them --
+   *
+   * "second beat is about letters. but the highlighted part is
+   * drawings." The child taps My Garden because Lumo just said their
+   * letters live there, and lands in whichever room the picker happened
+   * to open on last. The picker's own rule — land where your new thing
+   * is — already covered this; it simply had no way to know.
+   *
+   * This walks Rite II for real to the letter beat and opens My Garden
+   * the way a child does: Add Something, then the tile.
+   */
+  console.log('\n-- W: the story opens the room it is about');
+
+  const wp = await browser.newPage({ viewport: { width: 1359, height: 800 } });
+  const wErrors = [];
+  wp.on('pageerror', (e) => wErrors.push(String(e)));
+  await wp.goto(BASE + '/studio.html?author=on');
+  await wp.waitForFunction(() =>
+    typeof StudioRite !== 'undefined' && typeof MagicCard !== 'undefined' &&
+    typeof CreationFlow !== 'undefined', null, { timeout: 20000 });
+  await wp.evaluate(() => {
+    localStorage.clear();
+    MagicCard.claim('Vihu');
+    const r1 = StudioRite.rites().find((r) => r.mandatory);
+    const caps = (r1.teaches || []).concat(r1.reveals || []);
+    MagicCard.setTaught(caps);
+    try { localStorage.setItem(StudioRite.TAUGHT_KEY, JSON.stringify(caps)); } catch (e) {}
+    const gw = document.getElementById('gatewayOverlay');
+    if (gw) gw.style.display = 'none';
+    document.querySelectorAll('.studio-rite-overlay').forEach((n) => n.remove());
+  });
+  await wp.evaluate(() => { try { CreationFlow.startBlank(); } catch (e) {} });
+  await wp.waitForTimeout(1200);
+
+  const outsideRite = await wp.evaluate(() => StudioRite.wantsRoom());
+  check(outsideRite === null,
+    'W1 outside a rite the Studio is asked nothing — My Garden opens where it always did',
+    String(outsideRite));
+
+  await wp.evaluate(() => { try { StudioRite.start('my-garden'); } catch (e) {} });
+  await wp.waitForTimeout(2500);
+
+  // Beat 1 awaits bg-set. Satisfy it, then take the beat's own "I did
+  // it!" — the escape that exists so a child is never stranded.
+  for (let i = 0; i < 25; i++) {
+    if (await wp.evaluate(() => StudioRite.wantsRoom())) break;
+    await wp.evaluate(() => {
+      try {
+        const pg = PageRuntime.getActivePage();
+        if (pg) {
+          pg.metadata = pg.metadata || {};
+          pg.metadata.cardOverrides = pg.metadata.cardOverrides || {};
+          pg.metadata.cardOverrides.background = '#2E7D32';
+        }
+      } catch (e) {}
+      const b = Array.from(document.querySelectorAll('.studio-rite-controls button'))
+        .find((x) => /I did it/i.test(x.textContent || ''));
+      if (b) b.click();
+    });
+    await wp.waitForTimeout(700);
+  }
+
+  const atLetters = await wp.evaluate(() => ({
+    wants: StudioRite.wantsRoom(),
+    beat: (document.querySelector('.studio-rite-line .gateway-greeting-title') || {}).textContent || ''
+  }));
+  check(atLetters.wants === 'letters',
+    'W2 the letter beat says the story is in the letters room', JSON.stringify(atLetters));
+
+  // Opened the way a child opens it, with no room asked for.
+  await wp.evaluate(() => {
+    const t = document.querySelector('.context-add-trigger');
+    if (t && !document.querySelector('.context-add-grid')) t.click();
+  });
+  await wp.waitForTimeout(500);
+  await wp.evaluate(() => {
+    const tile = document.querySelector(".context-add-card[data-add-id='library']");
+    if (tile) tile.click();
+  });
+  await wp.waitForTimeout(800);
+  const landed = await wp.evaluate(() => {
+    const active = document.querySelector('.context-hw-tab-active');
+    return {
+      active: active ? active.getAttribute('data-room') : null,
+      rooms: Array.from(document.querySelectorAll('.context-hw-tab')).map((t) => t.getAttribute('data-room')),
+      clickable: Array.from(document.querySelectorAll('.context-hw-tab'))
+        .every((t) => getComputedStyle(t).display !== 'none' && !t.disabled)
+    };
+  });
+  check(landed.active === 'letters',
+    'W3 …and My Garden opens in it, with no room asked for', JSON.stringify(landed));
+  check(landed.rooms.join(',') === 'drawings,letters',
+    'W4 both rooms are named, so a nudge points at one without matching its words',
+    landed.rooms.join(','));
+  check(landed.clickable === true,
+    'W5 neither room is locked — a rite never takes a door away', String(landed.clickable));
+
+  // Standing in the wrong room, the nudge points at the right one rather
+  // than at the tile the child has already tapped.
+  const wrongRoom = await wp.evaluate(() => {
+    const other = document.querySelector(".context-hw-tab[data-room='drawings']");
+    if (other) other.click();
+    return null;
+  });
+  await wp.waitForTimeout(600);
+  const points = await wp.evaluate(() => {
+    const t = StudioRite._nudgeTarget ? StudioRite._nudgeTarget('letter-kept') : null;
+    return {
+      active: (document.querySelector('.context-hw-tab-active') || {}).getAttribute
+        ? document.querySelector('.context-hw-tab-active').getAttribute('data-room') : null,
+      target: t ? (t.getAttribute('data-room') || t.getAttribute('data-add-id') || t.className) : null
+    };
+  });
+  check(points.active === 'drawings' && points.target === 'letters',
+    'W6 in the wrong room, the nudge points at the right one — never at the tile already tapped',
+    JSON.stringify(points));
+  check(wErrors.length === 0, 'W7 zero page errors', wErrors.slice(0, 2).join(' | '));
+  await wp.close();
+
   // The offer on Studio Home must skip the unwritten one and land on the
   // next real door — never on a rite nobody has authored.
   const offered = await page.evaluate(() => {

@@ -1483,6 +1483,34 @@ once, and its scope is no longer closed.
   map and was never looked at. The map is written down now, a revealed
   capability missing from it fails, and the stylesheet is cross-checked
   against it instead of trusted.
+- **MY GARDEN HAS TWO ROOMS, AND THE STORY IS IN ONE OF THEM** (build
+  0652). Reported by the product owner walking Rite II: *"second beat is
+  about letters. but the highlighted part is drawings."* He tapped My
+  Garden because Lumo had just said his letters lived there, and landed
+  among his drawings — the room the picker happened to have opened on
+  last.
+- **The picker's own rule already covered this; it had no way to know.**
+  *Each keep flow reopens onto its own room so a child lands where their
+  new thing is* — a story sending a child for a letter is exactly that
+  situation. `StudioRite.wantsRoom()` answers it, so **which gate is
+  about letters and which about drawings stays in the rite** rather than
+  becoming a second copy of the script inside the Context Panel. It is
+  one optional question with a null answer, so the Studio behaves
+  exactly as before with the module absent, and it is asked only when a
+  room was not named explicitly — every existing keep flow is untouched.
+- **A rite never locks a room.** Both tabs stay live and a child can
+  wander into the other one whenever they like; the story only decides
+  where the door opens. *Hidden, never locked* applies inside a control
+  as much as to the control itself.
+- **The nudge has three steps now, not two.** The way in while My Garden
+  is shut, **the ROOM when it is open and standing in the other one**,
+  and the catcher once it is up. The middle step was missing, and
+  without it the nudge pointed at the tile the child had already tapped
+  — which is the same dead end as pointing at nothing. It reads the
+  tabs' `data-room` rather than their words, because those are copy and
+  `studioRite.js` is not the file that owns them.
+- `W1`–`W7` walk Rite II for real to the letter beat and open My Garden
+  the way a child does, proved by reverting each half separately.
 - Design and sequencing: `docs/STUDIO_RITE_LEVELS.md`. Rite II's script
   and its engineering notes: `docs/STUDIO_RITE_LEVEL_II_STORY.md`.
 

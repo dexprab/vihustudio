@@ -2648,8 +2648,31 @@ const ContextPanel=(function(){
   // remembered for the session; each keep flow reopens onto its own
   // room so a child lands where their new thing is.
   let _gardenTab='drawings';
+  // AND A STORY BEING TOLD COUNTS AS A KEEP FLOW. Reported by the
+  // product owner walking Rite II: "second beat is about letters. but
+  // the highlighted part is drawings." He tapped My Garden because Lumo
+  // said his letters lived there, and landed in the other room. The
+  // rule above — land where your new thing is — already covers this
+  // case; it just had no way to know.
+  //
+  // StudioRite is asked rather than consulted: it owns which of its own
+  // gates is about letters and which about drawings, so that knowledge
+  // stays in the rite. This is one optional question with a null
+  // answer, so the Studio works exactly as before with the module
+  // absent, and it NEVER locks the room — both tabs stay live and a
+  // child can wander into the other one whenever they like.
+  function _riteWantsRoom(){
+    try{
+      if(typeof StudioRite!=='undefined' && StudioRite.wantsRoom) return StudioRite.wantsRoom();
+    }catch(e){}
+    return null;
+  }
   function _showLibraryPicker(tab){
     if(tab==='drawings'||tab==='letters') _gardenTab=tab;
+    else{
+      const wanted=_riteWantsRoom();
+      if(wanted==='drawings'||wanted==='letters') _gardenTab=wanted;
+    }
     stickerStudioOpen=true;
     panelRoot.innerHTML='';
     panelRoot.classList.remove('is-empty');
@@ -2659,6 +2682,9 @@ const ContextPanel=(function(){
     [['drawings','🖼 My Drawings'],['letters','✍️ My Letters']].forEach(function(pair){
       const b=_el('button','context-hw-tab'+(_gardenTab===pair[0]?' context-hw-tab-active':''),pair[1]);
       b.type='button';
+      // Named so a nudge can point at a room without matching on the
+      // child-facing label, which is copy and may change.
+      b.setAttribute('data-room',pair[0]);
       b.addEventListener('click',function(){ if(_gardenTab!==pair[0]) _showLibraryPicker(pair[0]); });
       tabs.appendChild(b);
     });

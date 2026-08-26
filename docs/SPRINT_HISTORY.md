@@ -7481,3 +7481,50 @@ without the reveal-class gating, V0 names voice, page-shape and world and
 V5 catches them in both rites. Rite gate 43/43 (was 24), levels 59/59,
 creation home 84/84, gate 24/24, celebration 31/31, traveller reset
 16/16, capability audit 4/4, zero page errors. Build 0650 → 0651.
+
+## The Story Opens the Room It Is About (build 0652)
+
+*"second beat is about letters. but the highlighted part is drawings."*
+
+Beat 2 of *The Name on the Green* sends a child for the first letter of
+their name. They tap My Garden — because Lumo has just told them their
+letters live there — and land among their drawings, the room the picker
+happened to have opened on last.
+
+The picker's own rule already covered this case. Its comment reads *each
+keep flow reopens onto its own room so a child lands where their new
+thing is*, and a story sending a child for a letter is exactly that
+situation; it simply had no way to know. `StudioRite.wantsRoom()` answers
+it, and the direction matters: which gate is about letters and which
+about drawings stays in the rite, rather than becoming a second copy of
+the script inside the Context Panel. One optional question with a null
+answer, asked only when no room was named explicitly — every existing
+keep flow is untouched, and the Studio behaves exactly as before with the
+module absent.
+
+A rite never locks a room. Both tabs stay live and a child can wander
+into the other one whenever they like; the story only decides where the
+door opens. *Hidden, never locked* applies inside a control as much as to
+the control itself.
+
+The nudge gained its missing middle step. It had two — the way in while
+My Garden is shut, and the catcher once it is up — and nothing for the
+state in between, so a child standing in the wrong room was pointed back
+at the tile they had already tapped. That is the same dead end as
+pointing at nothing. Now: the tile, then the ROOM, then the catcher, with
+*"Your letters are in the other room."* in the middle. It finds the tab
+by `data-room` rather than by its words, because those are copy and
+`studioRite.js` is not the file that owns them.
+
+`W1`–`W7` walk Rite II for real to the letter beat — satisfying the
+background gate and taking the beat's own "I did it!" escape — then open
+My Garden the way a child does: Add Something, then the tile. Proved by
+reverting each half separately: without the room default W3 lands on
+drawings; without the room nudge W6 finds no target at all. A new
+harness-only `_nudgeTarget(kind)` sits beside `_gates` and `_gateMet`,
+because which element a nudge would actually light was invisible to every
+check in the repo.
+
+Rite gate 50/50 (was 43), levels 59/59, creation home 84/84, gate 24/24,
+celebration 31/31, traveller reset 16/16, capability audit 4/4, zero page
+errors. Build 0651 → 0652.

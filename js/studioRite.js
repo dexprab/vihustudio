@@ -97,6 +97,9 @@ const StudioRite=(function(){
   // restore-session modal or the normal creation flow over the top of a
   // chapter still in progress — the Rite owns the screen until it ends.
   function isRunning(){ return _running; }
+  // The gate the story is standing on right now, or null between beats.
+  // Read by wantsRoom() below; see its comment.
+  var _awaiting=null;
 
   // False for the whole story, true from the finale onward. js/app.js
   // reads it to decide whether the header's two story buttons are
@@ -1530,6 +1533,44 @@ const StudioRite=(function(){
     return document.querySelector('.context-add-trigger');
   }
 
+  // WHICH ROOM OF MY GARDEN THE STORY IS IN.
+  //
+  // "second beat is about letters. but the highlighted part is
+  // drawings." — the product owner, walking Rite II. He tapped My Garden
+  // because Lumo said his letters lived there, and My Garden opened on
+  // the room it had opened on last, which was the other one.
+  //
+  // Which gate is about letters and which about drawings is the RITE's
+  // knowledge, so it lives here and the picker asks for it
+  // (js/contextPanel.js -> _riteWantsRoom). A gate that is about neither
+  // answers null, and so does everything outside a rite, so the Studio
+  // behaves exactly as it always did.
+  const GARDEN_ROOM={
+    'letter-kept':'letters',
+    'letters-grown':'letters',
+    'letters-placed':'letters',
+    'drawing-kept':'drawings',
+    'drawing-placed':'drawings'
+  };
+  function wantsRoom(){
+    if(!_running) return null;
+    return GARDEN_ROOM[_awaiting] || null;
+  }
+
+  // The tab for a room, but ONLY when My Garden is open and standing in
+  // the other one — pointing at the room a child is already in says
+  // nothing. It reads `data-room` rather than the tab's own words,
+  // because those are copy and this is not the file that owns them.
+  function _gardenRoomTab(room){
+    try{
+      if(!document.querySelector('.context-hw-tabs')) return null;
+      const tab=document.querySelector(".context-hw-tab[data-room='"+room+"']");
+      if(!tab || tab.classList.contains('context-hw-tab-active')) return null;
+      return tab;
+    }catch(e){}
+    return null;
+  }
+
   // capability -> {find(), hint}. `find` may return null at any moment
   // (the control genuinely isn't on screen yet); the nudge then simply
   // waits and tries again rather than pointing at nothing.
@@ -1662,43 +1703,60 @@ const StudioRite=(function(){
     // because that is where both rooms live. What changes is the help,
     // and the help never names the control: it says where a thing is,
     // which Decision 8 allows, and never what the control does.
+    // THREE STEPS, NOT TWO. The way in while My Garden is shut; the
+    // ROOM, when it is open and standing in the other one; and the
+    // catcher itself once it is up. The middle step is what was
+    // missing: a child sent for their letters who lands among their
+    // drawings is looking at a dead end, and the tile the old nudge
+    // pointed at was the one they had already tapped.
     'letter-kept':{
       find:function(){
-        return document.querySelector('.hw-studio-panel') || _addTile('library');
+        return document.querySelector('.hw-studio-panel')
+            || _gardenRoomTab('letters') || _addTile('library');
       },
       hint:function(){
-        return document.querySelector('.hw-studio-panel')
-          ? 'Hold your letter up so I can see it.'
-          : 'Your letters live on the right, with the things you can add.';
+        if(document.querySelector('.hw-studio-panel')) return 'Hold your letter up so I can see it.';
+        if(_gardenRoomTab('letters')) return 'Your letters are in the other room.';
+        return 'Your letters live on the right, with the things you can add.';
       }
     },
     'letters-grown':{
       find:function(){
-        return document.querySelector('.hw-studio-panel') || _addTile('library');
+        return document.querySelector('.hw-studio-panel')
+            || _gardenRoomTab('letters') || _addTile('library');
       },
       hint:function(){
-        return document.querySelector('.hw-studio-panel')
-          ? 'Hold the next one up.'
-          : 'There is a letter waiting for every one you need.';
+        if(document.querySelector('.hw-studio-panel')) return 'Hold the next one up.';
+        if(_gardenRoomTab('letters')) return 'Your letters are in the other room.';
+        return 'There is a letter waiting for every one you need.';
       }
     },
     'letters-placed':{
-      find:function(){ return _addTile('library'); },
-      hint:'Tap a letter you made, and it will ask where it should go.'
+      find:function(){ return _gardenRoomTab('letters') || _addTile('library'); },
+      hint:function(){
+        return _gardenRoomTab('letters')
+          ? 'Your letters are in the other room.'
+          : 'Tap a letter you made, and it will ask where it should go.';
+      }
     },
     'drawing-kept':{
       find:function(){
-        return document.querySelector('.bia-studio-panel') || _addTile('library');
+        return document.querySelector('.bia-studio-panel')
+            || _gardenRoomTab('drawings') || _addTile('library');
       },
       hint:function(){
-        return document.querySelector('.bia-studio-panel')
-          ? 'Hold your paper up so I can see it.'
-          : 'When your drawing is ready, it comes in on the right.';
+        if(document.querySelector('.bia-studio-panel')) return 'Hold your paper up so I can see it.';
+        if(_gardenRoomTab('drawings')) return 'Your drawings are in the other room.';
+        return 'When your drawing is ready, it comes in on the right.';
       }
     },
     'drawing-placed':{
-      find:function(){ return _addTile('library'); },
-      hint:'Tap the one you made, and it will ask where it should go.'
+      find:function(){ return _gardenRoomTab('drawings') || _addTile('library'); },
+      hint:function(){
+        return _gardenRoomTab('drawings')
+          ? 'Your drawings are in the other room.'
+          : 'Tap the one you made, and it will ask where it should go.';
+      }
     },
     'blank-page-added':{
       find:function(){ return document.getElementById('addPageBtn'); },
@@ -2450,6 +2508,7 @@ const StudioRite=(function(){
   // as completing it would: the Rite carries on and the Studio unlocks.
   function _awaitAction(kind,nudgeDelay,instruction,declineLabel){
     return new Promise(function(resolve){
+      _awaiting=kind;
       if(PAGE_LEVEL[kind]) _showPageControls();
       const baseline=_baseline();
       _bgTouched=false;
@@ -2470,6 +2529,7 @@ const StudioRite=(function(){
         },IDLE_DRIFT_MS);
       };
       const cleanup=function(){
+        _awaiting=null;
         if(settleTimer){ clearTimeout(settleTimer); settleTimer=null; }
         _clearNudge();
         if(idleTimer){ clearTimeout(idleTimer); idleTimer=null; }
@@ -3268,6 +3328,14 @@ const StudioRite=(function(){
     taught:taught,
     isGrandfathered:isGrandfathered,
     nextOptIn:nextOptIn,
+    wantsRoom:wantsRoom,
+    // Harness only, beside _gates and _gateMet: which element a nudge
+    // would actually light for a gate right now. A nudge that points at
+    // the control a child has already tapped is the failure this was
+    // added to catch, and nothing else could see it.
+    _nudgeTarget:function(kind){
+      try{ return (NUDGE[kind] && NUDGE[kind].find()) || null; }catch(e){ return null; }
+    },
     applyTaught:applyTaught,
     TAUGHT_KEY:TAUGHT_KEY,
     FLAG_KEY:FLAG,
