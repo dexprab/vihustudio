@@ -7794,3 +7794,66 @@ bug. Proved by putting the bug back: `U1` names `my-garden beat 13
 Rite gate 84/84, gate 25/25, levels 59/59, creation home 84/84,
 celebration 31/31, traveller reset 16/16, capability audit 4/4, zero page
 errors. Build 0656 → 0657.
+
+## "Tell Me When" Means the Child Decides (build 0658)
+
+*"also tell me rescanning same letter does it or does it not clears the
+beat."*
+
+Measured, not read off: it does not. `HandwritingStore.save({ch})` looks
+up the existing record for that character and reuses its id, so a re-scan
+**replaces** a letter rather than adding one. Every letter beat compares a
+count against the count when the beat began, so a replacement moves
+nothing.
+
+```
+beat2 +v         letters:[v]   ids:[exu0]      done:true
+beat2 rescan v   letters:[v]   ids:[exu0]      done:true   ← already passed
+beat3 start      letters:[v]   ids:[exu0]      done:false
+beat3 rescan v   letters:[v]   ids:[exu0]      done:false  ← no progress
+beat3 +i         letters:[i,v] ids:[u6gj,exu0] done:true
+```
+
+Answering the question found the defect. The naming beat's gate is *more
+letters than before*, so a child whose name is one letter — or who simply
+redoes the letter they already made — could never reach **I did it!**, and
+the nudge would repeat itself indefinitely. A wall, which Decision 22
+forbids. It also broke the promise that beat makes in its own line, added
+four builds earlier: *Tell me when it is all there* says the child
+decides, and a counter was deciding.
+
+A beat can now declare itself child-ended (`end:{await:…,
+declared:true}`). The gate stays — it is what the nudge points at and what
+the resume replay reads — and only the confirmation stops waiting on it. A
+declared beat also never finishes itself: being asked to say when you are
+done and then having it decided for you is worse than either alone.
+Measured: the button appears within ~2.5s of the beat arriving, with no
+letter added, and the beat is still running six seconds later.
+
+The beat before it is untouched. `letter-kept` still waits for a real
+letter, because something has to arrive before there is anything to
+declare.
+
+**Disclosed:** a child who declares done and later resumes lands back on
+that beat — the declaration is not recorded on the story, and the replay
+reads counts. One press to declare again. The alternative, replaying past
+the beat on a smaller count, would push a child who was mid-name past the
+beat that asks for it, which is the worse of the two.
+
+One test had to change rather than pass. `X3` asserted *"nothing to press
+yet"* — true, and exactly the wall. A check that encodes the defect is
+worse than no check, so it now asserts the opposite and says why in place.
+`T1`–`T7` cover the rest, proved by putting the wall back: four checks go
+red including the one for a one-letter name.
+
+Rite gate 91/91 (was 84), gate 25/25, levels 59/59, creation home 84/84,
+celebration 31/31, traveller reset 16/16, capability audit 4/4, zero page
+errors. Build 0657 → 0659.
+
+**A note on the number.** Another session shipped its own build 0658 to
+main while this one was in flight — the Companion memory foundation and
+the Edge auth work. Both had stamped 0658, so this one moved to 0659 on
+merging: a version stamp is a cache buster and two ships cannot share
+one. The merge itself was clean in every source file (the two sprints
+touched disjoint code); the only conflicts were regenerated test
+screenshots, resolved by re-running the suites against the merged tree.

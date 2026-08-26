@@ -628,15 +628,30 @@ function check(cond, name, note) {
     await xp.waitForTimeout(700);
   }
 
-  const naming = await xBeat();
+  // Polled, not sampled. The confirmation waits on a short stillness
+  // after the beat arrives, so reading it the instant the loop breaks is
+  // a race — one this suite lost the moment an unrelated merge shifted
+  // page-load timing, having passed by luck before.
+  let naming = await xBeat();
+  for (let i = 0; i < 20 && !naming.done; i++) {
+    await xp.waitForTimeout(400);
+    naming = await xBeat();
+  }
   check(/One letter at a time/.test(naming.sub) && /Tell me when it is all there/.test(naming.sub),
     'X1 the naming beat asks for one letter at a time, and for the child to say when',
     naming.sub);
   check(!/rest of your name/i.test(naming.sub),
     'X2 …and no longer asks for a whole name on one paper — the catcher reads ONE letter',
     naming.sub);
-  check(naming.done === false,
-    'X3 nothing to press yet — a name with no more letters in it is not finished',
+  // THIS CHECK USED TO ASSERT THE WALL. It read "nothing to press yet",
+  // which was true and was the defect: the confirmation was withheld
+  // until a NEW character existed, so a one-letter name could never
+  // finish and a re-scan did nothing (a re-scan replaces a letter, it
+  // never adds one). The beat is child-declared now — see the T block —
+  // so the confirmation is there to be pressed from the moment the beat
+  // is asking.
+  check(naming.done === true,
+    'X3 the naming beat offers its confirmation straight away — the child says when',
     JSON.stringify({ done: naming.done, letters: naming.letters }));
 
   await xp.evaluate(() => {
@@ -815,6 +830,130 @@ function check(cond, name, note) {
     JSON.stringify(noAside));
   check(yErrors.length === 0, 'Y6 zero page errors', yErrors.slice(0, 2).join(' | '));
   await yp.close();
+
+  /* ---- T: "tell me when" means the child decides ---------------------
+   *
+   * "also tell me rescanning same letter does it or does it not clears
+   * the beat." Measured: `HandwritingStore.save({ch})` reuses the
+   * existing record's id, so a re-scan REPLACES a letter rather than
+   * adding one and the count does not move. The naming beat's gate is
+   * "more letters than when this beat began", so a child whose name is
+   * one letter — or who simply redoes the letter they already made —
+   * could never reach "I did it!".
+   *
+   * That is a wall, and it broke the beat's own promise: the line says
+   * "Tell me when it is all there", and a counter was deciding.
+   */
+  console.log('\n-- T: a beat that asks the child to say when');
+
+  const tp = await browser.newPage({ viewport: { width: 1359, height: 800 } });
+  const tErrors = [];
+  tp.on('pageerror', (e) => tErrors.push(String(e)));
+  await tp.goto(BASE + '/studio.html?author=on');
+  await tp.waitForFunction(() =>
+    typeof StudioRite !== 'undefined' && typeof HandwritingStore !== 'undefined' &&
+    typeof MagicCard !== 'undefined' && typeof CreationFlow !== 'undefined',
+    null, { timeout: 20000 });
+  await tp.evaluate(() => {
+    localStorage.clear();
+    const c = MagicCard.claim('Vihu');
+    MagicCard.setActive(c.id);
+    const r1 = StudioRite.rites().find((r) => r.mandatory);
+    MagicCard.setTaught((r1.teaches || []).concat(r1.reveals || []));
+    const gw = document.getElementById('gatewayOverlay');
+    if (gw) gw.style.display = 'none';
+    document.querySelectorAll('.studio-rite-overlay').forEach((n) => n.remove());
+  });
+  await tp.evaluate(() => { try { StudioRite.start('my-garden'); } catch (e) {} });
+  await tp.waitForTimeout(3000);
+  const tGate = async () => {
+    for (let i = 0; i < 30; i++) {
+      const g = await tp.evaluate(() => StudioRite._awaitingGate && StudioRite._awaitingGate());
+      if (g) return g;
+      await tp.waitForTimeout(300);
+    }
+    return null;
+  };
+  const tLook = () => tp.evaluate(() => ({
+    gate: StudioRite._awaitingGate(),
+    letters: HandwritingStore.list().map((r) => r.ch),
+    ids: HandwritingStore.list().map((r) => r.id),
+    done: !!document.querySelector('.studio-rite-done')
+  }));
+
+  await tGate();
+  await tp.evaluate(() => {
+    const pg = PageRuntime.getActivePage();
+    pg.metadata = pg.metadata || {};
+    pg.metadata.cardOverrides = pg.metadata.cardOverrides || {};
+    pg.metadata.cardOverrides.background = '#2E7D32';
+    PageRuntime.notify(); ProjectManager.markDirty();
+  });
+  await tp.waitForTimeout(700);
+  await tp.evaluate(() => { const d = document.querySelector('.studio-rite-done'); if (d) d.click(); });
+  await tp.waitForTimeout(900);
+
+  // The beat BEFORE it is still gated: something has to arrive before
+  // there is anything to declare.
+  await tGate();
+  const beforeLetter = await tLook();
+  await tp.evaluate(() => HandwritingStore.save({ ch: 'v', png: 'data:image/png;base64,iVBORw0KGgo=', w: 40, h: 40 }));
+  // Polled: the confirmation waits on a short stillness AND the beat's
+  // own poll, so a fixed sleep either flakes or is slow.
+  let tAfterLetter = null;
+  for (let i = 0; i < 20; i++) {
+    await tp.waitForTimeout(400);
+    tAfterLetter = await tLook();
+    if (tAfterLetter.done) break;
+  }
+  check(beforeLetter.gate === 'letter-kept' && beforeLetter.done === false && tAfterLetter.done === true,
+    'T1 the beat before still waits for a real letter — nothing to declare until something arrives',
+    JSON.stringify({ before: beforeLetter.done, after: tAfterLetter.done }));
+
+  // A RE-SCAN REPLACES, IT DOES NOT ADD. Same character, same record id.
+  const idBefore = tAfterLetter.ids[0];
+  await tp.evaluate(() => HandwritingStore.save({ ch: 'v', png: 'data:image/png;base64,iVBORw0KGgoAAA==', w: 44, h: 44 }));
+  await tp.waitForTimeout(900);
+  const rescanned = await tLook();
+  check(rescanned.letters.length === 1 && rescanned.ids[0] === idBefore,
+    'T2 re-scanning the same letter replaces it — one record, same id, the count never moves',
+    JSON.stringify({ letters: rescanned.letters, sameId: rescanned.ids[0] === idBefore }));
+
+  await tp.evaluate(() => { const d = document.querySelector('.studio-rite-done'); if (d) d.click(); });
+  await tp.waitForTimeout(1200);
+
+  // The naming beat, doing NOTHING. This is the child whose name is one
+  // letter, and the child who only wants to redo the one they made.
+  await tGate();
+  const namingStart = await tLook();
+  await tp.waitForTimeout(2600);
+  const namingIdle = await tLook();
+  check(namingStart.gate === 'letters-grown',
+    'T3 the setup really reached the naming beat', JSON.stringify(namingStart));
+  check(namingIdle.done === true && namingIdle.letters.length === 1,
+    'T4 it offers its confirmation with no new letter — a one-letter name is never stuck',
+    JSON.stringify(namingIdle));
+
+  // …and it still waits to be pressed. Being asked to say when you are
+  // done and then having it decided for you is worse than either alone.
+  await tp.waitForTimeout(3500);
+  const stillThere = await tp.evaluate(() => ({
+    running: StudioRite.isRunning(),
+    gate: StudioRite._awaitingGate(),
+    done: !!document.querySelector('.studio-rite-done')
+  }));
+  check(stillThere.running === true && stillThere.gate === 'letters-grown' && stillThere.done === true,
+    'T5 …and never finishes itself — the press is still the child\'s', JSON.stringify(stillThere));
+
+  // A re-scan on the naming beat keeps it available rather than doing
+  // nothing at all, which is the reported symptom.
+  await tp.evaluate(() => HandwritingStore.save({ ch: 'v', png: 'data:image/png;base64,iVBORw0KGgoBBB==', w: 48, h: 48 }));
+  await tp.waitForTimeout(1400);
+  const afterRescan = await tLook();
+  check(afterRescan.done === true && afterRescan.letters.length === 1,
+    'T6 re-scanning on the naming beat leaves the way forward open', JSON.stringify(afterRescan));
+  check(tErrors.length === 0, 'T7 zero page errors', tErrors.slice(0, 2).join(' | '));
+  await tp.close();
 
   /* ---- U: a beat never asks for a control that is asleep -------------
    *
