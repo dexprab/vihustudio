@@ -58,14 +58,18 @@ hosted project directly. `config.toml`'s local settings are kept accurate
 anyway — notably `enable_anonymous_sign_ins = true`, because VihuPlanet has no
 accounts and every visitor is an anonymous session (Decision 11).
 
-`supabase/functions/_shared/` is a CLI bundling convention that a Dashboard
-deploy does not carry, which is why each function imports its own
-`./edgeAuth.js` copy (Decision 30). Underscore-prefixed folders are the CLI's
-convention for shared code rather than functions, and `_shared/` has no
-`index.ts` in any case, so it is not deployable as a function on its own.
-Nothing imports it at runtime — regenerate the per-function copies with
-`node tools/edge-auth-test/sync-shared.js`; drift is a failing check in
-`tools/edge-auth-test/run-edge-auth-tests.js`.
+Every function here is **one file**, and that is load-bearing rather than
+tidy (Decision 30). A Dashboard deploy carries neither
+`supabase/functions/_shared/` nor a second file placed beside `index.ts` —
+both were measured, the second one failing for two functions out of five —
+so the authorization gate is inlined into each `index.ts` between markers.
+
+`_shared/edgeAuth.js` is the canonical source and is never deployed: it has
+no `index.ts`, so it is not a function. Never hand-edit an inlined block. Run
+`node tools/edge-auth-test/sync-shared.js` after any change to the canonical
+file; `tools/edge-auth-test/run-edge-auth-tests.js` asserts each `index.ts`
+matches what that script produces and re-runs the gate's real assertions
+against the inlined copy, so drift is a failing test.
 
 ---
 

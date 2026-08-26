@@ -17,11 +17,14 @@
 # the whole live schema into a new `migrations/` folder that nothing else in
 # this repository expects. Neither is part of this project's workflow.
 #
-# `supabase/functions/_shared/` is a CLI bundling convention that a Dashboard
-# deploy does not carry, so each function imports its OWN `./edgeAuth.js`
-# copy instead (CLAUDE.md Decision 30). `_shared/` has no `index.ts` and no
-# `[functions._shared]` entry below, so it is not a deployable function —
-# regenerate the copies with `node tools/edge-auth-test/sync-shared.js`.
+# Every function here is ONE FILE (CLAUDE.md Decision 30): the authorization
+# gate is inlined into each `index.ts` between markers, because a Dashboard
+# deploy carries neither `_shared/` nor a second file beside index.ts — both
+# measured. `supabase/functions/_shared/edgeAuth.js` is the canonical source
+# and is never deployed: it has no `index.ts` and no `[functions._shared]`
+# entry below, so it is not a function. Never hand-edit the inlined block —
+# run `node tools/edge-auth-test/sync-shared.js`, and
+# `tools/edge-auth-test/run-edge-auth-tests.js` fails on drift.
 #
 # Setup and day-to-day commands: `docs/SUPABASE_CLI.md`.
 
