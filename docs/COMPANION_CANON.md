@@ -262,10 +262,29 @@ Creator successfully use VihuStudio**.
   has marked an object un-moveable, the Companion says so kindly and
   truthfully. It never tells a child to try something the platform will
   refuse — that teaches a child the app is broken.
-- The Companion **must work with no network and no AI.** Every question
-  in the Guide responsibility is answered from VihuStudio's own live
-  state and its own authored knowledge. An external model may only ever
-  make an answer *warmer* — never *possible*.
+- **The Guide responsibility must work with no network and no AI.**
+  Every question in it is answered from VihuStudio's own live state and
+  its own authored knowledge. An external model may only ever make one
+  of those answers *warmer* — never *possible*. **Conversation is a
+  separate capability** and may use an external model; when that model
+  is unreachable the Companion is simply quiet, and the Guide
+  responsibility — and the whole of VihuStudio — carries on exactly as
+  before. **VihuStudio never depends on an external model for anything.**
+- **The Companion may remember meaningful experiences, conversations
+  and creations shared with its Creator**, across sessions and across
+  devices. That memory is what makes a bond rather than a greeting.
+  **Memory is of meaningful moments, never a log of everything the
+  Creator does.** A Companion that recorded every action would be
+  surveillance wearing a friendly face, which is the opposite of the
+  thing this permits.
+- **A Companion may hold an opinion about the world; never about the
+  work.** Its world, its characters and the things that happen inside a
+  story are all fair ground — *"I think Spark would have run"* is a
+  friend having a view, and a child is free to disagree with it. The
+  Creator's own work is not: *"Your ending is weak"* is a judgement, and
+  it belongs to the "may not" column below alongside score, grade and
+  rank. The test is which one the sentence is about — the story's world,
+  or the child's making of it.
 - **Silence remains the default.** The Guide responsibility is
   answering, not volunteering. The Companion earns each thing it says.
 - **The Story Egg is exempt.** A Traveller's Story Egg never speaks
@@ -282,7 +301,9 @@ Creator successfully use VihuStudio**.
 | Explain why something is locked | Override or work around a Guardrail |
 | Say what is missing before publishing | Score, grade, rank, or critique |
 | Offer to take the child to a control | Perform an unrepeatable change unasked |
-| Notice a hidden or off-page object | Remember the child across sessions |
+| Notice a hidden or off-page object | Keep a general record of everything the Creator does |
+| Remember meaningful experiences, conversations and creations shared with its Creator | Judge the quality of the Creator's work |
+| Hold an opinion about the world, its characters and what happens in a story | Hold an opinion about how good the Creator's story is |
 
 ## Canon 6 — Studio Rite
 

@@ -112,7 +112,42 @@ async function sendViaResend(to: string, subject: string, text: string, html: st
   return { ok: true };
 }
 
+// ---------------------------------------------------------------
+// A SERVER-TO-SERVER CALLER, AND ONLY THAT (Sprint 1A, Decision 30)
+//
+// Nothing in a browser calls this. Its only caller is Postgres itself:
+// notify_creator_born() in supabase/migrations_admin_console.sql fires
+// it through pg_net with the SERVICE ROLE key it keeps in
+// platform_settings. The header above already says "an unauthenticated
+// one is a way for anybody who learns the URL" to send mail — and left
+// it at verify_jwt, which the public anon key satisfies.
+//
+// So this is the strictest of the three caller classes: a real session
+// is not enough, because no session should ever be here. The shared
+// module compares the presented token against the service key in
+// constant time and refuses everything else, including a perfectly
+// valid child's session.
+async function serviceOnly(req: Request) {
+  const { guard } = await import('../_shared/edgeAuth.js');
+  return await guard(req, {
+    env: {
+      supabaseUrl: env('SUPABASE_URL'),
+      anonKey: env('SUPABASE_ANON_KEY'),
+      serviceKey: env('SUPABASE_SERVICE_ROLE_KEY'),
+    },
+    require: 'service',
+  });
+}
+
 Deno.serve(async (req) => {
+  const pass = await serviceOnly(req);
+  if (!pass.ok) {
+    return new Response(JSON.stringify(pass.body), {
+      status: pass.status,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
   if (req.method === 'GET') {
     // Same ping shape sky-protection uses, and for the same reason: a
     // deployment that is running the OLD copy is otherwise invisible,

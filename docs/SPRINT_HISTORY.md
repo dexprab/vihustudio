@@ -7848,4 +7848,12 @@ red including the one for a one-letter name.
 
 Rite gate 91/91 (was 84), gate 25/25, levels 59/59, creation home 84/84,
 celebration 31/31, traveller reset 16/16, capability audit 4/4, zero page
-errors. Build 0657 → 0658.
+errors. Build 0657 → 0659.
+
+**A note on the number.** Another session shipped its own build 0658 to
+main while this one was in flight — the Companion memory foundation and
+the Edge auth work. Both had stamped 0658, so this one moved to 0659 on
+merging: a version stamp is a cache buster and two ships cannot share
+one. The merge itself was clean in every source file (the two sprints
+touched disjoint code); the only conflicts were regenerated test
+screenshots, resolved by re-running the suites against the merged tree.

@@ -2533,6 +2533,117 @@ voices to companion. lets see how it looks."*
   `tools/companion-test/run-companion-tests.js` ·
   `docs/COMPANION_INTELLIGENCE_ARCHITECTURE.md`
 
+### 30. A Companion Remembers What Was Shared, and Nothing Else
+
+Locked by the product owner in the Companion Intelligence Foundation
+brief, after three discovery sprints mapped the target against the real
+codebase. It **amends Decision 29**, whose out-of-scope list named
+"persistent cross-session memory", and it amends
+`docs/COMPANION_CANON.md` → Canon 5 in three places. Nothing in it is
+built yet beyond the canon and the security foundation; the rest is
+the standard this product will be held to when it is.
+
+- **A Companion may remember meaningful experiences, conversations and
+  creations shared with its Creator, across sessions and across
+  devices.** That is what makes a bond rather than a greeting, and it
+  is the whole reason this decision exists. Canon 5's own "may not"
+  column said the opposite in as many words — *"Remember the child
+  across sessions"* — so that row was replaced rather than reinterpreted,
+  the way Decision 26 amended Decision 25 deliberately and said so.
+- **Memory is of meaningful moments, never a log of everything the
+  Creator does.** The replacement row reads *"Keep a general record of
+  everything the Creator does"*, because the thing being forbidden was
+  never memory — it was surveillance, and a Companion that recorded
+  every action would be surveillance wearing a friendly face. What is
+  kept is a small set of moments a person would actually recount;
+  what is not meaningful is not remembered.
+- **A Companion may hold an opinion about the WORLD; never about the
+  WORK.** *"I think Spark would have run"* is a friend having a view
+  about a character, and a child is free to disagree with it. *"Your
+  ending is weak"* is a judgement of the child's making, and it sits in
+  the same column as score, grade, rank and critique — where Canon 5
+  already put those. The test is which one the sentence is about: the
+  story's world, or the child's making of it. Decided because the target
+  experience walks straight up to that line — the child says *"I don't
+  like this ending"* and the Companion is meant to answer with an
+  opinion — and without the distinction the next sentence written would
+  have been a review of a five-year-old's story.
+- **The Studio never depends on an external model, and the canon
+  sentence that guaranteed it was narrowed rather than weakened.** Canon
+  5's *"must work with no network and no AI"* was written about the
+  GUIDE responsibility, and it still binds there completely. Conversation
+  is a separate capability that may use a model; when the model is
+  unreachable the Companion is simply quiet and everything else — the
+  Guide, the poses, the voice, the whole Studio — carries on exactly as
+  it did. Silence is a correct answer here for the same reason it
+  already is in `js/vihuVoice.js`.
+- **Option B is the LLM context boundary, and it is a COMPONENT rather
+  than a discipline.** A request carries the current conversation, the
+  Companion's personality, the relevant slice of VihuPlanet Canon, the
+  relevant memories and the relevant current world/story context — and
+  it is assembled and filtered by a **Privacy / Relevance Gate** that is
+  the only thing permitted to call the model. Not a rule somebody
+  remembers to follow: the transport module is reachable from the gate
+  and from nowhere else, the same way `EtherHost`'s reserved row is
+  geometry rather than a z-index and some judgement (Decision 24).
+- **Stored memory is not automatically shareable memory.** Every memory
+  passes the relevance filter before it can travel. A Companion that
+  posted its whole memory of a child to a third party on every sentence
+  would be the surveillance this decision just forbade, arriving through
+  the back door.
+- **The initial content depth is TIER 3: the prose of the CURRENT PAGE
+  only.** `slide.storyBeat` / `slide.storyDraft` for the page the child
+  is looking at, plus names and structure (story names, character names
+  from `CreatorLibrary`, page counts, object labels). Not every page,
+  not every story, not the library wholesale. Chosen because Tier 2 —
+  names alone — cannot answer *"I don't like this ending"* with anything
+  true, and Tier 4 sends a child's entire body of work to answer one
+  question about one page. **The ceiling is ONE constant in the gate**,
+  so raising or lowering it is a one-line, reviewable change and never a
+  drift.
+- **Images never leave VihuPlanet.** No image bytes, no data URLs, no
+  `vihu-asset:` references, no signed Storage URLs — not to a model, not
+  to any third party, permanently. A child's drawing of their own house
+  is the most identifying thing in this product and the least necessary:
+  *"there is a picture on this page"* costs the model nothing and gives
+  away nothing.
+- **OpenAI is an intelligence service, never the Companion's memory
+  store.** VihuPlanet remains the source of truth for what happened,
+  what exists, who owns it and what may be said. The model may interpret
+  reality; it may not manufacture it. A memory it proposes is a
+  proposal — the application validates it against real local records
+  before anything is stored, and a memory naming a story or a character
+  that does not exist is refused rather than softened, the same way
+  `personality.json`'s `neverSays` drops a line rather than rewriting it.
+- **Security hardening comes BEFORE any paid model endpoint, and it is
+  not a formality.** The audit found that no Edge Function in the
+  product derived its caller from the session: they were reached with
+  the PUBLIC anon key (served from `supabase-config.json` on a public
+  site, from a public repository), and `sky-protection` trusted a
+  client-supplied `identityId` well enough to write a parent's address
+  onto a stranger's Magic Card and post that card to them. A
+  conversation endpoint copying that pattern would have been a free,
+  world-callable, metered LLM. The pattern is now one shared module:
+  **the caller is derived from the verified session and client-supplied
+  identity is never trusted for ownership.**
+- **Rate limiting exists before the endpoint that needs it**, in
+  Postgres, with one configuration point. No Redis, no external service,
+  no second database — the same posture every other decision here takes
+  toward infrastructure that has not proved it is needed.
+- Out of scope and not implemented by this decision: the memory store
+  itself, Bond Moment detection, the Companion Mind, `companion-chat`,
+  any OpenAI call, any Companion input surface, Companion autonomy,
+  Companion ↔ Companion, and any change to Companion behaviour.
+- **Companion-initiated actions remain blocked on global undo**, which
+  this codebase does not have (verified: undo is per-tool only; even
+  page deletion warns that it *"cannot be undone"*). That gate is
+  `docs/COMPANION_INTELLIGENCE_ARCHITECTURE.md` §7.4's and it is
+  unchanged.
+- `docs/COMPANION_CANON.md` → Canon 5 ·
+  `supabase/functions/_shared/edgeAuth.js` ·
+  `supabase/migrations_edge_rate_limit.sql` ·
+  `tools/edge-auth-test/run-edge-auth-tests.js`
+
 ## Roadmap
 
 1. Theme Designer Polish

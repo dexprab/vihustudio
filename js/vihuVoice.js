@@ -224,6 +224,67 @@
   }
 
   // ---------------------------------------------------------------
+  // WHO IS ASKING (Sprint 1A, CLAUDE.md -> Decision 30)
+  //
+  // This used to send the PUBLIC anon key, which satisfied Supabase's
+  // gate and told the function nothing about who had called. Since
+  // every generated line costs money at the provider, that meant
+  // anybody who read supabase-config.json could spend our balance.
+  //
+  // The browser already holds a real Supabase session — anonymous, no
+  // sign-in, no UI, created on demand by js/themeRepositoryClient.js's
+  // own _ensureAuth(). Sending ITS access token is the whole change:
+  // no new identity system, no password, nothing a child ever sees.
+  //
+  // SILENCE IS STILL A CORRECT ANSWER. No session, no platform, no
+  // network — the line is not spoken, the screen carries on, and the
+  // reason goes to the console. That is the same contract this file
+  // has always had, and it is why a stricter gate cannot break a
+  // child's experience: it can only make it quiet, which was already
+  // one of the outcomes.
+  //
+  // Cached with the session itself, so this costs one round trip per
+  // browser rather than one per line. That matters: CompanionEngine
+  // holds a bubble for VOICE_WAIT_MS (2500ms) waiting for sound, and an
+  // auth round trip on every line would eat that budget.
+  // AND IT IS BOUNDED, because this sits on a timing contract.
+  //
+  // Measured: the FIRST getSession() in a browser costs ~600ms (it lazy-
+  // loads the Supabase client and may establish the anonymous session);
+  // every call after it is 0ms, because that promise is cached. On the
+  // hot path this is therefore free — but a cold first line now had a
+  // network round trip in front of it that was never there before, and
+  // CompanionEngine.speak() only holds the words for VOICE_WAIT_MS
+  // (2500ms) before giving up and showing them alone.
+  //
+  // So the wait is capped well inside that budget. If the session is not
+  // ready in time this line is simply not spoken — silence, which is
+  // always a correct answer here — and NOTHING IS LOST: the underlying
+  // promise carries on and is cached, so the next line has it instantly.
+  // Better a quiet first line than a bubble that sits for two and a half
+  // seconds waiting for authentication.
+  //
+  // Caught by the Companion suite failing once in six runs on V2 ("a
+  // line with no voice coming is not held back"), which is exactly the
+  // check that exists to notice this.
+  var TOKEN_WAIT_MS = 1200;
+
+  function _token() {
+    try {
+      if (typeof ThemeRepositoryClient === 'undefined' || !ThemeRepositoryClient.getSession) {
+        return Promise.resolve(null);
+      }
+      var session = ThemeRepositoryClient.getSession()
+        .then(function (s) { return (s && s.access_token) ? s.access_token : null; })
+        .catch(function () { return null; });
+      var capped = new Promise(function (resolve) {
+        setTimeout(function () { resolve(null); }, TOKEN_WAIT_MS);
+      });
+      return Promise.race([session, capped]);
+    } catch (e) { return Promise.resolve(null); }
+  }
+
+  // ---------------------------------------------------------------
   // who is speaking
   //
   // The registry is the single source of truth for every character and
@@ -570,13 +631,23 @@
 
     _inflight[key] = _fromCache(key).then(function (hit) {
       if (hit) return hit;
-      return _config().then(function (cfg) {
+      return Promise.all([_config(), _token()]).then(function (both) {
+        var cfg = both[0], token = both[1];
         if (!cfg) { _note('no platform configured — staying silent'); return null; }
+        // No session means the function cannot know who is asking, and
+        // it will refuse. Saying so here rather than making the call
+        // keeps a refusal out of the network log and out of the
+        // provider's sight — and the outcome for the child is the same
+        // silence either way.
+        if (!token) { _note('no session yet — staying silent'); return null; }
         var url = cfg.url.replace(/\/+$/, '') + '/functions/v1/' + FN_NAME;
         return fetch(url, {
           method: 'POST',
           headers: {
-            'Authorization': 'Bearer ' + cfg.anonKey,
+            // The SESSION, not the anon key. `apikey` stays the anon
+            // key: Supabase's gateway uses it to route the request to
+            // this project, and it is not a credential for anything.
+            'Authorization': 'Bearer ' + token,
             'apikey': cfg.anonKey,
             'Content-Type': 'application/json'
           },

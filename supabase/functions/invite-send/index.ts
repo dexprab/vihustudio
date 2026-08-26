@@ -43,6 +43,10 @@
 // 200 with {ok:false, reason} so the admin page can show a plain
 // sentence rather than a stack trace, exactly as voice-speak does.
 
+// Sprint 1A, CLAUDE.md -> Decision 30 — see the ADMINISTRATORS ONLY
+// note inside Deno.serve() below.
+import { guard, isPlatformAdmin, restDb } from '../_shared/edgeAuth.js';
+
 const CORS_HEADERS: Record<string, string> = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -330,6 +334,37 @@ async function sendViaResend(to: string, subject: string, text: string, html: st
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
+
+  // ---------------------------------------------------------------
+  // ADMINISTRATORS ONLY (Sprint 1A, CLAUDE.md -> Decision 30)
+  //
+  // This sends mail to an address of the caller's choosing with a note
+  // of the caller's choosing, signed by Lumo. Reached with the public
+  // anon key, that is an open relay wearing our name — and the admin
+  // console that calls it was already signed in with a real account
+  // (admin/invites.html's own signInWithPassword), so the credential
+  // to use was sitting there unused.
+  //
+  // is_platform_admin() (supabase/migrations_admin_console.sql) matches
+  // on auth.jwt() ->> 'email', which a service-role caller cannot
+  // supply — so the shared module asks platform_admins directly, with
+  // the email the AUTH SERVER returned for this token and never one the
+  // client sent. Same table, same comparison, asked the way this caller
+  // can ask it. An anonymous session can never pass, whatever it claims.
+  const SUPA_URL = Deno.env.get('SUPABASE_URL') || '';
+  const SERVICE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+  const db = (SUPA_URL && SERVICE) ? restDb(SUPA_URL, SERVICE) : null;
+  const pass = await guard(req, {
+    env: { supabaseUrl: SUPA_URL, anonKey: Deno.env.get('SUPABASE_ANON_KEY') || '', serviceKey: SERVICE },
+    require: 'user',
+    bucket: 'invite-send',
+    db,
+    envGet: (n: string) => Deno.env.get(n) || '',
+  });
+  if (!pass.ok) return json(pass.body, pass.status);
+  if (!(await isPlatformAdmin(db, pass.caller))) {
+    return json({ ok: false, reason: 'forbidden' }, 403);
+  }
 
   let payload: Record<string, unknown> = {};
   try { payload = await req.json(); } catch { payload = {}; }

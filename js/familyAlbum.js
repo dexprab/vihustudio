@@ -75,8 +75,34 @@
   function _fnBase(cfg) {
     return cfg.url.replace(/\/+$/, '') + '/functions/v1/' + FN_NAME;
   }
-  function _fnHeaders(cfg) {
-    return { 'Authorization': 'Bearer ' + cfg.anonKey, 'apikey': cfg.anonKey };
+  // THE SESSION, NOT THE ANON KEY (Sprint 1A, CLAUDE.md -> Decision 30).
+  //
+  // This function fetches a third-party page and proxies image bytes on
+  // VihuPlanet's own name. Reached with the public anon key that made it
+  // a fetcher anybody could point at Google on our behalf. The browser
+  // already holds a real anonymous Supabase session, so it is sent.
+  //
+  // `apikey` stays the anon key: Supabase's gateway uses it to route to
+  // this project and it authorises nothing on its own.
+  function _fnHeaders(cfg, token) {
+    return { 'Authorization': 'Bearer ' + token, 'apikey': cfg.anonKey };
+  }
+
+  // Resolves { cfg, token } when this browser can actually make the
+  // call, and null when it cannot — an unconfigured deployment or a
+  // session that could not be established. Both already had a handled
+  // 'not_configured' path at every call site, so the stricter gate adds
+  // no new failure shape.
+  function _ready() {
+    var repo = _repo();
+    var token = (repo && repo.getSession)
+      ? repo.getSession().then(function (s) { return (s && s.access_token) || null; })
+                         .catch(function () { return null; })
+      : Promise.resolve(null);
+    return Promise.all([_loadConfig(), token]).then(function (both) {
+      if (!both[0] || !both[1]) return null;
+      return { cfg: both[0], token: both[1] };
+    });
   }
 
   function _repo() {
@@ -261,12 +287,13 @@
     if (!force && hit && Array.isArray(hit.photos) && (Date.now() - hit.at) < CACHE_TTL_MS) {
       return Promise.resolve({ ok: true, photos: hit.photos, count: hit.photos.length, fromCache: 'fresh' });
     }
-    return _loadConfig().then(function (cfg) {
-      if (!cfg) {
+    return _ready().then(function (ready) {
+      if (!ready) {
         if (hit && Array.isArray(hit.photos)) return { ok: true, photos: hit.photos, count: hit.photos.length, fromCache: 'stale' };
         return { ok: false, error: 'not_configured' };
       }
-      return fetch(_fnBase(cfg) + '?url=' + encodeURIComponent(albumUrl), { headers: _fnHeaders(cfg) })
+      var cfg = ready.cfg;
+      return fetch(_fnBase(cfg) + '?url=' + encodeURIComponent(albumUrl), { headers: _fnHeaders(cfg, ready.token) })
         .then(function (r) { return r.json(); })
         .then(function (j) {
           if (!j || !j.ok || !Array.isArray(j.photos)) {
@@ -312,10 +339,10 @@
     var base = (photoOrUrl && photoOrUrl.url) || photoOrUrl || '';
     if (!base) return Promise.resolve({ ok: false, error: 'bad_input' });
     var suffix = (opts && opts.sizeSuffix) || PICK_SUFFIX;
-    return _loadConfig().then(function (cfg) {
-      if (!cfg) return { ok: false, error: 'not_configured' };
-      var proxied = _fnBase(cfg) + '?img=' + encodeURIComponent(base + suffix);
-      return fetch(proxied, { headers: _fnHeaders(cfg) })
+    return _ready().then(function (ready) {
+      if (!ready) return { ok: false, error: 'not_configured' };
+      var proxied = _fnBase(ready.cfg) + '?img=' + encodeURIComponent(base + suffix);
+      return fetch(proxied, { headers: _fnHeaders(ready.cfg, ready.token) })
         .then(function (r) {
           var ct = r.headers.get('Content-Type') || '';
           if (ct.indexOf('application/json') !== -1) {
