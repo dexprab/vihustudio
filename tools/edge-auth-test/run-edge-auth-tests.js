@@ -434,15 +434,61 @@ function fakeDb(spec) {
     // ONE SOURCE OF TRUTH, FIVE COPIES, AND THEY MUST NOT DRIFT. For an
     // authorization module, one function quietly enforcing something
     // different from its neighbours is the failure that matters.
-    const canonModule = fs.readFileSync(
-      path.join(ROOT, 'supabase', 'functions', '_shared', 'edgeAuth.js'));
+    //
+    // Asked of the REAL generator rather than a reimplementation of it:
+    // a second copy of the stripping rule in this file could disagree
+    // with the one that actually writes the files, and then this check
+    // would be passing on its own opinion.
+    let synced = true;
+    try { sh('node ' + JSON.stringify(path.join(ROOT, 'tools', 'edge-auth-test', 'sync-shared.js')) + ' --check'); }
+    catch (e) { synced = false; }
+    check(synced, 'C1c every vendored copy matches what the generator produces');
+
     gated.forEach((n) => {
       const copy = path.join(ROOT, 'supabase', 'functions', n, 'edgeAuth.js');
-      check(fs.existsSync(copy) && fs.readFileSync(copy).equals(canonModule),
-        'C1c ' + n + '/edgeAuth.js is byte-identical to the canonical module');
+      const src = fs.existsSync(copy) ? fs.readFileSync(copy, 'utf8') : '';
+      check(/GENERATED — do not edit/.test(src),
+        'C1d ' + n + '/edgeAuth.js says it is generated and where to read the original');
     });
-    check(fs.existsSync(path.join(ROOT, 'tools', 'edge-auth-test', 'sync-shared.js')),
-      'C1d and one command regenerates them all');
+
+    // THE ARTIFACT THAT DEPLOYS IS THE ONE UNDER TEST. The copies are
+    // the canonical module with its full-line comments removed, and
+    // "same behaviour" is asserted by RUNNING them rather than by
+    // trusting the stripper. Every gate decision this suite makes above
+    // is re-made here against a real vendored file.
+    const V = await import('file://' +
+      path.join(ROOT, 'supabase', 'functions', 'sky-protection', 'edgeAuth.js'));
+
+    check(JSON.stringify(V.LIMITS) === JSON.stringify(A.LIMITS),
+      'C1e the vendored copy carries the same LIMITS table');
+
+    const vAnon = await V.resolveCaller(withToken(ANON_KEY), ENV, { fetchImpl: stubFetch() });
+    check(vAnon.ok === false && vAnon.reason === 'unauthorized',
+      'C1f the vendored copy refuses the public anon key');
+
+    const vUser = await V.resolveCaller(withToken(USER_TOKEN), ENV, { fetchImpl: stubFetch() });
+    check(vUser.ok === true && vUser.userId === 'user-aaaa',
+      'C1g the vendored copy derives the caller from the auth server');
+
+    const vDb = fakeDb({
+      magic_card_identities: [{ id: 'card-a', owner_id: 'user-aaaa' }, { id: 'card-b', owner_id: 'user-bbbb' }],
+      magic_card_recalls: [],
+    });
+    const vMine = await V.authorizeCardAccess(vDb, 'card-a', vUser);
+    const vTheirs = await V.authorizeCardAccess(vDb, 'card-b', vUser);
+    check(vMine.ok === true && vTheirs.ok === false,
+      'C1h the vendored copy enforces card ownership identically');
+
+    const vGuard = await V.guard(req({}), { env: ENV, require: 'user', fetchImpl: stubFetch() });
+    check(vGuard.ok === false && vGuard.status === 401 &&
+          JSON.stringify(vGuard.body) === '{"ok":false,"reason":"unauthorized"}',
+      'C1i and refuses with the same safe body');
+
+    // Payload matters — it is why the copies are stripped at all.
+    gated.forEach((n) => {
+      const bytes = fs.statSync(path.join(ROOT, 'supabase', 'functions', n, 'edgeAuth.js')).size;
+      check(bytes < 12000, 'C1j ' + n + '/edgeAuth.js stays small enough to paste', bytes + ' bytes');
+    });
 
     check(/require:\s*'service'/.test(fn('creator-born')),
       'C2  creator-born is service-only — no browser session may reach it');
