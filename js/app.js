@@ -2141,8 +2141,16 @@ function refreshStudioDoor(){
   let running=false;
   try{ running=!!(typeof StudioRite!=='undefined' && StudioRite.isRunning && StudioRite.isRunning()); }catch(e){}
   if(!next || running){ host.hidden=true; host.innerHTML=''; return; }
-  if(host.getAttribute('data-for')===next && !host.hidden) return;
-  host.setAttribute('data-for',next);
+  // A door the child already stepped through and did not come back out
+  // of says so — the same wording Studio Home's own door uses, because
+  // there is one door in the product and not two. Part of the key, so
+  // finishing the story repaints it rather than leaving it saying the
+  // wrong thing.
+  let held=false;
+  try{ held=!!(StudioRite.hasHeldStory && StudioRite.hasHeldStory(next)); }catch(e){}
+  const key=next+(held?':held':'');
+  if(host.getAttribute('data-for')===key && !host.hidden) return;
+  host.setAttribute('data-for',key);
   host.hidden=false;
   host.innerHTML=
     '<div class="studio-door-art" aria-hidden="true">'+
@@ -2167,8 +2175,8 @@ function refreshStudioDoor(){
       'stroke="#8A5A3B" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/>'+
       '</svg>'+
     '</div>'+
-    '<div class="studio-door-title">A new door is waiting</div>'+
-    '<button type="button" class="studio-door-btn">Discover</button>';
+    '<div class="studio-door-title">'+(held?'You left a door open':'A new door is waiting')+'</div>'+
+    '<button type="button" class="studio-door-btn">'+(held?'Carry on':'Discover')+'</button>';
   const btn=host.querySelector('.studio-door-btn');
   if(btn) btn.addEventListener('click',function(){
     try{ if(typeof StudioRite!=='undefined' && StudioRite.start) StudioRite.start(next); }catch(e){}

@@ -7560,15 +7560,237 @@ The signature is both numbers now, and the observer watches the
 gatekeeper and the grid as well as the panel, plus a capturing `load`
 listener for a pose image landing after the fit.
 
-**The reported scrollbar itself was not reproduced, and that is stated
-rather than implied.** Measured at 1359×594 (the screenshot's shape) and
-at 800, 520 and 470: panel and content identical before and after a tap,
-on both the correct-tap and wrong-tap paths, with the pose image swapping
-and with a 1.2s network delay forced on it. The only overflow found is at
-420px tall, where the density solver is already at its floor — and it is
-there before any tile is tapped. The fix above is a real defect closed on
-its own merits; the reported one is still open.
+**The reported scrollbar itself was not reproduced here, and that was
+stated rather than implied at the time.** Measured at 1359×594 (the
+screenshot's shape) and at 800, 520 and 470: panel and content identical
+before and after a tap, on both paths, with the pose image swapping and
+with a 1.2s network delay forced on it. The only overflow found was at
+420px tall, where the density solver is already at its floor, and it was
+there before any tile was tapped.
+
+**Confirmed closed by the product owner on 0653** — *"checked in 653 not
+happening any more"* — so the blind spot above was the cause after all;
+it simply did not reproduce on a local server where nothing arrives late.
+A sweep of 49 window shapes (1024–1920 × 560–900) then found zero
+overflow, and `S1` in the gate suite now guards six shapes on both tap
+paths so it cannot come back unnoticed.
 
 Rite gate 52/52 (was 50), levels 59/59, creation home 84/84, gate 24/24,
 celebration 31/31, traveller reset 16/16, capability audit 4/4, zero page
 errors. Build 0652 → 0653.
+
+## A Name, One Letter at a Time (build 0654)
+
+*"if we write all the letters on single paper it will not work. the beat
+should be fill the garden with your name letters one at a time. once done
+click i did it."*
+
+Rite II's naming beat read *Write the rest of your name*, and that
+describes something the tool cannot do. The catcher is armed for ONE
+letter — `HandwritingStudio.open({ch})` — reads that letter, and reopens
+the letters room so the next tile is one tap away. A beat may never ask
+for something the tool cannot take.
+
+It now reads *One letter at a time, until your whole name is in your
+garden. Tell me when it is all there.* The second sentence carries the
+rest of the fix: only the child knows when their name is finished, so
+this beat cannot end on a count. The gate still passes on one more letter
+and then the Rite's own **I did it!** sits there waiting, dropping and
+re-offering itself each time they go back for another — exactly the shape
+asked for, and it needed no new machinery. The subtitle invites that press
+without naming it; the button already says what it is, and Lumo does not
+read out the interface.
+
+**And Lumo steps aside while the garden grows.** *"the lumo should
+disappear or get to a side so that child can see the garden grow in front
+of himself."* Measured at 1359×800: `.preview-wrapper` starts at x=296
+and the band sits at x=296, 231px wide — covering the whole of the left
+growth band Decision 27 puts the garden in. A child told their letter is
+being kept in their garden could not watch it happen.
+
+A moment, not a relocation. Growth answers in about 1.5s, so the band
+recedes for 2.2s and comes straight back; docking Lumo elsewhere for the
+whole beat would cost his words for the whole beat to fix one second of
+it. Never `display:none` — a Lumo who vanishes and reappears is a glitch,
+one who leans out of the way is being polite. It rides
+`vihu:creation-captured`, the same single event the Garden itself grows
+on, so it learns nothing about letters, drawings or cameras and a future
+capture source gets it for free. Reduced motion suppresses it, because
+the growth animation is suppressed there and there is nothing to step
+aside for.
+
+One measurement worth keeping: the class went on and off correctly and
+**nothing moved**. The docked band's own entry animation
+(`studio-rite-beside-in … both`) holds opacity and transform at its end
+state, and an animation outranks a plain declaration however specific.
+`X8` exists because of that — asserting the class is present proves
+nothing about whether a child can see past it.
+
+`X1`–`X9` walk Rite II to the naming beat for real. Rite gate 61/61 (was
+52), gate 25/25, levels 59/59, creation home 84/84, celebration 31/31,
+traveller reset 16/16, capability audit 4/4, zero page errors. Build
+0653 → 0654.
+
+## Lumo Stands in the Left Pane While the Garden Grows (build 0655)
+
+*"lumo screen is still there. you can collapse it and just keep i did it
+button, or move lumo and idid it button to left pane as there is only
+single page there."*
+
+The step-aside shipped in 0654 is right for the growth itself and does
+nothing for the rest of the beat — which is where a child spends most of
+it, going back for the next letter and looking at the garden in between.
+For those seconds Lumo was back in front of it.
+
+Of the two options offered, the second is the one that keeps the story's
+voice: collapsing to a bare button would take Lumo out of a rite he is
+guiding. So on a garden beat the dock takes the left pane, which is the
+observation the product owner made — a rite runs on a blank page, so that
+column holds one thumbnail and a great deal of nothing.
+
+**Beside-the-page is his own earlier preference and stays the default.**
+This overrides it only where the two collide: beats whose whole subject
+is a garden growing in the very gutter Lumo is standing in.
+`_prefersRail()` reads `wantsRoom()` — the same question the picker asks
+for its room — so it follows the story rather than a list of gate ids
+kept in step by hand, and the dock is re-placed when the beat changes
+rather than only on a resize. Measured at 1359×800: beside-the-page puts
+the panel at x=296, the wrapper's own left edge; the pane puts it at
+x=16, width 248, with the whole workspace clear and both growth bands
+visible. The **I did it!** button travels with him, because it lives in
+the same panel — a confirmation left behind in the old place would be the
+one control the beat ends on, stranded.
+
+The capture step-aside stays for the case it still serves: My Garden is
+revealed for the whole rite, so a child may keep something on any beat,
+and beside-the-page he would still be in the way. It stands down in the
+pane, where he is already clear — fading a guide for no reason a child
+can see is worse than not fading one.
+
+`Y1`–`Y6` guard both halves, proved by removing the rail preference and
+watching the panel go back to x=296 with the workspace covered. `X7`–`X9`
+from 0654 moved into `Y1a`–`Y1c` rather than being deleted: they were
+written against the naming beat, which is now exactly where the
+step-aside correctly does NOT fire, so they were asserting a state that
+no longer occurs there.
+
+Rite gate 67/67 (was 61), gate 25/25, levels 59/59, creation home 84/84,
+celebration 31/31, traveller reset 16/16, capability audit 4/4, zero page
+errors. Build 0654 → 0655.
+
+## A Rite Can Be Put Down and Picked Back Up (build 0656)
+
+*"why dont we allow resume from studio home for rite 2 & 3 this way it
+will never enter projects or show in projects till completely done, child
+does not have any work lost on account of not able to complete in single
+seating."*
+
+It began as a report: every reload of VihuPlanet produced another project.
+Traced and measured — a rite opens a blank story the instant it starts
+(`StudioRite.start` → `_blankStart` → `CreationFlow.startBlank` →
+`markDirty` → autosave → `CreatorProjectStore.upsert`), so the record
+exists seconds before the child has touched anything. Three abandoned Rite
+II starts, three empty "My Adventure" stories.
+
+The product owner's own understanding was half right and worth recording:
+**a rite genuinely cannot be saved part way** — verified, there is no
+partial-rite state anywhere, the flag and the taught array are written
+only at the completion beat — but **"so a rite story cannot have a
+project" does not follow**, and would break the mandatory rite: Decision 8
+makes becoming a Creator *finishing* the first story, Decision 12's
+artifacts come from a project, and Decision 19's `claim()` sweeps a rite's
+story onto a new card precisely because the Rite has a child make one
+before they have a card. The first proposal here was narrower — don't
+enter My Projects until something is in it — and it only solved the
+litter. His counter-proposal solved both halves, and is what shipped.
+
+**Held, never deleted.** `riteInProgress` is a field on the project
+record, carried forward on every autosave exactly as `publishedAt`,
+`creatorName` and `cardId` are. On the story rather than the Magic Card,
+which buys four things at once: `list()` filters those records out, it
+already syncs to the cloud so a resume works on another device with no new
+column and no migration, it is inherently one-per-story, and pressing the
+door again reuses the held story rather than making a second one.
+
+**Where the child had got to is derived, never stored.** Decision 22's own
+rule is that rites get added, split and reordered — which is why the
+product stores capabilities and not a rite index, and a saved beat number
+would rot on the first reorder. So the rite replays from beat one and
+auto-advances past every beat the story itself can account for. Two things
+that had to be got right, both found by measuring rather than reasoning:
+
+- **A count, not a yes.** Rite III has four `shape-added` beats; a boolean
+  reading would replay a child who drew one shape past all four.
+- **Counted per pool, not per gate.** `letter-kept` and `letters-grown`
+  both read the letters a child has made — counted separately, one letter
+  satisfied both and the resume landed a beat past where they stopped.
+
+**Retold, not replayed.** A beat already lived through shows its lines at
+once and moves on, no voice and no waiting; ten beats is about five
+seconds. Speaking it again would take as long as the first sitting.
+
+**Disclosed:** `sticker-moved`, `sticker-resized` and `sticker-rotated`
+cannot be read back from a saved story — it records where the star IS,
+which is equally consistent with never having been touched. Treated as
+done when anything is on the page, because sending a child back to redo
+work is the worse of the two failures.
+
+The offer reads *You left a door open · Your story is still there, waiting
+for you. · Carry on*, in both the Studio Home door and the rail one. And
+the resume pill stands down for a held story: the session slot names the
+same story, and opening it as a plain project would drop the child into
+the editor with no Lumo and no beats, which is not what they left.
+
+Two of the harder bugs were in the test, not the product. A driver that
+poked every control on every beat put sixty objects on a page and never
+passed beat nine — so `_awaitingGate()` joins `_gates`/`_gateMet`/
+`_nudgeTarget` as a harness read, and the walk now satisfies exactly what
+is being asked. And reading that gate too early returns null, because a
+screen is still revealing its lines; the walk polls for it. Both looked
+like resume failures and were not. One real product fact surfaced on the
+way: beat 8 says *copy this page*, and a copy carries the creature, which
+is why beat 9 can ask for it to be moved — the probe had been adding blank
+pages.
+
+`Z0`–`Z10` walk Rite II for real: two beats, leave, come back twice,
+resume at the beat they stopped on with the letter and background intact,
+then finish and watch the story arrive in My Projects as *The Green
+Place* — and only then. Proved by removing the filter and the replay
+separately. Rite gate 83/83 (was 67), gate 25/25, levels 59/59, creation
+home 84/84, celebration 31/31, traveller reset 16/16, capability audit
+4/4, zero page errors. Build 0655 → 0656.
+
+## A Beat May Never Ask for a Control That Is Asleep (build 0657)
+
+*"play story is greyed out in its beat."*
+
+Rite II's last beat says *Let us see it from the beginning. / Play your
+story.* — and Play My Story was greyed out. The Rite holds that button
+and Finish Story shut for its whole run (`js/app.js` →
+`refreshStoryActions`: *the story is not finished until Lumo says so*),
+and only a screen carrying `unlock:true` wakes them. Rite I's play beat
+carries it. Rite III's play beat carries it. Rite II's did not, so the
+rite could not be finished by anybody.
+
+**The suite finished it anyway, and that is the more useful half of this
+entry.** The walker written one build earlier fell back to
+`StoryPlayer.open()` when the button was disabled — a convenience that
+made a green run out of a rite no child could complete. A walker that
+reaches around a dead control cannot see a dead control. It uses the real
+button and nothing else now, and stalls exactly where a child would;
+reverting the fix makes `Z8`/`Z9` fail alongside the new check rather
+than passing as before.
+
+`U1` is the general guard, and static on purpose: for every runnable
+rite, a beat gating on an action the Rite holds shut must come at or
+after the beat that wakes it. That covers Rite III, which this suite does
+not walk, for the price of one read. `_beats(riteId)` joins
+`_gates`/`_gateMet`/`_nudgeTarget`/`_awaitingGate` as a harness read
+because nothing could previously see the gate and the unlock flag
+together — two facts each individually visible, adding up to an invisible
+bug. Proved by putting the bug back: `U1` names `my-garden beat 13
+(story-played)` exactly.
+
+Rite gate 84/84, gate 25/25, levels 59/59, creation home 84/84,
+celebration 31/31, traveller reset 16/16, capability audit 4/4, zero page
+errors. Build 0656 → 0657.

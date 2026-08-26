@@ -292,11 +292,59 @@ const CreatorProjectStore=(function(){
     var active=_activeCardId();
     return listAll().filter(function(r){
       if(!r) return false;
+      // A rite's story is not in My Projects until the rite is done.
+      // It is HELD, never deleted: the child is offered it back on
+      // Studio Home, and it joins this list the moment they finish.
+      if(r.riteInProgress) return false;
       // A Traveller holding no card sees the work that belongs to no
       // card — their own, made before they had one.
       if(!active) return !r.cardId;
       return r.cardId===active;
     });
+  }
+
+  // The story a rite is part way through, for the one caller that has a
+  // reason to find it: the offer on Studio Home. Scoped to the active
+  // card the same way list() is, so a machine two children share never
+  // offers one child the other's unfinished story.
+  //
+  // Newest first, and only ever one is used — starting a rite reuses
+  // the story it is already holding rather than making a second one, so
+  // a second entry here would be a bug rather than a case to handle.
+  function riteStory(riteId){
+    if(!riteId) return null;
+    var active=_activeCardId();
+    var found=listAll().filter(function(r){
+      if(!r || r.riteInProgress!==riteId) return false;
+      if(!active) return !r.cardId;
+      return r.cardId===active;
+    });
+    return found.length?found[0]:null;
+  }
+
+  // Held while the rite runs, released when it finishes. Two named calls
+  // rather than one setter taking null, because "this story is inside a
+  // rite" and "this story is finished and belongs to the child now" are
+  // different events and read differently at the call site.
+  function markRiteInProgress(id,riteId){
+    const record=_cache().get(id);
+    if(!record || !riteId) return {ok:false};
+    if(record.riteInProgress===riteId) return {ok:true,record:record,already:true};
+    record.riteInProgress=riteId;
+    record.updatedAt=new Date().toISOString();
+    _cache().putLocal(record,{onPersistFailed:_onPersistFailed(id)});
+    return {ok:true,record:record};
+  }
+  function clearRiteInProgress(id){
+    const record=_cache().get(id);
+    if(!record) return {ok:false};
+    if(!record.riteInProgress) return {ok:true,record:record,already:true};
+    // Deleted rather than set to null: absence is what "this is an
+    // ordinary story" means everywhere else in this record.
+    delete record.riteInProgress;
+    record.updatedAt=new Date().toISOString();
+    _cache().putLocal(record,{onPersistFailed:_onPersistFailed(id)});
+    return {ok:true,record:record};
   }
 
   function get(id){
@@ -389,6 +437,26 @@ const CreatorProjectStore=(function(){
       // VihuPlanet must not stop being shared because its author typed
       // one more word into it.
       publishedAt:existing?existing.publishedAt:undefined,
+      // A STORY BEING MADE INSIDE A RITE, and not finished yet.
+      //
+      // "why dont we allow resume from studio home for rite 2 & 3 this
+      // way it will never enter projects or show in projects till
+      // completely done, child does not have any work lost on account of
+      // not able to complete in single seating" — the product owner.
+      // A rite starts a blank story the moment it opens, so an abandoned
+      // rite used to leave one behind in My Projects on every attempt
+      // (measured: three abandoned starts, three empty stories). Holding
+      // it here rather than deleting it is what keeps the OTHER half of
+      // his ask true — nothing a child made is ever thrown away.
+      //
+      // Carried forward for exactly the reason publishedAt above is:
+      // this record is rebuilt on every debounced autosave, so a field
+      // not carried forward is wiped the instant editing continues —
+      // which for this one would put an unfinished rite's story back in
+      // My Projects after its first edit.
+      riteInProgress:(meta&&Object.prototype.hasOwnProperty.call(meta,'riteInProgress'))
+        ? (meta.riteInProgress||undefined)
+        : (existing?existing.riteInProgress:undefined),
       // Story Origin (Sprint VP3). A project made in the Studio is a
       // CREATOR story: it belongs to the child who made it and it
       // carries their name. The other kind, a CANON story, is a product
@@ -542,6 +610,9 @@ const CreatorProjectStore=(function(){
     clearAll:clearAll,
     markPublished:markPublished,
     listPublished:listPublished,
+    riteStory:riteStory,
+    markRiteInProgress:markRiteInProgress,
+    clearRiteInProgress:clearRiteInProgress,
     onPersistError:onPersistError
   };
   try{ window.CreatorProjectStore=api; }catch(e){}

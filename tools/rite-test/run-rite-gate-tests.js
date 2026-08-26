@@ -555,6 +555,541 @@ function check(cond, name, note) {
     'W9 …and comes back the moment it closes', JSON.stringify(back));
   await wp.close();
 
+  /* ---- X: a name arrives one letter at a time -----------------------
+   *
+   * "if we write all the letters on single paper it will not work. the
+   * beat should be fill the garden with your name letters one at a
+   * time. once done click i did it." The line read *Write the rest of
+   * your name*, which describes something the catcher cannot do — it is
+   * armed for ONE letter, reads that letter, and reopens the letters
+   * room so the next tile is one tap away.
+   *
+   * Only the child knows when their name is finished, so the beat ends
+   * on their word rather than on a count: the gate passes on one more
+   * letter and the Rite's own "I did it!" then waits for them.
+   */
+  console.log('\n-- X: a name arrives one letter at a time');
+
+  const xp = await browser.newPage({ viewport: { width: 1359, height: 800 } });
+  const xErrors = [];
+  xp.on('pageerror', (e) => xErrors.push(String(e)));
+  await xp.goto(BASE + '/studio.html?author=on');
+  await xp.waitForFunction(() =>
+    typeof StudioRite !== 'undefined' && typeof MagicCard !== 'undefined' &&
+    typeof CreationFlow !== 'undefined' && typeof HandwritingStore !== 'undefined',
+    null, { timeout: 20000 });
+  await xp.evaluate(() => {
+    localStorage.clear();
+    MagicCard.claim('Vihu');
+    const r1 = StudioRite.rites().find((r) => r.mandatory);
+    const caps = (r1.teaches || []).concat(r1.reveals || []);
+    MagicCard.setTaught(caps);
+    try { localStorage.setItem(StudioRite.TAUGHT_KEY, JSON.stringify(caps)); } catch (e) {}
+    const gw = document.getElementById('gatewayOverlay');
+    if (gw) gw.style.display = 'none';
+    document.querySelectorAll('.studio-rite-overlay').forEach((n) => n.remove());
+  });
+  await xp.evaluate(() => { try { CreationFlow.startBlank(); } catch (e) {} });
+  await xp.waitForTimeout(1200);
+  await xp.evaluate(() => { try { StudioRite.start('my-garden'); } catch (e) {} });
+  await xp.waitForTimeout(2500);
+
+  const xBeat = () => xp.evaluate(() => ({
+    sub: (document.querySelector('.studio-rite-line .gateway-greeting-subtitle') || {}).textContent || '',
+    done: !!document.querySelector('.studio-rite-done'),
+    doneText: (document.querySelector('.studio-rite-done') || {}).textContent || '',
+    letters: (function () { try { return HandwritingStore.list().length; } catch (e) { return -1; } })()
+  }));
+
+  // Walk to the naming beat, keeping one letter wherever the story asks
+  // for one, and taking the beat's own confirmation each time.
+  for (let i = 0; i < 30; i++) {
+    const b = await xBeat();
+    if (/One letter at a time/.test(b.sub)) break;
+    await xp.evaluate(() => {
+      try {
+        const pg = PageRuntime.getActivePage();
+        if (pg) {
+          pg.metadata = pg.metadata || {};
+          pg.metadata.cardOverrides = pg.metadata.cardOverrides || {};
+          pg.metadata.cardOverrides.background = '#2E7D32';
+        }
+      } catch (e) {}
+      try {
+        if (StudioRite.wantsRoom() === 'letters') {
+          const n = HandwritingStore.list().length;
+          HandwritingStore.save({ ch: String.fromCharCode(97 + n),
+            png: 'data:image/png;base64,iVBORw0KGgo=', w: 40, h: 40 });
+        }
+      } catch (e) {}
+      const d = document.querySelector('.studio-rite-done');
+      if (d) d.click();
+    });
+    await xp.waitForTimeout(700);
+  }
+
+  const naming = await xBeat();
+  check(/One letter at a time/.test(naming.sub) && /Tell me when it is all there/.test(naming.sub),
+    'X1 the naming beat asks for one letter at a time, and for the child to say when',
+    naming.sub);
+  check(!/rest of your name/i.test(naming.sub),
+    'X2 …and no longer asks for a whole name on one paper — the catcher reads ONE letter',
+    naming.sub);
+  check(naming.done === false,
+    'X3 nothing to press yet — a name with no more letters in it is not finished',
+    JSON.stringify({ done: naming.done, letters: naming.letters }));
+
+  await xp.evaluate(() => {
+    try {
+      const n = HandwritingStore.list().length;
+      HandwritingStore.save({ ch: String.fromCharCode(97 + n),
+        png: 'data:image/png;base64,iVBORw0KGgo=', w: 40, h: 40 });
+    } catch (e) {}
+  });
+  // The confirmation waits on a short stillness AND on the beat's own
+  // poll, so it is offered within a beat or two rather than instantly.
+  // Polled rather than slept on: a fixed wait either flakes or is slow.
+  let afterLetter = null;
+  for (let i = 0; i < 20; i++) {
+    await xp.waitForTimeout(400);
+    afterLetter = await xBeat();
+    if (afterLetter.done) break;
+  }
+  check(afterLetter.done === true && afterLetter.doneText === 'I did it!',
+    'X4 one more letter, and the beat waits on the child\'s own word', JSON.stringify(afterLetter));
+  check(afterLetter.letters === naming.letters + 1,
+    'X5 …on ONE letter, never on a count of them', JSON.stringify({
+      before: naming.letters, after: afterLetter.letters }));
+  check(xErrors.length === 0, 'X6 zero page errors', xErrors.slice(0, 2).join(' | '));
+
+  await xp.close();
+
+  /* ---- Y: on a garden beat Lumo stands in the left pane -------------
+   * "lumo screen is still there. you can collapse it and just keep i
+   * did it button, or move lumo and idid it button to left pane as
+   * there is only single page there." The 2.2s step-aside a capture
+   * triggers is right for the growth itself and does nothing for the
+   * rest of the beat, which is where a child spends most of it.
+   *
+   * Beside-the-page is the product owner's OWN earlier preference and
+   * stays the default; this overrides it only where the two collide —
+   * beats whose whole subject is a garden growing in the gutter Lumo is
+   * standing in.
+   */
+  console.log('\n-- Y: on a garden beat, Lumo stands in the left pane');
+
+  const yp = await browser.newPage({ viewport: { width: 1359, height: 800 } });
+  const yErrors = [];
+  yp.on('pageerror', (e) => yErrors.push(String(e)));
+  await yp.goto(BASE + '/studio.html?author=on');
+  await yp.waitForFunction(() =>
+    typeof StudioRite !== 'undefined' && typeof MagicCard !== 'undefined' &&
+    typeof CreationFlow !== 'undefined', null, { timeout: 20000 });
+  await yp.evaluate(() => {
+    localStorage.clear();
+    MagicCard.claim('Vihu');
+    const r1 = StudioRite.rites().find((r) => r.mandatory);
+    MagicCard.setTaught((r1.teaches || []).concat(r1.reveals || []));
+    const gw = document.getElementById('gatewayOverlay');
+    if (gw) gw.style.display = 'none';
+    document.querySelectorAll('.studio-rite-overlay').forEach((n) => n.remove());
+  });
+  await yp.evaluate(() => { try { CreationFlow.startBlank(); } catch (e) {} });
+  await yp.waitForTimeout(1200);
+  await yp.evaluate(() => { try { StudioRite.start('my-garden'); } catch (e) {} });
+  await yp.waitForTimeout(3000);
+
+  const dock = () => yp.evaluate(() => {
+    const pan = document.querySelector('.studio-rite-overlay .studio-rite-panel');
+    const b = pan.getBoundingClientRect();
+    const w = document.querySelector('.preview-wrapper').getBoundingClientRect();
+    return {
+      wants: StudioRite.wantsRoom(),
+      beside: document.body.classList.contains('studio-rite-beside'),
+      clearsWorkspace: b.right <= w.x + 1,
+      x: Math.round(b.x), width: Math.round(b.width)
+    };
+  });
+
+  const bgBeat = await dock();
+  check(bgBeat.wants === null && bgBeat.beside === true,
+    'Y1 a beat that is not about the garden keeps beside-the-page — his own earlier preference',
+    JSON.stringify(bgBeat));
+
+  /* Beside the page is where a capture CAN still catch him in the way —
+   * My Garden is revealed for the whole rite, so a child may wander in
+   * and keep something on any beat. There he leans out of the way for
+   * as long as the growth answers, and comes back.
+   *
+   * One measurement worth keeping: the class went on and off correctly
+   * and NOTHING MOVED. The docked band's own entry animation holds
+   * opacity and transform at its end state, and an animation outranks a
+   * plain declaration however specific — so asserting the class is
+   * present proves nothing about whether a child can see past him. */
+  const aside = await yp.evaluate(() => new Promise((done) => {
+    const ov = document.querySelector('.studio-rite-overlay');
+    const pan = document.querySelector('.studio-rite-overlay .studio-rite-panel');
+    const read = () => ({
+      aside: ov.classList.contains('studio-rite-aside'),
+      opacity: Number(getComputedStyle(pan).opacity).toFixed(2),
+      shown: getComputedStyle(ov).display
+    });
+    const before = read();
+    document.dispatchEvent(new CustomEvent('vihu:creation-captured', { detail: { id: 'suite-1' } }));
+    setTimeout(() => {
+      const during = read();
+      setTimeout(() => done({ before: before, during: during, after: read() }), 2400);
+    }, 700);
+  }));
+  check(aside.before.aside === false && aside.during.aside === true,
+    'Y1a beside the page, a capture steps him aside so the garden can be watched',
+    JSON.stringify(aside));
+  check(Number(aside.during.opacity) < 0.5,
+    'Y1b …and he really recedes — the class alone proves nothing, an animation was pinning it',
+    JSON.stringify({ idle: aside.before.opacity, growing: aside.during.opacity }));
+  check(aside.during.shown !== 'none' && aside.after.aside === false &&
+        Number(aside.after.opacity) > 0.9,
+    'Y1c he leans out of the way and comes back — never vanishes, which reads as a glitch',
+    JSON.stringify(aside.after));
+
+  for (let i = 0; i < 20; i++) {
+    if (await yp.evaluate(() => StudioRite.wantsRoom())) break;
+    await yp.evaluate(() => {
+      try {
+        const pg = PageRuntime.getActivePage();
+        if (pg) {
+          pg.metadata = pg.metadata || {};
+          pg.metadata.cardOverrides = pg.metadata.cardOverrides || {};
+          pg.metadata.cardOverrides.background = '#2E7D32';
+        }
+      } catch (e) {}
+      const d = document.querySelector('.studio-rite-done');
+      if (d) d.click();
+    });
+    await yp.waitForTimeout(600);
+  }
+  await yp.waitForTimeout(700);
+  const gardenBeat = await dock();
+  check(gardenBeat.wants !== null && gardenBeat.beside === false,
+    'Y2 a garden beat moves him to the left pane', JSON.stringify(gardenBeat));
+  check(gardenBeat.clearsWorkspace === true,
+    'Y3 …and the whole workspace is clear, growth bands included',
+    JSON.stringify(gardenBeat));
+
+  // The confirmation goes with him — a button left behind in the old
+  // place would be the one control this beat ends on, stranded.
+  await yp.evaluate(() => {
+    try { HandwritingStore.save({ ch: 'h', png: 'data:image/png;base64,iVBORw0KGgo=', w: 40, h: 40 }); } catch (e) {}
+  });
+  let doneBtn = null;
+  for (let i = 0; i < 20; i++) {
+    await yp.waitForTimeout(400);
+    doneBtn = await yp.evaluate(() => {
+      const b = document.querySelector('.studio-rite-done');
+      if (!b) return null;
+      const br = b.getBoundingClientRect();
+      const pr = document.querySelector('.studio-rite-overlay .studio-rite-panel').getBoundingClientRect();
+      const w = document.querySelector('.preview-wrapper').getBoundingClientRect();
+      return {
+        text: b.textContent,
+        insidePanel: br.left >= pr.left - 1 && br.right <= pr.right + 1,
+        onScreen: br.bottom <= window.innerHeight + 1 && br.top >= 0,
+        clearsWorkspace: br.right <= w.x + 1
+      };
+    });
+    if (doneBtn) break;
+  }
+  check(!!doneBtn && doneBtn.text === 'I did it!' && doneBtn.insidePanel &&
+        doneBtn.onScreen && doneBtn.clearsWorkspace,
+    'Y4 the confirmation travels with him and fits the pane', JSON.stringify(doneBtn));
+
+  // And the capture step-aside stands down there: fading a guide who is
+  // already out of the way is a guide vanishing for no visible reason.
+  const noAside = await yp.evaluate(() => new Promise((done) => {
+    const ov = document.querySelector('.studio-rite-overlay');
+    document.dispatchEvent(new CustomEvent('vihu:creation-captured', { detail: { id: 'suite-2' } }));
+    setTimeout(() => done({ aside: ov.classList.contains('studio-rite-aside') }), 700);
+  }));
+  check(noAside.aside === false,
+    'Y5 the capture step-aside stands down in the pane — nothing to step aside from',
+    JSON.stringify(noAside));
+  check(yErrors.length === 0, 'Y6 zero page errors', yErrors.slice(0, 2).join(' | '));
+  await yp.close();
+
+  /* ---- U: a beat never asks for a control that is asleep -------------
+   *
+   * "play story is greyed out in its beat." The Rite holds Play My Story
+   * and Finish Story shut for its whole run — "the story is not finished
+   * until Lumo says so" — and only a screen carrying `unlock:true` wakes
+   * them. Rite II's own play beat did not carry it, so its LAST beat
+   * asked a child to press a greyed-out button: a rite that could not be
+   * finished.
+   *
+   * Static, and deliberately so — it covers every runnable rite for the
+   * price of one read, including the one this suite does not walk. A
+   * beat gating on an action the Rite holds shut must be at or after the
+   * beat that wakes it.
+   */
+  console.log('\n-- U: no beat asks for a control that is asleep');
+
+  const HELD_SHUT = ['story-played', 'story-finished', 'story-shared'];
+  const asleep = await page.evaluate((held) => {
+    const bad = [];
+    StudioRite.rites().forEach(function (r) {
+      if (!r.runnable) return;
+      const beats = StudioRite._beats(r.id) || [];
+      let woken = false;
+      beats.forEach(function (b, i) {
+        if (b.unlock) woken = true;
+        if (b.gate && held.indexOf(b.gate) >= 0 && !woken) {
+          bad.push(r.id + ' beat ' + (i + 1) + ' (' + b.gate + ')');
+        }
+      });
+    });
+    return bad;
+  }, HELD_SHUT);
+  check(asleep.length === 0,
+    'U1 every beat that asks for Play or Finish comes after the beat that wakes them',
+    asleep.join(', ') || 'all woken in time');
+
+  /* ---- Z: a rite left half done is kept, offered back, and resumed ---
+   *
+   * "why dont we allow resume from studio home for rite 2 & 3 this way
+   * it will never enter projects or show in projects till completely
+   * done, child does not have any work lost on account of not able to
+   * complete in single seating." Measured before this: three abandoned
+   * starts left three empty stories in My Projects.
+   *
+   * Where the child had got to is DERIVED from the story, never stored
+   * — Decision 22's own rule that rites get added, split and reordered
+   * is exactly why a saved beat number would rot.
+   */
+  console.log('\n-- Z: a rite left half done');
+
+  // Satisfy exactly the gate the story is standing on. Reading the gate
+  // (StudioRite._awaitingGate) rather than guessing at every control is
+  // what makes a real walk possible: a driver that pokes everything on
+  // every beat fights the beats it is not on — measured, it put sixty
+  // objects on a page and still never passed beat nine.
+  const SATISFY = function (gate) {
+    const pg = PageRuntime.getActivePage();
+    pg.metadata = pg.metadata || {};
+    const put = (kind) => {
+      pg.metadata.stickers = pg.metadata.stickers || [];
+      pg.metadata.stickers.push({ id: 'k' + Date.now() + Math.random(), kind: kind,
+        x: 20, y: 20, w: 60, h: 60, rotation: 0 });
+    };
+    switch (gate) {
+      case 'bg-set':
+        pg.metadata.cardOverrides = pg.metadata.cardOverrides || {};
+        pg.metadata.cardOverrides.background = '#2E7D32'; break;
+      case 'letter-kept': case 'letters-grown': {
+        const n = HandwritingStore.list().length;
+        HandwritingStore.save({ ch: String.fromCharCode(97 + n),
+          png: 'data:image/png;base64,iVBORw0KGgo=', w: 40, h: 40 });
+        break; }
+      case 'letters-placed': case 'drawing-placed': case 'photo-added': put('image'); break;
+      case 'drawing-kept':
+        try { CreatorLibrary.save({ name: 'c' + Date.now(), png: 'data:image/png;base64,iVBORw0KGgo=' }); } catch (e) {}
+        break;
+      case 'sticker-added': put('emoji'); break;
+      case 'text-added': put('text'); break;
+      case 'shape-added': put('shape'); break;
+      case 'sticker-resized': (pg.metadata.stickers || []).forEach((x) => { x.w = (x.w || 60) + 11; x.h = (x.h || 60) + 11; }); break;
+      case 'sticker-moved': (pg.metadata.stickers || []).forEach((x) => { x.x = (x.x || 0) + 17; x.y = (x.y || 0) + 17; }); break;
+      case 'sticker-rotated': (pg.metadata.stickers || []).forEach((x) => { x.rotation = (x.rotation || 0) + 15; }); break;
+      case 'page-added': PageOps.duplicatePage(AppState.currentSlide); break;
+      case 'blank-page-added': PageOps.addAfter(AppState.slides.length - 1); break;
+      case 'voice-added':
+        (AppState.slides || []).forEach((sl) => { sl.metadata = sl.metadata || {}; sl.metadata.narration = { src: 'x' }; });
+        break;
+      case 'page-shaped':
+        (AppState.slides || []).forEach((sl) => { sl.metadata = sl.metadata || {}; sl.metadata.aspect = 'tall'; });
+        break;
+      case 'story-named': {
+        const t = document.getElementById('bookTitle');
+        if (t) { t.value = 'The Green Place'; t.dispatchEvent(new Event('input', { bubbles: true })); }
+        break; }
+      case 'story-played': {
+        // THE REAL BUTTON, AND NOTHING ELSE. This used to fall back to
+        // StoryPlayer.open() when the button was disabled — which is
+        // exactly what hid "play story is greyed out in its beat" from
+        // this suite while a child could not finish the rite at all. A
+        // walker that reaches around a dead control cannot see a dead
+        // control. The player counts a reading when it OPENS, so
+        // opening and closing it again is one reading.
+        const b = document.getElementById('playStoryBtn');
+        if (b && !b.disabled) {
+          b.click();
+          setTimeout(() => { try { StoryPlayer.close(); } catch (e) {} }, 300);
+        }
+        break; }
+      default: break;
+    }
+    try { PageRuntime.notify(); ProjectManager.markDirty(); } catch (e) {}
+    return gate;
+  };
+
+  const zp = await browser.newPage({ viewport: { width: 1359, height: 800 } });
+  const zErrors = [];
+  zp.on('pageerror', (e) => zErrors.push(String(e)));
+  async function zBoot() {
+    await zp.goto(BASE + '/studio.html?author=on');
+    await zp.waitForFunction(() =>
+      typeof StudioRite !== 'undefined' && typeof MagicCard !== 'undefined' &&
+      typeof CreationFlow !== 'undefined' && typeof CreatorProjectStore !== 'undefined',
+      null, { timeout: 20000 });
+    await zp.evaluate(() => {
+      const gw = document.getElementById('gatewayOverlay');
+      if (gw) gw.style.display = 'none';
+      document.querySelectorAll('.studio-rite-overlay').forEach((n) => n.remove());
+    });
+    await zp.waitForTimeout(500);
+  }
+
+  // Wait for the beat to actually be ASKING. `_awaitingGate()` is null
+  // while a screen is still revealing its lines, so reading it too early
+  // satisfies nothing and the walk silently stalls — measured, it left
+  // the letter beat unsatisfied and the resume then correctly landed
+  // there, which read as a resume bug and was a walker bug.
+  async function zSatisfyCurrent() {
+    for (let t = 0; t < 40; t++) {
+      const gate = await zp.evaluate(() => StudioRite._awaitingGate && StudioRite._awaitingGate());
+      if (gate) {
+        await zp.evaluate((fn) => {
+          const g = StudioRite._awaitingGate();
+          if (g) eval('(' + fn + ')')(g);
+        }, SATISFY.toString());
+        return gate;
+      }
+      if (await zp.evaluate(() => !StudioRite.isRunning())) return null;
+      await zp.waitForTimeout(250);
+    }
+    return null;
+  }
+
+  const zState = () => zp.evaluate(() => ({
+    myProjects: CreatorProjectStore.list().length,
+    names: CreatorProjectStore.list().map((r) => r.name),
+    held: (CreatorProjectStore.listAll() || []).filter((r) => r.riteInProgress).length,
+    records: (CreatorProjectStore.listAll() || []).length,
+    running: StudioRite.isRunning(),
+    beat: (document.querySelector('.studio-rite-line .gateway-greeting-title') || {}).textContent || ''
+  }));
+
+  await zBoot();
+  await zp.evaluate(() => {
+    localStorage.clear();
+    const c = MagicCard.claim('Vihu');
+    MagicCard.setActive(c.id);
+    const r1 = StudioRite.rites().find((r) => r.mandatory);
+    MagicCard.setTaught((r1.teaches || []).concat(r1.reveals || []));
+  });
+
+  // --- sitting one: two beats, then walk away
+  await zBoot();
+  await zp.evaluate(() => { try { StudioRite.start('my-garden'); } catch (e) {} });
+  await zp.waitForTimeout(3000);
+  const walked = [];
+  for (let i = 0; i < 2; i++) {
+    const g = await zSatisfyCurrent();
+    if (g) walked.push(g);
+    await zp.waitForTimeout(600);
+    await zp.evaluate(() => { const d = document.querySelector('.studio-rite-done'); if (d) d.click(); });
+    await zp.waitForTimeout(500);
+  }
+  check(walked.join(',') === 'bg-set,letter-kept',
+    'Z0 the setup really walked the first two beats', walked.join(',') || '(none)');
+  await zp.evaluate(() => { try { ProjectManager.saveToLocalStorage(); } catch (e) {} });
+  await zp.waitForTimeout(400);
+  const stopped = await zState();
+  check(stopped.myProjects === 0 && stopped.held === 1,
+    'Z1 a rite\'s story is held, not in My Projects', JSON.stringify(stopped));
+
+  // --- and again, and again: never a second story
+  for (let round = 0; round < 2; round++) {
+    await zBoot();
+    await zp.evaluate(() => { try { StudioRite.start('my-garden'); } catch (e) {} });
+    await zp.waitForTimeout(4000);
+  }
+  const again = await zState();
+  check(again.records === 1 && again.myProjects === 0 && again.held === 1,
+    'Z2 coming back reuses the held story — never a second one', JSON.stringify(again));
+
+  // --- the offer reads as a door left open, and only once
+  await zBoot();
+  const zOffer = await zp.evaluate(() => {
+    try { CreationFlow.start({ resume: ProjectManager.getSessionStatus() }); } catch (e) {}
+    const c = document.getElementById('creationFlowContent');
+    const d = c.querySelector('.creation-flow-door');
+    return {
+      door: d ? (d.innerText || '').replace(/\s+/g, ' ').trim() : null,
+      resumePill: !!c.querySelector('.creation-flow-resume'),
+      session: ProjectManager.getSessionStatus().state
+    };
+  });
+  check(/left a door open/i.test(zOffer.door || '') && /Carry on/.test(zOffer.door || ''),
+    'Z3 Studio Home offers it back as a door left open', JSON.stringify(zOffer));
+  check(zOffer.session === 'valid' && zOffer.resumePill === false,
+    'Z4 …and only once — the session slot names the same story, and two offers for one story is not one thing',
+    JSON.stringify(zOffer));
+  // Decision 22's language rule, checked against the real rendered text
+  // rather than the source. `\brite\b` deliberately does not match
+  // "write".
+  [['rite', /\brite\b/i], ['level', /\blevels?\b/i], ['unlock', /\bunlock/i],
+   ['locked', /\blocked\b/i], ['progress', /\bprogress/i], ['step', /\bstep \d/i]
+  ].forEach(([word, re]) => {
+    check(!re.test(zOffer.door || ''), 'Z5 the offer never says "' + word + '"',
+      ((zOffer.door || '').match(re) || [''])[0]);
+  });
+
+  // --- resuming lands where they stopped, with the work intact
+  await zp.evaluate(() => { try { StudioRite.start('my-garden'); } catch (e) {} });
+  // Wait for the beat it lands on to start ASKING — the gate is null
+  // while a screen is still revealing its lines, which is not the same
+  // thing as landing in the wrong place.
+  let resumed = null;
+  for (let t = 0; t < 40; t++) {
+    await zp.waitForTimeout(400);
+    resumed = await zp.evaluate(() => ({
+      beat: (document.querySelector('.studio-rite-line .gateway-greeting-title') || {}).textContent || '',
+      gate: StudioRite._awaitingGate && StudioRite._awaitingGate(),
+      letters: HandwritingStore.list().length,
+      bg: ((PageRuntime.getActivePage().metadata || {}).cardOverrides || {}).background || null
+    }));
+    if (resumed.gate) break;
+  }
+  check(resumed.gate === 'letters-grown',
+    'Z6 it resumes at the beat they stopped on — derived from the story, never a stored beat number',
+    JSON.stringify(resumed));
+  check(resumed.letters >= 1 && !!resumed.bg,
+    'Z7 …with the work they had already done still there', JSON.stringify(resumed));
+
+  // --- finishing releases it into My Projects
+  for (let i = 0; i < 40; i++) {
+    if (await zp.evaluate(() => !StudioRite.isRunning())) break;
+    await zSatisfyCurrent();
+    await zp.waitForTimeout(500);
+    await zp.evaluate(() => { const d = document.querySelector('.studio-rite-done'); if (d) d.click(); });
+    await zp.waitForTimeout(350);
+  }
+  await zp.waitForTimeout(2000);
+  const zDone = await zp.evaluate(() => ({
+    running: StudioRite.isRunning(),
+    myProjects: CreatorProjectStore.list().length,
+    names: CreatorProjectStore.list().map((r) => r.name),
+    held: (CreatorProjectStore.listAll() || []).filter((r) => r.riteInProgress).length,
+    records: (CreatorProjectStore.listAll() || []).length,
+    taughtGarden: StudioRite.taught().indexOf('garden') >= 0,
+    next: StudioRite.nextOptIn()
+  }));
+  check(zDone.running === false && zDone.held === 0 && zDone.myProjects === 1,
+    'Z8 finishing releases the story into My Projects, and only then', JSON.stringify(zDone));
+  check(zDone.records === 1 && zDone.taughtGarden === true && zDone.next === 'my-little-house',
+    'Z9 one story, the capabilities granted, and the door moved on', JSON.stringify(zDone));
+  check(zErrors.length === 0, 'Z10 zero page errors', zErrors.slice(0, 3).join(' | '));
+  await zp.close();
+
   // The offer on Studio Home must skip the unwritten one and land on the
   // next real door — never on a rite nobody has authored.
   const offered = await page.evaluate(() => {

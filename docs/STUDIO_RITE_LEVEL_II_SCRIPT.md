@@ -40,7 +40,7 @@ That is what My Garden *is*, and nothing says so.
 |---|---|---|---|
 | 1 | I | *At the far end of everywhere there is a small green place.* | `bg-set` |
 | 2 | I | *Nobody has ever said whose it is.* / *Things that belong to somebody have their name on them. Written by hand.* | `letter-kept` |
-| 3 | I | *That is your letter. Nobody else in the world makes that shape.* / *A name needs all of itself.* | `letters-grown` |
+| 3 | I | *That is your letter. Nobody else in the world makes that shape.* / *A name needs all of itself.* / *One letter at a time, until your whole name is in your garden. Tell me when it is all there.* | `letters-grown` |
 | 4 | I | *Now everyone will know.* | `letters-placed` |
 | 5 | II | *It is a lovely green place. It is also very quiet.* / *Somebody should live here. Somebody nobody has ever seen before.* | `drawing-kept` |
 | 6 | II | *There you are. Nobody has ever made one of those.* | `drawing-placed` |
@@ -99,11 +99,28 @@ ordering settles it: with letters first, the name is written before the
 thing it might otherwise belong to exists. Nothing else is available to
 name.
 
-**How many letters?** Beat 2 asks for exactly one. Beat 3 asks for *the
-rest of your name*, and the gate is simply "more letters than before" —
-never a count. A child called Jo passes it with one more; a child called
-Anastasia passes it with one more too, and may keep going as long as they
-like. Counting to a number would have invented a wall.
+**How many letters?** Beat 2 asks for exactly one. Beat 3 asks for the
+rest, and the gate is simply "more letters than before" — never a count.
+A child called Jo passes it with one more; a child called Anastasia
+passes it with one more too, and may keep going as long as they like.
+Counting to a number would have invented a wall.
+
+**One at a time, and the child says when.** Beat 3 read *Write the rest
+of your name*, and the product owner caught what that describes: *"if we
+write all the letters on single paper it will not work."* It is a fact
+about the catcher rather than a matter of taste — it is armed for ONE
+letter (`HandwritingStudio.open({ch})`), reads that letter, and reopens
+the letters room on its own so the next tile is one tap away. The line
+now reads *One letter at a time, until your whole name is in your
+garden. Tell me when it is all there.*
+
+The second sentence is the important one. Only the child knows when
+their name is finished, so this beat cannot end on a count: the gate
+passes on one more letter, and then the Rite's own **I did it!** sits
+there waiting — dropping and re-offering itself each time they go back
+for another. The subtitle invites that press without naming it. The
+button already says what it is, and Lumo does not read out the
+interface (Decision 8).
 
 ---
 

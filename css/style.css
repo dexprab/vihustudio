@@ -11978,6 +11978,36 @@ body.light-theme .story-action.is-asleep{ background:rgba(255,255,255,.09); }
    with it — see _watchForModal in js/studioRite.js. */
 .studio-rite-overlay.studio-rite-yield{ display:none !important; }
 
+/* LUMO STEPS ASIDE WHILE THE GARDEN GROWS. "the lumo should disappear or
+   get to a side so that child can see the garden grow in front of
+   himself." Measured, the band covers the whole of the left growth band
+   Decision 27 puts the garden in, so a child told their letter is being
+   kept in their garden could not watch it happen.
+   A moment rather than a relocation: it fades and slips a little out of
+   the way for as long as the growth answers, then comes straight back.
+   Never display:none — a Lumo who vanishes and reappears is a glitch,
+   one who leans out of the way is being polite. Suppressed under reduced
+   motion by js/studioRite.js, which does not add the class at all: the
+   growth animation is suppressed there too, so there is nothing to
+   step aside for. */
+/* !important, and it is earned: the docked band's entry animation
+   (`studio-rite-beside-in ... both`) holds opacity and transform at its
+   end state for as long as it is applied, and an animation outranks a
+   plain declaration however specific. Measured before this: the class
+   went on and off correctly and nothing moved. */
+.studio-rite-overlay.studio-rite-aside .studio-rite-panel{
+  opacity:.12 !important;
+  transform:translateX(-14px) !important;
+  pointer-events:none;
+}
+.studio-rite-overlay .studio-rite-panel{
+  transition:opacity .45s ease, transform .45s ease;
+}
+@media (prefers-reduced-motion: reduce){
+  .studio-rite-overlay .studio-rite-panel{ transition:none; }
+  .studio-rite-overlay.studio-rite-aside .studio-rite-panel{ opacity:1 !important; transform:none !important; }
+}
+
 /* ---- The page turn --------------------------------------------------
    Two stacked faces inside a perspective box. The page being left hinges
    about its spine edge and is hidden past 90 degrees, so its mirror is

@@ -1527,6 +1527,159 @@ once, and its scope is no longer closed.
   not a new one. **A future full-screen step belongs in that list, in
   the commit that adds the step**, exactly as a new Add tile belongs in
   the reduction.
+- **A NAME ARRIVES ONE LETTER AT A TIME, AND THE CHILD SAYS WHEN**
+  (build 0654). Reported by the product owner walking Rite II's naming
+  beat: *"if we write all the letters on single paper it will not work.
+  the beat should be fill the garden with your name letters one at a
+  time. once done click i did it."* The line read *Write the rest of
+  your name*, which describes something the catcher cannot do — it is
+  armed for ONE letter, reads that letter, and reopens the letters room
+  so the next tile is one tap away. **A beat may never ask for something
+  the tool cannot take.**
+- **The beat cannot count, because only the child knows when their name
+  is finished.** The gate still passes on one more letter and then the
+  Rite's own **I did it!** waits for them, dropping and re-offering
+  itself each time they go back for another — which is exactly the shape
+  asked for and needed no new machinery. The subtitle invites that press
+  without naming it: the button already says what it is, and Lumo does
+  not read out the interface (Decision 8).
+- **LUMO STEPS ASIDE WHILE THE GARDEN GROWS.** Asked for by the product
+  owner: *"the lumo should disappear or get to a side so that child can
+  see the garden grow in front of himself."* Measured at 1359×800,
+  `.preview-wrapper` starts at x=296 and the band sits at x=296, 231px
+  wide — it covers the **whole** of the left growth band Decision 27
+  puts the garden in, so a child told their letter is being kept in
+  their garden could not watch it happen.
+- **THE LEFT PANE, FOR THE WHOLE OF A GARDEN BEAT** (build 0655).
+  Reported by the product owner after the step-aside shipped: *"lumo
+  screen is still there. you can collapse it and just keep i did it
+  button, or move lumo and idid it button to left pane as there is only
+  single page there."* He is right: the 2.2s step-aside is correct for
+  the growth itself and does nothing for the rest of the beat, which is
+  where a child spends most of it — going back for the next letter,
+  looking at the garden in between.
+- **Beside-the-page is his own earlier preference and stays the
+  default.** This overrides it only where the two collide: the beats
+  whose whole subject is a garden growing in the very gutter Lumo is
+  standing in. `_prefersRail()` reads `wantsRoom()`, so it follows the
+  story rather than a list of gate ids kept in step by hand, and the
+  dock is re-placed when the beat changes rather than only on a resize.
+  Measured at 1359×800: beside-the-page x=296 (the wrapper's own left
+  edge), the left pane x=16 width 248 — the whole workspace clear,
+  growth bands included. The **I did it!** button travels with him,
+  because it lives in the same panel.
+- **A rite runs on a blank page with one thumbnail in it**, which is the
+  observation that makes the pane free — and it is exactly the one the
+  product owner made.
+- **A moment, never a relocation** — this is the other half, and it
+  still applies where the band IS beside the page (My Garden is revealed
+  for the whole rite, so a child may keep something on any beat).
+  Growth answers in about 1.5s, so the band recedes for a little longer
+  than that and comes straight back. It never uses `display:none`: a
+  Lumo who vanishes and reappears is a glitch, one who leans out of the
+  way is being polite. **It stands down in the pane**, where he is
+  already out of the way — fading a guide for no reason a child can see
+  is worse than not fading one.
+- **It rides `vihu:creation-captured`** — the same single event the
+  Garden itself grows on (Decision 27: one event, a capture id,
+  deliberately no type field) — so it learns nothing about letters,
+  drawings or cameras, and a future capture source gets the behaviour
+  for free. Suppressed under reduced motion, where the growth animation
+  is suppressed too and there is nothing to step aside for.
+- **AN OPT-IN RITE CAN BE PUT DOWN AND PICKED BACK UP** (build 0656).
+  Proposed by the product owner: *"why dont we allow resume from studio
+  home for rite 2 & 3 this way it will never enter projects or show in
+  projects till completely done, child does not have any work lost on
+  account of not able to complete in single seating."* It amends this
+  decision's assumption that a rite is walked in one sitting, and it
+  fixed a measured defect: a rite opens a blank story the instant it
+  starts, so every abandoned attempt left one in My Projects — three
+  starts, three empty stories.
+- **HELD, NEVER DELETED.** The alternative considered first was to keep
+  a blank project out of My Projects until something was in it, and it
+  only solved the litter. This solves both: the story is kept, offered
+  back, and resumed. A child who spent a quarter of an hour on Rite II
+  and had to stop loses nothing — which is the half that matters, since
+  Decision 19's rule is *a filter and never a delete*.
+- **The flag lives on the STORY, not the Magic Card.**
+  `riteInProgress` is a field on the project record, carried forward on
+  every autosave exactly as `publishedAt`, `creatorName` and `cardId`
+  are — a field not carried forward is wiped the moment editing
+  continues. It buys four things at once: `CreatorProjectStore.list()`
+  filters those records out, it already syncs to the cloud so a resume
+  works on another device with no new column and no migration, it is
+  inherently one-per-story, and pressing the door again reuses the held
+  story rather than making a second one.
+- **WHERE THE CHILD HAD GOT TO IS DERIVED, NEVER STORED.** This
+  decision's own rule is that rites will be added, split and reordered
+  over the product's life — which is exactly why capabilities are
+  stored and not a rite index. A saved beat number would rot on the
+  first reorder, and Rite II has gained or reworded beats twice. So the
+  rite replays from beat one and auto-advances past every beat the
+  story itself can account for. The gates were already the truth about
+  what a child has done.
+- **A COUNT, never a yes.** Gates repeat — Rite III has four
+  `shape-added` beats and four `doodle-added` ones — so a boolean
+  reading would replay a child who drew one shape past all four,
+  landing them in a story about a house they never built. And the count
+  is kept **per pool, not per gate**: `letter-kept` and `letters-grown`
+  both read the letters a child has made, and counted separately one
+  letter satisfied both and walked them a beat too far (measured).
+- **RETOLD, not replayed.** A beat already lived through shows its
+  lines at once and moves on — no voice, no cues, no waiting. Speaking
+  it again would take as long as the first sitting, which is the
+  opposite of picking up where you left off. Ten beats is about five
+  seconds.
+- **Disclosed limit.** `sticker-moved`, `sticker-resized` and
+  `sticker-rotated` cannot be read back from a saved story: it records
+  where the star IS, which is equally consistent with never having been
+  touched. They are treated as done when there is anything on the page,
+  because sending a child back to redo work they already did is the
+  worse of the two failures. Each appears at most once per rite today;
+  a second occurrence would be indistinguishable from the first.
+- **The mandatory rite is deliberately NOT held.** Its story is the
+  child's first — the thing they finish, share and get a Magic Card for
+  (Decision 8) — and a Traveller walking it holds no card and is
+  stateless anyway (Decision 19), so there is nothing to resume onto.
+- **The offer is the same one slot, worded for what it is.** *You left
+  a door open · Your story is still there, waiting for you. · Carry on*
+  in place of *A new door is waiting · Discover*. Everything the door
+  already had holds: one thing, never two, no decline, no dismiss, no
+  badge, no count, absent rather than empty, and it still names no
+  rite, level or capability. Both doors — Studio Home's and the rail's
+  — read it, because there is one door in the product and not two.
+- **Never two offers for one story.** A held rite story is also what
+  the session slot names, so Studio Home would have offered it once as
+  a story to carry on with and again as a door left open — and the two
+  are not interchangeable: opening it as a plain project drops the
+  child into the editor with no Lumo and no beats, which is not what
+  they left. The resume pill stands down; the door is the one that
+  knows how to give it back.
+- `Z0`–`Z10` walk Rite II for real: two beats, leave, come back twice,
+  resume at the beat they stopped on with the work intact, then finish
+  and watch the story enter My Projects — and only then. Proved by
+  removing the filter and the replay separately.
+- **A BEAT MAY NEVER ASK FOR A CONTROL THAT IS ASLEEP** (build 0657).
+  Reported by the product owner on Rite II's last beat: *"play story is
+  greyed out in its beat."* The Rite holds Play My Story and Finish
+  Story shut for its whole run — *the story is not finished until Lumo
+  says so* — and only a screen carrying `unlock:true` wakes them.
+  **Rite II's play beat did not carry it**, so its final beat asked a
+  child to press a greyed-out button: a rite that could not be finished.
+  Rite I's and Rite III's play beats both carry it; this one was simply
+  missed.
+- **The suite could not see it because the suite reached around it.**
+  The walker built one build earlier fell back to `StoryPlayer.open()`
+  when the button was disabled, so it finished a rite no child could.
+  **A walker that reaches around a dead control cannot see a dead
+  control** — it uses the real button and nothing else now, and stalls
+  exactly where a child would.
+- **`U1` is static, and covers the rite this suite does not walk.** For
+  every runnable rite, a beat gating on an action the Rite holds shut
+  must come at or after the beat that wakes it. `_beats(riteId)` joins
+  the harness reads because nothing could previously read the gate and
+  the unlock flag together — which is why two facts that were each
+  visible made an invisible bug.
 - Design and sequencing: `docs/STUDIO_RITE_LEVELS.md`. Rite II's script
   and its engineering notes: `docs/STUDIO_RITE_LEVEL_II_STORY.md`.
 

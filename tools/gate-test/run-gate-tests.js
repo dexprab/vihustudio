@@ -214,6 +214,79 @@ function check(c, n, note) {
   // showing the new one: "the screen is flickering between old and new
   // screen". js/buildStamp.js already detected it and waited to be
   // tapped; it now fixes itself once.
+  /* ---- the screen never has to scroll -------------------------------
+   *
+   * "this screen as soon i select a tile gets a scroll bar." A reported
+   * bug that took a while to find because the screen looked fine in
+   * every measurement: the fitter's own ResizeObserver keyed on
+   * `panel.clientHeight` alone, and that panel's height is CAPPED, so
+   * the instant its content grew past the cap the clientHeight stopped
+   * changing and every later refit was dropped. That is exactly the
+   * state a scrollbar appears in — content taller than the box, box no
+   * longer growing — so the one guard meant to prevent it was blind to
+   * it by construction.
+   *
+   * Guarded here across the window shapes a laptop actually has, and on
+   * BOTH tap paths, because a wrong tap changes the same three things a
+   * right tap does: the pose, the bubble and the tiles.
+   */
+  console.log('-- the screen never has to scroll');
+
+  async function skyOverflow(w, h, wrongTap) {
+    const sp = await browser.newPage({ viewport: { width: w, height: h } });
+    const errs = [];
+    sp.on('pageerror', (e) => errs.push(String(e)));
+    await sp.goto(BASE + '/studio.html?author=on');
+    await sp.waitForFunction(() =>
+      typeof MagicCardUI !== 'undefined' && typeof MagicCard !== 'undefined',
+      null, { timeout: 20000 });
+    await sp.evaluate(() => {
+      localStorage.clear();
+      const gw = document.getElementById('gatewayOverlay');
+      if (gw) gw.style.display = 'none';
+      const c = MagicCard.claim('Vihu');
+      MagicCard.setActive(c.id);
+      MagicCardUI.beginCreatorSignature(c, function () {});
+    });
+    await sp.waitForTimeout(1300);
+    const measure = () => sp.evaluate(() => {
+      const pn = document.querySelector('.magic-card-gate-panel');
+      const de = document.documentElement;
+      return {
+        panel: pn ? pn.scrollHeight - pn.clientHeight : 0,
+        doc: de.scrollHeight - de.clientHeight,
+        docW: de.scrollWidth - de.clientWidth,
+        correct: !!document.querySelector('.magic-card-sky-card.correct')
+      };
+    });
+    const before = await measure();
+    // One real card among decoys: the tile that turns .correct is the
+    // right tap. To force the other path, tap a second tile first.
+    await sp.evaluate((wrong) => {
+      const cards = document.querySelectorAll('.magic-card-sky-card');
+      const i = wrong ? Math.min(1, cards.length - 1) : 0;
+      if (cards[i]) cards[i].click();
+    }, wrongTap);
+    await sp.waitForTimeout(600);
+    const after = await measure();
+    await sp.close();
+    return { w: w, h: h, before: before, after: after, errors: errs.length };
+  }
+
+  const SHAPES = [[1024, 594], [1280, 620], [1359, 594], [1440, 700], [1600, 800], [1920, 900]];
+  const scrolled = [];
+  for (const [w, h] of SHAPES) {
+    for (const wrong of [false, true]) {
+      const r = await skyOverflow(w, h, wrong);
+      const bad = r.before.panel > 0 || r.after.panel > 0 ||
+                  r.after.doc > 0 || r.after.docW > 0 || r.errors > 0;
+      if (bad) scrolled.push((wrong ? 'wrong' : 'right') + '@' + w + 'x' + h + ' ' + JSON.stringify(r));
+    }
+  }
+  check(scrolled.length === 0,
+    'S1 the sky challenge never scrolls — six window shapes, both tap paths',
+    scrolled.join(' | ') || SHAPES.length * 2 + ' runs clean');
+
   console.log('-- the stale document');
   // Every URL this page navigates to, captured — buildStamp strips the
   // buster from the address bar on the next mount (a shared link must
