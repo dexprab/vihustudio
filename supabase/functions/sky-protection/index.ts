@@ -85,7 +85,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 // first occurrence of that literal in order to load the letter
 // composers, so a comment mentioning it truncates the file and takes
 // the whole letter section down. Learned the hard way.)
-import { guard, authorizeCardAccess } from '../_shared/edgeAuth.js';
+import { guard, authorizeCardAccess } from './edgeAuth.js';
 
 const CORS_HEADERS: Record<string, string> = {
   'Access-Control-Allow-Origin': '*',

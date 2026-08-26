@@ -302,8 +302,38 @@ function fakeDb(spec) {
   } else {
     try {
       psqlFile(pg, path.join(__dirname, 'fixture.sql'));
-      psqlFile(pg, path.join(ROOT, 'supabase', 'migrations_edge_rate_limit.sql'));
+
+      // THE VERIFIER, BEFORE THE MIGRATION. Somebody will run these in
+      // the wrong order, and the answer they get has to say so rather
+      // than raising a Postgres error at them.
+      const early = psqlFile(pg, path.join(ROOT, 'supabase', 'verify_edge_rate_limit.sql'));
+      check(/MIGRATION NOT APPLIED/.test(early) && /FAIL/.test(early),
+        'B0  run before the migration, the verifier says so in words');
+
+      const mig = psqlFile(pg, path.join(ROOT, 'supabase', 'migrations_edge_rate_limit.sql'));
       ok('B1  the migration runs against a real PostgreSQL');
+
+      // A MIGRATION MUST BE INERT. Pasted into the Supabase SQL Editor it
+      // has to produce "Success. No rows returned" — not a JSON blob a
+      // person then has to interpret. Reported by the product owner
+      // looking at exactly such a blob and reading it as an error; it was
+      // in fact the first probe passing, which is the whole problem.
+      check(!/\(\d+ rows?\)/.test(mig) && !/allowed/.test(mig),
+        'B1b the migration returns no rows and runs no probes',
+        mig.trim().split('\n').filter((l) => !/NOTICE|already exists/.test(l)).join(' ').slice(0, 60) || 'silent');
+      const after = psql(pg, 'select count(*) from public.edge_rate_limits;').trim();
+      check(after === '0', 'B1c and it counted nothing against anybody', after + ' rows');
+
+      // NOW the verifier, and every row of it must say PASS.
+      const ver = psqlFile(pg, path.join(ROOT, 'supabase', 'verify_edge_rate_limit.sql'));
+      const verdicts = (ver.match(/\b(PASS|FAIL)\b/g) || []);
+      check(verdicts.length >= 15 && verdicts.every((v) => v === 'PASS'),
+        'B1d the verifier answers PASS on every check',
+        verdicts.length + ' checks, ' + verdicts.filter((v) => v === 'FAIL').length + ' failed');
+      check(/── OVERALL ──/.test(ver) && /all checks pass/.test(ver),
+        'B1e and leads with one overall verdict rather than a wall of JSON');
+      const left = psql(pg, "select count(*) from public.edge_rate_limits where bucket = '__verify__';").trim();
+      check(left === '0', 'B1f the verifier leaves nothing behind — safe on a live project', left + ' rows');
 
       const rls = psql(pg, "select relrowsecurity from pg_class where oid='public.edge_rate_limits'::regclass;");
       const pol = psql(pg, "select count(*) from pg_policies where tablename='edge_rate_limits';");
@@ -385,9 +415,34 @@ function fakeDb(spec) {
     const gated = ['voice-speak', 'sky-protection', 'family-album', 'invite-send', 'creator-born'];
     gated.forEach((n) => {
       const src = fn(n);
-      check(/_shared\/edgeAuth\.js/.test(src) && /guard\(/.test(src),
-        'C1  ' + n + ' calls the shared gate');
+      check(/from '\.\/edgeAuth\.js'|import\('\.\/edgeAuth\.js'\)/.test(src) && /guard\(/.test(src),
+        'C1  ' + n + ' calls the gate from its own folder');
     });
+
+    // DEPLOY PORTABILITY. `_shared/` is a CLI-only bundling convention and
+    // is NOT carried by a Dashboard deploy — measured, on this project:
+    //   Module not found "file:///tmp/user_fn_<ref>_<uuid>_4/_shared/
+    //   edgeAuth.js" at .../source/index.ts:60:31
+    // A security fix that lands only under one deploy tool is not a fix,
+    // so no function may reach outside its own folder for code.
+    gated.forEach((n) => {
+      const src = fn(n).replace(/^\s*\/\/.*$/gm, '');   // comments may DISCUSS ../_shared
+      check(!/from '\.\.\//.test(src) && !/import\('\.\.\//.test(src),
+        'C1b ' + n + ' imports nothing from outside its own folder');
+    });
+
+    // ONE SOURCE OF TRUTH, FIVE COPIES, AND THEY MUST NOT DRIFT. For an
+    // authorization module, one function quietly enforcing something
+    // different from its neighbours is the failure that matters.
+    const canonModule = fs.readFileSync(
+      path.join(ROOT, 'supabase', 'functions', '_shared', 'edgeAuth.js'));
+    gated.forEach((n) => {
+      const copy = path.join(ROOT, 'supabase', 'functions', n, 'edgeAuth.js');
+      check(fs.existsSync(copy) && fs.readFileSync(copy).equals(canonModule),
+        'C1c ' + n + '/edgeAuth.js is byte-identical to the canonical module');
+    });
+    check(fs.existsSync(path.join(ROOT, 'tools', 'edge-auth-test', 'sync-shared.js')),
+      'C1d and one command regenerates them all');
 
     check(/require:\s*'service'/.test(fn('creator-born')),
       'C2  creator-born is service-only — no browser session may reach it');
