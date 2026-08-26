@@ -628,7 +628,15 @@ function check(cond, name, note) {
     await xp.waitForTimeout(700);
   }
 
-  const naming = await xBeat();
+  // Polled, not sampled. The confirmation waits on a short stillness
+  // after the beat arrives, so reading it the instant the loop breaks is
+  // a race — one this suite lost the moment an unrelated merge shifted
+  // page-load timing, having passed by luck before.
+  let naming = await xBeat();
+  for (let i = 0; i < 20 && !naming.done; i++) {
+    await xp.waitForTimeout(400);
+    naming = await xBeat();
+  }
   check(/One letter at a time/.test(naming.sub) && /Tell me when it is all there/.test(naming.sub),
     'X1 the naming beat asks for one letter at a time, and for the child to say when',
     naming.sub);
