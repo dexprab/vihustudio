@@ -212,11 +212,20 @@ const FN = cfg.url.replace(/\/+$/, '') + '/functions/v1/invite-send';
 //
 // `apikey` stays the anon key: the gateway routes on it and it
 // authorises nothing.
+//
+// AND NO FALLBACK TO THE ANON KEY. It used to send `cfg.anonKey` when
+// there was no session, which since Sprint 1A is a credential the
+// function is GUARANTEED to refuse — so "I am not signed in" arrived on
+// screen as "the function is refusing the key (401)", which sends
+// somebody to look at the deployment for a problem that is in the
+// browser. No session is its own answer now, and it says so.
 async function FN_HEADERS() {
   const { data: { session } } = await sb.auth.getSession();
+  const token = session && session.access_token;
+  if (!token) return null;
   return {
     'Content-Type': 'application/json',
-    'Authorization': 'Bearer ' + ((session && session.access_token) || cfg.anonKey),
+    'Authorization': 'Bearer ' + token,
     'apikey': cfg.anonKey,
   };
 }
@@ -346,6 +355,15 @@ $('sendMail').onclick = async () => {
 
   $('sendMail').disabled = true;
   note($('mailMsg'), 'Sending…');
+  // Asked ONCE, before the first letter: a signed-out page cannot send
+  // any of them, and finding that out per address turns one answer into
+  // a list of identical failures.
+  const headers = await FN_HEADERS();
+  if (!headers) {
+    note($('mailMsg'), 'Sign in first — the post office only takes letters from an administrator.');
+    $('sendMail').disabled = false;
+    return;
+  }
   const done = [], failed = [];
 
   for (const to of list) {
@@ -353,7 +371,7 @@ $('sendMail').onclick = async () => {
       const token = await mint('email', to, list.length === 1 ? label : '');
       const raw = await fetch(FN, {
         method: 'POST',
-        headers: await FN_HEADERS(),
+        headers: headers,
         body: JSON.stringify({ to, token, note: extra }),
       });
       // A non-2xx from the GATEWAY (401/404) is not JSON and is a
@@ -361,7 +379,13 @@ $('sendMail').onclick = async () => {
       // send, so it is reported as itself rather than as "failed".
       let res;
       if (!raw.ok) {
-        res = { ok: false, reason: raw.status === 401 ? 'not authorised (401)'
+        // 403 is the refusal Sprint 1A introduced and it has nothing to
+        // do with the key: the account is known and is not on the
+        // administrators list. Reported as itself so nobody goes looking
+        // at the deployment for it.
+        res = { ok: false, reason: raw.status === 401 ? 'the function did not recognise this sign-in (401)'
+                          : raw.status === 403 ? 'this account is not an administrator (403)'
+                          : raw.status === 429 ? 'too many just now (429)'
                           : raw.status === 404 ? 'function not deployed (404)'
                           : 'gateway ' + raw.status };
       } else {
@@ -706,30 +730,79 @@ $('sendWa').onclick = async () => {
 // ---------------------------------------------------------------
 // Is the post office even open?
 // ---------------------------------------------------------------
+// A REFUSAL HAS A REASON, AND THE FUNCTION ALREADY SENDS IT.
+//
+// This used to read every refusal as one sentence — "refusing the key
+// (401)" — and that sentence named the wrong thing twice: the key is
+// only one of the ways a 401 happens, and a 403, which is the refusal
+// Sprint 1A actually introduced, fell through to the success branch and
+// rendered as "Post office: undefined". So the one failure the
+// hardening was most likely to cause was the one this page could not
+// say out loud.
+//
+// 401 and 403 are DIFFERENT PROBLEMS and are now different sentences:
+// 401 is "we do not know who you are" and lives in this browser or in
+// the function's own environment; 403 is "we know exactly who you are,
+// and this account is not on the list" and lives in one table.
+async function ping() {
+  const headers = await FN_HEADERS();
+  if (!headers) return { kind: 'signed-out' };
+  const resp = await fetch(FN, {
+    method: 'POST', headers: headers, body: JSON.stringify({ action: 'ping' }),
+  });
+  if (resp.status === 404) return { kind: 'missing' };
+  let body = null;
+  try { body = await resp.json(); } catch (e) { body = null; }
+  return { kind: resp.ok ? 'ok' : 'refused', status: resp.status,
+           reason: (body && body.reason) || '', body: body || {} };
+}
+
 async function mailState() {
+  const el = $('mailState');
   try {
-    const resp = await fetch(FN, {
-      method: 'POST',
-      headers: await FN_HEADERS(),
-      body: JSON.stringify({ action: 'ping' }),
-    });
-    if (resp.status === 404) throw new Error('not deployed');
-    const r = resp.ok ? await resp.json() : { __status: resp.status };
-    if (r && r.__status === 401) {
-      $('mailState').innerHTML =
-        '<span class="flag">The invite-send function is refusing the key (401)</span> — ' +
-        'it is deployed but rejecting this call.';
-    } else if (!r || r.mail === 'none' || r.from === 'unset') {
-      $('mailState').innerHTML =
+    let r = await ping();
+    // A STALE TOKEN IS FIXED RATHER THAN REPORTED. The session this page
+    // holds can outlive its access token, and the answer to that is one
+    // refresh — telling an administrator to sign in again for something
+    // the page can do itself is a worse page.
+    if (r.kind === 'refused' && r.status === 401) {
+      try { await sb.auth.refreshSession(); } catch (e) {}
+      r = await ping();
+    }
+    if (r.kind === 'signed-out') {
+      el.innerHTML = '<span class="flag">You are not signed in</span> — ' +
+        'sign in above and the post office will answer.';
+    } else if (r.kind === 'missing') {
+      el.innerHTML = '<span class="flag">The invite-send function is not deployed yet</span> — ' +
+        'WhatsApp and copied links still work.';
+    } else if (r.kind === 'refused' && r.status === 403) {
+      el.innerHTML = '<span class="flag">This account is not an administrator</span> — ' +
+        'it is signed in and the function knows it; sending mail is limited to the addresses ' +
+        'in <code>platform_admins</code>. WhatsApp and copied links still work.';
+    } else if (r.kind === 'refused' && r.status === 401) {
+      el.innerHTML = '<span class="flag">The function did not recognise this sign-in (401)</span> — ' +
+        'the sign-in works everywhere else on this page, so the likeliest cause is that ' +
+        '<code>invite-send</code> cannot reach the auth server: check that ' +
+        '<code>SUPABASE_URL</code> and <code>SUPABASE_ANON_KEY</code> are set on the function. ' +
+        'WhatsApp and copied links still work.';
+    } else if (r.kind === 'refused' && r.status === 429) {
+      el.innerHTML = '<span class="flag">Too many just now</span> — the post office is fine; ' +
+        'it is only asking for a pause.';
+    } else if (r.kind === 'refused') {
+      el.innerHTML = '<span class="flag">The invite-send function refused this call (' +
+        esc(String(r.status)) + (r.reason ? ' · ' + esc(r.reason) : '') + ')</span> — ' +
+        'WhatsApp and copied links still work.';
+    } else if (r.body.mail === 'none' || r.body.from === 'unset') {
+      el.innerHTML =
         '<span class="flag">Email is not configured yet</span> — WhatsApp still works, ' +
         'and so does copying a link by hand. Set RESEND_API_KEY and SKY_FROM_EMAIL on the ' +
         'invite-send function.';
     } else {
-      $('mailState').textContent = `Post office: ${r.mail} · ${r.build || ''}`;
+      el.textContent = `Post office: ${r.body.mail} · ${r.body.build || ''}`;
     }
   } catch (e) {
-    $('mailState').innerHTML =
-      '<span class="flag">The invite-send function is not deployed yet</span> — ' +
+    el.innerHTML =
+      '<span class="flag">The invite-send function could not be reached</span> — ' +
       'WhatsApp and copied links still work.';
   }
 }

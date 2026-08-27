@@ -8944,7 +8944,97 @@ Presence 52/52, moments 88/88, companion 50/50, context 90/90, canon
 90/90, chat 230/230, edge auth 127/127, memory 58/58, garden 104/104,
 traveller reset 16/16, zero page errors. Build 0674 → 0675.
 
-## Sprint 1K.1 — Leo Presence Experience (build 0676)
+---
+
+## A refusal has a reason, and the console now says which (build 0676)
+
+*"The invite-send function is refusing the key (401) — it is deployed but
+rejecting this call."* That sentence was the invite desk's only word for
+every refusal, and it named the wrong thing twice.
+
+The key is one of several ways a 401 happens. And **403** — the refusal
+Sprint 1A actually introduced, *this account is not in
+`platform_admins`* — never reached that branch at all: it fell through to
+the success case and rendered as **"Post office: undefined"**. Measured,
+429 did the same. So the failure the hardening was most likely to cause
+was the one failure this page could not say out loud.
+
+401 and 403 are different problems in different places and are now
+different sentences: 401 is *we do not know who you are*, which lives in
+this browser or in the function's own environment; 403 is *we know
+exactly who you are and this account is not on the list*, which lives in
+one table. Neither blames the key. 429 is a pause, and an unreachable
+function is reported as unreachable rather than as undeployed.
+
+`FN_HEADERS()` also fell back to `cfg.anonKey` when there was no
+session — since Sprint 1A a credential the gate is guaranteed to refuse —
+so *"I am not signed in"* arrived on screen as a deployment fault. That
+fallback is gone; no session is its own answer. A stale access token is
+repaired rather than reported: one `refreshSession()` and one retry.
+
+`tools/invite-desk-test/` (12) drives the real page with the real branch
+logic and a stubbed post office, and reads the sentence a person would
+actually see. Proved by reverting: I3, I4, I6, I8 and I10 go red, with
+403 and 429 both reporting "Post office: undefined ·".
+
+Not diagnosed here, and stated rather than guessed: this environment
+cannot reach the Supabase project (the proxy refuses `CONNECT`), so the
+live 401 itself is unverified. The repo's own gate is self-consistent —
+edge auth 127/127, including the drift check against every deployed
+`index.ts`.
+
+Invite desk 12/12, edge auth 127/127, zero page errors. Build 0675 → 0676.
+
+---
+
+## The invitation is a letter, not a campaign (build 0677)
+
+*"in my gmail account the mail is going in promotions category? can we
+fix and ensure that emails land in inbox?"*
+
+Gmail was not being unfair. Read as markup the invitation was a campaign,
+and the loudest signals were all things the design had asked for: a
+two-column layout with an image grid of two covers and captions (the
+strongest of them), a masthead with a brand name and a tagline, a pill
+CTA with a background colour, a full-bleed dark wrapper, remote images
+from our own domain, four links three of which went to one place, and
+nested ESP tables with a media query.
+
+No header outweighs that, so the chrome went and the words stayed — every
+sentence, the gold line, the sender's own note, the signature, both
+stories and the paragraph for parents. 6.7 KB of markup became 1.9 KB,
+and the result is closer to the letter's own "PAPER, NOT A DASHBOARD"
+note than the grid it replaced.
+
+The covers are the real cost and are stated rather than quietly dropped.
+"Every book is its own door" still holds: both stories are still their own
+links, every link still carries the invitation token, and they are named
+instead of pictured. `assets/invite/` is kept; putting one back is one
+field and one tag.
+
+Two smaller things travelled with it. The main link now shows its own
+destination — a promotional button says *Open the Door*, a letter shows
+you where it is sending you, and matching text to href is the opposite of
+what a phishing filter looks for. And the note used to sit a paragraph
+apart in the HTML and the plain halves, which nobody chose and nobody
+could see; they agree now.
+
+`tools/invite-letter-test/` (33) transpiles the deployed `index.ts` and
+calls its own `htmlFor`/`textFor` — a second copy of the letter in a test
+could pass while the letter that ships does not. It holds both halves:
+every campaign signal must be absent, and every phrase, story name and
+link must still be there, because a letter that reaches the inbox having
+lost the invitation is not a fix. Proved by reverting: nine checks go red.
+
+Disclosed, and it is the honest limit: no code change can GUARANTEE the
+inbox. Gmail's tabs are heuristic and per-recipient. Out of our hands are
+SPF/DKIM/DMARC alignment on the sending domain, whether `SKY_FROM_EMAIL`
+reads as a person or as `noreply@`, and the recipient's own one-time
+*Move to Primary*.
+
+Invite letter 33/33, invite desk 12/12, edge auth 127/127, zero page
+errors. Build 0676 → 0677.
+## Sprint 1K.1 — Leo Presence Experience (build 0678)
 
 The sprint asked whether the Presence architecture works for a second
 Companion. It does, and it needed no port: a Magic Card bonded to
@@ -9001,4 +9091,4 @@ arriving and read the greeting still fading on screen as a new line.
 
 Presence 74/74, moments 88/88, companion 50/50, canon 90/90, chat
 230/230, context 90/90, edge auth 127/127, memory 58/58, garden 104/104,
-traveller reset 16/16, zero page errors. Build 0675 → 0676.
+traveller reset 16/16, zero page errors. Build 0677 → 0678.
