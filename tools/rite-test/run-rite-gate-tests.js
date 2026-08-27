@@ -984,6 +984,16 @@ function check(cond, name, note) {
       case 'sticker-added': put('emoji'); break;
       case 'text-added': put('text'); break;
       case 'shape-added': put('shape'); break;
+      // A DRAWN doodle, never merely a doodle object: the gate counts
+      // strokes, for the reason _drawnDoodleCount records — an "a pad
+      // arrived" reading would be satisfied by the tap that opens it.
+      // Its absence here is why no suite had ever walked Rite III past
+      // its first doodle beat, which is where the nudge bug lived.
+      case 'doodle-added':
+        pg.metadata.stickers = pg.metadata.stickers || [];
+        pg.metadata.stickers.push({ id: 'd' + Math.random(), kind: 'doodle', x: 20, y: 20, w: 60, h: 60,
+          rotation: 0, strokes: [{ points: [{ x: .1, y: .1 }, { x: .6, y: .7 }] }] });
+        break;
       case 'sticker-resized': (pg.metadata.stickers || []).forEach((x) => { x.w = (x.w || 60) + 11; x.h = (x.h || 60) + 11; }); break;
       case 'sticker-moved': (pg.metadata.stickers || []).forEach((x) => { x.x = (x.x || 0) + 17; x.y = (x.y || 0) + 17; }); break;
       case 'sticker-rotated': (pg.metadata.stickers || []).forEach((x) => { x.rotation = (x.rotation || 0) + 15; }); break;
@@ -1564,6 +1574,102 @@ function check(cond, name, note) {
   check(route.opened === true && !/Finish/i.test(route.label || ''),
     'C6 and the Traveller notice is that route — it opens the Ceremony, not Finish Story',
     JSON.stringify(route));
+
+  /* ---- Q: a nudge never points at something that is not there --------
+   *
+   * "the i did it button is missing on the doodle beat." The button was
+   * right — the gate was unmet, because the child had drawn their path
+   * with Shapes' own "Draw Your Own" instead of with Doodle. What sent
+   * them there was the nudge: the Card Designer renders every kind
+   * section and hides the ones that do not apply, so `.doodle-pad-canvas`
+   * is in the document from the first paint, 0x0 and invisible. The
+   * nudge asked "does the pad exist", got yes, lit an element with no
+   * box, and the hint told the child to draw on a square that was not on
+   * the screen.
+   *
+   * The general form of the same family N6 (every revealed capability
+   * has a beat), V (every revealed capability resolves to a visible
+   * control), U (no beat asks for a control the Rite holds shut) and P
+   * (every shape a beat names is a real tile) already guard: a beat may
+   * never send a child somewhere they cannot go. So every runnable rite
+   * is walked beat by beat, and at each one the nudge's own target is
+   * measured. Null is allowed — that is the escalation falling through
+   * to words, which is a real answer. An element with no box is not.
+   */
+  console.log('\n-- Q: every nudge points at something a child can see');
+  const Q_SEEN = [];
+  for (const riteId of await page.evaluate(() =>
+      StudioRite.rites().filter((r) => r.runnable).map((r) => r.id))) {
+    const qp = await browser.newPage({ viewport: { width: 1359, height: 800 } });
+    await qp.goto(BASE + '/studio.html?author=on');
+    await qp.waitForFunction(() =>
+      typeof StudioRite !== 'undefined' && typeof MagicCard !== 'undefined' &&
+      typeof CreationFlow !== 'undefined', null, { timeout: 20000 });
+    await qp.evaluate(() => {
+      localStorage.clear();
+      const c = MagicCard.claim('Vihu');
+      MagicCard.setActive(c.id);
+      const caps = [];
+      for (const r of StudioRite.rites()) caps.push.apply(caps, (r.teaches || []).concat(r.reveals || []));
+      MagicCard.setTaught(caps);
+      const gw = document.getElementById('gatewayOverlay');
+      if (gw) gw.style.display = 'none';
+      document.querySelectorAll('.studio-rite-overlay').forEach((n) => n.remove());
+    });
+    await qp.evaluate((id) => { try { StudioRite.start(id); } catch (e) {} }, riteId);
+    await qp.waitForTimeout(2500);
+
+    let last = null, stalls = 0;
+    for (let beat = 0; beat < 40; beat++) {
+      let gate = null;
+      // The mandatory rite opens on a long cinematic before it ever asks
+      // for anything, so a short budget here walked none of it at all —
+      // and that is the rite whose nudges matter most.
+      for (let t = 0; t < (beat === 0 ? 140 : 24); t++) {
+        gate = await qp.evaluate(() => StudioRite._awaitingGate && StudioRite._awaitingGate());
+        if (gate) break;
+        if (await qp.evaluate(() => !StudioRite.isRunning())) break;
+        // The mandatory rite's opening acts are a conversation, not a
+        // gate: it waits on the child answering, and a walker that only
+        // knows how to make things sits there for ever. Never a
+        // decline — that is a real answer with its own meaning.
+        await qp.evaluate(() => {
+          const b = document.querySelector('.studio-rite-choice:not(.studio-rite-decline), .studio-rite-done');
+          if (b && !b.disabled) b.click();
+        });
+        await qp.waitForTimeout(500);
+      }
+      if (!gate) break;
+      Q_SEEN.push(Object.assign({ rite: riteId, gate: gate },
+        await qp.evaluate((g) => {
+          const el = StudioRite._nudgeTarget(g);
+          if (!el) return { el: null };
+          const r = el.getBoundingClientRect();
+          return { el: (el.className || el.id || el.tagName) + '',
+                   w: Math.round(r.width), h: Math.round(r.height),
+                   attached: !!el.offsetParent || getComputedStyle(el).position === 'fixed' };
+        }, gate)));
+      if (gate === last) { if (++stalls > 1) break; } else { stalls = 0; last = gate; }
+      await qp.evaluate((fn) => { const g = StudioRite._awaitingGate(); if (g) eval('(' + fn + ')')(g); },
+        SATISFY.toString());
+      await qp.waitForTimeout(500);
+      await qp.evaluate(() => { const d = document.querySelector('.studio-rite-done'); if (d) d.click(); });
+      await qp.waitForTimeout(700);
+    }
+    await qp.close();
+  }
+  const qBlind = Q_SEEN.filter((t) => t.el && (!(t.w > 0) || !(t.h > 0) || !t.attached));
+  const qRites = Array.from(new Set(Q_SEEN.map((t) => t.rite)));
+  check(qRites.length === 3 && Q_SEEN.length >= 30,
+    'Q1 every runnable rite really was walked beat by beat',
+    Q_SEEN.length + ' beats across ' + qRites.join(' + '));
+  check(Q_SEEN.some((t) => t.gate === 'doodle-added'),
+    'Q2 …including the doodle beat, which no suite had ever reached',
+    JSON.stringify(Q_SEEN.filter((t) => t.gate === 'doodle-added')[0] || null));
+  check(qBlind.length === 0,
+    'Q3 no nudge lights an element a child cannot see',
+    qBlind.map((t) => t.rite + '/' + t.gate + ' -> ' + t.el + ' ' + t.w + 'x' + t.h).join(', ')
+      || Q_SEEN.length + ' targets, every one with a real box');
 
   check(pageErrors.length === 0, 'H1 zero page errors',
     pageErrors.slice(0, 2).join(' | '));

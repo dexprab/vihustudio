@@ -1752,6 +1752,43 @@ once, and its scope is no longer closed.
   It joins `N6` (every revealed capability has a beat), `V` (every
   revealed capability resolves to a visible control) and `U` (no beat
   asks for a control the Rite holds shut).
+- **A CONTROL THAT EXISTS IS NOT A CONTROL A CHILD CAN SEE** (build
+  0671). Reported by the product owner on Rite III: *"the i did it
+  button is missing on the doodle beat."* The button was right — the
+  gate was genuinely unmet, because the child had drawn their path with
+  Shapes' own **Draw Your Own** rather than with Doodle. What sent them
+  there was the nudge. The Card Designer renders every kind-section and
+  HIDES the ones that do not apply, so `.doodle-pad-canvas` is in the
+  document from the first paint; measured at the beat it was **0×0 and
+  invisible** while the Doodle tile sat beside it at 72×74. The nudge
+  asked *does the pad exist*, got yes, lit an element with no box, and
+  the hint — testing the same way — told the child *"the little square
+  on the right is yours to draw on"* when there was no square on the
+  right. Decision 8's own rule: **a nudge must bring its target into
+  view first, or not point at all.**
+- **The gate was NOT widened, and that is the decision.** Accepting a
+  custom shape would let a child pass all four doodle beats with the
+  tool the first five beats already taught them — the same reasoning
+  `_drawnDoodleCount()` already records for why a doodle OBJECT is not
+  enough and a STROKE is. The beat teaches Doodle or it teaches nothing.
+- **Every "is this surface open in front of them" test now asks for a
+  real box** (`_shown()`), the doodle pad and both My Garden catchers
+  alike. Deliberately not `_isVisible()`, which also asks whether the
+  element clears the band: a pad that is open but scrolled away is still
+  the child's pad, and `_ensureVisible()` is what scrolls it back.
+- **`Q1`–`Q3` are the general guard, and they found a hole of their
+  own.** Every runnable rite is now walked beat by beat and each beat's
+  nudge target is measured; null is allowed (that is the escalation
+  falling through to words) and a target with no box is not. It joins
+  `N6` (every revealed capability has a beat), `V` (every revealed
+  capability resolves to a visible control), `U` (no beat asks for a
+  control the Rite holds shut) and `P` (every shape a beat names is a
+  real tile). Proved by reverting the fix and watching all four doodle
+  beats report `doodle-pad-canvas 0x0`. **The walker could not reach
+  Rite III's doodle beats at all before this** — `SATISFY` had no
+  `doodle-added` case, so no suite had ever been past them; and it
+  could not walk the MANDATORY rite either, whose opening acts are a
+  conversation rather than a gate, so it now answers those too.
 - **HOME STAYS, EXCEPT IN THE ONE RITE THERE IS NO WAY OUT OF.** Asked
   for by the product owner: *"story rites except story rite 1 should
   have home button."* The mandatory rite holds the Studio shut until it
