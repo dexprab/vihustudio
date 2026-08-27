@@ -9302,3 +9302,55 @@ the encounter was verified against locally shared Stories; the remote
 source of the same feed was not live.
 
 Build 0682 → 0683.
+
+## Sprint 1M.1 — Companion Memory persistence verification (build 0684)
+
+A verification sprint, and it ends **blocked on one half and proven on
+the other**. No code changed: the tree is byte-identical apart from a
+deployment runbook and this entry.
+
+**The migration was inspected statement by statement and is
+non-destructive.** One `create table if not exists`, three
+`create index if not exists`, one `enable row level security`, four
+`drop policy if exists` and four `create policy` — every one of them
+against the new table, all inside one transaction. There is no INSERT,
+UPDATE, DELETE, TRUNCATE or DROP TABLE anywhere in it, and it touches no
+existing object. The four policy drops are what make it safe to run
+twice.
+
+**It could not be applied.** The sandbox's network policy refuses the
+Supabase host outright — the proxy's own record reads
+`connect_rejected · gateway answered 403 to CONNECT ·
+yqzqqtaruhgbmiyutksq.supabase.co:443`. So the live table was not
+created, the verifier was not run against production, no row count was
+taken and no live policy was read. None of that is claimed.
+
+**What was proven, against a real disposable PostgreSQL 16.** The
+harness applies the exact migration and runs the exact verifier, and it
+ran with **zero skips** this time: the migration applies and applies
+twice; Creator B cannot read, insert into, update or delete Creator A's
+memories; a claimed `owner_id` is refused rather than trusted; a
+Traveller has no row at all because `card_id` is NOT NULL; a session
+holding no card reads nothing; a proven Magic Card recall widens SELECT
+and only SELECT; the unique `(card_id, dedupe_key)` constraint holds at
+the database level; and `verify_companion_memory.sql` returns every row
+PASS and leaves nothing behind.
+
+**Every write to the table was audited.** Two legitimate paths and no
+others: `js/companionMemory.js`'s `_push()`, which mirrors a
+deterministic local memory using the verified session's own id as
+`owner_id`; and `companion-chat`'s `writeMemory()`, reachable only after
+the Bond validator accepts a proposal. No conversation logging, no
+transcript store, no automatic response capture, no analytics.
+
+**One prerequisite is worth naming before anyone applies it.** The
+SELECT policy calls `public.has_magic_recall_grant(text)`, defined in
+`supabase/schema.sql` and already used by `creator_library`. The
+migration is one transaction, so if that function is absent the whole
+thing rolls back. `supabase/APPLY_companion_memory.md` opens with a
+one-query pre-flight for exactly that.
+
+Memory 58/58 (0 skipped), ether 68/68, presence 89/89, identity 109/109,
+moments 88/88, canon 94/94, chat 230/230, context 90/90, edge auth
+127/127, companion 50/50, garden 104/104, traveller reset 16/16. Both
+OpenAI production gates remain unset. Build 0683 → 0684.
