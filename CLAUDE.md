@@ -2967,6 +2967,68 @@ behaviour changed.** It extends Decision 30 and amends nothing in it.
   `tools/companion-mind-preview/` ·
   `tools/companion-canon-test/run-companion-canon-tests.js`
 
+### 32. Leafy's Personality Describes Who Leafy Is; It Does Not Drive the Studio
+
+Locked in the Canon Cleanup + Personality Runtime Boundary sprint. It
+records a boundary Sprint 1C already built rather than changing anything,
+so that the next person to open `assets/leafy/personality.json` does not
+read its silence as an oversight and "fix" it.
+
+- **`personality.json` describes who Leafy is. It does not currently
+  control runtime behaviour.** The seventeen characteristics in it —
+  temperament, energy, curiosity, warmth, humour, how Leafy answers
+  uncertainty and disagreement, how Leafy behaves as a World Host — are
+  read by nothing. They are a specification, and the Studio behaves
+  exactly as it did before the file existed.
+- **Four keys in a personality file ARE acted on today, and they stay
+  exactly as they are:** `greetings` (the Director's own boot line, via
+  `pickGreeting()`), and `neverSays`, `play` and `lines` (the Brain's
+  voice policy, via `usePolicy()`). Leafy's file carries none of them.
+  Lumo's file keeps the ones it has. No consumer of any of the four was
+  modified.
+- **Runtime personality wiring is deferred to Companion Mind**, which is
+  the intended consumer of the descriptive specification. Until that
+  architecture exists and is deliberately migrated, the descriptive file
+  and the four runtime keys are two separate things that happen to live
+  in one file, and neither reads the other.
+- **Not populating them is a judgement, not only obedience.** `neverSays`
+  is matched as a SUBSTRING against platform copy, so a phrase added
+  there can silently mute a line Leafy is meant to say — "That's bad"
+  already mutes "That's badly drawn" and does not mute "your story is
+  bad". A prohibition written as prose in a specification is reviewable;
+  the same prohibition pasted into that array is a behaviour change with
+  no test behind it. Leafy's prohibitions therefore live under
+  `boundaries` as sentences, and mapping any of them onto the runtime
+  list is its own decision with its own testing.
+- **The file says so itself**, in `runtimeKeysDeliberatelyAbsent`, and
+  the suite reads the acted-on list **out of the Studio's own code**
+  rather than from a list in the test — so the day a fifth key is
+  consumed, the check fails and names it instead of quietly going stale.
+- **It is measured, not asserted.** The real `CompanionEngine` loads the
+  real file in the real Studio, and every line Leafy can say is compared
+  with the file applied and without it: fifteen lines across three
+  gates, identical. Proved by adding a `play` override and watching three
+  checks go red.
+- **The canon holds no part of this**, and that is deliberate:
+  `assets/canon/vihuplanet.canon.json` is worldview and must contain no
+  word for how anything is built (Decision 31). Which keys a Studio reads
+  is engineering, so it lives here and in the file's own note.
+- **Canon 5's Versions table said Memory was "Later — not started",
+  and it was corrected rather than rewritten.** Deterministic Companion
+  Memory shipped in Decision 30's own sprint, so Memory is now a shipped
+  V1 row; what remains not started is **Memory Interpretation** — a model
+  proposing a memory, extracting meaning from a conversation, or deciding
+  a moment was a Bond Moment. The trailing sentence that listed "creator
+  memory" among things that are not a Companion responsibility at any
+  planned version lost that phrase, because it stopped being true the day
+  the store shipped. Nothing else in that section changed.
+- Out of scope and unchanged: every runtime consumer, every existing
+  personality file, Companion Memory, and Companion behaviour of any
+  kind. No context builder, privacy gate, relevance gate, conversation
+  input, model client or Bond Moment intelligence was created.
+- `assets/leafy/personality.json` · `docs/COMPANION_CANON.md` →
+  Companion Versions · `tools/companion-canon-test/run-companion-canon-tests.js`
+
 ## Roadmap
 
 1. Theme Designer Polish

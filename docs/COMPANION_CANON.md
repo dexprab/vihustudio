@@ -545,12 +545,26 @@ removing any earlier one.
 | V1 — Guide | Platform guidance: where things are, what controls do, why something is locked, what to do next | **Next** (Canon 5) |
 | Later — Voice | Warmer, per-companion phrasing of answers the platform already computes | Not started |
 | Later — Curiosity | Educational and world questions; requires an external model | Not started |
-| Later — Memory | Anything remembered across sessions | Not started |
+| V1 — Memory | Meaningful moments remembered across sessions and across devices, and retrieved | Shipped (Canon 5's memory clause) |
+| Later — Memory Interpretation | Memory proposed or read by an external model: semantic extraction, conversational memory proposals, Bond Moment interpretation | Not started |
 | Later — Story Journey | Replay of how a story was made | **Out of scope. Do not implement.** |
 
 Explicitly **not** Companion responsibilities at any version currently
-planned: AI storytelling, creative writing, story continuation,
-internet search, and creator memory.
+planned: AI storytelling, creative writing, story continuation, and
+internet search.
+
+**Memory moved columns, and the distinction is the point.** Deterministic
+Companion Memory exists: a Companion keeps meaningful moments — a first
+story, a first character brought to life, the day a story was shared,
+coming back to something after a long time away — across sessions and
+across devices, and can retrieve them. Every one of those is a fact the
+platform can already prove from its own records, which is why it needed
+no external model and got none. What remains *not started* is memory that
+has to be **interpreted**: a model reading what a child made and
+proposing what it meant, extracting meaning from a conversation, or
+deciding that a moment was a Bond Moment. Canon 5's own rule governs
+both — memory is of meaningful moments, never a log of everything the
+Creator does.
 
 ## Magic Card — the permanent record of the Creator Bond
 

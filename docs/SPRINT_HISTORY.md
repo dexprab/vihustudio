@@ -8105,3 +8105,51 @@ nothing; and whether it keeps any memory of the visit.
 
 Canon 60/60, companion 50/50, companion memory 56/56, garden 104/104,
 zero page errors. Build 0661 → 0662.
+
+---
+
+## Sprint 1C.1 — Canon Cleanup + Personality Runtime Boundary
+
+Two corrections, both of them sentences rather than code.
+
+Canon 5's Versions table said Memory was *"Later — not started"* while
+the deterministic store had already shipped, and the paragraph under it
+listed *creator memory* among things that are not a Companion
+responsibility at any planned version. Both were true when written and
+stopped being true the day Sprint 1B landed — and a stale line in a canon
+is worse than a stale line anywhere else, because the canon is what a
+future model will be told is so. Memory is now a shipped V1 row;
+**Memory Interpretation** is a separate *Not started* row naming exactly
+what still does not exist — semantic extraction, conversational memory
+proposals, Bond Moment interpretation. A blanket "Memory: shipped" would
+have been the opposite error: it reads as permission for a model to
+propose one. Every other row of that table is byte-identical, and the
+suite checks each one.
+
+**Decision 32** records the boundary Sprint 1C built rather than changing
+it: `personality.json` describes who Leafy is and controls nothing.
+Four keys in a personality file are acted on today — `greetings` (the
+Director's boot line) and `neverSays`, `play` and `lines` (the Brain's
+voice policy) — Leafy's file carries none, Lumo's keeps the ones it has,
+and no consumer was touched. Writing it down is the point: without it the
+next person to open that file reads its silence as an oversight and fixes
+it. Not populating `neverSays` in particular is a judgement rather than
+obedience — it is matched as a SUBSTRING against platform copy, so a
+phrase added there can silently mute a line Leafy is meant to say, and a
+prohibition written as prose is reviewable where the same prohibition
+pasted into that array is a behaviour change with no test behind it.
+
+Eight new checks, and two of them had to be rewritten before they were
+worth having. **F6 first ran `git diff HEAD` over the three consumers**,
+which is true only until the sprint is committed — after that it compares
+the tree with itself and passes whatever the commit contained. "Unchanged
+since a particular commit" is not a property a suite can hold forever, so
+it now asserts the seven exact consumption sites instead, which stays
+checkable. **F4 searched hard-wrapped prose for sentences** and reported
+two as missing because they straddled a line break; it now searches
+whitespace-normalised text.
+
+Proved by reverting: the stale row back → F1 and F1b red; Lumo's runtime
+keys removed → F5.lumo red. Canon 90/90 (was 60), companion 50/50, memory
+56/56, garden 104/104, traveller reset 16/16, edge auth 127/127, zero
+page errors. Build 0662 → 0663.

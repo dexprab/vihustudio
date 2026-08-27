@@ -340,6 +340,126 @@ ck(/## Canon 5 —/.test(doc) && /## Canon 1 —/.test(doc) && /## Canon 7 —/.
    'C10b and no earlier Canon was replaced', 'Canons 1–7 intact');
 
 // ===================================================================
+console.log('\nF. THE CLEANUP  (Sprint 1C.1 — canon status, and the runtime boundary)');
+// ===================================================================
+{
+  const versions = (doc.split('## Companion Versions')[1] || '').split('\n## ')[0];
+
+  // F1 — THE STALE ROW. Canon 5's table said memory was "Later — not
+  // started" while the store was already shipping, which is the kind of
+  // sentence a future reader trusts and a future model would be told.
+  ck(!/\|\s*Later — Memory\s*\|[^|]*\|\s*Not started\s*\|/.test(versions),
+     'F1  the canon no longer says deterministic Memory is "not started"',
+     'the row moved to V1 — Shipped');
+  ck(/\|\s*V1 — Memory\s*\|[^|]*\|\s*Shipped/.test(versions),
+     'F1b and says what actually shipped', 'meaningful moments, across sessions and devices, retrieved');
+
+  // F2 — AND IT DISTINGUISHES THE TWO. A blanket "Memory: shipped" would
+  // be the opposite error: it would read as permission for a model to
+  // propose one, which nothing in this product may do yet.
+  ck(/Later — Memory Interpretation/.test(versions)
+     && /Not started/.test(versions.split('Later — Memory Interpretation')[1].split('|')[2] || ''),
+     'F2  deterministic memory and INTERPRETED memory are separate rows',
+     'one shipped, one not started');
+  ['semantic extraction', 'conversational memory proposals', 'Bond Moment interpretation']
+    .forEach((needle, i) => ck(versions.indexOf(needle) !== -1,
+      'F2.' + (i + 1) + '  future scope names "' + needle + '"'));
+  ck(!/internet search, and creator memory/.test(versions)
+     && /internet search/.test(versions),
+     'F2b "creator memory" is no longer listed as never a responsibility',
+     'the rest of that sentence is untouched');
+
+  // F3 — SURGICAL, NOT A REWRITE. Every other row of the table must be
+  // exactly the string it was before this sprint.
+  ['| V1 — Presence | Story Egg, Lumo, Story Companions, Creator Ceremony, the Magic Card bond | Shipped (Canon V2 above) |',
+   '| V1 — Guide | Platform guidance: where things are, what controls do, why something is locked, what to do next | **Next** (Canon 5) |',
+   '| Later — Voice | Warmer, per-companion phrasing of answers the platform already computes | Not started |',
+   '| Later — Curiosity | Educational and world questions; requires an external model | Not started |',
+   '| Later — Story Journey | Replay of how a story was made | **Out of scope. Do not implement.** |']
+    .forEach((row, i) => ck(versions.indexOf(row) !== -1,
+      'F3.' + (i + 1) + '  every unrelated row is byte-identical',
+      row.split('|')[1].trim()));
+
+  // F4 — DECISION 32, and the numbering it follows.
+  const claude = fs.readFileSync(path.join(ROOT, 'CLAUDE.md'), 'utf8');
+  ck(/### 32\. /.test(claude), 'F4  CLAUDE.md carries Decision 32');
+  ck(/### 31\. /.test(claude) && /### 30\. /.test(claude),
+     'F4b and no earlier decision was renumbered');
+  // Searched against whitespace-normalised prose, because CLAUDE.md is
+  // hard-wrapped and a needle that happens to straddle a line break
+  // would otherwise report a sentence as missing when it is right
+  // there. Two of these did exactly that on the first run.
+  const flat = claude.replace(/\s+/g, ' ');
+  ['does not currently control runtime behaviour',
+   'Runtime personality wiring is deferred to Companion Mind',
+   'the intended consumer of the descriptive specification',
+   'matched as a SUBSTRING against platform copy',
+   'what remains not started is **Memory Interpretation**']
+    .forEach((needle, i) => ck(flat.indexOf(needle) !== -1,
+      'F4.' + (i + 1) + '  Decision 32 records "' + needle.slice(0, 44) + '"'));
+
+  // F5 — THE FOUR KEYS, IN EVERY PERSONALITY ON DISK. Leafy must not
+  // have them; Lumo must not have LOST them. "Do not populate" and "do
+  // not remove from existing personalities" are two different failures
+  // and this checks for both.
+  const RUNTIME_KEYS = ['greetings', 'neverSays', 'play', 'lines'];
+  const personalities = fs.readdirSync(path.join(ROOT, 'assets'))
+    .map((d) => [d, path.join(ROOT, 'assets', d, 'personality.json')])
+    .filter(([, f]) => fs.existsSync(f));
+  ck(personalities.length >= 2, 'F5  every personality on disk is checked',
+     personalities.map(([d]) => d).join(', '));
+  personalities.forEach(([id, file]) => {
+    const j = JSON.parse(fs.readFileSync(file, 'utf8'));
+    const has = RUNTIME_KEYS.filter((k) => Object.prototype.hasOwnProperty.call(j, k));
+    if (id === 'leafy') {
+      ck(has.length === 0, 'F5.' + id + '  Leafy stays descriptive',
+         has.length ? 'populated: ' + has.join(', ') : 'no runtime key');
+    } else {
+      ck(has.length > 0, 'F5.' + id + '  ' + id + '\'s existing runtime keys were NOT removed',
+         has.join(', '));
+    }
+  });
+
+  // F6 — THE CONSUMERS STILL CONSUME EXACTLY WHAT THEY DID.
+  //
+  // The first draft of this check ran `git diff HEAD` over the three
+  // files, which is true only until the sprint is committed — after
+  // that it compares the tree with itself and passes whatever the
+  // commit contained. "Unchanged since a particular commit" is not a
+  // property a suite can hold forever, so what is checked instead is
+  // the property that actually matters and stays checkable: the exact
+  // consumption sites are still there, still reading those four keys,
+  // and still falling back the way they always did.
+  const engineSrc = fs.readFileSync(path.join(ROOT, 'js', 'companionEngine.js'), 'utf8');
+  const brainSrc = fs.readFileSync(path.join(ROOT, 'js', 'companionBrain.js'), 'utf8');
+  const dirSrc = fs.readFileSync(path.join(ROOT, 'js', 'companionDirector.js'), 'utf8');
+  const SITES = [
+    [engineSrc, "this._fetchOptionalJSON(base+'personality.json')", 'the engine still loads it, best-effort'],
+    [dirSrc, 'if(p && Array.isArray(p.greetings) && p.greetings.length){', 'greetings still guard-and-fall-back'],
+    [dirSrc, 'return MESSAGES.open;', 'and the fallback line is still there'],
+    [brainSrc, 'if(Array.isArray(personality.neverSays)) _never=personality.neverSays.slice();', 'neverSays unchanged'],
+    [brainSrc, "if(personality.play && typeof personality.play==='object'){", 'play unchanged'],
+    [brainSrc, "if(personality.lines && typeof personality.lines==='object'){", 'lines unchanged'],
+    [brainSrc, 'if(!personality) return;', 'and a personality-less package still short-circuits'],
+  ];
+  SITES.forEach(([src, needle, why], i) => ck(src.indexOf(needle) !== -1,
+    'F6.' + (i + 1) + '  ' + why, needle.slice(0, 46)));
+
+  // F7 — NO PROVIDER ANYWHERE THIS SPRINT TOUCHED.
+  const touchedFiles = [path.join(ROOT, 'assets', 'leafy', 'personality.json'),
+                        path.join(ROOT, 'docs', 'COMPANION_CANON.md'),
+                        CANON_FILE];
+  const PROVIDERS = ['openai', 'gpt-', 'anthropic', 'claude-', 'api key', 'api_key', 'bearer'];
+  const found = [];
+  touchedFiles.forEach((f) => {
+    const t = fs.readFileSync(f, 'utf8').toLowerCase();
+    PROVIDERS.forEach((w) => { if (t.indexOf(w) !== -1) found.push(path.basename(f) + ':' + w); });
+  });
+  ck(found.length === 0, 'F7  no provider reference was introduced',
+     found.length ? found.join(', ') : PROVIDERS.length + ' terms across 3 files');
+}
+
+// ===================================================================
 // E. THE RUNNING STUDIO — the claim that matters most, measured.
 //
 // B8 proves the four acted-on keys are absent by reading the file. This
