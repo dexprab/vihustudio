@@ -332,7 +332,7 @@ const CORS_HEADERS: Record<string, string> = {
 // copy uploaded to the project, not the file in the repository, and
 // there is no CI here that deploys it. `{"action":"ping"}` answers
 // which build is actually live.
-const BUILD = '2026-08-27 · plain letter';
+const BUILD = '2026-08-23 · paper letter, two Ether books';
 
 // THE BOOKS ARE REAL, AND THEY ARE CANON.
 //
@@ -360,14 +360,9 @@ const BUILD = '2026-08-27 · plain letter';
 // Ether — these two are the only stories on the platform whose link
 // resolves for a total stranger. A child's own story link would not,
 // and must not.
-// The covers are no longer carried IN the letter (see htmlFor: an image
-// grid of two products with captions is the single strongest Promotions
-// signal there is), so there is no `img` to resolve any more. The files
-// under assets/invite/ are kept — the WhatsApp card still uses that
-// folder, and putting a cover back is one field and one tag.
-const BOOKS: Array<{ name: string; id: string }> = [
-  { name: 'The falling star', id: 'canon_the_falling_star' },
-  { name: 'Little Seed🌻',    id: 'canon_little_seed' },
+const BOOKS: Array<{ name: string; img: string; id: string }> = [
+  { name: 'The falling star', img: 'assets/invite/falling-star.png', id: 'canon_the_falling_star' },
+  { name: 'Little Seed🌻',    img: 'assets/invite/little-seed.png',  id: 'canon_little_seed' },
 ];
 
 function json(body: unknown, status = 200): Response {
@@ -421,12 +416,17 @@ function textFor(link: string, note: string): string {
     '',
     link,
     '',
+  ];
+  // WHERE THE HTML PUTS IT. The two halves used to place the sender's own
+  // note two paragraphs apart — the letter has it between the door and
+  // the reassurance, the plain text had it after both — which nobody
+  // chose and nobody could see. The plain part is not a fallback: it is
+  // what a reader with images off actually gets.
+  if (note) lines.push(note, '');
+  lines.push(
     'You do not need an account. You do not need to pay anything.',
     'Just come in. I will show you where the story begins.',
     '',
-  ];
-  if (note) lines.push(note, '');
-  lines.push(
     'Two stories are waiting in the Ether. Which will you open first?',
     '',
     ...BOOKS.flatMap((b) => ['  ' + b.name, '  ' + link + '&story=' + b.id, '']),
@@ -444,68 +444,147 @@ function textFor(link: string, note: string): string {
 }
 
 function htmlFor(link: string, note: string): string {
-  const navy = '#1D3457', ink = '#22314C', soft = '#5C6B84', gold = '#A8762A';
+  const base = (secret('INVITE_BASE_URL') || 'https://vihuplanet.com').replace(/\/+$/, '');
 
-  // A LETTER, NOT A CAMPAIGN.
-  //
-  // Reported by the product owner: the invitation was landing in Gmail's
-  // Promotions tab. Gmail was not being unfair — read as markup, this
-  // was a campaign, and every one of the loudest signals was something
-  // the design had asked for: a two-column layout with an image grid of
-  // two covers and captions (the strongest of them all), a masthead with
-  // a brand name and a tagline, a pill CTA with a background colour, a
-  // full-bleed dark wrapper, remote images from our own domain, four
-  // links three of which went to one place, and nested ESP tables with a
-  // media query.
-  //
-  // No header can outweigh that. What reaches an inbox is mail that
-  // looks like somebody wrote it, so the chrome is gone and not one word
-  // is: the prose, the gold line, the note, the signature, the two
-  // stories and the paragraph for parents are all still here. The covers
-  // are the real cost, and they are stated rather than quietly dropped —
-  // the two stories are still their own doors (every link still carries
-  // the invite token), they are simply named instead of pictured.
-  //
-  // This is also closer to "PAPER, NOT A DASHBOARD" than the grid was.
-  //
-  // No <!doctype>, no wrapper tables, no media query: one bounded column
-  // is responsive by itself, and every tag removed is a signal removed.
-  // No background colour either — a letter sits on the reader's own
-  // paper, and painting the page is something only a campaign does.
-  const p = `margin:0 0 12px;`;
-  // Placed where the plain letter places it — after "Just come in" and
-  // before the two stories. The two halves used to differ here by a
-  // paragraph for no reason anybody chose, and the plain part is not a
-  // fallback: it is what a reader with images off actually gets.
+  // PAPER, NOT A DASHBOARD. Cream ground, VihuPlanet navy ink, a few
+  // very restrained Ether marks, and small hand-drawn shapes rather
+  // than glowing effects. No gradients, no sparkle graphics, no
+  // character art, no oversized fantasy imagery.
+  const cream = '#F7F3E9', paper = '#FBF8F1', navy = '#1D3457';
+  const ink = '#22314C', soft = '#5C6B84', gold = '#A8762A', rule = '#DCD3C0';
+
   const noteBlock = note
-    ? `<p style="${p}font-style:italic;color:${soft};">${esc(note)}</p>`
+    ? `<p style="margin:0 0 16px;padding:11px 13px;background:#F2EDE0;border-left:3px solid ${gold};
+         color:${ink};font-style:italic;font-size:14px;line-height:1.55;">${esc(note)}</p>`
     : '';
 
-  // Named, not pictured, and each one still its own door. The link text
-  // IS the destination for the main one — a letter shows you where it is
-  // sending you, and matching text to href is the opposite of what a
-  // promotional button does.
+  // The two books. With images off this still reads — every cover
+  // carries its story's name as alt text, and the caption above says
+  // what they are.
+  // EVERY BOOK IS ITS OWN DOOR. Three links now go to the same place;
+  // the two covers simply arrive pointing at something. A child drawn
+  // to a particular story should be able to follow that rather than be
+  // told to press a general button instead — and the invite token rides
+  // along on all three, so the journey is recorded whichever they take.
+  //
+  // It does NOT drop them into a reader. VihuPlanet's threshold comes
+  // first, the universe turns, and only then does the camera find that
+  // Spirit — "a link that snaps straight to a Spirit never shows them
+  // where the story lives" (js/vihuplanetHome.js).
   const books = BOOKS.map((b) => {
     const to = `${link}&story=${encodeURIComponent(b.id)}`;
-    return `<p style="${p}"><a href="${esc(to)}" style="color:${navy};">${esc(b.name)}</a></p>`;
+    return `
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%"
+           style="margin:0 0 16px;"><tr><td align="center">
+      <a href="${esc(to)}" style="text-decoration:none;color:${navy};">
+        <img src="${esc(base + '/' + b.img)}" width="150" alt="${esc(b.name)}"
+             style="display:block;width:150px;max-width:100%;height:auto;border:1px solid ${rule};
+                    border-radius:3px;background:${paper};">
+        <div style="margin:7px 0 0;font:400 14px/1.3 Georgia,serif;color:${navy};
+                    text-decoration:none;">${esc(b.name)}</div>
+      </a>
+    </td></tr></table>`;
   }).join('');
 
-  return `<div style="max-width:34em;font:400 15px/1.62 Georgia,'Times New Roman',serif;color:${ink};">
-<p style="${p}">Hello,</p>
-<p style="${p}">I found a little door in VihuPlanet.</p>
-<p style="${p}">I opened it. There was a story inside.<br>It had a beginning&#8230; but no ending.</p>
-<p style="${p}">I thought about finishing it myself. But then I wondered:</p>
-<p style="${p}color:${gold};font-size:18px;">What if you finished it?</p>
-<p style="${p}">You could choose what happens. You could change things.<br>You could even leave something of your own behind.</p>
-<p style="${p}">So I left the door open:</p>
-<p style="${p}"><a href="${esc(link)}" style="color:${navy};">${esc(link)}</a></p>
-<p style="${p}">You don&#8217;t need an account. You don&#8217;t need to pay anything.<br>Just come in. I&#8217;ll show you where the story begins.</p>
-${noteBlock}
-<p style="${p}">Two stories are waiting in the Ether. Which will you open first?</p>
-${books}
-<p style="${p}">With a smile,<br>Lumo<br>Keeper of VihuPlanet</p>
-<p style="margin:22px 0 0;font-size:13px;line-height:1.55;color:${soft};">For parents: VihuPlanet is a safe creative space where children can explore stories, make choices, and gradually learn to create their own. No payment or account is required to begin. Best on a laptop.</p>
-</div>`;
+  return `<!doctype html>
+<html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  /* Stacks the letter and the books on a phone. Clients that ignore
+     this keep the two columns, which is still readable at 600px. */
+  @media only screen and (max-width:540px){
+    .col{display:block !important;width:100% !important;max-width:100% !important;}
+    .colr{padding-top:22px !important;}
+  }
+</style></head>
+<body style="margin:0;padding:0;background:${navy};">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${navy};">
+ <tr><td align="center" style="padding:26px 12px;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+         style="max-width:600px;background:${cream};border-radius:6px;
+                font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+
+   <!-- masthead -->
+   <tr><td align="center" style="padding:30px 26px 6px;">
+     <div style="font-size:16px;color:${navy};line-height:1">&#10022;</div>
+     <div style="margin:8px 0 0;font:400 30px/1.15 Georgia,serif;color:${navy};">VihuPlanet</div>
+     <div style="margin:5px 0 0;font-size:12.5px;color:${soft};">
+       a quiet place where children's stories live</div>
+   </td></tr>
+
+   <tr><td style="padding:20px 26px 0;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+
+     <!-- the letter -->
+     <td class="col" width="56%" valign="top"
+         style="padding-right:18px;font-size:14.5px;line-height:1.62;color:${ink};">
+       <div style="font:400 23px/1.2 Georgia,serif;color:${navy};margin:0 0 14px;">Hello,</div>
+       <p style="margin:0 0 12px;">I found a little door in VihuPlanet.</p>
+       <p style="margin:0 0 12px;">I opened it.<br>There was a story inside.<br>
+          It had a beginning&#8230;<br>but no ending.</p>
+       <p style="margin:0 0 12px;">I thought about finishing it myself.</p>
+       <p style="margin:0 0 6px;">But then I wondered:</p>
+       <p style="margin:0 0 14px;font:400 19px/1.3 Georgia,serif;color:${gold};">
+          What if you finished it?</p>
+       <p style="margin:0 0 12px;">You could choose what happens.<br>
+          You could change things.<br>
+          You could even leave something of your own behind.</p>
+       <p style="margin:0 0 18px;">So I left the door open.</p>
+       ${noteBlock}
+
+       <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 14px;">
+         <tr><td align="center" bgcolor="${navy}" style="border-radius:999px;">
+           <a href="${esc(link)}"
+              style="display:inline-block;padding:13px 30px;font-size:15.5px;font-weight:600;
+                     color:${cream};text-decoration:none;font-family:Georgia,serif;">
+             Open the Door &#9733;</a>
+         </td></tr>
+       </table>
+
+       <p style="margin:0 0 3px;font-size:13.5px;color:${ink};">&#9734; You don't need an account.</p>
+       <p style="margin:0 0 10px;font-size:13.5px;color:${ink};">&#9825; You don't need to pay anything.</p>
+       <p style="margin:0 0 6px;font:400 17px/1.3 Georgia,serif;color:${gold};">Just come in.</p>
+       <p style="margin:0 0 20px;font-size:13.5px;">I'll show you where the story begins.</p>
+
+       <p style="margin:0 0 2px;font-size:13.5px;color:${soft};">With a smile,</p>
+       <p style="margin:0;font:italic 400 21px/1.2 Georgia,serif;color:${navy};">Lumo &#9734;</p>
+       <p style="margin:2px 0 0;font-size:12.5px;color:${soft};">Keeper of VihuPlanet</p>
+     </td>
+
+     <!-- the two books -->
+     <td class="col colr" width="44%" valign="top" style="padding-left:6px;">
+       <p style="margin:0 0 14px;text-align:center;font:400 15px/1.45 Georgia,serif;color:${navy};">
+         Two stories from the Ether<br>are waiting for you.</p>
+       ${books}
+       <p style="margin:4px 0 0;text-align:center;font:400 14px/1.4 Georgia,serif;color:${gold};">
+         Which one will you open first?</p>
+     </td>
+
+    </tr></table>
+   </td></tr>
+
+   <!-- for parents -->
+   <tr><td style="padding:24px 26px 28px;">
+     <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+            style="background:#F1ECDF;border:1px solid ${rule};border-radius:4px;">
+       <tr><td style="padding:14px 16px;">
+         <div style="font-size:13px;font-weight:700;color:${navy};margin:0 0 4px;">For parents</div>
+         <div style="font-size:12.5px;line-height:1.6;color:${soft};">
+           VihuPlanet is a safe creative space where children can explore stories, make choices,
+           and gradually learn to create their own. No payment or account is required to begin.
+           Best opened on a laptop.
+         </div>
+       </td></tr>
+     </table>
+     <p style="margin:14px 0 0;font-size:11.5px;line-height:1.5;color:${soft};word-break:break-all;">
+       If the button does not work: <span style="color:${ink};">${esc(link)}</span>
+     </p>
+   </td></tr>
+
+  </table>
+ </td></tr>
+</table>
+</body></html>`;
 }
 
 // ---------------------------------------------------------------

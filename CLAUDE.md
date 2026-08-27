@@ -3688,12 +3688,16 @@ and it changes two lines of the Bond validator and nothing else.
 - `tools/companion-calibration/` ·
   `supabase/functions/_shared/bondValidator.js`
 
-### 42. The Invitation Is a Letter, Not a Campaign
+### 42. The Invitation's Look Is the Product Owner's, and the Campaign Signals Are Written Down
 
-Locked after a report from the product owner: *"in my gmail account the
-mail is going in promotions category? can we fix and ensure that emails
-land in inbox?"* It changes how the invitation LOOKS and not one word of
-what it says.
+Reported by the product owner: *"in my gmail account the mail is going in
+promotions category? can we fix and ensure that emails land in inbox?"*
+The letter was rewritten as a plain one (build 0677) and then **reverted
+by the product owner** (build 0680) once mail started reaching the inbox
+anyway: *"but why should i change if the mails are in inbox"*. The
+designed letter is what ships. **What was learned is kept here**, because
+if a stranger's Gmail files it under Promotions again this is where to
+start, and the plain letter is one revert away (`c64fb11`).
 
 - **Gmail was not being unfair.** Read as markup, the invitation was a
   campaign, and the loudest signals were all things the design had asked
@@ -3702,29 +3706,38 @@ what it says.
   pill CTA with a background colour, a full-bleed dark wrapper, remote
   images from our own domain, four links three of which went to one
   place, and nested ESP tables with a media query.
-- **No header outweighs that.** What reaches an inbox is mail that looks
-  like somebody wrote it, so the chrome went and the words stayed —
-  every sentence, the gold line, the sender's own note, the signature,
-  both stories and the paragraph for parents. 6.7 KB of markup became
-  1.9 KB.
-- **The covers are the real cost, and they are stated rather than
-  quietly dropped.** *"Every book is its own door"* still holds: both
-  stories are still their own links and every link still carries the
-  invitation token, so the journey is recorded whichever one is taken.
-  They are named instead of pictured. Putting one back is one field and
-  one tag, and `assets/invite/` is kept.
-- **This is closer to "PAPER, NOT A DASHBOARD" than the grid was** —
-  which is the letter's own stated intent, written above the code that
-  had drifted away from it.
-- **The main link shows its own destination.** A promotional button says
-  *Open the Door*; a letter shows you where it is sending you, and text
-  matching href is also the opposite of what a phishing filter looks
-  for.
-- **No `List-Unsubscribe`, deliberately.** It is a bulk signal, and this
-  is one letter to one person. Adding one would undo the change.
-- **The two halves now agree.** The plain part is not a fallback — it is
-  what a reader with images off actually gets — and the note used to sit
-  a paragraph apart in the two, which nobody chose and nobody could see.
+- **A CERTAIN LOSS IS NOT WORTH PAYING FOR A POSSIBLE ONE.** The plain
+  rewrite kept every word and cost the two covers, the masthead and the
+  button — 6.7 KB of markup down to 1.9 KB. It was never deployed, and by
+  the time anyone noticed, the mail was arriving in the inbox with the
+  DESIGNED letter. The deliverability question had been answered
+  somewhere else, so paying a certain design cost against a risk that had
+  stopped presenting itself was the wrong trade. **The product owner made
+  that call, and it is the right one.**
+- **WHY IT STARTED ARRIVING IS NOT KNOWN, AND IS NOT CLAIMED.** Between
+  the two observations the recipient may have moved one to Primary, Gmail
+  may have learned from mail being opened, or the domain may simply have
+  warmed. Nothing here can tell those apart, and the letter is not a
+  candidate: the rewrite never reached the server.
+- **THE RISK THAT REMAINS IS A SAMPLE-SIZE ONE, and it is stated rather
+  than resolved.** One trained inbox is not evidence about a stranger's,
+  and a stranger's Gmail is exactly who an invitation is for. If it
+  happens, the list above is the diagnosis and the revert is the fix.
+- **No `List-Unsubscribe`, and that survived the revert.** It is a bulk
+  signal, and this is one letter to one person.
+- **THE TWO HALVES AGREE, and that survived the revert too** — it was
+  never about deliverability. The plain part is not a fallback: it is
+  what a reader with images off actually gets. The sender's own note used
+  to sit two paragraphs apart in the two halves, which nobody chose and
+  nobody could see; the plain half moved to where the letter puts it, so
+  the design itself is untouched.
+- **The suite guards the letter's PROMISES, not its markup.** Every
+  sentence present, every book its own door, every link carrying the
+  invitation, every cover naming its own story for a reader with images
+  off, and both halves saying the same things in the same order. It
+  transpiles the deployed `index.ts` and calls its own
+  `htmlFor`/`textFor`, because a second copy of the letter in a test can
+  pass while the letter that ships does not.
 - **DISCLOSED, AND IT IS THE HONEST LIMIT: no code change can GUARANTEE
   the inbox.** Gmail's tabs are heuristic and per-recipient. What is in
   our hands is removing every bulk signal, which is done. What is not:
