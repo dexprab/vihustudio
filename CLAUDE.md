@@ -3930,6 +3930,86 @@ OpenAI, no model, no provider, no chatbot, and no new network call.**
   `js/companionMoments.js` ·
   `tools/companion-presence-test/run-companion-presence-tests.js`
 
+### 42. One Presence System, Any Companion — and Nobody Has Their Own Voice Yet
+
+Locked in the Leo Presence sprint. It proved the Presence architecture
+is Companion-aware, and it **stopped** at the one thing it could not do
+without inventing: giving Leo words of his own.
+
+- **THE ARCHITECTURE NEEDED NO PORT, AND THAT IS THE RESULT.** A Magic
+  Card bonded to `leosaurus` walks the real journey — Gateway, entry
+  token, `_beginBoot()` — and Leo mounts in the same slot at the same
+  139×141, waves, acknowledges the arrival once, is deduplicated on the
+  same arrival token, stays silent through ten rounds of ordinary
+  creation, reaches the return moment on the same evidence, writes no
+  memory and is offered no conversation. **Not one line of the Presence
+  path was changed to make that happen.**
+- **THE PRESENCE PATH NAMES NO COMPANION AT ALL.**
+  `companionMoments.js`, `companionDirector.js`, `companionBrain.js`,
+  `companionLines.js` and `companionEngine.js` contain neither *Leo* nor
+  *Leafy* in code — only in comments and examples. There was no
+  Leafy-only assumption to remove, which is why Leo needed no port; the
+  suite checks for it so a future Companion branch fails rather than
+  quietly arriving.
+- **ONE HARD-CODED COMPANION NAME EXISTED, AND IT WAS NOT IN THE
+  PRESENCE PATH.** `js/companionChat.js` built its input with
+  `placeholder="Say something to Leafy"` as a literal, while `open()`
+  set the same placeholder from the active card — so a Creator bonded to
+  Leo would have been asked to say something to somebody else's
+  Companion until that ran. Fixed to `_name()`, the only authority.
+  Behind `CONVERSATION_OFFERED` (Decision 41), so no child could reach
+  it; it was still the one place a single Companion was written into the
+  product.
+- **A POSE A COMPANION DOES NOT HAVE DEGRADES, NEVER TO A BROKEN
+  IMAGE.** `assets/leosaurus/README.md` records that `think.png` was
+  never exported, and `MODES.creator.poses.creating` is `think` — so the
+  most ordinary Studio moment asks Leo for the one pose he lacks.
+  Measured: it 404s, the engine's `onerror` falls back to `idle.png`,
+  383px, nothing broken on screen. Working as designed, and now guarded.
+- **STOPPED: LEO HAS NO CHARACTER MATERIAL, AND NONE WAS INVENTED.** The
+  whole of Leo is a name, a species (*Lantern Lion*, added because his
+  winged-lion art matched no reserved name), eleven pose images, a
+  voiceId, and a package README that documents the *package* rather than
+  the character. There is **no `assets/leosaurus/personality.json`** —
+  no temperament, energy, curiosity, warmth, humour, boundaries, no
+  `greetings`, no `lines`. The one sentence about Leo's character
+  anywhere is `docs/VIHU_VOICE.md`'s *"Leosaurus can be a louder kind of
+  excited than Leafy"*, and that is an illustration of a registry
+  override that Leo's own registry entry does not carry.
+- **NEITHER COMPANION HAS ITS OWN VOICE — INCLUDING LEAFY.** The premise
+  that Leo should be given a voice like Leafy's does not match the code:
+  Leafy has a rich `personality.json` and Decision 32 deliberately keeps
+  `greetings` out of it, so `pickGreeting()` falls through and Leafy
+  speaks the **platform's** twenty authored lines from
+  `js/companionLines.js` (Decision 26). Leo speaks the same ones for the
+  same reason. *"Hey… you're here."* is nobody's line in particular.
+- **SO THE SEAM ALREADY EXISTS AND IS EMPTY BY CHOICE.** A Companion
+  gains its own arrival voice by shipping `greetings` in its
+  `personality.json` — no code change, which is Decision 31's "adding a
+  companion is a zero-code act" already working. What is missing is not
+  machinery; it is **authored character**, and authoring a character is a
+  product-owner act, not an engineering one.
+- **WHAT LEO WOULD NEED**, in order: a character specification of the
+  kind Leafy already has (temperament, energy, how he responds, what he
+  never says), then arrival and return lines written from it, then a
+  decision on whether per-Companion `greetings` should override the
+  platform library at all — because turning that key on for one
+  Companion makes the twenty shared lines the *fallback* rather than the
+  voice, and that is a canon change to Decision 26, not a content edit.
+- **LEAFY IS UNCHANGED, AND IT WAS MEASURED RATHER THAN ASSUMED.** Same
+  card resolution, same slot and size to the pixel, the same arrival line
+  string, the same deduplication, the same silence. Not one Leafy test
+  was weakened; one check in this sprint's own suite was corrected,
+  because it pulsed immediately after arriving and read the greeting
+  still fading on screen as if it were a new line.
+- Out of scope and untouched: conversation, `CONVERSATION_OFFERED`,
+  microphone, wake word, speech recognition, OpenAI, both production
+  gates, the privacy gate, the Bond validator, memory ownership,
+  Traveller isolation, and the personality-runtime boundary of Decision
+  32 — no unused personality field was populated for anybody.
+- `js/companionChat.js` ·
+  `tools/companion-presence-test/run-companion-presence-tests.js`
+
 ## Roadmap
 
 1. Theme Designer Polish

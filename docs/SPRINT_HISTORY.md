@@ -8943,3 +8943,62 @@ the feature switched back on.
 Presence 52/52, moments 88/88, companion 50/50, context 90/90, canon
 90/90, chat 230/230, edge auth 127/127, memory 58/58, garden 104/104,
 traveller reset 16/16, zero page errors. Build 0674 → 0675.
+
+## Sprint 1K.1 — Leo Presence Experience (build 0676)
+
+The sprint asked whether the Presence architecture works for a second
+Companion. It does, and it needed no port: a Magic Card bonded to
+`leosaurus` walks the real journey and Leo mounts in the same slot at
+the same 139×141, waves, acknowledges the arrival once, is deduplicated
+on the same arrival token, stays silent through ten rounds of ordinary
+creation, reaches the return moment on the same evidence, writes no
+memory and is offered no conversation. **Not one line of the Presence
+path changed.**
+
+That is because the Presence path names no Companion at all —
+`companionMoments.js`, `companionDirector.js`, `companionBrain.js`,
+`companionLines.js` and `companionEngine.js` contain neither *Leo* nor
+*Leafy* in code, only in comments. There was no Leafy-only assumption to
+remove; the suite now checks for one so a future Companion branch fails
+rather than quietly arriving.
+
+**One hard-coded Companion name did exist, outside the Presence path.**
+`companionChat.js` built its input with `placeholder="Say something to
+Leafy"` as a literal while `open()` set the same placeholder from the
+active card — so a Creator bonded to Leo would have been asked to say
+something to somebody else's Companion until that ran. Fixed to
+`_name()`. It sits behind `CONVERSATION_OFFERED`, so no child could
+reach it, and it was still the one place a single Companion was written
+into the product.
+
+**Leo's missing `think.png`** — recorded in his own README, and
+`MODES.creator.poses.creating` is `think`, so the most ordinary Studio
+moment asks him for the one pose he lacks. Measured: 404, `onerror`
+falls back to `idle.png` at 383px, nothing broken on screen. Now
+guarded.
+
+**Stopped on the character voice, and nothing was invented.** Leo has a
+name, a species, eleven pose images, a voiceId and a package README that
+documents the package rather than the character. There is no
+`assets/leosaurus/personality.json`. The only sentence about Leo's
+character anywhere is `VIHU_VOICE.md`'s *"Leosaurus can be a louder kind
+of excited than Leafy"*, which illustrates a registry override his entry
+does not carry.
+
+And the premise needed correcting: **Leafy has no voice of her own
+either.** Decision 32 deliberately keeps `greetings` out of her
+personality file, so `pickGreeting()` falls through and she speaks the
+platform's twenty authored lines. Leo speaks the same ones for the same
+reason. *"Hey… you're here."* is nobody's line in particular. The seam
+exists and is empty by choice; what is missing is authored character,
+which is a product-owner act.
+
+Leafy verified unchanged rather than assumed: same card resolution, same
+slot and size to the pixel, same arrival line string, same
+deduplication, same silence. No Leafy test was weakened. One check in
+this sprint's own suite was corrected — it pulsed immediately after
+arriving and read the greeting still fading on screen as a new line.
+
+Presence 74/74, moments 88/88, companion 50/50, canon 90/90, chat
+230/230, context 90/90, edge auth 127/127, memory 58/58, garden 104/104,
+traveller reset 16/16, zero page errors. Build 0675 → 0676.

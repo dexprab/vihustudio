@@ -108,6 +108,13 @@ function LOOK() {
     'MagicCard.setActive(c.id);');
   const unbonded = new Function(CLEAN + "const c=MagicCard.claim('Nobody'); MagicCard.setActive(c.id);");
   const traveller = new Function(CLEAN);
+  // SPRINT 1K.1 — the same Presence system, a different Companion.
+  // 'leosaurus' is the package id the registry and every claimed Magic
+  // Card store; 'Leo' is the name a child sees. Nothing here names a
+  // file, a user or a flag: the card is the only authority.
+  const asLeo = new Function(CLEAN +
+    "const c=MagicCard.claim('Vihaan',null,{companionId:'leosaurus',companionName:'Leo',companionSpecies:'Lantern Lion'});" +
+    'MagicCard.setActive(c.id);');
 
   console.log('\nSPRINT 1K — LEAFY PRESENCE, AS A CHILD MEETS IT\n');
 
@@ -491,6 +498,216 @@ function LOOK() {
   });
   ck(memStable.after === memStable.before,
      'N10 being present writes no memory', memStable.before + ' -> ' + memStable.after);
+
+  // =================================================================
+  console.log('\nSPRINT 1K.1 — THE SAME SYSTEM, A DIFFERENT COMPANION');
+  // =================================================================
+  //
+  // Every check below runs the code Leafy runs. No Leo branch exists
+  // anywhere in the Presence path, and that is the thing under test —
+  // if one had been added, these would still pass and the point would
+  // have been missed, so the source is checked for it too.
+  await arrive(asLeo);
+  const L = await page.evaluate(LOOK);
+  await page.screenshot({ path: path.join(SHOTS, 'L-leo-arrival.png') });
+
+  const leoBond = await page.evaluate(() => {
+    const c = MagicCard.getActive() || {};
+    return { id: c.companionId, name: c.companionName, species: c.companionSpecies };
+  });
+  ck(leoBond.id === 'leosaurus' && L.signals.companionId === 'leosaurus',
+     'L1  Leo is resolved from the ACTIVE MAGIC CARD, nothing else',
+     'card says ' + leoBond.id + ', signals say ' + L.signals.companionId);
+  ck(L.present && L.visible && /leosaurus\//.test(L.who || ''),
+     'L2  and Leo is the Companion actually on screen', L.who);
+  const leoImg = await page.evaluate(() => {
+    const i = document.querySelector('.companion-widget img');
+    return i ? { alt: i.getAttribute('alt'), w: i.naturalWidth } : null;
+  });
+  ck(leoImg && /^Leo — /.test(leoImg.alt || '') && leoImg.w > 0,
+     'L3  his artwork loads and is described as HIS', leoImg && leoImg.alt);
+  ck(!!L.line && openings.indexOf(L.line) !== -1,
+     'L4  Leo acknowledges the arrival, from the authored library', L.line);
+  ck((L.ledger || []).some((k) => k.indexOf('entry:') === 0),
+     'L5  through the same arrival token, recorded once', JSON.stringify(L.ledger));
+  const leoTwice = await page.evaluate(() => CompanionMoments.decide('entry'));
+  ck(leoTwice.speak === false && leoTwice.reason === 'already-acknowledged',
+     'L6  and it cannot repeat in the same arrival', leoTwice.reason);
+
+  // ---- the same geometry, the same slot, the same restraint
+  await page.evaluate(() => { try { CreationFlow.startBlank(); } catch (e) {} });
+  await page.waitForFunction(() => {
+    const w = document.querySelector('main.preview-area .preview-wrapper');
+    return w && w.getBoundingClientRect().width > 100;
+  }, null, { timeout: 20000 });
+  await page.waitForTimeout(2500);
+  await page.evaluate(() => { try { CompanionBrain._reset({ aged: true }); } catch (e) {} });
+  await page.waitForTimeout(700);
+  const leoSpoke = [];
+  for (let i = 0; i < 10; i++) {
+    await page.evaluate((n) => {
+      try { if (n % 3 === 0) PageOps.addPage(); } catch (e) {}
+      try { PageRuntime.notify(); } catch (e) {}
+    }, i);
+    await page.waitForTimeout(450);
+    const line = await page.evaluate(() => {
+      const b = document.querySelector('.companion-bubble');
+      return b && !/companion-bubble-hidden/.test(b.className) ? (b.textContent || '').trim() : null;
+    });
+    if (line) leoSpoke.push(line);
+  }
+  await page.screenshot({ path: path.join(SHOTS, 'L-leo-quiet.png') });
+  ck(leoSpoke.length === 0,
+     'L7  Leo stays quiet through ordinary creation', leoSpoke.join(' | ') || 'silence');
+  const leoGeo = await page.evaluate(() => {
+    const w = document.querySelector('.companion-widget');
+    if (!w) return { err: 'absent' };
+    const me = w.getBoundingClientRect();
+    const over = [];
+    ['main.preview-area .preview-wrapper', '.app-header', '#objectStripList',
+     '#selectionActionStrip', '#pagesList', '#addPageBtn'].forEach((sel) => {
+      document.querySelectorAll(sel).forEach((n) => {
+        const r = n.getBoundingClientRect();
+        if (r.width <= 0 || r.height <= 0) return;
+        if (!(me.right <= r.left || me.left >= r.right || me.bottom <= r.top || me.top >= r.bottom)) over.push(sel);
+      });
+    });
+    return { rect: { x: Math.round(me.x), y: Math.round(me.y), w: Math.round(me.width), h: Math.round(me.height) },
+             over: over, pointerEvents: getComputedStyle(w).pointerEvents };
+  });
+  ck(leoGeo.over.length === 0 && leoGeo.pointerEvents === 'none',
+     'L8  and covers no canvas and no control, exactly as Leafy does',
+     leoGeo.over.join(', ') || (leoGeo.rect.w + '×' + leoGeo.rect.h));
+
+  // ---- A POSE LEO DOES NOT HAVE. assets/leosaurus/README.md records
+  // that think.png was never exported. The engine's own onerror must
+  // fall back rather than leave a broken image in a child's Studio.
+  const leoThink = await page.evaluate(async () => {
+    try { CompanionDirector.notify('story-started'); } catch (e) {}
+    await new Promise((r) => setTimeout(r, 1200));
+    const i = document.querySelector('.companion-widget img');
+    return { src: i ? i.src.split('/').slice(-2).join('/') : null,
+             w: i ? i.naturalWidth : 0, broken: i ? (i.complete && i.naturalWidth === 0) : true };
+  });
+  ck(leoThink.broken === false && leoThink.w > 0,
+     'L9  a pose Leo does not have degrades, never to a broken image',
+     leoThink.src + ' @' + leoThink.w + 'px');
+
+  // ---- the return, through the same evidence
+  const leoRet = await page.evaluate(() => {
+    const id = (AppState.project || {}).id;
+    CompanionMemory.remember({
+      key: 'returned:' + id, kind: 'shared',
+      content: 'We went back to a story we made a while ago.',
+      importance: 'medium', confidence: 'confirmed',
+      source: 'state:project-updated-at', entities: ['project:' + id]
+    });
+    CompanionBrain._reset({ aged: true });
+    try { PageRuntime.notify(); } catch (e) {}
+    return { id: id, decision: CompanionMoments.decide('return-to-story') };
+  });
+  await page.waitForTimeout(1200);
+  const leoSaid = await page.evaluate(LOOK);
+  await page.screenshot({ path: path.join(SHOTS, 'L-leo-return.png') });
+  ck(!!leoSaid.line && openings.indexOf(leoSaid.line) !== -1,
+     'L10 Leo reaches the return moment on the same evidence', leoSaid.line);
+  ck((leoSaid.ledger || []).indexOf('returned:' + leoRet.id) !== -1,
+     'L11 and it is recorded so it cannot repeat', JSON.stringify(leoSaid.ledger));
+
+  // ---- nothing else moved for Leo
+  const leoQuietFacts = await page.evaluate(() => {
+    const before = CompanionMemory.list({ status: 'any' }).length;
+    for (let i = 0; i < 25; i++) {
+      CompanionMoments.MOMENTS.forEach((m) => CompanionMoments.decide(m));
+      try { PageRuntime.notify(); } catch (e) {}
+    }
+    return { before: before, after: CompanionMemory.list({ status: 'any' }).length,
+             chat: !!document.querySelector('.companion-chat-open') };
+  });
+  ck(leoQuietFacts.after === leoQuietFacts.before,
+     'L12 being Leo writes no memory', leoQuietFacts.before + ' -> ' + leoQuietFacts.after);
+  ck(leoQuietFacts.chat === false, 'L13 and Leo is offered no conversation either');
+
+  // ---- THE POINT OF THE SPRINT: there is no Leo branch to find.
+  const presenceSrc = ['companionMoments.js', 'companionDirector.js', 'companionBrain.js',
+                       'companionLines.js', 'companionEngine.js']
+    .map((f) => fs.readFileSync(path.join(ROOT, 'js', f), 'utf8'))
+    .join('\n')
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')
+    .split('\n').map((l) => l.replace(/^\s*\/\/.*$/, '')).join('\n');
+  ck(!/leosaurus|\bLeo\b/.test(presenceSrc),
+     'L14 THE PRESENCE PATH NAMES NO COMPANION — no Leo branch exists');
+  ck(!/\bleafy\b/i.test(presenceSrc),
+     'L15 and it never named Leafy either, which is why Leo needed no port');
+  // The one place a Companion WAS written into the product.
+  const chatSrc = fs.readFileSync(path.join(ROOT, 'js', 'companionChat.js'), 'utf8');
+  ck(chatSrc.indexOf("placeholder=\"Say something to Leafy\"") === -1 &&
+     chatSrc.indexOf("'Say something to ' + _name()") !== -1,
+     'L16 the one hard-coded Companion name in the runtime is gone',
+     'placeholder now reads the active card');
+
+  // =================================================================
+  console.log('\nLEAFY REGRESSION — unchanged by any of it');
+  // =================================================================
+  await arrive(bonded);
+  const R = await page.evaluate(LOOK);
+  ck(R.signals.companionId === 'leafy' && /leafy\//.test(R.who || ''),
+     'R1  Leafy still resolves from her own card', R.who);
+  ck(R.rect && A.rect && R.rect.w === A.rect.w && R.rect.h === A.rect.h &&
+     R.rect.x === A.rect.x && R.rect.y === A.rect.y,
+     'R2  in the same slot, at the same size, as before Leo existed',
+     JSON.stringify(R.rect) + ' vs ' + JSON.stringify(A.rect));
+  ck(R.line === A.line,
+     'R3  and says exactly the line she said before this sprint',
+     JSON.stringify(A.line) + ' -> ' + JSON.stringify(R.line));
+  const rTwice = await page.evaluate(() => CompanionMoments.decide('entry'));
+  ck(rTwice.speak === false && rTwice.reason === 'already-acknowledged',
+     'R4  her deduplication is unchanged', rTwice.reason);
+  // THE GREETING HAS TO FADE FIRST. The first version of this check
+  // pulsed immediately after arriving and read the arrival line still
+  // on screen — reporting a regression where there was none. A bubble
+  // that is STILL showing is not a new line, and telling the two apart
+  // is the whole of the check.
+  await page.waitForFunction(() => {
+    const b = document.querySelector('.companion-bubble');
+    return !b || /companion-bubble-hidden/.test(b.className) ||
+           getComputedStyle(b).opacity === '0';
+  }, null, { timeout: 12000 }).catch(() => {});
+  const rQuiet = await page.evaluate(async () => {
+    CompanionBrain._reset({ aged: true });
+    const said = [];
+    for (let i = 0; i < 6; i++) {
+      try { PageRuntime.notify(); } catch (e) {}
+      await new Promise((r) => setTimeout(r, 300));
+      const b = document.querySelector('.companion-bubble');
+      if (b && !/companion-bubble-hidden/.test(b.className) &&
+          getComputedStyle(b).opacity !== '0') said.push(b.textContent.trim());
+    }
+    return said;
+  });
+  ck(rQuiet.length === 0, 'R5  and her quietness is unchanged', rQuiet.join('|') || 'silence');
+
+  // WHERE THE VOICES ACTUALLY COME FROM — recorded, because it is the
+  // thing this sprint could not close. Neither Companion carries its
+  // own `greetings`, so both speak the platform's authored library and
+  // Leo's arrival line is Leafy's. The day somebody authors a
+  // Companion's own voice this check fails and names the file.
+  const voices = await page.evaluate(async () => {
+    const out = {};
+    for (const id of ['leafy', 'leosaurus']) {
+      try {
+        const r = await fetch('assets/' + id + '/personality.json');
+        out[id] = r.ok ? Object.keys(await r.json()) : 'no personality.json';
+      } catch (e) { out[id] = 'no personality.json'; }
+    }
+    return out;
+  });
+  const leafyGreets = Array.isArray(voices.leafy) && voices.leafy.indexOf('greetings') !== -1;
+  const leoGreets = Array.isArray(voices.leosaurus) && voices.leosaurus.indexOf('greetings') !== -1;
+  ck(!leafyGreets && !leoGreets,
+     'R6  DISCLOSED: no Companion overrides the platform opening lines yet',
+     'leafy: ' + (Array.isArray(voices.leafy) ? 'no greetings' : voices.leafy) +
+     ' · leosaurus: ' + voices.leosaurus);
 
   // ---------------------------------------------------------------
   const real = pageErrors.filter((e) => !/favicon|ERR_/.test(e));

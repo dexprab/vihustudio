@@ -172,7 +172,15 @@ const CompanionChat = (function () {
       '<p class="companion-chat-said" aria-live="polite"></p>' +
       '<form class="companion-chat-row">' +
         '<input class="companion-chat-input" type="text" maxlength="' + MAX_CHARS + '" ' +
-          'autocomplete="off" placeholder="Say something to Leafy">' +
+          // NOT a hard-coded name. This was 'Say something to Leafy',
+          // the one place in the whole runtime where a single Companion
+          // was written into the product — found in Sprint 1K.1 while
+          // proving the Presence architecture is Companion-aware. A
+          // Creator bonded to Leo would have been asked to say
+          // something to somebody else's Companion until open() reset
+          // it. _name() reads the active card, which is the only
+          // authority for who this is.
+          'autocomplete="off" placeholder="Say something to ' + _name() + '">' +
         '<button class="companion-chat-send" type="submit">Say it</button>' +
         '<button class="companion-chat-close" type="button" title="Close">✕</button>' +
       '</form>';
