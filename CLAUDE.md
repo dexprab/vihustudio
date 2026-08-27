@@ -3400,6 +3400,95 @@ truth.**
 - `js/companionChat.js` · `supabase/functions/companion-chat/index.ts` ·
   `tools/companion-chat-test/run-companion-chat-tests.js`
 
+### 37. The Model May Propose. VihuPlanet Decides.
+
+Locked by the product owner in the Bond Moments + Intelligent Memory
+brief. It is the first intelligence-driven memory capability, and the
+whole of it is a refusal machine: **the model returns a sentence, and a
+deterministic validator decides whether it becomes a memory.**
+
+- **THE MODEL CANNOT WRITE MEMORY.** It has no memory API, no tool, and
+  no path to a row. It returns `memoryProposal` alongside its reply;
+  `supabase/functions/_shared/bondValidator.js` decides; VihuPlanet
+  inserts. If a future change lets a proposal reach the table without
+  passing `validateProposal()`, the architecture failed.
+- **A Bond Moment is not engagement.** Not every conversation, message,
+  creation, compliment, visit or save. **Five meaningful memories are
+  better than five hundred**, and the validator is written to refuse:
+  of the ten synthetic conversations in the suite, four become a memory.
+- **NO SCORE, EVER.** No bond score, affection score, relationship
+  percentage, XP, level, streak or engagement metric — and none may be
+  added. Message count, session length, visit frequency and emotional
+  intensity are not evidence of anything and are not read. The same
+  discipline `growthSignals()` and Decision 20 already state.
+- **EVIDENCE IS THE WHOLE MECHANISM, AND "THE MODEL THINKS SO" IS NOT
+  EVIDENCE.** A proposal is accepted only when every substantial word in
+  it can be found in material VihuPlanet supplied. A model-supplied
+  citation is never read; the validator looks at the real conversation
+  and the real context instead.
+- **GROUNDING IS ABOUT SUBSTANCE, NOT NARRATION.** A proposal is a
+  sentence ABOUT a moment, so it necessarily contains words the child
+  did not use. Two vocabularies are set aside — ordinary English, and
+  the FRAME every bond moment is phrased with (*asked · remember ·
+  continue · story · together*). What is left is what was named, and
+  that must be found. The first draft omitted the frame list and refused
+  the brief's own accepted example because the word *story* was not in
+  the conversation — a check failing on grammar rather than on truth.
+- **A CHILD SAYING IT DOES NOT MAKE IT A WORLD FACT.** A `world`
+  proposal is grounded in the authoritative context ALONE — story state
+  and existing memory. The conversation does not count, because *"we
+  made this world together"* is a thing somebody said, not a property of
+  the world.
+- **TWO KINDS ARE PROPOSABLE: `shared` and `world`.** `creator` is
+  refused in this sprint — everything that would fill it ("they
+  prefer…", "they always…") is a trait, which Decision 30 already
+  records as an inference rather than a memory. `self` is refused
+  because the deterministic recorders already own it, and a model
+  proposing it would duplicate a certainty at lower confidence.
+- **"Remember that I like dragons" is REFUSED**, and that is the
+  documented answer to the brief's own open question. The explicit
+  request is a real signal; the CONTENT is still a preference, and a
+  preference is a characteristic. A concrete thing that happened belongs
+  in `shared`, where it is an event.
+- **VIHUPLANET STAMPS THE CONFIDENCE.** A model-proposed memory is
+  `observed`; a record-derived one stays `confirmed`; `inferred` remains
+  unreachable. A proposal that names its own `confidence`, `cardId`,
+  `ownerId`, `companionId`, `id`, `dedupeKey` or `protected` is refused
+  outright — the model has no business having an opinion about any of
+  them.
+- **A COMPANION CANNOT MAKE A MOMENT MEANINGFUL BY SAYING IT WAS.**
+  Signals are read from the Creator's own turns only.
+- **IDEMPOTENT BY CONSTRAINT, NOT BY CHECK.** The dedupe key is
+  deterministic and readable (`bond:creator-asked-leafy-to-…`), and
+  `unique (card_id, dedupe_key)` is what enforces it — Postgres is asked
+  to ignore the duplicate. A JavaScript "have I already?" would lose the
+  race between two simultaneous requests.
+- **A FAILURE IN MEMORY NEVER COSTS THE CHILD THEIR ANSWER.** A
+  malformed proposal, a refused one and a failed write all leave the
+  reply exactly as it is. The Creator asked a question; they get an
+  answer either way.
+- **ONE MODEL CALL.** Bond detection rides the same request as the
+  reply — no extraction pass, no second provider round trip.
+- **NO MEMORY UI, AND NO ANNOUNCEMENT.** Nothing says *"Leafy remembered
+  this!"*; the instructions forbid the Companion telling a child it will
+  remember something, and forbid treating remembering as a reward. The
+  caller never receives the proposal — only `{ok, reply, speak}`. The
+  Creator must never feel *"I need to say meaningful things so Leafy
+  remembers me."*
+- **A real bug the suite caught:** the handler rebuilt the model's
+  answer from two fields on the way to validation and silently dropped
+  the third, so every bond check reported `proposed: false` — which
+  looks exactly like a model choosing not to propose.
+- Synthetic traffic validates but never writes: the validator runs, and
+  the one step a fixture must not take is the insert.
+- Out of scope and unchanged: Traveller conversation, semantic memory,
+  memory consolidation, Companion autonomy, voice, animation, and any
+  Companion runtime change. Production OpenAI traffic remains disabled
+  behind both gates.
+- `supabase/functions/_shared/bondValidator.js` ·
+  `supabase/functions/companion-chat/index.ts` ·
+  `tools/companion-chat-test/run-companion-chat-tests.js`
+
 ## Roadmap
 
 1. Theme Designer Polish

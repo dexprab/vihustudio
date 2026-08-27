@@ -8531,3 +8531,81 @@ errors. Build 0660 → 0661, shipped as **0667** after merging: another
 session had reached 0666 in the meantime, and a version stamp is a cache
 buster that two ships cannot share.
 >>>>>>> origin/main
+
+---
+
+## Sprint 1G — Bond Moments + Intelligent Memory
+
+The first intelligence-driven memory capability, and the whole of it is a
+refusal machine: **the model returns a sentence, and a deterministic
+validator decides whether it becomes a memory.**
+
+The model cannot write memory. It has no API, no tool and no path to a
+row. It returns `memoryProposal` alongside its reply;
+`supabase/functions/_shared/bondValidator.js` decides; VihuPlanet
+inserts. A Bond Moment is not engagement — not every conversation,
+message, creation, compliment or visit — and the validator is written to
+refuse: of the ten synthetic conversations in the suite, **four** become
+a memory. No bond score, affection score, percentage, XP, level, streak
+or engagement metric exists, and message count, session length, visit
+frequency and emotional intensity are not read at all.
+
+**Evidence is the whole mechanism, and "the model thinks so" is not
+evidence.** A proposal is accepted only when every substantial word in it
+can be found in material VihuPlanet supplied. A model-supplied citation
+is never read; the validator looks at the real conversation and the real
+context instead.
+
+**Grounding is about substance, not narration** — and getting that
+distinction right was the sprint's main design work. A proposal is a
+sentence ABOUT a moment, so it necessarily contains words the child did
+not use. Two vocabularies are set aside: ordinary English, and the FRAME
+every bond moment is phrased with (*asked · remember · continue · story ·
+together*). What is left is what was named, and that must be found. The
+first draft omitted the frame list and refused the brief's own accepted
+example, "Creator asked Leafy to choose what happens next in the story",
+because the word *story* was not in the conversation — a check failing on
+grammar rather than on truth. With the list, an invented "volcano castle"
+is still refused, which is the thing grounding exists for.
+
+**A child saying it does not make it a world fact.** A `world` proposal
+is grounded in the authoritative context alone — story state and existing
+memory. Two kinds are proposable: `shared` and `world`. `creator` is
+refused, because everything that would fill it is a trait and Decision 30
+already records traits as inference; `self` is refused because the
+deterministic recorders own it and a model proposing it would duplicate a
+certainty at lower confidence. So **"Remember that I like dragons" is
+refused** — the explicit request is a real signal, but the content is
+still a preference. That is the documented answer to the brief's own open
+question.
+
+VihuPlanet stamps the confidence: model-proposed is `observed`,
+record-derived stays `confirmed`, `inferred` stays unreachable. A
+proposal naming its own `confidence`, `cardId`, `ownerId`, `companionId`,
+`id`, `dedupeKey` or `protected` is refused outright. Signals are read
+from the Creator's own turns only — a Companion cannot make a moment
+meaningful by saying it was.
+
+Idempotent by constraint rather than by check: the dedupe key is
+deterministic and readable, and `unique (card_id, dedupe_key)` enforces
+it with Postgres asked to ignore the duplicate. A JavaScript "have I
+already?" would lose the race between two simultaneous requests.
+
+A failure in memory never costs the child their answer. A malformed
+proposal, a refused one and a failed write all leave the reply exactly as
+it is. One model call — bond detection rides the same request. No memory
+UI, no announcement, and the caller never receives the proposal.
+
+**A real bug the suite caught:** the handler rebuilt the model's answer
+from two fields on the way to validation and silently dropped the third,
+so every bond check reported `proposed: false` — which looks exactly like
+a model choosing not to propose. And `xp` in a banned-word check matched
+inside *e-xp-ort*: the third substring false positive these suites have
+caught, and the reason the canon suite's own check is anchored.
+
+Proved by reverting each gate separately: removing the signal gate fails
+2 checks, the grounding gate 1, the quality filter 11.
+
+Chat 221/221, edge auth 127/127, context 84/84, memory 56/56, canon
+87/87, companion 50/50, garden 104/104, traveller reset 16/16, zero page
+errors. Build 0668 → 0669.

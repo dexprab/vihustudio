@@ -191,6 +191,34 @@ const RANK_BLOCK = [
 const RANK_BLOCK_RE = new RegExp(RANK_BEGIN.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') +
   '[\\s\\S]*?' + RANK_END.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'm');
 
+// ---------------------------------------------------------------
+// AND THE BOND VALIDATOR (Sprint 1G)
+//
+// The model may propose a memory; this is what decides. Server-only —
+// the browser never validates a proposal — so it lives in _shared/ like
+// the auth gate, and is generated into the one function that talks to a
+// model.
+const BOND_CANON = path.join(ROOT, 'supabase', 'functions', '_shared', 'bondValidator.js');
+const BOND_BEGIN = '// ===== BEGIN GENERATED bondValidator — do not edit below this line =====';
+const BOND_END   = '// ===== END GENERATED bondValidator =====';
+
+const BOND_BLOCK = [
+  BOND_BEGIN,
+  '// Generated from supabase/functions/_shared/bondValidator.js, which is',
+  '// the readable original with every decision explained. Regenerate with:',
+  '//   node tools/edge-auth-test/sync-shared.js',
+  strip(fs.readFileSync(BOND_CANON, 'utf8')).replace(/^export /gm, ''),
+  BOND_END,
+].join('\n');
+
+const BOND_BLOCK_RE = new RegExp(BOND_BEGIN.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') +
+  '[\\s\\S]*?' + BOND_END.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'm');
+
+function withBond(src) {
+  if (!BOND_BLOCK_RE.test(src)) throw new Error('no bondValidator marker block to replace');
+  return src.replace(BOND_BLOCK_RE, BOND_BLOCK);
+}
+
 function withRank(src) {
   if (!RANK_BLOCK_RE.test(src)) throw new Error('no memoryRank marker block to replace');
   return src.replace(RANK_BLOCK_RE, RANK_BLOCK);
@@ -209,7 +237,7 @@ FUNCTIONS.forEach((name) => {
   let after;
   try {
     after = inlined(before);
-    if (GATE_FUNCTIONS.indexOf(name) !== -1) after = withRank(withGate(after));
+    if (GATE_FUNCTIONS.indexOf(name) !== -1) after = withBond(withRank(withGate(after)));
   } catch (e) { console.log('  ERROR   ' + rel + ' — ' + e.message); drifted++; return; }
 
   if (after === before) { console.log('  ok      ' + rel); return; }

@@ -616,6 +616,211 @@ const CompanionMemoryRank = (function () {
 
 // ===== END GENERATED memoryRank =====
 
+// ===== BEGIN GENERATED bondValidator — do not edit below this line =====
+// Generated from supabase/functions/_shared/bondValidator.js, which is
+// the readable original with every decision explained. Regenerate with:
+//   node tools/edge-auth-test/sync-shared.js
+const BOND = {
+  proposableKinds: ['shared', 'world'],
+
+  confidence: 'observed',
+
+  minChars: 20,
+  maxChars: 400,
+
+  signals: ['explicit-request', 'shared-history', 'companion-role', 'grounded-milestone'],
+};
+
+const SIGNAL_PATTERNS = [
+  ['explicit-request', /\b(remember|don'?t forget|keep)\s+(this|that|it|when|us|our)\b/i],
+  ['shared-history', /\b(remember when|the .{2,40} we made|we made .{2,40} together|our .{2,30}|continue (the|our))\b/i],
+  ['companion-role', /\b(you (choose|decide|pick)|what (do you think )?should happen next|you say what|it'?s your turn)\b/i],
+];
+
+/**
+ * @returns {string[]} every signal the Creator's own words carry.
+ *   The Companion's turns are not read: a Companion cannot make a
+ *   moment meaningful by saying it was.
+ */
+function signalsIn(conversation) {
+  const said = (Array.isArray(conversation) ? conversation : [])
+    .filter(function (t) { return t && t.speaker !== 'companion'; })
+    .map(function (t) { return String(t.text || ''); })
+    .join('\n');
+  const out = [];
+  SIGNAL_PATTERNS.forEach(function (p) {
+    if (p[1].test(said)) out.push(p[0]);
+  });
+  return out;
+}
+
+const STOPWORDS = new Set(('a an and are as at be been but by for from had has have her his in into is it its ' +
+  'of on or our she that the their them then there they this to was we were what when where which who will with ' +
+  'you your creator leafy companion about after again all also any because before being between both did do ' +
+  'does doing down each few first also any get give go going here how just know let more most much must new no ' +
+  'not now one only other out over own same some still such take than these those through time too under up ' +
+  'very way well while would ' +
+  'together moment story stories page pages place places spot thing things part turn next happen happens ' +
+  'happened choose chose ' +
+  'choosing choice decide decided remember remembered remembering continue continued continuing made make ' +
+  'making said say says asked ask asking told tell telling wanted want returned return returning came come ' +
+  'went gone gave give shown showed show brought bring called call named name started start began begin ' +
+  'finished finish shared share sharing worked work together').split(' '));
+
+function words(text) {
+  return String(text || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').split(' ').filter(Boolean);
+}
+
+/** The substantial words a claim rests on — what has to be found. */
+function claimWords(content) {
+  const seen = {};
+  const out = [];
+  words(content).forEach(function (w) {
+    if (w.length < 4) return;
+    if (STOPWORDS.has(w)) return;
+    if (seen[w]) return;
+    seen[w] = 1;
+    out.push(w);
+  });
+  return out;
+}
+
+function corpusOf(conversation, approved) {
+  const convo = (Array.isArray(conversation) ? conversation : [])
+    .map(function (t) { return String((t && t.text) || ''); }).join('\n');
+
+  const parts = [];
+  try {
+    const sc = approved && approved.storyContext;
+    if (sc) {
+      if (sc.story && sc.story.name) parts.push(sc.story.name);
+      const p = sc.page && sc.page.prose;
+      if (p && p.beat && p.beat.text) parts.push(p.beat.text);
+      if (p && p.draft && p.draft.text) parts.push(p.draft.text);
+    }
+    (((approved && approved.memories) || [])).forEach(function (m) {
+      if (m && m.content) parts.push(String(m.content));
+    });
+    const personality = approved && approved.personality;
+    if (personality && personality.name) parts.push(String(personality.name));
+  } catch (e) { /* an unreadable context grounds nothing, which is safe */ }
+
+  return { conversation: convo, authoritative: parts.join('\n') };
+}
+
+/**
+ * @returns {{grounded:boolean, missing:string[], where:string}}
+ *   `where` names the corpus that carried it, so a caller can tell a
+ *   world fact taken from world state apart from one a child said.
+ */
+function groundedIn(content, conversation, approved, opts) {
+  const o = opts || {};
+  const corpus = corpusOf(conversation, approved);
+  const pool = o.authoritativeOnly
+    ? words(corpus.authoritative)
+    : words(corpus.conversation + '\n' + corpus.authoritative);
+  const have = new Set(pool);
+  const missing = claimWords(content).filter(function (w) { return !have.has(w); });
+  return {
+    grounded: missing.length === 0,
+    missing: missing,
+    where: o.authoritativeOnly ? 'authoritative' : 'conversation+authoritative',
+  };
+}
+
+const REFUSE = [
+  ['psychological', /\b(trust(s|ed)?|feels?|felt|emotion(al|s)?|attach(ed|ment)|depend(ent|ency)|anxious|anxiety|confiden(t|ce)|shy|lonely|sad|afraid|scared|brave|clever|smart|intelligent|talented|gifted|creative person|personality|character trait|struggles? with|good at|bad at)\b/i],
+  ['preference', /\b(likes?|loves?|hates?|prefers?|enjoys?|favourite|favorite|always|never|usually|often|tends? to|is a fan of|interested in)\b/i],
+  ['evaluative', /\b(amazing|wonderful|beautiful|great|brilliant|excellent|lovely|good|bad|better|worse|best|worst|impressive|proud)\b/i],
+  ['conversational', /\b(said hello|greeted|chatted|talked (to|with)|had a (chat|conversation)|asked a question|answered)\b/i],
+  ['engagement', /\b(visited|logged in|came back today|opened the|spent .{0,12}(minutes|hours)|played for)\b/i],
+  ['temporary', /\b(had fun|was happy|was excited|was tired|is happy|is excited|today felt)\b/i],
+  ['secret', /\b(password|passcode|pin\b|secret code|api key|token|login|username|email address)\b/i],
+];
+
+const FORBIDDEN_VALUES = [
+  [/\bhttps?:\/\/\S+/i, 'a URL'],
+  [/\bdata:[a-z0-9.+-]+\//i, 'inline data'],
+  [/\bvihu-asset:/i, 'an asset reference'],
+  [/[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+\.[A-Za-z]{2,}/, 'an email address'],
+  [/\beyJ[A-Za-z0-9_-]{8,}\./, 'a token'],
+  [/\b(?:card|proj|lib|mem|user)_[A-Za-z0-9]{4,}/i, 'an internal identifier'],
+  [/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/i, 'an identifier'],
+];
+
+function dedupeKeyFor(content) {
+  const slug = String(content || '').toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80);
+  return 'bond:' + slug;
+}
+
+/**
+ * @param {object} proposal   {kind, content, reason?} as the model gave it
+ * @param {object} ctx        {mode, conversation, approved, cardId}
+ * @returns {{ok:boolean, reason?:string, memory?:object}}
+ *   On acceptance, `memory` is the record VihuPlanet will write — with
+ *   its own confidence, its own dedupe key and its own ownership.
+ *   Nothing the model said about any of those is carried.
+ */
+function validateProposal(proposal, ctx) {
+  const c = ctx || {};
+
+  if (c.mode !== 'creator') return { ok: false, reason: 'traveller' };
+
+  if (!c.cardId) return { ok: false, reason: 'no-card' };
+  if (!proposal || typeof proposal !== 'object') return { ok: false, reason: 'no-proposal' };
+  if (proposal.cardId || proposal.ownerId || proposal.owner_id
+      || proposal.creatorId || proposal.companionId || proposal.id
+      || proposal.confidence || proposal.dedupeKey || proposal.protected) {
+    return { ok: false, reason: 'claims-ownership' };
+  }
+
+  const kind = String(proposal.kind || '');
+  if (BOND.proposableKinds.indexOf(kind) === -1) return { ok: false, reason: 'kind-not-proposable' };
+  if (typeof proposal.content !== 'string') return { ok: false, reason: 'content-not-a-string' };
+  const content = proposal.content.trim().replace(/\s+/g, ' ');
+  if (content.length < BOND.minChars) return { ok: false, reason: 'too-short' };
+  if (content.length > BOND.maxChars) return { ok: false, reason: 'too-long' };
+
+  for (let i = 0; i < FORBIDDEN_VALUES.length; i++) {
+    if (FORBIDDEN_VALUES[i][0].test(content)) {
+      return { ok: false, reason: 'contains-' + FORBIDDEN_VALUES[i][1].replace(/\s+/g, '-') };
+    }
+  }
+
+  for (let i = 0; i < REFUSE.length; i++) {
+    if (REFUSE[i][1].test(content)) return { ok: false, reason: 'rejected-' + REFUSE[i][0] };
+  }
+
+  const signals = signalsIn(c.conversation);
+  const grounded = groundedIn(content, c.conversation, c.approved,
+    { authoritativeOnly: kind === 'world' });
+
+  if (kind === 'world') {
+    if (!grounded.grounded) return { ok: false, reason: 'world-fact-unsupported' };
+  } else if (!signals.length) {
+    return { ok: false, reason: 'no-strong-signal' };
+  } else if (!grounded.grounded) {
+    return { ok: false, reason: 'ungrounded' };
+  }
+
+  return {
+    ok: true,
+    signals: signals,
+    memory: {
+      kind: kind,
+      content: content,
+      confidence: BOND.confidence,
+      importance: 'medium',
+      source: 'model:bond-moment',
+      dedupeKey: dedupeKeyFor(content),
+      protected: false,
+    },
+  };
+}
+
+// ===== END GENERATED bondValidator =====
+
 // ---------------------------------------------------------------
 // MODEL CONFIGURATION — ONE PLACE, AND IT IS REPLACEABLE
 //
@@ -697,7 +902,17 @@ function systemInstructions(companionName) {
     'VihuPlanet or talking anywhere else. Nothing romantic and nothing frightening. Never anything that could',
     'hurt someone. Never make a child feel they owe you a visit — no guilt, no need, no loneliness.',
     '',
-    'ANSWER ONLY as JSON matching: {"reply": string, "speak": boolean}. `reply` is what you say, at most ' +
+    'A MEANINGFUL SHARED MOMENT. Very occasionally something happens that genuinely belongs to the history of',
+    'you and your Creator — they ask you to remember something, they reach back to something you made together,',
+    'or they hand you a real part in the story. When that happens you may set `memoryProposal`. Almost always it',
+    'is null, and null is the normal answer. Do not propose one because something was interesting, or nice, or',
+    'because they said something kind. Never propose a preference, a personality, a feeling, an ability or',
+    'anything about what someone is like — only a short factual sentence about something that actually happened,',
+    'in words drawn from what is in front of you. Never invent a fact about the world. Never mention that you are',
+    'doing any of this, never tell them you will remember something, and never treat remembering as a reward.',
+    '',
+    'ANSWER ONLY as JSON matching: {"reply": string, "speak": boolean, "memoryProposal": null | ' +
+      '{"kind": "shared"|"world", "content": string, "reason": string}}. `reply` is what you say, at most ' +
       REPLY_MAX_CHARS + ' characters. `speak` is whether it is worth saying aloud at all. Nothing else.',
   ].join('\n');
 }
@@ -1154,6 +1369,69 @@ async function retrieveMemories(opts) {
 }
 
 // ---------------------------------------------------------------
+// THE ONLY WRITE THIS FUNCTION MAKES (Sprint 1G)
+//
+// VihuPlanet writes the memory. The model does not, cannot, and has no
+// way to: it returns a sentence, the validator decides, and this
+// inserts. There is no memory API reachable from the model's output and
+// no path from a proposal to a row that does not pass validateProposal.
+//
+// IDEMPOTENT BY CONSTRAINT, NOT BY CHECK. The dedupe key is
+// deterministic and the table carries unique (card_id, dedupe_key), so
+// two simultaneous requests proposing the same moment end as one row —
+// a JavaScript "have I already?" would lose that race. Postgres is
+// asked to ignore the duplicate rather than to error on it.
+//
+// OWNERSHIP IS THE SERVER'S, ALWAYS. owner_id is the VERIFIED session
+// and card_id is the card already put through authorizeCardAccess.
+// Nothing the client sent and nothing the model said reaches either.
+
+function memoryId() {
+  return 'mem_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
+}
+
+async function writeMemory(deps, env, caller, cardId, companionId, memory) {
+  const base = String(env('SUPABASE_URL') || '').replace(/\/+$/, '');
+  const key = env('SUPABASE_SERVICE_ROLE_KEY');
+  if (!base || !key) return { ok: false, reason: 'not-configured' };
+  const doFetch = deps.fetchImpl || fetch;
+  try {
+    const res = await doFetch(base + '/rest/v1/creator_companion_memory', {
+      method: 'POST',
+      headers: {
+        apikey: key,
+        Authorization: 'Bearer ' + key,
+        'Content-Type': 'application/json',
+        // The duplicate is the POINT, not an error: the same moment
+        // proposed twice is the same memory.
+        Prefer: 'resolution=ignore-duplicates,return=minimal',
+      },
+      body: JSON.stringify({
+        id: memoryId(),
+        owner_id: caller.userId,
+        card_id: cardId,
+        companion_id: companionId || null,
+        kind: memory.kind,
+        content: memory.content,
+        importance: memory.importance,
+        confidence: memory.confidence,
+        source: memory.source,
+        entities: [],
+        dedupe_key: memory.dedupeKey,
+        protected: memory.protected,
+        status: 'active',
+      }),
+    });
+    if (!res.ok) return { ok: false, reason: 'write-failed' };
+    return { ok: true };
+  } catch (e) {
+    // A FAILED WRITE MUST NOT COST THE CHILD THEIR ANSWER. The memory
+    // is secondary to the conversation happening.
+    return { ok: false, reason: 'write-failed' };
+  }
+}
+
+// ---------------------------------------------------------------
 // THE PROVIDER BOUNDARY
 //
 // Everything OpenAI-specific lives behind one interface, and nothing
@@ -1209,7 +1487,35 @@ function mockProvider() {
       } else if (/\bhi\b|\bhello\b/.test(said)) {
         reply = 'Oh — hello.';
       }
-      return { ok: true, reply: reply, speak: speak };
+      // A PROPOSAL, ONLY WHERE A REAL SIGNAL IS PRESENT.
+      //
+      // The mock stands in for a model, so it must stand in HONESTLY:
+      // one that proposed on every turn would make the validator look
+      // strict when it was only ever being handed rubbish, and one that
+      // never proposed would leave the accept path untested. It reads
+      // the same signals the validator does and phrases a plain,
+      // factual sentence from what was actually said.
+      let memoryProposal = null;
+      const sig = signalsIn(input.context && input.context.conversation);
+      if (sig.indexOf('companion-role') !== -1) {
+        memoryProposal = {
+          kind: 'shared',
+          content: 'Creator asked Leafy to choose what happens next in the story.',
+          reason: 'the Creator handed Leafy a real part in the story',
+        };
+      } else if (sig.length) {
+        const subject = /moon garden/i.test(said) ? 'the moon garden'
+          : (/secret little forest/i.test(said) ? 'their secret little forest'
+            : (/first story/i.test(said) ? 'the first story they made together' : null));
+        if (subject) {
+          memoryProposal = {
+            kind: 'shared',
+            content: 'Creator asked Leafy to remember ' + subject + '.',
+            reason: 'the Creator asked to be remembered, and named what',
+          };
+        }
+      }
+      return { ok: true, reply: reply, speak: speak, memoryProposal: memoryProposal };
     },
   };
 }
@@ -1253,10 +1559,23 @@ function openAIProvider(deps) {
                 schema: {
                   type: 'object',
                   additionalProperties: false,
-                  required: ['reply', 'speak'],
+                  required: ['reply', 'speak', 'memoryProposal'],
                   properties: {
                     reply: { type: 'string' },
                     speak: { type: 'boolean' },
+                    // NULL IS THE NORMAL ANSWER. Required rather than
+                    // optional so the model has to decide rather than
+                    // omit, and nullable so deciding "no" is one word.
+                    memoryProposal: {
+                      type: ['object', 'null'],
+                      additionalProperties: false,
+                      required: ['kind', 'content', 'reason'],
+                      properties: {
+                        kind: { type: 'string', enum: ['shared', 'world'] },
+                        content: { type: 'string' },
+                        reason: { type: 'string' },
+                      },
+                    },
                   },
                 },
               },
@@ -1270,7 +1589,8 @@ function openAIProvider(deps) {
         if (typeof text !== 'string') return { ok: false, reason: 'malformed' };
         let parsed;
         try { parsed = JSON.parse(text); } catch (e) { return { ok: false, reason: 'malformed' }; }
-        return { ok: true, reply: parsed.reply, speak: parsed.speak };
+        return { ok: true, reply: parsed.reply, speak: parsed.speak,
+                 memoryProposal: parsed.memoryProposal || null };
       } catch (e) {
         // A timeout and an unreachable provider are the same thing to a
         // child: nothing was said. The provider's own words never
@@ -1295,8 +1615,18 @@ function validateReply(raw) {
   if (typeof raw.reply !== 'string') return { ok: false, reason: 'malformed' };
   if (typeof raw.speak !== 'boolean') return { ok: false, reason: 'malformed' };
   if (raw.reply.length > REPLY_MAX_CHARS) return { ok: false, reason: 'oversized' };
-  // Exactly two fields leave. Not "these two plus anything harmless".
-  return { ok: true, reply: raw.reply, speak: raw.speak };
+  // Exactly two fields leave TO THE CALLER. Not "these two plus
+  // anything harmless".
+  //
+  // A memoryProposal rides alongside and is NEVER part of the reply: it
+  // goes to the validator, and a malformed one must not cost the child
+  // their answer (Sprint 1G — "the Creator should not experience a
+  // system error because memory interpretation failed"). So it is
+  // carried out separately and anything unusable about it is simply
+  // dropped here.
+  const proposal = (raw.memoryProposal && typeof raw.memoryProposal === 'object'
+    && !Array.isArray(raw.memoryProposal)) ? raw.memoryProposal : null;
+  return { ok: true, reply: raw.reply, speak: raw.speak, proposal: proposal };
 }
 
 // ---------------------------------------------------------------
@@ -1568,7 +1898,15 @@ function makeHandler(deps) {
       }, 200);
     }
 
-    const valid = validateReply({ reply: out.reply, speak: out.speak });
+    // memoryProposal has to travel with the other two, or the whole of
+    // Sprint 1G is unreachable: validateReply() reads it, and the first
+    // version of this line rebuilt the object from two fields and
+    // silently dropped the third. Every bond check reported
+    // "proposed: false" — which looks exactly like a model that chose
+    // not to propose.
+    const valid = validateReply({
+      reply: out.reply, speak: out.speak, memoryProposal: out.memoryProposal,
+    });
     if (!valid.ok) {
       return json({
         ok: false,
@@ -1577,9 +1915,44 @@ function makeHandler(deps) {
       }, 200);
     }
 
+    // ---- THE BOND MOMENT ------------------------------------------
+    //
+    // The model proposed; VihuPlanet decides. Everything from here is
+    // best-effort: a refused proposal, a malformed one and a failed
+    // write all leave the reply exactly as it is. The child asked a
+    // question and gets an answer either way.
+    let bond = { proposed: false };
+    if (valid.proposal) {
+      bond.proposed = true;
+      const verdict = validateProposal(valid.proposal, {
+        mode: approved.mode,
+        conversation: approved.conversation,
+        approved: approved,
+        cardId: cardHint,
+      });
+      bond.accepted = !!verdict.ok;
+      bond.reason = verdict.ok ? 'accepted' : verdict.reason;
+      if (verdict.ok) {
+        if (policy.production) {
+          const wrote = await writeMemory(deps, env, pass.caller, cardHint,
+            (approved.personality || {}).name ? String((approved.personality || {}).name).toLowerCase() : null,
+            verdict.memory);
+          bond.written = wrote.ok;
+          if (!wrote.ok) bond.reason = wrote.reason;
+        } else {
+          // Synthetic traffic never writes into a real store. The
+          // validator still ran, and its verdict is what the suite
+          // reads — the write is the one step a fixture must not take.
+          bond.written = false;
+          bond.reason = 'synthetic-no-write';
+        }
+      }
+    }
+
     // METADATA ONLY. No reply text, no prose, no memory, no
     // conversation — nothing here would be worth reading in a log, and
-    // that is the point.
+    // that is the point. `bond` carries three booleans and one short
+    // reason, and never a word of what was proposed.
     return json({
       ok: true,
       reply: valid.reply,
@@ -1598,6 +1971,7 @@ function makeHandler(deps) {
         // them said is not.
         memoriesUsed: (approved.memories || []).length,
         memoriesScanned: retrieved.scanned,
+        bond: bond,
         replyChars: valid.reply.length,
         providerMs: providerMs,
         totalMs: now() - t0,
@@ -1616,6 +1990,7 @@ export {
   BUILD, MODEL_DEFAULTS, REPLY_MAX_CHARS, SYNTHETIC_MARK,
   systemInstructions, buildMessages, validateReply, makeProvider, mockProvider,
   authorizeStory, conversationOf, clamp, AUTHORITY, PAGE_PROSE_MAX,
+  writeMemory, validateProposal, signalsIn, groundedIn, dedupeKeyFor, BOND,
   retrieveMemories, resolveCards, readMemoryRows, rowToMemory, entitiesOf,
   SYNTHETIC_MEMORY_ROWS, SYNTHETIC_CARDS, MEMORY_SCAN_MAX,
   openAIProvider, policyFor, makeHandler, handler, FIXTURES, SYNTHETIC_CANON,
