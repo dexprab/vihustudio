@@ -74,7 +74,7 @@ there so the story reinforces rather than only extends.
 | # | Story line | Instruction | Gate |
 |---|---|---|---|
 | 1 | Once upon a time, there was a little patch of land waiting for a story. | Choose a colour for the ground. | `bg-set` *(rehearse)* |
-| 2 | Someone was going to live here. But first, they needed a house. | Add a square. | **`shape-added` ①** |
+| 2 | Someone was going to live here. But first, they needed a house. | Add a rectangle. | **`shape-added` ①** |
 | 3 | A house needs a roof to keep the rain away. | Add a triangle on top. | **`shape-added` ②** |
 | 4 | Roofs are never quite the right size the first time. | Make it the right size. | `sticker-resized` *(rehearse)* |
 | 5 | The little house was almost ready. But how would anyone get inside? | Give it a door. | **`shape-added` ③** |
@@ -314,3 +314,28 @@ The gate reads `slide.metadata.aspect`, which is what the Page Shape tile
 writes. It counts pages carrying a shape rather than comparing values, so
 a child who tries tall, then wide, then comes back to tall has still
 chosen one.
+
+
+## A note on the shape this beat names (build 0661)
+
+It read *Add a square*, and the product owner caught what that promises:
+the shape catalogue has Circle, Rectangle, Rounded Rectangle, Triangle
+and a dozen more, and **no Square**. A five-year-old hunting for the word
+finds nothing.
+
+Measured before choosing a fix: a shape is added at 240×240, so the tile
+labelled **Rectangle** already gives the child a perfect square. The shape
+was never missing — only the word.
+
+A Square tile was considered and rejected. Shapes are drawn to whatever
+box they are given, so a `square` entry would behave identically to
+Rectangle and be a second tile doing one job — and the child can resize it
+into a non-square the moment they touch it, which would make the name a
+lie. Beat 3 already says *Add a triangle on top*, so naming the tile is
+the form this story was already using; the square beat was the odd one
+out.
+
+`P1`/`P2` in `tools/rite-test/` guard the class rather than the word: for
+any rite that hands the child the Shapes tile, every shape noun its beats
+use must be a real entry in `StickerLibrary.SHAPE_KINDS`. Proved by
+putting *square* back — it names `my-little-house beat 3` exactly.
