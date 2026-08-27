@@ -3728,12 +3728,42 @@ what it says.
 - **DISCLOSED, AND IT IS THE HONEST LIMIT: no code change can GUARANTEE
   the inbox.** Gmail's tabs are heuristic and per-recipient. What is in
   our hands is removing every bulk signal, which is done. What is not:
-  SPF/DKIM/DMARC alignment on the sending domain, whether
-  `SKY_FROM_EMAIL` reads as a person or as `noreply@`, and the
-  recipient's own one-time *Move to Primary*, which is decisive for that
-  recipient and for nobody else.
-- `supabase/functions/invite-send/index.ts` ·
-  `tools/invite-letter-test/run-invite-letter-tests.js`
+  the recipient's own one-time *Move to Primary*, which is decisive for
+  that recipient and for nobody else, and the fact that a domain with
+  almost no sending history is filed cautiously whatever it carries.
+- **THE SENDING DOMAIN WAS MEASURED, NOT ASSUMED, AND IT IS CORRECT.**
+  Two of the three things this clause originally listed as unknown are
+  now known and neither is a fault. `SKY_FROM_EMAIL` is
+  `lumo@vihuplanet.com` — a person, not a `noreply@`. And the DNS
+  answers: `resend._domainkey.vihuplanet.com` publishes a DKIM key, so
+  Resend signs as `vihuplanet.com` and **DKIM aligns exactly**;
+  `send.vihuplanet.com` carries Resend's own SPF and, under
+  `_dmarc.vihuplanet.com`'s relaxed alignment (`adkim=r; aspf=r;
+  p=quarantine`), **SPF aligns too**. Authentication was never the
+  reason. The letter's markup was, which is what this decision changed.
+- **A LETTER REWRITTEN IS NOT A LETTER DEPLOYED, AND THE DESK NOW SAYS
+  WHICH** (build 0679). Reported by the product owner after the change
+  shipped: *"i dont see any change in email from orignal, look and feel
+  is still same."* Correct — Edge Functions are deployed BY HAND here
+  (`docs/SUPABASE_CLI.md`; there is no CI that deploys them), so the
+  letter had been rewritten, tested, committed and pushed while every
+  invitation going out was still the old one. **The only symptom
+  available was a person saying the mail looked the same**, which is the
+  worst kind of failure: everything reports success.
+- **The function has always declared its own `BUILD` through the ping,
+  and the desk had nothing to compare it against.** It does now: a live
+  build that is not the one this checkout expects reads *"The function on
+  the server is an older build — it is sending X, and this checkout
+  expects Y"*, with the deploy command. Deployed, reachable and sending
+  the wrong letter is a state, and it used to render as a healthy post
+  office.
+- **The expected build is READ OUT OF THE FUNCTION by the suite**, never
+  restated in it — the page and the function cannot drift into agreeing
+  with each other about the wrong thing. Decision 30's own
+  hand-mirrored-copy lesson, applied to a version label.
+- `supabase/functions/invite-send/index.ts` · `admin/invites.html` ·
+  `tools/invite-letter-test/run-invite-letter-tests.js` ·
+  `tools/invite-desk-test/run-invite-desk-tests.js`
 
 ### 40. The Companion Knows WHEN. It Will Never Know WHY It Should Speak
 

@@ -197,6 +197,20 @@ const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c =>
 const BASE = 'https://vihuplanet.com';
 const FN = cfg.url.replace(/\/+$/, '') + '/functions/v1/invite-send';
 
+// WHICH LETTER IS ACTUALLY ON THE SERVER.
+//
+// Edge Functions are deployed by hand here (docs/SUPABASE_CLI.md — there
+// is no CI that deploys them), so the repository and the project drift
+// silently: a letter can be rewritten, tested, committed and pushed, and
+// the invitations that go out are still the old one. That happened, and
+// the only symptom was a person saying "the mail looks the same".
+//
+// The function has always reported its own BUILD through the ping. It
+// simply had nothing to compare it against. This is that other half —
+// and it is kept honest by tools/invite-desk-test, which reads the
+// constant out of invite-send/index.ts rather than trusting this copy.
+const FN_BUILD_EXPECTED = '2026-08-27 · plain letter';
+
 // BOTH HEADERS, ALWAYS. Supabase's gateway verifies the JWT before an
 // Edge Function is reached, so a call carrying only `apikey` is refused
 // with 401 and the function's own code never runs — which looks exactly
@@ -797,6 +811,12 @@ async function mailState() {
         '<span class="flag">Email is not configured yet</span> — WhatsApp still works, ' +
         'and so does copying a link by hand. Set RESEND_API_KEY and SKY_FROM_EMAIL on the ' +
         'invite-send function.';
+    } else if (r.body.build && r.body.build !== FN_BUILD_EXPECTED) {
+      // Deployed, reachable, sending — and sending the wrong letter.
+      el.innerHTML = '<span class="flag">The function on the server is an older build</span> — ' +
+        'it is sending <code>' + esc(r.body.build) + '</code>, and this checkout expects <code>' +
+        esc(FN_BUILD_EXPECTED) + '</code>. Invitations still go out; they are the older letter. ' +
+        'Redeploy with <code>npx supabase functions deploy invite-send</code>.';
     } else {
       el.textContent = `Post office: ${r.body.mail} · ${r.body.build || ''}`;
     }

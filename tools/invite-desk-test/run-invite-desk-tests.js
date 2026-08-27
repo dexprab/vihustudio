@@ -74,11 +74,19 @@ async function say(browser, { signedIn = true, status = 200, body = null, fail =
   });
   console.log('\nTHE INVITE DESK\n');
 
-  const open = await say(browser, { status: 200, body: { ok: true, mail: 'resend', from: 'set', build: 'b1' } });
+  // Read from the FUNCTION, never restated here — see I13.
+  const fs = require('fs'), path = require('path');
+  const ROOT = path.resolve(__dirname, '..', '..');
+  const fnBuild = (fs.readFileSync(path.join(ROOT, 'supabase/functions/invite-send/index.ts'), 'utf8')
+    .match(/const BUILD = '([^']+)'/) || [])[1];
+  const pageBuild = (fs.readFileSync(path.join(ROOT, 'admin/invites.html'), 'utf8')
+    .match(/const FN_BUILD_EXPECTED = '([^']+)'/) || [])[1];
+
+  const open = await say(browser, { status: 200, body: { ok: true, mail: 'resend', from: 'set', build: fnBuild } });
   check(/Post office: resend/.test(open.text),
     'I1 a working post office says so', open.text);
 
-  const unset = await say(browser, { status: 200, body: { ok: true, mail: 'none', from: 'unset', build: 'b1' } });
+  const unset = await say(browser, { status: 200, body: { ok: true, mail: 'none', from: 'unset', build: fnBuild } });
   check(/Email is not configured yet/.test(unset.text),
     'I2 …and an unconfigured one is about the mail keys, not about the caller', unset.text);
 
@@ -119,8 +127,31 @@ async function say(browser, { signedIn = true, status = 200, body = null, fail =
   check(out.text === '' || /not signed in/i.test(out.text),
     'I11 a signed-out page never reports a deployment problem', JSON.stringify(out.text));
 
+  // THE DESK KNOWS WHICH LETTER IS ON THE SERVER.
+  //
+  // Functions are deployed by hand, so a rewritten letter can be
+  // committed and pushed while the invitations going out are still the
+  // old one — which happened, and the only symptom was somebody saying
+  // "the mail looks the same". The constant is read out of the FUNCTION
+  // rather than restated here, so the page and the function cannot drift
+  // into agreeing with each other about the wrong thing.
+  check(!!fnBuild && fnBuild === pageBuild,
+    'I13 the desk expects exactly the build the function declares',
+    JSON.stringify({ fn: fnBuild, page: pageBuild }));
+
+  const stale = await say(browser, { status: 200,
+    body: { ok: true, mail: 'resend', from: 'set', build: 'something older' } });
+  check(/older build/i.test(stale.text) && /something older/.test(stale.text) &&
+        /deploy invite-send/.test(stale.text),
+    'I14 …and says so when the server is behind, instead of reporting a healthy post office',
+    stale.text);
+  const current = await say(browser, { status: 200,
+    body: { ok: true, mail: 'resend', from: 'set', build: fnBuild } });
+  check(/Post office: resend/.test(current.text) && !/older build/i.test(current.text),
+    'I15 …and stays quiet when it is current', current.text);
+
   const allErrors = [].concat(open.errors, unset.errors, notAdmin.errors, unknown.errors,
-    busy.errors, gone.errors, dead.errors, out.errors);
+    busy.errors, gone.errors, dead.errors, out.errors, stale.errors, current.errors);
   check(allErrors.length === 0, 'I12 zero page errors', allErrors.slice(0, 2).join(' | '));
 
   console.log('\n' + passed + ' passed, ' + failed + ' failed\n');
