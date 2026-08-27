@@ -509,6 +509,19 @@ const FORBIDDEN = [
   });
   check(bootState.state === 'valid',
     'F6b the boot really did see a valid saved session', JSON.stringify(bootState));
+  if (!back.resume || !back.door) {
+    console.log('     DIAG ' + JSON.stringify(await page.evaluate(() => ({
+      complete: StudioRite.isComplete(),
+      cards: MagicCard.list().length,
+      active: (MagicCard.getActive() || {}).id || null,
+      session: ProjectManager.getSessionStatus().state,
+      riteRunning: StudioRite.isRunning(),
+      next: StudioRite.nextOptIn(),
+      records: (CreatorProjectStore.listAll() || []).length,
+      held: (CreatorProjectStore.listAll() || []).filter((r) => r.riteInProgress).length,
+      head: (document.getElementById('creationFlowContent').innerText || '').slice(0, 60)
+    }))));
+  }
   check(back.onStudioHome === true,
     'F7 coming back lands on Studio Home, not straight in the editor', JSON.stringify(back));
   check(back.modal === false && back.restoreWord === false,
