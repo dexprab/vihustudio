@@ -414,6 +414,31 @@
     if(_worldAdvanceTimer){ clearTimeout(_worldAdvanceTimer); _worldAdvanceTimer=null; }
   }
 
+  // A WORLD THAT DECLARES NO MUSIC HAS NO OPINION ABOUT MUSIC.
+  //
+  // Reported by the product owner: "the created story in its background
+  // track music does not have ambience music. it looks like only single
+  // track plays in it." Measured, and it was exactly that — the moment a
+  // story applies its Theme, js/themeEngine.js called stopWorld() and the
+  // music stopped for the rest of the session. What was left is the
+  // Foundation bed, which is WEATHER (see FOUNDATION_LAYERS): forest and
+  // wind, with the other three deliberately at zero. So a child making a
+  // story heard texture and no music at all.
+  //
+  // That `else` was written as "a graceful no-op" when no Theme declared
+  // ambience and there was no default to lose. DEFAULT_WORLD_AMBIENCE
+  // arriving turned it into a mute without anybody choosing one. Silence
+  // is still available — stopWorld() is unchanged and still exported —
+  // but it now has to be ASKED for rather than being what "this Theme
+  // said nothing" happens to mean.
+  //
+  // A no-op when the default is already what is playing, because
+  // playWorld keys on the refs themselves.
+  function restoreDefaultWorld(){
+    if(!DEFAULT_WORLD_AMBIENCE.length){ stopWorld(); return; }
+    playWorld(DEFAULT_WORLD_AMBIENCE);
+  }
+
   function stopWorld(){
     _clearWorldAdvance();
     _worldSequence=[];
@@ -531,6 +556,7 @@
     whenFoundationReady:whenFoundationReady,
     playFoundation:playFoundation,
     playWorld:playWorld,
+    restoreDefaultWorld:restoreDefaultWorld,
     stopWorld:stopWorld,
     setMuted:setMuted,
     isMuted:isMuted,

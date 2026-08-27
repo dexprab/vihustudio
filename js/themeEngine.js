@@ -607,7 +607,12 @@ const ThemeEngine=(function(){
     try{
       if(typeof AudioManager!=='undefined'){
         if(t.audio && t.audio.ambience && t.audio.ambience.length) AudioManager.playWorld(t.audio.ambience);
-        else AudioManager.stopWorld();
+        // A Theme with no ambience of its own says nothing about music —
+        // it does not ask for silence. stopWorld() here left every story
+        // with the Foundation bed alone, which is weather rather than
+        // music, and it never came back. See AudioManager
+        // .restoreDefaultWorld().
+        else AudioManager.restoreDefaultWorld();
       }
     }catch(e){}
     return t;
@@ -639,7 +644,10 @@ const ThemeEngine=(function(){
     try{
       if(typeof AudioManager!=='undefined'){
         if(resolvedTheme && resolvedTheme.audio && resolvedTheme.audio.ambience && resolvedTheme.audio.ambience.length) AudioManager.playWorld(resolvedTheme.audio.ambience);
-        else AudioManager.stopWorld();
+        // Same as applyTheme above: clearing an Artwork Theme, or picking
+        // one that declares no ambience, hands the slot back to the
+        // default rather than muting the place.
+        else AudioManager.restoreDefaultWorld();
       }
     }catch(e){}
     return resolvedTheme;

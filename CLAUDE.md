@@ -1802,6 +1802,58 @@ once, and its scope is no longer closed.
 - Design and sequencing: `docs/STUDIO_RITE_LEVELS.md`. Rite II's script
   and its engineering notes: `docs/STUDIO_RITE_LEVEL_II_STORY.md`.
 
+### 39. A World That Declares No Music Has No Opinion About Music
+
+Locked after a report from the product owner: *"the created story in its
+background track music does not have ambience music. it looks like only
+single track plays in it."* It corrects the Atmosphere Engine's own
+Theme hook and changes nothing else about it.
+
+- **The Foundation bed is WEATHER; the World layer is the MUSIC.** Two
+  of the five Foundation layers play — forest at 0.35, wind at 0.15 —
+  and the other three sit at zero deliberately, because the old mix was
+  73% held pitches and was reported as *"the music sounds like a horror
+  movie music"*. So a place with no World layer has texture and no music
+  at all.
+- **`applyTheme()` was muting it, and nobody chose that.**
+  `js/themeEngine.js` called `AudioManager.stopWorld()` for any Theme
+  that declares no `audio.ambience` — which is **every Theme today**, by
+  its own comment. So the music played until a child opened a story, and
+  then stopped for the rest of the session. Measured: `worlds/a.mp3`
+  audible before, `foundation/forest.mp3` + `foundation/wind.mp3` alone
+  after.
+- **That `else` was written as "a graceful no-op"**, and it was one — at
+  a time when no Theme declared ambience and there was no default to
+  lose. `DEFAULT_WORLD_AMBIENCE` arriving turned an intended no-op into a
+  mute. **A Theme saying nothing about music is not a Theme asking for
+  silence.**
+- **Silence stays askable, and that is the difference.** `stopWorld()` is
+  unchanged and still exported; what changed is that it now has to be
+  requested rather than being what "this Theme said nothing" happens to
+  mean. `AudioManager.restoreDefaultWorld()` is the other answer, and it
+  lives in AudioManager because AudioManager owns the default and
+  `themeEngine` must not learn its name — the same seam that already
+  keeps AudioManager from knowing what a Theme is.
+- **A World that declares its own ambience still wins the slot**, and
+  clearing it hands the slot back to the default rather than to nothing.
+- **The rotation was never broken.** Verified over 72 seconds: `a.mp3`
+  (45s) hands over to `e.mp3` (150s) on the ordinary crossfade. "Only
+  single track" was the weather bed left playing alone.
+- **The suite measures what a child hears, never what the code says.**
+  `tools/atmosphere-test/` spies the `Audio` constructor — every element
+  AudioManager builds is `new Audio(src)` and never enters the document,
+  so there is nothing to query for — and asks which of them are running
+  above silence. A check that read `applyTheme`'s own branch would have
+  agreed with the bug. Proved by reverting the fix and watching A5 and A7
+  go red.
+- **Disclosed, unfixed, and a product decision rather than a defect:**
+  Magic Publish's exported reel carries an ambient bed
+  (`_magicAmbientBuffer` → `ReelComposer`'s `ambientBuffer`) and the
+  Story Reel export does not. Both are frozen surfaces; giving an export
+  a music bed is a product change, not a bug fix.
+- `js/audioManager.js` · `js/themeEngine.js` ·
+  `tools/atmosphere-test/run-atmosphere-tests.js`
+
 ### 21. VihuPlanet Is For Everybody; the Studio Needs a Laptop
 
 Locked by the product owner: *"vihuplanet is meant for laptop screens

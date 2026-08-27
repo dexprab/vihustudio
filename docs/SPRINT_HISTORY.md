@@ -8723,3 +8723,52 @@ one with a real box.
 Rite gate 103/103, levels 59/59, creation home 84/84, celebration 31/31,
 traveller reset 16/16, capability audit 4/4, zero page errors.
 Build 0670 → 0671.
+
+---
+
+## A world that declares no music has no opinion about music (build 0672)
+
+*"the created story in its background track music does not have ambience
+music. it looks like only single track plays in it."* Reproduced on the
+first probe, and it was worse than one track.
+
+The Foundation bed is **weather**: forest at 0.35 and wind at 0.15, with
+air, harmony and magic deliberately at zero since the mix was reported as
+*"the music sounds like a horror movie music"*. The **music** is the
+World ambience layer above it — a Theme's own `audio.ambience`, or
+`DEFAULT_WORLD_AMBIENCE` (`a`, `c`, `e`, rotating).
+
+`js/themeEngine.js` called `AudioManager.stopWorld()` for any Theme
+declaring no ambience, which its own comment says is every Theme today.
+So the music played on VihuPlanet and in the Studio right up until a
+child opened a story, and then stopped for the rest of the session.
+Measured: `worlds/a.mp3` audible before `CreationFlow.startBlank()`,
+`forest.mp3` + `wind.mp3` alone after.
+
+That `else` was written as *"a graceful no-op"* and was one — before a
+default existed. `DEFAULT_WORLD_AMBIENCE` arriving turned it into a mute
+nobody chose. A Theme saying nothing about music is not a Theme asking
+for silence, so it now hands the slot back:
+`AudioManager.restoreDefaultWorld()`, which lives in AudioManager because
+AudioManager owns the default and themeEngine must not learn its name —
+the same seam that keeps AudioManager from knowing what a Theme is.
+`stopWorld()` is unchanged and still exported: silence stays askable, it
+just has to be asked for.
+
+The rotation was never broken — verified over 72 seconds, `a.mp3` (45s)
+hands over to `e.mp3` (150s) on the ordinary crossfade. "Only single
+track" was the weather bed playing alone.
+
+`tools/atmosphere-test/` (9) measures what a child hears rather than what
+the code says: every element AudioManager builds is `new Audio(src)` and
+never enters the document, so the constructor is the seam, and each check
+asks which clips are running above silence. A check that read
+`applyTheme`'s own branch would have agreed with the bug. Proved by
+reverting the fix and watching A5 and A7 go red.
+
+Disclosed and not fixed, because it is a product decision rather than a
+defect: Magic Publish's exported reel carries an ambient bed and the
+Story Reel export does not. Both are frozen surfaces.
+
+Atmosphere 9/9, levels 59/59, creation home 84/84, zero page errors.
+Build 0671 → 0672.
