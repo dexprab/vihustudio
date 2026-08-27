@@ -9354,3 +9354,128 @@ Memory 58/58 (0 skipped), ether 68/68, presence 89/89, identity 109/109,
 moments 88/88, canon 94/94, chat 230/230, context 90/90, edge auth
 127/127, companion 50/50, garden 104/104, traveller reset 16/16. Both
 OpenAI production gates remain unset. Build 0683 → 0684.
+
+## Sprint 1N — The Deterministic Companion Mind
+
+The last intelligence layer before a model, and it connects nothing: no
+OpenAI, no provider, no key, no network call, no microphone, and both
+production gates still closed. What it adds is the part a child can
+actually use — a Companion that knows what is being asked, answers from
+authoritative facts, and knows when it does not know.
+
+**One Mind, two relationships, one file.** `js/companionMind.js` takes a
+mode. A Creator is answered server-side inside `companion-chat`, because
+memory retrieval and story authority are the server's (Sprints 1E.1 and
+1F) and moving either back to the browser is what those sprints exist to
+prevent. A Traveller is answered in the browser, because an Ether
+encounter has no Creator data in it and makes no request. The Edge
+Function carries a generated copy, exactly as the auth gate, the privacy
+gate and the ranking already do — two classifiers is two things that can
+disagree about what a child's sentence means.
+
+**The Ether encounter lost its own implementation and kept its
+behaviour — and the exception is the interesting half.** Across the
+thirty-one sentences the old implementation had rules for: 744
+comparisons, zero differences. A wider corpus then found three places it
+now answers differently, and in all three the old one was wrong — *"what
+are you doing?"* answered *"I'm a Bloomling"* because the species
+pattern did not stop at the verb, *"how long have we been friends?"*
+answered with the Story's page count because a bare `how long` sat in the
+story rules, and a request to leave VihuPlanet got *"I don't know"*
+because there was no rule for one. Measured against a vendored copy of
+the pre-delegation file, not against `git show HEAD`, which would have
+been vacuous the moment this was committed.
+`js/travellerContext.js`'s whitelist still runs first, in that file; the
+Mind is handed an approved public context or nothing.
+
+**The Mind has its own switch, and it is neither OpenAI gate.**
+`COMPANION_MIND_ENABLED`. The production gate is named for what it
+guards — a child's words leaving VihuPlanet for a provider — and the Mind
+never leaves the function. The Mind branch returns before
+`makeProvider()` exists, so provider calls = 0 is control flow rather
+than a promise; measured across the whole corpus, every outbound call
+went to this project's own database and to one host.
+
+**Personality moves expression and never fact.** *"There are 3 pages."*
+is one string for all four Companions, wearing *Let me look.* · *Ooh,
+let me see.* · *One moment.* · *Mm…* — proved by lifting the fact back
+out and comparing. Character-only answers come back in four distinct
+voices. There is no `if (companion === ...)` in the Mind, and
+`assets/*/personality.json` is still not read at runtime.
+
+**The named thing is load-bearing.** Asked about the forest, a Companion
+must not answer about the dragon: a question naming something is
+answered only by a memory containing it, and by an honest *"I don't have
+that one"* otherwise. A question naming nothing in particular takes the
+ranked answer, because there is no wrong thing to pick.
+
+**Silence is a result.** Outside its set the Mind returns
+`{reply:'', speak:false}` and the surface shows nothing. A fact the
+context does not hold is never guessed at, and with no context at all
+the Mind fails closed — the one place in this codebase that does.
+
+**The adversarial pass found a bug in itself first.** Eight boundaries
+are removed one at a time and the guard watching each must go red. The
+first draft passed `null` as the session token, which the request builder
+reads as *send no Authorization header* — so every broken build was
+answered 401 and three boundaries reported themselves holding when what
+was holding was the front door. Every probe now proves the broken build
+still answers before judging it.
+
+**`\bremember\s*\(` matched a regex alternation.** The Ether's privacy
+pattern carried `remember(?:ed|s)?`, whose literal characters are
+indistinguishable from a call to the memory API. Seventh time this
+repository has been caught by a substring inside its own vocabulary, and
+the first inside a regex literal. The spelling moved; the check did not.
+The eighth arrived in the same sprint: a provider-name scan read
+`js/companionMind.js`'s own header sentence *"there is no OpenAI here"*
+as a leak.
+
+**Persistence is proven as architecture, not as production.** A
+deterministic memory is written by its own Creator's session through the
+real policies, survives the session, is retrieved by a new session for
+the same Creator and card, and the Mind answers from it — against a
+disposable PostgreSQL 16 running this repository's own migration. This
+environment cannot reach the live Supabase project, so the real
+production cross-device experience is not claimed.
+
+**The Studio still does not offer a conversation it cannot have.**
+`CONVERSATION_OFFERED` stays `false`. The client already sends exactly
+what the Mind needs, so no client change was required; what is missing
+is a deploy, and Edge Functions are deployed by hand here. Flipping the
+constant before `COMPANION_MIND_ENABLED` is set on the server would
+reproduce the always-silent door Sprint 1K removed.
+
+**And the door stays shut for a measured reason, not a cautious one.**
+With `COMPANION_MIND_ENABLED` unset, a Creator request does not fall
+through to silence — it falls into the fixture branch, and the mock
+answers from a synthetic story with synthetic memories. Measured: a
+request naming a real card, a real story and asking *"what story am I
+making?"* came back `{"reply":"I am here.","meta":{"synthetic":true,
+"fixture":"hello"}}`. A child would be answered about a story they never
+made. So the constant flips AFTER the flag is set on the server, in that
+order.
+
+**And the door stays shut for a measured reason, not a cautious one.**
+With `COMPANION_MIND_ENABLED` unset, a Creator request does not fall
+through to silence — it falls into the fixture branch, and the mock
+answers from a synthetic story with synthetic memories. Measured: a
+request naming a real card, a real story and asking *"what story am I
+making?"* came back `{"reply":"I am here.","meta":{"synthetic":true,
+"fixture":"hello"}}`. A child would be answered about a story they never
+made. So the constant flips AFTER the flag is set on the server.
+
+**Disclosed, unfixed:** the model path still builds a real Creator
+context with the fixture personality, so if production ever opened, a
+child bonded to Leo would be answered as Leafy. A latent fault in a
+closed path, and changing it is not this sprint's.
+
+Decision: `CLAUDE.md` → Decision 46.
+
+Mind 159/159 (section L skipped there — those suites are run directly),
+companion 50/50, moments 88/88. The remaining suites were still running
+when this landed and are recorded in the follow-up; nothing in the tree
+changed after the mind suite went green.
+
+Both OpenAI production gates remain unset, and `COMPANION_MIND_ENABLED`
+ships unset too. Build 0684 → 0685.

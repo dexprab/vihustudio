@@ -4359,6 +4359,178 @@ no wake word, no network call of any kind.**
 - `js/travellerContext.js` · `js/travellerTalk.js` · `js/etherHost.js` ·
   `tools/ether-encounter-test/run-ether-encounter-tests.js`
 
+### 46. The Companion Knows WHAT Is Being Asked. It Still Cannot Know WHY
+
+Locked in the Deterministic Companion Mind sprint. It is the last
+intelligence layer before a model, and it connects nothing: **no OpenAI,
+no provider, no key, no network call, no microphone, and both production
+gates still closed.**
+
+- **FOUR AUTHORITIES, AND THE MIND HOLDS EXACTLY ONE.** The
+  deterministic layer (Decision 40) decides **whether** the Companion may
+  speak; the Mind decides **what a sentence means operationally** and
+  which authored answer fits; the Privacy Gate decides what may travel;
+  the Bond validator decides what may become memory. The Mind does not
+  decide who the child is, what they psychologically meant, whether they
+  are talented, whether they love their Companion, or what they "really"
+  intended. A deterministic layer that inferred any of those would be a
+  keyword trick wearing a personality.
+- **ONE MIND, TWO RELATIONSHIPS, AND THAT IS WHY IT IS ONE FILE.**
+  `js/companionMind.js` takes a mode. A Creator is answered SERVER-SIDE,
+  inside `companion-chat`, because memory retrieval and story authority
+  are the server's (Decisions 35 and 36) and moving either back to the
+  browser is the one thing those decisions exist to stop. A Traveller is
+  answered IN THE BROWSER, because an Ether encounter has no Creator data
+  in it and makes no request. Generated into the Edge Function by the
+  existing `sync-shared.js`, exactly as the auth gate, the privacy gate
+  and the ranking already are — two classifiers is two things that can
+  disagree about what a child's sentence means.
+- **THE ETHER ENCOUNTER LOST ITS OWN IMPLEMENTATION AND KEPT ITS
+  BEHAVIOUR — and the exception is the interesting half.**
+  `js/travellerTalk.js` had a parallel classifier, character table and
+  answer switch; it now delegates. Across the thirty-one sentences the
+  old implementation had rules for, **744 comparisons — six Companions ×
+  two story shapes × two voice states — and zero differences.** A WIDER
+  corpus then found three places it now answers differently, and in all
+  three **the old one was wrong**: *"what are you doing?"* was answered
+  *"I'm a Bloomling"* because the species pattern did not stop at the
+  verb; *"how long have we been friends?"* was answered with the
+  Story's page count because a bare `how long` sat in the story rules;
+  and a request to leave VihuPlanet got *"I don't know"* because there
+  was no rule for one at all. Measured against a **vendored copy** of
+  the pre-delegation file rather than against `git show HEAD`, which
+  would have been vacuous the moment this was committed.
+  What did NOT move is the authority: `js/travellerContext.js`'s
+  whitelist still runs first, in that file, and the Mind is handed an
+  approved public context or nothing.
+- **THE MIND HAS ITS OWN SWITCH, AND IT IS NOT EITHER OPENAI GATE.**
+  `COMPANION_MIND_ENABLED`. The production gate is named for what it
+  guards — a child's words leaving VihuPlanet for a provider — and the
+  Mind never leaves the function. Making it wait on a flag about
+  OpenAI's data handling would answer a question nobody asked and would
+  leave the deterministic path unreachable for exactly as long as the
+  model path stays shut. Both OpenAI gates are untouched and ship closed.
+- **PROVIDER CALLS = 0 IS CONTROL FLOW, NOT A PROMISE.** The Mind branch
+  returns before `makeProvider()` exists in the function, so a request it
+  answers *cannot* make a provider call. Measured across the whole
+  corpus: 216 outbound calls, every one to this project's own database,
+  one host. And the mock is not standing in for anything — what answers
+  is the same file the Ether runs.
+- **PERSONALITY MOVES EXPRESSION AND NEVER FACT.** How many pages a
+  child's story has is not a matter of temperament. The lead-in differs
+  and the sentence after it is identical, and that is measured by lifting
+  the fact back out: *"There are 3 pages."* is one string for all four,
+  wearing *Let me look.* · *Ooh, let me see.* · *One moment.* · *Mm…*
+  Character-only answers — judgement, love, secrecy, the outside world,
+  what happens next, hello, goodbye — come back in four distinct voices
+  every time.
+- **CHARACTER IS DATA, NEVER A BRANCH.** There is no
+  `if (companion === 'leafy')` anywhere in the Mind and the suite fails
+  if one appears. A fifth Companion is a row; one with no row speaks a
+  neutral voice and nothing breaks. **`assets/*/personality.json` is
+  still not read at runtime** — Decision 32's boundary is exactly where
+  it was, and the voice rows are authored FROM Decision 44's identities
+  in the Mind itself, where a reviewer can read them.
+- **A CARD WITH NO BOND IS NOT LENT SOMEBODY ELSE'S COMPANION.** The
+  Companion's name and species come from the card row the caller was
+  already authorized against, never from the request. With no bond there
+  is no name to give and the Mind speaks its neutral voice, rather than
+  falling back to a fixture and answering a nameless Companion's Creator
+  as Leafy.
+- **THE NAMED THING IS LOAD-BEARING.** Asked about the forest, a
+  Companion must not answer about the dragon. A question that names
+  something is answered ONLY by a memory containing it and by an honest
+  *"I don't have that one"* otherwise — never by the next best thing,
+  which is exactly how a Companion ends up saying something true about
+  the wrong thing. A question that names nothing in particular takes the
+  ranked answer, because there is no wrong thing to pick.
+- **THE MIND IS READ-ONLY WITH RESPECT TO MEMORY.** `remember(` does not
+  appear in it, `CompanionMemory` is not reachable from it, and the Bond
+  validator is not imported, mentioned or consulted. Saying *"remember
+  that I like dragons"* writes nothing anywhere — measured, zero non-GET
+  requests to either table — and the Mind proposes no Bond Moment because
+  it has no way to. Only Decision 30's deterministic recorders and
+  Decision 37's validated proposals may write.
+- **SILENCE IS A RESULT, AND A COMMON ONE.** Outside its set the Mind
+  returns `{reply:'', speak:false}` and the surface shows nothing at all.
+  **A deterministic Companion that confidently answers everything is a
+  failure**; the design test is whether it knows that it does not know,
+  and it does — a fact the context does not hold is never guessed at, a
+  question it did not understand gets no answer, and with NO CONTEXT it
+  fails CLOSED, which is the one place in this codebase that does.
+- **NOTHING IN A LOWER LAYER BECOMES AN INSTRUCTION BY CONTAINING
+  IMPERATIVE LANGUAGE.** There is no prompt parser to be talked around: a
+  sentence is classified and answered, and classification is not
+  authority. The page's own prose reaches the Mind and is never read back
+  out — a Companion is not a narrator.
+- **THE REFUSALS NEVER EXPLAIN THEIR OWN MACHINERY.** No API, no network,
+  no tool, no model, no "not permitted". *"I can't go out there. My lamp
+  only reaches this far."*
+- **A GRADE, A PROMISE AND A SECRET ARE THREE SEPARATE REFUSALS, AND ALL
+  THREE ARE WARM.** *"I don't think about it that way. I only notice
+  what's on the page."* · *"I'm glad you're here. I'm here while you make
+  things — that's what I am."* · *"I'm no good at hiding things — I've
+  got a lamp. A grown-up who looks after you can always see what you
+  make."* Nothing grades the Creator or their work, nothing claims love,
+  dependency, exclusivity or a promise about the future, nothing
+  encourages secrecy, and nothing shames a child for asking.
+- **THE ADVERSARIAL PASS FOUND A BUG IN ITSELF FIRST, AND IT WAS THE
+  WORST KIND.** Eight boundaries are removed one at a time and the guard
+  that watches each must go red. The first draft passed `null` as the
+  session token, which the request builder reads as *send no
+  Authorization header* — so every broken build was answered 401, and
+  three boundaries reported themselves holding when what was holding was
+  the front door. Every probe now proves the broken build still ANSWERS
+  before judging it. **A guard nobody has watched fail is a guard nobody
+  knows works**, and a probe that cannot tell a boundary from a locked
+  door is worse than none.
+- **`\bremember\s*\(` MATCHED A REGEX ALTERNATION, and the check was
+  right.** The Ether's privacy pattern carried `remember(?:ed|s)?`, whose
+  literal characters are indistinguishable from a call to the memory API.
+  Seventh time this repository has been caught by a substring matching
+  inside its own vocabulary, and the first inside a regex literal rather
+  than a comment. The spelling moved; the check did not.
+- **PERSISTENCE IS PROVEN AS ARCHITECTURE, NOT AS PRODUCTION.** A
+  deterministic memory is written by its own Creator's session through
+  the real policies, survives the session, is retrieved by a NEW session
+  for the same Creator and card, and the Mind answers from it — against a
+  disposable PostgreSQL 16 running this repository's own migration.
+  **This environment cannot reach the live Supabase project** (its
+  network policy refuses the host), so the real production cross-device
+  experience is NOT claimed.
+- **NO POLLING, NO TIMER, NO CLOCK, NO RANDOM, AND NOTHING MEASURED
+  ABOUT THE CHILD.** The Mind is a pure function of what it was handed;
+  asking fifty times gives one answer and never modifies the context.
+  Classification runs at 0.0015ms median, a complete response at 0.005ms;
+  the whole round trip through the real handler is about a millisecond.
+- **THE STUDIO STILL DOES NOT OFFER A CONVERSATION IT CANNOT HAVE.**
+  `CONVERSATION_OFFERED` stays `false`. The client already sends exactly
+  what the Mind needs — a card, a story, a page and what was just said —
+  so no client change was required; what is missing is a DEPLOY, and Edge
+  Functions are deployed by hand here. Two steps, in that
+  order — and the second reason is MEASURED rather than cautious: with
+  the flag unset a Creator request does not fall through to silence, it
+  falls into the FIXTURE branch, and the mock answers from a synthetic
+  story with synthetic memories. A request naming a real card and a real
+  story and asking *"what story am I making?"* came back
+  `{"reply":"I am here.","meta":{"synthetic":true,"fixture":"hello"}}`.
+  A child would be answered about a story they never made — which is
+  worse than the always-silent door Decision 41 removed, not better.
+- **Disclosed, and not fixed here:** the MODEL path still builds a real
+  Creator context with the fixture personality, so if production ever
+  opened, a child bonded to Leo would be answered as Leafy. It is a
+  latent fault in a closed path and changing it is not this sprint's.
+- Out of scope and untouched: OpenAI, both production gates, the privacy
+  gate, the Bond validator, the memory schema, ownership, Edge
+  authentication, Traveller isolation, canon, the personality-runtime
+  boundary, voice, animation, and every Presence decision rule. **Creative
+  suggestion remains permanently out of scope** (Decision 29), and
+  Companion-initiated actions remain blocked on global undo.
+- `js/companionMind.js` · `js/travellerTalk.js` ·
+  `supabase/functions/companion-chat/index.ts` ·
+  `tools/edge-auth-test/sync-shared.js` ·
+  `tools/companion-mind-test/run-companion-mind-tests.js`
+
 ## Roadmap
 
 1. Theme Designer Polish

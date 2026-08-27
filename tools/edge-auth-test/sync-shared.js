@@ -192,6 +192,39 @@ const RANK_BLOCK_RE = new RegExp(RANK_BEGIN.replace(/[.*+?^${}()|[\]\\]/g, '\\$&
   '[\\s\\S]*?' + RANK_END.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'm');
 
 // ---------------------------------------------------------------
+// AND THE DETERMINISTIC MIND (Sprint 1N)
+//
+// The Mind answers a Creator server-side, because memory retrieval and
+// story authority are the server's (Sprint 1E.1 and 1F) and moving
+// either back to the browser is the one thing those sprints existed to
+// stop. It answers a Traveller in the browser, because an Ether
+// encounter has no Creator data in it at all and makes no request.
+//
+// ONE FILE, TWO PLACES, so a sentence a child hears cannot depend on
+// which of two copies happened to be running. Generated like the gate
+// and the ranking, and by the same script.
+const MIND_CANON = path.join(ROOT, 'js', 'companionMind.js');
+const MIND_BEGIN = '// ===== BEGIN GENERATED companionMind — do not edit below this line =====';
+const MIND_END   = '// ===== END GENERATED companionMind =====';
+
+const MIND_BLOCK = [
+  MIND_BEGIN,
+  '// Generated from js/companionMind.js, which is the readable',
+  '// original with every decision explained. Regenerate with:',
+  '//   node tools/edge-auth-test/sync-shared.js',
+  strip(fs.readFileSync(MIND_CANON, 'utf8')),
+  MIND_END,
+].join('\n');
+
+const MIND_BLOCK_RE = new RegExp(MIND_BEGIN.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') +
+  '[\\s\\S]*?' + MIND_END.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'm');
+
+function withMind(src) {
+  if (!MIND_BLOCK_RE.test(src)) throw new Error('no companionMind marker block to replace');
+  return src.replace(MIND_BLOCK_RE, MIND_BLOCK);
+}
+
+// ---------------------------------------------------------------
 // AND THE BOND VALIDATOR (Sprint 1G)
 //
 // The model may propose a memory; this is what decides. Server-only —
@@ -237,7 +270,7 @@ FUNCTIONS.forEach((name) => {
   let after;
   try {
     after = inlined(before);
-    if (GATE_FUNCTIONS.indexOf(name) !== -1) after = withBond(withRank(withGate(after)));
+    if (GATE_FUNCTIONS.indexOf(name) !== -1) after = withMind(withBond(withRank(withGate(after))));
   } catch (e) { console.log('  ERROR   ' + rel + ' — ' + e.message); drifted++; return; }
 
   if (after === before) { console.log('  ok      ' + rel); return; }

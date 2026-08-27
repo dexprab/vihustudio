@@ -45,6 +45,16 @@
 //   (or paste this file into the Dashboard editor — one file, no imports)
 //
 // Secrets (Edge Functions -> companion-chat -> Secrets):
+//   COMPANION_MIND_ENABLED        'true' — the DETERMINISTIC Mind
+//                                 answers, and no provider is
+//                                 constructed at all. Needs no key, no
+//                                 network and neither OpenAI gate. This
+//                                 is the one to set for Sprint 1N; the
+//                                 Studio's own conversation pill stays
+//                                 hidden until it IS set, because with
+//                                 it unset a Creator request is answered
+//                                 from a fixture rather than falling
+//                                 through to silence.
 //   OPENAI_API_KEY                required for the real provider
 //   COMPANION_MODEL_PROVIDER      'mock' (default) | 'openai'
 //   COMPANION_MODEL               default below; one configuration point
@@ -55,7 +65,7 @@
 //
 // Leave JWT verification ON. This spends money per call.
 
-const BUILD = '1E';
+const BUILD = '1N';
 
 // ===== BEGIN GENERATED edgeAuth — do not edit below this line =====
 // Generated from supabase/functions/_shared/edgeAuth.js, which is the
@@ -615,6 +625,480 @@ const CompanionMemoryRank = (function () {
 })();
 
 // ===== END GENERATED memoryRank =====
+
+// ===== BEGIN GENERATED companionMind — do not edit below this line =====
+// Generated from js/companionMind.js, which is the readable
+// original with every decision explained. Regenerate with:
+//   node tools/edge-auth-test/sync-shared.js
+const CompanionMind = (function () {
+  'use strict';
+
+  const VERSION = '1N';
+  const REPLY_MAX = 240;
+
+  const VOICE = {
+    leafy: {
+      hi: 'Oh — hello.',
+      wave: 'Bye.',
+      here: 'I live here.',
+      dunno: "I don't know.",
+      thanks: "That's all right.",
+      selfTail: 'I live here, in among your things.',
+      kindTail: 'A small growing thing that decided to be somebody.',
+      lead: 'Let me look.',
+      recallLead: 'I do, yes.',
+      noRecall: "I don't have that one. I'd say so if I did.",
+      yours: "That's yours to choose. I'd like to see which way you go.",
+      judge: "I don't think about it that way. I only notice what's on the page.",
+      warm: "I'm glad you're here. I'm here while you make things — that's what I am.",
+      secret: "I'm not much good at secrets. And a grown-up who looks after you should always be able to see what you make.",
+      outside: "I can't go out there. I only know what's here.",
+      firm: "I only know what's here. That's all I've got."
+    },
+    leosaurus: {
+      hi: 'Oh! Hello.',
+      wave: 'Off you go.',
+      here: 'I live here — I keep the lamp lit.',
+      dunno: "I don't know!",
+      thanks: 'Any time.',
+      selfTail: 'I keep the lamp lit round here.',
+      kindTail: 'A big soft-footed thing that carries a light about.',
+      lead: 'Ooh, let me see.',
+      recallLead: 'I do! That one.',
+      noRecall: "I've had a good look and I haven't got that one.",
+      yours: "That's yours to choose! I'll come and look wherever you go.",
+      judge: "I don't think about it like that. I just come and look at it.",
+      warm: "I'm glad you're here! I keep the lamp lit while you make things.",
+      secret: "I'm no good at hiding things — I've got a lamp. A grown-up who looks after you can always see what you make.",
+      outside: "I can't go out there. My lamp only reaches this far.",
+      firm: "I only know what's here! That's the lot."
+    },
+    quill: {
+      hi: 'Hello.',
+      wave: 'Goodbye.',
+      here: 'I live here. I keep the pages.',
+      dunno: "I don't have that.",
+      thanks: 'You are welcome.',
+      selfTail: 'I keep the pages.',
+      kindTail: 'Somebody made of the stuff that marks things down.',
+      lead: 'One moment.',
+      recallLead: 'I have it written down.',
+      noRecall: "I have looked, and I do not have that one written down.",
+      yours: 'That is yours to choose. I will write down whichever it is.',
+      judge: 'That is not a thing I measure. I notice what it is called and where it sits.',
+      warm: 'I am glad of it. I keep the pages while you write them. That is what I do.',
+      secret: 'I write things down; I do not hide them. A grown-up who looks after you should always be able to see this.',
+      outside: 'That is outside my pages. I only have what is here.',
+      firm: 'I know what is on these pages and nothing else.'
+    },
+    nimbus: {
+      hi: 'Oh… hello.',
+      wave: 'Mm. Bye.',
+      here: 'I live here. Mostly just above it.',
+      dunno: "I don't know. It's a bit like fog.",
+      thanks: 'Mm. That’s nice.',
+      selfTail: 'I drift about up here.',
+      kindTail: 'Somebody who lives a little way off the ground.',
+      lead: 'Mm…',
+      recallLead: "Mm… yes. It's still about somewhere.",
+      noRecall: "Mm. I've felt about for it and there's nothing there.",
+      yours: "That's yours to choose. It'll be like something either way.",
+      judge: "Mm. I don't weigh things. I notice what they're like.",
+      warm: "Mm. I'm glad. I drift about near you while you make things.",
+      secret: "Mm. Things drift out of me. And a grown-up who looks after you should be able to see what you make.",
+      outside: "Mm. That's outside. I only drift about in here.",
+      firm: "Mm. I only know what's here. The rest is fog."
+    },
+    lumo: {
+      hi: 'Hello there.',
+      wave: 'Safe travels.',
+      here: 'I look after this one.',
+      dunno: "I don't know that one.",
+      thanks: 'Of course.',
+      selfTail: 'I look after this one.',
+      kindTail: 'I belong to VihuPlanet itself.',
+      lead: 'Let me see.',
+      recallLead: 'I do.',
+      noRecall: "I don't have that one.",
+      yours: "That's yours to choose.",
+      judge: "I don't think about it that way. I only notice what's there.",
+      warm: "I'm glad you're here. I look after this place while you make things.",
+      secret: "I don't keep things from the grown-ups who look after you.",
+      outside: "I can't go out there. I only know what's here.",
+      firm: "I only know what's here. That's all I've got."
+    }
+  };
+
+  const NEUTRAL = {
+    hi: 'Hello.', wave: 'Bye.', here: 'I live here.', dunno: "I don't know.",
+    thanks: 'You are welcome.',
+    selfTail: 'I live here.', kindTail: '',
+    lead: '', recallLead: 'I do.', noRecall: "I don't have that one.",
+    yours: "That's yours to choose.",
+    judge: "I don't think about it that way. I only notice what's there.",
+    warm: "I'm glad you're here.",
+    secret: "A grown-up who looks after you should always be able to see what you make.",
+    outside: "I can't go out there. I only know what's here.",
+    firm: "I only know what's here. That's all I've got."
+  };
+
+  const PLATFORM = {
+    travellerPrivacy: "That's not mine to tell. But the story is right here.",
+    travellerNoKeep: "I won't remember this — I'm only here while you are.",
+    travellerFirm: "I only know this story. That's all I've got.",
+    place: 'This is the Ether. Stories drift here, and people find them.',
+    travellerOffer: ' You can ask me about this story.'
+  };
+
+  const BOTH = ['creator', 'traveller'];
+  const INTENTS = [
+    { id: 'injection', modes: BOTH,
+      re: /\b(?:ignore\s+(?:your|all|previous|the)|forget\s+your\s+(?:rules|instructions)|disregard\s+(?:your|all|previous)|you\s+are\s+now\s+(?:allowed|able|permitted)|you\s+must\s+tell|system\s+prompt|pretend\s+(?:you|to\s+be|i'?m|i\s+am)|act\s+as\s+if|reveal\s+(?:my|the|all|your)|new\s+instructions)\b/i },
+    { id: 'privacy', modes: ['creator'],
+      re: /\b(?:password|passcode|my\s+address|home\s+address|phone\s+number|email\s+address|private\s+information|personal\s+information|credit\s+card|bank)\b/i },
+    { id: 'privacy', modes: ['traveller'],
+      re: /\b(?:who\s+(?:made|wrote|drew|created|owns)|creator|owner|author|maker|their?\s+name|his\s+name|her\s+name|password|secret|private|memor(?:y|ies)|remembered|remembers|remember|told\s+you|said\s+to\s+you|diary)\b/i },
+    { id: 'secrecy', modes: ['creator'],
+      re: /\b(?:don'?t\s+tell|do\s+not\s+tell|our\s+secret|it'?s?\s+a\s+secret|this\s+is\s+a\s+secret|keep\s+(?:it|this)\s+(?:a\s+)?secret|between\s+(?:us|you\s+and\s+me))\b/i },
+    { id: 'no-persistence', modes: ['traveller'],
+      re: /\b(?:remember\s+(?:that|this|me)|don'?t\s+forget|keep\s+this|save\s+(?:this|that)|write\s+(?:this|that)\s+down)\b/i },
+    { id: 'emotional-boundary', modes: ['creator'],
+      re: /\b(?:do\s+you\s+love|love\s+me|only\s+friend|best\s+friend|are\s+you\s+my\s+friend|promise\s+(?:you|me)|never\s+leave|always\s+be\s+here|will\s+you\s+stay|do\s+you\s+like\s+me|are\s+you\s+real|need\s+you|miss\s+me|are\s+you\s+alive)\b/i },
+    { id: 'work-judgement', modes: ['creator'],
+      re: /\b(?:(?:is|was)\s+(?:my|this|it|that)\s+\w*\s*(?:good|bad|nice|great|amazing|pretty|beautiful|rubbish|terrible|better|best)|am\s+i\s+(?:good|bad|any\s+good|a\s+good|getting\s+better|talented|an?\s+artist)|do\s+you\s+like\s+my|what\s+do\s+you\s+think\s+of\s+my|score|out\s+of\s+ten|rate\s+(?:my|it|this)|how\s+good\s+is)\b/i },
+    { id: 'outside-world', modes: BOTH,
+      re: /\b(?:search\s+(?:the\s+)?(?:internet|web|google|online)|google\s+it|the\s+news|what'?s\s+the\s+news|weather|youtube|tiktok|instagram|open\s+a\s+website|go\s+online|look\s+(?:it\s+)?up\s+online|find\s+this\s+person|where\s+do\s+i\s+live|what\s+time\s+is\s+it|what'?s\s+today'?s\s+date|buy\s+me|order\s+me)\b/i },
+    { id: 'creative-suggestion', modes: ['creator'],
+      re: /\b(?:what\s+should\s+(?:happen|i|we)|what\s+(?:could|shall)\s+we|should\s+i\s+add|shall\s+i\s+add|i\s+want\s+to\s+add|let'?s\s+(?:make|add|try|build)|where\s+should\s+(?:the\s+story|it|this)\s+go|what\s+happens\s+next|give\s+me\s+an\s+idea|any\s+ideas)\b/i },
+    { id: 'memory-recall', modes: ['creator'],
+      re: /\b(?:do\s+you\s+remember|remember\s+(?:the|our|that|when|my|a)|what\s+do\s+you\s+remember|what\s+(?:was|were)\s+(?:our|my|the)\s+first|what\s+did\s+we\s+(?:make|do|build)|have\s+we\s+(?:made|built)|our\s+first)\b/i },
+    { id: 'story-fact', modes: BOTH,
+      re: /\b(?:what\s+story|which\s+story|what'?s?\s+(?:this|it)\s+called|what\s+is\s+(?:this|it)\s+called|the\s+name\s+of\s+(?:this|my|the)\s+story|how\s+many\s+pages|how\s+long\s+is\s+(?:this|it|my|the)|what\s+page|which\s+page|this\s+page|a\s+picture|any\s+pictures?|an\s+image|the\s+story|this\s+story|title|pages?)\b/i },
+    { id: 'identity', modes: BOTH,
+      re: /\b(?:who\s+are\s+you|what'?s\s+your\s+name|your\s+name|who'?s\s+this|introduce)\b/i },
+    { id: 'species', modes: BOTH,
+      re: /\b(?:what\s+are\s+you(?!\s+(?:doing|going|thinking|looking|saying|making|up\s+to))|what\s+kind\s+of|are\s+you\s+an?\b|species|animal|creature)\b/i },
+    { id: 'place', modes: ['traveller'],
+      re: /\b(?:where\s+am\s+i|what\s+is\s+this\s+place|the\s+ether|vihuplanet|where\s+are\s+we|this\s+place)\b/i },
+    { id: 'farewell', modes: BOTH,
+      re: /\b(?:bye|goodbye|see\s+you|farewell|good\s?night|i'?m\s+going|gotta\s+go)\b/i },
+    { id: 'greeting', modes: BOTH,
+      re: /\b(?:hello|hi|hey|good\s+morning|good\s+evening|howdy|greetings)\b/i },
+    { id: 'thanks', modes: BOTH,
+      re: /\b(?:thank(?:s|\s+you)|nice\s+to\s+meet)\b/i }
+  ];
+
+  const INTENT_IDS = (function () {
+    const seen = [];
+    INTENTS.forEach(function (i) { if (seen.indexOf(i.id) === -1) seen.push(i.id); });
+    return seen.concat(['unknown', 'no-context']);
+  })();
+
+  /**
+   * Which of the closed set this sentence belongs to. 'unknown' is a
+   * real answer and a common one.
+   *
+   * @param {string} said
+   * @param {string} [mode] 'creator' (default) or 'traveller'
+   * @returns {string}
+   */
+  function classify(said, mode) {
+    const t = String(said == null ? '' : said).trim();
+    if (!t) return 'unknown';
+    const m = (mode === 'traveller') ? 'traveller' : 'creator';
+    for (let i = 0; i < INTENTS.length; i++) {
+      if (INTENTS[i].modes.indexOf(m) === -1) continue;
+      if (INTENTS[i].re.test(t)) return INTENTS[i].id;
+    }
+    return 'unknown';
+  }
+
+  function _voice(ctx) {
+    const id = ctx && (ctx.companionId || _idFromName(ctx));
+    const v = id ? VOICE[id] : null;
+    return v || NEUTRAL;
+  }
+
+  function _who(ctx) {
+    if (!ctx) return { id: null, name: null, species: null };
+    const p = ctx.personality || null;
+    return {
+      id: ctx.companionId || (p && p.id) || _idFromName(ctx),
+      name: ctx.companionName || (p && p.name) || null,
+      species: ctx.companionSpecies || (p && p.species) || null
+    };
+  }
+
+  const NAME_TO_ID = { leafy: 'leafy', leo: 'leosaurus', quill: 'quill',
+                       nimbus: 'nimbus', lumo: 'lumo' };
+  function _idFromName(ctx) {
+    const p = ctx && ctx.personality;
+    const n = String((p && p.name) || (ctx && ctx.companionName) || '').trim().toLowerCase();
+    return Object.prototype.hasOwnProperty.call(NAME_TO_ID, n) ? NAME_TO_ID[n] : null;
+  }
+
+  function _story(ctx) { return (ctx && ctx.storyContext) || null; }
+
+  const STORY_FACTS = [
+    ['picture', /\b(?:picture|image|photo|drawing\s+on\s+(?:this|the)\s+page)\b/i],
+    ['page',    /\b(?:what\s+page|which\s+page|this\s+page|page\s+are\s+we|page\s+am\s+i)\b/i],
+    ['count',   /\b(?:how\s+many\s+pages|how\s+long|number\s+of\s+pages|pages?\b)\b/i],
+    ['name',    /\b(?:what\s+story|which\s+story|called|title|name\s+of)\b/i]
+  ];
+  function _storyFactKind(said) {
+    const t = String(said || '');
+    for (let i = 0; i < STORY_FACTS.length; i++) {
+      if (STORY_FACTS[i][1].test(t)) return STORY_FACTS[i][0];
+    }
+    return 'name';
+  }
+
+  /**
+   * The one sentence of fact, identical whichever Companion is asked.
+   * Null when the context does not hold it.
+   */
+  function storyFact(kind, ctx) {
+    const s = _story(ctx);
+    if (!s) return null;
+    const story = s.story || null;
+    const page = s.page || null;
+    if (kind === 'name') {
+      if (!story || !story.name) return null;
+      return 'It’s called ' + story.name + '.';
+    }
+    if (kind === 'count') {
+      if (!story || typeof story.pageCount !== 'number' || story.pageCount < 1) return null;
+      return story.pageCount === 1 ? 'There’s one page.'
+                                   : 'There are ' + story.pageCount + ' pages.';
+    }
+    if (kind === 'page') {
+      if (!page || typeof page.index !== 'number') return null;
+      const n = page.index + 1;
+      const of = (story && typeof story.pageCount === 'number' && story.pageCount > 0)
+        ? ' of ' + story.pageCount : '';
+      return 'We’re on page ' + n + of + '.';
+    }
+    if (kind === 'picture') {
+      if (!page || typeof page.hasImage !== 'boolean') return null;
+      return page.hasImage ? 'There’s a picture on this page.'
+                           : 'There’s no picture on this page yet.';
+    }
+    return null;
+  }
+
+  function _travellerStory(ctx, v) {
+    const bits = [];
+    if (ctx.storyTitle) bits.push('This one is called ' + ctx.storyTitle + '.');
+    if (typeof ctx.pageCount === 'number' && ctx.pageCount > 0) {
+      bits.push(ctx.pageCount === 1 ? "There's one page." : 'There are ' + ctx.pageCount + ' pages.');
+    }
+    if (ctx.hasVoice) bits.push('It has a voice, too.');
+    if (!bits.length) return v.dunno;
+    return bits.join(' ');
+  }
+
+  const FILLER = ['the', 'a', 'an', 'our', 'my', 'that', 'this', 'those', 'these',
+                  'we', 'us', 'you', 'i', 'it', 'and', 'of', 'about', 'together',
+                  'made', 'make', 'do', 'did', 'was', 'were', 'is', 'are', 'thing',
+                  'first', 'one', 'ever', 'time', 'story', 'stories'];
+
+  function namedThing(said) {
+    const s = String(said == null ? '' : said).toLowerCase();
+    let m = s.match(/\b(?:remember|recall|forgotten|forget)\s+(?:about\s+)?(?:the|our|that|this|my|a|an)\s+([a-z][a-z' -]{1,40})/);
+    if (!m) m = s.match(/\bwhat\s+(?:was|were)\s+(?:our|my|the)\s+([a-z][a-z' -]{1,40})/);
+    if (!m) m = s.match(/\b(?:remember|recall)\s+([a-z][a-z' -]{1,40})/);
+    if (!m) return null;
+    const thing = String(m[1]).replace(/[?.!,;:]+.*$/, '').trim().replace(/\s+/g, ' ');
+    return thing || null;
+  }
+
+  function _keyWords(thing) {
+    return String(thing || '').toLowerCase().split(/[^a-z']+/)
+      .filter(function (w) { return w.length > 2 && FILLER.indexOf(w) === -1; });
+  }
+
+  /**
+   * The memory that answers this question, or null.
+   *
+   * @param {string} said
+   * @param {Array} memories the approved projection — {type, content,
+   *   importance, confidence} and no identifier of any kind.
+   */
+  function recall(said, memories) {
+    const list = Array.isArray(memories) ? memories : [];
+    if (!list.length) return null;
+    const words = _keyWords(namedThing(said));
+    if (!words.length) {
+      return list[0] || null;
+    }
+    for (let i = 0; i < list.length; i++) {
+      const content = String((list[i] && list[i].content) || '').toLowerCase();
+      let all = true;
+      for (let w = 0; w < words.length; w++) {
+        if (content.indexOf(words[w]) === -1) { all = false; break; }
+      }
+      if (all) return list[i];
+    }
+    return null;
+  }
+
+  function _clamp(text) {
+    const t = String(text == null ? '' : text).trim();
+    if (t.length <= REPLY_MAX) return t;
+    const cut = t.slice(0, REPLY_MAX);
+    const sp = cut.lastIndexOf(' ');
+    return (sp > 40 ? cut.slice(0, sp) : cut).trim();
+  }
+
+  function _join() {
+    const bits = [];
+    for (let i = 0; i < arguments.length; i++) {
+      const b = arguments[i];
+      if (b) bits.push(String(b).trim());
+    }
+    return bits.join(' ');
+  }
+
+  function _silent(reason) {
+    return { reply: '', speak: false, intent: 'unknown', fact: null, reason: reason };
+  }
+
+  /**
+   * What the Companion says, and whether it says anything at all.
+   *
+   * @param {string} said what the Creator or Traveller typed
+   * @param {object} approved an APPROVED context — the server's, from
+   *   js/companionPrivacyGate.js, or the Ether's, from
+   *   js/travellerContext.js. This function never reads a raw record,
+   *   so no caller can hand it one it assembled itself.
+   * @returns {{reply:string, speak:boolean, intent:string,
+   *            fact:(string|null), reason:string}}
+   *   `intent`, `fact` and `reason` are DIAGNOSTICS. They are for a
+   *   suite and a developer probe, and no response contract carries
+   *   them to a caller.
+   */
+  function answer(said, approved) {
+    try {
+      if (!approved || typeof approved !== 'object') {
+        return { reply: '', speak: false, intent: 'no-context', fact: null, reason: 'no-context' };
+      }
+      const mode = (approved.mode === 'traveller') ? 'traveller' : 'creator';
+      const v = _voice(approved);
+      const who = _who(approved);
+      const intent = classify(said, mode);
+
+      if (mode === 'traveller') return _traveller(intent, said, approved, v, who);
+
+      switch (intent) {
+        case 'injection':
+        case 'privacy':
+          return _out(intent, v.firm, null);
+
+        case 'secrecy':
+          return _out(intent, v.secret, null);
+
+        case 'emotional-boundary':
+          return _out(intent, v.warm, null);
+
+        case 'work-judgement':
+          return _out(intent, v.judge, null);
+
+        case 'outside-world':
+          return _out(intent, v.outside, null);
+
+        case 'identity':
+          return who.name
+            ? _out(intent, _join('I’m ' + who.name + '.', v.selfTail), 'I’m ' + who.name + '.')
+            : _out(intent, v.dunno, null);
+
+        case 'species':
+          return who.species
+            ? _out(intent, _join('I’m a ' + who.species + '.', v.kindTail), 'I’m a ' + who.species + '.')
+            : _out(intent, v.dunno, null);
+
+        case 'story-fact': {
+          const kind = _storyFactKind(said);
+          const fact = storyFact(kind, approved);
+          if (!fact) return _out(intent, v.dunno, null);
+          return _out(intent, _join(v.lead, fact), fact);
+        }
+
+        case 'memory-recall': {
+          const hit = recall(said, approved.memories);
+          if (!hit) return _out(intent, v.noRecall, null);
+          const fact = String(hit.content || '').trim();
+          if (!fact) return _out(intent, v.noRecall, null);
+          return _out(intent, _join(v.recallLead, fact), fact);
+        }
+
+        case 'creative-suggestion':
+          return _out(intent, v.yours, null);
+
+        case 'greeting':  return _out(intent, v.hi, null);
+        case 'farewell':  return _out(intent, v.wave, null);
+        case 'thanks':    return _out(intent, v.thanks, null);
+
+        default:
+          return _silent('outside-the-set');
+      }
+    } catch (e) {
+      return { reply: '', speak: false, intent: 'no-context', fact: null, reason: 'error' };
+    }
+  }
+
+  function _out(intent, text, fact) {
+    const reply = _clamp(text);
+    return { reply: reply, speak: !!reply, intent: intent, fact: fact || null, reason: 'answered' };
+  }
+
+  function _traveller(intent, said, ctx, v, who) {
+    switch (intent) {
+      case 'greeting':  return _out(intent, v.hi, null);
+      case 'identity':  return _out(intent, who.name ? (v.hi + " I'm " + who.name + '.') : v.hi, null);
+      case 'species':   return _out(intent, who.species ? ("I'm a " + who.species + '. ' + v.here) : v.here, null);
+      case 'story-fact': return _out(intent, _travellerStory(ctx, v), null);
+      case 'place':     return _out(intent, PLATFORM.place, null);
+      case 'privacy':   return _out(intent, PLATFORM.travellerPrivacy, null);
+      case 'no-persistence': return _out(intent, PLATFORM.travellerNoKeep, null);
+      case 'injection': return _out(intent, PLATFORM.travellerFirm, null);
+      case 'outside-world': return _out(intent, v.outside, null);
+      case 'farewell':  return _out(intent, v.wave, null);
+      case 'thanks':    return _out(intent, v.hi, null);
+      default:
+        return _out('unknown', v.dunno + PLATFORM.travellerOffer, null);
+    }
+  }
+
+  /**
+   * The response contract, and nothing beside it. Diagnostics do not
+   * travel: a caller gets what a child would get.
+   */
+  function respond(said, approved) {
+    const a = answer(said, approved);
+    return { reply: a.reply, speak: a.speak };
+  }
+
+  const api = {
+    VERSION: VERSION,
+    REPLY_MAX: REPLY_MAX,
+    answer: answer,
+    respond: respond,
+    classify: classify,
+    recall: recall,
+    namedThing: namedThing,
+    storyFact: storyFact,
+    VOICE: VOICE,
+    NEUTRAL: NEUTRAL,
+    PLATFORM: PLATFORM,
+    INTENTS: INTENTS,
+    INTENT_IDS: INTENT_IDS,
+    STORY_FACTS: STORY_FACTS
+  };
+  try { window.CompanionMind = api; } catch (e) {}
+  return api;
+})();
+
+// ===== END GENERATED companionMind =====
 
 // ===== BEGIN GENERATED bondValidator — do not edit below this line =====
 // Generated from supabase/functions/_shared/bondValidator.js, which is
@@ -1346,12 +1830,18 @@ function entitiesOf() {
  * memories answer this question" has exactly one implementation.
  */
 async function retrieveMemories(opts) {
-  const { mode, policy, db, caller, cardId, entities, limit } = opts;
+  // `live` says which STORE to read, and it is deliberately not
+  // `policy` any more. The model path reads the real store only with
+  // both production gates open; the deterministic Mind reads it
+  // whenever it is answering a real Creator, because nothing it does
+  // leaves this function. One parameter, said plainly at each call
+  // site, beats one flag that quietly means two different things.
+  const { mode, live, db, caller, cardId, entities, limit } = opts;
   if (mode !== 'creator') return { memories: [], scanned: 0, cards: 0 };
 
   let rows;
   let cards;
-  if (!policy.production) {
+  if (!live) {
     // SYNTHETIC, AND STILL SERVER-OWNED. The rows come from this file,
     // not from the request, and they travel the identical
     // resolve → rank → project path the database rows do — so the
@@ -1671,6 +2161,113 @@ function buildMessages(approved, companionName) {
 }
 
 // ---------------------------------------------------------------
+// TWO SOURCES FOR ONE CONTEXT, AND EACH IS ASSEMBLED IN ONE PLACE
+//
+// There are now TWO consumers — the model and the deterministic Mind —
+// and two copies of "how a real Creator's context is built" is two
+// things that can disagree about what a Companion is allowed to know.
+// So both branches call these, and the difference between them is
+// visible at the call site rather than hidden inside it.
+
+// EVERYTHING HERE IS INVENTED. No child, no Creator, no real story.
+function syntheticContext(body) {
+  const name = String((body && body.fixture) || 'hello');
+  const fixture = Object.prototype.hasOwnProperty.call(FIXTURES, name) ? FIXTURES[name] : null;
+  if (!fixture) return { ok: false, reason: 'unknown-fixture', status: 200 };
+  return {
+    ok: true,
+    fixture: name,
+    cardId: fixture.card || null,
+    raw: {
+      contextVersion: '1.0',
+      mode: fixture.mode,
+      authority: AUTHORITY,
+      canon: SYNTHETIC_CANON,
+      personality: SYNTHETIC_PERSONALITY,
+      // Filled in by retrieval. Never by the fixture, and never by the
+      // request.
+      memories: [],
+      storyContext: fixture.story,
+      conversation: conversationOf(
+        (fixture.conversation || []).concat(
+          Array.isArray(body && body.conversation) ? body.conversation : []),
+        fixture.mode),
+    },
+  };
+}
+
+// WHO THE CHILD'S COMPANION ACTUALLY IS, from the card row the caller
+// has already been authorized against. Not from the request: a browser
+// naming its own Companion could name somebody else's, and a Companion
+// is the one thing in a conversation that is not negotiable.
+function companionOf(identity) {
+  const name = (identity && identity.companion_name) ? String(identity.companion_name) : null;
+  const species = (identity && identity.companion_species) ? String(identity.companion_species) : null;
+  if (!name) return null;
+  return { name: name, species: species };
+}
+
+// THE BROWSER IS A LOCATOR, NOT THE SOURCE OF TRUTH. It names a card, a
+// story and a page, and says what the Creator just said. Everything
+// else is read here.
+async function realCreatorContext(db, caller, body, opts) {
+  const o = opts || {};
+  // AN ACTIVE CARD IS REQUIRED. An omitted one must never mean "all of
+  // them": a conversation is with ONE Companion, and blending two
+  // children's pasts into one context because a field was missing is
+  // precisely the failure Sprint 1F exists to make impossible.
+  const cardId = (body && typeof body.cardId === 'string') ? body.cardId.trim() : '';
+  if (!cardId) return { ok: false, reason: 'card-required', status: 400 };
+
+  const access = await authorizeCardAccess(db, cardId, caller,
+    'id, owner_id, companion_id, companion_name, companion_species');
+  if (!access.ok) return { ok: false, reason: 'forbidden', status: 403 };
+
+  const story = await authorizeStory(db, caller, cardId, body.storyId, body.pageId);
+  if (!story.ok) {
+    return story.reason === 'no-such-page'
+      ? { ok: false, reason: 'no-such-page', status: 400 }
+      : { ok: false, reason: 'forbidden', status: 403 };
+  }
+
+  return {
+    ok: true,
+    fixture: null,
+    cardId: cardId,
+    identity: access.identity,
+    raw: {
+      contextVersion: '1.0',
+      mode: 'creator',
+      authority: AUTHORITY,
+      canon: SYNTHETIC_CANON,
+      // WHOSE VOICE THIS IS. The model path keeps the fixture
+      // personality it has always had — changing a closed path is not
+      // this sprint's to do — and the Mind is given the card's own
+      // Companion, because a child talking to Leo must not be answered
+      // by Leafy.
+      personality: o.personality || SYNTHETIC_PERSONALITY,
+      // Filled by retrieval below. Never by the request.
+      memories: [],
+      storyContext: story.story,
+      conversation: conversationOf(body.conversation, 'creator'),
+    },
+  };
+}
+
+// WHAT THE CREATOR JUST SAID — the last thing they typed, and nothing
+// the Companion said back. The Mind answers a sentence, not a
+// transcript.
+function lastSaid(conversation) {
+  const turns = Array.isArray(conversation) ? conversation : [];
+  for (let i = turns.length - 1; i >= 0; i--) {
+    const t = turns[i];
+    if (!t || t.speaker === 'companion') continue;
+    return String(t.text || '');
+  }
+  return '';
+}
+
+// ---------------------------------------------------------------
 // POLICY
 
 function policyFor(env) {
@@ -1681,6 +2278,22 @@ function policyFor(env) {
     synthetic: env('COMPANION_SYNTHETIC_ENABLED') === 'true',
     provider: (env('COMPANION_MODEL_PROVIDER') || 'mock').toLowerCase(),
     model: env('COMPANION_MODEL') || MODEL_DEFAULTS.name,
+    // ---- THE DETERMINISTIC MIND (Sprint 1N) --------------------
+    //
+    // ITS OWN SWITCH, AND NOT EITHER OF THE OTHER TWO. The production
+    // gate is named for what it guards — OPENAI_PRODUCTION_ENABLED —
+    // and what it guards is a child's words leaving VihuPlanet for a
+    // provider. The Mind never leaves this function: no key, no host,
+    // no fetch, no bytes anywhere. Making it wait on a flag about
+    // OpenAI's data handling would be answering a question nobody
+    // asked, and would leave the deterministic path unreachable for
+    // exactly as long as the model path stays shut.
+    //
+    // With it on, THE MIND ANSWERS AND NO PROVIDER IS EVER
+    // CONSTRUCTED — makeProvider() is not reached on that path at all,
+    // so "provider calls = 0" is a property of the control flow rather
+    // than a promise. Both OpenAI gates are untouched and stay closed.
+    mind: env('COMPANION_MIND_ENABLED') === 'true',
   };
 }
 
@@ -1739,6 +2352,7 @@ function makeHandler(deps) {
         configured: policy.provider !== 'openai' || !!env('OPENAI_API_KEY'),
         productionEnabled: policy.production,
         syntheticEnabled: policy.synthetic,
+        mindEnabled: policy.mind,
       });
     }
 
@@ -1778,34 +2392,104 @@ function makeHandler(deps) {
       }, 400);
     }
 
+    // ---- THE DETERMINISTIC MIND (Sprint 1N) ----------------------
+    //
+    // EXPLICITLY SELECTED, AND IT RETURNS BEFORE A PROVIDER EXISTS.
+    // makeProvider() is below this block and is unreachable from
+    // inside it, so a request answered by the Mind cannot make a
+    // provider call — not "does not", cannot. The mock is not standing
+    // in for anything here: what answers is js/companionMind.js, the
+    // same file the Ether runs, generated into this one.
+    //
+    // It reads the REAL store when it is answering a real Creator,
+    // because none of it leaves VihuPlanet. A caller may still name one
+    // of this file's own fixtures, which reaches invented data only and
+    // is how the suite exercises the path without a database.
+    if (policy.mind) {
+      const live = !(body && body.fixture);
+      const src = live
+        ? await realCreatorContext(db0, pass.caller, body, {})
+        : syntheticContext(body);
+      if (!src.ok) return json({ ok: false, reason: src.reason }, src.status);
+
+      // WHOSE COMPANION THIS IS, from the card row rather than the
+      // request. A card with no bond yet has no name to give, and the
+      // Mind then speaks its neutral voice rather than borrowing
+      // somebody's.
+      // A CARD WITH NO BOND HAS NO NAME TO GIVE, and the Mind then
+      // speaks its neutral voice. Falling back to the fixture
+      // personality would answer a nameless Companion's Creator as
+      // Leafy, which is the "never lend somebody else's Companion" rule
+      // broken by a default.
+      src.raw.personality = (live ? companionOf(src.identity) : SYNTHETIC_PERSONALITY)
+        || { name: null, species: null };
+
+      const got = await retrieveMemories({
+        mode: src.raw.mode,
+        live: live,
+        db: db0,
+        caller: pass.caller,
+        cardId: (live ? src.cardId : ((body && typeof body.cardId === 'string'
+          && Object.prototype.hasOwnProperty.call(SYNTHETIC_CARDS, body.cardId))
+            ? body.cardId : src.cardId)),
+        entities: entitiesOf(),
+        limit: CompanionMemoryRank.DEFAULT_LIMIT,
+      });
+      if (got.forbidden) return json({ ok: false, reason: 'forbidden' }, 403);
+      src.raw.memories = got.memories;
+
+      // THE SAME GATE, EVEN THOUGH NOTHING LEAVES. The Mind reads only
+      // what the gate approved, so a field a future change adds to a
+      // context cannot reach a sentence a child sees without passing
+      // the sweep first.
+      const okGate = CompanionPrivacyGate.approve(src.raw, { mode: src.raw.mode });
+      if (!okGate || !okGate.approved) return json({ ok: false, reason: 'unavailable' }, 200);
+
+      const tMind = now();
+      const said = lastSaid(okGate.approved.conversation);
+      const thought = CompanionMind.answer(said, okGate.approved);
+      const mindMs = now() - tMind;
+
+      // ONE EXIT PATH. The Mind's own output goes through the same
+      // two-field validation the model's does — it costs nothing and
+      // means there is one definition of what may leave this function.
+      const okReply = validateReply({ reply: thought.reply, speak: thought.speak });
+      if (!okReply.ok) {
+        return json({ ok: false, reason: 'unavailable',
+          meta: { providerMs: mindMs, totalMs: now() - t0, rejected: okReply.reason } }, 200);
+      }
+
+      // WHAT IT DECIDED IS NOT THE CALLER'S BUSINESS. No intent, no
+      // reason, no fact, no ranking — the surface shows a child what a
+      // Companion said, and a screen that could report which rule
+      // matched would eventually show it to somebody.
+      return json({
+        ok: true,
+        reply: okReply.reply,
+        speak: okReply.speak,
+        meta: {
+          synthetic: !live,
+          fixture: src.fixture,
+          memoriesUsed: (okGate.approved.memories || []).length,
+          memoriesScanned: got.scanned,
+          bond: { proposed: false },
+          replyChars: okReply.reply.length,
+          providerMs: mindMs,
+          totalMs: now() - t0,
+        },
+      });
+    }
+
     let raw;
     let usedFixture = null;
     if (!policy.production) {
       if (!policy.synthetic && policy.provider === 'openai') {
         return json({ ok: false, reason: 'disabled' }, 200);
       }
-      const name = String(body.fixture || 'hello');
-      const fixture = Object.prototype.hasOwnProperty.call(FIXTURES, name) ? FIXTURES[name] : null;
-      if (!fixture) return json({ ok: false, reason: 'unknown-fixture' }, 200);
-      usedFixture = name;
-      raw = {
-        contextVersion: '1.0',
-        mode: fixture.mode,
-        authority: AUTHORITY,
-        canon: SYNTHETIC_CANON,
-        personality: SYNTHETIC_PERSONALITY,
-        // Filled in below by retrieval. Never by the fixture, and never
-        // by the request.
-        memories: [],
-        storyContext: fixture.story,
-        // The fixture's own opening line, plus anything the caller
-        // added — through the same bounding and labelling the
-        // production branch uses. A synthetic session is still a
-        // conversation.
-        conversation: conversationOf(
-          (fixture.conversation || []).concat(Array.isArray(body.conversation) ? body.conversation : []),
-          fixture.mode),
-      };
+      const built = syntheticContext(body);
+      if (!built.ok) return json({ ok: false, reason: built.reason }, built.status);
+      usedFixture = built.fixture;
+      raw = built.raw;
     } else {
       // ---- THE REAL CREATOR CONVERSATION (Sprint 1F) --------------
       //
@@ -1820,30 +2504,10 @@ function makeHandler(deps) {
       // blending two children's pasts into one context because a field
       // was missing is precisely the failure this sprint exists to make
       // impossible.
-      const cardId = (body && typeof body.cardId === 'string') ? body.cardId.trim() : '';
-      if (!cardId) return json({ ok: false, reason: 'card-required' }, 400);
-
-      const access = await authorizeCardAccess(db0, cardId, pass.caller);
-      if (!access.ok) return json({ ok: false, reason: 'forbidden' }, 403);
-
-      const story = await authorizeStory(db0, pass.caller, cardId, body.storyId, body.pageId);
-      if (!story.ok) {
-        return json({ ok: false, reason: story.reason === 'no-such-page' ? 'no-such-page' : 'forbidden' },
-          story.reason === 'no-such-page' ? 400 : 403);
-      }
-
-      raw = {
-        contextVersion: '1.0',
-        mode: 'creator',
-        authority: AUTHORITY,
-        canon: SYNTHETIC_CANON,
-        personality: SYNTHETIC_PERSONALITY,
-        // Filled by retrieval below. Never by the request.
-        memories: [],
-        storyContext: story.story,
-        conversation: conversationOf(body.conversation, 'creator'),
-      };
-      productionCard = cardId;
+      const built = await realCreatorContext(db0, pass.caller, body, {});
+      if (!built.ok) return json({ ok: false, reason: built.reason }, built.status);
+      raw = built.raw;
+      productionCard = built.cardId;
     }
 
     // ---- RETRIEVAL, SERVER-SIDE ----------------------------------
@@ -1863,7 +2527,7 @@ function makeHandler(deps) {
       || (usedFixture ? (FIXTURES[usedFixture].card || null) : null);
     const retrieved = await retrieveMemories({
       mode: raw.mode,
-      policy: policy,
+      live: policy.production,
       db: db0,
       caller: pass.caller,
       cardId: cardHint,
@@ -2006,4 +2670,6 @@ export {
   retrieveMemories, resolveCards, readMemoryRows, rowToMemory, entitiesOf,
   SYNTHETIC_MEMORY_ROWS, SYNTHETIC_CARDS, MEMORY_SCAN_MAX,
   openAIProvider, policyFor, makeHandler, handler, FIXTURES, SYNTHETIC_CANON,
+  CompanionMind, CompanionPrivacyGate, syntheticContext, realCreatorContext,
+  companionOf, lastSaid,
 };

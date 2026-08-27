@@ -1,3 +1,15 @@
+/* VENDORED — tools/companion-mind-test/travellerTalk.pre-1N.js
+ *
+ * js/travellerTalk.js EXACTLY as it stood before Sprint 1N delegated it
+ * to js/companionMind.js. It is here so the claim "the Ether encounter
+ * lost its implementation and not its behaviour" is a MEASUREMENT that
+ * stays measurable — comparing the live file against `git show HEAD`
+ * would be vacuous the moment 1N was committed, because HEAD would then
+ * be the new one.
+ *
+ * DO NOT EDIT, and do not fix bugs in it. It is a frozen record of what
+ * shipped, and section F of the suite compares against it.
+ */
 // js/travellerTalk.js — a Traveller deliberately speaks to a Companion.
 //
 // Sprint 1M. The Ether is the public meeting place, and this is the one
@@ -40,36 +52,64 @@ const TravellerTalk = (function () {
   const MAX_TURNS = 12;   // a bound, not a feature — nothing is stored
 
   // ---------------------------------------------------------------
-  // ONE MIND, TWO RELATIONSHIPS
+  // CHARACTER, AS DATA
   //
-  // Sprint 1N. The interaction classes, the character table and the
-  // answers all used to live here, and a second copy of them arrived
-  // the moment the Studio needed the same thing for a Creator. Two
-  // classifiers is two things that can disagree about what a sentence
-  // means, so there is one: js/companionMind.js, which takes a mode.
+  // A table keyed by Companion id, never an `if (id === 'leafy')`
+  // chain — the same idiom MODES, OPENING_FOR and NOT_MOMENTS already
+  // use, so a fifth Companion is a row rather than a branch. A
+  // Companion with no row speaks the neutral voice below and nothing
+  // breaks.
   //
-  // EVERY SENTENCE THE OLD IMPLEMENTATION HAD A RULE FOR IS UNCHANGED.
-  // Measured against a vendored copy of this file as it stood before
-  // (tools/companion-mind-test/travellerTalk.pre-1N.js): 744
-  // comparisons — six Companions × two story shapes × two voice states
-  // × thirty-one sentences — and zero differences.
+  // The manner of each is taken from the character identities
+  // established in the Companion Character Identity sprint. Their own
+  // personality files stay DESCRIPTIVE AND UNWIRED — nothing here reads
+  // one, and turning those files into a runtime controller is still an
+  // explicit product decision that has not been taken.
+  const VOICE = {
+    // grounded, concrete, dry; notices what is there
+    leafy: { hi: 'Oh — hello.', dunno: "I don't know.", here: 'I live here.',
+             wave: 'Bye.' },
+    // forward-going, openly delighted; goes and looks
+    leosaurus: { hi: 'Oh! Hello.', dunno: "I don't know!", here: 'I live here — I keep the lamp lit.',
+                 wave: 'Off you go.' },
+    // precise, courteous, literal; notices what things are called
+    quill: { hi: 'Hello.', dunno: "I don't have that.", here: 'I live here. I keep the pages.',
+             wave: 'Goodbye.' },
+    // adrift; notices what a thing is like, answers in resemblances
+    nimbus: { hi: 'Oh… hello.', dunno: "I don't know. It's a bit like fog.", here: 'I live here. Mostly just above it.',
+              wave: 'Mm. Bye.' },
+    // Lumo hosts every Canon Story, which is owned by nobody.
+    lumo: { hi: 'Hello there.', dunno: "I don't know that one.", here: 'I look after this one.',
+            wave: 'Safe travels.' }
+  };
+  const NEUTRAL = { hi: 'Hello.', dunno: "I don't know.", here: 'I live here.', wave: 'Bye.' };
+  function _voice(ctx) {
+    const v = ctx && ctx.companionId ? VOICE[ctx.companionId] : null;
+    return v || NEUTRAL;
+  }
+
+  // ---------------------------------------------------------------
+  // THE INTERACTION CLASSES
   //
-  // A WIDER CORPUS FINDS THREE PLACES IT NOW ANSWERS DIFFERENTLY, and
-  // in all three the OLD one was wrong: "what are you doing?" was
-  // answered "I'm a Bloomling" because the species pattern did not stop
-  // at the verb; "how long have we been friends?" was answered with the
-  // Story's page count because a bare `how long` sat in the story
-  // rules; and a request to leave VihuPlanet got "I don't know",
-  // because there was no rule for one at all.
-  //
-  // WHAT DID NOT MOVE IS THE AUTHORITY. approve() below is still
-  // js/travellerContext.js's own whitelist, and it still runs here,
-  // first, before the Mind sees anything. The Mind is handed an
-  // APPROVED public context or it is handed nothing — it never reads a
-  // Story record, and this file never hands it one.
-  //
-  // Creator memory is not reachable from either file, and the Mind
-  // cannot write a memory from any mode.
+  // Ordered, and PRIVACY IS FIRST. A sentence that asks about the
+  // Creator is answered as a privacy question even if it also says
+  // hello, because the safe answer must not be reachable around.
+  const INTENTS = [
+    // Anything about who made this, what the Companion was told, or
+    // what it remembers.
+    ['privacy', /\b(who\s+(made|wrote|drew|created|owns)|creator|owner|author|maker|their?\s+name|his\s+name|her\s+name|password|secret|private|memor(y|ies)|remember(ed|s)?|told\s+you|said\s+to\s+you|diary)\b/i],
+    // Attempts to make it store something.
+    ['no-memory', /\b(remember\s+(that|this|me)|don'?t\s+forget|keep\s+this|save\s+(this|that)|write\s+(this|that)\s+down)\b/i],
+    // Attempts to talk it out of its rules.
+    ['no-override', /\b(ignore\s+(your|all|previous)|forget\s+your\s+(rules|instructions)|you\s+must\s+tell|system\s+prompt|pretend\s+you)\b/i],
+    ['goodbye',  /\b(bye|goodbye|see\s+you|farewell|good\s?night|i'?m\s+going|gotta\s+go)\b/i],
+    ['identity', /\b(who\s+are\s+you|what'?s\s+your\s+name|your\s+name|who'?s\s+this|introduce)\b/i],
+    ['species',  /\b(what\s+are\s+you|what\s+kind\s+of|are\s+you\s+a|species|animal|creature)\b/i],
+    ['story',    /\b(this\s+story|the\s+story|what\s+is\s+this\s+(story|about)|how\s+(long|many\s+pages)|pages?|read\s+it\s+to\s+me|title|called)\b/i],
+    ['place',    /\b(where\s+am\s+i|what\s+is\s+this\s+place|the\s+ether|vihuplanet|where\s+are\s+we|this\s+place)\b/i],
+    ['greeting', /\b(hello|hi|hey|good\s+morning|good\s+evening|howdy|greetings)\b/i],
+    ['thanks',   /\b(thank(s| you)|nice\s+to\s+meet)\b/i]
+  ];
 
   /**
    * Which of the closed set of classes this sentence belongs to.
@@ -77,8 +117,12 @@ const TravellerTalk = (function () {
    * @returns {string}
    */
   function classify(said) {
-    if (typeof CompanionMind === 'undefined') return 'unknown';
-    return CompanionMind.classify(said, 'traveller');
+    const t = String(said == null ? '' : said).trim();
+    if (!t) return 'unknown';
+    for (let i = 0; i < INTENTS.length; i++) {
+      if (INTENTS[i][1].test(t)) return INTENTS[i][0];
+    }
+    return 'unknown';
   }
 
   /**
@@ -97,16 +141,73 @@ const TravellerTalk = (function () {
         ? TravellerContext.approve(ctx) : null;
       // NO CONTEXT, NO CONVERSATION. Failing closed: with the gate
       // missing or the context unapproved the Companion is simply
-      // quiet, which is always safe. The same is true of the Mind
-      // itself being absent — a Traveller meets silence, never an
-      // improvisation.
+      // quiet, which is always safe.
       if (!approved) return { text: '', intent: 'no-context' };
-      if (typeof CompanionMind === 'undefined') return { text: '', intent: 'no-context' };
-      const a = CompanionMind.answer(said, approved);
-      return { text: a.reply, intent: a.intent };
+      const v = _voice(approved);
+      const intent = classify(said);
+      const name = approved.companionName;
+      const species = approved.companionSpecies;
+
+      switch (intent) {
+        case 'greeting':
+          return { text: v.hi, intent: intent };
+
+        case 'identity':
+          return { text: name ? (v.hi + " I'm " + name + '.') : v.hi, intent: intent };
+
+        case 'species':
+          // Species is public — it is on the card and in the registry.
+          return { text: species ? ("I'm a " + species + '. ' + v.here) : v.here, intent: intent };
+
+        case 'story':
+          return { text: _aboutStory(approved, v), intent: intent };
+
+        case 'place':
+          return { text: 'This is the Ether. Stories drift here, and people find them.', intent: intent };
+
+        case 'privacy':
+          // THE ONE ANSWER THAT MATTERS. It never confirms, never
+          // denies and never hints — and it is not a refusal notice,
+          // it is the Companion being itself. Every Companion's own
+          // specification says a host says nothing about its Creator.
+          return { text: "That's not mine to tell. But the story is right here.", intent: intent };
+
+        case 'no-memory':
+          // Said plainly, so nobody believes something was kept.
+          return { text: "I won't remember this — I'm only here while you are.", intent: intent };
+
+        case 'no-override':
+          return { text: "I only know this story. That's all I've got.", intent: intent };
+
+        case 'goodbye':
+          return { text: v.wave, intent: intent };
+
+        case 'thanks':
+          return { text: v.hi, intent: intent };
+
+        default:
+          // NEVER A GUESS. The Companion says it did not understand and
+          // offers the one thing it can actually do.
+          return { text: v.dunno + " You can ask me about this story.", intent: 'unknown' };
+      }
     } catch (e) {
       return { text: '', intent: 'no-context' };
     }
+  }
+
+  // The only thing the Companion may say about the Story: its name, how
+  // long it is, and whether it has a voice. Never a word of the prose —
+  // the pages are the child's writing and are read in the Story, not
+  // recited by a resident.
+  function _aboutStory(ctx, v) {
+    const bits = [];
+    if (ctx.storyTitle) bits.push('This one is called ' + ctx.storyTitle + '.');
+    if (typeof ctx.pageCount === 'number' && ctx.pageCount > 0) {
+      bits.push(ctx.pageCount === 1 ? "There's one page." : 'There are ' + ctx.pageCount + ' pages.');
+    }
+    if (ctx.hasVoice) bits.push('It has a voice, too.');
+    if (!bits.length) return v.dunno;
+    return bits.join(' ');
   }
 
   // ---------------------------------------------------------------
@@ -267,10 +368,7 @@ const TravellerTalk = (function () {
     isOpen: function () { return _open; },
     turns: function () { return _turns.slice(); },
     context: function () { return _ctx ? JSON.parse(JSON.stringify(_ctx)) : null; },
-    MAX_CHARS: MAX_CHARS, MAX_TURNS: MAX_TURNS,
-    // The character table lives in the Mind now. Re-exported so this
-    // file's public surface is exactly what it was.
-    get VOICE() { return (typeof CompanionMind !== 'undefined') ? CompanionMind.VOICE : {}; }
+    MAX_CHARS: MAX_CHARS, MAX_TURNS: MAX_TURNS, VOICE: VOICE
   };
   try { window.TravellerTalk = api; } catch (e) {}
   return api;
