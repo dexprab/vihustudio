@@ -8984,3 +8984,53 @@ edge auth 127/127, including the drift check against every deployed
 `index.ts`.
 
 Invite desk 12/12, edge auth 127/127, zero page errors. Build 0675 → 0676.
+
+---
+
+## The invitation is a letter, not a campaign (build 0677)
+
+*"in my gmail account the mail is going in promotions category? can we
+fix and ensure that emails land in inbox?"*
+
+Gmail was not being unfair. Read as markup the invitation was a campaign,
+and the loudest signals were all things the design had asked for: a
+two-column layout with an image grid of two covers and captions (the
+strongest of them), a masthead with a brand name and a tagline, a pill
+CTA with a background colour, a full-bleed dark wrapper, remote images
+from our own domain, four links three of which went to one place, and
+nested ESP tables with a media query.
+
+No header outweighs that, so the chrome went and the words stayed — every
+sentence, the gold line, the sender's own note, the signature, both
+stories and the paragraph for parents. 6.7 KB of markup became 1.9 KB,
+and the result is closer to the letter's own "PAPER, NOT A DASHBOARD"
+note than the grid it replaced.
+
+The covers are the real cost and are stated rather than quietly dropped.
+"Every book is its own door" still holds: both stories are still their own
+links, every link still carries the invitation token, and they are named
+instead of pictured. `assets/invite/` is kept; putting one back is one
+field and one tag.
+
+Two smaller things travelled with it. The main link now shows its own
+destination — a promotional button says *Open the Door*, a letter shows
+you where it is sending you, and matching text to href is the opposite of
+what a phishing filter looks for. And the note used to sit a paragraph
+apart in the HTML and the plain halves, which nobody chose and nobody
+could see; they agree now.
+
+`tools/invite-letter-test/` (33) transpiles the deployed `index.ts` and
+calls its own `htmlFor`/`textFor` — a second copy of the letter in a test
+could pass while the letter that ships does not. It holds both halves:
+every campaign signal must be absent, and every phrase, story name and
+link must still be there, because a letter that reaches the inbox having
+lost the invitation is not a fix. Proved by reverting: nine checks go red.
+
+Disclosed, and it is the honest limit: no code change can GUARANTEE the
+inbox. Gmail's tabs are heuristic and per-recipient. Out of our hands are
+SPF/DKIM/DMARC alignment on the sending domain, whether `SKY_FROM_EMAIL`
+reads as a person or as `noreply@`, and the recipient's own one-time
+*Move to Primary*.
+
+Invite letter 33/33, invite desk 12/12, edge auth 127/127, zero page
+errors. Build 0676 → 0677.
