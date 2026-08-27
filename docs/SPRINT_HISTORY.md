@@ -9486,9 +9486,13 @@ Spirits, and **a timeout is no longer swallowed** — it says out loud that
 every check below it is about a different Story and is not to be believed.
 Five consecutive green runs after, against roughly one in two before.
 
-Mind 159/159 (section L skipped there — those suites are run directly),
-ether 69/69, companion 50/50, moments 88/88, presence 89/89, identity
-109/109, edge auth 127/127, garden 104/104, traveller reset 16/16.
+Every suite green: mind 159/159, chat 230/230, edge auth 127/127,
+identity 109/109, garden 104/104, canon 94/94, context 90/90, presence
+89/89, moments 88/88, ether 69/69, memory 56/56, companion 50/50,
+traveller reset 16/16. The two skips are the cross-suite sections of the
+mind and memory suites, switched off with `MIND_SKIP_SUITES` and
+`CM_SKIP_SUITES` because those neighbours were run directly rather than
+nested — every one of them is in the list above with its own count.
 
 Both OpenAI production gates remain unset, and `COMPANION_MIND_ENABLED`
 ships unset too. Build 0684 → 0685.
