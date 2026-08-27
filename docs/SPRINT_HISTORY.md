@@ -9124,3 +9124,46 @@ to know whether the deploy landed: the desk prints it.
 
 Invite desk 15/15, invite letter 33/33, edge auth 127/127, zero page
 errors. Build 0678 → 0679.
+
+---
+
+## The designed letter stays (build 0680)
+
+*"but why should i change if the mails are in inbox"* — and the honest
+answer is that he should not.
+
+Build 0677 rewrote the invitation as a plain letter to get it out of
+Gmail's Promotions tab, and build 0679 found it had never been deployed.
+By then the mail was arriving in the inbox with the **designed** letter.
+The deliverability question had been answered somewhere else, so paying a
+certain design cost — the two covers, the masthead, the button — against
+a risk that had stopped presenting itself was the wrong trade. Reverted
+on the product owner's call.
+
+Why it started arriving is not known and is not claimed here. The
+recipient may have moved one to Primary, Gmail may have learned from mail
+being opened, or the domain may have warmed. The letter is not a
+candidate: the rewrite never reached the server.
+
+The risk that remains is stated rather than resolved. One trained inbox is
+not evidence about a stranger's, and a stranger's Gmail is exactly who an
+invitation is for. So the analysis is kept in Decision 42 — the list of
+what in this letter reads as a campaign, ranked — and the plain letter is
+one revert away (`c64fb11`).
+
+Two things from 0677 survived the revert because neither was ever about
+deliverability. The sender's own note sat two paragraphs apart in the HTML
+and plain halves, which nobody chose and nobody could see; the plain half
+moved to where the letter puts it, so the design itself is untouched. And
+`admin/invites.html` now expects the build the server actually runs, so
+the staleness banner is quiet and the repository and the project agree
+again — which was the only genuinely bad state to be left in.
+
+`tools/invite-letter-test/` was repointed at the designed letter: it
+guards the letter's promises rather than its markup — every sentence
+present, every book its own door, every link carrying the invitation,
+every cover naming its own story for a reader with images off, and both
+halves saying the same things in the same order.
+
+Invite letter 28/28, invite desk 15/15, edge auth 127/127, zero page
+errors. Build 0679 → 0680.

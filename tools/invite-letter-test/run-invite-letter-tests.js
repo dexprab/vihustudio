@@ -1,19 +1,23 @@
-/* THE INVITATION — a letter, not a campaign.
+/* THE INVITATION — every word of it, and every door.
  *
- * Reported by the product owner: the invitation was landing in Gmail's
- * Promotions tab. Gmail was not being unfair. Read as markup this was a
- * campaign, and the loudest signals were the ones the design asked for:
- * a two-column layout with an image grid of two covers and captions, a
- * masthead with a brand name and a tagline, a pill CTA with a background
- * colour, a full-bleed dark wrapper, remote images from our own domain,
- * four links three of which went to one place, and nested ESP tables
- * with a media query.
+ * The letter's LOOK is the product owner's, and it is deliberately a
+ * designed piece: a masthead, the two Ether books beside the text, and a
+ * button to walk through. That design was briefly replaced with a plain
+ * letter when the invitation was landing in Gmail's Promotions tab, and
+ * the product owner reverted it once the mail started reaching the inbox
+ * anyway — the deliverability question was answered somewhere else, and
+ * a certain design loss is not worth paying for a possible one.
  *
- * No header outweighs that, so the chrome went and the words stayed.
- * This suite holds BOTH halves: every promotional signal is measured and
- * must be absent, and every sentence, name and link must still be there
- * — a letter that reaches the inbox having lost the invitation is not a
- * fix.
+ * WHAT WAS LEARNED IS KEPT, in CLAUDE.md -> Decision 42: read as markup
+ * this letter has every signal a campaign has, and if a stranger's Gmail
+ * ever files it under Promotions again, that list is where to start and
+ * the plain letter is one revert away (c64fb11).
+ *
+ * So this suite guards the letter's PROMISES rather than its markup:
+ * every sentence is there, every book is its own door, every link
+ * carries the invitation, and the plain half says the same things in the
+ * same order — plenty of people read mail with images off, and for them
+ * the plain part is not a fallback, it is the letter.
  *
  * THE REAL FUNCTION IS WHAT IS TESTED. The deployed index.ts is
  * transpiled and its own htmlFor/textFor are called — a second copy of
@@ -64,32 +68,21 @@ function check(cond, name, note) {
   const text = mod.textFor(LINK, NOTE);
   const subject = mod.subjectFor();
 
-  // ---- what Gmail reads as a campaign --------------------------------
-  console.log('-- the campaign signals');
-  const signals = [
-    ['an image', /<img\b/i],
-    ['a table', /<table\b/i],
-    ['a CTA with a background colour', /bgcolor=|background(-color)?\s*:/i],
-    ['a document wrapper', /<!doctype|<html\b|<body\b/i],
-    ['a media query', /@media/i],
-    ['a stylesheet block', /<style\b/i],
-    ['a rounded pill', /border-radius/i],
-    ['a masthead tagline', /a quiet place where children/i],
-  ];
-  signals.forEach(([what, re]) => {
-    check(!re.test(html), 'L1 the letter carries no ' + what);
-  });
+  // ---- the design's own promises ------------------------------------
+  console.log('-- the letter is the designed one');
+  check(/<img\b/i.test(html), 'L1 the two Ether books are pictured');
+  check(/a quiet place where children/i.test(html), 'L1b the masthead is there');
+  check(/Open the Door/.test(html), 'L1c and the door is a door');
 
   const hrefs = (html.match(/href="([^"]*)"/g) || []).map((h) => h.slice(6, -1));
-  check(hrefs.length <= 3, 'L2 three links at most — the door and the two stories',
+  check(hrefs.length >= 3, 'L2 the button and both covers are links',
     hrefs.length + ': ' + hrefs.join(' | '));
   check(hrefs.every((h) => h.indexOf('invite=abc123def') >= 0),
     'L3 every link carries the invitation, so the journey is recorded whichever they take');
-  // A promotional button says "Open the Door"; a letter shows you where
-  // it is sending you. Matching text to href is also the opposite of
-  // what a phishing filter is looking for.
-  check(html.indexOf('>' + LINK.replace(/&/g, '&amp;') + '</a>') > 0,
-    'L4 the main link shows its own destination');
+  // With images off a cover is its alt text, and that is most of the
+  // point of naming them.
+  check((html.match(/alt="[^"]+"/g) || []).length >= 2,
+    'L4 every cover names its own story, for a reader with images off');
   check(!/unsubscribe/i.test(html) && !/unsubscribe/i.test(text),
     'L5 no unsubscribe line — it is a bulk signal, and this is one letter to one person');
 
@@ -105,13 +98,16 @@ function check(cond, name, note) {
     'Lumo',
     'Keeper of VihuPlanet',
     'For parents',
-    'Best on a laptop',
+    // The two halves word this one slightly differently — "Best opened on
+    // a laptop" in the letter, "Best on a laptop" in the plain part — so
+    // the check is on the part they share rather than on either version.
+    'on a laptop',
   ];
   KEPT.forEach((phrase) => {
     check(html.replace(/&#8217;/g, "'").replace(/&#8230;/g, '…').indexOf(phrase) >= 0,
       'L6 the letter still says "' + phrase + '"');
   });
-  check(html.indexOf(NOTE) > 0, 'L7 the sender\'s own note is still carried');
+  check(html.indexOf(NOTE) > 0, 'L7 the sender\'s own note is carried');
   mod.BOOKS.forEach((b) => {
     check(html.indexOf(b.name.replace(/&/g, '&amp;')) > 0 || html.indexOf(b.name) > 0,
       'L8 "' + b.name + '" is still named');
