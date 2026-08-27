@@ -61,7 +61,7 @@ const FOUR = [['leafy', 'Leafy', 'Bloomling'], ['leosaurus', 'Leo', 'Lantern Lio
     await page.goto(BASE + '/studio.html?author=on');
     await page.waitForFunction(() => typeof MagicCard !== 'undefined' &&
       typeof CreatorProjectStore !== 'undefined', null, { timeout: 20000 });
-    return page.evaluate(([cid, cname, cspecies, title]) => {
+    const seeded = await page.evaluate(([cid, cname, cspecies, title]) => {
       localStorage.clear(); sessionStorage.clear();
       // AND THE PROJECT STORE, which lives in IndexedDB and therefore
       // survives localStorage.clear(). Without this a Story left by an
@@ -91,6 +91,32 @@ const FOUR = [['leafy', 'Leafy', 'Bloomling'], ['leosaurus', 'Leo', 'Lantern Lio
       return { id: id, companion: rec && rec.companion, cardId: c.id,
                shared: !!(rec && rec.publishedAt) };
     }, [cid, cname, cspecies, title]);
+    // THE WRITE MUST LAND BEFORE THE JOURNEY STARTS — and the wait is
+    // HERE, inside the seeding, so no future call site can forget it.
+    seeded.settled = await waitForSeed(seeded.id);
+    return seeded;
+  }
+
+  // THE WRITE MUST LAND BEFORE THE JOURNEY STARTS.
+  //
+  // CreatorProjectStore keeps its records in IndexedDB, and upsert()
+  // returns before the write settles — so navigating straight to the
+  // Ether could outrun it, the feed would not find the seeded Story,
+  // and the journey met a Canon Story instead. That is the whole of the
+  // flake: measured, the suite passed and then failed on the identical
+  // tree and the identical port, back to back, reporting "Talk to Lumo"
+  // and a Canon Story's title as if they were product faults.
+  //
+  // Asked HERE, on the Studio page that just wrote it — not on the
+  // Ether page, where the note above is right that the store is the
+  // wrong thing to ask.
+  async function waitForSeed(projectId) {
+    return page.waitForFunction((id) => {
+      try {
+        const r = CreatorProjectStore.get(id);
+        return !!(r && r.publishedAt);
+      } catch (e) { return false; }
+    }, projectId, { timeout: 20000 }).then(() => true).catch(() => false);
   }
 
   // The real Ether: load VihuPlanet on the Story's own DEEP LINK — the
@@ -138,14 +164,38 @@ const FOUR = [['leafy', 'Leafy', 'Bloomling'], ['leosaurus', 'Leo', 'Lantern Lio
     // Preview is showing the Story we actually seeded. A fixed
     // sixteen-try loop ran out on two of the four and reported
     // "not offered" for a product that was simply still catching up.
+    //
+    // AND IT CYCLES THROUGH THE SPIRITS RATHER THAN RE-TAPPING THE
+    // FIRST ONE. This clicked `querySelector('.vp-story')` — always the
+    // first in the DOM — so once Canon Stories joined the Ether
+    // (vihuplanet/canon/ shipped two after Sprint 1M was written) the
+    // loop could re-open the same canon Preview forever while the
+    // seeded Story sat two elements along. Measured: the suite passed
+    // and then failed on the identical tree and the identical port,
+    // back to back, reporting "Talk to Lumo" and a Canon Story's title
+    // as product faults.
+    let reached = true;
     await page.waitForFunction((want) => {
       const p = document.querySelector('[data-preview]');
       const t = (document.querySelector('[data-preview-title]') || {}).textContent || '';
       if (p && !p.hidden && (!want || t === want)) return true;
-      const s = document.querySelector('.vp-story');
-      if (s) s.click();
+      const all = Array.prototype.slice.call(document.querySelectorAll('.vp-story'));
+      if (all.length) {
+        window.__vpTap = ((window.__vpTap || 0) + 1) % all.length;
+        all[window.__vpTap].click();
+      }
       return false;
-    }, expectTitle || null, { timeout: 45000, polling: 800 }).catch(() => {});
+    }, expectTitle || null, { timeout: 45000, polling: 800 })
+      .catch(() => { reached = false; });
+    // A TIMEOUT IS NOT A PASS. This swallowed its own failure and let
+    // the suite go on making observations about whatever Preview
+    // happened to be open — which reads as a product bug and is not
+    // one. Said out loud instead.
+    if (!reached) {
+      fail('A2x  the seeded Story\'s own Preview opened within the budget',
+         'the journey never reached "' + (expectTitle || '?') + '" — every check below '
+         + 'would be about a different Story, so they are not to be believed');
+    }
     // "Read" is how a Traveller steps into a Story.
     await page.evaluate(() => {
       const r = document.querySelector('[data-act="read"]');
@@ -204,6 +254,9 @@ const FOUR = [['leafy', 'Leafy', 'Bloomling'], ['leosaurus', 'Leo', 'Lantern Lio
   console.log('A. A TRAVELLER MEETS A COMPANION');
   // =================================================================
   const seed = await seedSharedStory('leosaurus', 'Leo', 'Lantern Lion', 'The Tiny Forest');
+  ck(seed.settled === true,
+     'A1a the seeded Story is on disk before the journey starts',
+     seed.settled ? 'IndexedDB settled' : 'the write never landed — the Ether cannot find it');
   ck(seed.shared && seed.companion && seed.companion.id === 'leosaurus',
      'A1  a genuinely shared Story exists, carrying its maker\'s Companion',
      seed.companion ? seed.companion.id : 'none');

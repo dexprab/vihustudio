@@ -9472,10 +9472,23 @@ closed path, and changing it is not this sprint's.
 
 Decision: `CLAUDE.md` → Decision 46.
 
+**A FLAKE IN THE ETHER SUITE WAS FOUND AND FIXED, and it was not this
+sprint's.** `run-ether-encounter-tests.js` passed and then failed on the
+identical tree and the identical port, back to back — reporting *"Talk to
+Lumo"* and a Canon Story's title as if they were product faults. Two
+causes, both dating from before this sprint: `CreatorProjectStore.upsert()`
+returns before its IndexedDB write settles, so navigating to the Ether
+could outrun it; and once `vihuplanet/canon/` shipped two Canon Stories,
+the journey's `querySelector('.vp-story')` could re-open the same canon
+Preview forever while the seeded Story sat two elements along. The seed is
+now waited for on the page that wrote it, the journey cycles through the
+Spirits, and **a timeout is no longer swallowed** — it says out loud that
+every check below it is about a different Story and is not to be believed.
+Five consecutive green runs after, against roughly one in two before.
+
 Mind 159/159 (section L skipped there — those suites are run directly),
-companion 50/50, moments 88/88. The remaining suites were still running
-when this landed and are recorded in the follow-up; nothing in the tree
-changed after the mind suite went green.
+ether 69/69, companion 50/50, moments 88/88, presence 89/89, identity
+109/109, edge auth 127/127, garden 104/104, traveller reset 16/16.
 
 Both OpenAI production gates remain unset, and `COMPANION_MIND_ENABLED`
 ships unset too. Build 0684 → 0685.
