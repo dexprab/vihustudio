@@ -8324,3 +8324,82 @@ the response schema's own property name, not as a leak.
 
 Chat 77/77, edge auth 127/127, context 84/84, memory 56/56, canon 87/87,
 zero page errors. Build 0664 → 0665.
+
+---
+
+## Sprint 1E.1 — Server-Authoritative Companion Memory
+
+A security correction to 1E, changing exactly one thing: where memory
+comes from.
+
+**The client may say what it is talking about. It may not say what the
+Companion remembers.** Sprint 1E let the browser hand over a `memories`
+array inside its context. The privacy gate checked its shape and was
+right to — but a well-shaped lie is still a lie, and the browser was
+authoring the history the model would be shown. It could invent a
+memory, replace a real one, or quietly drop the ones it did not want
+mentioned.
+
+Now the caller is resolved from a verified session, the cards that
+session actually owns are read from `magic_card_identities`, and the
+memories are read from `creator_companion_memory` scoped to those cards.
+No second store, no cache, no copy into another table. A `cardId` from
+the client is a **selector** verified through the gate's existing
+`authorizeCardAccess()` — the same call `sky-protection` makes before
+posting somebody's Magic Card — and naming somebody else's card is a 403.
+
+A client-supplied `memories` array is **refused, not ignored**: silently
+dropping it would let a caller believe it had been accepted and build
+against a contract that does not exist. Both routes are closed, the top
+level and inside a context — which is where 1E accepted it. The refusal
+records `memoryOverrideAttempt: true` and never reads, logs or echoes the
+supplied memory itself.
+
+1E's fixtures carried their own `memories`, which meant the thing ASKING
+for a context also authored the history in it — as wrong in a fixture as
+in a browser. They are server-owned ROWS now, travelling the identical
+resolve → retrieve → rank → project path the database rows do, so the
+synthetic path exercises the real one rather than a shortcut past it.
+
+**One ranking, two copies.** `js/companionMemoryRank.js` was lifted out
+of `companionMemory.js`'s `relevant()` and is generated into the Edge
+Function by `sync-shared.js`, exactly as the auth gate and the privacy
+gate already are. Two implementations of *which memories answer this
+question* is two things that can disagree about what a Companion knows.
+Behaviour is unchanged; the memory suite's own retrieval checks prove it.
+
+Retrieving server-side does not make the privacy gate unnecessary.
+Authorization AND the gate: the retrieved memories still pass through the
+Context Builder's shape and the gate's sweep, so no `card_id`, `owner_id`
+or row id survives into what the model sees.
+
+**A real bug the positive test caught.** The first version derived
+retrieval entities from the story's NAME (`story:The Tiny Forest`) — and
+the ranking EXCLUDES a memory matching none of the entities it was asked
+about, so entity ids that can never match meant retrieval returning
+nothing, always, in production. The server has no ids to ask with: the
+approved context deliberately carries none. It now asks about nothing in
+particular and the ranking falls back to its documented no-entity
+behaviour. Every adversarial check would have passed while memory was
+quietly switched off — which is exactly what a positive test is for.
+
+Read only, and counted rather than asserted: zero non-GET requests
+reached either table across the whole suite, the function contains no
+write verb, and it makes exactly one POST of its own — to the provider.
+
+Two harness bugs, both worth recording. `toProvider` returned `call()`'s
+whole envelope rather than the body, so every `.ok` in the new section
+read `undefined` and W1 failed for a reason unrelated to memory. And the
+stub's `/id=eq\./` also matched the tail of `owner_id=eq.`, so every card
+was filtered by an owner id and none was found — W9 failing on the test's
+own regex. Two of the older checks also had to be retuned rather than
+kept: `CompanionMemoryRank` is retrieval arithmetic, not the memory API,
+and a module that MENTIONS companion-chat in a comment is not one that
+calls it.
+
+Proved by reverting: removing server-side retrieval fails 7 checks
+including the positive one; allowing client memories fails 14.
+
+Chat 104/104, edge auth 127/127, context 84/84, memory 56/56, canon
+87/87, companion 50/50, garden 104/104, traveller reset 16/16, zero page
+errors. Build 0665 → 0666.

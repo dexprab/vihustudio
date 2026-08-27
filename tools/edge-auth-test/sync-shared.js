@@ -167,6 +167,35 @@ const GATE_BLOCK = [
 const GATE_BLOCK_RE = new RegExp(GATE_BEGIN.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') +
   '[\\s\\S]*?' + GATE_END.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'm');
 
+// ---------------------------------------------------------------
+// AND THE RETRIEVAL RULES (Sprint 1E.1)
+//
+// companion-chat retrieves Companion Memory server-side, and must rank
+// it by exactly the rules the browser's own store ranks by. Two
+// implementations of "which memories answer this question" is two
+// things that can disagree about what a Companion knows, so it is
+// generated from the one source like everything else here.
+const RANK_CANON = path.join(ROOT, 'js', 'companionMemoryRank.js');
+const RANK_BEGIN = '// ===== BEGIN GENERATED memoryRank — do not edit below this line =====';
+const RANK_END   = '// ===== END GENERATED memoryRank =====';
+
+const RANK_BLOCK = [
+  RANK_BEGIN,
+  '// Generated from js/companionMemoryRank.js, which is the readable',
+  '// original with every decision explained. Regenerate with:',
+  '//   node tools/edge-auth-test/sync-shared.js',
+  strip(fs.readFileSync(RANK_CANON, 'utf8')),
+  RANK_END,
+].join('\n');
+
+const RANK_BLOCK_RE = new RegExp(RANK_BEGIN.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') +
+  '[\\s\\S]*?' + RANK_END.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'm');
+
+function withRank(src) {
+  if (!RANK_BLOCK_RE.test(src)) throw new Error('no memoryRank marker block to replace');
+  return src.replace(RANK_BLOCK_RE, RANK_BLOCK);
+}
+
 function withGate(src) {
   if (!GATE_BLOCK_RE.test(src)) throw new Error('no privacyGate marker block to replace');
   return src.replace(GATE_BLOCK_RE, GATE_BLOCK);
@@ -180,7 +209,7 @@ FUNCTIONS.forEach((name) => {
   let after;
   try {
     after = inlined(before);
-    if (GATE_FUNCTIONS.indexOf(name) !== -1) after = withGate(after);
+    if (GATE_FUNCTIONS.indexOf(name) !== -1) after = withRank(withGate(after));
   } catch (e) { console.log('  ERROR   ' + rel + ' — ' + e.message); drifted++; return; }
 
   if (after === before) { console.log('  ok      ' + rel); return; }

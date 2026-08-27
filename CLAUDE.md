@@ -3222,6 +3222,82 @@ Studio calls it, and it ships with both production gates closed.**
   `tools/companion-chat-test/run-companion-chat-tests.js` ·
   `tools/edge-auth-test/sync-shared.js`
 
+### 35. VihuPlanet Decides What a Companion Remembers, Not the Browser
+
+Locked by the product owner in the Server-Authoritative Companion Memory
+brief. It is a security correction to Decision 34 and changes one thing:
+**where memory comes from.** Everything else about the model
+integration — the provider boundary, the mock, response validation, the
+timeout, the rate limit, the production gates, the synthetic
+safeguards — is untouched.
+
+- **THE CLIENT MAY SAY WHAT IT IS TALKING ABOUT. IT MAY NOT SAY WHAT THE
+  COMPANION REMEMBERS.** Sprint 1E let the browser hand over a
+  `memories` array inside its context. The privacy gate checked its
+  SHAPE and was right to — but a well-shaped lie is still a lie, and the
+  browser was authoring the history the model would be shown. It could
+  invent a memory, replace a real one, or quietly drop the ones it did
+  not want mentioned.
+- **Memory is now retrieved server-side, from the one store.** The
+  caller is resolved from a verified session (Sprint 1A), the cards that
+  session actually owns are read from `magic_card_identities`, and the
+  memories are read from `creator_companion_memory` scoped to those
+  cards. No second store, no cache, no copy into another table.
+- **A `cardId` from the client is a SELECTOR, not an assertion.** It is
+  verified through the gate's existing `authorizeCardAccess()` — the
+  same call `sky-protection` already makes before posting somebody's
+  Magic Card to an address — and naming somebody else's card is a 403.
+  With no card named, the set is every card that verified session owns,
+  read from the table rather than taken on trust.
+- **A client-supplied `memories` array is REFUSED, not ignored.**
+  Silently dropping it would let a caller believe it had been accepted
+  and go on building against a contract that does not exist. Both routes
+  are closed — the top level and inside a context, which is where 1E
+  accepted it. The refusal records `memoryOverrideAttempt: true` and
+  **never reads, logs or echoes the supplied memory itself.**
+- **The synthetic path exercises the real one.** 1E's fixtures carried
+  their own `memories`, which meant the thing ASKING for a context also
+  authored the history in it — as wrong in a fixture as in a browser.
+  They are now server-owned ROWS travelling the identical
+  resolve → retrieve → rank → project path the database rows do.
+- **ONE RANKING, TWO COPIES.** `js/companionMemoryRank.js` was lifted
+  out of `js/companionMemory.js`'s `relevant()` and is generated into
+  the Edge Function by `tools/edge-auth-test/sync-shared.js`, exactly as
+  the auth gate and the privacy gate already are. Two implementations of
+  *which memories answer this question* is two things that can disagree
+  about what a Companion knows. Behaviour is unchanged, and the memory
+  suite's own retrieval checks are what prove it.
+- **AUTHORIZATION AND THE GATE, never one instead of the other.**
+  Retrieving server-side does not make the privacy gate unnecessary: the
+  retrieved memories still pass through the Context Builder's shape and
+  the gate's sweep, so no `card_id`, `owner_id` or row id survives into
+  what the model sees.
+- **A REAL BUG THE POSITIVE TEST CAUGHT.** The first version derived
+  retrieval entities from the story's NAME (`story:The Tiny Forest`) —
+  and the ranking EXCLUDES a memory matching none of the entities it was
+  asked about, so entity ids that can never match meant retrieval
+  returning nothing, always, in production. The server has no ids to ask
+  with: the approved context deliberately carries none. It now asks
+  about nothing in particular and the ranking falls back to its
+  documented no-entity behaviour. **Which is exactly what a positive
+  test is for** — every adversarial check would have passed while memory
+  was quietly switched off.
+- **READ ONLY.** No insert, no update, no delete anywhere in the
+  function, no memory API reachable from it, and exactly one POST of its
+  own — to the provider. Proved by counting: zero non-GET requests
+  reached either table across the whole suite.
+- **Story identifiers are still client-supplied, and that is recorded
+  rather than fixed.** It is a selector question rather than an
+  authority one — a caller can only ever narrow among memories their own
+  cards already own — but it is a decision, and it is not this sprint's.
+- Out of scope and unchanged: Companion behaviour, personality, canon,
+  conversation UI, Bond Moments, semantic memory, memory interpretation,
+  the memory schema, Traveller behaviour, and any model capability.
+  Production OpenAI traffic remains disabled behind both gates.
+- `js/companionMemoryRank.js` ·
+  `supabase/functions/companion-chat/index.ts` ·
+  `tools/companion-chat-test/run-companion-chat-tests.js`
+
 ## Roadmap
 
 1. Theme Designer Polish

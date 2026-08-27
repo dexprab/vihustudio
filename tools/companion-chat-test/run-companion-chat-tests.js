@@ -57,6 +57,28 @@ function authFetch(extra) {
       }
       return new Response(JSON.stringify({ msg: 'invalid' }), { status: 401 });
     }
+    if (/\/rest\/v1\/(magic_card_identities|creator_companion_memory)/.test(u)
+        && init && init.method && String(init.method).toUpperCase() !== 'GET') {
+      dbWrites++;
+    }
+    if (u.indexOf('/rest/v1/magic_card_identities') !== -1) {
+      // ANCHORED. `/id=eq\./` also matches the tail of
+      // `owner_id=eq.`, so the unanchored version filtered every card
+      // by an owner id and found none — and W9 then failed for a
+      // reason that had nothing to do with the code under test.
+      const m = /[?&]id=eq\.([^&]+)/.exec(u);
+      const owner = /[?&]owner_id=eq\.([^&]+)/.exec(u);
+      let rows = DB.cards.slice();
+      if (m) rows = rows.filter((r) => r.id === decodeURIComponent(m[1]));
+      if (owner) rows = rows.filter((r) => r.owner_id === decodeURIComponent(owner[1]));
+      return new Response(JSON.stringify(rows), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
+    if (u.indexOf('/rest/v1/creator_companion_memory') !== -1) {
+      const owner = /[?&]owner_id=eq\.([^&]+)/.exec(u);
+      let rows = DB.memories.slice();
+      if (owner) rows = rows.filter((r) => r.owner_id === decodeURIComponent(owner[1]));
+      return new Response(JSON.stringify(rows), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
     if (u.indexOf('/rest/v1/rpc/edge_rate_limit_hit') !== -1) {
       const n = (rateHits[u] = (rateHits[u] || 0) + 1);
       const allowed = n <= rateLimit;
@@ -69,6 +91,15 @@ function authFetch(extra) {
 }
 let rateHits = {};
 let rateLimit = 1000;
+
+// THE AUTHORITATIVE STORE, as a stub of the real tables. Everything the
+// server is allowed to know about who owns what lives here; nothing the
+// client sends can change a row in it.
+const DB = { cards: [], memories: [] };
+// Any write to either table would show up here. There is no code path
+// in companion-chat that could produce one, and W1 proves it by
+// counting.
+let dbWrites = 0;
 
 function envFrom(over) {
   const base = {
@@ -165,7 +196,9 @@ async function call(req, over, providerFetch) {
     contextVersion: '1.0', mode: 'creator', approved: true,
     canon: { sections: [] },
     personality: { name: 'Leafy' },
-    memories: [{ type: 'shared', content: 'VIHAAN IS AFRAID OF THE DARK', importance: 'high', confidence: 'confirmed' }],
+    // No `memories` key: a context carrying one is refused outright now
+    // (W2 owns that). What this still proves is that the REST of a
+    // client's context is not read either.
     storyContext: { story: { name: 'REAL CHILD STORY' }, page: { index: 0, prose: { beat: { text: 'REAL PROSE' } } } },
     conversation: [{ speaker: 'creator', text: 'REAL CHILD SENTENCE' }],
   };
@@ -180,8 +213,7 @@ async function call(req, over, providerFetch) {
     { COMPANION_MODEL_PROVIDER: 'openai', COMPANION_SYNTHETIC_ENABLED: 'true', OPENAI_API_KEY: 'sk-test' },
     captured);
   ck(smuggle.body.ok === true, 'C1  a synthetic call reaches the provider', 'with synthetic enabled');
-  ck(sent && sent.body.indexOf('VIHAAN IS AFRAID OF THE DARK') === -1
-     && sent.body.indexOf('REAL CHILD STORY') === -1
+  ck(sent && sent.body.indexOf('REAL CHILD STORY') === -1
      && sent.body.indexOf('REAL PROSE') === -1
      && sent.body.indexOf('REAL CHILD SENTENCE') === -1,
      'C2  AND NOT ONE WORD OF THE CLIENT\'S CONTEXT WENT WITH IT',
@@ -215,7 +247,8 @@ async function call(req, over, providerFetch) {
     contextVersion: '1.0', mode: 'creator', approved: true,
     authority: { order: [], rule: '' },
     canon: M.SYNTHETIC_CANON, personality: { name: 'Leafy' },
-    memories: [{ type: 'shared', content: 'x', importance: 'high', confidence: 'confirmed' }],
+    // Memory is server-owned; a context carrying one is refused (W2).
+    // Retrieval fills this slot.
     storyContext: null, conversation: [{ speaker: 'creator', kind: 'said', text: 'hi' }],
     creatorId: 'card_forged99', companionId: 'not-leafy', cardId: 'card_forged99',
     email: 'child@example.com', token: 'eyJhbGciOi.eyJzdWIi.sig',
@@ -283,7 +316,7 @@ async function call(req, over, providerFetch) {
      'E2  story → a reply grounded in the supplied story', JSON.stringify(storyR.reply));
   const memR = await fixture('memory');
   ck(memR.ok === true && /tiny forest/i.test(memR.reply),
-     'E3  memory → grounded in the SUPPLIED memory', JSON.stringify(memR.reply));
+     'E3  memory → grounded in the RETRIEVED memory', JSON.stringify(memR.reply));
   const canonR = await fixture('canon');
   ck(canonR.ok === true && /you made it/i.test(canonR.reply),
      'E4  canon question → the canon answers it', JSON.stringify(canonR.reply));
@@ -324,7 +357,7 @@ async function call(req, over, providerFetch) {
     });
   ck(travSent.indexOf('tiny forest story together') === -1,
      'E7  TRAVELLER MODE SENDS NO CREATOR MEMORY',
-     'the fixture HAS one; the gate refused it server-side');
+     'retrieval is not attempted, and the gate refuses the member as well');
   ck(travSent.indexOf('The Tiny Forest') !== -1,
      'E7b but the public story still goes', 'a visitor is here to read it');
 
@@ -454,20 +487,220 @@ async function call(req, over, providerFetch) {
   // =================================================================
   ck(!/\btools\b\s*:|function_call|tool_choice|"functions"/.test(src),
      'J1  NO TOOLS ARE OFFERED TO THE MODEL', 'no web, no search, no database, no Studio');
-  ck(!/CompanionMemory|remember\(|companionMemory/.test(src),
-     'J2  THE MODEL CANNOT WRITE MEMORY', 'the memory API is not reachable from this file');
+  // CompanionMemoryRank is retrieval arithmetic, not the memory API —
+  // the first version of this check matched the substring and failed on
+  // the module Sprint 1E.1 deliberately added. What must be absent is
+  // the WRITING half: remember(), setStatus(), claim(), forgetTraveller().
+  const codeOnly = src.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
+  ck(!/\bremember\s*\(|CompanionMemory\.\w|setStatus\s*\(|forgetTraveller\s*\(/.test(codeOnly),
+     'J2  THE MODEL CANNOT WRITE MEMORY', 'no writing half of the memory API is reachable from this file');
   ck(!/insert|update |delete from|upsert/i.test(src.replace(/^\/\/.*$/gm, '')),
      'J3  and cannot mutate anything', 'no write of any kind in the handler');
   const runtime = ['js/companionEngine.js', 'js/companionBrain.js', 'js/companionDirector.js', 'js/companionContext.js'];
   const wired = runtime.filter((f) => /companion-chat/.test(fs.readFileSync(path.join(ROOT, f), 'utf8')));
   ck(wired.length === 0, 'J4  no Companion runtime file knows this endpoint exists',
      wired.join(', ') || runtime.length + ' files clean');
+  // Comment-stripped, because two memory modules now MENTION
+  // companion-chat in prose explaining why the retrieval rules were
+  // lifted out. A mention is not a call.
   const anyClient = fs.readdirSync(path.join(ROOT, 'js'))
-    .filter((f) => /\.js$/.test(f) && /companion-chat/.test(fs.readFileSync(path.join(ROOT, 'js', f), 'utf8')));
+    .filter((f) => /\.js$/.test(f))
+    .filter((f) => /companion-chat/.test(
+      fs.readFileSync(path.join(ROOT, 'js', f), 'utf8')
+        .split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n')));
   ck(anyClient.length === 0, 'J5  NOTHING IN THE PRODUCT CALLS IT AT ALL',
      anyClient.join(', ') || 'no client, no UI, no voice, no animation');
   ck(/speak/.test(src) && !/audio|play\(|Audio\(/.test(src),
      'J6  `speak` is returned and never acted on', 'voice belongs to a later sprint');
+
+  // =================================================================
+  console.log('\nW. MEMORY IS SERVER-AUTHORITATIVE  (Sprint 1E.1)');
+  // =================================================================
+  //
+  // The client may say what it is TALKING ABOUT. It may not say what
+  // the Companion REMEMBERS. Every check below sends something a
+  // browser might send and asks what the provider actually received.
+
+  // What the model was shown, for a given request.
+  let seen = null;
+  async function toProvider(payload, over) {
+    seen = null;
+    const body = await call(post(payload),
+      Object.assign({ COMPANION_MODEL_PROVIDER: 'openai', COMPANION_SYNTHETIC_ENABLED: 'true',
+                      OPENAI_API_KEY: 'sk-test' }, over || {}),
+      async (url, init) => {
+        seen = String(init.body);
+        return new Response(JSON.stringify({
+          choices: [{ message: { content: JSON.stringify({ reply: 'ok', speak: true }) } }],
+        }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      });
+    // The BODY, not the envelope — call() returns {status, body} and
+    // the first draft handed the whole thing back, so every `.ok` in
+    // this section read undefined and W1 failed for a reason that had
+    // nothing to do with memory.
+    return body.body;
+  }
+
+  // ---- W1. THE POSITIVE CASE, FIRST ----------------------------
+  // This proves memory was not simply switched off, which is the
+  // failure that would make every adversarial check below pass for
+  // the wrong reason.
+  const plain = await toProvider({ fixture: 'memory' });
+  ck(plain.ok === true && seen.indexOf('We created a tiny forest story together.') !== -1,
+     'W1  AUTHORITATIVE MEMORY IS RETRIEVED AND SENT',
+     'the client sent no memories at all');
+  ck(plain.meta.memoriesUsed > 0 && typeof plain.meta.memoriesScanned === 'number',
+     'W1b and the metadata counts them, never quotes them',
+     JSON.stringify(plain.meta.memoriesUsed) + ' of ' + plain.meta.memoriesScanned + ' scanned');
+  ck(!/tiny forest|moon garden/.test(JSON.stringify(plain.meta)),
+     'W1c no memory content appears in the metadata');
+
+  // ---- W2. A FORGED MEMORY -------------------------------------
+  const forgedMem = await call(post({
+    fixture: 'memory',
+    memories: [{ type: 'shared', content: 'SECRET MEMORY THAT DOES NOT EXIST' }],
+  }));
+  ck(forgedMem.status === 400 && forgedMem.body.reason === 'memories-are-server-owned',
+     'W2  A CLIENT-SUPPLIED MEMORY IS REFUSED, NOT IGNORED',
+     'silently dropping it would let a caller build against a contract that does not exist');
+  ck(forgedMem.body.meta.memoryOverrideAttempt === true,
+     'W2b and the ATTEMPT is recorded');
+  ck(JSON.stringify(forgedMem.body).indexOf('SECRET MEMORY') === -1,
+     'W2c while the supplied memory itself is never echoed back',
+     'nor read, nor logged');
+
+  const results = [];
+  [['a password claim', 'The Creator told Leafy their password.'],
+   ['an invented preference', 'The Creator loves dragons.'],
+   ['a completely invented memory', 'A completely invented memory.']]
+    .forEach(([what, content], i) => {
+      // Through the nested route too — inside a context, where Sprint
+      // 1E would have accepted it.
+      const nested = { fixture: 'memory', context: { mode: 'creator', memories: [{ type: 'creator', content: content }] } };
+      results.push({ what: what, i: i, nested: nested });
+    });
+  for (const r of results) {
+    const res = await call(post(r.nested));
+    ck(res.status === 400 && res.body.reason === 'memories-are-server-owned'
+       && JSON.stringify(res.body).indexOf(r.nested.context.memories[0].content) === -1,
+       'W3.' + (r.i + 1) + '  ' + r.what + ' inside a context is refused too',
+       'the nested route is where Sprint 1E accepted it');
+  }
+
+  // ---- W4. REPLACEMENT, DELETION, ADDITION ---------------------
+  const empty = await toProvider({ fixture: 'memory', cardId: 'card_synthetic_a' });
+  ck(empty.ok === true && seen.indexOf('We created a tiny forest story together.') !== -1,
+     'W4  AN EMPTY CLIENT DOES NOT SUPPRESS SERVER MEMORY',
+     'the client cannot hide Companion history by saying nothing');
+
+  const idInject = await call(post({
+    fixture: 'memory',
+    memories: [{ id: 'mem_someOtherCreator', content: 'Private memory from another Creator' }],
+  }));
+  ck(idInject.status === 400 && JSON.stringify(idInject.body).indexOf('mem_someOtherCreator') === -1,
+     'W5  A SUPPLIED MEMORY ID IS REFUSED AND NEVER RESOLVED',
+     'identity is established server-side, never named by the caller');
+
+  // ---- W6. CREATOR ISOLATION ------------------------------------
+  const asA = await toProvider({ fixture: 'memory', cardId: 'card_synthetic_a' });
+  const seenA = seen;
+  const asB = await toProvider({ fixture: 'memory', cardId: 'card_synthetic_b' });
+  const seenB = seen;
+  ck(asA.ok && seenA.indexOf('We built a moon garden.') !== -1
+     && seenA.indexOf('We built a river house.') === -1,
+     'W6  CREATOR A RECEIVES ONLY CREATOR A\'S MEMORY', 'moon garden, no river house');
+  ck(asB.ok && seenB.indexOf('We built a river house.') !== -1
+     && seenB.indexOf('We built a moon garden.') === -1
+     && seenB.indexOf('tiny forest') === -1,
+     'W6b and CREATOR B ONLY B\'S', 'river house, nothing of A\'s');
+
+  // ---- W7. TRAVELLER --------------------------------------------
+  const trav = await toProvider({ fixture: 'traveller' });
+  ck(trav.ok === true && seen.indexOf('tiny forest') === -1
+     && seen.indexOf('moon garden') === -1,
+     'W7  A TRAVELLER RECEIVES NO PRIVATE MEMORY', 'retrieval is not even attempted');
+  const travForged = await call(post({
+    fixture: 'traveller',
+    memories: [{ type: 'shared', content: 'We built a moon garden.' }],
+  }));
+  ck(travForged.status === 400,
+     'W8  AND A TRUE MEMORY SUPPLIED BY A TRAVELLER STILL DOES NOT ENTER',
+     'privacy follows authorization, not whether the sentence happens to be true');
+
+  // ---- W9. THE DATABASE PATH, with both gates open ---------------
+  DB.cards = [
+    { id: 'card_db_a', owner_id: 'user-aaaa' },
+    { id: 'card_db_b', owner_id: 'user-other' },
+  ];
+  DB.memories = [
+    { owner_id: 'user-aaaa', card_id: 'card_db_a', kind: 'shared', content: 'DB MEMORY FOR THE CALLER',
+      importance: 'high', confidence: 'confirmed', protected: true, status: 'active',
+      entities: [], created_at: '2026-01-01T00:00:00.000Z', last_referenced_at: null },
+    { owner_id: 'user-other', card_id: 'card_db_b', kind: 'shared', content: 'DB MEMORY FOR SOMEBODY ELSE',
+      importance: 'high', confidence: 'confirmed', protected: true, status: 'active',
+      entities: [], created_at: '2026-01-01T00:00:00.000Z', last_referenced_at: null },
+  ];
+  dbWrites = 0;
+  const liveCtx = {
+    contextVersion: '1.0', mode: 'creator',
+    authority: { order: ['canon', 'personality', 'memories', 'storyContext', 'conversation'], rule: 'x' },
+    canon: M.SYNTHETIC_CANON, personality: { name: 'Leafy' },
+    storyContext: { story: { name: 'A Story', pageCount: 1 },
+                    page: { index: 0, prose: { kind: 'creator-authored',
+                                               beat: { text: 'A sentence.', truncated: false }, draft: null },
+                            objects: [], hasImage: false } },
+    conversation: [{ speaker: 'creator', kind: 'said-to-the-companion', text: 'hello' }],
+  };
+  const live = await toProvider({ context: liveCtx },
+    { OPENAI_PRODUCTION_ENABLED: 'true', OPENAI_ZDR_CONFIRMED: 'true' });
+  ck(live.ok === true && seen.indexOf('DB MEMORY FOR THE CALLER') !== -1,
+     'W9  the DATABASE path retrieves the caller\'s own memory',
+     'magic_card_identities → creator_companion_memory, both scoped to the verified session');
+  ck(seen.indexOf('DB MEMORY FOR SOMEBODY ELSE') === -1,
+     'W9b and never another owner\'s', 'scoped by the verified owner_id, then by the card set');
+
+  const stealCard = await call(post({ context: liveCtx, cardId: 'card_db_b' }),
+    { COMPANION_MODEL_PROVIDER: 'openai', COMPANION_SYNTHETIC_ENABLED: 'true', OPENAI_API_KEY: 'sk-test',
+      OPENAI_PRODUCTION_ENABLED: 'true', OPENAI_ZDR_CONFIRMED: 'true' });
+  ck(stealCard.status === 403 && stealCard.body.reason === 'forbidden',
+     'W10 NAMING SOMEBODY ELSE\'S CARD IS REFUSED',
+     'a cardId is a selector the gate verifies, never an assertion it believes');
+
+  // ---- W11. READ ONLY --------------------------------------------
+  ck(dbWrites === 0, 'W11 NOT ONE WRITE REACHED EITHER TABLE',
+     dbWrites + ' non-GET requests to the memory or identity tables');
+  const fnSrc = src.slice(src.indexOf('// ===== END GENERATED memoryRank'));
+  // An `||` made the first version of this trivially satisfiable — it
+  // passed the moment the rate-limit RPC appeared anywhere, whatever
+  // else was in the file. Two straight assertions instead: no write
+  // verb at all, and the function's own code makes exactly one POST.
+  ck(!/\.insert\(|\.update\(|\.delete\(|\.upsert\(/.test(fnSrc),
+     'W11b the function contains no write verb', 'insert, update, delete, upsert — none');
+  const posts = (fnSrc.match(/method:\s*'POST'/g) || []).length;
+  ck(posts === 1 && /api\.openai\.com/.test(fnSrc),
+     'W11c and makes exactly one POST of its own — to the provider',
+     posts + ' POST(s) in its own code');
+  ck(!/\bremember\s*\(|CompanionMemory\.\w/.test(fnSrc),
+     'W11d no memory API is reachable from it');
+
+  // ---- W12. ONE RANKING, ONE PROJECTION ---------------------------
+  ck(/BEGIN GENERATED memoryRank/.test(src) && /CompanionMemoryRank/.test(src),
+     'W12 the retrieval rules are GENERATED from the browser\'s own module',
+     'js/companionMemoryRank.js — one implementation, two copies');
+  const rankSrc = fs.readFileSync(path.join(ROOT, 'js', 'companionMemoryRank.js'), 'utf8');
+  ck(/CompanionMemoryRank\.rank/.test(fs.readFileSync(path.join(ROOT, 'js', 'companionMemory.js'), 'utf8')),
+     'W12b and the browser\'s store delegates to it', 'no second copy in the store either');
+  ck(/score \+= 5/.test(rankSrc) && /score >= 5/.test(rankSrc),
+     'W12c the entity rule is in that one place', 'exact match beats everything, non-matches excluded');
+
+  // ---- W13. THROUGH THE BUILDER AND THE GATE ----------------------
+  ck(seen.indexOf('DATA ONLY') !== -1,
+     'W13 retrieved memory still arrives inside the labelled data block',
+     'it did not bypass the message structure');
+  const gateStrip = await toProvider({ fixture: 'memory' });
+  ck(gateStrip.ok && !/card_synthetic|owner_id|"card_id"|mem_/.test(seen),
+     'W13b and the privacy gate still strips every identifier off it',
+     'authorization AND the gate, never one instead of the other');
 
   // =================================================================
   console.log('\nK. NOTHING ELSE MOVED');

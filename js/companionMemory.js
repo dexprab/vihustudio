@@ -287,60 +287,15 @@ const CompanionMemory = (function () {
    * @param {object} [opts] {entities:[], kinds:[], limit, includeDormant}
    */
   function relevant(opts) {
-    const o = opts || {};
-    const want = Array.isArray(o.entities) ? o.entities.filter(Boolean) : [];
-    const kinds = Array.isArray(o.kinds) ? o.kinds : null;
-    const limit = (typeof o.limit === 'number' && o.limit > 0) ? o.limit : LIMITS.retrieveDefault;
-
-    const pool = _read().items.filter(function (m) {
-      if (!m) return false;
-      if (m.status === 'archived') return false;
-      if (m.status === 'dormant' && !o.includeDormant) return false;
-      if (kinds && kinds.indexOf(m.kind) === -1) return false;
-      return true;
-    });
-
-    const scored = pool.map(function (m) {
-      let score = 0;
-      // An exact entity match is worth more than anything else: it is
-      // the difference between a memory ABOUT this thing and a memory
-      // that merely happens to be recent.
-      for (let i = 0; i < want.length; i++) {
-        if (m.entities.indexOf(want[i]) !== -1) score += 5;
-      }
-      score += (IMPORTANCE[m.importance] || 0);
-      if (m.protected) score += 1;
-      // Recency, gently: last REFERENCED where we have it, otherwise
-      // when it was made. A memory that has been used lately is more
-      // alive than one merely made lately.
-      const when = m.ref || m.at;
-      score += _recency(when);
-      return { m: m, score: score };
-    });
-
-    // If entities were asked for, a memory matching none of them is not
-    // "less relevant" — it is not an answer to the question. Falling
-    // back to recency there is how a Companion ends up saying something
-    // true about the wrong thing.
-    const pruned = want.length
-      ? scored.filter(function (s) { return s.score >= 5; })
-      : scored;
-
-    pruned.sort(function (a, b) {
-      if (b.score !== a.score) return b.score - a.score;
-      return String(b.m.at).localeCompare(String(a.m.at));
-    });
-    return pruned.slice(0, limit).map(function (s) { return _clone(s.m); });
-  }
-
-  // 0..1, halving roughly every 30 days. Deliberately small next to an
-  // entity match — recency breaks ties, it does not decide answers.
-  function _recency(iso) {
-    try {
-      const age = Date.now() - new Date(iso).getTime();
-      if (!isFinite(age) || age < 0) return 1;
-      return 1 / (1 + (age / (30 * 86400000)));
-    } catch (e) { return 0; }
+    // THE RULES LIVE IN js/companionMemoryRank.js, and they live there
+    // because companion-chat has to apply the identical ones
+    // server-side (Sprint 1E.1). Two implementations of "which
+    // memories answer this question" is two things that can disagree
+    // about what a Companion knows.
+    const ranked = (typeof CompanionMemoryRank !== 'undefined' && CompanionMemoryRank.rank)
+      ? CompanionMemoryRank.rank(_read().items, Object.assign({ limit: LIMITS.retrieveDefault }, opts || {}))
+      : [];
+    return ranked.map(_clone);
   }
 
   /**
@@ -375,15 +330,11 @@ const CompanionMemory = (function () {
       });
       _write();
     }
+    // The same projection the server produces, from the same module.
     return {
-      memories: picked.map(function (m) {
-        return {
-          type: m.kind,
-          content: m.content,
-          importance: m.importance,
-          confidence: m.confidence,
-        };
-      }),
+      memories: (typeof CompanionMemoryRank !== 'undefined' && CompanionMemoryRank.project)
+        ? CompanionMemoryRank.project(picked)
+        : [],
     };
   }
 
