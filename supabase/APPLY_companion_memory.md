@@ -35,6 +35,12 @@ Proceed only when `memory_table` is NULL and the other three are
 present. If `memory_table` is already non-NULL the table exists — skip
 to step 3 rather than re-running anything.
 
+If you would rather ask the wider question first — *what else has this
+project never had applied?* — run `supabase/what_is_missing.sql`. It is
+read-only, safe on a live project at any time, and answers APPLIED or
+MISSING for every migration in this repository, naming the file to run
+for each one that is absent.
+
 ---
 
 ## Step 2 — apply
