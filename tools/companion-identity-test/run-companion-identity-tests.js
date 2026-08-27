@@ -367,8 +367,28 @@ BONDABLE.forEach((id) => {
      e && e.stillNeeded.length ? e.stillNeeded.length + ' open item(s)' : 'none open');
 });
 // The two real product gaps this sprint found must be written down.
-ck(/IDENTICAL to Leafy/i.test(JSON.stringify(spec.nimbus.evidence)),
-   'G4  Nimbus\'s voice settings being a copy of Leafy\'s is recorded');
+// G4 — EVERY COMPANION HAS ITS OWN VOICE, and this check exists because
+// the sprint got it wrong. The first version recorded that "Nimbus has
+// no independently chosen voice" — read off the settings triple alone,
+// with the voiceId never looked at. The product owner corrected it from
+// the audition screen. A registry entry carries a voiceId (WHICH voice)
+// and a settings triple (HOW it is delivered); they are different
+// things and only the second is shared.
+const voiced = BONDABLE.map((id) => {
+  const r = registry.companions.find((c) => c.id === id) || {};
+  return { id: id, voiceId: (r.voice || {}).voiceId || null };
+});
+ck(voiced.every((v) => !!v.voiceId),
+   'G4  every bondable Companion has a voice of its own',
+   voiced.map((v) => v.id + '=' + String(v.voiceId).slice(0, 6) + '…').join(' · '));
+ck(new Set(voiced.map((v) => v.voiceId)).size === BONDABLE.length,
+   'G4b and no two of them share it',
+   new Set(voiced.map((v) => v.voiceId)).size + '/' + BONDABLE.length + ' distinct voiceIds');
+// The tuning triple IS shared between two of them, and that is what the
+// specifications are allowed to call a refinement — never a missing voice.
+ck(/DELIVERY TUNING/i.test(JSON.stringify(spec.nimbus.evidence)) &&
+   !/no independently authored voice|has no voice/i.test(JSON.stringify(spec.nimbus)),
+   'G4c Nimbus records the shared TUNING, and never claims to lack a voice');
 ck(/EIGHT of the twelve poses/i.test(JSON.stringify(spec.quill.evidence)),
    'G5  Quill declaring only eight poses is recorded');
 

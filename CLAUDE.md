@@ -4144,8 +4144,8 @@ no conversation, no new runtime consumer.**
   specification, twelve poses, voice settings. Leo: a name, the species
   *Lantern Lion*, eleven poses, voice settings, and one aside in
   `docs/VIHU_VOICE.md`. Quill: a name, *Ink Spirit*, **eight** poses,
-  voice settings. Nimbus: a name, *Dream Sprite*, eleven poses, and
-  voice settings **identical to Leafy's**. Both READMEs for Quill and
+  voice settings. Nimbus: a name, *Dream Sprite*, eleven poses, and its
+  own voice. Both READMEs for Quill and
   Nimbus are boilerplate engineering docs with the name swapped and
   contain no character material at all.
 - **A SPECIES IS PRODUCT AUTHORSHIP, NOT DECORATION.** Canon already
@@ -4232,12 +4232,21 @@ no conversation, no new runtime consumer.**
   carry none of the four; any other is a runtime file and must not have
   been emptied. `F5b` pins Leafy by name so no future edit can move her
   across by deleting one key.
-- **TWO REAL PRODUCT GAPS ARE RECORDED RATHER THAN PAPERED OVER.**
-  Nimbus's voice settings are a copy of Leafy's, so Nimbus has no
-  independently chosen voice; and **Quill declares only eight of the
+- **CORRECTED BY THE PRODUCT OWNER: EVERY COMPANION HAS ITS OWN
+  VOICE.** This decision first recorded that "Nimbus's voice settings
+  are a copy of Leafy's, so Nimbus has no independently chosen voice",
+  and that was two different things run together. A registry entry
+  carries a **voiceId** — which voice this is — and a **settings**
+  triple — how that voice is delivered. Every one of the four has a
+  distinct voiceId, hand-picked, shared with nobody; the audition tool
+  shows all six of them. What Nimbus shares with Leafy is only the
+  stability/style/speed triple. That is a candidate for retuning, since
+  Nimbus's own specification asks for slower and softer-edged than
+  Leafy, and it is a refinement rather than a gap.
+- **ONE REAL PRODUCT GAP REMAINS.** **Quill declares only eight of the
   twelve poses** — no celebrate, happy, sleep or surprised — so Quill
   structurally cannot show delight or drowsiness, and its specification
-  says so rather than describing a face it does not have. Both need a
+  says so rather than describing a face it does not have. That needs a
   product decision, not an engineering one.
 - **A CORRECTION TO DECISION 43.** That entry said Leo's `think.png`
   "404s and the engine's `onerror` falls back". Measured: `think` is not

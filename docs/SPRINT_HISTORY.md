@@ -9180,7 +9180,7 @@ particular.
 **The inventory.** Leafy: a full 20-key specification, twelve poses.
 Leo: a name, *Lantern Lion*, eleven poses, one aside in VIHU_VOICE.md.
 Quill: a name, *Ink Spirit*, **eight** poses. Nimbus: a name, *Dream
-Sprite*, eleven poses, and voice settings **identical to Leafy's**. The
+Sprite*, eleven poses, and its own voice. The
 Quill and Nimbus READMEs are boilerplate engineering docs with the name
 swapped — no character material at all.
 
@@ -9228,9 +9228,14 @@ everything else has some", true only while Leafy was the one descriptive
 file, and would have failed three specifications for being exactly what
 they are.
 
-**Two product gaps recorded rather than papered over:** Nimbus has no
-independently chosen voice, and Quill declares only eight poses, so it
-structurally cannot show delight or drowsiness. Also corrected: Decision
+**Corrected after review by the product owner:** the first version of
+this entry said Nimbus had no independently chosen voice. It does — a
+registry entry carries a voiceId (which voice) and a settings triple
+(how it is delivered), and all four have a distinct hand-picked voiceId.
+Only the tuning triple is shared with Leafy, which is a candidate for
+retuning rather than a gap. **The one real gap:** Quill declares only
+eight poses, so it structurally cannot show delight or drowsiness. Also
+corrected: Decision
 43 said Leo's `think.png` 404s and falls back; measured, `think` is not
 declared at all, so `_applyState` returns early and no request is made.
 

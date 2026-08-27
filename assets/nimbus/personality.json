@@ -22,9 +22,10 @@
   "evidence": {
     "note": "Where this character comes from. Nothing here was invented from nothing; each item names the existing product material it reads.",
     "established": [
-      "Name 'Nimbus' and package id 'nimbus' — the Companion registry, Nimbus's package manifest. A nimbus is a cloud.",
+      "Name 'Nimbus' and package id 'nimbus' — the Companion registry and Nimbus's package manifest. A nimbus is a cloud.",
       "Species 'Dream Sprite' — the Companion Canon's species table.",
-      "The artwork: a small pale sprite who does not stand on the ground — it stands ON A CLOUD, with cloud for hair, a cloud trailing behind it, a crescent moon lit on its brow and repeated on its tunic, a moon charm hanging at its side, and half-lidded eyes with a small settled smile."
+      "The artwork: a small pale sprite who does not stand on the ground — it stands ON A CLOUD, with cloud for hair, a cloud trailing behind it, a crescent moon lit on its brow and repeated on its tunic, a moon charm hanging at its side, and half-lidded eyes with a small settled smile.",
+      "Its own voice — a distinct voiceId in the Companion registry, chosen by hand for Nimbus and shared with nobody."
     ],
     "authored": [
       "That a creature standing on a cloud rather than on the floor is adrift rather than merely calm, and that this is the whole difference between Nimbus and Leafy.",
@@ -32,7 +33,7 @@
       "How Nimbus behaves in each of the situations below."
     ],
     "stillNeeded": [
-      "Nimbus's voice settings in the Companion registry are IDENTICAL to Leafy's (stability 0.5, style 0.15, speed 0.86). They were seeded, not chosen for Nimbus, so Nimbus has no independently authored voice yet. Everything in this file says Nimbus should be slower and softer-edged than Leafy; that is a recommendation, not a change, and retuning the registry is a product-owner decision.",
+      "Nimbus's DELIVERY TUNING — the stability, style and speed triple that shapes how its own voice is spoken — is currently the same triple as Leafy's. The voice itself is Nimbus's own; only the tuning is shared. Everything in this file says Nimbus should be slower and softer-edged than Leafy, so that triple is a candidate for retuning. It is a refinement, not a gap, and it is a product-owner decision.",
       "Nimbus declares eleven poses and 'think' is not one of them, so the Studio's 'creating' pose resolves to nothing and the face does not change."
     ]
   },
@@ -95,7 +96,7 @@
     "notes": "Excitement is deliberately absent: Nimbus does not speed up, and what would be excitement in another Companion is wonder in this one. This describes how Nimbus expresses a feeling; what Nimbus feels is not stored, is not a number, and nothing persists between visits."
   },
   "voiceDirection": {
-    "purpose": "Characteristics that should shape how Nimbus sounds. Documentation only — this file configures no voice and changes no recording. Note that Nimbus's registry settings are currently a copy of Leafy's.",
+    "purpose": "Characteristics that should shape how Nimbus sounds. Documentation only — this file configures no voice and changes no recording. Nimbus has its own voice; what it shares with Leafy is the delivery tuning, which these characteristics suggest could be slower.",
     "is": [
       "soft-edged",
       "slow",

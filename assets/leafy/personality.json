@@ -125,13 +125,13 @@
       "Species 'Bloomling' — the Companion Canon's species table.",
       "The full character specification below, authored as a deliberate product act and locked as Decision 31 in the product's own canon.",
       "Twelve declared poses, the only complete Companion Pose Contract v2 set of the four.",
-      "Voice settings — the Companion registry: stability 0.5, style 0.15, speed 0.86."
+      "Her own voice — a distinct voiceId in the Companion registry, chosen by hand for Leafy and shared with nobody."
     ],
     "authored": [
       "The presenceLines block below, added in the Companion Character Identity sprint so Leafy's arrival can one day sound like Leafy rather than like the platform."
     ],
     "stillNeeded": [
-      "Leafy's registry voice settings are shared exactly with Nimbus. They differentiate nobody, and choosing one for each is a product-owner decision."
+      "Leafy's DELIVERY TUNING — stability, style and speed — is the same triple Nimbus uses. Each has her own voice; only the tuning is shared, and whether to separate the two is a product-owner decision rather than a gap."
     ]
   },
   "presenceLines": {
