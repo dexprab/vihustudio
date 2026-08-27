@@ -11403,10 +11403,19 @@ body.studio-rite-running .traveller-save-notice{ display:none !important; }
 body.studio-rite-running #openBtn,
 body.studio-rite-running #saveBtn,
 body.studio-rite-running #publishBtn,
-body.studio-rite-running #homeBtn,
 body.studio-rite-running #autosaveStatus,
 body.studio-rite-running #themeToggle,
 body.studio-rite-running #magicCardBadge{ display:none !important; }
+
+/* HOME STAYS, EXCEPT IN THE ONE RITE THERE IS NO WAY OUT OF. Asked for
+   by the product owner: "story rites except story rite 1 should have
+   home button." The mandatory rite holds the Studio shut until it is
+   finished (Decision 8), so a way out would be a way to skip becoming a
+   Creator — and there is nowhere to go, since Studio Home is what it
+   unlocks. An opt-in rite is the opposite: a door the child chose, whose
+   story is now held and offered back on Studio Home (Decision 22), so
+   leaving costs them nothing and hiding the way out only traps them. */
+body.studio-rite-running.studio-rite-mandatory #homeBtn{ display:none !important; }
 
 /* The build/release footer. */
 body.studio-rite-running #devFooter{ display:none !important; }

@@ -8403,6 +8403,7 @@ including the positive one; allowing client memories fails 14.
 Chat 104/104, edge auth 127/127, context 84/84, memory 56/56, canon
 87/87, companion 50/50, garden 104/104, traveller reset 16/16, zero page
 errors. Build 0665 → 0666.
+<<<<<<< HEAD
 
 ---
 
@@ -8475,4 +8476,58 @@ a missing card mean all cards fails X5.
 
 Chat 160/160, edge auth 127/127, context 84/84, memory 56/56, canon
 87/87, companion 50/50, garden 104/104, traveller reset 16/16, zero page
-errors. Build 0666 → 0667.
+errors. Build 0667 → 0668.
+
+**A note on the number.** Another session shipped its own 0667 to main
+while this one was in flight, so this moved to 0668 on merging — a
+version stamp is a cache buster and two ships cannot share one. The only
+difference between the two heads in `studio.html` was this sprint's own
+script tag, verified rather than assumed.
+=======
+## A Beat Names Only What the Child Will Find (build 0661)
+
+*"we are asking kid to add square, there is no square in the shapes."*
+
+True, and worth measuring before fixing. The catalogue has Circle,
+Rectangle, Rounded Rectangle, Triangle, Diamond, Pentagon, Hexagon,
+Octagon, Star and a dozen more — and no Square. But a shape is added at
+**240×240**, so the tile labelled Rectangle already gives the child a
+perfect square. The shape was never missing; only the word was.
+
+A Square tile was considered and rejected on the record. Shapes are drawn
+to whatever box they are given, so a `square` entry would behave
+identically to Rectangle and be a second tile doing one job — and the
+child can resize it into a non-square the moment they touch it, which
+would make the name a lie. Beat 4 already says *Add a triangle on top*,
+so naming the tile is the form this story was already using; the square
+beat was the odd one out. It now reads *Add a rectangle.*
+
+**This is the fourth bug of one family**, so the guard is general rather
+than a test for the word: `P1`/`P2` check that every shape noun used by a
+rite that hands over the Shapes tile is a real entry in
+`StickerLibrary.SHAPE_KINDS`. It joins `N6` (every revealed capability
+has a beat), `V` (every revealed capability resolves to a visible
+control) and `U` (no beat asks for a control the Rite holds shut). A new
+harness read, `_screenText(riteId)`, makes a beat's own words readable —
+nothing could check what a beat actually says before this.
+
+**And Home comes back to the opt-in rites.** *"story rites except story
+rite 1 should have home button."* The mandatory rite holds the Studio
+shut until it is finished, so a way out would be a way to skip becoming a
+Creator — and there is nowhere to go, since Studio Home is what it
+unlocks. An opt-in rite is the opposite: a door the child chose, whose
+story is now held and offered back on Studio Home, so leaving costs them
+nothing and hiding the way out only traps them. A `studio-rite-mandatory`
+body class tells the reduction which kind is running, so this is one
+class rather than a branch. `P3`–`P5` cover all three rites: no Home in
+the mandatory one, Home in both opt-in ones, and everything else the Rite
+quiets still quiet in all three.
+
+Both proved by putting the bugs back: P2 names `my-little-house beat 3`
+exactly, P4 catches Home vanishing from both opt-in rites. Rite gate
+100/100 (was 95), gate 25/25, levels 59/59, creation home 84/84,
+celebration 31/31, traveller reset 16/16, capability audit 4/4, zero page
+errors. Build 0660 → 0661, shipped as **0667** after merging: another
+session had reached 0666 in the meantime, and a version stamp is a cache
+buster that two ships cannot share.
+>>>>>>> origin/main

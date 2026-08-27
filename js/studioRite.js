@@ -729,8 +729,19 @@ const StudioRite=(function(){
 
     {band:true, lines:[
       {lumo:'talk', egg:'curious',
+       // A BEAT NAMES WHAT THE CHILD WILL ACTUALLY FIND. Reported by the
+       // product owner: "we are asking kid to add square, there is no
+       // square in the shapes." Correct — the catalogue has Circle,
+       // Rectangle, Rounded Rectangle, Triangle and a dozen more, and no
+       // Square. Measured: a shape is added at 240x240, so the tile
+       // labelled Rectangle gives the child a perfect square — the shape
+       // was never missing, only the word. A Square tile was considered
+       // and rejected: shapes are drawn to whatever box they are given,
+       // so it would behave identically to Rectangle and be a second
+       // tile doing one job. Beat 4 already says "Add a triangle", so
+       // naming the tile is the form this story already uses.
        line:{title:'Someone was going to live here. But first, they needed a house.',
-             subtitle:'Add a square.'}}
+             subtitle:'Add a rectangle.'}}
      ], end:{await:'shape-added'}, nudgeDelay:6000},
 
     {band:true, lines:[
@@ -3173,6 +3184,7 @@ const StudioRite=(function(){
     try{ document.body.style.removeProperty('--rite-list-max'); }catch(e){}
     try{ document.body.style.removeProperty('--rite-band-h'); }catch(e){}
     try{ document.body.classList.remove('studio-rite-running'); }catch(e){}
+    try{ document.body.classList.remove('studio-rite-mandatory'); }catch(e){}
     _clearReveals();
     _clearNudge();
     _hush();
@@ -3546,7 +3558,17 @@ const StudioRite=(function(){
     const abandon=function(){ _teardown(); handOff(); };
 
     try{
-      try{ document.body.classList.add('studio-rite-running'); }catch(e){}
+      try{
+        document.body.classList.add('studio-rite-running');
+        // WHICH KIND OF RITE IS RUNNING. The mandatory one holds the
+        // Studio shut until it is finished (Decision 8), so there is no
+        // way out of it and none is offered. An opt-in rite is a door a
+        // child chose to walk through and can walk back out of — its
+        // story is held and offered back (Decision 22), so leaving costs
+        // nothing. Only the reduction needs to tell them apart, so this
+        // is a class rather than a branch.
+        document.body.classList.toggle('studio-rite-mandatory',!!(_rite && _rite.unlocksStudio));
+      }catch(e){}
       // THE RITE OWNS THE STUDIO'S SHAPE, AND HAS TO TAKE IT.
       //
       // Reported by the product owner walking Rite II: beat 2 says "your
@@ -3847,6 +3869,19 @@ const StudioRite=(function(){
     // child to press a control that was greyed out — a rite that could
     // not be finished. Nothing could see that, because nothing could
     // read the two facts together.
+    // Harness only: the words each beat actually says, in order. A beat
+    // that names a shape, a control or a colour is making a promise the
+    // Studio has to keep, and nothing could read that text to check.
+    _screenText:function(riteId){
+      const r=riteId ? _riteById(riteId) : _mandatoryRite();
+      if(!r || !Array.isArray(r.screens)) return null;
+      return r.screens.map(function(sc){
+        return (sc.lines||[]).map(function(l){
+          const line=(l&&l.line)||{};
+          return [line.title||'',line.subtitle||''].join(' ');
+        }).join(' ');
+      });
+    },
     _beats:function(riteId){
       const r=riteId ? _riteById(riteId) : _mandatoryRite();
       if(!r || !Array.isArray(r.screens)) return null;

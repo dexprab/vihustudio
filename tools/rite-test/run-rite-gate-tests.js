@@ -1127,6 +1127,105 @@ function check(cond, name, note) {
   check(sErrors.length === 0, 'S4 zero page errors', sErrors.slice(0, 2).join(' | '));
   await sp.close();
 
+  /* ---- P: a beat names only what the child will actually find --------
+   *
+   * "we are asking kid to add square, there is no square in the shapes."
+   * Correct — the catalogue has Circle, Rectangle, Rounded Rectangle,
+   * Triangle and a dozen more, and no Square. Measured: a shape is added
+   * at 240x240, so the tile labelled Rectangle gives a perfect square —
+   * the shape was never missing, only the word.
+   *
+   * This is the fourth bug of one family (a beat asking for something
+   * the Studio cannot give), so the check is general rather than a test
+   * for the word "square": every shape noun a shapes-teaching rite uses
+   * must be a real tile in StickerLibrary's own catalogue.
+   */
+  console.log('\n-- P: a beat names only what the child will find');
+
+  // Shape words a children's script could plausibly reach for. A beat
+  // using one of these has NAMED a shape, and the name has to be real.
+  const SHAPE_WORDS = ['square', 'circle', 'rectangle', 'triangle', 'diamond',
+    'pentagon', 'hexagon', 'octagon', 'star', 'cross', 'oval', 'heart',
+    'arrow', 'banner', 'trapezoid', 'parallelogram', 'crescent', 'ellipse'];
+
+  const named = await page.evaluate((words) => {
+    const have = (StickerLibrary.SHAPE_KINDS || []).map((k) => String(k.label || '').toLowerCase());
+    const bad = [];
+    const catalogue = have.slice();
+    StudioRite.rites().forEach(function (r) {
+      if (!r.runnable) return;
+      // Only a rite that actually hands the child the Shapes tile can
+      // ask for one by name.
+      if ((r.reveals || []).indexOf('shapes') < 0 && (r.teaches || []).indexOf('shapes') < 0) return;
+      const beats = StudioRite._beats(r.id) || [];
+      const screens = StudioRite._screenText ? StudioRite._screenText(r.id) : null;
+      if (!screens) return;
+      screens.forEach(function (text, i) {
+        const low = String(text || '').toLowerCase();
+        words.forEach(function (w) {
+          if (!new RegExp('\\b' + w + '\\b').test(low)) return;
+          if (catalogue.indexOf(w) < 0) bad.push(r.id + ' beat ' + (i + 1) + ' names "' + w + '"');
+        });
+      });
+    });
+    return { bad: bad, catalogue: catalogue.length };
+  }, SHAPE_WORDS);
+  check(named.catalogue > 10,
+    'P1 the shape catalogue is really being read', String(named.catalogue));
+  check(named.bad.length === 0,
+    'P2 no beat asks for a shape the catalogue does not have',
+    named.bad.join(', ') || 'every named shape is a real tile');
+
+  /* ---- and the way out of a rite a child chose ---------------------- */
+  const HOME_CASES = await (async () => {
+    const out = [];
+    for (const rid of ['the-night-a-star-came-down', 'my-garden', 'my-little-house']) {
+      const hp = await browser.newPage({ viewport: { width: 1359, height: 800 } });
+      await hp.goto(BASE + '/studio.html?author=on');
+      await hp.waitForFunction(() =>
+        typeof StudioRite !== 'undefined' && typeof MagicCard !== 'undefined' &&
+        typeof CreationFlow !== 'undefined', null, { timeout: 20000 });
+      await hp.evaluate(() => {
+        localStorage.clear();
+        const c = MagicCard.claim('Vihu');
+        MagicCard.setActive(c.id);
+        const r1 = StudioRite.rites().find((r) => r.mandatory);
+        MagicCard.setTaught((r1.teaches || []).concat(r1.reveals || []));
+        const gw = document.getElementById('gatewayOverlay');
+        if (gw) gw.style.display = 'none';
+        document.querySelectorAll('.studio-rite-overlay').forEach((n) => n.remove());
+      });
+      await hp.evaluate(() => { try { CreationFlow.startBlank(); } catch (e) {} });
+      await hp.waitForTimeout(1000);
+      await hp.evaluate((id) => { try { StudioRite.start(id); } catch (e) {} }, rid);
+      await hp.waitForTimeout(3000);
+      out.push(await hp.evaluate((id) => {
+        const h = document.getElementById('homeBtn');
+        return {
+          id: id,
+          running: StudioRite.isRunning(),
+          mandatory: document.body.classList.contains('studio-rite-mandatory'),
+          homeVisible: !!(h && getComputedStyle(h).display !== 'none' &&
+                          h.getBoundingClientRect().width > 0),
+          openHidden: getComputedStyle(document.getElementById('openBtn')).display === 'none'
+        };
+      }, rid));
+      await hp.close();
+    }
+    return out;
+  })();
+  const mandatory = HOME_CASES.find((c) => c.mandatory);
+  const optIn = HOME_CASES.filter((c) => !c.mandatory && c.running);
+  check(!!mandatory && mandatory.homeVisible === false,
+    'P3 the mandatory rite has no way out — it is what unlocks the Studio',
+    JSON.stringify(mandatory));
+  check(optIn.length === 2 && optIn.every((c) => c.homeVisible),
+    'P4 an opt-in rite keeps Home — the child chose the door and their story is held',
+    JSON.stringify(optIn));
+  check(HOME_CASES.every((c) => c.openHidden),
+    'P5 …and everything else the Rite quiets stays quiet in all three',
+    JSON.stringify(HOME_CASES.map((c) => c.openHidden)));
+
   /* ---- U: a beat never asks for a control that is asleep -------------
    *
    * "play story is greyed out in its beat." The Rite holds Play My Story

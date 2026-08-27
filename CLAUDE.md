@@ -1734,6 +1734,34 @@ once, and its scope is no longer closed.
   control it watches REPLACES.** `bg-set` already knew this and carried
   its own `bg!==baseline.__bg` comparison; voice and shape were written
   as tallies and both were wrong for it.
+- **A BEAT NAMES ONLY WHAT THE CHILD WILL FIND** (build 0661). Reported
+  by the product owner on Rite III: *"we are asking kid to add square,
+  there is no square in the shapes."* The catalogue has Circle,
+  Rectangle, Rounded Rectangle, Triangle and a dozen more, and no
+  Square. Measured before choosing a fix: a shape is added at 240×240,
+  so the tile labelled **Rectangle already gives a perfect square** — the
+  shape was never missing, only the word.
+- **A Square tile was considered and rejected.** Shapes are drawn to
+  whatever box they are given, so it would behave identically to
+  Rectangle and be a second tile doing one job — and a child resizing it
+  would make its name a lie. Beat 4 already says *Add a triangle*, so
+  naming the tile is the form this story already used.
+- **The fourth bug of one family, so the guard is general.** `P1`/`P2`
+  check that every shape noun a shapes-teaching rite uses is a real entry
+  in `StickerLibrary.SHAPE_KINDS` — not a test for the word "square".
+  It joins `N6` (every revealed capability has a beat), `V` (every
+  revealed capability resolves to a visible control) and `U` (no beat
+  asks for a control the Rite holds shut).
+- **HOME STAYS, EXCEPT IN THE ONE RITE THERE IS NO WAY OUT OF.** Asked
+  for by the product owner: *"story rites except story rite 1 should
+  have home button."* The mandatory rite holds the Studio shut until it
+  is finished (Decision 8), so a way out would be a way to skip becoming
+  a Creator — and there is nowhere to go, since Studio Home is what it
+  unlocks. An opt-in rite is the opposite: a door the child chose, whose
+  story is now held and offered back (build 0656), so leaving costs them
+  nothing and hiding the way out only traps them. A
+  `studio-rite-mandatory` body class tells the reduction which kind is
+  running; everything else the Rite quiets stays quiet in all three.
 - Design and sequencing: `docs/STUDIO_RITE_LEVELS.md`. Rite II's script
   and its engineering notes: `docs/STUDIO_RITE_LEVEL_II_STORY.md`.
 
