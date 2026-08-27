@@ -8676,3 +8676,75 @@ inability to write memory or reach a tool are all untouched.
 Chat 230/230, edge auth 127/127, context 84/84, memory 56/56, canon
 87/87, companion 50/50, garden 104/104, traveller reset 16/16, zero page
 errors. Build 0669 → 0670.
+
+## Sprint 1J — Deterministic Companion Behaviour Completion (build 0671)
+
+The layer that must exist before a model does. It answers **when** a
+Companion may speak and is built so that it can never answer what it
+says: `js/companionMoments.js` contains no `remember()`, accepts no
+`memories` from a caller, and knows nothing about Bond Moments. No
+OpenAI, no provider, no network call, no timer, no new observer.
+
+**A greeting belonged to no arrival, and that was the defect.** The
+Director said hello on every mount — the Home button, Publish's clean
+slate, the build stamp's cache-busting refetch and every direct Author
+Mode load. `js/studioEntry.js`'s pass answers *"may this load happen?"*
+and is consumed before any script runs, and could not have answered the
+other question anyway since `renewHere()` mints the same pass for a
+Studio reloading itself. So `pass()` now stamps an arrival TOKEN and
+`renewHere()` deliberately does not: a self-reload comes back to a key
+already answered and is silent; a refresh never reaches the Studio at
+all, because Decision 23's gate sends it home. A monotonic counter,
+never a clock and never a random value.
+
+**Three moments, because three are provable** — `entry`,
+`return-to-story`, `exit`. Thirteen other candidates are named in the
+layer as data rather than prose, each saying where the responsibility
+actually lives; three of those are named NOT PROVABLE (a long absence,
+idleness, a child seeming stuck) because nothing records a visit and
+adding a visit log is the surveillance this refuses. Arriving into a
+long-left story is a *dimension of the entry*, so `return-to-story`
+stands down when the entry already spoke — one lifecycle line per
+arrival, ever.
+
+**Every silence names one of nine published reasons**, and `decide()` is
+side-effect free: it reads the deduplication ledger and never writes it,
+`commit()` is the only writer. Twenty-five asks leave the ledger empty
+and the answer unchanged. The key is the arrival token, so the same
+visit can never be greeted twice; the ledger is `sessionStorage`, holds
+only keys the code can already generate, never leaves the browser, is
+not a memory and dies with the tab.
+
+**The twenty lines moved into one file and not one was rewritten.**
+`js/companionLines.js` holds Decision 26's ten openings and ten
+farewells and `js/etherHost.js` reads them. Which line is chosen is a
+four-entry table, never a score and never random — forty identical asks
+give one answer. `pickGreeting()` is untouched byte for byte, so a
+package shipping its own greetings still wins.
+
+**The exit is provable and its window is not.** Back to the Ether is
+authoritative; what it lacks is time, and holding a child so a Companion
+can finish a sentence is forbidden. So it ships quiet on the named
+reason `exit-has-no-window`, with the disclosure as a value a suite
+reads (`WINDOW.exit === false`). `pagehide` was refused outright — it
+cannot tell a refresh from a close from a navigation.
+
+Two test defects were found and fixed in the writing, both from families
+this repository has recorded before: a banned-term scan failing on the
+file's own comment saying it uses no `Math.random` (every source scan
+now runs on a comment-stripped view), and `delete window.MagicCard`
+proving nothing because these modules are top-level `const` and the
+lexical binding survives — the dependencies are made to THROW instead. A
+third, L2, was circular: it committed the greeting *after* the reload,
+so it would have passed even if the reload had minted a new arrival.
+
+Each guard was proved by reverting it: removing the arrival token turned
+L1/L2 red; removing the Traveller gate turned six red including a
+Traveller actually speaking; restoring the unconditional greeting turned
+S6/G2/G4 red.
+
+Measured on the real Studio: signals plus a decision 0.0067ms, a
+decision alone 0.00007ms. Moments 86/86, chat 230/230, context 90/90,
+canon 90/90, edge auth 127/127, memory 58/58, companion 50/50, garden
+104/104, traveller reset 16/16, rite 100/100, zero page errors.
+Build 0670 → 0671.

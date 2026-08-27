@@ -560,7 +560,14 @@
       if(_unobserve) return;
       safe(function(){
         if(typeof PageRuntime==='undefined' || !PageRuntime.observe) return;
-        _unobserve=PageRuntime.observe(function(){ _tick(null); });
+        _unobserve=PageRuntime.observe(function(){
+          _tick(null);
+          // NO POLLING IS INTRODUCED. This is the same dispatch the
+          // tick above already rides, and the moments layer answers
+          // "no" in one indexed lookup on every tick but the one that
+          // matters.
+          safe(_returnIfReturning);
+        });
       });
     }
 
@@ -570,6 +577,54 @@
         return p.greetings[Math.floor(Math.random()*p.greetings.length)];
       }
       return MESSAGES.open;
+    }
+
+    // ---------- Sprint 1J: the deterministic moments layer ----------
+    // js/companionMoments.js decides WHETHER; this file still decides
+    // HOW it is shown, which is the responsibility it already had.
+    // Every call is wrapped so a missing or throwing module leaves the
+    // Director behaving exactly as it did before the layer existed.
+    function _moments(){
+      try{ return (typeof CompanionMoments!=='undefined') ? CompanionMoments : null; }
+      catch(e){ return null; }
+    }
+
+    // WHICH WORDS. The package's own voice wins — that is the existing
+    // knowledge tier (Package overrides Platform), and pickGreeting()
+    // is untouched. Only when a package has no greetings of its own,
+    // and therefore used to say the one hardcoded MESSAGES.open every
+    // single time, does the platform's authored opening library speak
+    // instead, chosen by what kind of arrival this actually is.
+    function _entryLine(decision){
+      const own=pickGreeting();
+      if(own!==MESSAGES.open) return own;
+      const m=_moments();
+      const line=m ? m.openingFor(decision) : null;
+      return (line && line.text) ? line.text : own;
+    }
+
+    function _greetIfArriving(){
+      const m=_moments();
+      if(!m){ _say(pickGreeting()); return; }   // fail-open: exactly as before
+      const decision=m.decide('entry');
+      if(!decision || !decision.speak) return;  // silence is a correct answer
+      m.commit(decision);
+      _say(_entryLine(decision));
+    }
+
+    // A story opened LATER in the visit that the Creator had left alone
+    // for a long time. The proof is Sprint 1B's own `returned:<id>`
+    // memory, already derived from a load-time snapshot; nothing is
+    // re-derived here and nothing is written to memory.
+    function _returnIfReturning(){
+      const m=_moments();
+      if(!m) return;
+      if(!modeCfg().speaks) return;
+      const decision=m.decide('return-to-story');
+      if(!decision || !decision.speak) return;
+      m.commit(decision);
+      const line=m.openingFor(decision);
+      if(line && line.text) _say(line.text);
     }
 
     // Whether this browser currently has a Creator identity active —
@@ -662,7 +717,15 @@
         engine.show();
         const cfg=modeCfg();
         engine.setState(cfg.bootPose);
-        if(cfg.speaks) _say(pickGreeting());
+        // ---------- Sprint 1J: a greeting belongs to an ARRIVAL ----------
+        // This used to be unconditional, so the Companion said hello on
+        // every mount — the Home button, Publish's clean slate, the
+        // build stamp's cache-busting refetch and every direct Author
+        // Mode load. js/companionMoments.js is asked whether this load
+        // is actually somebody arriving, and the answer is no for all
+        // four. It is optional in the strictest sense: with the module
+        // absent this falls back to the greeting exactly as before.
+        if(cfg.speaks) _greetIfArriving();
         // The loaded Companion Package's own `lines` overrides and its
         // `neverSays` policy — which has been documented as "inert,
         // awaiting a speech feature to respect it" since the first
@@ -787,7 +850,7 @@
      * speech bubble, per the current mode's own MODES entry.
      * @param {string} event one of: 'story-started' | 'artwork-added' |
      *   'published' | 'creator-born' | 'ceremony-closed' | 'page-added' |
-     *   'project-sync-pending'
+     *   'project-sync-pending' | 'leaving'
      */
     function notify(event){
       if(!ready || !engine) return;
@@ -836,6 +899,24 @@
         // 'hatching' from the Publish moment that opened the ceremony
         // — settle it back to a quiet idle rather than leaving it
         // mid-hatch indefinitely.
+        // Sprint 1J — the one deliberate way out of the Studio
+        // (Decision 23). Fired by js/app.js's Back to the Ether handler
+        // as the navigation begins. The moment is proved, recorded and
+        // deduplicated whatever the outcome; whether a line is SHOWN is
+        // js/companionMoments.js's own WINDOW, which ships false for
+        // this one because the handler navigates as soon as the pending
+        // save settles and a farewell nobody can read is worse than
+        // none. Nothing here delays a child by a millisecond.
+        if(event==='leaving'){
+          const m=_moments();
+          if(!m) return;
+          const decision=m.decide('exit');
+          m.commit(decision);
+          if(!decision.speak) return;
+          const line=m.farewellFor(decision);
+          if(line && line.text && modeCfg().speaks) _say(line.text);
+          return;
+        }
         if(event==='ceremony-closed'){
           if(currentMode==='traveller') engine.setState('idle');
           return;

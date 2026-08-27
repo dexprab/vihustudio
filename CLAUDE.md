@@ -3549,6 +3549,157 @@ and it changes two lines of the Bond validator and nothing else.
 - `tools/companion-calibration/` ·
   `supabase/functions/_shared/bondValidator.js`
 
+### 39. The Companion Knows WHEN. It Will Never Know WHY It Should Speak
+
+Locked in the Deterministic Companion Behaviour Completion sprint. It
+builds the layer that must exist before a model does, and it connects
+nothing: **no OpenAI, no provider, no network call, no timer, and no new
+observer.**
+
+- **FOUR AUTHORITIES, AND THEY ARE NEVER REVERSED.** The deterministic
+  layer decides **whether** the Companion may speak; the Companion Mind
+  will one day decide **what** it says; the Privacy Gate decides what may
+  reach that Mind; the Bond validator decides what may become memory.
+  `js/companionMoments.js` composes no sentence about a child's story and
+  writes no memory, and it is built so that it could not: `remember()`
+  does not appear in it, and it accepts no `memories` from any caller.
+- **IT DOES NOT WATCH. IT ASKS.** There is no listener, no observer, no
+  scanner, no tracker and no timer in the layer. The Companion knows a
+  moment happened because VihuPlanet already knows it happened — the same
+  derivation idiom `js/studioRite.js`'s twenty-one gates and
+  `js/companionMemoryEvents.js`'s six recorders already use. **No polling
+  was introduced**: the one moment that needs a tick rides
+  `PageRuntime.observe()`, which the Director was already subscribed to,
+  and the Director still has exactly one page subscription.
+- **A GREETING BELONGS TO AN ARRIVAL, AND THE STUDIO COULD NOT TELL ONE
+  APART.** The Director said hello on every mount, so a child was greeted
+  again by the Home button, by Publish's clean slate and by the build
+  stamp's cache-busting refetch. The pass `js/studioEntry.js` already
+  mints answers *"may this load happen?"* and is consumed by the inline
+  gate before any script runs — and could not have answered the other
+  question anyway, because `renewHere()` mints the **same** pass for a
+  Studio reloading itself.
+- **SO AN ARRIVAL IS ITS OWN TOKEN, AND `renewHere()` DELIBERATELY DOES
+  NOT MINT ONE.** `pass()` stamps `vihu.studioEntry.arrival`; a self-
+  reload keeps the token it already had, so it comes back to a key
+  already answered and is silent. A refresh never reaches the Studio at
+  all — with no pass, Decision 23's gate sends it home. **A monotonic
+  counter, never a clock and never a random value**: nothing about
+  naming one navigation needs either, and a deterministic token is a
+  testable one.
+- **THREE MOMENTS, BECAUSE THREE ARE PROVABLE.** `entry` ·
+  `return-to-story` · `exit`. Thirteen other candidates are named in the
+  layer as **data rather than prose** (`NOT_MOMENTS`), each saying where
+  the responsibility actually lives — ordinary creation (an object, a
+  page, a save, a page turn) is Story-primary and gets a pose at most;
+  play and explicit invocation are already owned by
+  `js/companionBrain.js` and `js/companionChat.js` and are answered every
+  time because the child asked; `published` and `creator-born` are
+  already the Director's. **Three are named as NOT PROVABLE and stay
+  that way** — a long absence, idleness, and a child seeming stuck —
+  because nothing records a visit and adding a visit log is the
+  surveillance this layer exists to refuse.
+- **EVERY SILENCE HAS A NAME.** `decide()` returns
+  `{speak, moment, reason, key, occasion}` and never a bare false. Nine
+  published reasons: `traveller` · `no-companion` · `not-a-moment` ·
+  `unproven` · `already-acknowledged` · `rite-running` · `busy` ·
+  `entry-already-spoke` · `exit-has-no-window`. A silence nobody can
+  explain is indistinguishable from a bug.
+- **PURE, THEN COMMITTED.** `decide()` READS the deduplication ledger and
+  never writes it; `commit()` is the only writer in the file. Asking
+  twenty-five times leaves the ledger empty and the answer unchanged —
+  which is what lets a test, a developer or a future Mind ask as often as
+  it likes without changing what happens.
+- **DEDUPLICATION IS THE ARRIVAL, NOT THE MOMENT NAME.** The key is
+  `entry:<arrival token>`, so the same visit can never be greeted twice
+  and a genuinely new visit is not mistaken for the old one. The ledger
+  is `sessionStorage`, because a browser session IS one visit — the same
+  one-visit shape `js/studioEntry.js` and `js/creatorRecognition.js`
+  already use. **It cannot become an activity log**: it holds only keys
+  the code can already generate, never leaves the browser, is not a
+  memory, is not synced, and dies with the tab.
+- **ONE LIFECYCLE LINE PER ARRIVAL.** Arriving into a story left a long
+  time ago is a *dimension of the entry*, not a second line — so
+  `return-to-story` stands down when the entry already spoke for the same
+  arrival, and exists for the story a child opens from My Projects after
+  they are already here. Two lifecycle lines in one breath is the
+  Companion talking to itself.
+- **TRAVELLER SILENCE IS THE GATE AT THE TOP**, before any other signal
+  is looked at, exactly as `js/companionBrain.js` already does it. A
+  Traveller carrying a forged card, a forged Companion, a forged arrival
+  and a forged history all at once is still silent, and **no key is even
+  formed**, so nothing could be recorded for them. Verified by removing
+  the gate and watching a Traveller speak.
+- **THE TWENTY LINES NOW LIVE IN ONE FILE, AND NOT ONE WAS REWRITTEN.**
+  `js/companionLines.js` holds Decision 26's ten openings and ten
+  farewells; `js/etherHost.js` reads them and behaves exactly as it did.
+  One piece of authored product content spoken by two surfaces must have
+  one copy, or the second surface grows a set that drifts. Decision 26's
+  rules still bind every line in the Studio as much as in the Ether — not
+  a narrator, no claim of a previous meeting, no emotional dependency —
+  and the suite fails on any line containing *back*, *again*, *remember*,
+  *don't leave*, *I'll miss* or *come back*.
+- **THE LINE IS CHOSEN BY A TABLE, NEVER BY A SCORE AND NEVER AT
+  RANDOM.** Four occasions, four indices: a first-ever entry gets the
+  canonical *"Hey… you're here."*, a plain return *"Ready? Let's go."*,
+  an entry with something remembered *"I wonder what we'll find."*, and
+  an arrival into a long-left story *"Something magical is waiting."* A
+  score would need weights nobody could explain and would make the choice
+  unreviewable. Forty identical asks give one answer.
+- **THE PACKAGE'S OWN VOICE STILL WINS.** `pickGreeting()` is untouched
+  — byte for byte, and the canon suite checks its exact two lines — so a
+  Companion shipping its own `greetings` speaks in its own voice. The
+  platform's authored library is reached only where a package had none
+  and used to say the one hardcoded line every single time.
+- **THE EXIT IS PROVABLE AND ITS WINDOW IS NOT, AND THOSE ARE DIFFERENT
+  PROBLEMS.** Back to the Ether is as authoritative a signal as this
+  product has — Decision 23 makes it the one way out — so the moment is
+  recognised, keyed and deduplicated. What it does not come with is time:
+  the handler navigates as soon as the pending save settles, and holding
+  a child so a Companion can finish a sentence is forbidden by that same
+  decision's *"never let a hung save trap a child"*. So it ships
+  **quiet**, on the named reason `exit-has-no-window`, and the disclosure
+  is a value a suite can read (`WINDOW.exit === false`) rather than a
+  claim in a comment. `pagehide` was refused outright: it fires on a
+  refresh, a tab close and any navigation alike, which is exactly the
+  *"do not invent certainty"* case.
+- **NOTHING IS MEASURED ABOUT THE CHILD.** No keystrokes, no mouse, no
+  dwell, no scroll, no typing speed, no click frequency, no attention, no
+  inactivity, no engagement score, no analytics and no profile. Proved by
+  scanning the shipped source **with its own comments stripped** — the
+  substring-in-its-own-prose trap this repository has now recorded five
+  times (auth in *authorship*, prompt in *unprompted*, hi in *think*, xp
+  in *export*, and the first draft of this sprint's own check failing on
+  the words "no Math.random").
+- **NO AUTONOMY.** No timer, no interval, no animation frame, no
+  background chatter, no notification, no reminder and no "come back"
+  message. The Companion cannot start anything: every line it says is
+  caused by a deterministic VihuPlanet event.
+- **CHEAP, AND MEASURED RATHER THAN ASSERTED.** Signals plus a decision
+  cost 0.0067ms on the real Studio; a decision alone is 0.00007ms. No
+  network, no model, no embedding, no vector search.
+- **FAIL-OPEN, AND IT IS STRUCTURAL.** With the layer removed the
+  Director greets exactly as it did before this sprint; with every
+  dependency throwing, `decide()` does not throw and falls silent on the
+  safest reason of all. Proved by making `MagicCard.getActive`,
+  `CompanionMemory.has/list`, `StudioEntry.arrival` and `AppState.project`
+  throw — **not** by deleting the window properties, which the first
+  draft did and which proves nothing, since these modules are top-level
+  `const` and the lexical binding survives.
+- **DEVELOPER VOCABULARY NEVER REACHES A CHILD.** Every reason string is
+  policy language and none of it appears in a bubble, a panel or a
+  screen; `diagnostics()` is for a console and a suite, is not persisted,
+  is not synced and is not a memory.
+- Out of scope and unchanged: the memory schema, the ownership model,
+  authentication, the privacy gate, Traveller isolation, canon, the
+  production ZDR gates, the provider abstraction, the model's inability
+  to write memory or hold a tool, Companion autonomy, engagement
+  mechanics and voice. **Creative suggestion remains permanently out of
+  scope** (Decision 29), and Companion-initiated actions remain blocked
+  on global undo. **Sprint 1I stays closed pending real model access.**
+- `js/companionMoments.js` · `js/companionLines.js` ·
+  `tools/companion-moments-test/run-companion-moments-tests.js`
+
 ## Roadmap
 
 1. Theme Designer Polish

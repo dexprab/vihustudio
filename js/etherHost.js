@@ -120,37 +120,24 @@ const EtherHost = (function () {
   // this Traveller before. The Ether knows nobody: it has a Story, its
   // owner, and that owner's Companion, and nothing else. "Welcome back"
   // is unwriteable here because it would be a lie.
-  const OPENING = [
-    { text: 'Hey… you\'re here.',                       emotion: 'happy'     },
-    { text: 'Oh! Ready to see what\'s here?',           emotion: 'curious'   },
-    { text: 'Come on… let\'s explore.',                 emotion: 'warm'      },
-    { text: 'I wonder what we\'ll find.',               emotion: 'curious'   },
-    { text: 'Ooh… this looks interesting.',             emotion: 'curious'   },
-    { text: 'Something magical is waiting.',            emotion: 'warm'      },
-    { text: 'Come along… the story\'s about to begin.', emotion: 'gentle'    },
-    { text: 'Oh! I think we\'re going to like this.',   emotion: 'happy'     },
-    { text: 'Shhh… look around.',                       emotion: 'whisper'   },
-    { text: 'Ready? Let\'s go.',                        emotion: 'happy'     }
-  ];
+  // THE LINES THEMSELVES LIVE IN js/companionLines.js.
+  //
+  // They were authored here and were moved out unchanged when Sprint 1J
+  // gave the Studio its own deterministic sense of arrival — an arrival
+  // needs the same words, and one piece of authored product content
+  // spoken by two surfaces must have one copy or the two will drift.
+  // Every rule above still binds every line: not a narrator, no claim
+  // of having met this Traveller before, no emotional dependency.
+  //
+  // A missing module is not a crash and not a wrong line: the libraries
+  // read as empty, _pick returns undefined, and _say's own guard makes
+  // that silence — which is a correct answer everywhere in this file.
+  const _lib = (typeof CompanionLines !== 'undefined') ? CompanionLines : null;
+  const OPENING  = (_lib && _lib.OPENING)  || [];
+  const FAREWELL = (_lib && _lib.FAREWELL) || [];
 
-  const FAREWELL = [
-    { text: 'That was a lovely story.',                 emotion: 'warm'      },
-    { text: 'Wow… what an adventure!',                  emotion: 'celebrate' },
-    { text: 'And that\'s where our story ends.',        emotion: 'gentle'    },
-    { text: 'What a wonderful little adventure.',       emotion: 'warm'      },
-    { text: 'I wonder what happens next…',              emotion: 'curious'   },
-    { text: 'That was fun!',                            emotion: 'happy'     },
-    { text: 'Thanks for coming along.',                 emotion: 'warm'      },
-    { text: 'And so… the story comes to an end.',       emotion: 'gentle'    },
-    { text: 'The story\'s resting now.',                emotion: 'gentle'    },
-    { text: 'See you in the next story.',               emotion: 'warm'      }
-  ];
-
-  // The canonical fallbacks, named by the brief. Index 0 of each library
-  // is that line, so "the default" and "the first entry" cannot drift
-  // apart.
-  const DEFAULT_OPENING  = OPENING[0];
-  const DEFAULT_FAREWELL = FAREWELL[0];
+  const DEFAULT_OPENING  = (_lib && _lib.DEFAULT_OPENING)  || null;
+  const DEFAULT_FAREWELL = (_lib && _lib.DEFAULT_FAREWELL) || null;
 
   // How long the host is willing to WAIT for the Story to stop talking
   // before giving up on its own line. Story narration always wins

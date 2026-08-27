@@ -428,6 +428,15 @@ const etherBtnEl=document.getElementById('etherBtn');
 if(etherBtnEl){
   etherBtnEl.addEventListener('click',function(){
     function go(){ try{ window.location.href='index.html'; }catch(e){} }
+    // Sprint 1J — the one deliberate exit from the Studio (Decision
+    // 23), and therefore the one place a Companion can KNOW somebody is
+    // leaving rather than guessing from a teardown, a refresh or a
+    // pagehide it cannot tell apart. js/companionMoments.js decides
+    // what to do with it. Deliberately before the save and outside its
+    // promise: nothing about leaving may be delayed by this.
+    try{
+      if(typeof CompanionDirector!=='undefined') CompanionDirector.notify('leaving');
+    }catch(e){}
     try{
       if(typeof ProjectManager!=='undefined' && ProjectManager.saveToLocalStorage){
         const r=ProjectManager.saveToLocalStorage();
