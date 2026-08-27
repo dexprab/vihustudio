@@ -8609,3 +8609,70 @@ Proved by reverting each gate separately: removing the signal gate fails
 Chat 221/221, edge auth 127/127, context 84/84, memory 56/56, canon
 87/87, companion 50/50, garden 104/104, traveller reset 16/16, zero page
 errors. Build 0668 → 0669.
+
+---
+
+## Sprint 1H — Companion Intelligence Behaviour + Real Conversation Calibration
+
+A calibration sprint, and half of it could not run. **This environment
+has no `OPENAI_API_KEY` and its network policy refuses `api.openai.com`**
+— the gateway answers 403 to CONNECT, logged in the proxy's own status.
+So Leafy's voice is unmeasured: tone, length, silence in practice,
+hallucination resistance and consistency across repeats all need the
+real provider. Nothing here claims otherwise, and the harness says so
+rather than inventing an answer.
+
+What *could* be calibrated is the deterministic half — which turns
+become memories — and running a corpus past it found two defects that
+reading the code had not.
+
+**A signal belongs to its own turn.** `signalsIn()` read the whole
+conversation window, so once a child said *"remember"* once, every later
+turn in that sitting inherited the signal. Measured across a fifteen-turn
+session: three memories, and two of them — *"Creator wanted a dragon in
+the forest"*, *"Creator decided to keep the forest quiet"* — were
+ordinary turns that had simply followed a real one. It now reads the most
+recent Creator turn. A Bond Moment is about THIS moment.
+
+**An imperative is a request; a question is not.** The explicit-request
+pattern required *remember* + *this/that/it/when/us/our*, so *"Remember
+the moon garden."* was refused as `no-strong-signal` — a plain explicit
+request, missed. It is now anchored to a sentence start, or after
+*please* or the Companion's name, which is what separates the imperative
+from the question. *"Do you remember the forest?"* still carries no
+signal, because asking about a memory must not create one.
+
+The two fixes point in opposite directions and were found together: one
+was refusing a real moment, the other accepting three false ones. A
+sprint that only looked for over-memory would have made the first worse.
+Session S1 went from three memories to two — the two that are real.
+
+`tools/companion-calibration/` is the artifact rather than the run: 73
+prompts across fifteen categories and five fifteen-turn sessions, each
+prompt carrying a *tendency* (what a Companion should lean toward,
+deliberately not an expected answer) and a *bond expectation* (which is
+checkable). Four prompts are marked ambiguous and are excluded from the
+agreement count rather than guessed at. The validator agrees with the
+corpus on 69 of 69 judged prompts; 7 of 73 single turns produce a memory.
+
+The sessions measure distinctness, not count. Fifteen proposals about the
+same forest produce exactly one memory. Ordinary chat produces none. A
+session full of feeling — *"you're my best friend"*, *"I need you"*,
+*"promise you'll always be here"* — produces none, refused as evaluative
+or temporary.
+
+The instruction audit is the other honest output: 3,720 characters, 27
+imperative clauses, and **four of the eight clauses with no behavioural
+coverage at all** — never invent, be brief, safety, and the judgement
+boundary beyond a mock. Recorded as the list of what the model half
+exists to check rather than quietly carried.
+
+No new architecture and nothing loosened: no autonomy, timers,
+unsolicited speech, score, level, streak, notification, memory UI or
+voice. The memory schema, ownership model, authentication, privacy gate,
+canon, Traveller privacy, ZDR gate, provider abstraction and the model's
+inability to write memory or reach a tool are all untouched.
+
+Chat 230/230, edge auth 127/127, context 84/84, memory 56/56, canon
+87/87, companion 50/50, garden 104/104, traveller reset 16/16, zero page
+errors. Build 0669 → 0670.

@@ -3489,6 +3489,66 @@ deterministic validator decides whether it becomes a memory.**
   `supabase/functions/companion-chat/index.ts` ·
   `tools/companion-chat-test/run-companion-chat-tests.js`
 
+### 38. A Signal Belongs to Its Own Turn
+
+Locked by the calibration sprint. It is a behavioural correction to
+Decision 37, found by running a corpus rather than by reading the code,
+and it changes two lines of the Bond validator and nothing else.
+
+- **THE MODEL COULD NOT BE REACHED, AND THAT HALF DID NOT RUN.** This
+  environment has no `OPENAI_API_KEY` and its network policy refuses
+  `api.openai.com` (the gateway answers 403 to CONNECT, logged in the
+  proxy's own status). So Leafy's VOICE — tone, length, silence in
+  practice, hallucination resistance, consistency across repeats — is
+  unmeasured, and nothing in this decision claims otherwise. What was
+  calibrated is the deterministic half: which turns become memories.
+- **A SIGNAL BELONGS TO ITS OWN TURN.** `signalsIn()` read the whole
+  conversation window, so once a child said *"remember"* ONCE, every
+  later turn in that sitting inherited the signal. Measured across a
+  fifteen-turn session: three memories, and two of them —
+  *"Creator wanted a dragon in the forest"*, *"Creator decided to keep
+  the forest quiet"* — were ordinary turns that had simply followed a
+  real one. It now reads the most recent Creator turn. A Bond Moment is
+  about THIS moment; a signal three turns ago belongs to the memory it
+  already made.
+- **AN IMPERATIVE IS A REQUEST; A QUESTION IS NOT.** The explicit-request
+  pattern required *remember* + *this/that/it/when/us/our*, so
+  *"Remember the moon garden."* — a plain request — was refused as
+  `no-strong-signal`. It is now anchored to the start of a sentence, or
+  after *please* or the Companion's name, which is exactly what
+  separates the imperative from the question: *"Do you remember the
+  forest?"* still carries no signal, because **asking about a memory
+  must not create one.**
+- **The two fixes are opposite in direction and were found together.**
+  One was refusing a real moment, the other accepting three false ones.
+  A sprint that only looked for over-memory would have made the first
+  worse.
+- **The corpus is the artifact, not the run.** `tools/companion-calibration/`
+  holds 73 prompts across fifteen categories and five fifteen-turn
+  sessions, each prompt carrying a *tendency* (what a Companion should
+  lean toward — deliberately not an expected answer) and a *bond
+  expectation* (what the validator should do, which is checkable). Four
+  prompts are marked ambiguous and are **excluded from the agreement
+  count rather than guessed at**.
+- **The sessions measure distinctness, not count.** Fifteen proposals
+  about the same forest produce exactly one memory; a session of
+  ordinary chat produces none; a session full of feeling — *"you're my
+  best friend"*, *"I need you"*, *"promise you'll always be here"* —
+  produces none, refused as evaluative or temporary.
+- **No new architecture, and nothing loosened.** No autonomy, no timers,
+  no unsolicited speech, no score, no level, no streak, no notification,
+  no memory UI, no voice. The memory schema, ownership model,
+  authentication, privacy gate, canon, Traveller privacy, ZDR gate,
+  provider abstraction and the model's inability to write memory or
+  reach a tool are all untouched.
+- **Four of the eight instruction clauses have no behavioural coverage
+  at all** — never invent, be brief and quiet, safety, and the judgement
+  boundary beyond a mock. That is not an argument for removing them; it
+  is the list of what the model half exists to check, and it is recorded
+  rather than quietly carried.
+- `tools/companion-calibration/` ·
+  `supabase/functions/_shared/bondValidator.js`
+
 ## Roadmap
 
 1. Theme Designer Polish

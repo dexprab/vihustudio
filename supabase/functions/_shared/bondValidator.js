@@ -79,8 +79,19 @@ export const BOND = {
 // second model and a second model is a second thing to be wrong.
 
 const SIGNAL_PATTERNS = [
-  // "Remember this." — a child asking, in as many words.
-  ['explicit-request', /\b(remember|don'?t forget|keep)\s+(this|that|it|when|us|our)\b/i],
+  // "Remember this." — a child ASKING, in as many words.
+  //
+  // Anchored to the start of a sentence, or after "please" or the
+  // Companion's name, which is what separates the imperative from the
+  // question: "Remember the moon garden" is a request; "Do you remember
+  // the forest?" is not, and treating the second as a request would
+  // make asking about a memory create a new one.
+  //
+  // WIDENED IN SPRINT 1H on evidence. The first version required
+  // remember + this/that/it/when/us/our, and so missed "Remember the
+  // moon garden." entirely — a plain explicit request, refused as
+  // `no-strong-signal` in session S1.
+  ['explicit-request', /(^|[.!?;]\s*|\bplease\s+|\bleafy,?\s*)(remember|don'?t forget)\b/i],
   // Reaching back to something they made together.
   ['shared-history', /\b(remember when|the .{2,40} we made|we made .{2,40} together|our .{2,30}|continue (the|our))\b/i],
   // Handing the Companion a real part in the story.
@@ -91,12 +102,23 @@ const SIGNAL_PATTERNS = [
  * @returns {string[]} every signal the Creator's own words carry.
  *   The Companion's turns are not read: a Companion cannot make a
  *   moment meaningful by saying it was.
+ *
+ * THE CURRENT TURN, NOT THE WHOLE CONVERSATION.
+ *
+ * Changed in Sprint 1H, on measured evidence. Reading the whole window
+ * meant that once a child said "remember" ONCE, every later proposal in
+ * that sitting inherited the signal — session S1 produced three
+ * memories, and two of them ("Creator wanted a dragon in the forest",
+ * "Creator decided to keep the forest quiet") were ordinary turns that
+ * had simply followed a real one.
+ *
+ * A Bond Moment is about THIS moment. A signal three turns ago belongs
+ * to the memory it already made.
  */
 export function signalsIn(conversation) {
-  const said = (Array.isArray(conversation) ? conversation : [])
-    .filter(function (t) { return t && t.speaker !== 'companion'; })
-    .map(function (t) { return String(t.text || ''); })
-    .join('\n');
+  const turns = (Array.isArray(conversation) ? conversation : [])
+    .filter(function (t) { return t && t.speaker !== 'companion'; });
+  const said = turns.length ? String(turns[turns.length - 1].text || '') : '';
   const out = [];
   SIGNAL_PATTERNS.forEach(function (p) {
     if (p[1].test(said)) out.push(p[0]);

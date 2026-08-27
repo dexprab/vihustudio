@@ -632,7 +632,7 @@ const BOND = {
 };
 
 const SIGNAL_PATTERNS = [
-  ['explicit-request', /\b(remember|don'?t forget|keep)\s+(this|that|it|when|us|our)\b/i],
+  ['explicit-request', /(^|[.!?;]\s*|\bplease\s+|\bleafy,?\s*)(remember|don'?t forget)\b/i],
   ['shared-history', /\b(remember when|the .{2,40} we made|we made .{2,40} together|our .{2,30}|continue (the|our))\b/i],
   ['companion-role', /\b(you (choose|decide|pick)|what (do you think )?should happen next|you say what|it'?s your turn)\b/i],
 ];
@@ -641,12 +641,23 @@ const SIGNAL_PATTERNS = [
  * @returns {string[]} every signal the Creator's own words carry.
  *   The Companion's turns are not read: a Companion cannot make a
  *   moment meaningful by saying it was.
+ *
+ * THE CURRENT TURN, NOT THE WHOLE CONVERSATION.
+ *
+ * Changed in Sprint 1H, on measured evidence. Reading the whole window
+ * meant that once a child said "remember" ONCE, every later proposal in
+ * that sitting inherited the signal — session S1 produced three
+ * memories, and two of them ("Creator wanted a dragon in the forest",
+ * "Creator decided to keep the forest quiet") were ordinary turns that
+ * had simply followed a real one.
+ *
+ * A Bond Moment is about THIS moment. A signal three turns ago belongs
+ * to the memory it already made.
  */
 function signalsIn(conversation) {
-  const said = (Array.isArray(conversation) ? conversation : [])
-    .filter(function (t) { return t && t.speaker !== 'companion'; })
-    .map(function (t) { return String(t.text || ''); })
-    .join('\n');
+  const turns = (Array.isArray(conversation) ? conversation : [])
+    .filter(function (t) { return t && t.speaker !== 'companion'; });
+  const said = turns.length ? String(turns[turns.length - 1].text || '') : '';
   const out = [];
   SIGNAL_PATTERNS.forEach(function (p) {
     if (p[1].test(said)) out.push(p[0]);
@@ -1990,6 +2001,7 @@ export {
   BUILD, MODEL_DEFAULTS, REPLY_MAX_CHARS, SYNTHETIC_MARK,
   systemInstructions, buildMessages, validateReply, makeProvider, mockProvider,
   authorizeStory, conversationOf, clamp, AUTHORITY, PAGE_PROSE_MAX,
+  claimWords,
   writeMemory, validateProposal, signalsIn, groundedIn, dedupeKeyFor, BOND,
   retrieveMemories, resolveCards, readMemoryRows, rowToMemory, entitiesOf,
   SYNTHETIC_MEMORY_ROWS, SYNTHETIC_CARDS, MEMORY_SCAN_MAX,

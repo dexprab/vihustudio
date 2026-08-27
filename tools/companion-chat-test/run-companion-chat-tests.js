@@ -1285,6 +1285,46 @@ async function call(req, over, providerFetch) {
      'Z7  A COMPANION CANNOT MAKE A MOMENT MEANINGFUL BY SAYING IT WAS',
      'signals are read from the Creator\'s own turns only');
 
+  // ---- Z7b. SPRINT 1H — WHAT CALIBRATION CHANGED -------------------
+  //
+  // Two defects the corpus surfaced, locked in so they cannot come
+  // back. Both were measured across five long sessions before anything
+  // was touched.
+
+  // (1) A SIGNAL BELONGS TO ITS OWN TURN. Reading the whole window
+  // meant one "remember" made every later turn in the sitting eligible
+  // — session S1 produced three memories and two were ordinary turns
+  // that had simply followed a real one.
+  const carried = M.signalsIn([
+    { speaker: 'creator', text: 'Remember the moon garden.' },
+    { speaker: 'companion', text: 'I will.' },
+    { speaker: 'creator', text: 'I think there should be a dragon.' },
+  ]);
+  ck(carried.length === 0,
+     'Z7b A SIGNAL DOES NOT CARRY TO THE NEXT TURN',
+     carried.join(',') || 'the current turn only');
+  ck(M.signalsIn([{ speaker: 'creator', text: 'I think there should be a dragon.' },
+                  { speaker: 'creator', text: 'Remember the moon garden.' }])
+       .indexOf('explicit-request') !== -1,
+     'Z7c but the current turn is read whatever came before it');
+
+  // (2) AN IMPERATIVE IS A REQUEST; A QUESTION IS NOT. "Remember the
+  // moon garden" was refused as no-strong-signal — a plain explicit
+  // request, missed. Widening it must not swallow "do you remember".
+  ck(M.signalsIn([{ speaker: 'creator', text: 'Remember the moon garden.' }])
+       .indexOf('explicit-request') !== -1,
+     'Z7d "Remember the moon garden." IS an explicit request',
+     'it was refused before Sprint 1H');
+  ['Do you remember the forest?', 'Can you remember what we did?', 'Did you remember it?']
+    .forEach((q, i) => ck(M.signalsIn([{ speaker: 'creator', text: q }])
+        .indexOf('explicit-request') === -1,
+      'Z7e.' + (i + 1) + '  but ' + JSON.stringify(q) + ' is not',
+      'asking about a memory must not create one'));
+  ['Leafy, remember this.', 'Please remember our forest.', "Don't forget the little door."]
+    .forEach((q, i) => ck(M.signalsIn([{ speaker: 'creator', text: q }])
+        .indexOf('explicit-request') !== -1,
+      'Z7f.' + (i + 1) + '  and ' + JSON.stringify(q) + ' still is'));
+
   // ---- Z8. DEDUPLICATION -------------------------------------------
   const DEDUPE_SAID = 'Leafy, remember this — the moon garden we made.';
   const a1 = V2({ kind: 'shared', content: 'Creator asked Leafy to remember the moon garden.', reason: 'x' },
