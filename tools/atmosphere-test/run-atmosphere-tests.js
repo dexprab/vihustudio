@@ -144,6 +144,77 @@ const MUSIC = /worlds\/[a-z]+\.mp3/;
     'A8 stopWorld() still genuinely stops — silence is asked for, never assumed',
     JSON.stringify(stopped));
 
+  /* ---- R: the two films are scored by the same rule ------------------
+   *
+   * "match them, add music to story reel too." Magic Publish has always
+   * scored a WORDLESS film with a Foundation loop and left a narrated one
+   * alone, so the child's own voice is never competed with. The Story
+   * Reel had no bed at all, which meant a story with no recording
+   * exported as a silent video.
+   *
+   * Matching the two means matching the RULE, so both halves are checked:
+   * the bed arrives when nobody speaks, and stays away when somebody
+   * does. Measured at ReelComposer's own seam with a real decoded buffer
+   * — composing two 1080x1920 films for real would take minutes and
+   * prove nothing more about which bed was handed over.
+   */
+  console.log('\n-- R: both films are scored by the same rule');
+  const beds = await page.evaluate(async () => {
+    const out = {};
+    const realCompose = ReelComposer.compose;
+    const seen = [];
+    ReelComposer.compose = function (pages, opts) {
+      seen.push(opts || {});
+      return Promise.resolve({ blob: new Blob(['x'], { type: 'video/webm' }), mime: 'video/webm' });
+    };
+    const canvas = () => { const c = document.createElement('canvas'); c.width = 32; c.height = 32; return c; };
+    const actx = new (window.AudioContext || window.webkitAudioContext)();
+    const voice = actx.createBuffer(1, 4410, 44100);
+    const describe = (o) => ({
+      bed: !!(o && o.ambientBuffer),
+      seconds: (o && o.ambientBuffer) ? Number(o.ambientBuffer.duration.toFixed(1)) : 0
+    });
+    try {
+      for (const id of ['reel', 'magic']) {
+        const dest = StoryDestinations.find(id);
+        if (!dest) { out[id] = 'missing'; continue; }
+        const format = dest.formats[0];
+        // The two destinations take DIFFERENT payload shapes — a Reel
+        // page is one bitmap, a Magic Publish page is a list of reveal
+        // frames — and feeding the wrong one produces a null finish and
+        // a check that fails for the wrong reason (measured: it did).
+        const pagesFor = (dest, narrated) => {
+          const one = (n) => ({ bitmap: canvas(), narrationBuffer: n || null, holdMs: 3000 });
+          if (dest.id === 'magic') return [{ frames: [one(narrated ? voice : null)] }, { frames: [one(null)] }];
+          return [one(narrated ? voice : null), one(null)];
+        };
+        seen.length = 0;
+        const handed = await dest.finish(pagesFor(dest, false), format);
+        const silentStory = describe(seen[seen.length - 1]);
+        silentStory.delivered = !!(handed && handed.blob && handed.filename);
+        seen.length = 0;
+        await dest.finish(pagesFor(dest, true), format);
+        out[id] = { wordless: silentStory, narrated: describe(seen[seen.length - 1]) };
+      }
+    } finally { ReelComposer.compose = realCompose; try { actx.close(); } catch (e) {} }
+    return out;
+  });
+  check(beds.reel && beds.reel.wordless && beds.reel.wordless.bed === true && beds.reel.wordless.seconds > 1,
+    'R1 a Story Reel with nobody speaking is scored — it used to export silent',
+    JSON.stringify(beds.reel));
+  check(beds.reel && beds.reel.wordless.delivered === true && beds.magic && beds.magic.wordless.delivered === true,
+    'R1b …and the film is still handed back whole — the bed sits in front of finish\'s own chain',
+    JSON.stringify({ reel: beds.reel && beds.reel.wordless.delivered, magic: beds.magic && beds.magic.wordless.delivered }));
+  check(beds.reel && beds.reel.narrated && beds.reel.narrated.bed === false,
+    'R2 …and a narrated one is left alone, so the child\'s voice is never competed with',
+    JSON.stringify(beds.reel));
+  check(beds.magic && beds.magic.wordless.bed === true && beds.magic.narrated.bed === false,
+    'R3 Magic Publish is unchanged', JSON.stringify(beds.magic));
+  check(!!beds.reel && !!beds.magic &&
+        beds.reel.wordless.seconds === beds.magic.wordless.seconds,
+    'R4 and both films are scored by the SAME loop, from one constant',
+    JSON.stringify({ reel: beds.reel && beds.reel.wordless.seconds, magic: beds.magic && beds.magic.wordless.seconds }));
+
   check(pageErrors.length === 0, 'A9 zero page errors', pageErrors.slice(0, 2).join(' | '));
 
   console.log('\n' + passed + ' passed, ' + failed + ' failed\n');

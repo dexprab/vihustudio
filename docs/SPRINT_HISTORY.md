@@ -8841,3 +8841,38 @@ decision alone 0.00007ms. Moments 86/86, chat 230/230, context 90/90,
 canon 90/90, edge auth 127/127, memory 58/58, companion 50/50, garden
 104/104, traveller reset 16/16, rite 100/100, zero page errors.
 Build 0672 → 0673.
+
+---
+
+## Both films are scored by the same rule (build 0674)
+
+*"yes match them, add music to story reel too."* The gap was worse than
+an inconsistency: the Story Reel passed no `ambientBuffer` at all, so a
+story with no recording exported as a **completely silent** video, while
+Magic Publish had always scored a wordless film.
+
+Matching them means matching the RULE rather than putting music over a
+child's voice. Magic Publish's three tiers are now shared by both:
+tier 1 — any page speaks — takes **no** bed, because the child's own
+voice is the sound of that film and `js/reelComposer.js` says so in as
+many words; tier 2 — nobody speaks — takes one; tier 3 is what a null
+bed already is, and ReelComposer's own silent track keeps a wordless reel
+from composing to zero bytes either way.
+
+`MAGIC_AMBIENT_FILE` / `_magicAmbientBuffer()` became `AMBIENT_BED_FILE`
+/ `_ambientBedBuffer()`, so the two films cannot drift onto different
+music and the fetch-and-decode is still done at most once per page load.
+
+`R1`–`R4` measure at ReelComposer's own seam with a real decoded buffer —
+composing two 1080×1920 films for real would take minutes and prove
+nothing more about which bed was handed over — and `R1b` checks the film
+is still handed back whole, since the bed now sits in front of `finish`'s
+own promise chain. Proved by reverting: R1 and R4 go red.
+
+One test bug worth recording, because it failed convincingly: the two
+destinations take different payload shapes — a Reel page is one bitmap, a
+Magic Publish page is a list of reveal frames — so feeding Magic the
+Reel's shape made `finish()` return null and reported *Magic Publish has
+no bed*, which reads exactly like a product regression.
+
+Atmosphere 14/14, celebration 31/31, zero page errors. Build 0673 → 0674.

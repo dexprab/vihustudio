@@ -540,9 +540,28 @@ const StoryDestinations=(function(){
       const pages=payloads.filter(function(p){ return p&&p.bitmap; });
       if(pages.length===0) return null;
       if(typeof ReelComposer==='undefined'||!ReelComposer.isSupported()) return null;
-      return ReelComposer.compose(pages,{
-          width:format.outW, height:format.outH, fps:REEL_FPS,
-          transition:format.transition||'page-turn'
+      // A MOVIE WITH NO SOUND AT ALL WAS THE REAL GAP. Magic Publish has
+      // always scored a wordless film; the Story Reel did not, so a child
+      // who made a story and never recorded their voice got a silent
+      // video. Asked for directly by the product owner: "match them, add
+      // music to story reel too."
+      //
+      // The SAME THREE TIERS, deliberately, rather than a bed on
+      // everything: tier 1 (any page speaks) takes NO bed, because the
+      // child's own voice is the sound and must never be competed with;
+      // tier 2 (nobody speaks) takes one; tier 3 is what a null bed
+      // already is, and ReelComposer's own silent track keeps a wordless
+      // reel from composing to zero bytes either way. Matching the two
+      // means matching the RULE, not putting music over a quiet voice in
+      // one of them.
+      const hasNarration=pages.some(function(p){ return !!p.narrationBuffer; });
+      return (hasNarration?Promise.resolve(null):_ambientBedBuffer())
+        .then(function(ambient){
+          return ReelComposer.compose(pages,{
+            width:format.outW, height:format.outH, fps:REEL_FPS,
+            transition:format.transition||'page-turn',
+            ambientBuffer:ambient||null
+          });
         })
         .then(function(out){
           if(!out||!out.blob||out.blob.size===0) return null;
@@ -614,7 +633,11 @@ const StoryDestinations=(function(){
   // one whose name denotes music rather than an environmental
   // texture (air / wind / forest) or an effect (magic). One constant
   // to change if a listen says otherwise.
-  const MAGIC_AMBIENT_FILE='harmony.mp3';
+  //
+  // SHARED WITH THE STORY REEL since build 0673 — "match them, add music
+  // to story reel too" — so both films are scored by the same loop under
+  // the same rule, and there is one constant to change rather than two.
+  const AMBIENT_BED_FILE='harmony.mp3';
   // ---- Story budget (M8) ----
   // Measured, not estimated: a page's reveal is up to 12 stages, every
   // one a real 1080 × 1920 canvas (~7.9 MB), and finish() holds every
@@ -737,15 +760,15 @@ const StoryDestinations=(function(){
   // the loop is ~700KB and every publish would otherwise re-fetch
   // and re-decode it. Resolves null on any failure, in which case
   // the reel is simply silent (tier 3), never broken.
-  let _magicAmbientPromise=null;
-  function _magicAmbientBuffer(){
-    if(_magicAmbientPromise) return _magicAmbientPromise;
+  let _ambientBedPromise=null;
+  function _ambientBedBuffer(){
+    if(_ambientBedPromise) return _ambientBedPromise;
     if(typeof ReelComposer==='undefined'){ return Promise.resolve(null); }
-    _magicAmbientPromise=fetch(_assetURL('assets/audio/foundation/'+MAGIC_AMBIENT_FILE))
+    _ambientBedPromise=fetch(_assetURL('assets/audio/foundation/'+AMBIENT_BED_FILE))
       .then(function(r){ return r.ok?r.arrayBuffer():null; })
       .then(function(buf){ return buf?ReelComposer.decodeAudio(buf):null; })
       .catch(function(){ return null; });
-    return _magicAmbientPromise;
+    return _ambientBedPromise;
   }
 
   // ---------- The closing card (M7 / architecture §5.6) ----------
@@ -1172,7 +1195,7 @@ const StoryDestinations=(function(){
       // takes one; tier 3 is what a null bed already is.
       return Promise.all([
           _magicClosingCard(format),
-          hasNarration?Promise.resolve(null):_magicAmbientBuffer()
+          hasNarration?Promise.resolve(null):_ambientBedBuffer()
         ])
         .then(function(res){
           const card=res[0], ambient=res[1];

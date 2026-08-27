@@ -1846,12 +1846,36 @@ Theme hook and changes nothing else about it.
   above silence. A check that read `applyTheme`'s own branch would have
   agreed with the bug. Proved by reverting the fix and watching A5 and A7
   go red.
-- **Disclosed, unfixed, and a product decision rather than a defect:**
-  Magic Publish's exported reel carries an ambient bed
-  (`_magicAmbientBuffer` → `ReelComposer`'s `ambientBuffer`) and the
-  Story Reel export does not. Both are frozen surfaces; giving an export
-  a music bed is a product change, not a bug fix.
-- `js/audioManager.js` · `js/themeEngine.js` ·
+- ~~**Disclosed, unfixed:** Magic Publish's exported reel carries an
+  ambient bed and the Story Reel export does not.~~ **Closed** by the
+  product owner in the same conversation — see the clause below.
+- **BOTH FILMS ARE SCORED BY THE SAME RULE** (build 0674). Asked for
+  directly by the product owner after the disclosure above: *"yes match
+  them, add music to story reel too."* The real gap was worse than an
+  inconsistency — a Story Reel of a story with no recording exported
+  **completely silent**, because the Story Reel passed no `ambientBuffer`
+  at all while Magic Publish had always scored a wordless film.
+- **Matching them means matching the RULE, not putting music over a
+  child's voice.** The three tiers are Magic Publish's own and are now
+  shared: **tier 1** — any page speaks — takes NO bed, because the
+  child's own voice is the sound of that film and
+  `js/reelComposer.js` says so in as many words; **tier 2** — nobody
+  speaks — takes one; **tier 3** is what a null bed already is, and
+  ReelComposer's own silent track keeps a wordless reel from composing to
+  zero bytes either way.
+- **One loop, one constant.** `MAGIC_AMBIENT_FILE` /
+  `_magicAmbientBuffer()` became `AMBIENT_BED_FILE` /
+  `_ambientBedBuffer()`, so the two films cannot drift onto different
+  music, and the fetch-and-decode is still done at most once per page
+  load.
+- **A test bug worth recording, because it failed convincingly.** The
+  two destinations take DIFFERENT payload shapes — a Reel page is one
+  bitmap, a Magic Publish page is a list of reveal frames — so feeding
+  Magic the Reel's shape made `finish()` return null and reported
+  *Magic Publish has no bed*, which looks exactly like a product
+  regression. Measured before believing it.
+- `js/storyDestinations.js`
+- `js/audioManager.js` · `js/themeEngine.js` · `js/storyDestinations.js` ·
   `tools/atmosphere-test/run-atmosphere-tests.js`
 
 ### 21. VihuPlanet Is For Everybody; the Studio Needs a Laptop
