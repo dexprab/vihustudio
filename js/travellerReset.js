@@ -107,7 +107,7 @@ const TravellerReset = (function () {
   // through the first chapter again, and that question is asked early.
   function run(opts) {
     var preserve = !(opts && opts.preserveSession === false);
-    var out = { projects: 0, drawings: 0, letters: 0, garden: false, rite: false };
+    var out = { projects: 0, drawings: 0, letters: 0, garden: false, memory: false, rite: false };
 
     // THE RITE ITSELF.
     //
@@ -138,6 +138,20 @@ const TravellerReset = (function () {
     try {
       if (typeof LivingGarden !== 'undefined' && LivingGarden.forgetTraveller) {
         out.garden = !!(LivingGarden.forgetTraveller() || {}).ok;
+      }
+    } catch (e) {}
+
+    // And what a Companion remembers. The same single-record shape, and
+    // in practice there is never anything here to take: js/companionMemory.js
+    // refuses to write without an active card, so a Traveller has no
+    // memories rather than having some that are later swept. It is swept
+    // anyway, for the reason this whole file exists — a record that
+    // predates a card must never outlive the session that made it, and
+    // that must be true of any store, not only the ones we remember to
+    // list. Memories belonging to a card are untouchable.
+    try {
+      if (typeof CompanionMemory !== 'undefined' && CompanionMemory.forgetTraveller) {
+        out.memory = !!(CompanionMemory.forgetTraveller() || {}).ok;
       }
     } catch (e) {}
 
