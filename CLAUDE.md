@@ -4083,6 +4083,135 @@ without inventing: giving Leo words of his own.
 - `js/companionChat.js` ·
   `tools/companion-presence-test/run-companion-presence-tests.js`
 
+### 44. Four Companions, One Schema — and the Voice Is Authored, Not Wired
+
+Locked in the Companion Character Identity sprint. It establishes who
+Leafy, Leo, Quill and Nimbus each are, and it deliberately stops short
+of changing a single word any child hears today. **No OpenAI, no model,
+no conversation, no new runtime consumer.**
+
+- **THE PREMISE WAS WRONG, AND THE INVENTORY IS WHY THAT MATTERED.**
+  The sprint was framed as "Leafy has a character voice, give the others
+  one". Measured: **nobody had one.** Leafy's `personality.json` is a
+  rich specification whose four runtime keys are deliberately absent
+  (Decision 32), so `pickGreeting()` falls through and Leafy speaks the
+  platform's twenty authored lines — the same ones Leo, Quill and Nimbus
+  speak. *"Hey… you're here."* was nobody's line in particular.
+- **WHAT EACH COMPANION ACTUALLY HAD.** Leafy: a full 20-key
+  specification, twelve poses, voice settings. Leo: a name, the species
+  *Lantern Lion*, eleven poses, voice settings, and one aside in
+  `docs/VIHU_VOICE.md`. Quill: a name, *Ink Spirit*, **eight** poses,
+  voice settings. Nimbus: a name, *Dream Sprite*, eleven poses, and
+  voice settings **identical to Leafy's**. Both READMEs for Quill and
+  Nimbus are boilerplate engineering docs with the name swapped and
+  contain no character material at all.
+- **A SPECIES IS PRODUCT AUTHORSHIP, NOT DECORATION.** Canon already
+  records that adding one "is a product-owner decision, not an
+  engineering one", and Leafy's whole identity is built on *Bloomling* —
+  "a small growing thing that has decided to be somebody". So the
+  species names are the anchor each character was derived from, together
+  with the production artwork, which is specific and deliberate: Leo
+  carries **a lit lantern on his tail** and wears a small open book;
+  Quill is **made of ink**, holds a silver-nibbed pen and stands in a
+  puddle of itself; Nimbus **does not stand on the ground** — it stands
+  on a cloud, with crescent moons and half-lidded eyes.
+- **EVERY TRAIT NAMES ITS SOURCE.** Each file carries an `evidence`
+  block splitting *established* (registry, canon, artwork, voice
+  settings) from *authored* (the interpretation this sprint added) from
+  *stillNeeded*. Nothing was filled in with generic adjectives, and the
+  suite fails if the block is missing.
+- **FOUR BEINGS, NOT FOUR ADJECTIVE SETS, AND IT IS TESTED
+  ADVERSARIALLY.** No two Companions share a trait word; no descriptive
+  axis is copied; no example line or Presence line is shared. The real
+  guard is the **name-swap test**: every Companion's own name and species
+  is stripped from its prose and the remaining vocabulary compared
+  pairwise. The closest pair sits at 36% shared vocabulary; a
+  name-swapped copy of Leafy scores **100%** and fails five checks.
+  Proved by making Nimbus exactly that and watching it go red.
+- **WHERE THE FOUR ACTUALLY DIFFER.** Leafy is grounded, concrete and
+  dry — she notices *what is there*. Leo is forward-going and openly
+  delighted — he *goes and looks*, and lights the place you are both
+  standing in rather than leading the way. Quill is precise, courteous
+  and the most literal — it notices *what things are called*, and its pen
+  is for keeping rather than deciding. Nimbus is adrift rather than
+  merely calm — it notices *what a thing is like*, and answers in
+  resemblances. Leafy and Nimbus were the closest pair and are separated
+  on exactly that axis: **grounded versus adrift, fact versus
+  resemblance.**
+- **`warmth` PROVED THE SCHEMA CHECK WORKS.** The three new files were
+  written without it and the suite — which reads the schema out of
+  Leafy's own file rather than from a list — named the missing key for
+  all three. It is authored per character now, not copied.
+- **CHARACTER CONTROLS STYLE; CANON CONTROLS BOUNDARIES.** All four
+  carry the same seven platform prohibitions and the same five "never
+  does" rules, in their own words. A specification describes the
+  **Companion**, never an effect on the child: "Leafy responds gently
+  and leaves room for the Creator to decide", never "Leafy makes the
+  child feel confident". The suite fails on the second shape.
+- **THE BOUNDARY TEST CAUGHT THIS SPRINT'S OWN AUTHORED COPY.** Leo's
+  arrival line read *"I was hoping you'd come back this way"* — which
+  claims Leo was waiting and that the Creator had been away, breaking
+  Decision 26, Decision 31 and Decision 41 at once. All twenty-four
+  Presence lines were rewritten against one rule: **a line may not
+  assert time, absence, waiting, or what the Companion did between
+  visits.** `D8b` enforces it.
+- **MODEL A IS THE RECOMMENDATION, AND IT IS NOT YET TAKEN.** Of the two
+  models the sprint was asked to weigh — Companion lines with the
+  platform library as fallback (A), or platform lines universal with
+  personality feeding only the future Mind (B) — **A is recommended**,
+  and it is already the architecture: `pickGreeting()` prefers a
+  package's own `greetings`, and Decision 40 already records that "the
+  package's own voice still wins". Decision 26 is **not** amended by it:
+  the Ether's World Host reads `js/companionLines.js` directly and never
+  consults a personality, so the twenty lines keep their original job
+  unchanged. What Model A costs is that the shared twenty become the
+  *fallback* for a Companion with no authored lines rather than the
+  voice for everyone.
+- **SO THE LINES ARE AUTHORED AND DELIBERATELY UNWIRED.** They live
+  under `presenceLines`, which is **not** one of the four runtime keys
+  and is read by nothing — the suite fails if any runtime file so much
+  as mentions it. Every child still hears the platform line today, and
+  every one of the four still says the same thing on arrival. Turning it
+  on is a one-line change in `js/companionDirector.js` and it is the
+  product owner's to make, because it changes what every child hears on
+  every arrival.
+- **LEAFY IS UNCHANGED, AND IT IS PROVABLE.** Two additive descriptive
+  blocks (`evidence`, `presenceLines`); a key-by-key diff shows nothing
+  existing added to, removed or altered. Decision 31's traits, identity
+  sentence, deliberate-absence note and example lines are pinned by
+  name in the suite.
+- **THE CANON SUITE'S F5 WAS CORRECTED, NOT WEAKENED.** It read "Leafy
+  has no runtime keys, every other personality has some" — true only
+  while Leafy was the one descriptive file and Lumo the one runtime
+  file, and it would have failed three new specifications for being
+  exactly what they are. The rule is written down instead: a file
+  declaring `runtimeKeysDeliberatelyAbsent` is a specification and must
+  carry none of the four; any other is a runtime file and must not have
+  been emptied. `F5b` pins Leafy by name so no future edit can move her
+  across by deleting one key.
+- **TWO REAL PRODUCT GAPS ARE RECORDED RATHER THAN PAPERED OVER.**
+  Nimbus's voice settings are a copy of Leafy's, so Nimbus has no
+  independently chosen voice; and **Quill declares only eight of the
+  twelve poses** — no celebrate, happy, sleep or surprised — so Quill
+  structurally cannot show delight or drowsiness, and its specification
+  says so rather than describing a face it does not have. Both need a
+  product decision, not an engineering one.
+- **A CORRECTION TO DECISION 43.** That entry said Leo's `think.png`
+  "404s and the engine's `onerror` falls back". Measured: `think` is not
+  declared in `assets/leosaurus/companion.json` at all, so `_applyState`
+  returns early and the image simply does not change. No request is made
+  and no `onerror` fires. The observed behaviour — nothing broken on
+  screen — was right; the mechanism was not. Leo's own README also
+  claims the pose "is declared anyway"; it is not.
+- Out of scope and untouched: OpenAI, both production gates, the privacy
+  gate, the Bond validator, memory, Traveller isolation, conversation,
+  `CONVERSATION_OFFERED`, microphone, wake word, and every Presence
+  decision rule. No personality engine, classifier, embedding, sentiment
+  detector, score, timer or poll was added.
+- `assets/leafy/personality.json` · `assets/leosaurus/personality.json` ·
+  `assets/quill/personality.json` · `assets/nimbus/personality.json` ·
+  `tools/companion-identity-test/run-companion-identity-tests.js`
+
 ## Roadmap
 
 1. Theme Designer Polish

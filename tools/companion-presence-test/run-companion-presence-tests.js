@@ -709,6 +709,65 @@ function LOOK() {
      'leafy: ' + (Array.isArray(voices.leafy) ? 'no greetings' : voices.leafy) +
      ' · leosaurus: ' + voices.leosaurus);
 
+  // =================================================================
+  console.log('\nSPRINT 1L — ALL FOUR, THROUGH THE SAME DOOR');
+  // =================================================================
+  //
+  // Every bondable Companion, arriving the way a child arrives, through
+  // the one Presence path. The screenshots are the evidence that the
+  // experience is the same shape for each and that only the Companion
+  // differs.
+  const FOUR = [['leafy', 'Leafy', 'Bloomling'], ['leosaurus', 'Leo', 'Lantern Lion'],
+                ['quill', 'Quill', 'Ink Spirit'], ['nimbus', 'Nimbus', 'Dream Sprite']];
+  const seen = [];
+  for (const [cid, cname, cspecies] of FOUR) {
+    const setup = new Function(
+      'localStorage.clear(); sessionStorage.clear();' +
+      "const c=MagicCard.claim('Vihaan',null,{companionId:'" + cid + "',companionName:'" + cname +
+      "',companionSpecies:'" + cspecies + "'}); MagicCard.setActive(c.id);");
+    await arrive(setup);
+    const look = await page.evaluate(LOOK);
+    await page.screenshot({ path: path.join(SHOTS, 'four-' + cid + '.png') });
+    seen.push({ cid, cname, look });
+    ck(look.present && look.visible && (look.who || '').indexOf(cid + '/') === 0,
+       'W1.' + cid + '  arrives through the same door and is the one on screen', look.who);
+    ck(look.signals.companionId === cid,
+       'W2.' + cid + '  resolved from the active card', look.signals.companionId);
+    ck(!!look.line && openings.indexOf(look.line) !== -1,
+       'W3.' + cid + '  acknowledged once, from the shared library', look.line);
+  }
+  // Same slot, same size, for every one of them — one presentation.
+  const boxes = seen.map((x) => x.look.rect).filter(Boolean);
+  const same = boxes.every((b) => b.x === boxes[0].x && b.y === boxes[0].y &&
+                                  b.w === boxes[0].w && b.h === boxes[0].h);
+  ck(boxes.length === 4 && same,
+     'W4  all four occupy exactly the same slot — one presentation, four beings',
+     JSON.stringify(boxes[0]));
+  // DISCLOSED, and this is the honest state of the sprint: the four now
+  // have authored lines of their own and the Studio does not speak them
+  // yet, so all four still say the same thing on arrival.
+  const spoken = new Set(seen.map((x) => x.look.line));
+  ck(spoken.size === 1,
+     'W5  DISCLOSED: all four still speak the SAME platform line — presenceLines is unwired',
+     [...spoken][0]);
+  // And the authored alternative exists for each of them.
+  const authored = await page.evaluate(async (ids) => {
+    const out = {};
+    for (const id of ids) {
+      try {
+        const r = await fetch('assets/' + id + '/personality.json');
+        const j = r.ok ? await r.json() : null;
+        out[id] = j && j.presenceLines && j.presenceLines.arrival
+          ? j.presenceLines.arrival.first : null;
+      } catch (e) { out[id] = null; }
+    }
+    return out;
+  }, FOUR.map((f) => f[0]));
+  const vals = Object.values(authored);
+  ck(vals.every(Boolean) && new Set(vals).size === 4,
+     'W6  while each carries its own authored arrival line, ready to be wired',
+     Object.keys(authored).map((k) => k + ': "' + authored[k] + '"').join(' · '));
+
   // ---------------------------------------------------------------
   const real = pageErrors.filter((e) => !/favicon|ERR_/.test(e));
   ck(real.length === 0, 'Z1  zero page errors across every journey',

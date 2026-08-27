@@ -416,6 +416,33 @@
         "Repeat a view that was not taken"
       ]
     },
-    "containsNo": "Creator-specific memories, story-specific facts, character names from any story, provider or model instructions. Leafy is the same Leafy for every Creator; what makes one Creator's Leafy different is what the two of them have done together, and that is remembered elsewhere."
+    "containsNo": "Creator-specific memories, story-specific facts, character names from any story, provider or model instructions. Leafy is the same Leafy for every Creator; what makes one Creator's Leafy different is what the two of them have done together, and that is remembered elsewhere.",
+    "evidence": {
+      "note": "Where this character comes from. Leafy's specification was authored deliberately in the Companion Canon + Leafy Personality Foundation sprint; this block was added later so all four Companions carry the same schema.",
+      "established": [
+        "Name 'Leafy' and package id 'leafy' — the Companion registry, Leafy's package manifest.",
+        "Species 'Bloomling' — the Companion Canon's species table.",
+        "The full character specification below, authored as a deliberate product act and locked as Decision 31 in the product's own canon.",
+        "Twelve declared poses, the only complete Companion Pose Contract v2 set of the four.",
+        "Voice settings — the Companion registry: stability 0.5, style 0.15, speed 0.86."
+      ],
+      "authored": [
+        "The presenceLines block below, added in the Companion Character Identity sprint so Leafy's arrival can one day sound like Leafy rather than like the platform."
+      ],
+      "stillNeeded": [
+        "Leafy's registry voice settings are shared exactly with Nimbus. They differentiate nobody, and choosing one for each is a product-owner decision."
+      ]
+    },
+    "presenceLines": {
+      "purpose": "Authored deterministic lines for the Presence layer (the Presence layer), in Leafy's own voice. DESCRIPTIVE AND UNWIRED: nothing reads this key today, and the Studio still speaks the shared platform library in the shared platform line library. This is NOT one of the four runtime keys, so Decision 32's boundary is unchanged — wiring it is the explicit product decision recorded as Model A in this sprint's report.",
+      "arrival": {
+        "first": "Oh — hello. You found me.",
+        "returning": "There you are.",
+        "withHistory": "Hello. I was just looking at something.",
+        "intoAnOldStory": "Oh — this one. I like the little door."
+      },
+      "returnToStory": "Oh — this one. There's a little door in it.",
+      "farewell": "Bye. I'll be here."
+    }
   }
 }

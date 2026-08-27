@@ -9092,3 +9092,75 @@ arriving and read the greeting still fading on screen as a new line.
 Presence 74/74, moments 88/88, companion 50/50, canon 90/90, chat
 230/230, context 90/90, edge auth 127/127, memory 58/58, garden 104/104,
 traveller reset 16/16, zero page errors. Build 0677 → 0678.
+
+## Sprint 1L — Companion Character Identity (build 0679)
+
+The premise needed correcting before anything could be authored. The
+sprint was framed as "Leafy has a character voice, give the others one";
+measured, **nobody had one**. Leafy's specification keeps its four
+runtime keys deliberately absent (Decision 32), so `pickGreeting()` falls
+through and she speaks the platform's twenty lines — the same ones Leo,
+Quill and Nimbus speak. *"Hey… you're here."* was nobody's line in
+particular.
+
+**The inventory.** Leafy: a full 20-key specification, twelve poses.
+Leo: a name, *Lantern Lion*, eleven poses, one aside in VIHU_VOICE.md.
+Quill: a name, *Ink Spirit*, **eight** poses. Nimbus: a name, *Dream
+Sprite*, eleven poses, and voice settings **identical to Leafy's**. The
+Quill and Nimbus READMEs are boilerplate engineering docs with the name
+swapped — no character material at all.
+
+**What the three were derived from.** Canon already records that adding
+a species "is a product-owner decision", and Leafy's whole identity is
+built on *Bloomling*. So the species names plus the production artwork
+are the anchors: Leo carries **a lit lantern on his tail** and an open
+book; Quill is **made of ink**, holds a silver-nibbed pen, stands in a
+puddle of itself; Nimbus **does not stand on the ground** — it stands on
+a cloud, crescent moons, half-lidded. Each file carries an `evidence`
+block splitting established from authored from still-needed.
+
+**Four beings, tested adversarially.** No shared trait word, no copied
+axis, no shared line. The real guard is the name-swap test: strip each
+Companion's name and species and compare the remaining vocabulary
+pairwise — closest pair 36%, while a name-swapped copy of Leafy scores
+**100%** and fails five checks. Proved by making Nimbus exactly that.
+Leafy and Nimbus were the closest pair and are separated on the axis
+that matters: grounded versus adrift, fact versus resemblance.
+
+**The boundary test caught this sprint's own copy.** Leo's arrival line
+read *"I was hoping you'd come back this way"* — claiming he was waiting
+and that the Creator had been away, breaking Decisions 26, 31 and 41 at
+once. All twenty-four Presence lines were rewritten against one rule: a
+line may not assert time, absence, waiting, or what the Companion did
+between visits. `D8b` enforces it. The schema check caught a second
+defect: all three new files were missing `warmth`, named because the
+suite reads the schema out of Leafy's file rather than from a list.
+
+**Model A is recommended and not yet taken.** Companion lines with the
+platform library as fallback — already the architecture, since
+`pickGreeting()` prefers a package's own `greetings` and Decision 40
+records that the package's voice wins. Decision 26 is not amended: the
+Ether's World Host reads `companionLines.js` directly and never consults
+a personality. So the lines are authored under `presenceLines`, which is
+not a runtime key and which no runtime file may even mention — every
+child still hears the platform line, and all four still say the same
+thing on arrival. Turning it on is one line in the Director and it is
+the product owner's call.
+
+**Leafy is unchanged**, provably: two additive descriptive blocks, and a
+key-by-key diff showing nothing existing altered. The canon suite's F5
+was corrected rather than weakened — it encoded "Leafy has none,
+everything else has some", true only while Leafy was the one descriptive
+file, and would have failed three specifications for being exactly what
+they are.
+
+**Two product gaps recorded rather than papered over:** Nimbus has no
+independently chosen voice, and Quill declares only eight poses, so it
+structurally cannot show delight or drowsiness. Also corrected: Decision
+43 said Leo's `think.png` 404s and falls back; measured, `think` is not
+declared at all, so `_applyState` returns early and no request is made.
+
+Identity 107/107, presence 89/89, canon 94/94, moments 88/88, companion
+50/50, chat 230/230, context 90/90, edge auth 127/127, memory 58/58,
+garden 104/104, traveller reset 16/16, zero page errors.
+Build 0678 → 0679.

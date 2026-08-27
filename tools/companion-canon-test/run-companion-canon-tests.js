@@ -398,10 +398,24 @@ console.log('\nF. THE CLEANUP  (Sprint 1C.1 — canon status, and the runtime bo
     .forEach((needle, i) => ck(flat.indexOf(needle) !== -1,
       'F4.' + (i + 1) + '  Decision 32 records "' + needle.slice(0, 44) + '"'));
 
-  // F5 — THE FOUR KEYS, IN EVERY PERSONALITY ON DISK. Leafy must not
-  // have them; Lumo must not have LOST them. "Do not populate" and "do
-  // not remove from existing personalities" are two different failures
-  // and this checks for both.
+  // F5 — THE FOUR KEYS, IN EVERY PERSONALITY ON DISK.
+  //
+  // The intent has not changed and is still two different failures:
+  // a DESCRIPTIVE specification must not be populated with runtime
+  // keys, and a file that already drives the Studio must not lose the
+  // keys it has.
+  //
+  // WHAT CHANGED, AND WHY. This used to say "leafy has none, everything
+  // else has some", which was true only while Leafy was the one
+  // descriptive file and Lumo the one runtime file. The Companion
+  // Character Identity sprint authored specifications for Leo, Quill
+  // and Nimbus, all descriptive — so the else-branch would have failed
+  // three files for being exactly what they are meant to be. That was
+  // an implementation detail standing in for the rule, so the rule is
+  // written down instead: a file that declares
+  // `runtimeKeysDeliberatelyAbsent` is a specification and must carry
+  // none of the four; any other personality file is a runtime one and
+  // must not have been emptied.
   const RUNTIME_KEYS = ['greetings', 'neverSays', 'play', 'lines'];
   const personalities = fs.readdirSync(path.join(ROOT, 'assets'))
     .map((d) => [d, path.join(ROOT, 'assets', d, 'personality.json')])
@@ -411,14 +425,23 @@ console.log('\nF. THE CLEANUP  (Sprint 1C.1 — canon status, and the runtime bo
   personalities.forEach(([id, file]) => {
     const j = JSON.parse(fs.readFileSync(file, 'utf8'));
     const has = RUNTIME_KEYS.filter((k) => Object.prototype.hasOwnProperty.call(j, k));
-    if (id === 'leafy') {
-      ck(has.length === 0, 'F5.' + id + '  Leafy stays descriptive',
+    const descriptive = !!j.runtimeKeysDeliberatelyAbsent;
+    if (descriptive) {
+      ck(has.length === 0, 'F5.' + id + '  ' + id + ' stays descriptive',
          has.length ? 'populated: ' + has.join(', ') : 'no runtime key');
     } else {
       ck(has.length > 0, 'F5.' + id + '  ' + id + '\'s existing runtime keys were NOT removed',
          has.join(', '));
     }
   });
+  // And the one that keeps the branch above honest: Leafy is named
+  // explicitly, so no future edit can quietly move her to the other side
+  // by deleting one key.
+  const leafySpec = JSON.parse(fs.readFileSync(
+    path.join(ROOT, 'assets', 'leafy', 'personality.json'), 'utf8'));
+  ck(!!leafySpec.runtimeKeysDeliberatelyAbsent &&
+     RUNTIME_KEYS.every((k) => !Object.prototype.hasOwnProperty.call(leafySpec, k)),
+     'F5b Leafy is still on the descriptive side by name, not by accident');
 
   // F6 — THE CONSUMERS STILL CONSUME EXACTLY WHAT THEY DID.
   //
