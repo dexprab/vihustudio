@@ -1828,3 +1828,120 @@ html, body {
   width: auto;
 }
 .vp-bigger-away:hover { background: rgba(241, 234, 208, 0.1); }
+
+/* ---------- Sprint 1M: the Traveller may say hello ----------
+   An ENCOUNTER, not a chat application. One small button beside
+   whoever is standing there, and a single line to speak into.
+
+   It lives inside .ether-portal-foot, which the attention hierarchy
+   already reserves as its own row of the portal's flex column — so it
+   cannot overlap the page, either arrow, the close control, the title
+   or the count, whatever shape a Story's pages happen to be. That is
+   geometry rather than a z-index and some judgement.
+
+   The host itself stays pointer-events:none and aria-hidden; these are
+   separate elements, because a Companion is still not a control. */
+.ether-talk-open {
+  position: absolute;
+  right: calc(var(--vp-host-size) + 12px);
+  bottom: 6px;
+  max-width: 46vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 6px 14px;
+  border: 1px solid rgba(255, 255, 255, .22);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .08);
+  color: rgba(255, 255, 255, .82);
+  font: inherit;
+  font-size: .82rem;
+  letter-spacing: .01em;
+  cursor: pointer;
+  opacity: .78;
+  transition: opacity .25s ease, background .25s ease, border-color .25s ease;
+}
+.ether-talk-open:hover,
+.ether-talk-open:focus-visible {
+  opacity: 1;
+  background: rgba(255, 255, 255, .14);
+  border-color: rgba(255, 255, 255, .38);
+}
+.ether-talk-open[hidden] { display: none; }
+
+.ether-talk {
+  position: absolute;
+  right: calc(var(--vp-host-size) + 12px);
+  bottom: 6px;
+  /* NOT full width. `left: 0` stretched this across the whole portal
+     and reached the ambience toggle in the far corner — heavier than an
+     encounter should be, and measured on a real screenshot rather than
+     guessed. It sits beside whoever is speaking instead. */
+  width: min(420px, 46vw);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  text-align: left;
+}
+.ether-talk[hidden] { display: none; }
+
+/* NOTHING IS SHOWN WHEN THERE IS NOTHING TO SAY. Not an ellipsis, not
+   a placeholder — a Companion is allowed to be quiet, and an empty
+   answer must be absent rather than a hole shaped like one. */
+.ether-talk-said {
+  margin: 0;
+  color: rgba(255, 255, 255, .9);
+  font-size: .9rem;
+  line-height: 1.4;
+}
+.ether-talk-said:empty { display: none; }
+
+.ether-talk-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ether-talk-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 6px 12px;
+  border: 1px solid rgba(255, 255, 255, .22);
+  border-radius: 999px;
+  background: rgba(10, 14, 30, .55);
+  color: rgba(255, 255, 255, .92);
+  font: inherit;
+  font-size: .86rem;
+}
+.ether-talk-input::placeholder { color: rgba(255, 255, 255, .42); }
+.ether-talk-send,
+.ether-talk-close {
+  flex: 0 0 auto;
+  padding: 6px 12px;
+  border: 1px solid rgba(255, 255, 255, .22);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .1);
+  color: rgba(255, 255, 255, .86);
+  font: inherit;
+  font-size: .82rem;
+  cursor: pointer;
+}
+.ether-talk-close { padding: 6px 10px; }
+.ether-talk-send:hover, .ether-talk-close:hover,
+.ether-talk-send:focus-visible, .ether-talk-close:focus-visible {
+  background: rgba(255, 255, 255, .18);
+}
+/* Focus must be visible — a Traveller may be doing all of this from
+   the keyboard, which is the only way some of them can. */
+.ether-talk-open:focus-visible,
+.ether-talk-input:focus-visible,
+.ether-talk-send:focus-visible,
+.ether-talk-close:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, .75);
+  outline-offset: 2px;
+}
+@media (max-width: 640px) {
+  .ether-talk-open, .ether-talk { right: calc(var(--vp-host-size) + 6px); }
+  .ether-talk-open { max-width: 40vw; }
+  .ether-talk { width: min(280px, 58vw); }
+}

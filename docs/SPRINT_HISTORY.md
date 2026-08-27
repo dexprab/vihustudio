@@ -9243,3 +9243,62 @@ Identity 107/107, presence 89/89, canon 94/94, moments 88/88, companion
 50/50, chat 230/230, context 90/90, edge auth 127/127, memory 58/58,
 garden 104/104, traveller reset 16/16, zero page errors.
 Build 0680 → 0681.
+
+## Sprint 1M — Ether Companion Encounter (build 0683)
+
+The first real Traveller ↔ Companion interaction. No OpenAI, no model,
+no microphone, no wake word, and no network call — the deterministic
+scaffolding that has to be right before Step 3 exists.
+
+**Two relationships, and this sprint is the wall between them.** Creator
+↔ Companion is private; Traveller ↔ Companion is a public encounter. So
+a Traveller context is *constructed* from a fixed whitelist rather than
+built by deleting fields from the Creator's — a subtraction stays
+correct only until somebody adds a field upstream. Eight fields survive:
+the Story's name, page count, whether it has a voice, whether it is
+Canon, and the Companion's name, species and id. A count travels; a word
+of the prose never does.
+
+**The Creator is absent even though the portal names them.** The title
+bar has always shown the maker's nickname — that is the screen's label.
+The Companion still answers *"That's not mine to tell"*, because every
+Companion's own specification already says a host never discusses its
+Creator.
+
+**Refused before dropped, and the order was a real defect.** The first
+version checked the whitelist first, so a context carrying `memories`
+was quietly trimmed and used — the caller would have believed it was
+accepted. A payload naming something private is now refused whole; a
+merely unknown field is dropped.
+
+**An encounter, not a chat application.** One button beside whoever is
+standing there — *Talk to Leo* — and a single line, inside the portal's
+foot band, which the attention hierarchy already reserves as its own row
+of a flex column. Nothing opens by itself, nothing listens globally,
+there is no timer and no observer. Closing discards the turns; leaving
+the Story discards the context.
+
+**It does not pretend to understand.** Ten interaction classes and an
+honest *"I don't know. You can ask me about this story."* for everything
+else. Character is a table keyed by Companion id — the idiom MODES and
+NOT_MOMENTS already use — drawn from Decision 44's identities, with the
+personality files still descriptive and unwired.
+
+Four fixture defects were found and fixed in the writing, each of which
+made the product look broken when it was not: the Spirit selector was
+guessed (`.vp-story` is the real one); `CreatorProjectStore.listPublished()`
+read 0 for twenty-five seconds while a Spirit was already drifting,
+because EtherFeed hydrates its own sources and asking the store cold is
+asking the wrong thing; `localStorage.clear()` does not clear IndexedDB,
+so an earlier suite's Story was still in the Ether and the journey met
+that one — reporting "Talk to Lumo"; and a fixed wait raced the host
+mount on two of the four Companions.
+
+**Disclosed:** the layer is entirely client-side, so the authority is
+the feed record the portal is already showing rather than a fresh server
+check at conversation time — attaching one is Step 3's, when there is a
+request to attach it to. And this environment cannot reach Supabase, so
+the encounter was verified against locally shared Stories; the remote
+source of the same feed was not live.
+
+Build 0682 → 0683.

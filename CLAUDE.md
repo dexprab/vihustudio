@@ -4264,6 +4264,101 @@ no conversation, no new runtime consumer.**
   `assets/quill/personality.json` · `assets/nimbus/personality.json` ·
   `tools/companion-identity-test/run-companion-identity-tests.js`
 
+### 45. The Ether Is Where a Traveller May Meet a Companion
+
+Locked in the Ether Companion Encounter sprint. It adds the first real
+Traveller ↔ Companion interaction, and it is deliberately not the
+intelligence sprint: **no OpenAI, no model, no provider, no microphone,
+no wake word, no network call of any kind.**
+
+- **TWO RELATIONSHIPS, AND THIS IS THE WALL BETWEEN THEM.**
+  Creator ↔ Companion is private. Traveller ↔ Companion is a **public
+  encounter**. A Traveller who opens a shared Story and says hello to
+  whoever lives there is meeting a resident of a world that was
+  deliberately shared — they are not stepping into somebody's private
+  relationship, and nothing from it may reach them.
+- **A TRAVELLER CONTEXT IS BUILT, NEVER A CREATOR CONTEXT WITH FIELDS
+  REMOVED.** Reusing `js/companionContextBuilder.js` and deleting keys
+  would make a stranger's safety depend on a subtraction staying
+  complete for ever — one field added upstream and it leaks.
+  `js/travellerContext.js` constructs from a fixed whitelist instead, so
+  a field nobody listed cannot arrive by being adjacent to one that is.
+- **EIGHT FIELDS, AND THAT IS THE WHOLE OF IT**: the Story's name, its
+  page count, whether it has a voice, whether it is Canon, and the
+  Companion's own name, species and id. No Creator, no card, no
+  memories, no Bond Moments, no conversation, no ids, no drafts, no
+  prose.
+- **A COUNT TRAVELS; A WORD NEVER DOES.** The Companion may say how long
+  a Story is and may not quote a line of it. The pages are the child's
+  own writing and are read in the Story, not recited by a resident.
+- **THE CREATOR IS ABSENT EVEN THOUGH THE PORTAL NAMES THEM.** The
+  portal's title bar has always shown the maker's nickname; that is the
+  screen's label. The Companion still says *"That's not mine to tell"*,
+  because every Companion's own specification already says a host
+  "never says anything about its own Creator". The two are consistent:
+  the screen may name the maker, the resident does not discuss them.
+- **REFUSED BEFORE DROPPED, and the order is the point.** A context
+  naming `memories`, a project id or a card id is **refused whole**, not
+  quietly trimmed and used — a caller doing something it must not is not
+  cleaned up for. A merely unknown field is dropped. The first version
+  checked the whitelist first and trimmed; the suite caught it.
+- **FAILS CLOSED.** Everything else in this codebase fails open so a
+  missing subsystem never strands a child. With the gate missing or the
+  context unapproved the Companion is simply silent, because failing
+  open here means handing a stranger something unscrubbed.
+- **IT IS AN ENCOUNTER, NOT A CHAT APPLICATION.** One small button
+  beside whoever is standing there — *Talk to Leo* — and a single line
+  to speak into, inside the portal's own foot band, which the attention
+  hierarchy already reserves as its own row of a flex column. It cannot
+  overlap the page, either arrow, the close control, the title or the
+  count, whatever shape a Story's pages happen to be. That is geometry,
+  not a z-index and some judgement.
+- **THE TRAVELLER CHOOSES, ALWAYS.** Nothing opens by itself, nothing
+  listens globally, there is no timer, no poll, no observer, no
+  microphone and no wake word. Escape closes it and only while it is
+  open, so the portal's own Escape still works when it is not.
+- **NOTHING IS KEPT.** The turns live in a variable while the surface is
+  open. Closing discards them; leaving the Story discards the context
+  too. `CompanionMemory` is not reachable from either file, `remember`
+  does not appear in them, and neither knows Bond Moments exist — those
+  belong to Creator ↔ Companion and the validator was not touched.
+- **IT DOES NOT PRETEND TO UNDERSTAND.** A small closed set of
+  interaction classes — greeting, identity, species, story, place,
+  goodbye, thanks, and three refusals (privacy, "remember this", "ignore
+  your rules"). Everything else is **unknown**, and unknown is answered
+  honestly: *"I don't know. You can ask me about this story."* A
+  Companion improvising around a question it did not understand is the
+  exact failure this layer exists to prevent before Step 3.
+- **CHARACTER IS DATA, NEVER A BRANCH.** A table keyed by Companion id —
+  the idiom `MODES`, `OPENING_FOR` and `NOT_MOMENTS` already use — so a
+  fifth Companion is a row and one with no row speaks a neutral voice.
+  The manner of each comes from Decision 44's established identities.
+  **Their `personality.json` files stay descriptive and unwired**:
+  nothing here reads one, and Decision 32's boundary is unchanged.
+- **THE PROVIDER BOUNDARY IS KEPT CLEAN ON PURPOSE.** `reply()` takes an
+  approved public context and a sentence and returns text. A later
+  model-backed version replaces one function body and changes nothing
+  about the privacy boundary, Traveller isolation, public-context
+  authority, the memory rules, the Bond rules or the UI intent.
+- **DISCLOSED — the authority is the feed, not a fresh server check.**
+  The only input is the Story record `js/etherFeed.js` already produced
+  for the open portal, which came from the shared feed gated on
+  `is_shared` (Decision 15), so an unshared draft is unreachable by
+  construction. But this layer is entirely client-side and makes no
+  request, so there is no server round-trip at conversation time; a
+  browser talking to itself can fabricate a title for itself, which
+  reveals nothing because there is nothing behind it. Attaching a real
+  server check is Step 3's, when there is a request to attach it to.
+- **DISCLOSED — the platform half could not be exercised here.** This
+  environment cannot reach Supabase, so the encounter was verified
+  against locally shared Stories. The feed path is the same one; the
+  remote source was not live.
+- Out of scope and untouched: OpenAI, both production gates, the privacy
+  gate, the Bond validator, Creator memory, Traveller isolation, canon,
+  `CONVERSATION_OFFERED`, and every Presence decision rule.
+- `js/travellerContext.js` · `js/travellerTalk.js` · `js/etherHost.js` ·
+  `tools/ether-encounter-test/run-ether-encounter-tests.js`
+
 ## Roadmap
 
 1. Theme Designer Polish

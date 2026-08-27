@@ -435,6 +435,20 @@ const EtherHost = (function () {
           poses = resolved;
           who = record.id || null;
           _mount(record);
+          // SPRINT 1M — the Traveller may now deliberately say hello.
+          // Offered only once a real host has actually mounted, so the
+          // button never names somebody who is not there. This OFFERS;
+          // it opens nothing, listens to nothing and starts nothing.
+          // The Story record is handed over as the feed produced it —
+          // js/travellerContext.js builds the public context from that
+          // and from nothing a Traveller typed.
+          try {
+            if (typeof TravellerTalk !== 'undefined') {
+              TravellerTalk.offer(story, {
+                id: record.id, name: record.name, species: record.species
+              });
+            }
+          } catch (e) {}
           // The welcome waits for the portal to have finished opening.
           // Arriving in the middle of that is one movement too many at
           // the exact moment the child is looking at the first page.
@@ -566,6 +580,9 @@ const EtherHost = (function () {
       root.hidden = true;
     }
     if (foot) foot.classList.remove('has-host');
+    // The conversation is ephemeral and this is where it ends: closing
+    // the Story discards the turns, the context and the surface.
+    try { if (typeof TravellerTalk !== 'undefined') TravellerTalk.withdraw(); } catch (e) {}
     if (img) img.removeAttribute('src');
   }
 
