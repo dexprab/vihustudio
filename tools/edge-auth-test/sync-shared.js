@@ -44,7 +44,7 @@ const CANON = path.join(ROOT, 'supabase', 'functions', '_shared', 'edgeAuth.js')
 // Every function that imports it. A function added later belongs here in
 // the same commit that adds it — the same rule Decision 22 states for a
 // new Add tile and the Rite's own reduction list.
-const FUNCTIONS = ['voice-speak', 'sky-protection', 'family-album', 'invite-send', 'creator-born'];
+const FUNCTIONS = ['voice-speak', 'sky-protection', 'family-album', 'invite-send', 'creator-born', 'companion-chat'];
 
 const checkOnly = process.argv.includes('--check');
 
@@ -137,14 +137,51 @@ function inlined(src) {
   throw new Error('no marker block and no ./edgeAuth.js import to replace');
 }
 
+// ---------------------------------------------------------------
+// AND THE PRIVACY GATE, INTO THE ONE FUNCTION THAT TALKS TO A MODEL
+//
+// Sprint 1D's gate is a browser module; Sprint 1E's companion-chat has
+// to run the IDENTICAL rules server-side, because the client is never
+// authoritative for privacy approval. Two copies of a privacy boundary
+// that could disagree is exactly the failure the edgeAuth note above
+// was written about, so it is generated from the one source in the same
+// way and by the same script.
+//
+// The module is an IIFE assigned to `const CompanionPrivacyGate`, which
+// is an ordinary declaration once inlined; its `window` assignment is
+// already inside a try/catch and is simply a no-op in Deno.
+const GATE_CANON = path.join(ROOT, 'js', 'companionPrivacyGate.js');
+const GATE_FUNCTIONS = ['companion-chat'];
+const GATE_BEGIN = '// ===== BEGIN GENERATED privacyGate — do not edit below this line =====';
+const GATE_END   = '// ===== END GENERATED privacyGate =====';
+
+const GATE_BLOCK = [
+  GATE_BEGIN,
+  '// Generated from js/companionPrivacyGate.js, which is the readable',
+  '// original with every decision explained. Regenerate with:',
+  '//   node tools/edge-auth-test/sync-shared.js',
+  strip(fs.readFileSync(GATE_CANON, 'utf8')),
+  GATE_END,
+].join('\n');
+
+const GATE_BLOCK_RE = new RegExp(GATE_BEGIN.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') +
+  '[\\s\\S]*?' + GATE_END.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'm');
+
+function withGate(src) {
+  if (!GATE_BLOCK_RE.test(src)) throw new Error('no privacyGate marker block to replace');
+  return src.replace(GATE_BLOCK_RE, GATE_BLOCK);
+}
+
 let drifted = 0, written = 0;
 FUNCTIONS.forEach((name) => {
   const dest = path.join(ROOT, 'supabase', 'functions', name, 'index.ts');
   const rel = path.relative(ROOT, dest);
   const before = fs.readFileSync(dest, 'utf8');
   let after;
-  try { after = inlined(before); }
-  catch (e) { console.log('  ERROR   ' + rel + ' — ' + e.message); drifted++; return; }
+  try {
+    after = inlined(before);
+    if (GATE_FUNCTIONS.indexOf(name) !== -1) after = withGate(after);
+  } catch (e) { console.log('  ERROR   ' + rel + ' — ' + e.message); drifted++; return; }
 
   if (after === before) { console.log('  ok      ' + rel); return; }
   drifted++;
