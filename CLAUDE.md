@@ -2862,6 +2862,32 @@ the standard this product will be held to when it is.
   the stored JWT — the key itself never reaches the result, because
   reading a secret out of the database and putting it on screen would be
   a worse habit than the one this sprint fixed.
+- **A REFUSAL HAS A REASON, AND THE CONSOLE NOW SAYS WHICH** (build
+  0676). Reported by the product owner looking at the live invite desk:
+  *"The invite-send function is refusing the key (401)."* That sentence
+  was the page's only word for every refusal, and it named the wrong
+  thing twice — the key is one of several ways a 401 happens, and **403,
+  the refusal this sprint actually introduced**, never reached it at
+  all: it fell through to the success branch and rendered as
+  *"Post office: undefined"* (measured; 429 did the same). So the one
+  failure the hardening was most likely to cause was the one the console
+  could not say out loud.
+- **401 and 403 are different problems in different places**, and are
+  now different sentences: 401 is *we do not know who you are* and lives
+  in the browser or in the function's own environment; 403 is *we know
+  exactly who you are and this account is not on the list* and lives in
+  one table. Neither blames the key.
+- **The anon-key fallback is gone.** `FN_HEADERS()` sent `cfg.anonKey`
+  when there was no session — since this sprint a credential the gate is
+  GUARANTEED to refuse — so *"I am not signed in"* arrived on screen as a
+  deployment fault. No session is its own answer now. A stale access
+  token is also repaired rather than reported: one `refreshSession()` and
+  one retry, because telling an administrator to sign in again for
+  something the page can do itself is a worse page.
+- `tools/invite-desk-test/` (12) drives the real page with a stubbed post
+  office and reads the sentence a person would see. Proved by reverting:
+  403, 429 and an unreachable function all reported themselves as
+  something else.
 - **A migration is inert; its verification is a separate file.** Reported
   by the product owner running the migration and reading its own first
   probe — `{"allowed": true, "remaining": 1}` — as an error. It was the

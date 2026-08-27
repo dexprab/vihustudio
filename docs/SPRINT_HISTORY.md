@@ -8943,3 +8943,44 @@ the feature switched back on.
 Presence 52/52, moments 88/88, companion 50/50, context 90/90, canon
 90/90, chat 230/230, edge auth 127/127, memory 58/58, garden 104/104,
 traveller reset 16/16, zero page errors. Build 0674 → 0675.
+
+---
+
+## A refusal has a reason, and the console now says which (build 0676)
+
+*"The invite-send function is refusing the key (401) — it is deployed but
+rejecting this call."* That sentence was the invite desk's only word for
+every refusal, and it named the wrong thing twice.
+
+The key is one of several ways a 401 happens. And **403** — the refusal
+Sprint 1A actually introduced, *this account is not in
+`platform_admins`* — never reached that branch at all: it fell through to
+the success case and rendered as **"Post office: undefined"**. Measured,
+429 did the same. So the failure the hardening was most likely to cause
+was the one failure this page could not say out loud.
+
+401 and 403 are different problems in different places and are now
+different sentences: 401 is *we do not know who you are*, which lives in
+this browser or in the function's own environment; 403 is *we know
+exactly who you are and this account is not on the list*, which lives in
+one table. Neither blames the key. 429 is a pause, and an unreachable
+function is reported as unreachable rather than as undeployed.
+
+`FN_HEADERS()` also fell back to `cfg.anonKey` when there was no
+session — since Sprint 1A a credential the gate is guaranteed to refuse —
+so *"I am not signed in"* arrived on screen as a deployment fault. That
+fallback is gone; no session is its own answer. A stale access token is
+repaired rather than reported: one `refreshSession()` and one retry.
+
+`tools/invite-desk-test/` (12) drives the real page with the real branch
+logic and a stubbed post office, and reads the sentence a person would
+actually see. Proved by reverting: I3, I4, I6, I8 and I10 go red, with
+403 and 429 both reporting "Post office: undefined ·".
+
+Not diagnosed here, and stated rather than guessed: this environment
+cannot reach the Supabase project (the proxy refuses `CONNECT`), so the
+live 401 itself is unverified. The repo's own gate is self-consistent —
+edge auth 127/127, including the drift check against every deployed
+`index.ts`.
+
+Invite desk 12/12, edge auth 127/127, zero page errors. Build 0675 → 0676.
