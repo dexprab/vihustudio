@@ -3298,6 +3298,80 @@ safeguards — is untouched.
   `supabase/functions/companion-chat/index.ts` ·
   `tools/companion-chat-test/run-companion-chat-tests.js`
 
+### 36. A Creator Can Talk to Their Companion, and the Browser Only Points
+
+Locked by the product owner in the Creator ↔ Companion Conversation
+brief. It is the first real conversation, and it finishes the authority
+work Decisions 33–35 began: **the browser is a locator, not the source of
+truth.**
+
+- **A conversation is with ONE Companion, so a card is REQUIRED.** An
+  omitted `cardId` is a validation error, never "all of them" — blending
+  two children's pasts into one context because a field was missing is
+  precisely the failure this closes. The card is verified through the
+  gate's own `authorizeCardAccess()`; naming somebody else's is a 403.
+- **THE STORY IS SERVER-AUTHORITATIVE TOO.** The client sends `storyId`
+  and `pageId` and nothing more. The server reads `creator_projects`,
+  checks the row belongs to the verified session AND to the card being
+  used, finds the page inside it, and takes the prose from there. A
+  client-supplied story name, page prose, page count or object label is
+  not sanitised — it is **not read**.
+- **A story that does not exist and a story belonging to somebody else
+  answer identically**, the reasoning `authorizeCardAccess()` already
+  uses: otherwise this becomes an oracle for which project ids are real.
+- **A page outside the story is refused, never clamped.** A conversation
+  about page 40 of a three-page story is a client bug, and answering it
+  about page 3 would hide it.
+- **WHAT IS NOT SERVER-DERIVABLE IS DROPPED, NOT BORROWED.** Rendered
+  object labels come from `renderer/slideRenderer.js` on a live page; the
+  stored record holds stickers and metadata, not the renderer's naming.
+  So the server reports what the RECORD says — how many stickers,
+  whether a picture exists — and never a label it cannot verify. Taking
+  those from the client would be the same hole one field along.
+- **Nothing is persisted and nothing becomes a memory.** The turns live
+  in a variable while the surface is open and go when it closes. Saying
+  *"I really love dragons"* writes nothing anywhere — measured, zero
+  non-GET requests — and the function has nowhere to put one. Turning a
+  conversation into a memory is a later sprint's, and this leaves no
+  place for it.
+- **THE SURFACE IS A STRIP, NOT A PANEL.** Decision 24's attention
+  hierarchy forbids a chat window: one small opener at the foot of the
+  workspace, one field, the answer shown once. Measured at 1440×900 —
+  74px tall against a 508px canvas, and **no intersection with the page
+  at all**. Escape closes it; closing forgets everything.
+- **SILENCE LEAVES NOTHING ON SCREEN.** An empty reply with
+  `speak:false` is a successful answer, and `:empty { display:none }`
+  means it is absent rather than a hole shaped like a missing one. A
+  failure of any kind — no platform, no session, the provider
+  unreachable — is the same silence: no status code, no provider word,
+  no apology.
+- **A Traveller is offered no conversation at all.** They have no
+  Companion of their own (Canon 8), so the opener is never made. Nothing
+  about Traveller behaviour or the World Host changed.
+- **`speak` comes back and is deliberately ignored.** No voice, no pose,
+  no animation. `companionEngine.js`, `companionBrain.js`,
+  `companionDirector.js` and `companionContext.js` are untouched, and the
+  surface reads none of them.
+- **The mock's own greeting branch was a real bug in the test.**
+  `/hi|hello/` matched inside *t-**hi**-nk*, so *"do you think my drawing
+  is good?"* was answered with a greeting — and the check that the reply
+  contained no verdict passed for entirely the wrong reason. Word
+  boundaries, and the check now asserts what it DOES say.
+- **The conversation CSS went nowhere for an hour.** It was appended to
+  `css/components.css`, which `studio.html` does not link — so a strip
+  measured 142px instead of 74px and `:empty` never applied. Both were
+  visible as failing checks rather than as a wrong-looking screen, which
+  is the only reason it was caught.
+- **Production gates unchanged, and still shut.** With either flag
+  closed the real story does not reach OpenAI — the synthetic fixture is
+  used instead, verified both ways round.
+- Out of scope and not implemented: Traveller conversation, Companion ↔
+  Companion, autonomous Companion, Bond Moment detection, semantic
+  memory, voice, animation, conversation persistence, and any Companion
+  runtime change.
+- `js/companionChat.js` · `supabase/functions/companion-chat/index.ts` ·
+  `tools/companion-chat-test/run-companion-chat-tests.js`
+
 ## Roadmap
 
 1. Theme Designer Polish

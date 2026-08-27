@@ -8403,3 +8403,76 @@ including the positive one; allowing client memories fails 14.
 Chat 104/104, edge auth 127/127, context 84/84, memory 56/56, canon
 87/87, companion 50/50, garden 104/104, traveller reset 16/16, zero page
 errors. Build 0665 → 0666.
+
+---
+
+## Sprint 1F — Creator ↔ Companion Conversation
+
+A Creator can talk to Leafy. It is the first real conversation, and it
+finishes the authority work 1D–1E.1 began: **the browser is a locator,
+not the source of truth.**
+
+The client sends four things — which card, which story, which page, and
+what was just said. Everything else is read server-side. A `cardId` is
+now **required**: an omitted one is a validation error, never "all of
+them", because blending two children's pasts into one context because a
+field was missing is exactly the failure this closes. The card goes
+through the gate's own `authorizeCardAccess()`; naming somebody else's is
+a 403.
+
+**The story became server-authoritative too.** 1E.1 fixed memory and left
+this: the client still handed over the story's name and the page's prose,
+which meant it could describe a page that says something else. Now the
+server reads `creator_projects`, checks the row belongs to the verified
+session AND to the card being used, finds the page inside it, and takes
+the prose from there. A story that does not exist and one belonging to
+somebody else answer identically — otherwise this becomes an oracle for
+which project ids are real. A page outside the story is refused rather
+than clamped: answering about page 3 when page 40 was asked for would
+hide the bug.
+
+**What is not server-derivable is dropped, not borrowed.** Rendered
+object labels come from `slideRenderer.js` on a live page; the stored
+record holds stickers and metadata, not the renderer's naming. So the
+server reports what the record says — how many stickers, whether a
+picture exists — and never a label it cannot verify. Taking those from
+the client would be the same hole one field along.
+
+Nothing is persisted and nothing becomes a memory. Saying *"I really love
+dragons"* writes nothing anywhere — measured, zero non-GET requests — and
+the function has nowhere to put one.
+
+**The surface is a strip, not a panel.** Decision 24's attention
+hierarchy forbids a chat window, so: one small opener at the foot of the
+workspace, one field, the answer shown once, Escape to close. Measured at
+1440×900 — 74px tall against a 508px canvas, with **no intersection with
+the page at all**. Silence leaves nothing on screen: an empty reply is a
+successful answer and `:empty { display:none }` makes it absent rather
+than a hole shaped like a missing one. Every failure is that same
+silence — no status code, no provider word, no apology.
+
+A Traveller is offered no conversation: they have no Companion of their
+own, so the opener is never made. `speak` comes back and is deliberately
+ignored — no voice, no pose, no animation, and not one of the four
+Companion runtime files was touched.
+
+Three things went wrong and are worth keeping. **The conversation CSS
+went nowhere**: it was appended to `css/components.css`, which
+`studio.html` does not link — so the strip measured 142px instead of 74px
+and `:empty` never applied. Both showed up as failing checks rather than
+as a wrong-looking screen, which is the only reason it was caught.
+**The mock's greeting branch matched inside a word** — `/hi|hello/` hits
+*t-hi-nk*, so *"do you think my drawing is good?"* was answered with a
+greeting and the check that the reply held no verdict passed for entirely
+the wrong reason; word boundaries now, and the check asserts what it does
+say. And **three older checks encoded the old contract** — J5 asserted
+nothing called the endpoint, which after this sprint would be asserting
+the sprint did not happen; D's forged payload moved to the request's top
+level, the only surface left to try it on.
+
+Proved by reverting: trusting the client's story context fails X4; letting
+a missing card mean all cards fails X5.
+
+Chat 160/160, edge auth 127/127, context 84/84, memory 56/56, canon
+87/87, companion 50/50, garden 104/104, traveller reset 16/16, zero page
+errors. Build 0666 → 0667.
