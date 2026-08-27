@@ -332,7 +332,7 @@ const CORS_HEADERS: Record<string, string> = {
 // copy uploaded to the project, not the file in the repository, and
 // there is no CI here that deploys it. `{"action":"ping"}` answers
 // which build is actually live.
-const BUILD = '2026-08-23 · paper letter, two Ether books';
+const BUILD = '2026-08-27 · plain letter';
 
 // THE BOOKS ARE REAL, AND THEY ARE CANON.
 //

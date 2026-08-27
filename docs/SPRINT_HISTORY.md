@@ -9092,3 +9092,35 @@ arriving and read the greeting still fading on screen as a new line.
 Presence 74/74, moments 88/88, companion 50/50, canon 90/90, chat
 230/230, context 90/90, edge auth 127/127, memory 58/58, garden 104/104,
 traveller reset 16/16, zero page errors. Build 0677 → 0678.
+
+---
+
+## A letter rewritten is not a letter deployed (build 0679)
+
+*"i dont see any change in email from orignal, look and feel is still
+same."* Correct, and the reason is not in the letter.
+
+Edge Functions are deployed by hand in this project (`docs/SUPABASE_CLI.md`
+— there is no CI that deploys them), so build 0677 rewrote the
+invitation, proved it with 33 checks, committed it and pushed it while
+every invitation actually going out was still the old one. The only
+symptom available was a person saying the mail looked the same. Everything
+else reported success.
+
+The function has always declared its own `BUILD` through the ping. It
+simply had nothing to compare it against, so "deployed, reachable, and
+sending the wrong letter" rendered as a healthy post office. The desk now
+holds the build this checkout expects and says so when the server is
+behind — naming both builds and the deploy command — and stays quiet when
+it is current.
+
+The expected build is read out of `invite-send/index.ts` by the suite
+rather than restated in it, so the page and the function cannot drift into
+agreeing with each other about the wrong thing. That is Decision 30's own
+hand-mirrored-copy lesson applied to a version label.
+
+`BUILD` is now `2026-08-27 · plain letter`, which is also the fastest way
+to know whether the deploy landed: the desk prints it.
+
+Invite desk 15/15, invite letter 33/33, edge auth 127/127, zero page
+errors. Build 0678 → 0679.
