@@ -3728,10 +3728,19 @@ what it says.
 - **DISCLOSED, AND IT IS THE HONEST LIMIT: no code change can GUARANTEE
   the inbox.** Gmail's tabs are heuristic and per-recipient. What is in
   our hands is removing every bulk signal, which is done. What is not:
-  SPF/DKIM/DMARC alignment on the sending domain, whether
-  `SKY_FROM_EMAIL` reads as a person or as `noreply@`, and the
-  recipient's own one-time *Move to Primary*, which is decisive for that
-  recipient and for nobody else.
+  the recipient's own one-time *Move to Primary*, which is decisive for
+  that recipient and for nobody else, and the fact that a domain with
+  almost no sending history is filed cautiously whatever it carries.
+- **THE SENDING DOMAIN WAS MEASURED, NOT ASSUMED, AND IT IS CORRECT.**
+  Two of the three things this clause originally listed as unknown are
+  now known and neither is a fault. `SKY_FROM_EMAIL` is
+  `lumo@vihuplanet.com` — a person, not a `noreply@`. And the DNS
+  answers: `resend._domainkey.vihuplanet.com` publishes a DKIM key, so
+  Resend signs as `vihuplanet.com` and **DKIM aligns exactly**;
+  `send.vihuplanet.com` carries Resend's own SPF and, under
+  `_dmarc.vihuplanet.com`'s relaxed alignment (`adkim=r; aspf=r;
+  p=quarantine`), **SPF aligns too**. Authentication was never the
+  reason. The letter's markup was, which is what this decision changed.
 - `supabase/functions/invite-send/index.ts` ·
   `tools/invite-letter-test/run-invite-letter-tests.js`
 
