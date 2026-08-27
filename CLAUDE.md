@@ -3813,6 +3813,123 @@ observer.**
 - `js/companionMoments.js` · `js/companionLines.js` ·
   `tools/companion-moments-test/run-companion-moments-tests.js`
 
+### 41. Leafy Is In The Room. Nothing Says "Talk To Leafy"
+
+Locked in the Leafy Presence Experience sprint. It is Decision 40 made
+visible: the deterministic layer already decided *when* a Companion may
+speak, and this sprint is about a child being able to feel it. **No
+OpenAI, no model, no provider, no chatbot, and no new network call.**
+
+- **THE CHAIN ALREADY WORKED, AND THE FIRST PROBE SAID IT DID NOT.**
+  Traced in the running Studio rather than read off the files: a bonded
+  Creator arrives, `_beginBoot()` calls `CompanionDirector.init()`,
+  Leafy mounts bottom-right at 139×141 — 1.5% of a 1440×900 viewport —
+  waves, and says *"Hey… you're here."* The first probe written for this
+  sprint reported no Companion at all; it had simply not got past the
+  Gateway. **A harness that reaches around the journey cannot see the
+  journey**, so every check in this sprint drives the real door —
+  `StudioEntry.pass()`, a load of `studio.html`, and the Gateway tapped
+  the way a child taps it.
+- **A REMARK IS NOT A GREETING, AND THREE OF THEM WERE UNRATIONED.**
+  `MESSAGES.storyStarted`, `MESSAGES.artworkAdded` and
+  `MESSAGES.idleWake` were spoken unconditionally, so a child heard the
+  arrival line and then *"I can't wait to see your story!"* about two
+  seconds later, and heard *"That looks magical!"* on **every** piece of
+  artwork they added. Both bypassed everything in
+  `js/companionBrain.js` — the exact "won't stop talking" failure that
+  file's own header names. They are **volunteered** remarks now: nobody
+  asked and no lifecycle moment proves them, so they go through the
+  settling window and the one shared cooldown the Brain has always
+  applied to its own rules.
+- **THE POSE IS UNTOUCHED.** A face costs a child nothing and never
+  interrupts; a line does. That distinction was already this codebase's
+  own and is simply applied consistently now.
+- **`published` STAYS UNCONDITIONAL, and that is a decision rather than
+  an oversight.** A child has just finished their story and pressed the
+  button that says so. It is the one scripted line answering something
+  they did on purpose, so it is not rationed.
+- **`CompanionBrain.mayVolunteer()` ADDS NO CLOCK — it exposes the one
+  already there.** No new state, no second timer, nothing that could
+  disagree with the cooldown the Director already reports into.
+- **THE RETURN MOMENT WAS UNREACHABLE, AND IT WAS THIS PRODUCT'S OWN
+  RULE THAT MADE IT SO.** Decision 40 refused a return whenever the
+  entry had already spoken for the same arrival — right in intent, fatal
+  in practice. The Companion mounts inside `_beginBoot()`, **before any
+  story is opened**, so at the instant the entry is decided `storyId` is
+  null; the story opens seconds later, by which time `entry:<arrival>`
+  is in the ledger for the rest of the visit. Every return, forever,
+  came back `entry-already-spoke`. Measured in the browser, not
+  reasoned about.
+- **"ONE BREATH" IS A QUESTION ABOUT TIME, AND THE LAYER HAS NO CLOCK BY
+  DESIGN** — its own suite fails on one. So the spacing moved to where
+  the clock lives: the Director asks `mayVolunteer()` before speaking a
+  return, and **does not commit while it is refused**, so the moment
+  stays pending and arrives once the greeting has had its space rather
+  than being lost. The layer answers only whether the moment is real,
+  which is the thing it can actually know.
+- **A RETURN NEVER RECITES AN ABSENCE.** *"Ooh… this looks
+  interesting."* — a Companion noticing what is in front of it, which is
+  what looking at an old story together is. Never how many days, never
+  *back*, *again*, *gone* or *since*; the suite fails on any of them. A
+  Companion that recounts how long a child was away is reciting
+  surveillance, however warmly it is worded.
+- **THE STUDIO NO LONGER OFFERS A CONVERSATION IT CANNOT HAVE.**
+  Decision 36 built the surface and Decision 34 left both production
+  gates shut, and those two true things together are what a child met:
+  press **💬 Talk to Leafy**, type a sentence, receive nothing.
+  Decision 36 chose that silence deliberately over an apology — and a
+  door that is always silent is worse than no door, and it is the one
+  thing in the Studio claiming conversational intelligence already
+  exists. **One constant, `CONVERSATION_OFFERED`, and Step 3 flips it in
+  one line.** Nothing is deleted, no behaviour inside
+  `js/companionChat.js` changed, and its whole API still works when
+  called — only the Studio putting the pill on screen by itself is
+  switched off. Not a probe and not a fetch: whether a reply can come
+  back is a question only the server can answer, and asking it would be
+  a network call this sprint may not add.
+- **WHAT LEAFY SAYS IS NOW PERCEIVABLE.** The bubble is the one part of
+  the widget that is content and it had neither a role nor a live
+  region, so a Companion's words never reached a screen reader. It is
+  `role="status" aria-live="polite"` — polite, because a Companion never
+  interrupts, which is the same rule its speech already follows on
+  screen. What stops it becoming noise is not a setting: the lines
+  themselves are rationed, so a re-render has nothing to announce. Every
+  decorative part was already `aria-hidden` and the portrait already
+  carries a real description.
+- **THE STORY STAYS THE THING ON SCREEN.** Measured at 1440×900: Leafy
+  overlaps no canvas, no header, no object strip, no page list and no
+  action strip; `pointer-events:none`, so a tap meant for the Story can
+  never be intercepted. Ten rounds of ordinary creation produce **no
+  line at all**.
+- **A TRAVELLER MEETS NOTHING**, verified through the real journey
+  rather than from a return value: no widget mounted, no line, no
+  memory, no ledger entry, no conversation offered, and every moment
+  answering `traveller`. The mandatory Rite is running for them, and a
+  rite owns the screen.
+- **AN UNBONDED CREATOR IS BONDED, NOT LENT SOMEBODY.** Measured after
+  the first draft of the check asserted the opposite from reading the
+  last line of `_resolveCreatorCompanionId()`: the branch above it calls
+  `MagicCard.ensureBondedCompanion()`, so a Creator holding a card with
+  no bond has one chosen, written to their card, and unchanged on the
+  next arrival. Canon 3's "set once, never re-rolled" working, not a
+  gap.
+- **EXIT IS UNCHANGED AND STILL QUIET.** Decision 40's
+  `exit-has-no-window` stands. No farewell pause was added, no
+  navigation delayed, no `beforeunload`, no window-close interception.
+  Measured: Back to the Ether lands on VihuPlanet in 194ms.
+- **NOTHING NEW POLLS, WATCHES OR ASKS.** The Director still has exactly
+  one page subscription, presence made no request of its own, and being
+  present across thirty rounds of decisions wrote no memory. Bond
+  Moments are untouched and remain a separate concept.
+- Out of scope and unchanged: the memory schema, ownership, Edge
+  authentication, card and story authorization, the privacy gate, the
+  Bond validator, Traveller isolation, canon, both production OpenAI
+  gates, and the provider abstraction. **Step 3 is not begun.**
+- `js/companionChat.js` · `js/companionBrain.js` ·
+  `js/companionDirector.js` · `js/companionEngine.js` ·
+  `js/companionMoments.js` ·
+  `tools/companion-presence-test/run-companion-presence-tests.js`
+
 ## Roadmap
 
 1. Theme Designer Polish

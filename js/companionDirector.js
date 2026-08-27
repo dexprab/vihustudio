@@ -202,7 +202,7 @@
           // the current mode's own wake pose is the generic
           // equivalent, still calling nothing but the frozen public API.
           engine.setState(cfg.wakePose);
-          if(cfg.speaks) _say(MESSAGES.idleWake);
+          if(cfg.speaks) _volunteer(MESSAGES.idleWake);
         });
       }
       resetIdleTimer();
@@ -306,6 +306,35 @@
     let poseHeldUntil=0;
     function _holdPose(){ try{ poseHeldUntil=Date.now()+SCRIPTED_POSE_HOLD_MS; }catch(e){} }
     function _posesHeld(){ try{ return Date.now()<poseHeldUntil; }catch(e){ return false; } }
+
+    // ---------- Sprint 1K: a remark is not a greeting ----------
+    // The three lines in MESSAGES below were said unconditionally, so a
+    // child arriving and then choosing what to make heard two different
+    // lines about two seconds apart, and heard "That looks magical!"
+    // every single time they added artwork. Measured in the running
+    // Studio, not reasoned about.
+    //
+    // These are VOLUNTEERED remarks: nobody asked for them and no
+    // lifecycle moment proves them, so they go through the restraint
+    // js/companionBrain.js has always applied to its own rules — the
+    // settling window and the one shared cooldown. Silence is a correct
+    // answer, and during ordinary creation it is the usual one.
+    //
+    // The POSE is untouched. A face costs a child nothing and never
+    // interrupts; a line does. That distinction is already this
+    // codebase's own (see _tick below).
+    function _mayVolunteer(){
+      try{
+        if(typeof CompanionBrain==='undefined' || !CompanionBrain.mayVolunteer) return true;
+        return !!CompanionBrain.mayVolunteer();
+      }catch(e){ return true; }
+    }
+
+    function _volunteer(text){
+      if(!_mayVolunteer()) return false;
+      _say(text);
+      return true;
+    }
 
     function _say(text,opts){
       if(!engine) return;
@@ -612,16 +641,27 @@
       _say(_entryLine(decision));
     }
 
-    // A story opened LATER in the visit that the Creator had left alone
-    // for a long time. The proof is Sprint 1B's own `returned:<id>`
-    // memory, already derived from a load-time snapshot; nothing is
-    // re-derived here and nothing is written to memory.
+    // A story the Creator had left alone for a long time. The proof is
+    // Sprint 1B's own `returned:<id>` memory, already derived from a
+    // load-time snapshot; nothing is re-derived here and nothing is
+    // written to memory.
+    //
+    // THE SPACING LIVES HERE, NOT IN THE LAYER (Sprint 1K).
+    // js/companionMoments.js has no clock on purpose, so "not in the
+    // same breath as the greeting" is enforced with the one clock this
+    // product already has — the Brain's settle and cooldown. Nothing is
+    // committed while it is refused, so the moment stays pending and
+    // arrives once the greeting has had its space rather than being
+    // lost. That is what makes the return REACHABLE at all: Sprint 1J's
+    // absolute refusal meant a return could never be spoken, because
+    // the Companion mounts before any story is open.
     function _returnIfReturning(){
       const m=_moments();
       if(!m) return;
       if(!modeCfg().speaks) return;
       const decision=m.decide('return-to-story');
       if(!decision || !decision.speak) return;
+      if(!_mayVolunteer()) return;      // still pending, deliberately uncommitted
       m.commit(decision);
       const line=m.openingFor(decision);
       if(line && line.text) _say(line.text);
@@ -924,16 +964,20 @@
         const cfg=modeCfg();
         if(event==='story-started'){
           engine.setState(cfg.poses.creating);
-          if(cfg.speaks) _say(MESSAGES.storyStarted);
+          if(cfg.speaks) _volunteer(MESSAGES.storyStarted);
           if(engine.setRichness) engine.setRichness(currentRichness());
         }else if(event==='artwork-added'){
           engine.setState(cfg.poses.artwork);
-          if(cfg.speaks) _say(MESSAGES.artworkAdded);
+          if(cfg.speaks) _volunteer(MESSAGES.artworkAdded);
           // Emotional Behaviour — "user creates first artwork -> brighter
           // glow," a one-shot flourish distinct from the persistent
           // richness level below (which only ever grows with page count).
           if(!firstArtworkSeen && engine.boostGlow){ firstArtworkSeen=true; engine.boostGlow(); }
         }else if(event==='published'){
+          // NOT volunteered, and deliberately still unconditional. A
+          // child has just finished their story and pressed the button
+          // that says so; this is the one scripted line that answers
+          // something they did on purpose, so it is not rationed.
           engine.setState(cfg.poses.publish);
           if(cfg.speaks) _say(MESSAGES.published);
         }else if(event==='page-added'){

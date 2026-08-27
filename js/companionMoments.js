@@ -73,7 +73,12 @@ const CompanionMoments = (function () {
     ACKNOWLEDGED:   'already-acknowledged', // this exact moment was answered already
     RITE_RUNNING:   'rite-running',         // a chapter owns the screen
     BUSY:           'busy',                 // a dialog owns the screen
-    ENTRY_SPOKE:    'entry-already-spoke',  // one lifecycle line per arrival
+    // Retired from this file in Sprint 1K and kept published: the
+    // "one lifecycle line per arrival" spacing is real, but it is a
+    // question about TIME, so js/companionDirector.js enforces it
+    // through js/companionBrain.js's own clock. Nothing here returns
+    // it, and the suite checks that nothing does.
+    ENTRY_SPOKE:    'entry-already-spoke',
     NO_WINDOW:      'exit-has-no-window'    // provable, but there is no time to say it
   };
 
@@ -104,7 +109,19 @@ const CompanionMoments = (function () {
     'first-entry':        0,   // 'Hey… you're here.'
     'entry':              9,   // 'Ready? Let's go.'
     'entry-with-history': 3,   // 'I wonder what we'll find.'
-    'entry-returning':    5    // 'Something magical is waiting.'
+    // DISCLOSED, and measured: 'entry-returning' cannot occur in the
+    // Studio today. The Companion mounts before any story is opened, so
+    // an arrival never has a story to be a return to. The mapping is
+    // kept because it is the right line if a future caller ever decides
+    // an entry with a story in hand; nothing depends on it firing.
+    'entry-returning':    5,   // 'Something magical is waiting.'
+    // The return a child CAN reach. Deliberately the same library and
+    // deliberately not a line about time: 'Ooh… this looks
+    // interesting.' is a Companion noticing what is in front of it,
+    // which is what looking at an old story together is. Nothing says
+    // "back", "again", "a while" or how long they were gone — a
+    // Companion that recites an absence is reciting surveillance.
+    'return-to-story':    4    // 'Ooh… this looks interesting.'
   };
 
   // WHICH FAREWELL. One occasion today, so one entry.
@@ -380,23 +397,39 @@ const CompanionMoments = (function () {
     return OCCASIONS.ENTRY;
   }
 
-  // RETURN TO A STORY — opening, LATER IN THE VISIT, something left
-  // alone for a long time.
+  // RETURN TO A STORY — opening something left alone for a long time.
   //
-  // At the moment of arrival this is not a separate moment: _entry
-  // already says so with its own line, and two lifecycle lines in one
-  // breath is the Companion talking to itself. So a return whose entry
-  // has already been answered for this arrival is silent, and this
-  // moment exists for the story a child opens from My Projects after
-  // they are already here.
+  // SPRINT 1K CORRECTED THIS MOMENT, AND THE BUG WAS THIS FILE'S OWN.
+  //
+  // Sprint 1J refused a return whenever the entry had already spoken for
+  // the same arrival, to stop two lifecycle lines landing in one breath.
+  // The intent was right; the rule made the moment UNREACHABLE, and it
+  // was measured in the running Studio rather than reasoned about.
+  //
+  // The Companion mounts inside _beginBoot(), BEFORE any story is
+  // opened — so at the instant the entry is decided, storyId is null.
+  // The story opens seconds later, by which time 'entry:<arrival>' is in
+  // the ledger for the rest of the visit. Every return, forever, came
+  // back 'entry-already-spoke'. Two occasions were dead for the same
+  // reason: 'entry-returning' cannot fire either, because an arrival
+  // never has a story to be a return TO.
+  //
+  // "ONE BREATH" IS A QUESTION ABOUT TIME, AND THIS FILE HAS NO CLOCK —
+  // deliberately, and its own suite fails on one. So the spacing moved
+  // to where the clock already lives: js/companionDirector.js asks
+  // js/companionBrain.js's mayVolunteer(), the same settle-and-cooldown
+  // every other volunteered line obeys. This layer answers only whether
+  // the moment is real, which is the thing it can actually know.
+  //
+  // The moment stays pending until it is allowed, because nothing here
+  // commits it — so a story opened at boot is remarked on once the
+  // greeting has had its space, and a story opened from My Projects
+  // later in the visit is remarked on when it is opened.
   function _return(s) {
     if (!s.storyId) return _no('return-to-story', REASONS.UNPROVEN);
     if (!s.storyIsAReturn) return _no('return-to-story', REASONS.UNPROVEN);
     const key = 'returned:' + s.storyId;
     if (seen(key)) return _no('return-to-story', REASONS.ACKNOWLEDGED, key);
-    if (s.arrival && seen('entry:' + s.arrival)) {
-      return _no('return-to-story', REASONS.ENTRY_SPOKE, key);
-    }
     if (s.busy) return _no('return-to-story', REASONS.BUSY, key);
     return _yes('return-to-story', OCCASIONS.RETURNED, key);
   }

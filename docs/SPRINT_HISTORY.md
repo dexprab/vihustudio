@@ -8876,3 +8876,70 @@ Reel's shape made `finish()` return null and reported *Magic Publish has
 no bed*, which reads exactly like a product regression.
 
 Atmosphere 14/14, celebration 31/31, zero page errors. Build 0673 → 0674.
+
+## Sprint 1K — Leafy Presence Experience (build 0675)
+
+Decision 40 made visible. No OpenAI, no model, no chatbot, no new
+network call — the question was whether a child can actually *feel* the
+deterministic Companion, and answering it meant driving the real journey
+rather than reading the files.
+
+**The chain already worked, and the first probe said it did not.** A
+bonded Creator arrives, `_beginBoot()` mounts Leafy bottom-right at
+139×141 — 1.5% of a 1440×900 viewport — and she waves and says *"Hey…
+you're here."* The probe that reported no Companion had not got past the
+Gateway. A harness that reaches around the journey cannot see the
+journey, so every check in this sprint goes through
+`StudioEntry.pass()`, a real load of `studio.html`, and the Gateway
+tapped the way a child taps it.
+
+**Three lines were unrationed.** `storyStarted`, `artworkAdded` and
+`idleWake` were spoken unconditionally, so a child heard the arrival
+line and then *"I can't wait to see your story!"* about two seconds
+later, and *"That looks magical!"* on **every** piece of artwork — the
+exact "won't stop talking" failure `companionBrain.js`'s own header
+names. They are volunteered remarks now, through the settle and cooldown
+the Brain already had; `mayVolunteer()` adds no clock, it exposes the one
+already there. Poses are untouched, because a face never interrupts.
+`published` stays unconditional on purpose: the child just pressed the
+button that finishes their story.
+
+**The return moment was unreachable, and Decision 40's own rule was
+why.** The Companion mounts before any story is opened, so `storyId` is
+null when the entry is decided; the story opens seconds later, by which
+time `entry:<arrival>` is in the ledger for the visit. Every return came
+back `entry-already-spoke`. "One breath" is a question about time and
+the layer has no clock by design, so the spacing moved to the Director —
+which does not commit while refused, so the moment stays pending rather
+than being lost. The line is *"Ooh… this looks interesting."*, and the
+suite fails on *back*, *again*, *gone*, *since* or any count of days: a
+Companion reciting an absence is reciting surveillance.
+
+**The Studio stopped offering a conversation it cannot have.** Decision
+36 built the pill and Decision 34 left both gates shut, so a child
+pressed **💬 Talk to Leafy**, typed, and received nothing. One constant,
+`CONVERSATION_OFFERED`, switched off — nothing deleted, the module's
+whole API still works when called, and Step 3 flips it in one line.
+
+**What Leafy says is now perceivable**: the bubble is `role="status"
+aria-live="polite"`, the one part of the widget that is content. Every
+decorative part was already `aria-hidden`.
+
+Measured at 1440×900: no overlap with canvas, header, object strip, page
+list or action strip; `pointer-events:none`; ten rounds of ordinary
+creation produce no line; Back to the Ether lands in 194ms with no
+farewell pause. A Traveller meets nothing at all — no widget, no line,
+no memory, no ledger entry — verified through the journey, not from a
+return value. An unbonded Creator is *bonded* on the spot and keeps that
+Companion, which the first draft of the check asserted the opposite of.
+
+Two Sprint 1J checks went red and were corrected rather than
+accommodated: O1 counted four occasions where there are now five, and O8
+asserted the refusal that made the return unreachable. A third defect
+was in this sprint's own suite — N1 checked for the chat pill from
+Studio Home, where it could not have mounted anyway, so it passed with
+the feature switched back on.
+
+Presence 52/52, moments 88/88, companion 50/50, context 90/90, canon
+90/90, chat 230/230, edge auth 127/127, memory 58/58, garden 104/104,
+traveller reset 16/16, zero page errors. Build 0674 → 0675.

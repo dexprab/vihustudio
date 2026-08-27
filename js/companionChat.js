@@ -283,16 +283,41 @@ const CompanionChat = (function () {
     try { _mountOpener(); } catch (e) {}
   }
 
-  // Rides the pulse the Studio already fires on every page mutation —
-  // the same seam js/companionMemoryEvents.js uses. No polling, and no
-  // existing Studio file changed to make this appear.
-  try {
-    if (typeof PageRuntime !== 'undefined' && PageRuntime.observe) {
-      PageRuntime.observe(function () { mount(); });
-    }
-  } catch (e) {}
-  try { if (document.readyState !== 'loading') setTimeout(mount, 0); }
-  catch (e) {}
+  // ---------------------------------------------------------------
+  // THE STUDIO DOES NOT OFFER THIS YET — Sprint 1K.
+  //
+  // Decision 36 built the surface and Decision 34 left BOTH production
+  // gates shut, and those two facts together are what a child actually
+  // meets: they press "Talk to Leafy", type a sentence, and receive
+  // silence. That silence is correct — Decision 36 chose it deliberately
+  // over an apology or an error — but a door that is always silent is
+  // worse than no door, and it is the one thing in the Studio that says
+  // conversational intelligence already exists when it does not.
+  //
+  // So the Studio stops OFFERING it. Nothing is deleted, no behaviour
+  // inside this file changed, and mount() still works exactly as it
+  // always did when something calls it — the suite drives the real
+  // surface through the real API, unchanged. What is switched off is the
+  // Studio putting the pill on screen by itself.
+  //
+  // ONE CONSTANT, and Step 3 flips it in one line the day a reply can
+  // actually come back. Not a probe and not a fetch: whether the
+  // provider is reachable is a question only the server can answer, and
+  // asking it would be a network call this sprint may not add.
+  const CONVERSATION_OFFERED = false;
+
+  if (CONVERSATION_OFFERED) {
+    // Rides the pulse the Studio already fires on every page mutation —
+    // the same seam js/companionMemoryEvents.js uses. No polling, and no
+    // existing Studio file changed to make this appear.
+    try {
+      if (typeof PageRuntime !== 'undefined' && PageRuntime.observe) {
+        PageRuntime.observe(function () { mount(); });
+      }
+    } catch (e) {}
+    try { if (document.readyState !== 'loading') setTimeout(mount, 0); }
+    catch (e) {}
+  }
 
   const api = {
     ask: ask,
@@ -303,6 +328,7 @@ const CompanionChat = (function () {
     isOpen: function () { return _open; },
     turns: function () { return _turns.slice(); },
     lastMs: function () { return _lastMs; },
+    CONVERSATION_OFFERED: CONVERSATION_OFFERED,
     MAX_TURNS: MAX_TURNS,
     MAX_CHARS: MAX_CHARS,
   };

@@ -228,9 +228,10 @@ function code(src) {
     });
     return seen;
   });
-  ck(new Set(Object.values(spread)).size === 4,
-     'O1  four occasions, four distinct lines', Object.values(spread).length + ' -> ' +
-     new Set(Object.values(spread)).size);
+  const occCount = Object.keys(spread).length;
+  ck(occCount >= 4 && new Set(Object.values(spread)).size === occCount,
+     'O1  every occasion has a line of its own', occCount + ' occasions -> ' +
+     new Set(Object.values(spread)).size + ' distinct lines');
 
   // DETERMINISM — the same situation always gives the same answer.
   const det = await page.evaluate(() => {
@@ -353,8 +354,11 @@ function code(src) {
   ck(allReasons.every((r) => reasons.indexOf(r) !== -1),
      'O7  every silence names a published reason', allReasons.join(','));
 
-  // ONE LIFECYCLE LINE PER ARRIVAL — the return stands down when the
-  // entry already spoke for the same arrival.
+  // ONE LIFECYCLE LINE PER ARRIVAL — the rule MOVED in Sprint 1K, it
+  // did not go away. Refusing here made the return unreachable in the
+  // real Studio (the Companion mounts before any story is open, so the
+  // entry key is always present by the time a story exists), so the
+  // spacing now lives where the clock lives.
   const oneLine = await page.evaluate(() => {
     CompanionMoments._forget();
     const s = Object.assign(CompanionMoments.signals(), {
@@ -366,9 +370,28 @@ function code(src) {
     const ret = CompanionMoments.decide('return-to-story', s);
     return { entry: entry, ret: ret };
   });
-  ck(oneLine.entry.speak === true && oneLine.ret.speak === false &&
-     oneLine.ret.reason === 'entry-already-spoke',
-     'O8  never two lifecycle lines in one breath', oneLine.ret.reason);
+  ck(oneLine.entry.speak === true && oneLine.ret.speak === true,
+     'O8  a return is a real moment even once the entry has spoken',
+     'entry=' + oneLine.entry.speak + ' return=' + oneLine.ret.speak);
+  const noEntrySpoke = await page.evaluate(() => {
+    // Nothing in the layer may produce this reason any more.
+    const probes = [];
+    [true, false].forEach((busy) => [true, false].forEach((ret) => {
+      probes.push(CompanionMoments.decide('return-to-story', Object.assign(
+        CompanionMoments.signals(), { creator: true, companionAvailable: true,
+        arrival: 'arrival:L', storyId: 'proj_x', storyIsAReturn: ret, busy: busy })).reason);
+    }));
+    return probes;
+  });
+  ck(noEntrySpoke.indexOf('entry-already-spoke') === -1,
+     'O8b and the layer never refuses on entry-already-spoke again',
+     noEntrySpoke.join(','));
+  const dirNow = code(fs.readFileSync(path.join(ROOT, 'js', 'companionDirector.js'), 'utf8'));
+  ck(dirNow.indexOf('if(!_mayVolunteer()) return;') !== -1 &&
+     dirNow.indexOf("m.decide('return-to-story')") !== -1,
+     'O8c the spacing moved to the Director, where the clock is',
+     'gated on CompanionBrain.mayVolunteer()');
+
   // But a story opened LATER, with no entry line for this arrival, is
   // a real moment.
   const later = await page.evaluate(() => {

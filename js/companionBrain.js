@@ -391,6 +391,32 @@ const CompanionBrain=(function(){
     }catch(e){ return {}; }
   }
 
+  /**
+   * MAY THE COMPANION VOLUNTEER SOMETHING RIGHT NOW?
+   *
+   * A public read of the restraint this file has always applied to its
+   * own rules — the settling window and the shared cooldown — and
+   * nothing else. It adds no state, no clock and no rule; it exposes the
+   * one already there, so js/companionDirector.js's own scripted event
+   * lines can be rationed by the SAME clock rather than by a second one
+   * that could disagree.
+   *
+   * Sprint 1K, and it fixed something a child could see: the Director's
+   * MESSAGES table was spoken unconditionally, so an arrival line and
+   * "I can't wait to see your story!" landed within about two seconds of
+   * each other, and "That looks magical!" arrived on EVERY piece of
+   * artwork. Both bypassed everything in this file. Measured, not
+   * guessed.
+   *
+   * VOLUNTEERING IS THE ONLY THING THIS GOVERNS. A child who pokes the
+   * Companion is answered every time (see play()), and a lifecycle
+   * moment js/companionMoments.js has proved — an arrival — is not a
+   * volunteered remark. Neither asks this.
+   */
+  function mayVolunteer(){
+    try{ return !_quiet(); }catch(e){ return false; }
+  }
+
   /** The Studio saw the child do something. Holds the Companion still. */
   function stir(){ _stirredAt=_now(); }
 
@@ -459,6 +485,7 @@ const CompanionBrain=(function(){
     play:play,
     roam:roam,
     stir:stir,
+    mayVolunteer:mayVolunteer,
     noteSpoken:noteSpoken,
     usePolicy:usePolicy,
     _reset:_reset,

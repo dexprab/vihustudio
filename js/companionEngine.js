@@ -663,6 +663,23 @@
 
       const bubble=document.createElement('div');
       bubble.className='companion-bubble companion-bubble-hidden';
+      // SPEECH MUST BE PERCEIVABLE, AND MUST NOT BE SPAM.
+      //
+      // Every decorative part of this widget is already aria-hidden and
+      // the portrait carries a real alt; the bubble had neither a role
+      // nor a live region, so a companion's words reached a screen
+      // reader only if somebody happened to be exploring the page. It
+      // is the ONE part of this widget that is content.
+      //
+      // "polite" and not "assertive": a Companion never interrupts what
+      // a child is doing, which is the same rule its speech already
+      // follows on screen. What stops this becoming noise is not a
+      // setting here — it is that the lines themselves are rationed
+      // (js/companionMoments.js's deduplication and
+      // js/companionBrain.js's cooldown), so there is nothing to
+      // announce on a re-render.
+      bubble.setAttribute('role','status');
+      bubble.setAttribute('aria-live','polite');
       root.appendChild(bubble);
 
       const portraitWrap=document.createElement('div');
