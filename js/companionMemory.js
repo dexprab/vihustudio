@@ -355,11 +355,19 @@ const CompanionMemory = (function () {
    *
    * Marks what it hands back as referenced, which is the only thing that
    * makes `ref` mean anything.
+   *
+   * `{touch:false}` READS WITHOUT WRITING. Added for Sprint 1D's context
+   * builder, which is permitted to retrieve a memory and forbidden to
+   * modify one — and a reference stamp is bookkeeping, but bookkeeping
+   * is still a write. The default is unchanged, so every existing
+   * caller behaves exactly as it did; there are no existing callers
+   * today, and this is deliberately additive anyway rather than a
+   * change of mind about what the default should be.
    */
   function context(opts) {
     const picked = relevant(opts);
     const stamp = _now();
-    if (picked.length) {
+    if (picked.length && !(opts && opts.touch === false)) {
       const rec = _read();
       picked.forEach(function (p) {
         const live = rec.items.find(function (x) { return x && x.id === p.id; });
