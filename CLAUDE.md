@@ -1752,6 +1752,43 @@ once, and its scope is no longer closed.
   It joins `N6` (every revealed capability has a beat), `V` (every
   revealed capability resolves to a visible control) and `U` (no beat
   asks for a control the Rite holds shut).
+- **A CONTROL THAT EXISTS IS NOT A CONTROL A CHILD CAN SEE** (build
+  0671). Reported by the product owner on Rite III: *"the i did it
+  button is missing on the doodle beat."* The button was right — the
+  gate was genuinely unmet, because the child had drawn their path with
+  Shapes' own **Draw Your Own** rather than with Doodle. What sent them
+  there was the nudge. The Card Designer renders every kind-section and
+  HIDES the ones that do not apply, so `.doodle-pad-canvas` is in the
+  document from the first paint; measured at the beat it was **0×0 and
+  invisible** while the Doodle tile sat beside it at 72×74. The nudge
+  asked *does the pad exist*, got yes, lit an element with no box, and
+  the hint — testing the same way — told the child *"the little square
+  on the right is yours to draw on"* when there was no square on the
+  right. Decision 8's own rule: **a nudge must bring its target into
+  view first, or not point at all.**
+- **The gate was NOT widened, and that is the decision.** Accepting a
+  custom shape would let a child pass all four doodle beats with the
+  tool the first five beats already taught them — the same reasoning
+  `_drawnDoodleCount()` already records for why a doodle OBJECT is not
+  enough and a STROKE is. The beat teaches Doodle or it teaches nothing.
+- **Every "is this surface open in front of them" test now asks for a
+  real box** (`_shown()`), the doodle pad and both My Garden catchers
+  alike. Deliberately not `_isVisible()`, which also asks whether the
+  element clears the band: a pad that is open but scrolled away is still
+  the child's pad, and `_ensureVisible()` is what scrolls it back.
+- **`Q1`–`Q3` are the general guard, and they found a hole of their
+  own.** Every runnable rite is now walked beat by beat and each beat's
+  nudge target is measured; null is allowed (that is the escalation
+  falling through to words) and a target with no box is not. It joins
+  `N6` (every revealed capability has a beat), `V` (every revealed
+  capability resolves to a visible control), `U` (no beat asks for a
+  control the Rite holds shut) and `P` (every shape a beat names is a
+  real tile). Proved by reverting the fix and watching all four doodle
+  beats report `doodle-pad-canvas 0x0`. **The walker could not reach
+  Rite III's doodle beats at all before this** — `SATISFY` had no
+  `doodle-added` case, so no suite had ever been past them; and it
+  could not walk the MANDATORY rite either, whose opening acts are a
+  conversation rather than a gate, so it now answers those too.
 - **HOME STAYS, EXCEPT IN THE ONE RITE THERE IS NO WAY OUT OF.** Asked
   for by the product owner: *"story rites except story rite 1 should
   have home button."* The mandatory rite holds the Studio shut until it
@@ -1764,6 +1801,58 @@ once, and its scope is no longer closed.
   running; everything else the Rite quiets stays quiet in all three.
 - Design and sequencing: `docs/STUDIO_RITE_LEVELS.md`. Rite II's script
   and its engineering notes: `docs/STUDIO_RITE_LEVEL_II_STORY.md`.
+
+### 39. A World That Declares No Music Has No Opinion About Music
+
+Locked after a report from the product owner: *"the created story in its
+background track music does not have ambience music. it looks like only
+single track plays in it."* It corrects the Atmosphere Engine's own
+Theme hook and changes nothing else about it.
+
+- **The Foundation bed is WEATHER; the World layer is the MUSIC.** Two
+  of the five Foundation layers play — forest at 0.35, wind at 0.15 —
+  and the other three sit at zero deliberately, because the old mix was
+  73% held pitches and was reported as *"the music sounds like a horror
+  movie music"*. So a place with no World layer has texture and no music
+  at all.
+- **`applyTheme()` was muting it, and nobody chose that.**
+  `js/themeEngine.js` called `AudioManager.stopWorld()` for any Theme
+  that declares no `audio.ambience` — which is **every Theme today**, by
+  its own comment. So the music played until a child opened a story, and
+  then stopped for the rest of the session. Measured: `worlds/a.mp3`
+  audible before, `foundation/forest.mp3` + `foundation/wind.mp3` alone
+  after.
+- **That `else` was written as "a graceful no-op"**, and it was one — at
+  a time when no Theme declared ambience and there was no default to
+  lose. `DEFAULT_WORLD_AMBIENCE` arriving turned an intended no-op into a
+  mute. **A Theme saying nothing about music is not a Theme asking for
+  silence.**
+- **Silence stays askable, and that is the difference.** `stopWorld()` is
+  unchanged and still exported; what changed is that it now has to be
+  requested rather than being what "this Theme said nothing" happens to
+  mean. `AudioManager.restoreDefaultWorld()` is the other answer, and it
+  lives in AudioManager because AudioManager owns the default and
+  `themeEngine` must not learn its name — the same seam that already
+  keeps AudioManager from knowing what a Theme is.
+- **A World that declares its own ambience still wins the slot**, and
+  clearing it hands the slot back to the default rather than to nothing.
+- **The rotation was never broken.** Verified over 72 seconds: `a.mp3`
+  (45s) hands over to `e.mp3` (150s) on the ordinary crossfade. "Only
+  single track" was the weather bed left playing alone.
+- **The suite measures what a child hears, never what the code says.**
+  `tools/atmosphere-test/` spies the `Audio` constructor — every element
+  AudioManager builds is `new Audio(src)` and never enters the document,
+  so there is nothing to query for — and asks which of them are running
+  above silence. A check that read `applyTheme`'s own branch would have
+  agreed with the bug. Proved by reverting the fix and watching A5 and A7
+  go red.
+- **Disclosed, unfixed, and a product decision rather than a defect:**
+  Magic Publish's exported reel carries an ambient bed
+  (`_magicAmbientBuffer` → `ReelComposer`'s `ambientBuffer`) and the
+  Story Reel export does not. Both are frozen surfaces; giving an export
+  a music bed is a product change, not a bug fix.
+- `js/audioManager.js` · `js/themeEngine.js` ·
+  `tools/atmosphere-test/run-atmosphere-tests.js`
 
 ### 21. VihuPlanet Is For Everybody; the Studio Needs a Laptop
 
@@ -3549,7 +3638,7 @@ and it changes two lines of the Bond validator and nothing else.
 - `tools/companion-calibration/` ·
   `supabase/functions/_shared/bondValidator.js`
 
-### 39. The Companion Knows WHEN. It Will Never Know WHY It Should Speak
+### 40. The Companion Knows WHEN. It Will Never Know WHY It Should Speak
 
 Locked in the Deterministic Companion Behaviour Completion sprint. It
 builds the layer that must exist before a model does, and it connects

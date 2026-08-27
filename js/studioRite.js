@@ -1581,6 +1581,38 @@ const StudioRite=(function(){
   // open; the way in while it is still shut. Resolved by the tile's own
   // id rather than its label or its position, because the row's
   // contents change with what a World and a family album make available.
+  // A CONTROL THAT EXISTS IS NOT A CONTROL A CHILD CAN SEE.
+  //
+  // Reported by the product owner on Rite III's first doodle beat: "the
+  // i did it button is missing on the doodle beat." Measured, and the
+  // button was right — the gate was genuinely unmet, because the child
+  // had drawn their path with Shapes' own "Draw Your Own" rather than
+  // with Doodle. What sent them there was this: the Card Designer
+  // renders every kind-section and HIDES the ones that do not apply, so
+  // `.doodle-pad-canvas` is in the document from the moment the panel
+  // first draws — 0x0 and invisible. The nudge asked "does the pad
+  // exist" and got yes, so it pointed at nothing a child could see, and
+  // the hint said "the little square on the right is yours to draw on"
+  // when there was no square on the right. Decision 8 is explicit: a
+  // nudge must bring its target into view first, or not point at all.
+  //
+  // So every "is this surface open in front of them" test asks for a
+  // real box rather than a node. Deliberately NOT _isVisible, which
+  // also asks whether the element clears the band — a pad that is open
+  // but scrolled away is still the child's pad, and _ensureVisible is
+  // what scrolls it back.
+  function _rendered(el){
+    try{
+      if(!el) return null;
+      if(!el.offsetParent && getComputedStyle(el).position!=='fixed') return null;
+      const r=el.getBoundingClientRect();
+      return (r.width>0 && r.height>0) ? el : null;
+    }catch(e){ return null; }
+  }
+  function _shown(sel){
+    try{ return _rendered(document.querySelector(sel)); }catch(e){ return null; }
+  }
+
   function _addTile(id){
     try{
       const tile=document.querySelector(".context-add-card[data-add-id='"+id+"']");
@@ -1743,10 +1775,10 @@ const StudioRite=(function(){
     // is open in front of them.
     'doodle-added':{
       find:function(){
-        return document.querySelector('.doodle-pad-canvas') || _addTile('doodle');
+        return _shown('.doodle-pad-canvas') || _addTile('doodle');
       },
       hint:function(){
-        return document.querySelector('.doodle-pad-canvas')
+        return _shown('.doodle-pad-canvas')
           ? 'The little square on the right is yours to draw on.'
           : "It's over on the right, with the other things you can add.";
       }
@@ -1767,22 +1799,22 @@ const StudioRite=(function(){
     // pointed at was the one they had already tapped.
     'letter-kept':{
       find:function(){
-        return document.querySelector('.hw-studio-panel')
+        return _shown('.hw-studio-panel')
             || _gardenRoomTab('letters') || _addTile('library');
       },
       hint:function(){
-        if(document.querySelector('.hw-studio-panel')) return 'Hold your letter up so I can see it.';
+        if(_shown('.hw-studio-panel')) return 'Hold your letter up so I can see it.';
         if(_gardenRoomTab('letters')) return 'Your letters are in the other room.';
         return 'Your letters live on the right, with the things you can add.';
       }
     },
     'letters-grown':{
       find:function(){
-        return document.querySelector('.hw-studio-panel')
+        return _shown('.hw-studio-panel')
             || _gardenRoomTab('letters') || _addTile('library');
       },
       hint:function(){
-        if(document.querySelector('.hw-studio-panel')) return 'Hold the next one up.';
+        if(_shown('.hw-studio-panel')) return 'Hold the next one up.';
         if(_gardenRoomTab('letters')) return 'Your letters are in the other room.';
         // Says the shape of the work without counting anything: there
         // is a tile per letter, and a child takes them one at a time.
@@ -1799,11 +1831,11 @@ const StudioRite=(function(){
     },
     'drawing-kept':{
       find:function(){
-        return document.querySelector('.bia-studio-panel')
+        return _shown('.bia-studio-panel')
             || _gardenRoomTab('drawings') || _addTile('library');
       },
       hint:function(){
-        if(document.querySelector('.bia-studio-panel')) return 'Hold your paper up so I can see it.';
+        if(_shown('.bia-studio-panel')) return 'Hold your paper up so I can see it.';
         if(_gardenRoomTab('drawings')) return 'Your drawings are in the other room.';
         return 'When your drawing is ready, it comes in on the right.';
       }

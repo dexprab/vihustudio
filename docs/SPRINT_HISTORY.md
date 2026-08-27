@@ -8403,7 +8403,52 @@ including the positive one; allowing client memories fails 14.
 Chat 104/104, edge auth 127/127, context 84/84, memory 56/56, canon
 87/87, companion 50/50, garden 104/104, traveller reset 16/16, zero page
 errors. Build 0665 → 0666.
-<<<<<<< HEAD
+## A Beat Names Only What the Child Will Find (build 0661)
+
+*"we are asking kid to add square, there is no square in the shapes."*
+
+True, and worth measuring before fixing. The catalogue has Circle,
+Rectangle, Rounded Rectangle, Triangle, Diamond, Pentagon, Hexagon,
+Octagon, Star and a dozen more — and no Square. But a shape is added at
+**240×240**, so the tile labelled Rectangle already gives the child a
+perfect square. The shape was never missing; only the word was.
+
+A Square tile was considered and rejected on the record. Shapes are drawn
+to whatever box they are given, so a `square` entry would behave
+identically to Rectangle and be a second tile doing one job — and the
+child can resize it into a non-square the moment they touch it, which
+would make the name a lie. Beat 4 already says *Add a triangle on top*,
+so naming the tile is the form this story was already using; the square
+beat was the odd one out. It now reads *Add a rectangle.*
+
+**This is the fourth bug of one family**, so the guard is general rather
+than a test for the word: `P1`/`P2` check that every shape noun used by a
+rite that hands over the Shapes tile is a real entry in
+`StickerLibrary.SHAPE_KINDS`. It joins `N6` (every revealed capability
+has a beat), `V` (every revealed capability resolves to a visible
+control) and `U` (no beat asks for a control the Rite holds shut). A new
+harness read, `_screenText(riteId)`, makes a beat's own words readable —
+nothing could check what a beat actually says before this.
+
+**And Home comes back to the opt-in rites.** *"story rites except story
+rite 1 should have home button."* The mandatory rite holds the Studio
+shut until it is finished, so a way out would be a way to skip becoming a
+Creator — and there is nowhere to go, since Studio Home is what it
+unlocks. An opt-in rite is the opposite: a door the child chose, whose
+story is now held and offered back on Studio Home, so leaving costs them
+nothing and hiding the way out only traps them. A `studio-rite-mandatory`
+body class tells the reduction which kind is running, so this is one
+class rather than a branch. `P3`–`P5` cover all three rites: no Home in
+the mandatory one, Home in both opt-in ones, and everything else the Rite
+quiets still quiet in all three.
+
+Both proved by putting the bugs back: P2 names `my-little-house beat 3`
+exactly, P4 catches Home vanishing from both opt-in rites. Rite gate
+100/100 (was 95), gate 25/25, levels 59/59, creation home 84/84,
+celebration 31/31, traveller reset 16/16, capability audit 4/4, zero page
+errors. Build 0660 → 0661, shipped as **0667** after merging: another
+session had reached 0666 in the meantime, and a version stamp is a cache
+buster that two ships cannot share.
 
 ---
 
@@ -8483,54 +8528,6 @@ while this one was in flight, so this moved to 0668 on merging — a
 version stamp is a cache buster and two ships cannot share one. The only
 difference between the two heads in `studio.html` was this sprint's own
 script tag, verified rather than assumed.
-=======
-## A Beat Names Only What the Child Will Find (build 0661)
-
-*"we are asking kid to add square, there is no square in the shapes."*
-
-True, and worth measuring before fixing. The catalogue has Circle,
-Rectangle, Rounded Rectangle, Triangle, Diamond, Pentagon, Hexagon,
-Octagon, Star and a dozen more — and no Square. But a shape is added at
-**240×240**, so the tile labelled Rectangle already gives the child a
-perfect square. The shape was never missing; only the word was.
-
-A Square tile was considered and rejected on the record. Shapes are drawn
-to whatever box they are given, so a `square` entry would behave
-identically to Rectangle and be a second tile doing one job — and the
-child can resize it into a non-square the moment they touch it, which
-would make the name a lie. Beat 4 already says *Add a triangle on top*,
-so naming the tile is the form this story was already using; the square
-beat was the odd one out. It now reads *Add a rectangle.*
-
-**This is the fourth bug of one family**, so the guard is general rather
-than a test for the word: `P1`/`P2` check that every shape noun used by a
-rite that hands over the Shapes tile is a real entry in
-`StickerLibrary.SHAPE_KINDS`. It joins `N6` (every revealed capability
-has a beat), `V` (every revealed capability resolves to a visible
-control) and `U` (no beat asks for a control the Rite holds shut). A new
-harness read, `_screenText(riteId)`, makes a beat's own words readable —
-nothing could check what a beat actually says before this.
-
-**And Home comes back to the opt-in rites.** *"story rites except story
-rite 1 should have home button."* The mandatory rite holds the Studio
-shut until it is finished, so a way out would be a way to skip becoming a
-Creator — and there is nowhere to go, since Studio Home is what it
-unlocks. An opt-in rite is the opposite: a door the child chose, whose
-story is now held and offered back on Studio Home, so leaving costs them
-nothing and hiding the way out only traps them. A `studio-rite-mandatory`
-body class tells the reduction which kind is running, so this is one
-class rather than a branch. `P3`–`P5` cover all three rites: no Home in
-the mandatory one, Home in both opt-in ones, and everything else the Rite
-quiets still quiet in all three.
-
-Both proved by putting the bugs back: P2 names `my-little-house beat 3`
-exactly, P4 catches Home vanishing from both opt-in rites. Rite gate
-100/100 (was 95), gate 25/25, levels 59/59, creation home 84/84,
-celebration 31/31, traveller reset 16/16, capability audit 4/4, zero page
-errors. Build 0660 → 0661, shipped as **0667** after merging: another
-session had reached 0666 in the meantime, and a version stamp is a cache
-buster that two ships cannot share.
->>>>>>> origin/main
 
 ---
 
@@ -8677,7 +8674,103 @@ Chat 230/230, edge auth 127/127, context 84/84, memory 56/56, canon
 87/87, companion 50/50, garden 104/104, traveller reset 16/16, zero page
 errors. Build 0669 → 0670.
 
-## Sprint 1J — Deterministic Companion Behaviour Completion (build 0671)
+---
+
+## A control that exists is not a control a child can see (build 0671)
+
+*"the i did it button is missing on the doodle beat."* The button was
+right. The gate was genuinely unmet — the child had drawn their path
+with Shapes' own **Draw Your Own** rather than with Doodle, and
+`doodle-added` counts strokes on a doodle object.
+
+What sent them there was the nudge. The Card Designer renders every
+kind-section and hides the ones that do not apply, so
+`.doodle-pad-canvas` is in the document from the first paint. Measured
+at the beat: the pad **0×0, `offsetParent` null**; the Doodle tile
+beside it **72×74, visible**; the nudge lighting the pad. The hint tests
+the same way, so Lumo said *"the little square on the right is yours to
+draw on"* when there was no square on the right. Decision 8: a nudge
+must bring its target into view first, or not point at all.
+
+The gate was not widened. Accepting a custom shape would let a child
+pass all four doodle beats with the tool the first five beats already
+taught them — the same reason `_drawnDoodleCount()` already refuses a
+doodle object that has no strokes. Instead every *is this surface open
+in front of them* test asks for a real box (`_shown()`): the doodle pad
+and both My Garden catchers. Deliberately not `_isVisible()`, which also
+asks whether the element clears the band — a pad that is open but
+scrolled away is still the child's pad, and `_ensureVisible()` is what
+scrolls it back.
+
+`Q1`–`Q3` are the general guard: every runnable rite walked beat by
+beat, each beat's nudge target measured, null allowed (the escalation
+falling through to words) and a box-less target not. It joins `N6`, `V`,
+`U` and `P` in the same family — a beat may never send a child somewhere
+they cannot go. Proved by reverting the fix: all four doodle beats
+report `doodle-pad-canvas 0x0`.
+
+The walker had two holes of its own, and both are why nothing caught
+this. `SATISFY` had no `doodle-added` case, so no suite had ever walked
+Rite III past its first doodle beat; and it could not walk the
+**mandatory** rite either, whose opening acts are a conversation rather
+than a gate — it sat on Act I until the budget ran out. It answers those
+now, and all three runnable rites are walked: 45 nudge targets, every
+one with a real box.
+
+Rite gate 103/103, levels 59/59, creation home 84/84, celebration 31/31,
+traveller reset 16/16, capability audit 4/4, zero page errors.
+Build 0670 → 0671.
+
+---
+
+## A world that declares no music has no opinion about music (build 0672)
+
+*"the created story in its background track music does not have ambience
+music. it looks like only single track plays in it."* Reproduced on the
+first probe, and it was worse than one track.
+
+The Foundation bed is **weather**: forest at 0.35 and wind at 0.15, with
+air, harmony and magic deliberately at zero since the mix was reported as
+*"the music sounds like a horror movie music"*. The **music** is the
+World ambience layer above it — a Theme's own `audio.ambience`, or
+`DEFAULT_WORLD_AMBIENCE` (`a`, `c`, `e`, rotating).
+
+`js/themeEngine.js` called `AudioManager.stopWorld()` for any Theme
+declaring no ambience, which its own comment says is every Theme today.
+So the music played on VihuPlanet and in the Studio right up until a
+child opened a story, and then stopped for the rest of the session.
+Measured: `worlds/a.mp3` audible before `CreationFlow.startBlank()`,
+`forest.mp3` + `wind.mp3` alone after.
+
+That `else` was written as *"a graceful no-op"* and was one — before a
+default existed. `DEFAULT_WORLD_AMBIENCE` arriving turned it into a mute
+nobody chose. A Theme saying nothing about music is not a Theme asking
+for silence, so it now hands the slot back:
+`AudioManager.restoreDefaultWorld()`, which lives in AudioManager because
+AudioManager owns the default and themeEngine must not learn its name —
+the same seam that keeps AudioManager from knowing what a Theme is.
+`stopWorld()` is unchanged and still exported: silence stays askable, it
+just has to be asked for.
+
+The rotation was never broken — verified over 72 seconds, `a.mp3` (45s)
+hands over to `e.mp3` (150s) on the ordinary crossfade. "Only single
+track" was the weather bed playing alone.
+
+`tools/atmosphere-test/` (9) measures what a child hears rather than what
+the code says: every element AudioManager builds is `new Audio(src)` and
+never enters the document, so the constructor is the seam, and each check
+asks which clips are running above silence. A check that read
+`applyTheme`'s own branch would have agreed with the bug. Proved by
+reverting the fix and watching A5 and A7 go red.
+
+Disclosed and not fixed, because it is a product decision rather than a
+defect: Magic Publish's exported reel carries an ambient bed and the
+Story Reel export does not. Both are frozen surfaces.
+
+Atmosphere 9/9, levels 59/59, creation home 84/84, zero page errors.
+Build 0671 → 0672.
+
+## Sprint 1J — Deterministic Companion Behaviour Completion (build 0673)
 
 The layer that must exist before a model does. It answers **when** a
 Companion may speak and is built so that it can never answer what it
@@ -8747,4 +8840,4 @@ Measured on the real Studio: signals plus a decision 0.0067ms, a
 decision alone 0.00007ms. Moments 86/86, chat 230/230, context 90/90,
 canon 90/90, edge auth 127/127, memory 58/58, companion 50/50, garden
 104/104, traveller reset 16/16, rite 100/100, zero page errors.
-Build 0670 → 0671.
+Build 0672 → 0673.
