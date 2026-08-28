@@ -13153,6 +13153,48 @@ body.dark-theme .bia-studio-btn:hover{ background:rgba(255,255,255,0.08); }
 }
 .companion-chat-close:hover{ color:var(--text, #fff); }
 
+/* ---------------------------------------------------------------
+   ON STUDIO HOME TOO — asked for by the product owner after Sprint
+   1N.1 opened the door: "should be on studio home as well".
+
+   Studio Home is a full-screen overlay over the workspace, so the
+   surface is mounted INTO that overlay while it is up (see
+   js/companionChat.js -> _host()) and anchored to its foot here. The
+   strip itself is unchanged: same pill, same one row, same colours —
+   only the box it sits in differs, because the screen underneath it
+   does. */
+.creation-flow-overlay .companion-chat-open,
+.creation-flow-overlay .companion-chat{
+  position:absolute;
+  /* CLEAR OF THE SOUND TOGGLE, which sits in the bottom-left corner of
+     the Studio and is NOT inside this overlay — so a query scoped to
+     the overlay does not find it and a left:24px strip covered it.
+     Measured at 1440x900: the toggle occupies roughly x 14-45. */
+  left:88px;
+  bottom:16px;
+  margin:0;
+  z-index:4;
+}
+/* THE FOOT, ON THE LEFT, AND NARROWER THAN IN THE WORKSPACE.
+   Measured at 1440x900: Studio Home's door card spans x 520-920 and
+   ends at y 825, and the Companion sits at x 1330-1425. Centred and
+   640px wide — the workspace's own geometry — the open strip covered
+   the Discover button, which is the one control this screen exists to
+   offer. Anchored left and bounded, it clears the door and the
+   Companion both. The strip itself is unchanged: same pill, same one
+   row, same colours. */
+.creation-flow-overlay .companion-chat{
+  /* ABOVE THE PILL, not on top of it. Both are absolutely positioned
+     here, so at the same offset the open strip simply covered the way
+     in. In the workspace they are two rows of a flex column and this
+     does not arise; on Studio Home the offset does the same job. */
+  bottom:64px;
+  width:min(400px, calc(100% - 112px));
+  background:radial-gradient(120% 160% at 50% 0%, rgba(255,214,140,.16), rgba(255,255,255,0) 70%),
+             rgba(255,255,255,.94);
+  box-shadow:0 6px 24px rgba(20,30,60,.10);
+}
+
 /* A chapter owns the screen. Nothing offers a conversation mid-rite. */
 body.studio-rite-running .companion-chat,
 body.studio-rite-running .companion-chat-open{ display:none !important; }

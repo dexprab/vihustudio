@@ -161,9 +161,28 @@ const CompanionChat = (function () {
   // Built once, lazily, and only in the Studio. It is a strip, not a
   // window: one row, at the foot of the workspace, above nothing.
 
+  /**
+   * WHICHEVER SCREEN OWNS THE WORKSPACE RIGHT NOW.
+   *
+   * Studio Home renders as a full-screen overlay ON TOP of
+   * main.preview-area, so a surface mounted into the workspace while it
+   * is up is in the document and behind the screen. Measured: a query
+   * happily reported "💬 Talk to Leo" while the screenshot showed
+   * nothing at all. Present and unusable is worse than absent, so the
+   * host is asked for rather than assumed — and the surface MOVES when
+   * the screen underneath it changes.
+   */
+  function _host() {
+    if (document.body.classList.contains('creation-flow-active')) {
+      const overlay = document.querySelector('.creation-flow-overlay');
+      if (overlay) return overlay;
+    }
+    return document.querySelector('main.preview-area');
+  }
+
   function _build() {
     if (_els) return _els;
-    const host = document.querySelector('main.preview-area') || document.body;
+    const host = _host() || document.body;
 
     const bar = document.createElement('div');
     bar.className = 'companion-chat';
@@ -242,6 +261,8 @@ const CompanionChat = (function () {
 
   function open() {
     const els = _build();
+    const host = _host();
+    if (host && els.bar.parentElement !== host) host.appendChild(els.bar);
     els.bar.hidden = false;
     _open = true;
     els.said.textContent = '';
@@ -275,19 +296,45 @@ const CompanionChat = (function () {
   // never made. It is also hidden while a rite is running: a chapter
   // owns the screen, and Lumo is already speaking.
   function _mountOpener() {
-    if (document.querySelector('.companion-chat-open')) return;
     if (!_cardId()) return;
-    const host = document.querySelector('main.preview-area');
+    // A CHAPTER OWNS THE SCREEN. The one place the way in is never
+    // offered — Lumo is already speaking, and the Rite's own band is
+    // where a child's attention belongs.
+    if (document.body.classList.contains('studio-rite-running')) return;
+    const host = _host();
     if (!host) return;
+    // ALREADY THERE — but perhaps in the screen the child has just
+    // left. Studio Home and the editor are different hosts, and the
+    // Companion is mounted once, so without this the pill would appear
+    // on whichever screen happened to be up first and never again.
+    const existing = document.querySelector('.companion-chat-open');
+    if (existing) {
+      if (existing.parentElement !== host) {
+        host.appendChild(existing);
+        if (_els && _els.bar) host.appendChild(_els.bar);
+      }
+      return;
+    }
     const b = document.createElement('button');
     b.type = 'button';
     b.className = 'companion-chat-open';
     b.textContent = '💬 Talk to ' + _name();
     b.addEventListener('click', function () { toggle(); });
     host.appendChild(b);
+    if (_els && _els.bar && _els.bar.parentElement !== host) host.appendChild(_els.bar);
   }
 
+  const CONVERSATION_OFFERED = true;
+
+  /**
+   * Put the way in on screen. Respects CONVERSATION_OFFERED, so that
+   * constant is the ONE place that decides whether the Studio offers a
+   * conversation — before this, anything calling mount() got the pill
+   * whatever the constant said, which made it a suggestion rather than
+   * a switch.
+   */
   function mount() {
+    if (!CONVERSATION_OFFERED) return;
     try { _mountOpener(); } catch (e) {}
   }
 
@@ -320,8 +367,6 @@ const CompanionChat = (function () {
   // on every Studio boot would be a network call for every child to pay
   // for a fact that changes once. It stays a constant, and the function's
   // own GET probe is where a developer asks (Step 3 of the runbook).
-  const CONVERSATION_OFFERED = true;
-
   if (CONVERSATION_OFFERED) {
     // Rides the pulse the Studio already fires on every page mutation —
     // the same seam js/companionMemoryEvents.js uses. No polling, and no

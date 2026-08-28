@@ -494,7 +494,16 @@ function LOOK() {
      'N7  the portrait carries a real description', JSON.stringify(a11y.imgAlt));
 
   // NO NEW MACHINERY. Presence added no timer, no observer, no request.
-  const dirSrc = fs.readFileSync(path.join(ROOT, 'js', 'companionDirector.js'), 'utf8');
+  // CODE, NOT PROSE. This counted the API's own name in a COMMENT and
+  // reported two subscriptions where there is one — Sprint 1N.1 wrote
+  // "PageRuntime.observe(), which fires on PAGE MUTATIONS" while
+  // explaining why the pill needed a different trigger, and the scan
+  // read it as machinery. Eleventh time this repository has been caught
+  // by a substring inside its own vocabulary. The check is right; it
+  // was reading the wrong thing.
+  const dirSrc = fs.readFileSync(path.join(ROOT, 'js', 'companionDirector.js'), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')
+    .split('\n').map((l) => l.replace(/^\s*\/\/.*$/, '')).join('\n');
   const observes = (dirSrc.match(/PageRuntime\.observe\(/g) || []).length;
   ck(observes === 1, 'N8  the Director still has exactly one page subscription', observes + '');
   const netCalls = await page.evaluate(() => window.__presenceNet || 0);

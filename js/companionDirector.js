@@ -778,6 +778,29 @@
         _watchPage();
         _watchPlay();
         _watchRoam();
+        // ---------- Sprint 1N.1: THE WAY IN APPEARS WHEN THE COMPANION
+        // DOES ----------
+        //
+        // Reported by the product owner the moment the door opened:
+        // "i have leo in my studio and no talk to leo". Reproduced —
+        // on Studio Home the pill was absent, and it only arrived in
+        // the editor. js/companionChat.js mounted itself from
+        // PageRuntime.observe(), which fires on PAGE MUTATIONS, and
+        // nothing mutates a page on Studio Home; its one other trigger
+        // is a setTimeout at script load, which runs before the Gateway
+        // is done and before a card is active. So a child could be
+        // looking straight at their Companion with no way to speak to
+        // them.
+        //
+        // Mounted here instead, where the Companion itself becomes
+        // ready — the honest trigger, and the same shape as the three
+        // _watch* calls above. Optional in the strictest sense: with
+        // the module absent this is a no-op, and mount() respects
+        // CONVERSATION_OFFERED itself, so this cannot open a door the
+        // constant has shut.
+        safe(function(){
+          if(typeof CompanionChat!=='undefined' && CompanionChat.mount) CompanionChat.mount();
+        });
         if(onReady) onReady();
       }).catch(function(){
         engine=null;

@@ -103,7 +103,7 @@ const FOUR = [
 
   // THE REAL DOOR. StudioEntry.pass() is the one-shot authority
   // Decision 23 mints; the Gateway is tapped the way a child taps it.
-  async function arrive(setup) {
+  async function arrive(setup, opts) {
     await page.goto(BASE + '/studio.html?author=on');
     await page.waitForFunction(() => typeof MagicCard !== 'undefined' &&
       typeof StudioEntry !== 'undefined', null, { timeout: 20000 });
@@ -134,6 +134,7 @@ const FOUR = [
     // it does not know — correct behaviour, and nothing at all about
     // story facts. CreationFlow.startBlank() is the same call Studio
     // Home's own tiles make.
+    if (opts && opts.stayHome) { await giveSession(fn.token); return; }
     await page.evaluate(() => { try { CreationFlow.startBlank(); } catch (e) {} });
     await page.waitForFunction(() => typeof AppState !== 'undefined' &&
       AppState.project && AppState.project.id, null, { timeout: 20000 }).catch(() => {});
@@ -325,6 +326,24 @@ const FOUR = [
        'C.' + cid + '.1  ' + name + ' is on screen, and it is ' + name,
        widget.src + ' ' + (widget.rect ? widget.rect.w + '×' + widget.rect.h : ''));
 
+    // ---- AND THE WAY IN IS THERE WITHOUT BEING ASKED FOR -----------
+    //
+    // THIS SUITE USED TO CALL CompanionChat.mount() ITSELF, inside
+    // talk(), so it proved the surface worked and never once proved a
+    // child would SEE it. The product owner found the gap the way it
+    // has to be found: "i have leo in my studio and no talk to leo".
+    // Measured before anything below touches mount().
+    const offeredItself = await page.evaluate(() => {
+      const b = document.querySelector('.companion-chat-open');
+      if (!b) return { pill: null };
+      const r = b.getBoundingClientRect();
+      return { pill: b.textContent, w: Math.round(r.width), h: Math.round(r.height),
+               inView: r.top >= 0 && r.bottom <= window.innerHeight && r.width > 0 };
+    });
+    ck(offeredItself.pill === '💬 Talk to ' + name && offeredItself.inView === true,
+       'C.' + cid + '.1b and the way in is ALREADY THERE, in their name, unasked for',
+       JSON.stringify(offeredItself));
+
     const said = {};
     said.who = await talk('Who are you?');
     said.what = await talk('What are you?');
@@ -510,6 +529,65 @@ const FOUR = [
   });
   const esc = await page.evaluate(() => CompanionChat.isOpen());
   ck(esc === false, 'U8  and Escape closes it');
+
+  // =================================================================
+  console.log('\nH. STUDIO HOME — the Companion is there, so the way in is too');
+  // =================================================================
+  //
+  // Asked for by the product owner after the door opened: "i have leo in
+  // my studio and no talk to leo", and then "should be on studio home as
+  // well". Studio Home is a full-screen overlay OVER the workspace, so
+  // the surface has to move with the screen — and "is it in the DOM" is
+  // not the question, because it was, behind the overlay, invisible.
+  await arrive(bondedAs('leosaurus', 'Leo', 'Lantern Lion'), { stayHome: true });
+  await registerWithServer(fn, 'leosaurus', 'Leo', 'Lantern Lion');
+  const atHome = await page.evaluate(() => {
+    const b = document.querySelector('.companion-chat-open');
+    if (!b) return { pill: null };
+    const r = b.getBoundingClientRect();
+    // HIT-TESTED, NOT QUERIED. elementFromPoint is what tells a pill
+    // that is on screen from one that is underneath the screen.
+    const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+    return { pill: b.textContent, host: b.parentElement.className.slice(0, 32),
+             onTop: !!(top && (top === b || b.contains(top))),
+             inView: r.top >= 0 && r.bottom <= window.innerHeight && r.width > 0,
+             home: document.body.classList.contains('creation-flow-active'),
+             companion: !!document.querySelector('.companion-widget') };
+  });
+  ck(atHome.home === true && atHome.companion === true,
+     'H1  a Creator lands on Studio Home with their Companion there', JSON.stringify(atHome.home));
+  ck(atHome.pill === '💬 Talk to Leo' && atHome.inView === true,
+     'H2  AND THE WAY IN IS THERE TOO', JSON.stringify(atHome.pill));
+  ck(atHome.onTop === true,
+     'H3  and it is ON the screen, not underneath it',
+     'hit-tested with elementFromPoint, not merely queried');
+  const homeSaid = await talk('Who are you?');
+  ck(/Leo/.test(homeSaid.reply), 'H4  and Leo answers from Studio Home',
+     JSON.stringify(homeSaid.reply));
+  const homeStory = await talk('What story am I making?');
+  ck(homeStory.reply.length > 0 && !/Tiny Forest/.test(homeStory.reply),
+     'H5  while a story question is answered honestly — there is no story open',
+     JSON.stringify(homeStory.reply));
+  await page.screenshot({ path: path.join(SHOTS, 'studio-home-talk.png') });
+  // AND IT FOLLOWS THE CHILD INTO THE EDITOR. The Companion mounts once,
+  // so without the surface moving hosts the pill would belong to
+  // whichever screen happened to be up first and never appear again.
+  await page.evaluate(() => { try { CreationFlow.startBlank(); } catch (e) {} });
+  await page.waitForFunction(() => !document.body.classList.contains('creation-flow-active'),
+    null, { timeout: 20000 }).catch(() => {});
+  await page.waitForTimeout(1200);
+  const moved = await page.evaluate(() => {
+    const b = document.querySelector('.companion-chat-open');
+    if (!b) return { pill: null };
+    const r = b.getBoundingClientRect();
+    const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+    return { pill: b.textContent, host: b.parentElement.className.slice(0, 32),
+             onTop: !!(top && (top === b || b.contains(top))),
+             count: document.querySelectorAll('.companion-chat-open').length };
+  });
+  ck(moved.pill === '💬 Talk to Leo' && /preview-area/.test(moved.host) && moved.onTop === true,
+     'H6  and it FOLLOWS them into the editor', JSON.stringify(moved));
+  ck(moved.count === 1, 'H7  as one pill, never two', moved.count + '');
 
   // =================================================================
   console.log('\nT. THE TRAVELLER — the Ether, which needs no server');
