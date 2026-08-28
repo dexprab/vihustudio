@@ -9581,4 +9581,55 @@ actually in place the door will answer from the synthetic fixture rather
 than from the child's own story — the function's own GET probe (Step 3)
 is how that is told apart, and it reports `mindEnabled` and `build`.
 
+**AND THEN A CHILD COULD NOT FIND IT** (build 0687). Reported the moment
+the door opened: *"i have leo in my studio and no talk to leo"*, then
+*"should be on studio home as well"*. `js/companionChat.js` mounted the
+pill from `PageRuntime.observe()`, which fires on PAGE MUTATIONS — and
+nothing mutates a page on Studio Home; its only other trigger was a
+`setTimeout` at script load, which runs before the Gateway is done and
+before a card is active. A child could be looking straight at their
+Companion with no way to speak to them.
+
+**THE WAY IN NOW APPEARS WHEN THE COMPANION DOES**, from
+`_mountEntity()` beside the three `_watch*` calls already there — the
+honest trigger. `mount()` also respects `CONVERSATION_OFFERED` now; it
+did not, so anything calling it got the pill whatever the constant said,
+which made the one switch a suggestion.
+
+**STUDIO HOME IS AN OVERLAY OVER THE WORKSPACE, so the surface moves with
+the screen.** `_host()` asks which screen owns the workspace, and the
+pill follows the child from Studio Home into the editor as one pill,
+never two. The first attempt mounted into the workspace regardless and a
+query cheerfully reported *"💬 Talk to Leo"* while the screenshot showed
+nothing — it was behind the overlay. **Present and unusable is worse than
+absent**, which is why `H3` hit-tests with `elementFromPoint` rather than
+asking whether the element exists.
+
+**PLACED BY MEASUREMENT, THREE TIMES.** Centred and 640px wide — the
+workspace's own geometry — the open strip covered the **Discover**
+button, the one control that screen exists to offer. Anchored left at
+24px it covered the **sound toggle**, which is not inside the overlay and
+so never appeared in a query scoped to it. At the pill's own offset it
+covered **the pill**. Final: left 88, width 400, strip lifted to bottom
+64 — zero overlapped controls, measured against every button, link and
+input on the screen.
+
+**THE GAP THAT LET IT THROUGH.** The enablement suite called
+`CompanionChat.mount()` itself before every exchange, so it proved the
+surface WORKED and never once proved a child would SEE it.
+`C.<companion>.1b` now measures the pill before anything touches
+`mount()`, for all four, and section `H` walks Studio Home end to end.
+
+**Three presence checks asserted the closed door and were turned round
+rather than weakened** — `N1`, `N2` and `L13`, the last of which now
+proves Leo is offered the SAME conversation carrying HIS OWN name. `N8`
+was counting `PageRuntime.observe(` inside a COMMENT this sprint wrote
+while explaining the fix, and reported two subscriptions where there is
+one — the eleventh substring-inside-its-own-vocabulary catch here. It
+reads code now.
+
+Enable 99/99, mind 163/163, edge auth 127/127, identity 109/109, garden
+104/104, presence 90/90, moments 88/88, ether 69/69, companion 50/50,
+traveller reset 16/16.
+
 Runbook: `supabase/DEPLOY_companion_mind.md`.
