@@ -235,6 +235,11 @@ export function secretsMatch(a, b) {
 // The user branch asks the AUTH SERVER, every time. A locally-decoded
 // JWT is not proof: the signature is what makes it proof, and verifying
 // a signature here would mean holding the JWT secret in every function.
+// HOW LONG THIS MAY WAIT FOR THE AUTH SERVER. Generous — it is one
+// round trip inside the same project — and finite, which is the whole
+// point: an await with no bound is an invocation that can never finish.
+const AUTH_TIMEOUT_MS = 8000;
+
 // GoTrue's /auth/v1/user endpoint already does exactly this job, is one
 // request, and is the same check RLS performs on the database side —
 // so this cannot drift away from what the rest of the product believes.
@@ -277,9 +282,52 @@ export async function resolveCaller(req, env, opts) {
 
   let res;
   try {
-    res = await doFetch(url + '/auth/v1/user', {
-      headers: { Authorization: 'Bearer ' + token, apikey: anonKey },
+    // ---------------------------------------------------------------
+    // BOUNDED, BECAUSE AN UNBOUNDED AWAIT HERE HANGS THE WHOLE
+    // FUNCTION.
+    //
+    // This is the ONLY await on a GET's path (guard() skips the rate
+    // limiter when there is no bucket), so if it does not come back,
+    // nothing does: the caller waits, the invocation holds its slot
+    // until the platform kills it, and the browser sees a request that
+    // simply never answers. Measured from a real deployment — a bare
+    // GET was refused 401 by the gateway in milliseconds while an
+    // AUTHENTICATED GET, the first request that actually reaches this
+    // code, returned nothing at all.
+    //
+    // `.catch` below was already here and does nothing for that case:
+    // it handles a REJECTION, and a request that never settles never
+    // rejects. Same defect the browser side carried until build 0693.
+    //
+    // THE TIMEOUT NEEDS NO NEW POLICY. The catch already fails CLOSED
+    // on an unreachable auth server, for the reason it states, so a
+    // timeout simply reaches that same decision — the one place in
+    // VihuPlanet where an unreadable signal means no.
+    // IT RACES AS WELL AS ABORTS, and the suite is what insisted.
+    // `abort()` only ends a request if the fetch HONOURS the signal — a
+    // real one does, a stub or a wrapper may not — so an abort alone is
+    // a bound that depends on somebody else's cooperation. The race is
+    // the guarantee; the abort is what releases the socket rather than
+    // merely stopping the waiting. Caught by A4c hanging the suite.
+    let ctl = null;
+    try { ctl = new AbortController(); } catch (e) { ctl = null; }
+    let bell = null;
+    const capped = new Promise(function (_, reject) {
+      bell = setTimeout(function () {
+        try { if (ctl) ctl.abort(); } catch (e) {}
+        reject(new Error('auth-timeout'));
+      }, AUTH_TIMEOUT_MS);
     });
+    try {
+      res = await Promise.race([
+        doFetch(url + '/auth/v1/user', Object.assign(
+          { headers: { Authorization: 'Bearer ' + token, apikey: anonKey } },
+          ctl ? { signal: ctl.signal } : null)),
+        capped,
+      ]);
+    } finally {
+      clearTimeout(bell);
+    }
   } catch (e) {
     // The auth server could not be reached. FAIL CLOSED. Everywhere
     // else in this product an unreadable signal means yes (DeviceGate,

@@ -150,6 +150,8 @@ function secretsMatch(a, b) {
   return diff === 0;
 }
 
+const AUTH_TIMEOUT_MS = 8000;
+
 async function resolveCaller(req, env, opts) {
   const token = bearerToken(req);
   if (!token) return { ok: false, reason: 'unauthorized' };
@@ -177,9 +179,25 @@ async function resolveCaller(req, env, opts) {
 
   let res;
   try {
-    res = await doFetch(url + '/auth/v1/user', {
-      headers: { Authorization: 'Bearer ' + token, apikey: anonKey },
+    let ctl = null;
+    try { ctl = new AbortController(); } catch (e) { ctl = null; }
+    let bell = null;
+    const capped = new Promise(function (_, reject) {
+      bell = setTimeout(function () {
+        try { if (ctl) ctl.abort(); } catch (e) {}
+        reject(new Error('auth-timeout'));
+      }, AUTH_TIMEOUT_MS);
     });
+    try {
+      res = await Promise.race([
+        doFetch(url + '/auth/v1/user', Object.assign(
+          { headers: { Authorization: 'Bearer ' + token, apikey: anonKey } },
+          ctl ? { signal: ctl.signal } : null)),
+        capped,
+      ]);
+    } finally {
+      clearTimeout(bell);
+    }
   } catch (e) {
     return { ok: false, reason: 'unauthorized' };
   }

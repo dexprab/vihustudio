@@ -16,6 +16,40 @@
 >    creative-suggestion / privacy patterns.
 >
 > Step 1 below is unchanged; it is the same file, redeployed.
+>
+> **AND THEN IT DID NOT ANSWER — build 0694.** After that deployment the
+> authenticated GET returned nothing at all. Diagnosed rather than
+> guessed at, with `verify_companion_chat_deployed.js`:
+>
+> | probe | result | what it rules out |
+> |---|---|---|
+> | bare GET, no headers | **401 in ms** | not a 404, not the network — the function is deployed |
+> | bare GET on `voice-speak` | **401 in ms** | not the project, not the gateway |
+> | OPTIONS preflight | **200** | not CORS |
+> | **authenticated GET** | **no answer at all** | — |
+>
+> The authenticated GET is the FIRST request that actually reaches this
+> code, and on a GET there is exactly one `await` on its path:
+> `resolveCaller()`'s call to `/auth/v1/user`. `guard()` skips the rate
+> limiter when there is no bucket, so nothing else can block. That call
+> had a `try/catch` and **no timeout**, and a request that never settles
+> never rejects — so it could hang the whole invocation.
+>
+> It is bounded now (`AUTH_TIMEOUT_MS`, race **and** abort), and reaches
+> the same fail-closed decision the unreachable case already reached.
+> **Redeploy `companion-chat` again** to pick it up.
+>
+> **STATED HONESTLY: this is the strongest candidate, not a confirmed
+> cause.** The Dashboard's own function logs decide it — an invocation
+> that starts and never finishes is this; a boot error or no invocation
+> at all is something else. After the redeploy the probe separates them:
+> **200** = answering (fixed); **401 after ~8s** = the auth call really
+> is timing out, and the problem is upstream of this function; **still
+> no answer** = the handler is not running and the fix was aimed at the
+> wrong thing.
+>
+> The other five functions carry the same generated gate and the same
+> latent hazard. None is known to be hanging; redeploy them at leisure.
 
 
 Sprint 1N built `js/companionMind.js` and proved it. Sprint 1N.1 walked

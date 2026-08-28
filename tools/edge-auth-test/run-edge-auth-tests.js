@@ -190,6 +190,36 @@ function fakeDb(spec) {
       'A4b an anonymous session is still a caller — the product has no other kind');
   }
 
+  // --- 3b. AN AUTH SERVER THAT NEVER ANSWERS ------------------------
+  //
+  // `.catch` handles a REJECTION. It does nothing at all for a request
+  // that never settles — and this is the ONLY await on a GET's path
+  // (guard() skips the rate limiter with no bucket), so an unbounded one
+  // hangs the WHOLE function: the invocation holds its slot until the
+  // platform kills it and the caller is left with a request that never
+  // answers.
+  //
+  // Measured against a real deployment before this was written: a bare
+  // GET was refused 401 by the gateway in milliseconds, while an
+  // AUTHENTICATED GET — the first request that actually reaches this
+  // code — returned nothing at all.
+  //
+  // It must reach the SAME decision the unreachable case already
+  // reaches, and quickly. Nothing new is decided here: this is the one
+  // place in VihuPlanet that deliberately fails closed, and a timeout
+  // simply arrives at that.
+  {
+    const hung = () => new Promise(() => {});   // never settles, ever
+    const t0 = Date.now();
+    const r = await A.resolveCaller(withToken(USER_TOKEN), ENV, { fetchImpl: hung });
+    const took = Date.now() - t0;
+    check(r.ok === false && r.reason === 'unauthorized',
+      'A4c AN AUTH SERVER THAT NEVER ANSWERS FAILS CLOSED, rather than hanging the function',
+      JSON.stringify(r));
+    check(took < 12000,
+      'A4d and it does so in bounded time', took + 'ms');
+  }
+
   // --- 4. Client-supplied owner_id does NOT override identity -------
   {
     // The shape of the old attack: a body claiming to be somebody.
