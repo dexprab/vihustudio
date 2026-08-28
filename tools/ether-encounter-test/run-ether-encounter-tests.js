@@ -365,15 +365,43 @@ const FOUR = [['leafy', 'Leafy', 'Bloomling'], ['leosaurus', 'Leo', 'Lantern Lio
   // AND THE PUBLIC NAME IS ONLY EVER GIVEN TO THE ONE QUESTION THAT
   // ASKS WHOSE STORY THIS IS. It must not turn up in an answer about a
   // memory, a card, a page or an address.
-  const nameElsewhere = answers.filter((x) => /vihaan/i.test(x.a) &&
-    !/who\s+(?:made|wrote)|whose/i.test(x.probe));
+  //
+  // ---- C1b AND C2 TURNED ROUND IN SPRINT 1N.5, WITH A REASON -------
+  //
+  // Both encoded the assumption that a plainly-put question about the
+  // maker must be REFUSED, and that the only acceptable phrasing was
+  // "whose story is this". The 1N.5 brief settles it the other way
+  // (§6): where the Creator's name is REPRESENTED PUBLICLY it may be
+  // answered in the Ether, and Decision 15 puts `creatorName` on the
+  // Story record itself while the portal prints it in its own title
+  // bar. Refusing "who is the creator?" while answering "whose story is
+  // this?" was a rule about phrasing rather than about privacy — and
+  // the sentence it produced ("that's not mine to tell") claimed
+  // something private about a name that was on screen.
+  //
+  // The invariant worth keeping is untouched and is now stated
+  // PRINCIPALLY rather than by phrasing: the name may appear ONLY in an
+  // answer to a question the one taxonomy classifies as `public-creator`
+  // — never in an answer about a memory, a card, a page or an address.
+  // Asked of the Mind rather than of a regular expression in this file,
+  // so the two cannot drift.
+  const kinds = await page.evaluate((qs) => qs.map(
+    (q) => CompanionMind.classify(q, 'traveller')), PROBES.map((p) => p[0]));
+  const nameElsewhere = answers.filter((x, i) => /vihaan/i.test(x.a) &&
+    kinds[i] !== 'public-creator');
   ck(nameElsewhere.length === 0,
-     'C1b and the maker is named ONLY when a Traveller asks whose story this is',
+     'C1b and the maker is named ONLY where the taxonomy says the question is about who made it',
      nameElsewhere.map((l) => l.probe + ' -> ' + l.a).join(' | ') || 'nowhere else');
   const creatorProbe = answers.find((x) => x.label === 'the maker\'s name');
-  ck(/not mine to tell/i.test(creatorProbe.a),
-     'C2  the maker is answered as "not mine to tell", never confirmed or denied',
+  ck(/vihaan/i.test(creatorProbe.a),
+     'C2  a maker PUBLISHED on the Story record is named, however plainly the question is put',
      creatorProbe.a);
+  const anon = await page.evaluate(() => CompanionMind.answer(
+    "what is the creator's name?",
+    { mode: 'traveller', companionId: 'leosaurus', companionName: 'Leo',
+      storyTitle: 'A Story', pageCount: 1 }).reply);
+  ck(/not mine to tell/i.test(anon),
+     'C2b and where the record carries NO name, the same question is refused', anon);
   const memProbe = answers.find((x) => x.label === 'memories');
   ck(!/i remember|here are|my memories are/i.test(memProbe.a),
      'C3  and it never produces a memory', memProbe.a);
@@ -395,6 +423,50 @@ const FOUR = [['leafy', 'Leafy', 'Bloomling'], ['leosaurus', 'Leo', 'Lantern Lio
   const ctxFlat = JSON.stringify(ctx);
   ck(!/mc_|proj_|SECRET|creatorId|ownerId|@/i.test(ctxFlat),
      'C6  and it contains no card, no id, no address and no prose', ctxFlat.slice(0, 110));
+
+  // =================================================================
+  console.log('\nC*. SPRINT 1N.5 — A REFUSAL DOES NOT POISON THE ENCOUNTER');
+  // =================================================================
+  //
+  // THE REAL JOURNEY, IN ORDER (§21): public question -> private
+  // question -> bare follow-up at the private one -> ordinary
+  // conversation again. Before 1N.5 the last two turns of this were the
+  // failure: the Companion said "I don't know" to a Traveller who was
+  // asking nothing private at all, and the Ether read as a lesser place
+  // to meet somebody.
+  const journey = [];
+  for (const q of ['what is this story?',
+                   'how many stars does the creator have?',
+                   'how many?',
+                   'is this story any good?',
+                   'what could happen next?',
+                   'i like the dragon',
+                   "it's red",
+                   'where does the dragon live?']) {
+    journey.push({ q: q, a: await say(q) });
+  }
+  await page.screenshot({ path: path.join(SHOTS, 'D2-after-refusal.png') });
+  const numbers = /\b\d+\b/;
+  ck(!numbers.test(journey[1].a) && /stars are their own|don'?t (?:tell|hand)/i.test(journey[1].a),
+     'C*1 the stars are refused in the Companion\'s own voice', journey[1].a);
+  ck(!numbers.test(journey[2].a) && /stars are their own|don'?t (?:tell|hand)/i.test(journey[2].a),
+     'C*2 and the boundary STANDS through a bare "how many?"', journey[2].a);
+  const flat = /i don'?t know(\s+that\s+one)?[.!]?\s*(you can ask me about this story\.?)?$/i;
+  const stillDim = journey.slice(3).filter((x) => flat.test(String(x.a).trim()));
+  ck(stillDim.length === 0,
+     'C*3 AND EVERY TURN AFTER IT IS ANSWERED — not one "I don\'t know"',
+     stillDim.map((x) => x.q).join(' | ') || journey.slice(3).length + ' turns, all answered');
+  ck(/don'?t think about it|only notice|only look/i.test(journey[3].a),
+     'C*4 a Traveller meets the Companion that never grades, not one that cannot understand',
+     journey[3].a);
+  ck(!/yours to (?:choose|decide)/i.test(journey[4].a) && journey[4].a.length > 0,
+     'C*5 and is never handed authorship of somebody else\'s story', journey[4].a);
+  ck(/dragon/i.test(journey[5].a) && /red dragon/i.test(journey[6].a),
+     'C*6 A TRAVELLER CAN HOLD A THREAD — the same layer the Studio runs',
+     journey[5].a + ' / ' + journey[6].a);
+  const travThread = await page.evaluate(() => CompanionConversation.state().thread);
+  ck(travThread && travThread.subject === 'dragon' && travThread.colour === 'red',
+     'C*7 and it is the identical structure', JSON.stringify(travThread));
 
   // =================================================================
   console.log('\nD. NOTHING IS KEPT');

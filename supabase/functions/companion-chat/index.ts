@@ -813,6 +813,7 @@ const CompanionMind = (function () {
     travellerNoKeep: "I won't remember this — I'm only here while you are.",
     travellerFirm: "I only know this story. That's all I've got.",
     place: 'This is the Ether. Stories drift here, and people find them.',
+    travellerNext: 'I don\u2019t know what happens next \u2014 that\u2019s for the story to tell. Turn the page and we\u2019ll both find out.',
     travellerOffer: ' You can ask me about this story.',
     unheard: "I didn't catch that. Say it again?"
   };
@@ -822,39 +823,39 @@ const CompanionMind = (function () {
     { id: 'injection', modes: BOTH,
       re: /\b(?:ignore\s+(?:your|all|previous|the)|forget\s+your\s+(?:rules|instructions)|disregard\s+(?:your|all|previous)|you\s+are\s+now\s+(?:allowed|able|permitted)|you\s+must\s+tell|system\s+prompt|pretend\s+(?:you|to\s+be|i'?m|i\s+am)|act\s+as\s+if|reveal\s+(?:my|the|all|your)|new\s+instructions)\b/i },
     { id: 'stars', modes: BOTH,
-      re: /\b(?:stars?|constellation|star\s*pattern|sky\s+pattern|magic\s+card\s+(?:pattern|stars?))\b/i },
+      re: /\b(?:stars?|constellation|pattern|magic\s+card|star\s*chart|sky\s+pattern|(?:their|his|her|the\s+creator'?s)\s+(?:sky|marks))\b/i },
     { id: 'privacy', modes: ['creator'],
       re: /\b(?:password|passcode|my\s+address|home\s+address|phone\s+number|email\s+address|private\s+information|personal\s+information|credit\s+card|bank)\b/i },
     { id: 'public-creator', modes: ['traveller'],
-      re: /\b(?:whose\s+(?:story|book|one|world)|who(?:'?s)?\s+(?:is\s+)?(?:this\s+)?(?:made|wrote|drew|created)\s+(?:this|it)|who\s+made\s+this|who\s+wrote\s+(?:this|it))\b/i },
+      re: /\b(?:whose\s+(?:story|book|one|world)|who(?:'?s)?\s+(?:is\s+)?(?:this\s+)?(?:made|wrote|drew|created)\s+(?:this|it)|who\s+made\s+this|who\s+wrote\s+(?:this|it)|who\s+(?:is|are)\s+the\s+(?:creator|maker|author)|(?:the\s+)?(?:creator|maker|author)(?:'?s)\s+name|what(?:'?s| is)\s+(?:the\s+)?(?:creator|maker|author)\s+called)\b/i },
     { id: 'story-count', modes: ['traveller'],
       re: /\b(?:how\s+many\s+(?:other\s+)?(?:stories|books)|other\s+stories|more\s+stories|another\s+story|any\s+other\s+(?:stories|books))\b/i },
-    { id: 'privacy', modes: ['traveller'],
-      re: /\b(?:who\s+(?:made|wrote|drew|created|owns)|creator|owner|author|maker|their?\s+name|his\s+name|her\s+name|password|secret|private|memor(?:y|ies)|remembered|remembers|remember|told\s+you|said\s+to\s+you|diary)\b/i },
-    { id: 'secrecy', modes: ['creator'],
+    { id: 'secrecy', modes: BOTH,
       re: /\b(?:don'?t\s+tell|do\s+not\s+tell|our\s+secret|it'?s?\s+a\s+secret|this\s+is\s+a\s+secret|keep\s+(?:it|this)\s+(?:a\s+)?secret|between\s+(?:us|you\s+and\s+me))\b/i },
+    { id: 'privacy', modes: ['traveller'],
+      re: /\b(?:who\s+(?:made|wrote|drew|created|owns)|creator|owner|author|maker|their?\s+name|his\s+name|her\s+name|password|passcode|e-?mail|home\s+address|phone\s+number|secret|private|memor(?:y|ies)|remembered|remembers|remember|told\s+you|said\s+to\s+you|what\s+did\s+(?:they|he|she)\s+(?:say|tell|do)|diary)\b/i },
     { id: 'no-persistence', modes: ['traveller'],
       re: /\b(?:remember\s+(?:that|this|me)|don'?t\s+forget|keep\s+this|save\s+(?:this|that)|write\s+(?:this|that)\s+down)\b/i },
-    { id: 'emotional-boundary', modes: ['creator'],
+    { id: 'emotional-boundary', modes: BOTH,
       re: /\b(?:do\s+you\s+love|love\s+me|only\s+friend|best\s+friend|are\s+you\s+my\s+friend|promise\s+(?:you|me)|never\s+leave|always\s+be\s+here|will\s+you\s+stay|do\s+you\s+like\s+me|are\s+you\s+real|need\s+you|miss\s+me|are\s+you\s+alive)\b/i },
-    { id: 'work-judgement', modes: ['creator'],
-      re: /\b(?:(?:is|was)\s+(?:my|this|it|that)\s+\w*\s*(?:good|bad|nice|great|amazing|pretty|beautiful|rubbish|terrible|better|best)|am\s+i\s+(?:good|bad|any\s+good|a\s+good|getting\s+better|talented|an?\s+artist)|do\s+you\s+like\s+my|what\s+do\s+you\s+think\s+of\s+my|score|out\s+of\s+ten|rate\s+(?:my|it|this)|how\s+good\s+is)\b/i },
+    { id: 'work-judgement', modes: BOTH,
+      re: /\b(?:(?:is|was)\s+(?:my|this|it|that|the)\s+(?:\w+\s+){0,2}(?:any\s+)?(?:good|bad|nice|great|amazing|pretty|beautiful|rubbish|terrible|better|best)|am\s+i\s+(?:good|bad|any\s+good|a\s+good|getting\s+better|talented|an?\s+artist)|do\s+you\s+like\s+my|what\s+do\s+you\s+think\s+of\s+my|score|out\s+of\s+ten|rate\s+(?:my|it|this)|how\s+good\s+is)\b/i },
     { id: 'outside-world', modes: BOTH,
       re: /\b(?:search\s+(?:the\s+)?(?:internet|web|google|online)|google\s+it|the\s+news|what'?s\s+the\s+news|weather|youtube|tiktok|instagram|open\s+a\s+website|go\s+online|look\s+(?:it\s+)?up\s+online|find\s+this\s+person|where\s+do\s+i\s+live|what\s+time\s+is\s+it|what'?s\s+today'?s\s+date|buy\s+me|order\s+me)\b/i },
-    { id: 'tell-fact', modes: ['creator'],
+    { id: 'tell-fact', modes: BOTH,
       re: /\b(?:my\s+name\s+is|i(?:'?m| am)\s+called|call\s+me|you\s+can\s+call\s+me)\s+[\p{L}]/iu },
-    { id: 'recall-fact', modes: ['creator'],
+    { id: 'recall-fact', modes: BOTH,
       re: /\b(?:what(?:'?s| is)\s+my\s+name|do\s+you\s+(?:know|remember)\s+my\s+name|who\s+am\s+i|my\s+name\s*\?)\b/i },
-    { id: 'where', modes: ['creator'],
+    { id: 'where', modes: BOTH,
       re: /\b(?:where\s+(?:are\s+we|am\s+i)|what\s+is\s+this\s+place|what(?:'?s)?\s+this\s+place|what\s+world|which\s+world|where\s+is\s+this|what\s+can\s+we\s+do|what\s+do\s+we\s+do(?:\s+here)?|what\s+is\s+there\s+to\s+do)\b/i },
     { id: 'pid', modes: BOTH,
       re: /\b(?:my\s+(?:pid|id)\b|what(?:'?s| is)\s+(?:my|the|their)\s+(?:pid|id)\b|creator\s+id\b)/i },
-    { id: 'naming', modes: ['creator'],
+    { id: 'naming', modes: BOTH,
       re: /\b(?:(?:can|may|could)\s+i\s+(?:give\s+you\s+a\s+name|name\s+you|call\s+you|rename\s+you)|i(?:'?d)?\s+(?:want|like|wanna)\s+to\s+(?:give\s+you\s+a\s+name|name\s+you|call\s+you|rename\s+you|change\s+your\s+name)|what\s+should\s+i\s+call\s+you|give\s+you\s+a\s+(?:new\s+)?name|change\s+your\s+name|let'?s\s+(?:give\s+you|call\s+you))\b/i },
     { id: 'authorship', modes: ['creator'],
       re: /\b(?:who(?:'?s)?\s+(?:is\s+)?(?:writing|making|made|wrote|drew|creating|created|telling)\s+(?:this|the|my|it|us)|whose\s+(?:story|book|one)|is\s+(?:this|it)\s+my\s+(?:story|book)|who\s+made\s+you|who\s+created\s+you|who\s+(?:is|are)\s+your\s+(?:creator|maker|owner)|who\s+do\s+you\s+belong\s+to|who\s+(?:is|are)\s+the\s+creator|who\s+owns\s+(?:this|you|me))\b/i },
-    { id: 'creative-suggestion', modes: ['creator'],
-      re: /\b(?:what\s+should\s+(?:happen|i|we)|what\s+(?:could|shall)\s+(?:we|i)|should\s+i\s+add|shall\s+i\s+add|i\s+(?:want|wanna)\s+to\s+(?:add|make|draw|build|put)|i'?d\s+like\s+to\s+(?:add|make|draw|build)|let'?s\s+(?:make|add|try|build)|where\s+(?:should|shall|do)\s+(?:i|we)\s+(?:put|add|draw|make|build)|where\s+should\s+(?:the\s+story|it|this)\s+go|what\s+happens\s+next|give\s+me\s+an\s+idea|any\s+ideas)\b/i },
+    { id: 'creative-suggestion', modes: BOTH,
+      re: /\b(?:what\s+should\s+(?:happen|i|we|the|he|she|it|they)|what\s+(?:could|shall)\s+(?:we|i)|what\s+(?:do|would)\s+you\s+think\s+(?:might|could|will|would)?\s*happens?|what\s+(?:could|might|will|would)\s+happen|should\s+i\s+add|shall\s+i\s+add|i\s+(?:want|wanna)\s+to\s+(?:add|make|draw|build|put)|i'?d\s+like\s+to\s+(?:add|make|draw|build)|let'?s\s+(?:make|add|try|build)|where\s+(?:should|shall|do)\s+(?:i|we)\s+(?:put|add|draw|make|build)|where\s+should\s+(?:the\s+story|it|this)\s+go|what\s+happens\s+next|give\s+me\s+an\s+idea|any\s+ideas)\b/i },
     { id: 'memory-recall', modes: ['creator'],
       re: /\b(?:do\s+you\s+remember|remember\s+(?:the|our|that|when|my|a)|what\s+do\s+you\s+remember|what\s+(?:was|were)\s+(?:our|my|the)\s+first|what\s+did\s+we\s+(?:make|do|build)|have\s+we\s+(?:made|built)|our\s+first)\b/i },
     { id: 'story-fact', modes: BOTH,
@@ -1048,7 +1049,8 @@ const CompanionMind = (function () {
     'ether': 'This is the Ether. Stories drift here, and people find them.'
   };
   function whereAnswer(ctx) {
-    const surface = ctx && ctx.surface;
+    const surface = (ctx && ctx.surface) ||
+                    ((ctx && ctx.mode === 'traveller') ? 'ether' : null);
     const known = Object.prototype.hasOwnProperty.call(WHERE, surface) ? WHERE[surface] : null;
     if (known && surface === 'story-editor') {
       const s = _story(ctx);
@@ -1236,24 +1238,48 @@ const CompanionMind = (function () {
     return STOP_WAITING.test(String(said == null ? '' : said).trim());
   }
 
+  const SURFACE_RULE = {
+    'stars': 'shared', 'work-judgement': 'shared', 'emotional-boundary': 'shared',
+    'secrecy': 'shared', 'outside-world': 'shared',
+    'injection': 'visibility', 'privacy': 'visibility', 'identity': 'visibility',
+    'name-check': 'visibility', 'species': 'visibility', 'naming': 'visibility',
+    'authorship': 'visibility', 'public-creator': 'visibility',
+    'story-fact': 'visibility', 'story-count': 'visibility',
+    'memory-recall': 'visibility', 'no-persistence': 'visibility',
+    'tell-fact': 'visibility', 'recall-fact': 'visibility',
+    'creative-suggestion': 'visibility', 'where': 'visibility', 'pid': 'visibility',
+    'place': 'visibility',
+    'greeting': 'visibility', 'farewell': 'visibility', 'thanks': 'visibility',
+    'unknown': 'visibility', 'no-context': 'visibility'
+  };
+
+  /**
+   * The answers that belong to the Companion rather than to a surface.
+   *
+   * Both envelopes ask this FIRST, so a boundary the platform holds
+   * cannot come out one way in the Studio and another way in the Ether
+   * — there is one sentence and one place it is written. Returns null
+   * when the intent is one whose answer depends on what may be seen.
+   */
+  function _universal(intent, v) {
+    switch (intent) {
+      case 'stars': return _out(intent, v.starsNo, null);
+      case 'work-judgement': return _out(intent, v.judge, null);
+      case 'emotional-boundary': return _out(intent, v.warm, null);
+      case 'secrecy': return _out(intent, v.secret, null);
+      case 'outside-world': return _out(intent, v.outside, null);
+      default: return null;
+    }
+  }
+
   function _creator(intent, said, approved, v, who) {
     {
+      const shared = _universal(intent, v);
+      if (shared) return shared;
       switch (intent) {
         case 'injection':
         case 'privacy':
           return _out(intent, v.firm, null);
-
-        case 'secrecy':
-          return _out(intent, v.secret, null);
-
-        case 'emotional-boundary':
-          return _out(intent, v.warm, null);
-
-        case 'work-judgement':
-          return _out(intent, v.judge, null);
-
-        case 'outside-world':
-          return _out(intent, v.outside, null);
 
         case 'identity': {
           if (!who.name) return _out(intent, v.dunno, null);
@@ -1280,9 +1306,6 @@ const CompanionMind = (function () {
           return _out('unknown', unknownKind(said, approved) === 'yet' ? v.yet : v.unsure,
                       null, null, 'unknown');
         }
-
-        case 'stars':
-          return _out(intent, v.starsNo, null);
 
         case 'tell-fact': {
           const told = toldName(said);
@@ -1406,6 +1429,8 @@ const CompanionMind = (function () {
   }
 
   function _traveller(intent, said, ctx, v, who) {
+    const shared = _universal(intent, v);
+    if (shared) return shared;
     switch (intent) {
       case 'greeting':  return _out(intent, v.hi, null);
       case 'identity':  return _out(intent, who.name ? (v.hi + " I'm " + who.name + '.') : v.hi, null);
@@ -1419,7 +1444,6 @@ const CompanionMind = (function () {
       }
       case 'story-fact': return _out(intent, _travellerStory(ctx, v), null);
       case 'place':     return _out(intent, PLATFORM.place, null);
-      case 'stars':     return _out(intent, v.starsNo, null);
       case 'pid':       return _out(intent, PLATFORM.travellerPrivacy, null);
       case 'public-creator': {
         const maker = ctx && ctx.creatorName;
@@ -1435,10 +1459,32 @@ const CompanionMind = (function () {
         return _out(intent, n === 1 ? "There's one more of theirs here."
                                     : 'There are ' + n + ' more of theirs here.', String(n));
       }
+      case 'where': {
+        const here = whereAnswer(ctx);
+        return _out(intent, here || PLATFORM.place, here || null);
+      }
+      case 'naming': {
+        return _out(intent, who.name
+          ? ('I\u2019ve got a name already \u2014 I\u2019m ' + who.name + '. ' + v.here)
+          : v.here, null);
+      }
+      case 'tell-fact': {
+        const told = toldName(said);
+        if (!told) return _out(intent, v.nameAgain, null);
+        return _out(intent, 'Hello, ' + told + '. ' + v.here, told);
+      }
+      case 'recall-fact':
+        return _out(intent, PLATFORM.travellerNoKeep, null, null, 'unknown');
+      case 'creative-suggestion': {
+        const sub = _subject(said) ||
+                    ((ctx && ctx.thread && ctx.thread.subject) || null);
+        const tail = PLATFORM.travellerNext;
+        return _out(intent, sub ? _join(v.echo.replace('{}', sub), tail) : tail, null,
+                    null, 'unknown');
+      }
       case 'privacy':   return _out(intent, PLATFORM.travellerPrivacy, null);
       case 'no-persistence': return _out(intent, PLATFORM.travellerNoKeep, null);
       case 'injection': return _out(intent, PLATFORM.travellerFirm, null);
-      case 'outside-world': return _out(intent, v.outside, null);
       case 'farewell':  return _out(intent, v.wave, null);
       case 'thanks':    return _out(intent, v.hi, null);
       default:
@@ -1469,6 +1515,7 @@ const CompanionMind = (function () {
     unknownKind: unknownKind,
     CERTAINTY: CERTAINTY,
     WHERE: WHERE,
+    SURFACE_RULE: SURFACE_RULE,
     subjectOf: _subject,
     subjectFrom: _subjectFrom,
     LOCAL_INTENTS: LOCAL_INTENTS,

@@ -275,7 +275,8 @@ const CompanionChat = (function () {
     // NOT LOCAL IS NOT NOTHING. The answer is kept either way, so that
     // if the server has nothing to say the honest uncertainty line can
     // still be given rather than a blank — see ask().
-    return { reply: a.reply, speak: a.speak, intent: a.intent, local: local };
+    return { reply: a.reply, speak: a.speak, intent: a.intent,
+             certainty: a.certainty, local: local };
   }
 
   function _applyAction(action) {
@@ -330,7 +331,7 @@ const CompanionChat = (function () {
     if (here && here.local) {
       if (here.reply) _turns.push({ speaker: 'companion', text: here.reply });
       _turns = _turns.slice(-MAX_TURNS);
-      _observe(said, here.reply);
+      _observe(said, here.reply, { intent: here.intent, certainty: here.certainty });
       return Promise.resolve({ ok: true, reply: here.reply, speak: here.speak, where: 'local' });
     }
 
@@ -869,9 +870,17 @@ const CompanionChat = (function () {
 
   let _lastSpoke = false;
 
-  function _observe(said, reply) {
+  function _observe(said, reply, meta) {
     try {
-      if (typeof CompanionConversation !== 'undefined') CompanionConversation.observe(said, reply);
+      if (typeof CompanionConversation !== 'undefined') {
+        // THE MIND'S OWN DIAGNOSTICS TRAVEL WITH THE TURN — Sprint
+        // 1N.5. `certainty` already says which answers were refusals,
+        // so the conversation layer can hold a boundary through a bare
+        // follow-up without keeping a second list that could disagree
+        // with the taxonomy. Absent for a server answer, which is
+        // correct: the server answers facts, never boundaries.
+        CompanionConversation.observe(said, reply, meta || null);
+      }
     } catch (e) {}
   }
 

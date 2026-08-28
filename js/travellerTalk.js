@@ -102,7 +102,38 @@ const TravellerTalk = (function () {
       // improvisation.
       if (!approved) return { text: '', intent: 'no-context' };
       if (typeof CompanionMind === 'undefined') return { text: '', intent: 'no-context' };
+      // THE SAME CONVERSATION A CREATOR GETS — the product owner's
+      // rule: "the intelligence level in ether and studio is same. the
+      // only difference is personal identifiers which are limited till
+      // studio only."
+      //
+      // So the Ether runs the identical layer the Studio does, with the
+      // identical order: the Mind gets first refusal (its own
+      // TRAVELLER taxonomy, which refuses more than the Creator one),
+      // and only a turn it called `unknown` reaches the conversation.
+      // The knowledge boundary is untouched — it lives in the approved
+      // context above, and this layer never reads a record, a card, a
+      // memory or a name.
+      if (typeof CompanionConversation !== 'undefined' && CompanionConversation.consider) {
+        try {
+          const conv = CompanionConversation.consider(said, approved);
+          if (conv && conv.reply) {
+            CompanionConversation.observe(said, conv.reply);
+            return { text: conv.reply, intent: 'conversation', strategy: conv.strategy };
+          }
+        } catch (e) {}
+      }
       const a = CompanionMind.answer(said, approved);
+      try {
+        if (typeof CompanionConversation !== 'undefined') {
+          // THE MIND'S OWN DIAGNOSTICS TRAVEL WITH THE TURN. `certainty`
+          // is what says a refusal happened, so the conversation layer
+          // can hold the line through a bare follow-up without keeping a
+          // second list of which answers were refusals.
+          CompanionConversation.observe(said, a.reply,
+            { intent: a.intent, certainty: a.certainty });
+        }
+      } catch (e) {}
       return { text: a.reply, intent: a.intent };
     } catch (e) {
       return { text: '', intent: 'no-context' };
@@ -225,6 +256,11 @@ const TravellerTalk = (function () {
 
   /** The Story closed. Everything goes. */
   function withdraw() {
+    // A TRAVELLER KEEPS NOTHING. The conversation goes when the
+    // encounter does, exactly as the turns do.
+    try {
+      if (typeof CompanionConversation !== 'undefined') CompanionConversation.reset();
+    } catch (e) {}
     const els = _els;
     _ctx = null;
     _turns = [];
@@ -287,6 +323,11 @@ const TravellerTalk = (function () {
 
   /** Close the conversation and DISCARD it. */
   function hide() {
+    // A TRAVELLER KEEPS NOTHING. The conversation goes when the
+    // encounter does, exactly as the turns do.
+    try {
+      if (typeof CompanionConversation !== 'undefined') CompanionConversation.reset();
+    } catch (e) {}
     const els = _els;
     _open = false;
     _turns = [];

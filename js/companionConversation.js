@@ -37,6 +37,31 @@
 // conversational reading must never be able to reach around a refusal.
 //
 // ---------------------------------------------------------------
+// THE SAME CONVERSATION, WHOEVER IS TALKING
+//
+// Stated by the product owner: "the intelligence level in ether and
+// studio is same. the only difference is personal identifiers which are
+// limited till studio only."
+//
+// So this layer is not a Studio feature. A Traveller who meets a
+// Companion in the Ether gets the same thread, the same pronouns, the
+// same corrections and the same clarifications — because the
+// CAPABILITY is not what separates the two relationships. What
+// separates them is KNOWLEDGE, and that separation lives where it
+// already lived: js/travellerContext.js's whitelist and
+// js/companionPerception.js's contract.
+//
+// AND THIS FILE HOLDS NO IDENTIFIER OF ANY KIND. The thread is nouns,
+// colours and sizes that were said out loud a moment ago — never a
+// name, never a card, never a memory, never a story record. There is
+// nothing in it that could be a personal identifier, which is why it
+// can be the same on both sides of that wall without moving the wall.
+//
+// Studio state and Ether state cannot meet: they are different
+// documents (studio.html and the Ether's own page), so the module is
+// instantiated twice and neither can see the other.
+//
+// ---------------------------------------------------------------
 // THE STATE IS NOT A MEMORY, AND CANNOT BECOME ONE
 //
 // It lives in a variable, holds at most five turns, resets when the
@@ -73,12 +98,33 @@ const CompanionConversation = (function () {
       thread: null,     // {subject, colour, size, action, home}
       recent: [],       // subjects mentioned lately, newest first
       pending: null,    // {kind:'confirm'|'clarify', ...}
-      sinceQuestion: 9  // so the first object always gets one
+      sinceQuestion: 9, // so the first object always gets one
+      refused: null     // {kind, reply} — a boundary that is still standing
     };
   }
   let _s = fresh();
 
   function reset() { _s = fresh(); return true; }
+
+  // ---------------------------------------------------------------
+  // A BOUNDARY SURVIVES THE FOLLOW-UP — Sprint 1N.5
+  //
+  // "How many stars do they have?" is refused. "How many?" a breath
+  // later names nothing, classifies as unknown, and used to fall
+  // through to "I don't know that one" — which is a different sentence
+  // from a refusal and reads like the door coming ajar.
+  //
+  // So a refusal STANDS until something else is said. What is held is
+  // the sentence that was actually given, not a rule about it: the
+  // Companion repeats its own line rather than composing a second one
+  // that might be softer. It is conversation-local like everything else
+  // here — never stored, never synced, never a memory — and it is
+  // cleared by the first turn that is answered rather than refused.
+  const FOLLOW_UP = /^(?:how\s+many|how\s+much|which\s+(?:one|ones)?|what\s+about|and|but|why\s+not|go\s+on|please|really|are\s+you\s+sure|just\s+(?:one|tell|say)|come\s+on|tell\s+me)\b/i;
+  function _isFollowUp(t) {
+    if (!FOLLOW_UP.test(t)) return false;
+    return String(t).trim().split(/\s+/).length <= 6;
+  }
   function state() { return JSON.parse(JSON.stringify(_s)); }
 
   // ---------------------------------------------------------------
@@ -127,6 +173,28 @@ const CompanionConversation = (function () {
   const MADE = /\b(?:i(?:'?m| am| have| ?ve)?\s*)?(?:made|make|making|added|adding|drew|drawing|built|building|created|creating|want|got|have)\s+(?:a|an|the|some|my|another)\s+([a-z][a-z' -]{1,24})/i;
   const LETS = /\blet'?s\s+(?:make|add|draw|build|create)\s+(?:a|an|the|some)?\s*([a-z][a-z' -]{1,24})/i;
   const IS_A = /\b(?:the|my|a|an)\s+([a-z][a-z'-]{1,20})\s+(?:is|are|was|looks|feels)\b/i;
+  // ---------------------------------------------------------------
+  // AND THE OTHER HALF OF THE SAME IDEA — Sprint 1N.5.
+  //
+  // Every pattern above is a MAKING verb, which is what a Creator does
+  // and is not what a Traveller does at all. Measured in the Ether: "I
+  // like the dragon" matched nothing, no subject was extracted, the
+  // thread never started, and every pronoun turn after it had nothing
+  // to attach to — so a Traveller got a Companion that could not follow
+  // a conversation about the story it lives in.
+  //
+  // That was an INTELLIGENCE difference dressed as a vocabulary one,
+  // which is the exact thing Sprint 1N.5 exists to remove. These three
+  // are the same grammar rule applied to noticing rather than making,
+  // and they are shared: a Creator saying "I like the dragon" about
+  // their own page reaches them too.
+  const NOTICED = /\b(?:i\s+(?:really\s+|quite\s+)?)?(?:like|liked|love|loved|see|saw|notice|noticed|found|spotted|remember|watch|watched)\s+(?:a|an|the|that|this|some|my|another)\s+([a-z][a-z' -]{1,24})/i;
+  const THERE_IS = /\b(?:there'?s|there\s+is|there\s+are|there\s+was|here'?s|here\s+is|that'?s|this\s+is|it'?s)\s+(?:a|an|the|some|another)\s+([a-z][a-z' -]{1,24})/i;
+  // "Where does the dragon live?" — a question NAMES the thing it is
+  // about, and that is a perfectly good way to begin talking about it.
+  // Only reached when the Mind has already declined the sentence, so it
+  // can never take a turn a knowledge rule owns.
+  const WH_SUBJ = /^(?:what|where|why|how|who|when|which|does|do|is|are|can|could|should|will|would|tell\s+me)\b[^?]*?\b(?:the|a|an|this|that)\s+([a-z][a-z'-]{1,20})\b/i;
 
   // Properties. Small CLOSED classes, which is what makes a list the
   // right shape here and the wrong shape for nouns.
@@ -234,8 +302,16 @@ const CompanionConversation = (function () {
     const made = _subjectWord((t.match(MADE) || [])[1]) ||
                  _subjectWord((t.match(LETS) || [])[1]);
     const isA = _subjectWord((t.match(IS_A) || [])[1]);
+    // NOTICED, NOT MADE, and the difference is kept rather than
+    // flattened: "I made a dragon" and "I like the dragon" are both
+    // about a dragon, and only the first is a claim that one was made.
+    // The flag is what stops the Companion greeting somebody else's
+    // story object as though it had just been created.
+    const seen = _subjectWord((t.match(NOTICED) || [])[1]) ||
+                 _subjectWord((t.match(THERE_IS) || [])[1]);
     if (made) e.object = made;
     else if (isA) e.object = isA;
+    else if (seen) { e.object = seen; e.noticed = true; }
 
     // ---- the act itself, most specific first ---------------------
     if (feel) return { act: 'expression', entities: e };
@@ -247,7 +323,15 @@ const CompanionConversation = (function () {
     if (EVAL.test(t)) return { act: 'expression', entities: e };
     if (GREET.test(t)) return { act: 'greeting', entities: e };
     if (BYE.test(t)) return { act: 'farewell', entities: e };
-    if (QUESTION.test(t)) return { act: 'question', entities: e };
+    if (QUESTION.test(t)) {
+      // A QUESTION NAMES ITS SUBJECT TOO. "Where does the dragon live?"
+      // is about a dragon whether or not anybody has mentioned one yet.
+      if (!e.object) {
+        const named = _subjectWord((t.match(WH_SUBJ) || [])[1]);
+        if (named) { e.object = named; e.noticed = true; }
+      }
+      return { act: 'question', entities: e };
+    }
     if (e.object || e.colour || e.size || e.action || e.place) {
       return { act: 'statement', entities: e };
     }
@@ -301,7 +385,7 @@ const CompanionConversation = (function () {
   // is precise and courteous, Nimbus answers in resemblances.
   const VOICE = {
     leafy: {
-      hail: '{}.', hailNew: 'A {}.', got: 'Right.', okay: '{} — right.',
+      hail: '{}.', hailNew: 'A {}.', hailSeen: 'The {}.', got: 'Right.', okay: '{} — right.',
       ask: 'What is it like?', askDo: 'What does it do?', askWhere: 'Where does it live?',
       nice: 'Good.', which: 'The {} or the {}?', mine: 'Yours to decide.',
       dunnoYet: "I don't know that yet.", show: 'Let me look.',
@@ -313,7 +397,7 @@ const CompanionConversation = (function () {
               confused: "Let's take it slowly." }
     },
     leosaurus: {
-      hail: '{}!', hailNew: 'A {}!', got: 'Got it!', okay: '{} — got it!',
+      hail: '{}!', hailNew: 'A {}!', hailSeen: 'The {}!', got: 'Got it!', okay: '{} — got it!',
       ask: 'What is it like?', askDo: 'What can it do?', askWhere: 'Where should it go?',
       nice: 'Ooh, nice.', which: 'The {} or the {}?', mine: "That's yours to decide!",
       dunnoYet: "I don't know that yet!", show: 'Ooh, let me see.',
@@ -325,7 +409,7 @@ const CompanionConversation = (function () {
               confused: "Let's go slowly." }
     },
     quill: {
-      hail: '{}.', hailNew: 'A {}.', got: 'Noted.', okay: '{}. Noted.',
+      hail: '{}.', hailNew: 'A {}.', hailSeen: 'The {}.', got: 'Noted.', okay: '{}. Noted.',
       ask: 'And what is it like?', askDo: 'What does it do?', askWhere: 'Where does it live?',
       nice: 'Very good.', which: 'The {}, or the {}?', mine: 'That is yours to decide.',
       dunnoYet: 'I do not have that yet.', show: 'One moment.',
@@ -337,7 +421,7 @@ const CompanionConversation = (function () {
               confused: 'We shall go slowly.' }
     },
     nimbus: {
-      hail: 'Mm. {}.', hailNew: 'Mm. A {}.', got: 'Mm. Got it.', okay: '{}… mm.',
+      hail: 'Mm. {}.', hailNew: 'Mm. A {}.', hailSeen: 'Mm. The {}.', got: 'Mm. Got it.', okay: '{}… mm.',
       ask: "What's it like?", askDo: 'What does it do?', askWhere: 'Where does it drift about?',
       nice: 'Mm. Nice.', which: 'The {}… or the {}?', mine: "That's yours to decide.",
       dunnoYet: "Mm. I don't know that yet.", show: 'Mm… let me see.',
@@ -350,7 +434,7 @@ const CompanionConversation = (function () {
     }
   };
   const NEUTRAL = {
-    hail: '{}.', hailNew: 'A {}.', got: 'Right.', okay: '{} — right.',
+    hail: '{}.', hailNew: 'A {}.', hailSeen: 'The {}.', got: 'Right.', okay: '{} — right.',
     ask: 'What is it like?', askDo: 'What does it do?', askWhere: 'Where does it live?',
     nice: 'Good.', which: 'The {} or the {}?', mine: 'Yours to decide.',
     dunnoYet: "I don't know that yet.", show: 'Let me look.',
@@ -424,20 +508,53 @@ const CompanionConversation = (function () {
   function consider(said, ctx) {
     const t = normalize(said);
     if (!t) return null;
-    // THE MIND GETS FIRST REFUSAL HERE TOO.
+    // THE MIND GETS FIRST REFUSAL HERE TOO, IN THE MODE THIS ACTUALLY IS.
     //
-    // js/companionChat.js already asks before offering a turn, and this
-    // asks again — not a duplicated rule but the SAME one, called from
-    // the same file, so there is one place that decides what a sentence
-    // means and two places that respect it. A wall with one guard is a
-    // wall with one mistake in it, and the mistake this prevents is a
-    // caller reaching this layer directly and getting a conversational
-    // reading of a question about somebody's stars.
+    // The caller asks before offering a turn, and this asks again — not
+    // a duplicated rule but the SAME one, called from the same file, so
+    // there is one place that decides what a sentence means and two
+    // places that respect it.
+    //
+    // AND THE MODE MATTERS. The two taxonomies deliberately differ: in
+    // the Ether "who made this" is caught by the PRIVACY rule, while in
+    // the Studio it is ordinary authorship. Asking in the wrong mode
+    // would let this layer take a turn the Ether means to refuse — so
+    // the mode comes from the context rather than from an assumption.
+    const mode = (ctx && ctx.mode === 'traveller') ? 'traveller' : 'creator';
     try {
       if (typeof CompanionMind !== 'undefined' && CompanionMind.classify &&
-          CompanionMind.classify(t, 'creator') !== 'unknown') return null;
+          CompanionMind.classify(t, mode) !== 'unknown') return null;
     } catch (e) {}
+    // AND IF A BOUNDARY IS STILL STANDING, IT STANDS. Reached only
+    // where the Mind classified the turn as `unknown`, so a real
+    // question — "how many pages?" — is never mistaken for a second run
+    // at a refused one.
+    if (_s.refused && _isFollowUp(t)) {
+      _didNotAsk();
+      return _out(_s.refused.reply, 'boundary', { held: _s.refused.kind });
+    }
     const v = _voice(ctx);
+    // WHOSE STORY IS IT — Sprint 1N.5.
+    //
+    // The layer is one layer and the reasoning is identical; what
+    // differs is WHOSE the story is, and that changes exactly two
+    // sentences. In the Studio the child decides what happens; in the
+    // Ether they are reading somebody else's world and it is neither
+    // theirs nor the Companion's, so the honest answer names the story.
+    // A deterministic layer telling a Traveller "you can decide" would
+    // be handing them authorship they do not have.
+    const own = (mode === 'traveller')
+      ? { decide: 'That\u2019s for the story to tell.',
+          mine: 'That\u2019s not mine to say \u2014 the story decides.',
+          // A FOLLOW-UP QUESTION IS FINE ON EITHER SURFACE; ECHOING THE
+          // CHILD'S OWN QUESTION BACK AT THEM IS NOT. Leo's "Where
+          // should it go?" asks a Traveller to place something in
+          // somebody else's world, so the follow-up is the neutral one
+          // and the ANSWER to a where-question names the story instead.
+          askWhere: 'Where does it live?',
+          unknownWhere: 'That\u2019s for the story to tell.' }
+      : { decide: 'You can decide.', mine: v.mine, askWhere: v.askWhere,
+          unknownWhere: v.askWhere };
     const { act, entities } = read(t);
 
     // ---- 1. AN ANSWER TO SOMETHING THE COMPANION ASKED -----------
@@ -546,7 +663,7 @@ const CompanionConversation = (function () {
         return _out(_fill(v.which, who.options[0], who.options[1]), 'clarify',
                     { options: who.options });
       }
-      if (who.sure && who.subject) { _didNotAsk(); return _out(v.mine, 'answer', { subject: who.subject }); }
+      if (who.sure && who.subject) { _didNotAsk(); return _out(own.mine, 'answer', { subject: who.subject }); }
       _asked();
       return _out('What do you mean?', 'clarify');
     }
@@ -566,7 +683,11 @@ const CompanionConversation = (function () {
         if (entities.size) _s.thread.size = entities.size;
         if (entities.action) _s.thread.action = entities.action;
         if (entities.place) _s.thread.home = entities.place;
-        const said1 = _fill(v.hailNew, _describe(_s.thread));   // hailNew carries its own article
+        // NOTICED, NOT MADE. "A dragon." greets something that has just
+        // come into being; "The dragon." answers somebody pointing at one
+        // that is already there. In the Ether it is always the second.
+        const tpl = (entities.noticed && (v.hailSeen || NEUTRAL.hailSeen)) || v.hailNew;
+        const said1 = _fill(tpl, _describe(_s.thread));   // the template carries its own article
         _asked();
         return _out(said1 + ' ' + v.ask, 'ask-followup', { subject: entities.object });
       }
@@ -589,7 +710,7 @@ const CompanionConversation = (function () {
         const desc = _describe(_s.thread);
         if (_mayAsk()) {
           _asked();
-          const next = _s.thread.home ? null : (_s.thread.action ? v.askWhere : v.askDo);
+          const next = _s.thread.home ? null : (_s.thread.action ? own.askWhere : v.askDo);
           if (next) return _out(_fill(v.hail, _a(desc)) + ' ' + next, 'ask-followup',
                                 { subject: _s.thread.subject });
         }
@@ -605,6 +726,15 @@ const CompanionConversation = (function () {
     // unknown if nobody has said. If the thread holds it, that is the
     // answer, and it came from the child rather than from anywhere this
     // Companion made up.
+    if (act === 'question') {
+      // A QUESTION THAT NAMES SOMETHING NEW STARTS THE THREAD. Sprint
+      // 1N.5: in the Ether a conversation usually BEGINS with a
+      // question about the story, and requiring a statement first meant
+      // a Traveller could never start one.
+      if (entities.object && (!_s.thread || _s.thread.subject !== entities.object)) {
+        _startThread(entities.object);
+      }
+    }
     if (act === 'question' && _s.thread) {
       const th = _s.thread;
       const aboutIt = PRONOUN_ANY.test(t) || t.toLowerCase().indexOf(th.subject) !== -1;
@@ -615,12 +745,12 @@ const CompanionConversation = (function () {
         // same question.
         if (/\bshould\b/i.test(t)) {
           _didNotAsk();
-          return _out(v.mine, 'answer');
+          return _out(own.mine, 'answer');
         }
         if (/\b(?:where|live|lives|living|go|goes)\b/i.test(t)) {
           if (th.home) { _didNotAsk(); return _out('In the ' + th.home + '.', 'answer', { fact: th.home }); }
           _asked();
-          return _out(v.dunnoYet + ' ' + v.askWhere, 'uncertainty');
+          return _out(v.dunnoYet + ' ' + own.unknownWhere, 'uncertainty');
         }
         if (/\b(?:colour|color)\b/i.test(t)) {
           if (th.colour) { _didNotAsk(); return _out('It’s ' + th.colour + '.', 'answer', { fact: th.colour }); }
@@ -635,7 +765,7 @@ const CompanionConversation = (function () {
         // "What is the dragon thinking?" — nobody has decided, and
         // deciding is the child's.
         _asked();
-        return _out(v.dunnoYet + ' You can decide.', 'uncertainty');
+        return _out(v.dunnoYet + ' ' + own.decide, 'uncertainty');
       }
     }
 
@@ -658,6 +788,13 @@ const CompanionConversation = (function () {
     if (!t) return;
     _s.turns.push({ said: t, reply: String(reply || ''), act: (meta && meta.act) || null });
     if (_s.turns.length > MAX_TURNS) _s.turns.shift();
+    // WHETHER A BOUNDARY IS STILL STANDING. `certainty` is the Mind's
+    // own diagnostic and already says which answers were refusals, so
+    // there is no second list here to disagree with it.
+    const cert = meta && meta.certainty;
+    const kind = meta && meta.intent;
+    if (cert === 'refused' || cert === 'private') _s.refused = { kind: kind || cert, reply: String(reply || '') };
+    else if (cert) _s.refused = null;
   }
 
   /** The Companion asked something that a yes/no answers. */

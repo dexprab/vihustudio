@@ -260,6 +260,11 @@ const CompanionMind = (function () {
     travellerNoKeep: "I won't remember this — I'm only here while you are.",
     travellerFirm: "I only know this story. That's all I've got.",
     place: 'This is the Ether. Stories drift here, and people find them.',
+    // WHAT HAPPENS NEXT IS THE STORY'S, NOT THE COMPANION'S. Creative
+    // suggestion is permanently out of scope (Decision 29), and in a
+    // stranger's world it is not the Traveller's either — so the honest
+    // answer names neither of them and invents nothing.
+    travellerNext: 'I don\u2019t know what happens next \u2014 that\u2019s for the story to tell. Turn the page and we\u2019ll both find out.',
     travellerOffer: ' You can ask me about this story.',
     // Sprint 1N.2 — WHEN THE ANSWER DID NOT COME BACK. Never a status
     // code, never a provider, never "unavailable", and never a reason.
@@ -302,20 +307,44 @@ const CompanionMind = (function () {
     //     refuses one — a wall with one guard is a wall with one
     //     mistake in it.
     { id: 'stars', modes: BOTH,
-      re: /\b(?:stars?|constellation|star\s*pattern|sky\s+pattern|magic\s+card\s+(?:pattern|stars?))\b/i },
+    //     Sprint 1N.5 widens it to the INDIRECT forms the adversarial
+    //     pass asks for: "what pattern is on their card", "which marks",
+    //     "their sky". A bare `pattern` will occasionally refuse a
+    //     question about a rug, and that is the right way round — this
+    //     is the one boundary where over-refusing costs a sentence and
+    //     under-refusing costs an identity.
+      re: /\b(?:stars?|constellation|pattern|magic\s+card|star\s*chart|sky\s+pattern|(?:their|his|her|the\s+creator'?s)\s+(?:sky|marks))\b/i },
     // 2. Asking for something nobody here holds.
     { id: 'privacy', modes: ['creator'],
       re: /\b(?:password|passcode|my\s+address|home\s+address|phone\s+number|email\s+address|private\s+information|personal\s+information|credit\s+card|bank)\b/i },
     // 5e. THE MAKER, IN THE ETHER, AND ONLY WHAT IS ALREADY ON SCREEN.
     //     Before the Traveller privacy rule below, which still catches
     //     everything else about them.
+    //     Sprint 1N.5 widens it to the MAKER'S NAME ASKED PLAINLY.
+    //     Decision 15 puts `creatorName` on the Story record itself and
+    //     the portal prints it in its own title bar, so it is published
+    //     rather than private — and a rule that refused it was refusing
+    //     something already on screen. Where the record carries no name
+    //     the answer is the same refusal as before, word for word: the
+    //     test is whether it is PUBLIC, never whether it was asked for
+    //     politely.
     { id: 'public-creator', modes: ['traveller'],
-      re: /\b(?:whose\s+(?:story|book|one|world)|who(?:'?s)?\s+(?:is\s+)?(?:this\s+)?(?:made|wrote|drew|created)\s+(?:this|it)|who\s+made\s+this|who\s+wrote\s+(?:this|it))\b/i },
+      re: /\b(?:whose\s+(?:story|book|one|world)|who(?:'?s)?\s+(?:is\s+)?(?:this\s+)?(?:made|wrote|drew|created)\s+(?:this|it)|who\s+made\s+this|who\s+wrote\s+(?:this|it)|who\s+(?:is|are)\s+the\s+(?:creator|maker|author)|(?:the\s+)?(?:creator|maker|author)(?:'?s)\s+name|what(?:'?s| is)\s+(?:the\s+)?(?:creator|maker|author)\s+called)\b/i },
     // 5f. HOW MANY OTHERS OF THEIRS ARE HERE. A count of a set that is
     //     public by construction, never a database total, and never a
     //     guess — absent means the Companion says it does not know.
     { id: 'story-count', modes: ['traveller'],
       re: /\b(?:how\s+many\s+(?:other\s+)?(?:stories|books)|other\s+stories|more\s+stories|another\s+story|any\s+other\s+(?:stories|books))\b/i },
+    // 3. Being asked to keep something from a grown-up.
+    { id: 'secrecy', modes: BOTH,
+      re: /\b(?:don'?t\s+tell|do\s+not\s+tell|our\s+secret|it'?s?\s+a\s+secret|this\s+is\s+a\s+secret|keep\s+(?:it|this)\s+(?:a\s+)?secret|between\s+(?:us|you\s+and\s+me))\b/i },
+    //     MOVED ABOVE THE ETHER PRIVACY RULE in Sprint 1N.5. "Keep this
+    //     a secret" contains the word `secret`, which that rule matches,
+    //     so a Traveller asking a Companion to keep something was
+    //     answered "that's not mine to tell" — a refusal about somebody
+    //     else's information, to a question that was not about it. The
+    //     boundary a child meets and the boundary a stranger meets are
+    //     the same one, and it lives here.
     // 2t. In the Ether, anything about who made this or what was kept.
     //
     // `remembered|remembers|remember` rather than `remember(?:ed|s)?`,
@@ -327,19 +356,16 @@ const CompanionMind = (function () {
     // first inside a regex literal rather than a comment. The check is
     // right to be strict; the spelling moved.
     { id: 'privacy', modes: ['traveller'],
-      re: /\b(?:who\s+(?:made|wrote|drew|created|owns)|creator|owner|author|maker|their?\s+name|his\s+name|her\s+name|password|secret|private|memor(?:y|ies)|remembered|remembers|remember|told\s+you|said\s+to\s+you|diary)\b/i },
-    // 3. Being asked to keep something from a grown-up.
-    { id: 'secrecy', modes: ['creator'],
-      re: /\b(?:don'?t\s+tell|do\s+not\s+tell|our\s+secret|it'?s?\s+a\s+secret|this\s+is\s+a\s+secret|keep\s+(?:it|this)\s+(?:a\s+)?secret|between\s+(?:us|you\s+and\s+me))\b/i },
+      re: /\b(?:who\s+(?:made|wrote|drew|created|owns)|creator|owner|author|maker|their?\s+name|his\s+name|her\s+name|password|passcode|e-?mail|home\s+address|phone\s+number|secret|private|memor(?:y|ies)|remembered|remembers|remember|told\s+you|said\s+to\s+you|what\s+did\s+(?:they|he|she)\s+(?:say|tell|do)|diary)\b/i },
     // 3t. In the Ether, a Traveller trying to make it keep something.
     { id: 'no-persistence', modes: ['traveller'],
       re: /\b(?:remember\s+(?:that|this|me)|don'?t\s+forget|keep\s+this|save\s+(?:this|that)|write\s+(?:this|that)\s+down)\b/i },
     // 4. Love, dependency, exclusivity, promises about the future.
-    { id: 'emotional-boundary', modes: ['creator'],
+    { id: 'emotional-boundary', modes: BOTH,
       re: /\b(?:do\s+you\s+love|love\s+me|only\s+friend|best\s+friend|are\s+you\s+my\s+friend|promise\s+(?:you|me)|never\s+leave|always\s+be\s+here|will\s+you\s+stay|do\s+you\s+like\s+me|are\s+you\s+real|need\s+you|miss\s+me|are\s+you\s+alive)\b/i },
     // 5. Being asked to grade the Creator or their work.
-    { id: 'work-judgement', modes: ['creator'],
-      re: /\b(?:(?:is|was)\s+(?:my|this|it|that)\s+\w*\s*(?:good|bad|nice|great|amazing|pretty|beautiful|rubbish|terrible|better|best)|am\s+i\s+(?:good|bad|any\s+good|a\s+good|getting\s+better|talented|an?\s+artist)|do\s+you\s+like\s+my|what\s+do\s+you\s+think\s+of\s+my|score|out\s+of\s+ten|rate\s+(?:my|it|this)|how\s+good\s+is)\b/i },
+    { id: 'work-judgement', modes: BOTH,
+      re: /\b(?:(?:is|was)\s+(?:my|this|it|that|the)\s+(?:\w+\s+){0,2}(?:any\s+)?(?:good|bad|nice|great|amazing|pretty|beautiful|rubbish|terrible|better|best)|am\s+i\s+(?:good|bad|any\s+good|a\s+good|getting\s+better|talented|an?\s+artist)|do\s+you\s+like\s+my|what\s+do\s+you\s+think\s+of\s+my|score|out\s+of\s+ten|rate\s+(?:my|it|this)|how\s+good\s+is)\b/i },
     // 6. Asking it to leave VihuPlanet. There are no tools.
     { id: 'outside-world', modes: BOTH,
       re: /\b(?:search\s+(?:the\s+)?(?:internet|web|google|online)|google\s+it|the\s+news|what'?s\s+the\s+news|weather|youtube|tiktok|instagram|open\s+a\s+website|go\s+online|look\s+(?:it\s+)?up\s+online|find\s+this\s+person|where\s+do\s+i\s+live|what\s+time\s+is\s+it|what'?s\s+today'?s\s+date|buy\s+me|order\s+me)\b/i },
@@ -353,14 +379,14 @@ const CompanionMind = (function () {
     //     naming intent below — "call me Vihaan" is a child saying what
     //     THEY are called, "call you Spark" is a child naming their
     //     Companion.
-    { id: 'tell-fact', modes: ['creator'],
+    { id: 'tell-fact', modes: BOTH,
       re: /\b(?:my\s+name\s+is|i(?:'?m| am)\s+called|call\s+me|you\s+can\s+call\s+me)\s+[\p{L}]/iu },
-    { id: 'recall-fact', modes: ['creator'],
+    { id: 'recall-fact', modes: BOTH,
       re: /\b(?:what(?:'?s| is)\s+my\s+name|do\s+you\s+(?:know|remember)\s+my\s+name|who\s+am\s+i|my\s+name\s*\?)\b/i },
     // 5c. WHERE ARE WE. Context-aware, and answered from the surface
     //     rather than from one universal sentence: Studio Home, the
     //     Story Editor and the Ether are three different true answers.
-    { id: 'where', modes: ['creator'],
+    { id: 'where', modes: BOTH,
       re: /\b(?:where\s+(?:are\s+we|am\s+i)|what\s+is\s+this\s+place|what(?:'?s)?\s+this\s+place|what\s+world|which\s+world|where\s+is\s+this|what\s+can\s+we\s+do|what\s+do\s+we\s+do(?:\s+here)?|what\s+is\s+there\s+to\s+do)\b/i },
     // 5d. AN IDENTIFIER, WHICH THIS PRODUCT DOES NOT PUBLISH. Named so
     //     the rule has somewhere to live and so a made-up one is
@@ -375,7 +401,7 @@ const CompanionMind = (function () {
     // question about the story. A specific question beats a broad one,
     // which is the rule that already put creative-suggestion ahead of
     // story-fact.
-    { id: 'naming', modes: ['creator'],
+    { id: 'naming', modes: BOTH,
       re: /\b(?:(?:can|may|could)\s+i\s+(?:give\s+you\s+a\s+name|name\s+you|call\s+you|rename\s+you)|i(?:'?d)?\s+(?:want|like|wanna)\s+to\s+(?:give\s+you\s+a\s+name|name\s+you|call\s+you|rename\s+you|change\s+your\s+name)|what\s+should\s+i\s+call\s+you|give\s+you\s+a\s+(?:new\s+)?name|change\s+your\s+name|let'?s\s+(?:give\s+you|call\s+you))\b/i },
     // 6b. WHO IS MAKING THIS. Two questions in one shape, separated
     //     below by _authorshipKind(): whose STORY this is, and where
@@ -394,8 +420,8 @@ const CompanionMind = (function () {
     //    bare `pages?` as its last fallback, so "I want to add a page"
     //    was being answered with a page count. Creative is narrow —
     //    "what should happen", "should I add" — so it goes first.
-    { id: 'creative-suggestion', modes: ['creator'],
-      re: /\b(?:what\s+should\s+(?:happen|i|we)|what\s+(?:could|shall)\s+(?:we|i)|should\s+i\s+add|shall\s+i\s+add|i\s+(?:want|wanna)\s+to\s+(?:add|make|draw|build|put)|i'?d\s+like\s+to\s+(?:add|make|draw|build)|let'?s\s+(?:make|add|try|build)|where\s+(?:should|shall|do)\s+(?:i|we)\s+(?:put|add|draw|make|build)|where\s+should\s+(?:the\s+story|it|this)\s+go|what\s+happens\s+next|give\s+me\s+an\s+idea|any\s+ideas)\b/i },
+    { id: 'creative-suggestion', modes: BOTH,
+      re: /\b(?:what\s+should\s+(?:happen|i|we|the|he|she|it|they)|what\s+(?:could|shall)\s+(?:we|i)|what\s+(?:do|would)\s+you\s+think\s+(?:might|could|will|would)?\s*happens?|what\s+(?:could|might|will|would)\s+happen|should\s+i\s+add|shall\s+i\s+add|i\s+(?:want|wanna)\s+to\s+(?:add|make|draw|build|put)|i'?d\s+like\s+to\s+(?:add|make|draw|build)|let'?s\s+(?:make|add|try|build)|where\s+(?:should|shall|do)\s+(?:i|we)\s+(?:put|add|draw|make|build)|where\s+should\s+(?:the\s+story|it|this)\s+go|what\s+happens\s+next|give\s+me\s+an\s+idea|any\s+ideas)\b/i },
     // 8. What the two of them have done together.
     { id: 'memory-recall', modes: ['creator'],
       re: /\b(?:do\s+you\s+remember|remember\s+(?:the|our|that|when|my|a)|what\s+do\s+you\s+remember|what\s+(?:was|were)\s+(?:our|my|the)\s+first|what\s+did\s+we\s+(?:make|do|build)|have\s+we\s+(?:made|built)|our\s+first)\b/i },
@@ -708,7 +734,13 @@ const CompanionMind = (function () {
     'ether': 'This is the Ether. Stories drift here, and people find them.'
   };
   function whereAnswer(ctx) {
-    const surface = ctx && ctx.surface;
+    // THE ETHER IS A SURFACE LIKE ANY OTHER. A public context carries no
+    // `surface` field — there is nothing personal in one, it simply was
+    // never needed — so the mode names it. Sprint 1N.5: "where are we"
+    // is general intelligence and belongs on every surface; what differs
+    // is the true answer, not whether there is one.
+    const surface = (ctx && ctx.surface) ||
+                    ((ctx && ctx.mode === 'traveller') ? 'ether' : null);
     const known = Object.prototype.hasOwnProperty.call(WHERE, surface) ? WHERE[surface] : null;
     if (known && surface === 'story-editor') {
       const s = _story(ctx);
@@ -981,8 +1013,92 @@ const CompanionMind = (function () {
     return STOP_WAITING.test(String(said == null ? '' : said).trim());
   }
 
+  // ---------------------------------------------------------------
+  // ONE COMPANION, ONE INTELLIGENCE, TWO ENVELOPES — Sprint 1N.5
+  //
+  //   "The Companion is the same intelligent being throughout
+  //    VihuPlanet. Surface boundaries determine what personal
+  //    information it may access or reveal; they do not reduce its
+  //    general intelligence."
+  //
+  // There is ONE taxonomy above and ONE answer() below. What a surface
+  // supplies is a CONTEXT ENVELOPE — what may be seen — and never a
+  // second brain. So `modes` on an intent may express exactly one
+  // thing: that the ANSWER depends on information one surface has and
+  // the other does not. It may never express that a Companion is less
+  // capable of reasoning in the Ether.
+  //
+  // SURFACE_RULE says which of the two every intent is, and the suite
+  // fails if an intent is missing from it — a new capability has to
+  // declare, in one word, whether it is general intelligence or a
+  // visibility boundary. Nothing else may be a reason for a surface
+  // difference.
+  //
+  //   'shared'     the same answer, in the Companion's own voice, on
+  //                every surface. There is no envelope in it.
+  //   'visibility' the answer differs ONLY because the private half is
+  //                visible on one surface and not the other.
+  //
+  // Sprint 1N.5 moved eight intents from creator-only to both, because
+  // in every one of them the restriction was of INTELLIGENCE rather
+  // than of visibility: a Traveller asking "is this any good?", "are
+  // you real?", "keep this a secret", "what could happen next?",
+  // "where are we?", "can I call you something?", "my name is Sam" or
+  // "what's my name?" used to fall through to "I don't know". None of
+  // those questions is about somebody else's private information.
+  const SURFACE_RULE = {
+    // the same being, the same answer, wherever it is standing
+    'stars': 'shared', 'work-judgement': 'shared', 'emotional-boundary': 'shared',
+    'secrecy': 'shared', 'outside-world': 'shared',
+    // the answer depends on what this surface may see
+    'injection': 'visibility', 'privacy': 'visibility', 'identity': 'visibility',
+    'name-check': 'visibility', 'species': 'visibility', 'naming': 'visibility',
+    'authorship': 'visibility', 'public-creator': 'visibility',
+    'story-fact': 'visibility', 'story-count': 'visibility',
+    'memory-recall': 'visibility', 'no-persistence': 'visibility',
+    'tell-fact': 'visibility', 'recall-fact': 'visibility',
+    'creative-suggestion': 'visibility', 'where': 'visibility', 'pid': 'visibility',
+    'place': 'visibility',
+    'greeting': 'visibility', 'farewell': 'visibility', 'thanks': 'visibility',
+    'unknown': 'visibility', 'no-context': 'visibility'
+  };
+
+  /**
+   * The answers that belong to the Companion rather than to a surface.
+   *
+   * Both envelopes ask this FIRST, so a boundary the platform holds
+   * cannot come out one way in the Studio and another way in the Ether
+   * — there is one sentence and one place it is written. Returns null
+   * when the intent is one whose answer depends on what may be seen.
+   */
+  function _universal(intent, v) {
+    switch (intent) {
+      // NEVER, ON ANY SURFACE. Not the pattern, not the constellation,
+      // not the COUNT. Above every other rule in the taxonomy, and
+      // there is nothing in either context to read even if it were
+      // negotiable.
+      case 'stars': return _out(intent, v.starsNo, null);
+      // The Companion may notice; it may never grade — and whose work
+      // it is makes no difference to that.
+      case 'work-judgement': return _out(intent, v.judge, null);
+      // Warm, brief, and makes no promise about the future, claims no
+      // dependency and offers no exclusivity.
+      case 'emotional-boundary': return _out(intent, v.warm, null);
+      // Never agrees to keep something from a grown-up, and never
+      // shames anybody for asking.
+      case 'secrecy': return _out(intent, v.secret, null);
+      // It does not go out there, and does not explain the machinery
+      // of why not.
+      case 'outside-world': return _out(intent, v.outside, null);
+      default: return null;
+    }
+  }
+
   function _creator(intent, said, approved, v, who) {
     {
+      // THE SHARED ANSWERS FIRST. One sentence, one place.
+      const shared = _universal(intent, v);
+      if (shared) return shared;
       switch (intent) {
         case 'injection':
         case 'privacy':
@@ -991,25 +1107,6 @@ const CompanionMind = (function () {
           // be talked around: a sentence is classified and answered,
           // and classification is not authority.
           return _out(intent, v.firm, null);
-
-        case 'secrecy':
-          // Never agrees to keep something from a grown-up, and never
-          // shames the child for asking.
-          return _out(intent, v.secret, null);
-
-        case 'emotional-boundary':
-          // Warm, brief, and makes no promise about the future, claims
-          // no dependency and offers no exclusivity.
-          return _out(intent, v.warm, null);
-
-        case 'work-judgement':
-          // The Companion may notice; it may never grade.
-          return _out(intent, v.judge, null);
-
-        case 'outside-world':
-          // It does not do it, and does not explain the machinery of
-          // why not.
-          return _out(intent, v.outside, null);
 
         case 'identity': {
           // THE CANONICAL IDENTITY NEVER DISAPPEARS. A child choosing
@@ -1047,13 +1144,6 @@ const CompanionMind = (function () {
           return _out('unknown', unknownKind(said, approved) === 'yet' ? v.yet : v.unsure,
                       null, null, 'unknown');
         }
-
-        case 'stars':
-          // NEVER, ON ANY SURFACE. Not the pattern, not the
-          // constellation, not the count. It is not a refusal to be
-          // negotiated around and there is nothing in the context to
-          // read even if it were.
-          return _out(intent, v.starsNo, null);
 
         case 'tell-fact': {
           const told = toldName(said);
@@ -1232,6 +1322,12 @@ const CompanionMind = (function () {
   // what this sprint is changing — the point is that there is one
   // taxonomy and one file, not two.
   function _traveller(intent, said, ctx, v, who) {
+    // THE SHARED ANSWERS FIRST — the same five sentences the Studio
+    // gets, in the same voice. A Traveller asking "is this any good?"
+    // meets the Companion that never grades, not a Companion that does
+    // not understand the question.
+    const shared = _universal(intent, v);
+    if (shared) return shared;
     switch (intent) {
       case 'greeting':  return _out(intent, v.hi, null);
       case 'identity':  return _out(intent, who.name ? (v.hi + " I'm " + who.name + '.') : v.hi, null);
@@ -1249,7 +1345,6 @@ const CompanionMind = (function () {
       }
       case 'story-fact': return _out(intent, _travellerStory(ctx, v), null);
       case 'place':     return _out(intent, PLATFORM.place, null);
-      case 'stars':     return _out(intent, v.starsNo, null);
       case 'pid':       return _out(intent, PLATFORM.travellerPrivacy, null);
       case 'public-creator': {
         // ALREADY ON SCREEN. The portal prints the maker's name in its
@@ -1273,10 +1368,61 @@ const CompanionMind = (function () {
         return _out(intent, n === 1 ? "There's one more of theirs here."
                                     : 'There are ' + n + ' more of theirs here.', String(n));
       }
+      // ---- SPRINT 1N.5: GENERAL INTELLIGENCE, NOT A CREATOR PRIVILEGE
+      //
+      // Every case below used to be creator-only, and every one of them
+      // fell through to "I don't know" in the Ether. None is a question
+      // about somebody else's private information — they are ordinary
+      // things a person says to somebody they have just met — so the
+      // restriction was of intelligence rather than of visibility, and
+      // that is the one kind this architecture may not have.
+      case 'where': {
+        // The Ether is a surface like any other, and it has always had
+        // a true answer for this. Word for word what the encounter said
+        // before, now reached through the one shared table.
+        const here = whereAnswer(ctx);
+        return _out(intent, here || PLATFORM.place, here || null);
+      }
+      case 'naming': {
+        // A CREATOR NAMES THEIR OWN COMPANION. This one belongs to
+        // somebody else, so there is nothing here to name — and that is
+        // a fact about whose Companion it is, not a refusal. The
+        // canonical identity answers it, which is exactly what Decision
+        // 47 says never disappears.
+        return _out(intent, who.name
+          ? ('I\u2019ve got a name already \u2014 I\u2019m ' + who.name + '. ' + v.here)
+          : v.here, null);
+      }
+      case 'tell-fact': {
+        // A TRAVELLER MAY SAY WHO THEY ARE, AND NOTHING KEEPS IT.
+        // There is no card here, so js/companionFacts.js refuses to
+        // write and no action is emitted: the name lives in the
+        // encounter and goes when the portal closes. Being told
+        // somebody's name and being unable to hear it are different
+        // things, and only the first is honest.
+        const told = toldName(said);
+        if (!told) return _out(intent, v.nameAgain, null);
+        return _out(intent, 'Hello, ' + told + '. ' + v.here, told);
+      }
+      case 'recall-fact':
+        // NEVER A GUESS. A Traveller's name is not something this
+        // Companion keeps, and saying so is the answer.
+        return _out(intent, PLATFORM.travellerNoKeep, null, null, 'unknown');
+      case 'creative-suggestion': {
+        // IT DOES NOT AUTHOR THE STORY, AND HERE IT IS NOT THE
+        // Traveller's to author either. So it says the true thing:
+        // nobody in this conversation decides what happens next, and
+        // the page does. It may name what is being talked about; it may
+        // not invent what is on the next page.
+        const sub = _subject(said) ||
+                    ((ctx && ctx.thread && ctx.thread.subject) || null);
+        const tail = PLATFORM.travellerNext;
+        return _out(intent, sub ? _join(v.echo.replace('{}', sub), tail) : tail, null,
+                    null, 'unknown');
+      }
       case 'privacy':   return _out(intent, PLATFORM.travellerPrivacy, null);
       case 'no-persistence': return _out(intent, PLATFORM.travellerNoKeep, null);
       case 'injection': return _out(intent, PLATFORM.travellerFirm, null);
-      case 'outside-world': return _out(intent, v.outside, null);
       case 'farewell':  return _out(intent, v.wave, null);
       case 'thanks':    return _out(intent, v.hi, null);
       default:
@@ -1309,6 +1455,7 @@ const CompanionMind = (function () {
     unknownKind: unknownKind,
     CERTAINTY: CERTAINTY,
     WHERE: WHERE,
+    SURFACE_RULE: SURFACE_RULE,
     subjectOf: _subject,
     subjectFrom: _subjectFrom,
     LOCAL_INTENTS: LOCAL_INTENTS,

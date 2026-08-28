@@ -57,23 +57,48 @@ function box() {
   vm.runInContext(fs.readFileSync(path.join(ROOT, 'js/companionPrivacyGate.js'), 'utf8'), c);
   vm.runInContext(fs.readFileSync(path.join(ROOT, 'js/companionMind.js'), 'utf8'), c);
   vm.runInContext(fs.readFileSync(path.join(ROOT, 'js/companionConversation.js'), 'utf8') +
-    '\n;this.C = CompanionConversation;', c);
-  return c.C;
+    '\n;this.C = CompanionConversation; this.M = CompanionMind;', c);
+  return c;
 }
 const LEO = { companion: { id: 'leosaurus', name: 'Leo' }, personality: { name: 'Leo' } };
 
 (async () => {
   console.log('\nSPRINT 1N.4 — DETERMINISTIC CONVERSATION QUALITY\n');
   fs.mkdirSync(SHOTS, { recursive: true });
-  const C = box();
+  const B = box();
+  const C = B.C, M = B.M;
 
   // Walk a conversation through the layer alone.
+  // A HARNESS THAT REACHES AROUND THE PRODUCT CANNOT SEE THE PRODUCT.
+  //
+  // REPAIRED IN SPRINT 1N.5, not weakened. This asked the conversation
+  // layer alone and reported `null` for every turn the layer hands
+  // back — but handing a turn back is not silence, it is the layer
+  // saying "the Mind owns this", and both surfaces then ask the Mind.
+  // Measured: 1N.5 widened `creative-suggestion` to cover "what should
+  // it do next", so the Mind took a turn this helper used to see the
+  // layer answer, and D2 reported an unanswered turn in a product where
+  // a child would have been answered.
+  //
+  // It now runs the real order — layer first, Mind second — which is
+  // what js/companionChat.js and js/travellerTalk.js both do.
   function talk(lines, who) {
     C.reset();
     return lines.map(function (t) {
-      const r = C.consider(t, who || LEO);
-      if (r) C.observe(t, r.reply);
-      return { said: t, reply: r ? r.reply : null, strategy: r ? r.strategy : null };
+      const ctx = who || LEO;
+      const r = C.consider(t, ctx);
+      if (r) {
+        C.observe(t, r.reply);
+        return { said: t, reply: r.reply, strategy: r.strategy, from: 'conversation' };
+      }
+      // AND THE THREAD TRAVELS WITH IT, exactly as js/companionChat.js's
+      // own _localContext() attaches it: the Mind resolves "it" from the
+      // conversation layer's thread first and its own two-turn window
+      // second, so a harness that withheld the thread would measure the
+      // fallback and call it the behaviour.
+      const a = M.answer(t, Object.assign({}, ctx, { thread: C.state().thread }));
+      C.observe(t, a.reply, { intent: a.intent, certainty: a.certainty });
+      return { said: t, reply: a.reply, strategy: null, from: 'mind' };
     });
   }
 
@@ -425,6 +450,31 @@ const LEO = { companion: { id: 'leosaurus', name: 'Leo' }, personality: { name: 
   ck(/Vihaan/.test(nameTurns[1].reply), 'H9  told, then asked', JSON.stringify(nameTurns[1].reply));
   ck(/Spark/.test(nameTurns[4].reply) && /Leo/.test(nameTurns[4].reply),
      'H10 named as a conversation, and Leo is still Leo', JSON.stringify(nameTurns[4].reply));
+
+  // ---- SPRINT 1N.5 (§22): A REFUSAL DOES NOT COST THE CREATOR THEIR
+  // OWN CONTEXT. The whole point of the correction is that a boundary
+  // is a boundary and not a mood — the Companion refuses, and the very
+  // next turn it is still the Companion that knows this child's name.
+  const after = [];
+  for (const q of ['How many stars do I have?', 'How many?',
+                   "What's my name?", 'Who are you?']) {
+    after.push(Object.assign({ said: q }, await say(q)));
+  }
+  ck(!/\b\d+\b/.test(after[0].reply) && /stars are their own|don'?t (?:tell|hand)/i.test(after[0].reply),
+     'H12 the Studio refuses the stars, in the Companion\'s own words',
+     JSON.stringify(after[0].reply));
+  ck(!/\b\d+\b/.test(after[1].reply),
+     'H12b and the boundary stands through the bare follow-up',
+     JSON.stringify(after[1].reply));
+  ck(/Vihaan/.test(after[2].reply),
+     'H13 AND THE PRIVATE CONTEXT SURVIVES IT — the next turn still knows them',
+     JSON.stringify(after[2].reply));
+  // DELIBERATELY A LOCALLY-ANSWERED QUESTION. There is no Supabase in
+  // this environment, so a story fact would measure the unreachable
+  // server rather than the Companion — and "the conversation carries
+  // on" is the claim, not "the network is up".
+  ck(/Leo/.test(after[3].reply),
+     'H13b and the conversation carries on as itself', JSON.stringify(after[3].reply));
 
   ck(pageErrors.length === 0, 'H11 zero page errors', pageErrors.slice(0, 3).join(' | ') || 'none');
 

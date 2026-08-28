@@ -9883,3 +9883,57 @@ conversation layer was holding.
 
 Every suite green. Decision 49 in `CLAUDE.md`;
 `tools/companion-dialogue-test/`.
+
+## Sprint 1N.5 — VihuPlanet Intelligence Boundary Correction (build 0692)
+
+An audit-and-correction sprint, not a feature. The product owner stated
+the rule the architecture was supposed to hold — *"the intelligence level
+in ether and studio is same. the only difference is personal identifiers
+which are limited till studio only"* — and the code did not hold it.
+
+**The architecture was already right; the taxonomy had drifted.** There
+has only ever been one `classify()`, one `answer()` and one Mind file,
+and no `TravellerBrain` or `CreatorBrain` was ever built. What had gone
+wrong was the `modes` field on eight intents, marked creator-only for no
+reason anybody had recorded — so in the Ether *"is this story any
+good?"*, *"are you real?"*, *"keep this a secret"*, *"what could happen
+next?"*, *"can I call you something?"*, *"my name is Sam"*, *"what's my
+name?"* and *"where are we?"* all fell through to *"I don't know."* None
+of them is about anybody's private information.
+
+`modes` may now express exactly one thing, and `SURFACE_RULE` records
+which for every intent: `shared` (one sentence, one place, both
+surfaces — stars, work-judgement, emotional-boundary, secrecy,
+outside-world, all answered by a single `_universal()` both envelopes ask
+first) or `visibility` (the answer differs only because the private half
+is visible on one surface). An intent missing from that table fails the
+suite. Separately, the conversation layer's entity extraction was all
+*making* verbs, which is what a Creator does and not what a Traveller
+does — so a Traveller could not start a thread about the story they were
+standing in. Three grammar patterns fixed it, and the same thread now
+forms from the same turns on both surfaces. The one thing that
+legitimately differs is authorship: *"that's yours to choose"* in the
+Studio, *"that's for the story to tell"* in the Ether.
+
+Stars moved the other way and widened to the indirect forms. A refusal
+now STANDS through a bare follow-up — *"how many?"* after a refused
+question repeats the Companion's own line rather than falling to *"I
+don't know that one"* — and releases the moment something else is said;
+both real journeys walk refuse → refuse-the-follow-up → converse
+normally. The maker's name is answered wherever it is PUBLIC (Decision
+15 puts it on the Story record and the portal prints it), refused where
+the record carries none.
+
+Two existing checks encoded the old assumption and were turned round with
+reasons written in place — `F8b` in the Mind suite and `C1b`/`C2` in the
+Ether suite — and one harness was repaired: the dialogue suite's `talk()`
+asked the conversation layer alone and read a handed-back turn as
+silence. `F8` was left alone, because `memory-recall` falling to
+`privacy` in the Ether is a visibility boundary and is correct.
+
+Nothing about memory, RLS, Edge authentication, card or story
+authorization, the privacy gate, the Bond validator or the voice
+architecture changed. Both OpenAI gates ship closed; provider calls = 0,
+verified in a sandbox with `fetch`, `XMLHttpRequest` and sockets removed.
+
+New: `tools/companion-parity-test/` (84). Canon: CLAUDE.md → Decision 48.

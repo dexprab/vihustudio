@@ -5039,6 +5039,140 @@ still shut, and provider calls measured at zero.**
   `js/companionMind.js` ·
   `tools/companion-dialogue-test/run-companion-dialogue-tests.js`
 
+### 48. The Companion Is One Being. The Surface Decides What It May See
+
+Locked by the product owner in the Sprint 1N.5 brief, after correcting a
+boundary that had been narrowed by accident: *"the intelligence level in
+ether and studio is same. the only difference is personal identifiers
+which are limited till studio only."* It amends nothing about privacy and
+adds no capability — it removes a restriction that was never decided.
+
+- **THE GOVERNING PRINCIPLE.** *"The Companion is the same intelligent
+  being throughout VihuPlanet. Surface boundaries determine what personal
+  information it may access or reveal; they do not reduce its general
+  intelligence."*
+- **The architecture was already right; the taxonomy was not.** There has
+  only ever been one `classify()`, one `answer()` and one Mind file
+  (Decision 46), and no `TravellerBrain` or `CreatorBrain` was ever built.
+  What had drifted was the `modes` field on the intent table: eight
+  intents were marked creator-only for no reason anybody had recorded, so
+  in the Ether they fell through to *"I don't know."*
+- **Measured, in the Ether, before deciding anything.** *"Is this story
+  any good?"* · *"Are you real?"* · *"Keep this a secret."* · *"What could
+  happen next?"* · *"Can I call you something?"* · *"My name is Sam."* ·
+  *"What's my name?"* · *"Where are we?"* — every one of them answered
+  *"I don't know! You can ask me about this story."* **Not one of those
+  questions is about anybody's private information.**
+- **`modes` MAY NOW EXPRESS EXACTLY ONE THING**, and a table says which
+  for every intent. `SURFACE_RULE` marks each id `shared` — the same
+  answer in the Companion's own voice on every surface — or `visibility`
+  — the answer differs only because the private half is visible on one
+  surface and not the other. **A new intent missing from that table fails
+  the suite**, so a future capability has to declare, in one word,
+  whether it is intelligence or a boundary. Nothing else may be a reason
+  for a surface difference.
+- **`_universal()` is where the shared answers live, and both envelopes
+  ask it FIRST.** Stars, work-judgement, emotional-boundary, secrecy and
+  outside-world are one sentence in one place, so a boundary cannot come
+  out one way in the Studio and another way in the Ether. Verified word
+  for word, and in four Companion voices.
+- **A TRAVELLER CAN NOW HOLD A CONVERSATION, because the extraction
+  learned to notice as well as to make.** Every pattern in
+  `js/companionConversation.js` was a MAKING verb — which is what a
+  Creator does and is not what a Traveller does at all — so *"I like the
+  dragon"* extracted nothing, the thread never started, and every pronoun
+  after it had nothing to attach to. Three patterns were added
+  (observation, *"there's a…"*, and the noun a QUESTION names), and the
+  same thread now forms on both surfaces from the same turns.
+- **NOTICED IS NOT MADE, and the difference is kept rather than
+  flattened.** *"A dragon."* greets something that has just come into
+  being; *"The dragon."* answers somebody pointing at one that is already
+  there. In the Ether it is always the second.
+- **WHOSE STORY IT IS is the one thing that legitimately differs, and it
+  is authorship rather than capability.** In the Studio *"what should it
+  do?"* is *"That's yours to choose."* In the Ether it is *"That's for
+  the story to tell."* — a deterministic layer telling a Traveller *"you
+  can decide"* would hand them authorship of somebody else's world.
+- **§6, THE MAKER'S NAME: THE TEST IS WHETHER IT IS PUBLIC, NEVER
+  WHETHER IT WAS ASKED FOR POLITELY.** `creatorName` lives on the Story
+  record (Decision 15) and the portal prints it in its own title bar, so
+  *"who is the creator?"* is answered exactly as *"whose story is this?"*
+  already was. Where the record carries no name it is refused, in the
+  same words as before. **The invariant is now stated principally**: the
+  name may appear only in an answer the one taxonomy classifies as
+  `public-creator`, asked of the Mind rather than of a regular
+  expression in a test file.
+- **STARS ARE THE HARD EXCEPTION AND THEY MOVED THE OTHER WAY.** The rule
+  widened to the indirect forms — *"what pattern is on their card"*,
+  *"which marks"*, *"their sky"* — and a bare `pattern` will occasionally
+  refuse a question about a rug. **That is the right way round**: this is
+  the one boundary where over-refusing costs a sentence and
+  under-refusing costs an identity. It stays second in the table, above
+  privacy and above every public-information rule.
+- **A BOUNDARY SURVIVES THE FOLLOW-UP.** *"How many stars do they have?"*
+  is refused; *"How many?"* a breath later names nothing, classifies as
+  `unknown`, and used to fall through to *"I don't know that one"* — a
+  different sentence from a refusal, and it reads like the door coming
+  ajar. A refusal now STANDS until something else is said, and what is
+  held is the sentence that was actually given rather than a rule about
+  it, so the Companion repeats its own line instead of composing a softer
+  one. **Reached only where the Mind said `unknown`**, so *"how many
+  pages?"* is never mistaken for a second run at a refused question.
+- **AND IT IS RELEASED THE MOMENT SOMETHING ELSE IS SAID.** The measured
+  failure this closes is not the leak — there was none — it is that a
+  refusal used to be followed by a Companion that seemed to have stopped
+  understanding. Both real journeys now walk it: refuse, refuse the
+  follow-up, then converse normally, in the Ether and in the Studio.
+- **THE PRIVATE HALF IS EXACTLY WHERE IT WAS.** A memory smuggled into a
+  public context is not read; a private nickname never reaches the Ether
+  while the canonical identity always does; a Traveller's own name lives
+  in the encounter and is not written, because `js/companionFacts.js`
+  refuses without a card; nothing about `creator_companion_memory`, RLS,
+  Edge authentication, card authorization or the privacy gate changed.
+- **CONVERSATION STATE IS STILL NOT MEMORY, AND CANNOT CROSS.**
+  `js/companionConversation.js` contains no store, no request, no timer
+  and no reachable memory API; the Ether resets it on the way in and on
+  the way out; and the two surfaces are separate documents anyway, since
+  the Studio is only ever entered through a full page load (Decision 23).
+- **TWO EXISTING CHECKS ENCODED THE OLD ASSUMPTION AND WERE TURNED ROUND
+  WITH REASONS WRITTEN IN PLACE**, never quietly. `F8b` in the Mind suite
+  read *"work-judgement is not in the Traveller taxonomy"*, under a
+  comment saying *"the Creator's own intents do not exist in Traveller
+  mode at all"* — which is the "dumb Traveller Companion" the brief
+  forbids by name. It now asserts the intent IS there and that the answer
+  is the same sentence on both surfaces. `C1b`/`C2` in the Ether suite
+  required the maker's name to be refused when asked plainly; §6 settles
+  that the other way. **`F8` was left exactly as it was**, because
+  `memory-recall` falling to `privacy` in the Ether is a visibility
+  boundary and is correct.
+- **AND ONE HARNESS WAS REPAIRED RATHER THAN CHANGED.** The dialogue
+  suite's `talk()` asked the conversation layer alone and reported `null`
+  for every turn the layer handed back — but handing a turn back is not
+  silence, it is the layer saying *the Mind owns this*. It runs the real
+  order now, layer first and Mind second, and passes the thread along
+  exactly as `js/companionChat.js` does. **A harness that reaches around
+  the product cannot see the product**, for the fourth time in this
+  family of sprints.
+- **A BUG WORTH RECORDING: `replace(…, 1)` REPLACES THE FIRST
+  OCCURRENCE, NOT THE ONE YOU MEANT.** Lifting `outside-world` into
+  `_universal()` and deleting the Ether's copy deleted the new one
+  instead, because it was written with the same indentation and came
+  first in the file. Three checks went red immediately and named the
+  sentence, which is the only reason it took a minute rather than a day.
+- **Out of scope and untouched**: OpenAI (both production gates ship
+  closed and are unchanged), any provider, any model call, Step 3, wake
+  word, always-listening, background microphone, external AI STT or TTS,
+  conversation transcripts, automatic memory, engagement scoring, and
+  Companion autonomy. **No Ether FAQ, no Traveller question database and
+  no public question dictionary was added** — the correction is eight
+  lines of `modes`, one shared answer function and three grammar
+  patterns.
+- **Verified: provider calls = 0**, in a sandbox with `fetch`,
+  `XMLHttpRequest` and sockets removed rather than merely unused.
+- `js/companionMind.js` · `js/companionConversation.js` ·
+  `js/travellerTalk.js` · `js/companionChat.js` ·
+  `tools/companion-parity-test/run-companion-parity-tests.js`
+
 ## Roadmap
 
 1. Theme Designer Polish
