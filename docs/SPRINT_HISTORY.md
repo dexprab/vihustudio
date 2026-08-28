@@ -9628,8 +9628,12 @@ while explaining the fix, and reported two subscriptions where there is
 one — the eleventh substring-inside-its-own-vocabulary catch here. It
 reads code now.
 
-Enable 99/99, mind 163/163, edge auth 127/127, identity 109/109, garden
-104/104, presence 90/90, moments 88/88, ether 69/69, companion 50/50,
-traveller reset 16/16.
+Every suite green: chat 230/230, mind 163/163, edge auth 127/127,
+identity 109/109, garden 104/104, enable 99/99, canon 94/94, context
+90/90, presence 90/90, moments 88/88, ether 69/69, memory 56/56,
+companion 50/50, traveller reset 16/16. The one skip is the memory
+suite's cross-suite section, switched off with `CM_SKIP_SUITES` because
+those neighbours were run directly — each is in the list above with its
+own count.
 
 Runbook: `supabase/DEPLOY_companion_mind.md`.
