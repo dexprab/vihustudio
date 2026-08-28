@@ -128,6 +128,17 @@ const FOUR = [
       if (st.settled && !st.showing) break;
       if (st.showing) { try { await page.mouse.click(720, 450); } catch (e) {} }
     }
+    // WAIT FOR THE COMPANION BEFORE ANYTHING ELSE. The loop above breaks
+    // the moment the body settles, and Studio Home settles BEFORE the
+    // Director has mounted the widget — so the fixed pause that used to
+    // stand here was a race, and it lost about one run in three. It cost
+    // H1 (no widget), H2/H3 (no pill, because the pill mounts FROM the
+    // Companion) and H6 in one go. Same fix as the presence suite's own
+    // arrive(): wait for the thing the checks read.
+    await page.waitForFunction(() => !!document.querySelector('.companion-widget img'),
+      null, { timeout: 20000 }).catch(() => {});
+    await page.waitForFunction(() => !!document.querySelector('.companion-chat-open'),
+      null, { timeout: 20000 }).catch(() => {});
     await page.waitForTimeout(1400);
     // A REAL STORY, THROUGH THE REAL DOOR. Studio Home has no project
     // open, so AppState.project is null and the Companion honestly says
@@ -308,20 +319,27 @@ const FOUR = [
     await arrive(bondedAs(cid, name, species));
     const who = await registerWithServer(fn, cid, name, species);
     if (!who.cardId) { no('C.' + cid + '  a card is active after the journey', 'none'); continue; }
-    // WAIT, DO NOT SAMPLE. The Companion is re-rendered when a story
-    // opens, and a bare evaluate() caught it mid-swap on roughly one run
-    // in five — a flake in this harness, not in the product.
-    await page.waitForFunction((want) => {
-      const i = document.querySelector('.companion-widget img');
-      return !!(i && new RegExp(want + '/').test(i.getAttribute('src') || ''));
-    }, cid, { timeout: 20000 }).catch(() => {});
-    const widget = await page.evaluate(() => {
-      const el = document.querySelector('.companion-widget img, .companion-widget');
-      const img = document.querySelector('.companion-widget img');
-      const r = el ? el.getBoundingClientRect() : null;
-      return { present: !!el, src: img ? img.getAttribute('src') : null,
-               rect: r ? { w: Math.round(r.width), h: Math.round(r.height) } : null };
-    });
+    // MEASURE INSIDE THE WAIT. Waiting and then sampling is still a
+    // race: the Director TEARS THE WIDGET DOWN and rebuilds it when a
+    // story opens, so a condition that held at poll time can be false
+    // by the next round trip — measured, C.leosaurus.1 reported the
+    // widget absent while C.leosaurus.1b, one line later, found the
+    // pill the same Companion had mounted. waitForFunction returns the
+    // handle of whatever the predicate returned, so the reading is
+    // taken in the tick the condition actually held.
+    const wh = await page.waitForFunction((want) => {
+      const el = document.querySelector('.companion-widget');
+      const img = el ? el.querySelector('img') : null;
+      if (!img) return false;
+      const src = img.getAttribute('src') || '';
+      if (!new RegExp(want + '/').test(src)) return false;
+      const r = el.getBoundingClientRect();
+      if (r.width <= 0) return false;
+      return { present: true, src: src,
+               rect: { w: Math.round(r.width), h: Math.round(r.height) } };
+    }, cid, { timeout: 20000 }).catch(() => null);
+    const widget = wh ? await wh.jsonValue()
+                      : { present: false, src: null, rect: null };
     ck(widget.present && new RegExp(cid + '/').test(String(widget.src || '')),
        'C.' + cid + '.1  ' + name + ' is on screen, and it is ' + name,
        widget.src + ' ' + (widget.rect ? widget.rect.w + '×' + widget.rect.h : ''));
@@ -494,7 +512,50 @@ const FOUR = [
   ck(geo.canvas === false, 'U2  it does not overlap the page canvas');
   ck(geo.header === false, 'U3  nor the header');
   ck(geo.pages === false, 'U4  nor the page list');
-  ck(geo.strip === false, 'U5  nor the object strip');
+  // ---- U5: THE OBJECT STRIP IS WHERE IT OPENS, AND THAT IS THE POINT
+  //
+  // THIS CHECK WAS TURNED ROUND, DELIBERATELY, AND IT IS THE ONE PLACE
+  // IN THIS SPRINT WHERE AN EARLIER TEST ENCODED BEHAVIOUR THAT HAS NOW
+  // CHANGED. It used to read "nor the object strip", written when the
+  // strip was a flex child of the workspace column — and that is exactly
+  // the arrangement the product owner reported as broken: "the talk
+  // widget is pushing everything upwards". Measured at 1366x700 there is
+  // no free band at the foot to escape into (the column runs y64-700,
+  // the page ends at 532, the object strip occupies 550-688), so the
+  // surface either takes room from the page or opens over something. It
+  // opens over the object strip, which is the one thing a child is not
+  // using while they are typing, and Sprint 1N.2's own geometry rule
+  // names canvas, page list, Add panel, header and Companion artwork —
+  // and not the object strip.
+  //
+  // So the check is stronger rather than weaker: the strip is the ONLY
+  // thing covered, it is covered only while OPEN, and the page canvas is
+  // the same size either way — which is the defect that was reported.
+  ck(geo.strip === true, 'U5  and the object strip is where it opens — the one surface it may use',
+     'canvas ' + geo.canvas + ', header ' + geo.header + ', pages ' + geo.pages);
+  const closedGeo = await page.evaluate(() => {
+    const r = (s) => { const e = document.querySelector(s); return e ? e.getBoundingClientRect() : null; };
+    const canv = () => { const c = r('main.preview-area .preview-wrapper');
+      return c ? { w: Math.round(c.width), h: Math.round(c.height) } : null; };
+    const open = canv();
+    CompanionChat.close();
+    return new Promise((res) => setTimeout(() => {
+      const bar = r('.companion-chat');
+      const strip = r('.object-strip');
+      const hits = !!(bar && strip && bar.width > 0 && bar.left < strip.right &&
+        strip.left < bar.right && bar.top < strip.bottom && strip.top < bar.bottom);
+      res({ open: open, closed: canv(), covers: hits });
+    }, 250));
+  });
+  ck(closedGeo.covers === false,
+     'U5b and it gives the strip back the moment it closes',
+     'covered while closed: ' + closedGeo.covers);
+  ck(closedGeo.open && closedGeo.closed &&
+     closedGeo.open.w === closedGeo.closed.w && closedGeo.open.h === closedGeo.closed.h,
+     'U5c OPENING IT TAKES NOTHING FROM THE PAGE — the reported defect',
+     JSON.stringify(closedGeo.open) + ' open, ' + JSON.stringify(closedGeo.closed) + ' closed');
+  await page.evaluate(() => CompanionChat.open());
+  await page.waitForTimeout(150);
   ck(geo.addPanel === false, 'U6  and it is not in the Add panel',
      'Decision 22 closed that surface by name');
   const silent = await talk('flibberty wobbet');
@@ -529,6 +590,30 @@ const FOUR = [
   });
   const esc = await page.evaluate(() => CompanionChat.isOpen());
   ck(esc === false, 'U8  and Escape closes it');
+
+  // ---- THE SHAPE THE PRODUCT ACTUALLY STORES ---------------------
+  //
+  // Asked of ProjectManager.serialize() in the running Studio rather
+  // than of a fixture, because a fixture is where this went wrong: the
+  // Edge Function looked for `slides` and the store has always written
+  // `pages`, so authorizeStory found no pages on EVERY real story and
+  // the Companion honestly said it did not know about the story open in
+  // front of the child.
+  const shape = await page.evaluate(() => {
+    try {
+      const pl = ProjectManager.serialize();
+      return { keys: Object.keys(pl), pages: Array.isArray(pl.pages),
+               slides: Array.isArray(pl.slides) };
+    } catch (e) { return { keys: [], error: String(e && e.message) }; }
+  });
+  ck(shape.pages === true && shape.slides !== true,
+     'U9  the payload the Studio stores names its page array `pages`',
+     JSON.stringify(shape.keys));
+  const fnSrc2 = fs.readFileSync(path.join(ROOT, 'supabase', 'functions',
+    'companion-chat', 'index.ts'), 'utf8');
+  const authFn = fnSrc2.slice(fnSrc2.indexOf('async function authorizeStory'));
+  ck(/payload\.pages/.test(authFn.slice(0, 4000)),
+     'U9b and the Edge Function reads THAT key, not a second opinion about it');
 
   // =================================================================
   console.log('\nH. STUDIO HOME — the Companion is there, so the way in is too');
@@ -575,7 +660,19 @@ const FOUR = [
   await page.evaluate(() => { try { CreationFlow.startBlank(); } catch (e) {} });
   await page.waitForFunction(() => !document.body.classList.contains('creation-flow-active'),
     null, { timeout: 20000 }).catch(() => {});
-  await page.waitForTimeout(1200);
+  // WAIT FOR THE MOVE, DO NOT SAMPLE IT. The pill is re-parented on the
+  // Studio's own pulse, so a fixed pause reads it in whichever host it
+  // happened to be in — and a screen still fading out sits ON TOP of it,
+  // which is what H6's onTop:false actually was.
+  await page.waitForFunction(() => {
+    const b = document.querySelector('.companion-chat-open');
+    if (!b || !/preview-area/.test(b.parentElement.className)) return false;
+    const r = b.getBoundingClientRect();
+    if (r.width <= 0) return false;
+    const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+    return !!(top && (top === b || b.contains(top)));
+  }, null, { timeout: 20000 }).catch(() => {});
+  await page.waitForTimeout(600);
   const moved = await page.evaluate(() => {
     const b = document.querySelector('.companion-chat-open');
     if (!b) return { pill: null };

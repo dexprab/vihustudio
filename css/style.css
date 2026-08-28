@@ -13063,12 +13063,23 @@ body.dark-theme .bia-studio-btn:hover{ background:rgba(255,255,255,0.08); }
    ground move to neutral greys for the same reason. Nothing about the
    design changed; only the colour a missing variable falls back to. */
 .companion-chat-open{
-  /* flex:0 0 auto — .preview-area is a flex column, and without it both
-     of these were stretched by the free space rather than sized by
-     their content. Measured: the strip came out 142px tall empty. */
+  /* OPENING IT MOVES NOTHING.
+     Reported by the product owner: "the talk widget is pushing
+     everything upwards". Both of these were flex children of
+     .preview-area — a flex COLUMN — so the pill AND the open strip took
+     roughly 150px out of the page canvas, and the page shrank the
+     moment a child pressed the pill.
+     Measured, there is no free room at the foot to escape into: at
+     1366x700 the workspace column runs y 64-700, the page ends at 532
+     and the object strip occupies 550-688, straight to the bottom. So
+     the two are treated differently rather than identically — the PILL
+     is a small permanent affordance and stays in the flow, costing a
+     predictable ~48px once; the STRIP is lifted out of it and opens
+     over the object strip, so pressing the pill changes the canvas by
+     nothing at all. Closed, it covers nothing. */
   flex:0 0 auto;
   align-self:center;
-  margin:6px auto 10px;
+  margin:4px auto 6px;
   padding:5px 14px;
   border:1px solid var(--border, rgba(124,124,134,.32));
   border-radius:999px;
@@ -13086,11 +13097,18 @@ body.dark-theme .bia-studio-btn:hover{ background:rgba(255,255,255,0.08); }
 }
 
 .companion-chat{
+  /* OUT OF THE FLOW, so opening it takes nothing from the page. It
+     opens over the object strip — which is what a child is not looking
+     at while they are talking — and closes back off it. */
+  position:absolute;
+  left:50%;
+  transform:translateX(-50%);
+  bottom:56px;
+  z-index:5;
   flex:0 0 auto;
-  align-self:center;
-  margin:0 auto 12px;
+  margin:0;
   max-width:640px;
-  width:100%;
+  width:min(560px, calc(100% - 32px));
   padding:10px 12px;
   border:1px solid rgba(255,214,140,.22);
   border-radius:14px;

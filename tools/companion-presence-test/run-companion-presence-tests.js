@@ -74,7 +74,21 @@ function LOOK() {
   // A REAL ARRIVAL. Author Mode is used only to reach a document that
   // has the modules in it; the arrival itself is then made through the
   // real door, with author mode cleared so the entry gate is live.
-  async function arrive(setup) {
+  /**
+   * A REAL ARRIVAL — the door, the Gateway, the boot.
+   *
+   * `want` is the Companion package id this arrival should end with on
+   * screen. It is not decoration: the loop below breaks the moment the
+   * body settles, and Studio Home settles BEFORE the Director has
+   * mounted the widget, so a fixed pause afterwards is a race. Measured
+   * — the Leo section failed L2 through L6 on roughly one run in four
+   * with the widget simply absent, while L1 (the card) passed, and the
+   * identical run passed next time. The four-Companion loop below
+   * already waits for exactly this; the single-Companion arrivals were
+   * still sampling. Pass nothing for a Traveller or an unbonded card,
+   * where there is no widget to wait for and waiting would be the bug.
+   */
+  async function arrive(setup, want) {
     await page.goto(BASE + '/studio.html?author=on');
     await page.waitForFunction(() => typeof MagicCard !== 'undefined' &&
       typeof StudioEntry !== 'undefined', null, { timeout: 20000 });
@@ -100,6 +114,14 @@ function LOOK() {
       if (st.settled && !st.showing) break;
       if (st.showing) { try { await page.mouse.click(720, 450); } catch (e) {} }
     }
+    if (want) {
+      await page.waitForFunction((id) => {
+        const w = document.querySelector('.companion-widget');
+        const i = w ? w.querySelector('img') : null;
+        if (!i) return false;
+        return i.src.split('/').slice(-2).join('/').indexOf(id + '/') === 0;
+      }, want, { timeout: 20000 }).catch(() => {});
+    }
     await page.waitForTimeout(1600);
   }
   const CLEAN = 'localStorage.clear(); sessionStorage.clear();';
@@ -121,7 +143,7 @@ function LOOK() {
   // =================================================================
   console.log('TEST A — a first Creator enters the Studio');
   // =================================================================
-  await arrive(bonded);
+  await arrive(bonded, 'leafy');
   const A = await page.evaluate(LOOK);
   await page.screenshot({ path: path.join(SHOTS, 'A-arrival.png') });
   ck(A.present && A.visible, 'A1  Leafy is visibly present on arrival',
@@ -277,7 +299,7 @@ function LOOK() {
      'D1  a refresh leaves the Studio entirely, so it cannot re-greet', afterRefresh);
 
   // A self-reload — the Home button — is the same arrival and is silent.
-  await arrive(bonded);
+  await arrive(bonded, 'leafy');
   const firstToken = await page.evaluate(() => {
     const d = CompanionMoments.decide('entry');
     return { token: StudioEntry.arrival(), spoke: d.reason };
@@ -334,7 +356,7 @@ function LOOK() {
   // =================================================================
   console.log('\nTEST G — a dialog is open');
   // =================================================================
-  await arrive(bonded);
+  await arrive(bonded, 'leafy');
   const G = await page.evaluate(() => {
     const before = CompanionMoments.decide('entry',
       Object.assign(CompanionMoments.signals(), { arrival: 'arrival:G' }));
@@ -398,7 +420,7 @@ function LOOK() {
      bond + ' -> ' + bondAgain);
 
   // A first-ever Creator: no stories, no history, and still greeted.
-  await arrive(bonded);
+  await arrive(bonded, 'leafy');
   const F1 = await page.evaluate(LOOK);
   ck(F1.present && !!F1.line && F1.signals.hasEverMade === false,
      'X3  a Creator with no story at all is still greeted',
@@ -530,7 +552,7 @@ function LOOK() {
   // anywhere in the Presence path, and that is the thing under test —
   // if one had been added, these would still pass and the point would
   // have been missed, so the source is checked for it too.
-  await arrive(asLeo);
+  await arrive(asLeo, 'leosaurus');
   const L = await page.evaluate(LOOK);
   await page.screenshot({ path: path.join(SHOTS, 'L-leo-arrival.png') });
 
@@ -682,7 +704,7 @@ function LOOK() {
   // =================================================================
   console.log('\nLEAFY REGRESSION — unchanged by any of it');
   // =================================================================
-  await arrive(bonded);
+  await arrive(bonded, 'leafy');
   const R = await page.evaluate(LOOK);
   ck(R.signals.companionId === 'leafy' && /leafy\//.test(R.who || ''),
      'R1  Leafy still resolves from her own card', R.who);

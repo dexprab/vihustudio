@@ -4551,6 +4551,35 @@ gates still closed.**
   are deployed by hand here, and that is what happened between 1N and
   1N.1. The measurement that fixed the ORDER is kept in the open clause
   above, because it is the reason the two steps are not interchangeable.
+- **THE SERVER READ A KEY THE STORE HAS NEVER WRITTEN** (build 0688).
+  Reported by the product owner with a screenshot: an open story of three
+  pages, and Leo answering *"I don't know!"*. The Mind was working
+  perfectly — a fixture would have said *"I am here."*, so the honest
+  refusal proved the real path was live. It was handed
+  `storyContext: null`. `authorizeStory()` read `record.data.slides`,
+  and `ProjectManager.serialize()` has always named that array **`pages`**
+  (`js/projectManager.js` → `pages:pages`), so every story on the platform
+  authorized as zero pages and every story fact was unanswerable.
+- **MY OWN FIXTURES AGREED WITH THE BUG, WHICH IS WHY NO SUITE SAW IT.**
+  Both new suites built their project rows with `slides`, copied from the
+  line under test. **A fixture derived from the code under test cannot
+  catch the code under test being wrong** — twelfth entry in this
+  repository's family of checks that confirm themselves. The rows are
+  built from `CreatorProjectStore.get()` now, and `U9`/`U9b` pin the key
+  from both ends: `serialize()` must name it `pages`, and the Edge
+  Function must read that name.
+- **OPENING THE STRIP NOW MOVES NOTHING** (build 0688). Reported in the
+  same message: *"the talk widget is pushing everything upwards"*. The
+  pill and the strip were both flex children of `main.preview-area`, a
+  flex COLUMN, so the page canvas gave up ~150px the moment a child
+  pressed the pill. Measured at 1366×700 there is no free room at the
+  foot to escape into — the column runs y64–700, the page ends at 532 and
+  the object strip occupies 550–688 — so the two are treated
+  DIFFERENTLY rather than identically: the pill is a small permanent
+  affordance and stays in the flow at a predictable cost, and the strip
+  is lifted out of it and opens over the object strip, which is not what
+  a child is looking at while they are talking. Measured closed and open:
+  the page canvas is 714×402 both times.
 - **Disclosed, and not fixed here:** the MODEL path still builds a real
   Creator context with the fixture personality, so if production ever
   opened, a child bonded to Leo would be answered as Leafy. It is a

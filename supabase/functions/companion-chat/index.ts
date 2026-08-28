@@ -1650,8 +1650,33 @@ async function authorizeStory(db, caller, cardId, storyId, pageId) {
     return { ok: false, reason: 'forbidden' };
   }
 
-  const pages = (record.data && Array.isArray(record.data.slides)) ? record.data.slides
-    : (Array.isArray(record.slides) ? record.slides : []);
+  // THE KEY IS `pages`, AND IT ALWAYS WAS.
+  //
+  // This looked for `slides` and found nothing, on every real story, so
+  // authorizeStory returned {ok:true, story:null} and the Companion
+  // honestly answered "I don't know" about a story sitting open in front
+  // of the child. Reported by the product owner with a screenshot: three
+  // pages, a story called "story 3", and Leo with no idea.
+  //
+  // The stored shape, followed all the way down rather than assumed:
+  //   creator_projects.data   -> the record CreatorProjectStore.upsert()
+  //                              builds  { id, name, cardId, data }
+  //   record.data             -> ProjectManager.serialize()'s payload
+  //   payload.pages           -> the array          <- THIS
+  // `AppState.slides` is the in-memory name; `pages` is what serialize()
+  // writes and what every stored project has. Nothing in this table has
+  // ever had a `slides` key.
+  //
+  // AND MY OWN FIXTURE AGREED WITH THE BUG. tools/companion-mind-test
+  // and tools/companion-enable-test both built rows with `slides`,
+  // copied from this line instead of from the store — so every check
+  // passed against a shape that does not exist. A fixture derived from
+  // the code under test cannot catch the code under test being wrong.
+  const payload = record.data || {};
+  const pages = Array.isArray(payload.pages) ? payload.pages
+    : (Array.isArray(payload.slides) ? payload.slides
+    : (Array.isArray(record.pages) ? record.pages
+    : (Array.isArray(record.slides) ? record.slides : [])));
   if (!pages.length) return { ok: true, story: null };
 
   // A pageId is an INDEX into the story it names — the stored page

@@ -182,18 +182,18 @@ function resetWorld() {
   ];
   DB.projects = [
     { id: 'p1', owner_id: 'user-aaaa',
-      data: { cardId: 'card_a', name: 'The Tiny Forest', data: { slides: slides() } } },
+      data: { cardId: 'card_a', name: 'The Tiny Forest', data: { pages: slides() } } },
     { id: 'p_leo', owner_id: 'user-aaaa',
-      data: { cardId: 'card_leo', name: 'The Tiny Forest', data: { slides: slides() } } },
+      data: { cardId: 'card_leo', name: 'The Tiny Forest', data: { pages: slides() } } },
     { id: 'p_quill', owner_id: 'user-aaaa',
-      data: { cardId: 'card_quill', name: 'The Tiny Forest', data: { slides: slides() } } },
+      data: { cardId: 'card_quill', name: 'The Tiny Forest', data: { pages: slides() } } },
     { id: 'p_nimbus', owner_id: 'user-aaaa',
-      data: { cardId: 'card_nimbus', name: 'The Tiny Forest', data: { slides: slides() } } },
+      data: { cardId: 'card_nimbus', name: 'The Tiny Forest', data: { pages: slides() } } },
     { id: 'p_bare', owner_id: 'user-aaaa',
-      data: { cardId: 'card_bare', name: 'The Tiny Forest', data: { slides: slides() } } },
+      data: { cardId: 'card_bare', name: 'The Tiny Forest', data: { pages: slides() } } },
     { id: 'p9', owner_id: 'user-bbbb',
       data: { cardId: 'card_b', name: 'Somebody Else’s Story',
-              data: { slides: [{ storyBeat: 'not yours' }] } } },
+              data: { pages: [{ storyBeat: 'not yours' }] } } },
   ];
 }
 
