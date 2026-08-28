@@ -81,6 +81,14 @@ const CompanionSpeak = (function () {
   // it did not is worse than one that cannot speak at all.
   const VOICE_WAIT_MS = 1200;
   const START_WAIT_MS = 1500;
+  // AND A CAP ON THE COMPANION'S OWN VOICE. js/vihuVoice.js bounds its
+  // own request now, but this is the floor under it: a `speak()` that
+  // never settles leaves `data-speaking` on the mute button lit for
+  // ever, and a child looking at a lit speaker with nothing coming out
+  // of it has been told something untrue. Comfortably longer than that
+  // module's own budget, so it only ever fires if something below it
+  // has gone wrong in a way nobody predicted.
+  const OWN_VOICE_WAIT_MS = 20000;
 
   function _voices() {
     try { return window.speechSynthesis.getVoices() || []; } catch (e) { return []; }
@@ -180,7 +188,11 @@ const CompanionSpeak = (function () {
     };
 
     if (viaVoice && typeof viaVoice.then === 'function') {
-      return viaVoice.then(function (spoke) {
+      const bounded = Promise.race([
+        viaVoice,
+        new Promise(function (resolve) { setTimeout(function () { resolve(false); }, OWN_VOICE_WAIT_MS); })
+      ]);
+      return bounded.then(function (spoke) {
         if (mine !== _token) return false;
         if (spoke) { return true; }
         // The Companion has no voice configured, or no session to fetch

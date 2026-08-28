@@ -46,6 +46,63 @@ const CompanionChat = (function () {
   const MAX_TURNS = 12;          // matches the server's own window
   const MAX_CHARS = 600;
   const TOKEN_WAIT_MS = 1200;    // js/vihuVoice.js's own bounded wait
+  // ---------------------------------------------------------------
+  // A PROMISE THAT CANNOT SETTLE IS NOT A FAILURE MODE THIS PRODUCT
+  // MAY HAVE.
+  //
+  // `.catch` handles a REJECTION. It does nothing at all for a request
+  // that simply never comes back — a captive portal that accepts the
+  // connection and answers nothing, a dead link that never resets, a
+  // cold start that hangs. The browser's own timeout for that is
+  // minutes, and on some paths there is none.
+  //
+  // Measured consequences before this, all three permanent for the rest
+  // of the session:
+  //
+  //   · `ask()`'s POST hanging left `_busy` true FOREVER, so the child
+  //     could never send another message and the dots span on.
+  //   · `_config()` caches its promise, so ONE hung fetch of
+  //     supabase-config.json silenced the Companion for the whole visit.
+  //   · js/vihuVoice.js's `_inflight[key]` is deleted on both settle
+  //     paths and on neither non-settle path, so a hung voice request
+  //     poisoned that line for good.
+  //
+  // `_token()` was already capped, by somebody who had met this. These
+  // are the rest of them.
+  const CONFIG_TIMEOUT_MS = 6000;
+  const ASK_TIMEOUT_MS = 12000;
+
+  /**
+   * A fetch that always settles, and RELEASES THE SOCKET rather than
+   * only giving up on it — an abort rejects the fetch, which the
+   * existing `.catch` already reads as unavailable.
+   */
+  function _fetchBounded(url, init, ms) {
+    let ctl = null;
+    try { ctl = new AbortController(); } catch (e) { ctl = null; }
+    const opts = ctl ? Object.assign({}, init || {}, { signal: ctl.signal }) : (init || {});
+    let timer = null;
+    const started = fetch(url, opts);
+    const capped = new Promise(function (_, reject) {
+      timer = setTimeout(function () {
+        try { if (ctl) ctl.abort(); } catch (e) {}
+        reject(new Error('timeout'));
+      }, ms);
+    });
+    return Promise.race([started, capped]).then(function (r) {
+      clearTimeout(timer); return r;
+    }, function (e) {
+      clearTimeout(timer); throw e;
+    });
+  }
+
+  /** Whatever happens, an answer. Never a promise left open. */
+  function _settled(promise, ms, fallback) {
+    return Promise.race([
+      Promise.resolve(promise).catch(function () { return fallback; }),
+      new Promise(function (resolve) { setTimeout(function () { resolve(fallback); }, ms); })
+    ]);
+  }
 
   let _turns = [];
   let _open = false;
@@ -142,10 +199,16 @@ const CompanionChat = (function () {
   let _cfgPromise = null;
   function _config() {
     if (_cfgPromise) return _cfgPromise;
-    _cfgPromise = fetch(CONFIG_URL, { cache: 'no-store' })
+    // A FAILURE IS NOT REMEMBERED. The promise is cached so the file is
+    // read once, and caching a `null` would mean one bad moment — a
+    // refresh mid-flight, a network blink — silencing the Companion for
+    // the rest of the visit. It is forgotten on failure so the next
+    // turn tries again; it is a small local file and the browser has it.
+    _cfgPromise = _fetchBounded(CONFIG_URL, { cache: 'no-store' }, CONFIG_TIMEOUT_MS)
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (cfg) { return (cfg && cfg.url && cfg.anonKey) ? cfg : null; })
-      .catch(function () { return null; });
+      .catch(function () { return null; })
+      .then(function (cfg) { if (!cfg) _cfgPromise = null; return cfg; });
     return _cfgPromise;
   }
 
@@ -339,7 +402,7 @@ const CompanionChat = (function () {
       const cfg = both[0], token = both[1];
       if (!cfg || !cfg.url) return { ok: false, reason: 'unavailable' };
       if (!token) return { ok: false, reason: 'unavailable' };
-      return fetch(cfg.url.replace(/\/+$/, '') + '/functions/v1/' + FN, {
+      return _fetchBounded(cfg.url.replace(/\/+$/, '') + '/functions/v1/' + FN, {
         method: 'POST',
         headers: {
           // The SESSION, not the anon key — Sprint 1A's rule. `apikey`
@@ -354,7 +417,7 @@ const CompanionChat = (function () {
           pageId: _pageId(),
           conversation: _turns,
         }),
-      }).then(function (r) {
+      }, ASK_TIMEOUT_MS).then(function (r) {
         return r.json().catch(function () { return null; });
       }).then(function (body) {
         if (!body || !body.ok || typeof body.reply !== 'string') {
@@ -734,7 +797,14 @@ const CompanionChat = (function () {
     _pose('conversation-sending');
     _renderStarters();
     const t0 = Date.now();
-    ask(said).then(function (r) {
+    // AND THE SURFACE CANNOT STICK, WHATEVER ask() DOES. Every promise
+    // inside it is bounded, and this is the floor under all of them: if
+    // a future change adds one that is not, the child still gets their
+    // turn back rather than a field they can never send from again.
+    // `_busy` staying true is the failure this exists to make
+    // impossible.
+    _settled(ask(said), ASK_TIMEOUT_MS + 2000, { ok: false, reason: 'unavailable' })
+      .then(function (r) {
       // A BEAT, NOT A PERFORMANCE. The deterministic answer is already
       // here; this is the smallest pause that reads as a turn being
       // taken, and it is subtracted rather than added — a slow server
@@ -1079,6 +1149,11 @@ const CompanionChat = (function () {
     displayName: _name,
     canonicalName: _canonicalName,
     BEAT_MS: BEAT_MS,
+    // PUBLISHED SO A SUITE CAN WAIT EXACTLY AS LONG AS THE PRODUCT
+    // DOES, rather than guessing — and so "a hung request always comes
+    // back" is a number somebody can read rather than a claim.
+    ASK_TIMEOUT_MS: ASK_TIMEOUT_MS,
+    CONFIG_TIMEOUT_MS: CONFIG_TIMEOUT_MS,
     CONVERSATION_OFFERED: CONVERSATION_OFFERED,
     MAX_TURNS: MAX_TURNS,
     MAX_CHARS: MAX_CHARS,

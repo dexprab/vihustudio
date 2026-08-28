@@ -828,6 +828,96 @@ function code(rel) {
   ck(proofs.noContext === '', 'V5  and with NO context it fails closed',
      JSON.stringify(proofs.noContext));
 
+  // =================================================================
+  console.log('\nHANG. A REQUEST THAT NEVER COMES BACK');
+  // =================================================================
+  //
+  // `.catch` handles a REJECTION. It does nothing at all for a request
+  // that simply never settles — a captive portal that accepts the
+  // connection and answers nothing, a link that dies without resetting.
+  // Reported by the product owner as `Promise {<pending>}`, for ever.
+  //
+  // Before the fix, `ask()`'s POST had no timeout: `_busy` stayed true
+  // and the child could never send another message for the rest of the
+  // visit. THIS HANGS THE NETWORK ON PURPOSE and asks whether the
+  // surface comes back.
+  await arrive(bondedAs('leosaurus', 'Leo', 'Lantern Lion'));
+  await openTalk();
+  await page.evaluate(() => CompanionChat.setVoiceOn(false));
+  const budget = await page.evaluate(() => CompanionChat.ASK_TIMEOUT_MS);
+  ck(typeof budget === 'number' && budget > 0 && budget <= 20000,
+     'HANG1 the ask has a published budget rather than none at all', budget + 'ms');
+
+  // THE CONTROL, FIRST. A check that cannot fail proves nothing, and
+  // the first draft of this section proved nothing: with no session
+  // `ask()` short-circuits before the fetch, so the request under test
+  // was never made and "the surface came back" measured a code path
+  // that never ran.
+  //
+  // The precondition is that this turn REACHES THE NETWORK — not what
+  // it comes back with. What the server says about a story is other
+  // checks' business, and asserting it here made this section fail for
+  // a reason that had nothing to do with hanging promises.
+  await page.evaluate(() => {
+    window.__realFetch = window.fetch;
+    window.__calls = 0; window.__hung = 0; window.__hangOn = false;
+    window.fetch = function (u) {
+      // Only the conversation. Everything else on the page carries on.
+      if (String(u).indexOf('companion-chat') !== -1) {
+        window.__calls++;
+        if (window.__hangOn) {
+          window.__hung++;
+          return new Promise(function () {});   // never settles, ever
+        }
+      }
+      return window.__realFetch.apply(window, arguments);
+    };
+  });
+  await say('how many pages are there?');
+  const reached = await page.evaluate(() => window.__calls);
+  ck(reached > 0, 'HANG2 the request under test genuinely reaches the network',
+     reached + ' call(s) before anything was broken');
+
+  await page.evaluate(() => { window.__hangOn = true; });
+  const sentAt = Date.now();
+  await page.evaluate(() => {
+    document.querySelector('.companion-chat-input').value = 'how many pages are there?';
+    document.querySelector('.companion-chat-send').click();
+  });
+  const recovered = await page.waitForFunction(
+    () => CompanionChat.state() === 'ready',
+    null, { timeout: budget + 10000 }).then(() => true).catch(() => false);
+  const took = Date.now() - sentAt;
+  const hungCalls = await page.evaluate(() => window.__hung);
+  ck(hungCalls > 0, 'HANG3 THE HUNG REQUEST WAS ACTUALLY MADE', hungCalls + ' held open');
+  ck(recovered && took >= budget - 1500,
+     'HANG4 THE SURFACE ALWAYS COMES BACK — a hung request is not a dead field',
+     recovered ? 'ready again after ' + took + 'ms (budget ' + budget + ')'
+               : 'STILL STUCK after ' + took + 'ms');
+  const afterHang = await page.evaluate(() => ({
+    said: (document.querySelector('.companion-chat-said') || {}).textContent || '',
+    canSend: !document.querySelector('.companion-chat-send').disabled,
+  }));
+  ck(/didn'?t catch that/i.test(afterHang.said),
+     'HANG5 and says so — a failure is not a silence', JSON.stringify(afterHang.said));
+  ck(afterHang.canSend, 'HANG6 and the child can say something else');
+
+  // AND IT IS NOT A ONE-OFF RECOVERY. A hung request must not poison
+  // the session, which is what a cached failed config or a stuck
+  // `_inflight` entry would do.
+  await page.evaluate(() => { window.__hangOn = false; });
+  const before = await page.evaluate(() => window.__calls);
+  await say('how many pages are there?');
+  const settled = await page.evaluate(() => ({
+    calls: window.__calls, state: CompanionChat.state(),
+    said: (document.querySelector('.companion-chat-said') || {}).textContent || '',
+  }));
+  ck(settled.calls > before && settled.state === 'ready',
+     'HANG7 and the NEXT turn goes out and comes back — the session is not poisoned',
+     JSON.stringify(settled));
+  await page.evaluate(() => { window.fetch = window.__realFetch; });
+  await page.evaluate(() => CompanionChat.close());
+
   ck(pageErrors.length === 0, 'Z1  zero page errors across every journey',
      pageErrors.slice(0, 3).join(' | ') || 'none');
 

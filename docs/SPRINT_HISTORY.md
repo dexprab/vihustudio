@@ -9937,3 +9937,39 @@ architecture changed. Both OpenAI gates ship closed; provider calls = 0,
 verified in a sandbox with `fetch`, `XMLHttpRequest` and sockets removed.
 
 New: `tools/companion-parity-test/` (84). Canon: CLAUDE.md → Decision 48.
+
+## Build 0693 — A promise that cannot settle
+
+Reported by the product owner pasting the deployment verifier into the
+console: **`Promise {<pending>}`**, and nothing else, for ever. The
+verifier was the first casualty; the same defect was in the product
+underneath it.
+
+`.catch` handles a rejection and does nothing for a request that never
+comes back — a captive portal that accepts the connection and answers
+nothing, a link that dies without resetting. Every `fetch` in the
+Companion path had a `.catch` and no bound. Measured by reverting the
+fix: `ask()` hanging left `_busy` true and the surface **still stuck
+after 22 seconds**, state `sending`, the field dead for the rest of the
+visit. Two of the three were permanent rather than momentary —
+`_config()` caches its promise, so one hung read of
+`supabase-config.json` silenced the Companion for the whole session; and
+`vihuVoice`'s `_inflight[key]` is deleted on both settle paths and
+neither non-settle path, so a hung voice request poisoned that line for
+good.
+
+Fixed with an `AbortController` bound on every network promise (release
+the socket, don't merely stop waiting), a forgetting of cached failures,
+and a hard floor in `_send()` so `_busy` can never stick whatever a
+future change adds. `_token()` was already capped by somebody who had met
+this — the cap belonged to the pattern, not to that one call.
+
+`HANG1`–`HANG7` hang the network on purpose against the real Studio
+surface. The first draft of them proved nothing: with no session `ask()`
+short-circuits before the fetch, so the hung request was never made
+(`0 held open`) while three checks reported green. The section now
+installs a counting wrapper and proves a real request reaches the network
+before breaking it — the fifteenth entry in this repository's family of
+checks that confirm themselves.
+
+Canon: CLAUDE.md → Decision 49.

@@ -212,10 +212,14 @@
   var _cfgPromise = null;
   function _config() {
     if (_cfgPromise) return _cfgPromise;
-    _cfgPromise = fetch(CONFIG_URL, { cache: 'no-store' })
+    _cfgPromise = _fetchBounded(CONFIG_URL, { cache: 'no-store' }, CONFIG_TIMEOUT_MS)
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (cfg) { return (cfg && cfg.url && cfg.anonKey) ? cfg : null; })
-      .catch(function () { return null; });
+      .catch(function () { return null; })
+      // A FAILURE IS NOT REMEMBERED. The promise is cached so the file
+      // is read once — and caching a `null` would mean one blink of the
+      // network silencing every voice for the rest of the visit.
+      .then(function (cfg) { if (!cfg) _cfgPromise = null; return cfg; });
     return _cfgPromise;
   }
 
@@ -268,6 +272,48 @@
   // line with no voice coming is not held back"), which is exactly the
   // check that exists to notice this.
   var TOKEN_WAIT_MS = 1200;
+  // ---------------------------------------------------------------
+  // A PROMISE THAT CANNOT SETTLE IS NOT A FAILURE MODE THIS PRODUCT
+  // MAY HAVE.
+  //
+  // `.catch` handles a REJECTION and does nothing at all for a request
+  // that never comes back. Two consequences here, and both were
+  // PERMANENT rather than momentary:
+  //
+  //   · `_inflight[key]` is deleted on both settle paths and on neither
+  //     non-settle path, so one hung generate poisoned that exact line
+  //     for the rest of the session — every later attempt to speak it
+  //     returned the same open promise.
+  //   · `speak()` never resolving takes its caller with it:
+  //     js/companionSpeak.js leaves the speaker button lit, and the
+  //     Ether host's narration hold waits on it.
+  //
+  // TOKEN_WAIT_MS above was already a cap, written by somebody who had
+  // met this. These are the rest of them.
+  var CONFIG_TIMEOUT_MS = 6000;
+  var GENERATE_TIMEOUT_MS = 15000;   // a voice is fetched AND decoded
+
+  function _fetchBounded(url, init, ms) {
+    var ctl = null;
+    try { ctl = new AbortController(); } catch (e) { ctl = null; }
+    var opts = init || {};
+    if (ctl) { opts = Object.assign({}, opts, { signal: ctl.signal }); }
+    var timer = null;
+    var started = fetch(url, opts);
+    var capped = new Promise(function (_, reject) {
+      timer = setTimeout(function () {
+        // ABORT, don't merely give up: a socket nobody is waiting on is
+        // still a socket, and the request is now certain to be useless.
+        try { if (ctl) ctl.abort(); } catch (e) {}
+        reject(new Error('timeout'));
+      }, ms);
+    });
+    return Promise.race([started, capped]).then(function (r) {
+      clearTimeout(timer); return r;
+    }, function (e) {
+      clearTimeout(timer); throw e;
+    });
+  }
 
   function _token() {
     try {
@@ -641,7 +687,7 @@
         // silence either way.
         if (!token) { _note('no session yet — staying silent'); return null; }
         var url = cfg.url.replace(/\/+$/, '') + '/functions/v1/' + FN_NAME;
-        return fetch(url, {
+        return _fetchBounded(url, {
           method: 'POST',
           headers: {
             // The SESSION, not the anon key. `apikey` stays the anon
@@ -658,7 +704,7 @@
             settings: settings,
             text: spoken
           })
-        }).then(function (r) {
+        }, GENERATE_TIMEOUT_MS).then(function (r) {
           var type = (r.headers.get('Content-Type') || '');
           // The function answers 200 with JSON when it has nothing to
           // say — no voice, no key, the provider unhappy. That is a

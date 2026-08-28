@@ -5173,6 +5173,72 @@ adds no capability — it removes a restriction that was never decided.
   `js/travellerTalk.js` · `js/companionChat.js` ·
   `tools/companion-parity-test/run-companion-parity-tests.js`
 
+### 49. A Promise That Cannot Settle Is Not a Failure Mode This Product May Have
+
+Reported by the product owner, pasting the deployment verifier into the
+console and getting one line back: **`Promise {<pending>}`**, for ever.
+The verifier was the first casualty; the same defect was sitting in the
+product underneath it.
+
+- **`.catch` HANDLES A REJECTION. IT DOES NOTHING AT ALL FOR A REQUEST
+  THAT NEVER COMES BACK.** A captive portal that accepts the connection
+  and answers nothing, a link that dies without resetting, a cold start
+  that hangs — none of them rejects. The browser's own timeout for that
+  is minutes, and on some paths there is none. Every `fetch` in the
+  Companion path had a `.catch` and no bound, which reads as careful and
+  is not.
+- **THE CHILD-FACING COST WAS A DEAD FIELD.** `js/companionChat.js`'s
+  `ask()` hanging left `_busy` true, so **the child could never send
+  another message for the rest of the visit** — the dots span, nothing
+  arrived, and nothing ever would. Measured by reverting the fix: still
+  stuck after **22 seconds**, state `sending`, the answer line empty, the
+  Send button disabled. With the bound: back in 12154ms against a
+  12000ms budget, *"I didn't catch that. Say it again?"*, and the next
+  turn goes out normally.
+- **TWO OF THE THREE WERE PERMANENT RATHER THAN MOMENTARY**, which is
+  what made them worth a canon entry. `_config()` caches its promise, so
+  ONE hung fetch of `supabase-config.json` silenced the Companion for the
+  whole session; and `js/vihuVoice.js`'s `_inflight[key]` is deleted on
+  both settle paths and on **neither non-settle path**, so a hung voice
+  request poisoned that exact line for good — every later attempt to
+  speak it returned the same open promise.
+- **A FAILURE IS NOT REMEMBERED.** Both config caches now forget a
+  `null`, because caching one means a single blink of the network
+  costing the rest of the visit. The promise is still cached on success,
+  which is what the cache was for.
+- **IT ABORTS, IT DOES NOT MERELY GIVE UP.** `_fetchBounded` carries an
+  `AbortController`, so the socket is released and the fetch rejects into
+  the `.catch` that was always there. A request nobody is waiting on is
+  still a request.
+- **AND THERE IS A FLOOR UNDER ALL OF IT.** `_send()` races `ask()`
+  against a hard budget, so if a future change adds an unbounded promise
+  the child still gets their turn back. `_busy` staying true is the
+  failure this exists to make impossible.
+- **`_token()` WAS ALREADY CAPPED**, by somebody who had met this
+  exact class of bug in `js/vihuVoice.js`. The lesson is that the cap
+  belonged to the pattern rather than to that one call: **every network
+  promise on a path a child waits on needs a bound, and the one that is
+  cached needs two — a bound and a forgetting.**
+- **THE VERIFIER HAD THE SAME DEFECT, AND IT IS THE WORSE PLACE TO HAVE
+  IT.** Every `await` in it was unbounded, so one call that never
+  returned took the whole script with it and printed **nothing** — not
+  even which step it had reached. *A verifier that can hang looks like a
+  broken deployment when it is a broken check.* It now bounds every step,
+  logs each one as it happens, and always reaches a verdict.
+- **THE FIRST TEST OF IT PROVED NOTHING, AND SAID SO.** With no session
+  `ask()` short-circuits before the fetch, so the hung request was never
+  made — `0 held open` — while "the surface came back" reported green
+  three times over. The section now installs a counting wrapper, proves
+  a real request reaches the network FIRST, and only then breaks it.
+  Fifteenth entry in this repository's family of checks that confirm
+  themselves.
+- `HANG1`–`HANG7` in `tools/companion-conversation-test/` hang the
+  network on purpose against the real Studio surface. Proved by
+  reverting the bound and watching four of them go red.
+- `js/companionChat.js` · `js/vihuVoice.js` · `js/companionSpeak.js` ·
+  `supabase/verify_companion_chat_deployed.js` ·
+  `tools/companion-conversation-test/run-companion-conversation-tests.js`
+
 ## Roadmap
 
 1. Theme Designer Polish
