@@ -9496,3 +9496,66 @@ nested — every one of them is in the list above with its own count.
 
 Both OpenAI production gates remain unset, and `COMPANION_MIND_ENABLED`
 ships unset too. Build 0684 → 0685.
+
+## Sprint 1N.1 — Enabling the Deterministic Companion
+
+An enablement and real-user sprint. No intelligence was added, no intent
+written, no model connected. What it produced is the first end-to-end
+walk of the deterministic Companion through the real Studio — and two
+defects that would have shipped the moment the door opened.
+
+**SPRINT BLOCKED — DEPLOYMENT ACCESS, and that half is unchanged.** This
+environment's network policy refuses the Supabase host
+(`CONNECT tunnel failed, response 403`), so the live function is
+untouched and unmeasured and nothing here claims otherwise.
+`supabase/DEPLOY_companion_mind.md` is the runbook: deploy the artifact,
+set `COMPANION_MIND_ENABLED`, confirm it with the function's own GET
+probe, and only then flip `CONVERSATION_OFFERED`. The order is measured
+rather than cautious — with the flag unset a Creator request falls into
+the synthetic fixture branch and the mock answers from an invented
+story, so flipping the constant first would answer a child about a story
+they never made.
+
+**THE TEXT FIELD WAS TWENTY-FOUR PIXELS WIDE.** `css/style.css` carries a
+blanket `button:not(...)… { width:100% }` with a hand-kept exception
+list, and the conversation's Send and Close were not on it — so each took
+the whole 614px row, flexbox squeezed the input to 24px, and Close
+overflowed the strip entirely. Every `.companion-chat-*` rule asked for
+`flex:0 0 auto` and every one of them lost. The stylesheet's own comment
+records the identical bug happening to `.creation-flow-myprojects-btn`;
+this is the second time. Reading the CSS would have agreed with the bug —
+it was found by measuring the running Studio.
+
+**AND THE WAY IN WAS INVISIBLE.** `--text-dim` and `--border` are defined
+nowhere in the stylesheet, so `var(--text-dim, rgba(255,255,255,.62))`
+fell through to 62%-opaque white text on the light theme's near-white
+`#F1F4FC`. For the one affordance a child has to find, that is the same
+as not being there. The fallbacks are now the `#888`-family neutral this
+file already uses elsewhere.
+
+**THE JOURNEY, FOR ALL FOUR COMPANIONS.** VihuPlanet → the Gateway →
+Studio → a real card → a real story → the real conversation strip.
+Leafy, Leo, Quill and Nimbus each answer who they are, what they are,
+what the story is called, how long it is and which page it is on — the
+same fact in four voices — decline to grade the work, leave what happens
+next to the child, refuse to keep a secret from a grown-up, and fall
+silent on anything outside the set. `tools/companion-enable-test/`
+serves the REAL `companion-chat/index.ts` over local HTTP, so what is
+proved is the contract end to end; the network hop and the identity
+provider are what stand in, and that is not a deployment.
+
+**Latency, in the real browser: median 10ms, p90 16ms, max 20ms across
+forty asks.** No loading state was added, and the suite checks that none
+appeared.
+
+**The tenth substring-in-its-own-vocabulary catch**, and the first inside
+real code rather than prose: a scan for a spinner matched
+`document.readyState !== 'loading'`.
+
+Enable 88/88, mind 159/159, chat 230/230, edge auth 127/127, identity
+109/109, garden 104/104, canon 94/94, context 90/90, presence 89/89,
+moments 88/88, ether 69/69, memory 56/56, companion 50/50, traveller
+reset 16/16. OpenAI unused, provider calls 0, both production gates
+closed. Build 0685 → 0686.
+
+Runbook: `supabase/DEPLOY_companion_mind.md`.

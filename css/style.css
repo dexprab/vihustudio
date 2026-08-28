@@ -418,14 +418,29 @@ button{
   justify-content:center;
 }
 
-/* The five :not()s give this (0,5,1), so it quietly beats any single
-   class that tries to set its own width — which is exactly what had
-   happened to .creation-flow-myprojects-btn: it asks for width:auto and
-   never got it, so the My Projects pill has always spanned the whole
-   row. That reads as a banner rather than a control, and it stops two
-   pills sitting side by side at all. Carved out here, the way every
-   other exception on this rule already is. */
-button:not(.tab-btn):not(.theme-toggle):not(.export-btn):not(#openBtn):not(#saveBtn):not(.creation-flow-myprojects-btn){
+/* The :not()s give this a specificity no single class can beat, so it
+   quietly overrides any button that tries to set its own width — which
+   is exactly what had happened to .creation-flow-myprojects-btn: it
+   asks for width:auto and never got it, so the My Projects pill has
+   always spanned the whole row. That reads as a banner rather than a
+   control, and it stops two pills sitting side by side at all. Carved
+   out here, the way every other exception on this rule already is.
+
+   AND IT HAPPENED AGAIN, to the Companion conversation strip — found in
+   Sprint 1N.1 by measuring the real Studio rather than reading the CSS.
+   .companion-chat-send and .companion-chat-close both ask for
+   `flex:0 0 auto` and got `width:100%` instead, so each took the whole
+   614px row and flexbox squeezed the text input down to TWENTY-FOUR
+   PIXELS. A child could not have typed into it. .companion-chat-open
+   came out 748px — a full-width banner where the design says a small
+   pill.
+
+   THE LESSON THIS RULE KEEPS TEACHING: a blanket `button { width:100% }`
+   with a hand-kept exception list means every new control is broken by
+   default and nobody finds out until somebody looks at the screen. Any
+   button added to the Studio that is not a full-width form button
+   belongs on this list in the same commit that adds it. */
+button:not(.tab-btn):not(.theme-toggle):not(.export-btn):not(#openBtn):not(#saveBtn):not(.creation-flow-myprojects-btn):not(.companion-chat-open):not(.companion-chat-send):not(.companion-chat-close){
   width:100%;
   margin-bottom:12px;
 }
@@ -13031,6 +13046,22 @@ body.dark-theme .bia-studio-btn:hover{ background:rgba(255,255,255,0.08); }
    and this is its last child, so the canvas keeps the room it had; the
    strip takes only what it needs and disappears entirely when closed. */
 
+/* ---------------------------------------------------------------
+   THE FALLBACKS WERE WRITTEN FOR A DARK STUDIO, AND THE STUDIO IS
+   LIGHT.
+
+   Measured in Sprint 1N.1 on the running Studio, not read off the
+   file: body carries `light-theme` and `--bg` resolves to #F1F4FC,
+   while `--text-dim` and `--border` are DEFINED NOWHERE in this
+   stylesheet. So every `var(--text-dim, rgba(255,255,255,.62))` below
+   fell through to 62%-opaque WHITE TEXT ON A NEAR-WHITE BACKGROUND —
+   the way in was invisible, which for the one affordance a child has
+   to find is the same as not being there.
+
+   `#888` is what this file's two other `--text-dim` fallbacks already
+   use, and it reads on both themes. The borders and the field's own
+   ground move to neutral greys for the same reason. Nothing about the
+   design changed; only the colour a missing variable falls back to. */
 .companion-chat-open{
   /* flex:0 0 auto — .preview-area is a flex column, and without it both
      of these were stretched by the free space rather than sized by
@@ -13039,10 +13070,10 @@ body.dark-theme .bia-studio-btn:hover{ background:rgba(255,255,255,0.08); }
   align-self:center;
   margin:6px auto 10px;
   padding:5px 14px;
-  border:1px solid var(--border, rgba(255,255,255,.16));
+  border:1px solid var(--border, rgba(124,124,134,.32));
   border-radius:999px;
   background:transparent;
-  color:var(--text-dim, rgba(255,255,255,.62));
+  color:var(--text-dim, #7c7c86);
   font-size:.78rem;
   letter-spacing:.01em;
   cursor:pointer;
@@ -13089,9 +13120,9 @@ body.dark-theme .bia-studio-btn:hover{ background:rgba(255,255,255,0.08); }
   flex:1 1 auto;
   min-width:0;
   padding:7px 11px;
-  border:1px solid var(--border, rgba(255,255,255,.16));
+  border:1px solid var(--border, rgba(124,124,134,.32));
   border-radius:999px;
-  background:rgba(0,0,0,.25);
+  background:var(--input-bg, rgba(124,124,134,.10));
   color:var(--text, #fff);
   font-size:.9rem;
 }
@@ -13117,7 +13148,7 @@ body.dark-theme .bia-studio-btn:hover{ background:rgba(255,255,255,0.08); }
   border:0;
   border-radius:50%;
   background:transparent;
-  color:var(--text-dim, rgba(255,255,255,.55));
+  color:var(--text-dim, #7c7c86);
   cursor:pointer;
 }
 .companion-chat-close:hover{ color:var(--text, #fff); }
