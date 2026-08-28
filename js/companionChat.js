@@ -204,6 +204,17 @@ const CompanionChat = (function () {
     p.personality = { name: p.companion.name, species: p.companion.species };
     p.naming = { called: called, awaiting: _awaiting };
     p.conversation = _turns.slice();
+    // WHAT THE TWO OF THEM ARE TALKING ABOUT. The conversation layer
+    // holds the thread now, so the Mind is TOLD it rather than working
+    // it out again from the turns — two readings of the same thing is
+    // two things that can disagree, and they did: the Mind asked
+    // "which one?" about a dragon the conversation layer was holding.
+    try {
+      if (typeof CompanionConversation !== 'undefined') {
+        const th = (CompanionConversation.state() || {}).thread;
+        if (th && th.subject) p.thread = { subject: th.subject };
+      }
+    } catch (e) {}
     return p;
   }
 
@@ -215,12 +226,43 @@ const CompanionChat = (function () {
    * answer may honestly come from, and it reads that off the Mind's own
    * published list rather than keeping a second one.
    */
+  // ---------------------------------------------------------------
+  // WHO OWNS THIS TURN — Sprint 1N.4
+  //
+  // THE MIND GETS FIRST REFUSAL, ALWAYS. It is what knows the stars are
+  // never told, that a Creator's private things stay private, that a
+  // judgement is refused and an injection changes no authority — and
+  // its rules are ORDERED so those come before anything else. A
+  // conversational reading that could reach around them would be a way
+  // round every boundary in this product.
+  //
+  // So js/companionConversation.js is offered a turn only where the
+  // Mind has classified it `unknown`: the ordinary middle of a child's
+  // sentence, which used to fall on the floor. Everything the Mind
+  // recognises is still answered by the Mind, unchanged.
+  function _conversationOwns(said, ctx, mind) {
+    try {
+      if (typeof CompanionConversation === 'undefined') return null;
+      if (!mind || !mind.classify) return null;
+      // FIRST REFUSAL. Anything with a name in the taxonomy is the
+      // Mind's, and this layer does not get to see it.
+      if (mind.classify(said, 'creator') !== 'unknown') return null;
+      return CompanionConversation.consider(said, ctx);
+    } catch (e) { return null; }
+  }
+
   function _answerHere(said) {
     let mind = null;
     try { mind = (typeof CompanionMind !== 'undefined') ? CompanionMind : null; } catch (e) {}
     if (!mind || !mind.answer) return null;
     const ctx = _localContext();
     if (!ctx) return null;
+
+    const conv = _conversationOwns(said, ctx, mind);
+    if (conv && conv.reply) {
+      return { reply: conv.reply, speak: conv.speak, intent: 'conversation', local: true };
+    }
+
     let a = null;
     try { a = mind.answer(said, ctx); } catch (e) { return null; }
     if (!a) return null;
@@ -288,6 +330,7 @@ const CompanionChat = (function () {
     if (here && here.local) {
       if (here.reply) _turns.push({ speaker: 'companion', text: here.reply });
       _turns = _turns.slice(-MAX_TURNS);
+      _observe(said, here.reply);
       return Promise.resolve({ ok: true, reply: here.reply, speak: here.speak, where: 'local' });
     }
 
@@ -338,6 +381,11 @@ const CompanionChat = (function () {
         if (!reply && here && here.intent === 'unknown' && here.reply) reply = here.reply;
         if (reply) _turns.push({ speaker: 'companion', text: reply });
         _turns = _turns.slice(-MAX_TURNS);
+        // EVERY TURN IS SEEN, whoever answered it. A story fact comes
+        // from the server, and the thread a child is holding must
+        // survive one — otherwise asking how many pages there are would
+        // forget the dragon.
+        _observe(said, reply);
         return { ok: true, reply: reply, speak: !!body.speak || !!reply };
       }).catch(function () { return { ok: false, reason: 'unavailable' }; });
     });
@@ -821,6 +869,12 @@ const CompanionChat = (function () {
 
   let _lastSpoke = false;
 
+  function _observe(said, reply) {
+    try {
+      if (typeof CompanionConversation !== 'undefined') CompanionConversation.observe(said, reply);
+    } catch (e) {}
+  }
+
   function _unheard() {
     try {
       if (typeof CompanionMind !== 'undefined' && CompanionMind.PLATFORM &&
@@ -865,6 +919,13 @@ const CompanionChat = (function () {
     _turns = [];
     _awaiting = false;
     _spoke = false;
+    // THE CONVERSATION STATE GOES WITH THE CONVERSATION. It is not a
+    // memory and must not behave like one: closing forgets the thread,
+    // the pending question and the window, exactly as it forgets the
+    // turns.
+    try {
+      if (typeof CompanionConversation !== 'undefined') CompanionConversation.reset();
+    } catch (e) {}
     // A MICROPHONE MUST NEVER OUTLIVE THE SURFACE THAT OPENED IT, and
     // neither may a voice. Both are shut here, and this is the only
     // place either of them needs to be remembered about.

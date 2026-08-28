@@ -1352,7 +1352,9 @@ const CompanionMind = (function () {
         case 'creative-suggestion': {
           const here = _subject(said);
           const back = (!here && PRONOUN.test(String(said || '')))
-            ? _subjectFrom(approved.conversation, said) : null;
+            ? ((approved.thread && approved.thread.subject) ||
+               _subjectFrom(approved.conversation, said))
+            : null;
           const sub = here || back;
           if (sub) return _out(intent, _join(v.echo.replace('{}', sub), v.yours), sub);
           if (PRONOUN.test(String(said || ''))) return _out(intent, v.clarify, null);

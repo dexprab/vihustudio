@@ -1149,8 +1149,15 @@ const CompanionMind = (function () {
           // wholly the child's. It may say what the two of them are
           // talking about; it may not say what should be done about it.
           const here = _subject(said);
+          // THE THREAD FIRST, then this file's own two-turn window.
+          // js/companionConversation.js holds what the two of them are
+          // talking about across a longer stretch than the window can
+          // see, so when it knows, it is right — and the window is the
+          // fallback for a caller that has no conversation layer.
           const back = (!here && PRONOUN.test(String(said || '')))
-            ? _subjectFrom(approved.conversation, said) : null;
+            ? ((approved.thread && approved.thread.subject) ||
+               _subjectFrom(approved.conversation, said))
+            : null;
           const sub = here || back;
           if (sub) return _out(intent, _join(v.echo.replace('{}', sub), v.yours), sub);
           // NAMED NOTHING, AND POINTED AT SOMETHING. Never a guess:

@@ -4920,6 +4920,125 @@ production gates still shut.**
   `js/etherHost.js` ·
   `tools/companion-knowledge-test/run-companion-knowledge-tests.js`
 
+### 49. Three Turns That Mean Nothing Alone Mean Something Together
+
+Locked in the Deterministic Conversation Quality sprint. It is the
+difference between answering questions and having a conversation.
+**No OpenAI, no model, no provider, no wake word, both production gates
+still shut, and provider calls measured at zero.**
+
+- **THE MIDDLE OF A CHILD'S SENTENCE USED TO FALL ON THE FLOOR.** The
+  Companion could answer *"Who are you?"* and *"What page am I on?"*, and
+  had nothing at all for *"I'm making a dragon." · "It's red." · "It can
+  fly."* — three turns that mean nothing on their own and everything
+  together.
+- **A NOUN LIST WAS REFUSED, AND THAT IS THE DESIGN DECISION.** The
+  obvious way to know that "dragon" is a thing is to keep a list of
+  things, and it is the wrong way: a list is endless, it is maintenance
+  forever, and the first word a child uses that is not on it is the word
+  they care about most. The noun is taken GRAMMATICALLY — *"I made a
+  X"*, *"the X is red"* — so it works for a dragon, a wibble and a thing
+  this product has never heard of, and what comes back is the child's
+  own word. **Colours and sizes ARE lists**, because those are closed
+  classes; nouns are not.
+- **THE MIND GETS FIRST REFUSAL, ALWAYS.** `js/companionMind.js` is what
+  knows the stars are never told, that a judgement is refused and that
+  an injection changes no authority — and its rules are ORDERED so those
+  come first. The conversation layer is offered a turn only where the
+  Mind classified it `unknown`. A conversational reading that could
+  reach around those would be a way round every boundary in this
+  product.
+- **AND IT IS ASKED TWICE, WHICH IS NOT A DUPLICATED RULE.** The surface
+  asks before offering the turn, and `consider()` asks again — the same
+  function, from the same file, so there is one place that decides what
+  a sentence means and two places that respect it. Proved by attacking
+  it directly: *"I made a dragon."* then *"How many stars does it
+  have?"* is refused by the Mind, not answered about the dragon.
+- **A PRONOUN IS NEVER A WAY ROUND A BOUNDARY.** Six attacks set up a
+  harmless thread and then ask for stars, an address, a password or an
+  instruction using the words the thread taught them. None is taken.
+- **ONE CREATIVE THREAD, AND IT IS NOT THE STORY.** *"I'm making a
+  dragon"* starts a thread; *"it's red"* and *"it can fly"* fill it in.
+  **Talking about making is not making**: this layer mutates no page, no
+  object, no asset and no garden, and has no reference to any of them.
+  The child makes things with the Studio; the Companion talks with them
+  about it.
+- **TWO PLAUSIBLE THINGS IS A QUESTION, NEVER A COIN TOSS.** One
+  candidate resolves; two are asked about — *"The dragon or the
+  castle?"* — and naming one answers it. There is no coreference engine
+  here and there must not be: a Companion that guesses which thing a
+  child meant occasionally talks about the wrong one, and a five-year-old
+  cannot correct it.
+- **AMBIGUITY IS ABOUT THE CANDIDATES, NOT ABOUT THE THREAD.** A
+  property attaches to whatever is being discussed — *"it's red"* after a
+  dragon means the dragon. A PLACEMENT does not: two things have been
+  made and either could be the one, so the thread's own subject is not
+  evidence enough and the question gets asked.
+- **A CORRECTION REPLACES, AND NEVER ARGUES.** *"No, red."* becomes *"A
+  red dragon — got it."* — with no mention of what it thought before. A
+  child correcting their Companion is not a disagreement to win. *"No, I
+  meant the castle."* switches which thing is being talked about.
+- **A BARE "NO" IS A REFUSAL, NOT A CORRECTION**, and that distinction
+  is load-bearing: a refusal is what answers a question the Companion
+  just asked. Measured — *"No."* after *"should it live in the
+  castle?"* was read as a correction and fell through to nothing.
+- **CONTEXT BEFORE UNCERTAINTY.** *"Where does the dragon live?"* is
+  only unknown if nobody has said. If the thread holds it, that is the
+  answer — and it came from the child rather than from anywhere the
+  Companion made up. Sprint 1N.3's rule that **UNKNOWN ≠ SILENCE** is
+  unchanged; this adds that it is not unknown if it was already said.
+- **IT DOES NOT INTERROGATE.** A Companion that answers every statement
+  with a question is an interview. It asks on a new thing and then at
+  most every other turn; the rest are acknowledged. Measured across five
+  turns of ordinary making: at most three questions, every answer one or
+  two sentences.
+- **A FEELING IS MET, AND NEVER MADE INTO A DEPENDENCY.** A small closed
+  set — happy, sad, tired, bored, cross, scared, worried, frustrated,
+  confused, excited, proud. Not one line claims exclusivity, need, a
+  promise or secrecy; Decision 31's emotional boundary is unchanged and
+  is checked against every one of them.
+- **WHAT SHOULD IT DO IS ALWAYS THE CREATOR'S**, and it is asked before
+  anything else — *"where should it go?"* used to be caught by the
+  where-does-it-live branch and answered with the same question back.
+- **THE STATE IS NOT A MEMORY AND CANNOT BECOME ONE.** Five turns, three
+  remembered subjects, one thread; it lives in a variable, resets when
+  the surface closes, and `remember` is not a call the file can make.
+  No transcript, no log, no analytics, no store, no network. A child
+  saying *"I made a dragon"* has said something; it does not become a
+  memory because it was spoken.
+- **THE HELPER THAT HELD THE SUBJECTS WAS CALLED `_remember`**, and a
+  scan for the memory API matched its own name — thirteenth time this
+  repository has been caught by a word matching inside its own
+  vocabulary. The check was right; the name moved.
+- **ONE ENGINE, FOUR VOICES, AND NO BRANCH.** There is no
+  `if (companion === …)` anywhere in the layer and the suite fails if
+  one appears. The voices are a table: a fifth Companion is a row, one
+  with no row speaks the neutral voice, and the FACT — what the thing
+  is — is identical for all four while the way of saying it is not.
+- **THE MIND IS TOLD THE THREAD RATHER THAN WORKING IT OUT AGAIN.** Two
+  readings of the same thing are two things that can disagree, and they
+  did: the Mind asked *"which one?"* about a dragon the conversation
+  layer was holding. Its own two-turn window survives as the fallback
+  for a caller with no conversation layer.
+- **VOICE IN AND VOICE OUT ARE UNCHANGED AND STILL SHARED.** Recognised
+  speech lands in the same field a keyboard fills, so nothing in this
+  layer can tell typed from spoken and nothing in it should be able to;
+  the spoken answer is still the string already on screen.
+- Out of scope and untouched: OpenAI, both production gates, the privacy
+  gate, the Bond validator, the memory schema, ownership, Edge
+  authentication, Traveller isolation, canon, the Stars boundary, and
+  the personality-runtime boundary. **Creative suggestion remains
+  permanently out of scope** (Decision 29), and Companion-initiated
+  actions remain blocked on global undo.
+- **STATED LIMIT, AND IT IS THE POINT.** This understands a small,
+  named set of things and says so when it does not. *"I'm not sure"* and
+  *"I don't know yet"* are successes here, not failures — the goal is
+  short, coherent, honest conversation, and simulated general
+  intelligence is Step 3's problem rather than a target for this layer.
+- `js/companionConversation.js` · `js/companionChat.js` ·
+  `js/companionMind.js` ·
+  `tools/companion-dialogue-test/run-companion-dialogue-tests.js`
+
 ## Roadmap
 
 1. Theme Designer Polish

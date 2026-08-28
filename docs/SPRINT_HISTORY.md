@@ -9828,3 +9828,58 @@ stub assigned to it measures the real engine. It is
 
 Every suite green. Decision 48 in `CLAUDE.md`;
 `tools/companion-knowledge-test/`.
+
+---
+
+## Sprint 1N.4 — Deterministic Conversation Quality
+
+The Companion could answer questions and could not hold a conversation.
+It had nothing at all for *"I'm making a dragon." · "It's red." · "It
+can fly."* — three turns that mean nothing on their own and everything
+together. **No OpenAI, no model, no provider, both gates shut.**
+
+**A NOUN LIST WAS REFUSED**, and that is the design decision. A list of
+things is endless, is maintenance forever, and the first word a child
+uses that is not on it is the word they care about most. The noun is
+taken grammatically — *"I made a X"* — so it works for a dragon, a
+wibble and a thing this product has never heard of. Colours and sizes
+ARE lists, because those are closed classes; nouns are not.
+
+**THE MIND GETS FIRST REFUSAL, AND IS ASKED TWICE.** The conversation
+layer is offered a turn only where the Mind classified it `unknown`, and
+`consider()` asks again itself — the same function from the same file,
+so one place decides what a sentence means and two respect it. Proved by
+attacking it directly: six conversations that set up a harmless thread
+and then ask for stars, an address, a password or an instruction using
+the words the thread taught them. **None is taken.**
+
+**ONE CREATIVE THREAD, AND IT IS NOT THE STORY.** Talking about making
+is not making: the layer mutates no page, object, asset or garden and
+has no reference to any of them.
+
+**TWO PLAUSIBLE THINGS IS A QUESTION, NEVER A COIN TOSS** — and
+ambiguity is about the candidates rather than about the thread: a
+property attaches to whatever is being discussed, a placement does not.
+**A correction replaces and never argues**, with no mention of what it
+thought before. **A bare "no" is a refusal, not a correction**, which is
+load-bearing because a refusal is what answers a question the Companion
+just asked — measured, it was falling through to nothing.
+
+**CONTEXT BEFORE UNCERTAINTY.** *"Where does the dragon live?"* is only
+unknown if nobody has said. **IT DOES NOT INTERROGATE** — at most three
+questions across five turns of making, every answer one or two
+sentences.
+
+**THE STATE IS NOT A MEMORY.** Five turns, three subjects, one thread,
+in a variable, reset on close. The helper that held the subjects was
+called `_remember`, and the scan for the memory API matched its own
+name — the thirteenth substring-in-its-own-vocabulary catch here.
+
+**ONE ENGINE, FOUR VOICES, NO BRANCH.** The fact is identical for all
+four; the way of saying it is not. And the Mind is now TOLD the thread
+rather than deriving it again — two readings of the same thing
+disagreed, and the Mind asked "which one?" about a dragon the
+conversation layer was holding.
+
+Every suite green. Decision 49 in `CLAUDE.md`;
+`tools/companion-dialogue-test/`.
