@@ -59,16 +59,89 @@ const CompanionSpeak = (function () {
     catch (e) { return false; }
   }
 
+  // ---------------------------------------------------------------
+  // THE PLATFORM VOICE, AND WHY IT NEEDS THIS MUCH CARE
+  //
+  // `speechSynthesis.speak()` returns nothing and throws nothing. It is
+  // perfectly happy to be handed an utterance and do NOTHING with it,
+  // and there are two ordinary ways that happens:
+  //
+  //   1. THE VOICE LIST IS EMPTY. Chrome loads voices lazily and fires
+  //      `voiceschanged` when they arrive. Speaking before that is
+  //      silence — measured here: getVoices() returned 0 and say()
+  //      still reported success.
+  //   2. cancel() WAS CALLED IMMEDIATELY BEFORE. A long-standing Chrome
+  //      quirk: cancelling an empty queue and then speaking can leave
+  //      the utterance stuck. stop() below now only cancels when there
+  //      is something to cancel.
+  //
+  // So this waits for a voice, then resolves on `onstart` — the only
+  // event that means a sound is actually being made. ANYTHING ELSE IS
+  // REPORTED AS FALSE, because a speak function that says it spoke when
+  // it did not is worse than one that cannot speak at all.
+  const VOICE_WAIT_MS = 1200;
+  const START_WAIT_MS = 1500;
+
+  function _voices() {
+    try { return window.speechSynthesis.getVoices() || []; } catch (e) { return []; }
+  }
+
+  function _voicesReady() {
+    return new Promise(function (resolve) {
+      if (_voices().length) { resolve(true); return; }
+      let done = false;
+      const finish = function () {
+        if (done) return;
+        done = true;
+        try { window.speechSynthesis.onvoiceschanged = null; } catch (e) {}
+        resolve(_voices().length > 0);
+      };
+      try { window.speechSynthesis.onvoiceschanged = finish; } catch (e) {}
+      setTimeout(finish, VOICE_WAIT_MS);
+    });
+  }
+
   function _platform(text, mine) {
-    try {
-      if (!window.speechSynthesis || !window.SpeechSynthesisUtterance) return false;
-      const u = new window.SpeechSynthesisUtterance(text);
-      u.rate = 0.98;
-      u.onend = function () { if (mine === _token) _set('idle'); };
-      u.onerror = function () { if (mine === _token) _set('idle'); };
-      window.speechSynthesis.speak(u);
-      return true;
-    } catch (e) { return false; }
+    if (!window.speechSynthesis || !window.SpeechSynthesisUtterance) return Promise.resolve(false);
+    return _voicesReady().then(function (haveVoices) {
+      if (mine !== _token) return false;
+      // NO VOICE, NO SPEECH, AND SAY SO. Reporting success here is what
+      // made this feature look broken rather than unavailable.
+      if (!haveVoices) return false;
+      return new Promise(function (resolve) {
+        let settled = false;
+        const done = function (started) {
+          if (settled) return;
+          settled = true;
+          resolve(!!started);
+        };
+        let u;
+        try { u = new window.SpeechSynthesisUtterance(text); }
+        catch (e) { done(false); return; }
+        u.rate = 0.98;
+        // An explicit voice rather than the default: on some platforms
+        // the default is not one of the loaded ones and speaks nothing.
+        try {
+          const list = _voices();
+          const pick = list.find(function (v) { return /^en[-_]/i.test(v.lang || ''); }) || list[0];
+          if (pick) { u.voice = pick; u.lang = pick.lang || 'en-US'; }
+        } catch (e) {}
+        u.onstart = function () { done(true); };
+        u.onerror = function () { if (mine === _token) _set('idle'); done(false); };
+        u.onend = function () { if (mine === _token) _set('idle'); done(true); };
+        try { window.speechSynthesis.speak(u); } catch (e) { done(false); return; }
+        // IT NEVER STARTED. Not an error a child meets — the answer is
+        // on screen and always was — but never reported as success.
+        setTimeout(function () {
+          if (settled) return;
+          let live = false;
+          try { live = !!(window.speechSynthesis.speaking || window.speechSynthesis.pending); }
+          catch (e) {}
+          if (!live && mine === _token) _set('idle');
+          done(live);
+        }, START_WAIT_MS);
+      });
+    });
   }
 
   /**
@@ -98,25 +171,28 @@ const CompanionSpeak = (function () {
       }
     } catch (e) { viaVoice = null; }
 
+    const fallback = function () {
+      return _platform(words, mine).then(function (spoke) {
+        if (mine !== _token) return false;
+        if (!spoke) _set('idle');
+        return spoke;
+      });
+    };
+
     if (viaVoice && typeof viaVoice.then === 'function') {
       return viaVoice.then(function (spoke) {
         if (mine !== _token) return false;
-        if (spoke) { _set('idle'); return true; }
-        // The Companion has no voice configured. The browser's own is
-        // the fallback rather than nothing at all.
-        if (_platform(words, mine)) return true;
-        _set('idle');
-        return false;
+        if (spoke) { return true; }
+        // The Companion has no voice configured, or no session to fetch
+        // one with. The browser's own is the fallback rather than
+        // nothing at all.
+        return fallback();
       }).catch(function () {
         if (mine !== _token) return false;
-        if (_platform(words, mine)) return true;
-        _set('idle');
-        return false;
+        return fallback();
       });
     }
-    if (_platform(words, mine)) return Promise.resolve(true);
-    _set('idle');
-    return Promise.resolve(false);
+    return fallback();
   }
 
   /**
@@ -128,7 +204,16 @@ const CompanionSpeak = (function () {
   function stop() {
     _token++;
     try { if (typeof VihuVoice !== 'undefined' && VihuVoice.stop) VihuVoice.stop(); } catch (e) {}
-    try { if (window.speechSynthesis) window.speechSynthesis.cancel(); } catch (e) {}
+    // ONLY CANCEL SOMETHING THAT IS HAPPENING. Cancelling an empty queue
+    // and then speaking is a long-standing Chrome quirk that leaves the
+    // next utterance stuck — and say() calls stop() first, so this was
+    // on the path of every single attempt.
+    try {
+      if (window.speechSynthesis &&
+          (window.speechSynthesis.speaking || window.speechSynthesis.pending)) {
+        window.speechSynthesis.cancel();
+      }
+    } catch (e) {}
     if (_state !== 'idle') _set('idle');
     return true;
   }

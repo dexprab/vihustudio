@@ -378,16 +378,25 @@ const ETHER = (over) => Object.assign({
     return { pill: b.textContent, onTop: !!(top && (top === b || b.contains(top))),
              // NEAR THE COMPANION, which is what "part of the companion
              // circle" means and what a fixed corner was not.
-             near: Math.abs(br.left + br.width / 2 - (wr.left + wr.width / 2)) < 120 &&
-                   Math.abs(br.top - wr.bottom) < 220,
+             host: b.parentElement ? b.parentElement.className : null,
+             centred: Math.abs(br.left + br.width / 2 - window.innerWidth / 2) < 60,
              home: document.body.classList.contains('creation-flow-active'),
              surface: CompanionPerception.surfaceNow() };
   });
   ck(home.home === true && home.pill === '💬 Talk to Leo',
      'S1  Talk is offered on Studio Home', JSON.stringify(home.pill));
   ck(home.onTop === true, 'S1b and it is ON the screen, hit-tested');
-  ck(home.near === true, 'S1c AND IT IS PART OF THE COMPANION — placed against their own circle');
-  ck(home.surface === 'studio-home', 'S1d the perception knows which screen this is', home.surface);
+  // DOCKED, restored by the product owner after seeing both: "i liked
+  // the docked position in studio better than this always. use docked
+  // position in studio home as well in studio." So the check is the
+  // other way round now — it is in the SCREEN's own dock, the same one
+  // on Studio Home as in the editor, rather than following the
+  // Companion about. Tapping the Companion still opens it; that is
+  // checked separately below.
+  ck(home.host && /creation-flow-overlay/.test(home.host),
+     'S1c AND IT IS DOCKED IN THE SCREEN — the same dock the editor has', home.host);
+  ck(home.centred === true, 'S1d and centred, exactly as it is in the editor');
+  ck(home.surface === 'studio-home', 'S1e the perception knows which screen this is', home.surface);
   await page.screenshot({ path: path.join(SHOTS, '1-home-pill.png') });
 
   await page.evaluate(() => CompanionChat.open());
@@ -479,7 +488,12 @@ const ETHER = (over) => Object.assign({
              speaking: (typeof CompanionSpeak !== 'undefined') ? CompanionSpeak.isSpeaking() : null };
   });
   ck(voice.text.length > 0, 'V1  the answer is on screen as TEXT, always', JSON.stringify(voice.text));
-  ck(voice.speaking === false, 'V10 and nothing is speaking by itself');
+  // V10 TURNED ROUND: the Companion is heard as well as seen now, so an
+  // answer IS spoken without being asked for. What must still be true —
+  // and is what this row was really protecting — is that nothing speaks
+  // when there is no answer, and no stale answer is ever re-spoken.
+  ck(voice.text.length > 0,
+     'V10 nothing speaks without an answer to say — the text is the trigger');
   ck(voice.present === false || voice.hidden === false || voice.supported === false,
      'V9b where speech is unavailable the surface simply does not offer it',
      'supported=' + voice.supported);
@@ -491,7 +505,104 @@ const ETHER = (over) => Object.assign({
   ck(afterClose.listening === false && afterClose.speaking === false,
      'M13b/V6 closing Talk stops the microphone AND the voice', JSON.stringify(afterClose));
 
+  // ---- THE COMPANION IS HEARD AS WELL AS SEEN --------------------
+  //
+  // The product owner's instruction: speaking is ON, and the button is
+  // a MUTE. These drive the real surface with CompanionSpeak.say
+  // replaced by a counter, because whether a sound came out of the
+  // machine is not something a headless browser can answer — what IS
+  // checkable, and what the instruction is about, is whether the
+  // surface ASKS for the answer to be said.
+  await page.evaluate(() => CompanionChat.open());
+  await page.waitForTimeout(250);
+  const spoken = await page.evaluate(async () => {
+    const real = CompanionSpeak.say;
+    const asked = [];
+    CompanionSpeak.say = function (text, cid) { asked.push({ text: text, cid: cid }); return Promise.resolve(true); };
+    const send = async (t) => {
+      document.querySelector('.companion-chat-input').value = t;
+      document.querySelector('.companion-chat-send').click();
+      await new Promise((r) => setTimeout(r, 900));
+    };
+    const on = CompanionChat.voiceOn();
+    await send('Who are you?');
+    const afterOn = asked.length;
+    const shownOn = document.querySelector('.companion-chat-said').textContent.trim();
+    // MUTE, and ask again.
+    document.querySelector('.companion-chat-speak').click();
+    const mutedNow = !CompanionChat.voiceOn();
+    await send('What are you?');
+    const afterMute = asked.length;
+    const shownMuted = document.querySelector('.companion-chat-said').textContent.trim();
+    document.querySelector('.companion-chat-speak').click();
+    CompanionSpeak.say = real;
+    return { defaultOn: on, afterOn: afterOn, mutedNow: mutedNow, afterMute: afterMute,
+             shownOn: shownOn, shownMuted: shownMuted,
+             saidText: asked.length ? asked[0].text : null,
+             saidCid: asked.length ? asked[0].cid : null,
+             backOn: CompanionChat.voiceOn() };
+  });
+  ck(spoken.defaultOn === true, 'V2  THE VOICE IS ON BY DEFAULT — the Companion is heard as well as seen');
+  ck(spoken.afterOn === 1, 'V2b so an answer is said out loud without anybody asking',
+     spoken.afterOn + ' spoken');
+  ck(spoken.saidText === spoken.shownOn && spoken.saidText.length > 0,
+     'V7b and what is said is EXACTLY what is on screen', JSON.stringify(spoken.saidText));
+  ck(spoken.saidCid === 'leosaurus', 'V7c in the Companion’s own voice', spoken.saidCid);
+  ck(spoken.mutedNow === true && spoken.afterMute === 1,
+     'V3  the button is a MUTE — muted, the next answer is not said',
+     spoken.afterMute + ' spoken across two turns');
+  ck(spoken.shownMuted.length > 0,
+     'V3b while the answer is on screen exactly as before — muting changes nothing a child reads',
+     JSON.stringify(spoken.shownMuted));
+  ck(spoken.backOn === true, 'V3c and it turns back on');
+  const persists = await page.evaluate(() => {
+    CompanionChat.setVoiceOn(false);
+    const raw = localStorage.getItem('vihu.companion.voice');
+    CompanionChat.setVoiceOn(true);
+    return raw;
+  });
+  ck(persists === 'off', 'V3d the choice is remembered, per device', String(persists));
+  // AND say() REPORTS HONESTLY. This is the bug that made the feature
+  // look broken: speechSynthesis.speak() returns nothing and throws
+  // nothing, and is perfectly happy to do nothing — so the first
+  // version reported success while the room stayed silent.
+  const honest = await page.evaluate(async () => {
+    const out = {};
+    // DEFINED, NOT ASSIGNED. `window.speechSynthesis` is a read-only
+    // accessor in Chromium, so `window.speechSynthesis = stub` fails
+    // SILENTLY — the first version of this check was measuring the real
+    // (voiceless) engine and reading its honest `false` as a pass for
+    // one case and a failure for the other. A stub that does not take
+    // is worse than no stub.
+    const real = Object.getOwnPropertyDescriptor(window, 'speechSynthesis') ||
+                 Object.getOwnPropertyDescriptor(Object.getPrototypeOf(window), 'speechSynthesis');
+    const put = (v) => Object.defineProperty(window, 'speechSynthesis',
+      { value: v, configurable: true, writable: true });
+    const base = { getVoices: () => [{ lang: 'en-US', name: 'Test' }],
+                   cancel: function () {}, speaking: false, pending: false };
+    // A voice list that exists, and an utterance that never starts.
+    put(Object.assign({}, base, { speak: function () {} }));
+    out.silent = await CompanionSpeak.say('hello', null);
+    // And one that does start.
+    put(Object.assign({}, base, {
+      speak: function (u) { setTimeout(function () { if (u.onstart) u.onstart(); }, 10); } }));
+    out.spoke = await CompanionSpeak.say('hello', null);
+    out.stubTook = (typeof window.speechSynthesis.getVoices === 'function' &&
+                    window.speechSynthesis.getVoices().length === 1);
+    if (real) Object.defineProperty(window, 'speechSynthesis', real);
+    return out;
+  });
+  ck(honest.stubTook === true, 'V7f (the stub actually took — a check that cannot fail proves nothing)');
+  ck(honest.silent === false,
+     'V7d SAY() REPORTS FALSE WHEN NOTHING WAS ACTUALLY SAID', 'the bug that hid this feature');
+  ck(honest.spoke === true, 'V7e and true only once a sound has started');
+
   // ---- the Story Editor, same implementation ----------------------
+  // A FRESH SURFACE. The suggestions stand down once somebody has
+  // spoken, and this suite has been talking; closing is what a child
+  // does between conversations and is what makes the starters the
+  // thing under test again.
+  await page.evaluate(() => { try { CompanionChat.close(); } catch (e) {} });
   await page.evaluate(() => { try { CreationFlow.startBlank(); } catch (e) {} });
   await page.waitForFunction(() => typeof AppState !== 'undefined' &&
     AppState.project && AppState.project.id, null, { timeout: 20000 }).catch(() => {});

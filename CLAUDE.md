@@ -4808,28 +4808,40 @@ production gates still shut.**
   absent, and is answered as a fact about this place rather than as a
   refusal: *"There isn't one of those here. Your Magic Card is how
   VihuPlanet knows you."*
-- **THE WAY IN IS THE COMPANION.** Asked for by the product owner
-  looking at Studio Home — *"need better way to put talk to companion.
-  instead of making it a fix place, cant we make it part of companion
-  circle?"* — and he is right twice over. A pill parked at a fixed
-  corner is a control that happens to be near somebody; the Companion IS
-  the somebody. It was measured wrong as well as designed wrong: on
-  Studio Home it sat in the garden and ran off the left edge.
-- **BOTH PARTS FOLLOW THE COMPANION AND BELONG TO NO SCREEN.** They are
-  `position:fixed` and placed against the widget's own rect, in the
-  Companion's own stacking layer — which deletes the screen-host
-  juggling this file used to do, and with it the hit-testing that had to
-  prove the surface was not underneath Studio Home's overlay. Tapping
-  the Companion opens it, through the `vihu:companion-gesture` event
-  `js/companionEngine.js` already dispatched: **not one line of that
-  file changed.**
-- **THE PANEL SITS IN THE COLUMN BESIDE THE PAGE, NOT OVER IT.**
-  Measured, the workspace ends at 1064 of 1440, 944 of 1280 and 1010 of
-  1366, so the free column is 360, 320 and 340 — never nothing, never
-  quite enough for a fixed width. The width is taken from the room that
-  is actually there. The field then needed a row of its own: with a
-  microphone beside Send and Close it came out 182px, and a child types
-  sentences into it.
+- **ONE DOCK, ON EVERY SCREEN.** Two placements were built and the
+  product owner chose between them by looking at both. First: *"need
+  better way to put talk to companion. instead of making it a fix place,
+  cant we make it part of companion circle?"* — which was right about
+  the defect, because the old pill sat in Studio Home's garden and ran
+  off the left edge. Then, having seen the Companion-anchored version:
+  *"i liked the docked position in studio better than this always. use
+  docked position in studio home as well in studio."*
+- **A DOCK IS IN THE SAME PLACE EVERY TIME; A PANEL THAT FOLLOWS THE
+  COMPANION IS A THING A CHILD HAS TO FIND.** That is the difference,
+  and it is why the second answer is better than the first. So the
+  surface docks at the foot of whichever screen owns the workspace —
+  the editor's own column, or Studio Home's overlay when that is up —
+  centred, identical on both. The left-corner special case that caused
+  the original complaint is gone.
+- **TAPPING THE COMPANION STILL OPENS IT.** Kept from the anchored
+  version: it costs nothing, it is what a child tries first, and it
+  needs no control of its own. It rides the `vihu:companion-gesture`
+  event `js/companionEngine.js` already dispatched, so **not one line of
+  that file changed.**
+- **STATED COST, ACCEPTED:** centred on Studio Home, an OPEN
+  conversation covers part of the door card. It is temporary, it closes,
+  and the alternative is the corner placement that was rejected. The
+  panel is kept as short as it can be there.
+- **PRESSING "SAY IT" THREW THE CHILD OUT OF THE STUDIO**, and it was a
+  regression introduced while moving the surface: an edit removed the
+  form's `submit` listener, so the form NAVIGATED, `studio.html`
+  reloaded with no entry pass, Decision 23's gate did exactly its job,
+  and the child landed on VihuPlanet. Measured — the URL went from
+  `studio.html` to `index.html` on one press. **A missing preventDefault
+  is not a small bug on a page that is gated on how you arrived at it.**
+- **THE FIELD GETS A ROW OF ITS OWN.** With a microphone and a mute
+  beside Send and Close it came out 182px, and a child types sentences
+  into it.
 - **THE MICROPHONE EXISTS ONLY WHILE A CHILD IS HOLDING IT OPEN.** No
   wake word, no background listening, no page-level listener, no
   automatic recording, no timer — `js/companionListen.js` contains none
@@ -4843,6 +4855,35 @@ production gates still shut.**
   cannot argue with it. The send is still their own press, down the
   identical path a typed sentence takes — the Mind cannot tell the two
   apart, and must not be able to.
+- **VOICE AND TEXT, BOTH, BY DEFAULT.** The product owner's
+  instruction: *"say it out loud should always be on. the companion
+  should always be heard and seen. if creator wants to turn down heard
+  part they can simply mute the say it loud button."* So every answer is
+  spoken as it appears, and the button is a **mute** rather than a play
+  control — muting also stops what is being said, because *stop talking*
+  and *be quiet* are the same thought to the child pressing it. The
+  choice is remembered per DEVICE, because it is about the room a child
+  is sitting in rather than about who they are.
+- **MUTING CHANGES NOTHING ON SCREEN.** A child who cannot hear, or who
+  is somewhere they have to be quiet, reads exactly what everybody else
+  reads.
+- **`say()` REPORTED SUCCESS WHILE THE ROOM STAYED SILENT**, and that is
+  why this looked broken rather than unavailable.
+  `speechSynthesis.speak()` returns nothing, throws nothing, and is
+  perfectly happy to do nothing — measured, `getVoices()` returned 0 and
+  the call still reported that it had spoken. It now waits for a voice
+  to exist, resolves on `onstart` (**the only event that means a sound is
+  being made**), and reports false otherwise. Two ordinary causes were
+  fixed with it: Chrome loads voices lazily, and `cancel()` immediately
+  before `speak()` can leave the utterance stuck — `stop()` now only
+  cancels when there is something to cancel, and it was on the path of
+  every single attempt.
+- **AND THE CHECK THAT WOULD HAVE CAUGHT IT COULD NOT RUN.**
+  `window.speechSynthesis` is a read-only accessor in Chromium, so a
+  test assigning a stub to it changes nothing and measures the real
+  engine. It is `Object.defineProperty` now, and the suite first asserts
+  that the stub actually took — **a check that cannot fail proves
+  nothing.**
 - **THE TEXT IS THE ANSWER; SPEECH IS A SECOND COPY OF IT.**
   `js/companionSpeak.js` is handed the string that is already on screen,
   read off the element the child is looking at, so there is no second

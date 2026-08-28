@@ -9796,5 +9796,35 @@ repaired rather than changed: `Y3b`, `Y6`, `Y7` and `A2c`, whose
 sentences moved when `unknown` became a local answer. `A11`'s ceiling
 went 24 → 32.
 
+**THE PLACEMENT WAS BUILT TWICE AND THE PRODUCT OWNER CHOSE.** First:
+*"cant we make it part of companion circle?"* — right about the defect,
+because the old pill sat in Studio Home's garden and ran off the left
+edge. Then, having seen the Companion-anchored version: *"i liked the
+docked position in studio better than this always. use docked position
+in studio home as well in studio."* A dock is in the same place every
+time; a panel that follows the Companion is a thing a child has to
+find. So one centred dock, identical on both screens, and the corner
+special case is gone. Tapping the Companion still opens it.
+
+**PRESSING "SAY IT" THREW THE CHILD OUT OF THE STUDIO**, and it was a
+regression introduced while moving the surface: an edit removed the
+form's `submit` listener, the form NAVIGATED, `studio.html` reloaded
+with no entry pass, and Decision 23's gate did exactly its job.
+Measured — the URL went from `studio.html` to `index.html` on one
+press.
+
+**VOICE AND TEXT, BOTH, BY DEFAULT.** *"the companion should always be
+heard and seen. if creator wants to turn down heard part they can
+simply mute the say it loud button."* Every answer is spoken as it
+appears; the button is a mute, remembered per device; muting changes
+nothing on screen. **`say()` had been reporting success while the room
+stayed silent** — `speechSynthesis.speak()` returns nothing, throws
+nothing, and is happy to do nothing, and `getVoices()` was returning 0.
+It now waits for a voice and resolves on `onstart`, the only event that
+means a sound is being made. **And the check that would have caught it
+could not run**: `window.speechSynthesis` is a read-only accessor, so a
+stub assigned to it measures the real engine. It is
+`Object.defineProperty` now, and the suite asserts the stub took first.
+
 Every suite green. Decision 48 in `CLAUDE.md`;
 `tools/companion-knowledge-test/`.

@@ -324,6 +324,14 @@ function code(rel) {
   // question about the Companion must make no request at all, and a
   // question about the story must make exactly one — otherwise the
   // split is a comment rather than a boundary.
+  // MUTED FOR THIS MEASUREMENT, and that is not a dodge. Sprint 1N.3
+  // speaks every answer, and the Companion's own voice fetches from the
+  // same platform this stub is standing in for — so the voice's
+  // requests landed in the same count and read as the question having
+  // gone to the server. What is under test is where the ANSWER came
+  // from; the voice is turned off so the count means that and nothing
+  // else, and turned back on afterwards.
+  await page.evaluate(() => { try { CompanionChat.setVoiceOn(false); } catch (e) {} });
   const beforeId = fn.outbound().length;
   await say('What are you?');
   const afterId = fn.outbound().length;
@@ -335,6 +343,7 @@ function code(rel) {
   ck(afterStory > afterId,
      'A9  and a question about the STORY still goes to the server',
      (afterStory - afterId) + ' requests');
+  await page.evaluate(() => { try { CompanionChat.setVoiceOn(true); } catch (e) {} });
 
   // R9 — Escape closes, from the field and from the bar alike.
   await page.evaluate(() => document.querySelector('.companion-chat-input').focus());

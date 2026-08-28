@@ -13063,22 +13063,14 @@ body.dark-theme .bia-studio-btn:hover{ background:rgba(255,255,255,0.08); }
    ground move to neutral greys for the same reason. Nothing about the
    design changed; only the colour a missing variable falls back to. */
 .companion-chat-open{
-  /* PART OF THE COMPANION, NOT A PLACE ON THE SCREEN — Sprint 1N.3.
-     It is placed against the widget's own rect by js/companionChat.js
-     -> _place(), so it follows the Companion wherever a child drags
-     them and belongs to no screen. This replaces a pill parked in the
-     workspace column, which on Studio Home sat in the garden and ran
-     off the left edge. `top`/`left` are written by that function; the
-     values here are only a first paint. */
-  position:fixed;
-  top:0; left:0;
-  /* WITH THE COMPANION, IN THE COMPANION'S OWN LAYER. The widget sits
-     at 1450, above Studio Home's overlay (1000) and above the workspace
-     — which is the whole reason a child can see their Companion on
-     every screen. Anything that belongs TO the Companion has to live
-     there too, or it is behind whichever screen is up: measured, the
-     label and the panel were both invisible on Studio Home at 30/31. */
-  z-index:1451;
+  /* DOCKED, on every screen — restored by the product owner: "i liked
+     the docked position in studio better than this always. use docked
+     position in studio home as well in studio." A dock is in the same
+     place every time; a panel that follows the Companion about is a
+     thing a child has to find. */
+  flex:0 0 auto;
+  align-self:center;
+  margin:4px auto 6px;
   /* OPENING IT MOVES NOTHING.
      Reported by the product owner: "the talk widget is pushing
      everything upwards". Both of these were flex children of
@@ -13093,7 +13085,6 @@ body.dark-theme .bia-studio-btn:hover{ background:rgba(255,255,255,0.08); }
      predictable ~48px once; the STRIP is lifted out of it and opens
      over the object strip, so pressing the pill changes the canvas by
      nothing at all. Closed, it covers nothing. */
-  margin:0;
   padding:5px 14px;
   border:1px solid var(--border, rgba(124,124,134,.32));
   border-radius:999px;
@@ -13114,19 +13105,22 @@ body.dark-theme .bia-studio-btn:hover{ background:rgba(255,255,255,0.08); }
   /* OUT OF THE FLOW, so opening it takes nothing from the page. It
      opens over the object strip — which is what a child is not looking
      at while they are talking — and closes back off it. */
-  /* ANCHORED TO THE COMPANION, ABOVE THEM AND RIGHT-ALIGNED TO THEM.
-     Fixed rather than absolute, so it belongs to no screen and needs no
-     re-parenting when Studio Home's overlay opens over the workspace —
-     which is what this file used to do, and what had to be hit-tested
-     to prove the surface was not underneath a screen. */
-  position:fixed;
-  top:0; left:0;
-  z-index:1452;
+  /* DOCKED AT THE FOOT OF WHICHEVER SCREEN OWNS THE WORKSPACE. Absolute
+     inside that host, so it opens in the same place every time and goes
+     when it closes. */
+  position:absolute;
+  left:50%;
+  transform:translateX(-50%);
+  bottom:8px;
+  z-index:30;
   /* IT FITS THE BAND UNDER THE PAGE, WHICH IS A MEASUREMENT. 218px at
      1440x900, 1366x700 and 1280x800 alike — the workspace column's own
      geometry — so the surface is capped to sit inside it and can never
      grow up into the child's page however much it holds. */
-  max-height:min(320px, 46vh);
+  /* 200, MEASURED. The workspace column leaves a 218px band under the
+     page at 1440x900, 1366x700 and 1280x800 alike; at 260 the open
+     surface reached back up into the child's own canvas. */
+  max-height:min(200px, 30vh);
   display:flex;
   flex-direction:column;
   /* ABOVE THE STRIP'S OWN CONTROLS. Measured: at z-index 5 the object
@@ -13135,8 +13129,8 @@ body.dark-theme .bia-studio-btn:hover{ background:rgba(255,255,255,0.08); }
      opened and is looking at, so it is on top of the row it opens over
      — and it goes when they close it. */
   margin:0;
-  max-width:none;
-  width:min(420px, calc(100vw - 32px));
+  max-width:640px;
+  width:min(560px, calc(100% - 32px));
   padding:10px 12px;
   border:1px solid rgba(255,214,140,.22);
   border-radius:14px;
@@ -13187,7 +13181,13 @@ body.dark-theme .bia-studio-btn:hover{ background:rgba(255,255,255,0.08); }
   border-color:rgba(255,140,140,.6);
   background:rgba(255,140,140,.16);
 }
-.companion-chat-speak{ float:right; margin:-2px 0 4px 6px; }
+/* IT LIVES IN THE ROW, beside Send — it is a setting a child can reach
+   before they have heard anything, not a play button that appears once
+   there is something to play. */
+.companion-chat-speak[data-speaking]{
+  border-color:rgba(255,214,140,.6);
+  background:rgba(255,214,140,.18);
+}
 .companion-chat-heard{
   margin:0 0 6px;
   color:var(--text-dim, #7c7c86);
@@ -13344,36 +13344,39 @@ body.dark-theme .bia-studio-btn:hover{ background:rgba(255,255,255,0.08); }
    strip itself is unchanged: same pill, same one row, same colours —
    only the box it sits in differs, because the screen underneath it
    does. */
-.creation-flow-overlay .companion-chat-open,
-.creation-flow-overlay .companion-chat{
-  position:absolute;
-  /* CLEAR OF THE SOUND TOGGLE, which sits in the bottom-left corner of
-     the Studio and is NOT inside this overlay — so a query scoped to
-     the overlay does not find it and a left:24px strip covered it.
-     Measured at 1440x900: the toggle occupies roughly x 14-45. */
-  left:88px;
-  bottom:16px;
+/* STUDIO HOME GETS THE SAME DOCK — the product owner's instruction,
+   and it replaces a left-corner special case that sat in the garden.
+   The overlay is a scrolling column, so the dock is fixed to the foot
+   of the VIEWPORT there rather than to the end of the content, and it
+   is centred exactly as it is in the editor. */
+.creation-flow-overlay .companion-chat-open{
+  position:fixed;
+  left:50%;
+  transform:translateX(-50%);
+  bottom:14px;
   margin:0;
-  z-index:4;
+  z-index:1002;
 }
-/* THE FOOT, ON THE LEFT, AND NARROWER THAN IN THE WORKSPACE.
-   Measured at 1440x900: Studio Home's door card spans x 520-920 and
-   ends at y 825, and the Companion sits at x 1330-1425. Centred and
-   640px wide — the workspace's own geometry — the open strip covered
-   the Discover button, which is the one control this screen exists to
-   offer. Anchored left and bounded, it clears the door and the
-   Companion both. The strip itself is unchanged: same pill, same one
-   row, same colours. */
 .creation-flow-overlay .companion-chat{
-  /* ABOVE THE PILL, not on top of it. Both are absolutely positioned
-     here, so at the same offset the open strip simply covered the way
-     in. In the workspace they are two rows of a flex column and this
-     does not arise; on Studio Home the offset does the same job. */
+  position:fixed;
+  left:50%;
+  transform:translateX(-50%);
   bottom:64px;
-  width:min(400px, calc(100% - 112px));
+  width:min(560px, calc(100vw - 32px));
+  /* SHORTER HERE. Studio Home's door card is centred and the dock is
+     centred, so an open conversation covers part of it — the accepted
+     cost of one dock on every screen rather than a corner special case.
+     It is kept as small as it can be, and it goes when the child
+     closes it; the door is untouched underneath. */
+  max-height:min(168px, 26vh);
+  z-index:1003;
+}
+/* Studio Home's ground is near-white, so the dock takes a lighter
+   treatment there. GEOMETRY ONLY ABOVE — this is colour. */
+.creation-flow-overlay .companion-chat{
   background:radial-gradient(120% 160% at 50% 0%, rgba(255,214,140,.16), rgba(255,255,255,0) 70%),
-             rgba(255,255,255,.94);
-  box-shadow:0 6px 24px rgba(20,30,60,.10);
+             rgba(255,255,255,.96);
+  box-shadow:0 6px 24px rgba(20,30,60,.14);
 }
 
 /* A chapter owns the screen. Nothing offers a conversation mid-rite. */

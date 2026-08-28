@@ -73,6 +73,43 @@ const CompanionChat = (function () {
   const SETTLE_MS = 140;
 
   // ---------------------------------------------------------------
+  // THE COMPANION IS HEARD AS WELL AS SEEN
+  //
+  // The product owner's instruction: "say it out loud should always be
+  // on. the companion should always be heard and seen. if creator wants
+  // to turn down heard part they can simply mute the say it loud
+  // button."
+  //
+  // So speaking is the DEFAULT and the button is a MUTE rather than a
+  // play control. Muting also stops whatever is being said, because
+  // "stop talking" and "be quiet" are the same thought to the child
+  // pressing it.
+  //
+  // THE TEXT IS UNAFFECTED, ALWAYS. Muting silences the voice and
+  // changes nothing on screen — a child who cannot hear, or who is
+  // somewhere they have to be quiet, reads exactly what everybody else
+  // reads. Kept per DEVICE rather than per card: it is about the room a
+  // child is sitting in, not about who they are.
+  const VOICE_KEY = 'vihu.companion.voice';
+
+  function _voiceOn() {
+    try { return localStorage.getItem(VOICE_KEY) !== 'off'; }
+    catch (e) { return true; }
+  }
+  function _setVoiceOn(on) {
+    try { localStorage.setItem(VOICE_KEY, on ? 'on' : 'off'); } catch (e) {}
+    _paintVoiceButton();
+  }
+  function _paintVoiceButton() {
+    if (!_els || !_els.speak) return;
+    const on = _voiceOn();
+    _els.speak.textContent = on ? '🔊' : '🔇';
+    _els.speak.title = on ? 'Mute' : 'Let me be heard';
+    _els.speak.setAttribute('aria-label', on ? 'Mute the Companion' : 'Unmute the Companion');
+    _els.speak.setAttribute('aria-pressed', on ? 'false' : 'true');
+  }
+
+  // ---------------------------------------------------------------
   // WHO AND WHERE — locators only.
 
   function _cardId() {
@@ -313,88 +350,41 @@ const CompanionChat = (function () {
   // window: one row, at the foot of the workspace, above nothing.
 
   /**
-   * THE WAY IN IS THE COMPANION — Sprint 1N.3.
+   * WHICHEVER SCREEN OWNS THE WORKSPACE RIGHT NOW.
    *
-   * Asked for by the product owner looking at Studio Home: "need better
-   * way to put talk to companion. instead of making it a fix place,
-   * cant we make it part of companion circle?" He is right twice over.
-   * A pill parked at a fixed corner of the workspace is a control that
-   * happens to be near somebody; the Companion IS the somebody, and
-   * tapping them is what a child would try first. And it was measured
-   * wrong as well as designed wrong — on Studio Home it sat in the
-   * garden and ran off the left edge of the screen.
+   * DOCKED, NOT FLOATING — restored by the product owner after seeing
+   * both: "i liked the docked position in studio better than this
+   * always. use docked position in studio home as well in studio."
    *
-   * So both parts now FOLLOW the Companion, and neither belongs to a
-   * screen: they are `position:fixed` children of the body, placed
-   * against the widget's own rect. That also deletes the screen-host
-   * juggling this file used to do — Studio Home is an overlay over the
-   * workspace, so the surface used to have to move between hosts and be
-   * hit-tested to prove it was not underneath one.
+   * Sprint 1N.3 first anchored the surface to the Companion's own
+   * circle, which fixed a real defect (on Studio Home the old pill sat
+   * in the garden and ran off the left edge) and introduced a new
+   * feeling: a panel that moves about is a thing you have to find. A
+   * dock is in the same place every time, on every screen, which is
+   * what a five-year-old needs from the way in to a conversation.
    *
-   * NOTHING IN js/companionEngine.js CHANGED. The widget already
-   * dispatches a bubbling `vihu:companion-gesture` with `poke` for a
-   * tap and `carry` for a drop, so the tap is listened for and the
-   * placement is refreshed on the drop. No polling, no observer.
+   * So it docks at the foot of whichever screen owns the workspace —
+   * the editor's own column, or Studio Home's overlay when that is up.
+   * Studio Home renders OVER main.preview-area, so a surface mounted
+   * into the workspace while it is showing is in the document and
+   * behind the screen; the host is asked for rather than assumed, and
+   * the surface MOVES when the screen underneath it changes.
+   *
+   * TAPPING THE COMPANION STILL OPENS IT. That is kept from the
+   * floating version — it costs nothing, it is what a child tries
+   * first, and it needs no control of its own.
    */
-  function _widget() {
-    try { return document.querySelector('.companion-widget'); } catch (e) { return null; }
-  }
-
-  const GAP = 10;          // between the Companion and its label
-  const PANEL_GAP = 14;    // between the label and the open panel
-
-  function _place() {
-    const w = _widget();
-    if (!w) return;
-    let r;
-    try { r = w.getBoundingClientRect(); } catch (e) { return; }
-    if (!r || r.width <= 0) return;
-    const vw = window.innerWidth, vh = window.innerHeight;
-    const pill = document.querySelector('.companion-chat-open');
-    let pillH = 0;
-    if (pill) {
-      const pr = pill.getBoundingClientRect();
-      pillH = pr.height || 32;
-      // UNDER THE CIRCLE where there is room, over it where there is
-      // not — a label that runs off the bottom of the screen is the
-      // defect this replaces, not a variant of it.
-      const below = r.bottom + GAP;
-      const top = (below + pillH <= vh - 4) ? below : Math.max(4, r.top - GAP - pillH);
-      pill.style.top = Math.round(top) + 'px';
-      pill.style.left = Math.round(
-        Math.min(vw - (pr.width || 120) - 8,
-                 Math.max(8, r.left + r.width / 2 - (pr.width || 120) / 2))) + 'px';
+  function _host() {
+    if (document.body.classList.contains('creation-flow-active')) {
+      const overlay = document.querySelector('.creation-flow-overlay');
+      if (overlay) return overlay;
     }
-    if (_els && _els.bar && !_els.bar.hidden) {
-      // IT SITS IN THE COLUMN BESIDE THE PAGE, NOT OVER IT.
-      //
-      // Measured: the workspace ends at 1064 of 1440, 944 of 1280 and
-      // 1010 of 1366, so the free column to its right is 360, 320 and
-      // 340 — never nothing, and never quite enough for a fixed width.
-      // So the width is taken from the room that is actually there
-      // rather than chosen and then found not to fit, and the child's
-      // own page is never covered while they talk.
-      let guard = 8;
-      try {
-        const canvas = document.querySelector('main.preview-area .preview-wrapper');
-        if (canvas) {
-          const cr = canvas.getBoundingClientRect();
-          if (cr.width > 0 && cr.height > 0) guard = Math.round(cr.right) + 8;
-        }
-      } catch (e) {}
-      const wide = Math.max(260, Math.min(400, vw - guard - 8));
-      _els.bar.style.width = wide + 'px';
-      const h = _els.bar.getBoundingClientRect().height || 200;
-      // ABOVE THE COMPANION. Below is where the label is and where the
-      // screen runs out.
-      _els.bar.style.top = Math.round(Math.max(8, Math.min(vh - h - 8, r.top - PANEL_GAP - h))) + 'px';
-      _els.bar.style.left = Math.round(Math.max(8, vw - wide - 8)) + 'px';
-    }
+    return document.querySelector('main.preview-area');
   }
 
   function _build() {
     if (_els) return _els;
-    const host = document.body;
+    const host = _host() || document.body;
 
     const bar = document.createElement('div');
     bar.className = 'companion-chat';
@@ -470,29 +460,40 @@ const CompanionChat = (function () {
       }
     } catch (e) {}
 
-    // ---- SAY IT ALOUD ----------------------------------------------
-    // Beside the answer, and only once there is one. It speaks the
-    // string that is already on screen and can reach nothing else.
+    // ---- THE VOICE, WHICH IS ON ----------------------------------
+    // A SETTING, NOT AN ACTION, so it is there from the moment the
+    // surface is: a child can turn the voice off before ever hearing
+    // it. Offered only where something could actually speak.
     try {
       if (typeof CompanionSpeak !== 'undefined' && CompanionSpeak.supported()) {
         const sp = document.createElement('button');
         sp.type = 'button';
         sp.className = 'companion-chat-speak';
-        sp.textContent = '🔊';
-        sp.title = 'Say it out loud';
-        sp.setAttribute('aria-label', 'Hear this out loud');
-        sp.hidden = true;
-        sp.addEventListener('click', function () { _aloud(); });
-        els.said.parentElement.insertBefore(sp, els.said.nextSibling);
+        sp.addEventListener('click', function () {
+          const on = _voiceOn();
+          if (on) _aloudStop();          // muting stops what is being said
+          _setVoiceOn(!on);
+        });
+        els.form.insertBefore(sp, els.send);
         els.speak = sp;
+        _els = els;              // _paintVoiceButton reads it
+        _paintVoiceButton();
       }
     } catch (e) {}
 
+    // ---- THE HANDLERS. RESTORED, AND THE REASON IS RECORDED --------
+    //
+    // These were lost in an edit and it was not a cosmetic loss: with no
+    // `submit` listener the form NAVIGATED, `studio.html` reloaded with
+    // no entry pass, Decision 23's gate did its job, and pressing "Say
+    // it" threw the child out of the Studio to VihuPlanet. Measured —
+    // the URL went from studio.html to index.html on one press.
     els.form.addEventListener('submit', function (e) {
       e.preventDefault();
       _send();
     });
     bar.querySelector('.companion-chat-close').addEventListener('click', function () { close(); });
+    // Escape closes, from the field and from anywhere in the surface.
     bar.addEventListener('keydown', function (e) {
       if (e.key === 'Escape') { e.preventDefault(); close(); }
     });
@@ -708,9 +709,10 @@ const CompanionChat = (function () {
         // reason.
         if (r.ok) els.said.textContent = r.reply || '';
         else els.said.textContent = _unheard();
-        // THE VOICE IS OFFERED ONLY WHEN THERE IS SOMETHING TO SAY.
-        // Silence is a real answer and is not spoken.
-        if (els.speak) els.speak.hidden = !els.said.textContent;
+        // AND IT IS SAID OUT LOUD, unless the child has muted it. An
+        // empty reply is not spoken — silence is a real answer and
+        // there is nothing to say.
+        _aloud();
         // THE ANSWER IS WHAT THE CHILD LOOKS AT. The body scrolls, so a
         // long exchange must bring the newest line into view rather than
         // leaving it below the fold of its own box.
@@ -783,29 +785,41 @@ const CompanionChat = (function () {
     });
   }
 
+  /**
+   * SAY THE ANSWER. Called automatically when one arrives, because the
+   * Companion is heard as well as seen; skipped when the child has
+   * muted it. Never anything but the string already on screen.
+   */
   function _aloud() {
     if (typeof CompanionSpeak === 'undefined' || !_els) return;
-    if (CompanionSpeak.isSpeaking()) { _aloudStop(); return; }
+    if (!_voiceOn()) return;
+    // EXACTLY WHAT IS ON SCREEN. Read off the element the child is
+    // looking at, so there is no second copy that could differ from it
+    // and no route to anything the privacy layer has not approved.
+    const shown = (_els.said.textContent || '').trim();
+    if (!shown) return;
     let cid = null;
     try {
       const c = (typeof MagicCard !== 'undefined' && MagicCard.getActive) ? MagicCard.getActive() : null;
       cid = c ? c.companionId : null;
     } catch (e) {}
-    // EXACTLY WHAT IS ON SCREEN. Read off the element the child is
-    // looking at, so there is no second copy that could differ from it
-    // and no route to anything the privacy layer has not already
-    // approved.
-    const shown = (_els.said.textContent || '').trim();
-    if (_els.speak) { _els.speak.textContent = '⏹'; _els.speak.title = 'Stop'; }
-    CompanionSpeak.say(shown, cid).then(function () {
-      if (_els && _els.speak) { _els.speak.textContent = '🔊'; _els.speak.title = 'Say it out loud'; }
+    if (_els.speak) _els.speak.setAttribute('data-speaking', 'yes');
+    CompanionSpeak.say(shown, cid).then(function (spoke) {
+      if (_els && _els.speak) _els.speak.removeAttribute('data-speaking');
+      // NOT SPOKEN IS NOT A FAILURE A CHILD MEETS. The answer is on
+      // screen and always was; there is no browser voice here to say it
+      // with, and saying so every turn would be a nag about something
+      // they cannot change.
+      _lastSpoke = !!spoke;
     });
   }
 
   function _aloudStop() {
     try { if (typeof CompanionSpeak !== 'undefined') CompanionSpeak.stop(); } catch (e) {}
-    if (_els && _els.speak) { _els.speak.textContent = '🔊'; _els.speak.title = 'Say it out loud'; }
+    if (_els && _els.speak) _els.speak.removeAttribute('data-speaking');
   }
+
+  let _lastSpoke = false;
 
   function _unheard() {
     try {
@@ -819,20 +833,18 @@ const CompanionChat = (function () {
 
   function open() {
     const els = _build();
+    const host = _host();
+    if (host && els.bar.parentElement !== host) host.appendChild(els.bar);
     els.bar.hidden = false;
-    // PLACED TWICE, ON PURPOSE. Once so it is not drawn at 0,0 for a
-    // frame, and once after the starters have rendered, because that is
-    // what decides how tall it is and it is anchored by its BOTTOM.
-    _place();
     _open = true;
     els.said.textContent = '';
     els.you.textContent = '';
     els.you.hidden = true;
     _spoke = false;
     _phase('idle');
+    _paintVoiceButton();
     _refreshNames();
     _renderStarters();
-    _place();
     try { els.input.focus(); } catch (e) {}
   }
 
@@ -859,7 +871,6 @@ const CompanionChat = (function () {
     try { if (typeof CompanionListen !== 'undefined') CompanionListen.stop(); } catch (e) {}
     _aloudStop();
     _micState('stopped');
-    if (_els.speak) _els.speak.hidden = true;
     if (_els.heard) { _els.heard.textContent = ''; _els.heard.hidden = true; }
   }
 
@@ -881,39 +892,45 @@ const CompanionChat = (function () {
   // screen, and Lumo is already speaking.
   function _mountOpener() {
     if (!_cardId()) return;
+    // A CHAPTER OWNS THE SCREEN. The one place the way in is never
+    // offered — Lumo is already speaking, and the Rite's own band is
+    // where a child's attention belongs.
     if (document.body.classList.contains('studio-rite-running')) return;
-    const w = _widget();
-    if (!w) return;                       // no Companion, no way in
+    const host = _host();
+    if (!host) return;
+    // ALREADY THERE — but perhaps in the screen the child has just
+    // left. Studio Home and the editor are different hosts and the
+    // surface is built once, so without this the way in would appear on
+    // whichever screen happened to be up first and never again.
     let b = document.querySelector('.companion-chat-open');
     if (!b) {
       b = document.createElement('button');
       b.type = 'button';
       b.className = 'companion-chat-open';
       b.addEventListener('click', function () { toggle(); });
-      document.body.appendChild(b);
+      host.appendChild(b);
+    } else if (b.parentElement !== host) {
+      host.appendChild(b);
     }
+    if (_els && _els.bar && _els.bar.parentElement !== host) host.appendChild(_els.bar);
     b.textContent = '💬 Talk to ' + _name();
-    _place();
   }
 
-  // TAPPING THE COMPANION OPENS IT. js/companionEngine.js already tells
-  // the document apart from a tap and a drag — `poke` is a tap that
-  // never crossed the drag threshold, `carry` is a drop — so this is a
-  // listener on an event that already existed and NOT a change to that
-  // file. A drag re-places the label rather than opening anything.
+  // TAPPING THE COMPANION OPENS IT TOO. js/companionEngine.js already
+  // tells the document apart from a tap and a drag — `poke` is a tap
+  // that never crossed the drag threshold — so this is a listener on an
+  // event that already existed and NOT a change to that file. The
+  // docked way in is still there; this is simply the other thing a
+  // child tries.
   try {
     document.addEventListener('vihu:companion-gesture', function (e) {
       const g = e && e.detail && e.detail.gesture;
-      if (g === 'poke') {
-        if (!CONVERSATION_OFFERED) return;
-        if (!_cardId()) return;
-        if (document.body.classList.contains('studio-rite-running')) return;
-        toggle();
-      } else if (g === 'carry') {
-        _place();
-      }
+      if (g !== 'poke') return;
+      if (!CONVERSATION_OFFERED) return;
+      if (!_cardId()) return;
+      if (document.body.classList.contains('studio-rite-running')) return;
+      toggle();
     });
-    window.addEventListener('resize', function () { _place(); });
   } catch (e) {}
 
   const CONVERSATION_OFFERED = true;
@@ -986,6 +1003,9 @@ const CompanionChat = (function () {
     awaitingName: function () { return _awaiting; },
     mic: _mic,
     aloud: _aloud,
+    voiceOn: _voiceOn,
+    setVoiceOn: _setVoiceOn,
+    spokeLast: function () { return _lastSpoke; },
     displayName: _name,
     canonicalName: _canonicalName,
     BEAT_MS: BEAT_MS,

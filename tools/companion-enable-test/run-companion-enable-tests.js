@@ -538,14 +538,15 @@ const FOUR = [
   // So the check is stronger rather than weaker: the strip is the ONLY
   // thing covered, it is covered only while OPEN, and the page canvas is
   // the same size either way — which is the defect that was reported.
-  // TURNED ROUND AGAIN IN SPRINT 1N.3, and this time it covers LESS.
-  // 1N.2 anchored the surface to the foot of the workspace and had to
-  // open it over the object strip because there was nowhere else. 1N.3
-  // anchors it to the Companion instead, in the free column beside the
-  // page — so it now covers nothing at all, and the honest check is the
-  // stronger one.
-  ck(geo.strip === false && geo.canvas === false && geo.header === false && geo.pages === false,
-     'U5  and it covers NOTHING — not the strip, the canvas, the header or the pages',
+  // AND BACK AGAIN, at the product owner's instruction: he saw the
+  // Companion-anchored version and preferred the dock ("i liked the
+  // docked position in studio better than this always"). A dock at the
+  // foot of the workspace opens over the object strip, because that is
+  // the only band there is — the canvas is never touched, and the strip
+  // is given straight back on close. That is the trade this row has
+  // recorded twice now, and it is the one that is chosen.
+  ck(geo.strip === true && geo.canvas === false && geo.header === false && geo.pages === false,
+     'U5  the object strip is where it opens — the one surface it may use',
      'strip ' + geo.strip + ', canvas ' + geo.canvas);
   const closedGeo = await page.evaluate(() => {
     const r = (s) => { const e = document.querySelector(s); return e ? e.getBoundingClientRect() : null; };
