@@ -99,7 +99,11 @@ const CompanionMind = (function () {
       echo: 'The {}.',
       clarify: 'Which one do you mean?',
       authorTail: 'I just watch it happen.',
-      madeTail: 'And here I am.'
+      madeTail: 'And here I am.',
+      unsure: 'I don\'t know that one. I\'d only be guessing.',
+      yet: 'I don\'t know that yet. That\'s yours to decide.',
+      toldOk: '{}. There you are.',
+      starsNo: 'Somebody\'s stars are their own. I don\'t tell anyone those.'
     },
     leosaurus: {
       hi: 'Oh! Hello.',
@@ -124,7 +128,11 @@ const CompanionMind = (function () {
       echo: 'The {}!',
       clarify: 'Which one? I’ll go and look.',
       authorTail: 'I only come and look at it!',
-      madeTail: 'And here I am, lamp and all.'
+      madeTail: 'And here I am, lamp and all.',
+      unsure: 'I don\'t know that one! I\'d only be making it up.',
+      yet: 'I don\'t know that yet — that\'s yours to decide.',
+      toldOk: '{}! Right you are.',
+      starsNo: 'Somebody\'s stars are their own. I don\'t hand those about.'
     },
     quill: {
       hi: 'Hello.',
@@ -149,7 +157,11 @@ const CompanionMind = (function () {
       echo: 'The {}.',
       clarify: 'Which of them do you mean?',
       authorTail: 'I only keep the pages.',
-      madeTail: 'That is all I have written down about it.'
+      madeTail: 'That is all I have written down about it.',
+      unsure: 'I do not have that written down. I will not guess at it.',
+      yet: 'That is not decided yet. It is yours to decide.',
+      toldOk: '{}. I have that.',
+      starsNo: 'A person\'s stars are their own. I do not write those down for anybody.'
     },
     nimbus: {
       hi: 'Oh… hello.',
@@ -174,7 +186,11 @@ const CompanionMind = (function () {
       echo: 'Mm — the {}.',
       clarify: 'Mm… which one?',
       authorTail: 'I just drift about in it.',
-      madeTail: 'Mm. The rest is fog.'
+      madeTail: 'Mm. The rest is fog.',
+      unsure: 'Mm. I don\'t know that one. It\'d only be a guess.',
+      yet: 'Mm. Not yet. That one\'s yours to decide.',
+      toldOk: '{}… mm. There you are.',
+      starsNo: 'Mm. Somebody\'s stars are their own. Those don\'t drift out of me.'
     },
     // Lumo hosts every Canon Story, which is owned by nobody.
     lumo: {
@@ -200,7 +216,11 @@ const CompanionMind = (function () {
       echo: 'The {}.',
       clarify: 'Which one do you mean?',
       authorTail: 'I only look after the place.',
-      madeTail: 'And here I am.'
+      madeTail: 'And here I am.',
+      unsure: 'I don\'t know that one, and I won\'t guess.',
+      yet: 'That isn\'t decided yet. It\'s yours to decide.',
+      toldOk: '{}. There you are.',
+      starsNo: 'A person\'s stars are their own. I never tell anyone those.'
     }
   };
 
@@ -221,7 +241,11 @@ const CompanionMind = (function () {
     echo: 'The {}.',
     clarify: 'Which one do you mean?',
     authorTail: '',
-    madeTail: ''
+    madeTail: '',
+    unsure: 'I don\'t know that one.',
+    yet: 'I don\'t know that yet. That\'s yours to decide.',
+    toldOk: '{}. There you are.',
+    starsNo: 'Somebody\'s stars are their own. I don\'t tell anyone those.'
   };
 
   // ---------------------------------------------------------------
@@ -263,9 +287,35 @@ const CompanionMind = (function () {
     // 1. Talking it out of its rules. Never changes authority.
     { id: 'injection', modes: BOTH,
       re: /\b(?:ignore\s+(?:your|all|previous|the)|forget\s+your\s+(?:rules|instructions)|disregard\s+(?:your|all|previous)|you\s+are\s+now\s+(?:allowed|able|permitted)|you\s+must\s+tell|system\s+prompt|pretend\s+(?:you|to\s+be|i'?m|i\s+am)|act\s+as\s+if|reveal\s+(?:my|the|all|your)|new\s+instructions)\b/i },
+    // 1b. THE STARS. FIRST, AND ABOVE EVERYTHING.
+    //
+    //     A Creator's constellation is their identity — it is what
+    //     recognises them on a device that has never met them
+    //     (Decision 11) and it is the credential itself (Decision 18).
+    //     It is never public, on any surface, in any form: not the
+    //     pattern, not the constellation's name, not the COUNT.
+    //
+    //     It is the second rule in the table, above privacy and above
+    //     identity, so that no other pattern can reach a question about
+    //     it first and answer it as something else. There is also no
+    //     field for it in js/companionPerception.js and a sweep that
+    //     refuses one — a wall with one guard is a wall with one
+    //     mistake in it.
+    { id: 'stars', modes: BOTH,
+      re: /\b(?:stars?|constellation|star\s*pattern|sky\s+pattern|magic\s+card\s+(?:pattern|stars?))\b/i },
     // 2. Asking for something nobody here holds.
     { id: 'privacy', modes: ['creator'],
       re: /\b(?:password|passcode|my\s+address|home\s+address|phone\s+number|email\s+address|private\s+information|personal\s+information|credit\s+card|bank)\b/i },
+    // 5e. THE MAKER, IN THE ETHER, AND ONLY WHAT IS ALREADY ON SCREEN.
+    //     Before the Traveller privacy rule below, which still catches
+    //     everything else about them.
+    { id: 'public-creator', modes: ['traveller'],
+      re: /\b(?:whose\s+(?:story|book|one|world)|who(?:'?s)?\s+(?:is\s+)?(?:this\s+)?(?:made|wrote|drew|created)\s+(?:this|it)|who\s+made\s+this|who\s+wrote\s+(?:this|it))\b/i },
+    // 5f. HOW MANY OTHERS OF THEIRS ARE HERE. A count of a set that is
+    //     public by construction, never a database total, and never a
+    //     guess — absent means the Companion says it does not know.
+    { id: 'story-count', modes: ['traveller'],
+      re: /\b(?:how\s+many\s+(?:other\s+)?(?:stories|books)|other\s+stories|more\s+stories|another\s+story|any\s+other\s+(?:stories|books))\b/i },
     // 2t. In the Ether, anything about who made this or what was kept.
     //
     // `remembered|remembers|remember` rather than `remember(?:ed|s)?`,
@@ -293,6 +343,31 @@ const CompanionMind = (function () {
     // 6. Asking it to leave VihuPlanet. There are no tools.
     { id: 'outside-world', modes: BOTH,
       re: /\b(?:search\s+(?:the\s+)?(?:internet|web|google|online)|google\s+it|the\s+news|what'?s\s+the\s+news|weather|youtube|tiktok|instagram|open\s+a\s+website|go\s+online|look\s+(?:it\s+)?up\s+online|find\s+this\s+person|where\s+do\s+i\s+live|what\s+time\s+is\s+it|what'?s\s+today'?s\s+date|buy\s+me|order\s+me)\b/i },
+    // 5b. WHAT A CHILD TELLS THEIR OWN COMPANION — Sprint 1N.3.
+    //
+    //     "My name is Vihaan." Told, not published: it stays in the
+    //     Creator + Companion relationship, never becomes a memory or a
+    //     Bond Moment, and never reaches the Ether.
+    //
+    //     `me` and not `you` is the whole of the difference from the
+    //     naming intent below — "call me Vihaan" is a child saying what
+    //     THEY are called, "call you Spark" is a child naming their
+    //     Companion.
+    { id: 'tell-fact', modes: ['creator'],
+      re: /\b(?:my\s+name\s+is|i(?:'?m| am)\s+called|call\s+me|you\s+can\s+call\s+me)\s+[\p{L}]/iu },
+    { id: 'recall-fact', modes: ['creator'],
+      re: /\b(?:what(?:'?s| is)\s+my\s+name|do\s+you\s+(?:know|remember)\s+my\s+name|who\s+am\s+i|my\s+name\s*\?)\b/i },
+    // 5c. WHERE ARE WE. Context-aware, and answered from the surface
+    //     rather than from one universal sentence: Studio Home, the
+    //     Story Editor and the Ether are three different true answers.
+    { id: 'where', modes: ['creator'],
+      re: /\b(?:where\s+(?:are\s+we|am\s+i)|what\s+is\s+this\s+place|what(?:'?s)?\s+this\s+place|what\s+world|which\s+world|where\s+is\s+this|what\s+can\s+we\s+do|what\s+do\s+we\s+do(?:\s+here)?|what\s+is\s+there\s+to\s+do)\b/i },
+    // 5d. AN IDENTIFIER, WHICH THIS PRODUCT DOES NOT PUBLISH. Named so
+    //     the rule has somewhere to live and so a made-up one is
+    //     impossible: nothing sets it, so it is always absent, and
+    //     absent is answered honestly rather than filled in.
+    { id: 'pid', modes: BOTH,
+      re: /\b(?:my\s+(?:pid|id)\b|what(?:'?s| is)\s+(?:my|the|their)\s+(?:pid|id)\b|creator\s+id\b)/i },
     // 6a. WHAT A CHILD CALLS THEIR COMPANION — Sprint 1N.2.
     //
     // BEFORE creative-suggestion, because "what should I call you?"
@@ -346,7 +421,7 @@ const CompanionMind = (function () {
     // question about identity, and answering it "I'm Leo" is exactly
     // the confidently-wrong failure this layer exists to avoid.
     { id: 'name-check', modes: BOTH,
-      re: /\bare\s+you\s+(?:called\s+|really\s+)?([\p{L}][\p{L}'’-]{1,20})\s*[?!.]*$/iu },
+      re: /\bare\s+you\s+(?:called\s+|really\s+)?(?!doing\b|going\b|thinking\b|looking\b|saying\b|making\b|sure\b|there\b|ok\b|okay\b|ready\b|listening\b|alright\b)([\p{L}][\p{L}'’-]{1,20})\s*[?!.]*$/iu },
     // 11. Where this is.
     { id: 'place', modes: ['traveller'],
       re: /\b(?:where\s+am\s+i|what\s+is\s+this\s+place|the\s+ether|vihuplanet|where\s+are\s+we|this\s+place)\b/i },
@@ -385,10 +460,25 @@ const CompanionMind = (function () {
   // change to learn it. The naming exchange is therefore answered where
   // the state lives, and the rest of this list keeps the boundary in
   // one readable place instead of scattering it.
+  //
+  // Sprint 1N.3 adds five, and every one of them is provable from the
+  // card, the surface, or something the child themselves said out loud:
+  // the stars refusal (which must never depend on a round trip), what a
+  // child told their own Companion, where they are standing, and the
+  // identifier this product does not publish.
   const LOCAL_INTENTS = ['naming', 'name-check', 'identity', 'species', 'authorship',
                          'work-judgement', 'emotional-boundary', 'secrecy', 'injection',
                          'privacy', 'outside-world', 'creative-suggestion',
-                         'greeting', 'farewell', 'thanks'];
+                         'greeting', 'farewell', 'thanks',
+                         'stars', 'tell-fact', 'recall-fact', 'where', 'pid',
+                         // AND THE UNCERTAINTY LADDER ITSELF. A question
+                         // nobody can answer is answerable HERE, with no
+                         // record and no round trip — and it must be, or
+                         // "an unknown question never disappears" would
+                         // hold only while the network does. The server's
+                         // own copy says the same words; asking it would
+                         // buy a failure mode and nothing else.
+                         'unknown'];
 
   // Every id the taxonomy can produce, including the two that are not
   // patterns. Published so a suite can prove the table is the whole set.
@@ -583,12 +673,81 @@ const CompanionMind = (function () {
     return m ? m[1] : null;
   }
 
+  // What the child told their own Companion they are called. It lives
+  // on the perception under `creator.name` and NOWHERE else — never a
+  // card's nickname, never a record.
+  function _toldName(ctx) {
+    const n = ctx && ctx.creator && ctx.creator.name;
+    return (typeof n === 'string' && n.trim()) ? n.trim() : null;
+  }
+
   function _called(ctx) {
     const n = ctx && ctx.naming && ctx.naming.called;
     return (typeof n === 'string' && n.trim()) ? n.trim() : null;
   }
   function _awaitingName(ctx) {
     return !!(ctx && ctx.naming && ctx.naming.awaiting === true);
+  }
+
+  // ---------------------------------------------------------------
+  // WHAT A CHILD JUST TOLD THEIR COMPANION ABOUT THEMSELVES.
+  const TOLD_NAME = /\b(?:my\s+name\s+is|i(?:'?m| am)\s+called|(?:you\s+can\s+)?call\s+me)\s+(.{1,40})$/iu;
+  function toldName(said) {
+    const m = String(said || '').trim().replace(/[?!.]+$/, '').match(TOLD_NAME);
+    if (!m) return null;
+    const v = validName(m[1]);
+    return v.ok ? v.name : null;
+  }
+
+  // ---------------------------------------------------------------
+  // WHERE ARE WE — three surfaces, three true answers, and nobody's
+  // temperament changes which one is true.
+  const WHERE = {
+    'studio-home': 'We’re in VihuStudio. This is where stories get made.',
+    'story-editor': 'We’re in VihuStudio, in the middle of a story.',
+    'ether': 'This is the Ether. Stories drift here, and people find them.'
+  };
+  function whereAnswer(ctx) {
+    const surface = ctx && ctx.surface;
+    const known = Object.prototype.hasOwnProperty.call(WHERE, surface) ? WHERE[surface] : null;
+    if (known && surface === 'story-editor') {
+      const s = _story(ctx);
+      const name = s && s.story && s.story.name;
+      return name ? 'We’re in VihuStudio, making ' + name + '.' : known;
+    }
+    return known;
+  }
+
+  // ---------------------------------------------------------------
+  // THE UNCERTAINTY LADDER
+  //
+  // UNKNOWN IS NOT SILENCE. A question the Companion cannot answer gets
+  // an answer that says so — never an invented fact, and never nothing
+  // at all. Two rungs, because there are two honest things to say:
+  //
+  //   the story has not decided yet   ──▶  and it is the child's to decide
+  //   there is simply no answer here  ──▶  and I will not guess
+  //
+  // The first is not a softer version of the second. "What does the fox
+  // want?" is a question about a story the child is writing, and the
+  // true answer is that nobody has decided — which is the Creator's
+  // authority, not the Companion's ignorance.
+  const YET = /\b(?:what\s+(?:does|do|will|would|should|is|are)\s+.{0,40}?\s*(?:want|wants|do|doing|say|says|think|thinks|thinking|feel|feels|happen|happens|going\s+to\s+do)|what\s+happens\s+to|what(?:'?s| is)\s+.{0,30}\s+(?:planning|thinking|going\s+to)|what\s+comes\s+next|how\s+does\s+(?:it|this|the\s+story)\s+end)\b/i;
+  // THE REAL WORLD IS NOT THE CHILD'S TO DECIDE. "What will happen
+  // tomorrow?" is not a question about a story, and answering it "that
+  // is yours to decide" would be a small untruth dressed as warmth.
+  const REAL_TIME = /\b(?:tomorrow|yesterday|today|tonight|next\s+week|this\s+evening|later\s+today)\b/i;
+  /**
+   * Which rung. `yet` — the story has not decided — is only reachable
+   * when there IS a story: on Studio Home there is nothing for anybody
+   * to have decided, so every unknown there is simply an unknown.
+   */
+  function unknownKind(said, ctx) {
+    const t = String(said || '');
+    if (REAL_TIME.test(t)) return 'unsure';
+    const hasStory = !!(ctx && ((ctx.storyContext && ctx.storyContext.story) ||
+                                (ctx.story && ctx.story.name)));
+    return (hasStory && YET.test(t)) ? 'yet' : 'unsure';
   }
 
   // ---------------------------------------------------------------
@@ -737,7 +896,8 @@ const CompanionMind = (function () {
   }
 
   function _silent(reason) {
-    return { reply: '', speak: false, intent: 'unknown', fact: null, reason: reason };
+    return { reply: '', speak: false, intent: 'unknown', fact: null,
+             reason: reason, certainty: 'silent' };
   }
 
   /**
@@ -762,6 +922,12 @@ const CompanionMind = (function () {
       if (!approved || typeof approved !== 'object') {
         return { reply: '', speak: false, intent: 'no-context', fact: null, reason: 'no-context' };
       }
+      // NOTHING SAID IS NOT A QUESTION. An empty turn is the one place
+      // silence survives Sprint 1N.3 untouched: "unknown is not silence"
+      // is about a child ASKING something the Companion cannot answer,
+      // and this is a child having asked nothing at all. Decision 46's
+      // "intentional silence" category, kept exactly where it belongs.
+      if (!String(said == null ? '' : said).trim()) return _silent('nothing-said');
       const mode = (approved.mode === 'traveller') ? 'traveller' : 'creator';
       const v = _voice(approved);
       const who = _who(approved);
@@ -874,8 +1040,57 @@ const CompanionMind = (function () {
           // IDENTITY. "Are you sure?" is not "Are you Leo?", and
           // answering it "I'm Leo" is the confidently-wrong failure
           // this layer exists to avoid.
-          return _silent('not-a-name-i-have');
+          //
+          // It used to fall SILENT here. Sprint 1N.3: it falls to the
+          // uncertainty ladder instead, because a child asked something
+          // and a child who asked something gets an answer.
+          return _out('unknown', unknownKind(said, approved) === 'yet' ? v.yet : v.unsure,
+                      null, null, 'unknown');
         }
+
+        case 'stars':
+          // NEVER, ON ANY SURFACE. Not the pattern, not the
+          // constellation, not the count. It is not a refusal to be
+          // negotiated around and there is nothing in the context to
+          // read even if it were.
+          return _out(intent, v.starsNo, null);
+
+        case 'tell-fact': {
+          const told = toldName(said);
+          if (!told) return _out(intent, v.nameAgain, null);
+          // TOLD, NOT REMEMBERED. The action is consumed by the surface
+          // that holds relationship state; nothing here writes, and
+          // nothing here proposes a memory.
+          return _out(intent, v.toldOk.replace('{}', told), told,
+                      { type: 'tell-fact', key: 'name', value: told });
+        }
+
+        case 'recall-fact': {
+          const mine = _toldName(approved);
+          if (!mine) {
+            // NEVER A GUESS, AND NEVER A CARD. The nickname on a Magic
+            // Card is the name on a card; this question is about what
+            // the two of them have said to each other, and if nothing
+            // was said the honest answer is that it was not.
+            return _out(intent, "I don't think you've told me yet. What should I call you?",
+                        null, null, 'unknown');
+          }
+          const fact = 'Your name is ' + mine + '.';
+          return _out(intent, _join(v.lead, fact), fact);
+        }
+
+        case 'where': {
+          const here = whereAnswer(approved);
+          if (!here) return _out(intent, v.unsure, null, null, 'unknown');
+          return _out(intent, here, here);
+        }
+
+        case 'pid':
+          // NOTHING PUBLISHES ONE, so there is nothing to give and
+          // nothing to invent. Said as a fact about this place rather
+          // than as a refusal, because it is one.
+          return _out(intent, "There isn't one of those here. Your Magic Card is how VihuPlanet knows you.",
+                      null, null, 'private');
 
         case 'naming': {
           // ASKED TO BE NAMED. The name may arrive in the same breath
@@ -948,10 +1163,23 @@ const CompanionMind = (function () {
         case 'farewell':  return _out(intent, v.wave, null);
         case 'thanks':    return _out(intent, v.thanks, null);
 
-        default:
-          // SILENCE. Outside the deterministic set, so there is nothing
-          // honest to say and the Mind does not fill the turn.
-          return _silent('outside-the-set');
+        default: {
+          // UNKNOWN IS NOT SILENCE — Sprint 1N.3.
+          //
+          // Sprint 1N returned nothing at all here, and that was the
+          // right instinct applied to the wrong thing: a Companion that
+          // confidently answers everything is a failure, but one that
+          // VANISHES when it does not know is a different failure, and
+          // to a child it is indistinguishable from being ignored.
+          //
+          // So it says so. Two rungs, and neither invents anything: a
+          // question about a story nobody has decided yet is answered
+          // as the child's to decide, and everything else is answered
+          // as not knowing and not guessing.
+          const kind = unknownKind(said, approved);
+          return _out('unknown', kind === 'yet' ? v.yet : v.unsure, null, null,
+                      kind === 'yet' ? 'unknown' : 'unknown');
+        }
       }
     }
   }
@@ -965,9 +1193,29 @@ const CompanionMind = (function () {
    * the state lives (js/companionChat.js -> js/companionName.js) and
    * nowhere else.
    */
-  function _out(intent, text, fact, action) {
+  // WHICH RUNG OF THE LADDER AN ANSWER CAME FROM. A DIAGNOSTIC, and it
+  // never travels: the response contract is {reply, speak} and a child
+  // meets neither this word nor the intent that produced it. It exists
+  // so "the Companion knows what it knows" is something a suite can
+  // read rather than something a comment claims.
+  const CERTAINTY = {
+    'identity': 'known', 'name-check': 'known', 'species': 'known',
+    'story-fact': 'known', 'memory-recall': 'known', 'recall-fact': 'known',
+    'where': 'known', 'public-creator': 'known', 'story-count': 'known',
+    'authorship': 'known', 'naming': 'known', 'tell-fact': 'known',
+    'creative-suggestion': 'inferred', 'thanks': 'known',
+    'greeting': 'known', 'farewell': 'known',
+    'stars': 'refused', 'privacy': 'private', 'secrecy': 'refused',
+    'injection': 'refused', 'emotional-boundary': 'refused',
+    'work-judgement': 'refused', 'outside-world': 'refused',
+    'no-persistence': 'refused', 'place': 'known', 'pid': 'private'
+  };
+
+  function _out(intent, text, fact, action, certainty) {
     const reply = _clamp(text);
-    const r = { reply: reply, speak: !!reply, intent: intent, fact: fact || null, reason: 'answered' };
+    const r = { reply: reply, speak: !!reply, intent: intent, fact: fact || null,
+                reason: 'answered',
+                certainty: certainty || CERTAINTY[intent] || 'known' };
     if (action) r.action = action;
     return r;
   }
@@ -994,6 +1242,30 @@ const CompanionMind = (function () {
       }
       case 'story-fact': return _out(intent, _travellerStory(ctx, v), null);
       case 'place':     return _out(intent, PLATFORM.place, null);
+      case 'stars':     return _out(intent, v.starsNo, null);
+      case 'pid':       return _out(intent, PLATFORM.travellerPrivacy, null);
+      case 'public-creator': {
+        // ALREADY ON SCREEN. The portal prints the maker's name in its
+        // own title bar, so a resident of that world being able to say
+        // it discloses nothing — and it is the record's own creatorName,
+        // which travels WITH the story, never the card of whoever is
+        // doing the looking.
+        const maker = ctx && ctx.creatorName;
+        if (!maker) return _out(intent, PLATFORM.travellerPrivacy, null);
+        return _out(intent, 'This one is ' + maker + '’s.', maker);
+      }
+      case 'story-count': {
+        // AUTHORITATIVE OR UNCERTAIN, never a guess and never a total
+        // read off a database — a Creator's private drafts are not a
+        // number anybody here may know.
+        const n = ctx && ctx.othersHere;
+        if (typeof n !== 'number' || n < 0) {
+          return _out(intent, "I don't know how many others there are.", null, null, 'unknown');
+        }
+        if (n === 0) return _out(intent, "This is the only one of theirs I can see here.", null);
+        return _out(intent, n === 1 ? "There's one more of theirs here."
+                                    : 'There are ' + n + ' more of theirs here.', String(n));
+      }
       case 'privacy':   return _out(intent, PLATFORM.travellerPrivacy, null);
       case 'no-persistence': return _out(intent, PLATFORM.travellerNoKeep, null);
       case 'injection': return _out(intent, PLATFORM.travellerFirm, null);
@@ -1001,9 +1273,9 @@ const CompanionMind = (function () {
       case 'farewell':  return _out(intent, v.wave, null);
       case 'thanks':    return _out(intent, v.hi, null);
       default:
-        // NEVER A GUESS. It says it did not understand and offers the
-        // one thing it can actually do.
-        return _out('unknown', v.dunno + PLATFORM.travellerOffer, null);
+        // NEVER A GUESS, AND NEVER NOTHING. It says it did not know and
+        // offers the one thing it can actually do.
+        return _out('unknown', v.dunno + PLATFORM.travellerOffer, null, null, 'unknown');
     }
   }
 
@@ -1025,6 +1297,11 @@ const CompanionMind = (function () {
     recall: recall,
     namedThing: namedThing,
     validName: validName,
+    toldName: toldName,
+    whereAnswer: whereAnswer,
+    unknownKind: unknownKind,
+    CERTAINTY: CERTAINTY,
+    WHERE: WHERE,
     subjectOf: _subject,
     subjectFrom: _subjectFrom,
     LOCAL_INTENTS: LOCAL_INTENTS,

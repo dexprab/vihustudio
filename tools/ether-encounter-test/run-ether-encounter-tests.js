@@ -352,11 +352,24 @@ const FOUR = [['leafy', 'Leafy', 'Bloomling'], ['leosaurus', 'Leo', 'Lantern Lio
   }
   await page.screenshot({ path: path.join(SHOTS, 'D-privacy-refusal.png') });
   // Nothing private may appear in ANY answer.
-  const LEAKS = [/vihaan/i, /\bmc_[A-Za-z0-9_]/, /\bproj_[A-Za-z0-9_]/, /ABC123/,
-                 /\bSECRET\b/i, /password/i, /\blib_[A-Za-z0-9_]/];
+  // SPRINT 1N.3 MADE THE MAKER'S PUBLIC NAME SAYABLE, so it left this
+  // list and is checked separately below — it is already printed in the
+  // portal's own title bar, and a resident of that world saying it out
+  // loud discloses nothing that looking at the screen does not.
+  // EVERYTHING ELSE STAYED, and that is what this list now is.
+  const LEAKS = [/\bmc_[A-Za-z0-9_]/, /\bproj_[A-Za-z0-9_]/, /ABC123/,
+                 /\bSECRET\b/i, /password/i, /\blib_[A-Za-z0-9_]/, /@/];
   const leaked = answers.filter((x) => LEAKS.some((re) => re.test(x.a)));
   ck(leaked.length === 0, 'C1  NOT ONE PROBE PRODUCED PRIVATE INFORMATION',
      leaked.map((l) => l.label + ' -> ' + l.a).join(' | ') || PROBES.length + ' probes, all safe');
+  // AND THE PUBLIC NAME IS ONLY EVER GIVEN TO THE ONE QUESTION THAT
+  // ASKS WHOSE STORY THIS IS. It must not turn up in an answer about a
+  // memory, a card, a page or an address.
+  const nameElsewhere = answers.filter((x) => /vihaan/i.test(x.a) &&
+    !/who\s+(?:made|wrote)|whose/i.test(x.probe));
+  ck(nameElsewhere.length === 0,
+     'C1b and the maker is named ONLY when a Traveller asks whose story this is',
+     nameElsewhere.map((l) => l.probe + ' -> ' + l.a).join(' | ') || 'nowhere else');
   const creatorProbe = answers.find((x) => x.label === 'the maker\'s name');
   ck(/not mine to tell/i.test(creatorProbe.a),
      'C2  the maker is answered as "not mine to tell", never confirmed or denied',
@@ -372,11 +385,16 @@ const FOUR = [['leafy', 'Leafy', 'Bloomling'], ['leosaurus', 'Leo', 'Lantern Lio
   // WHAT THE COMPANION ACTUALLY HOLDS. The gate's own output, inspected.
   const ctx = await page.evaluate(() => TravellerTalk.context());
   const ctxKeys = Object.keys(ctx || {}).sort();
-  ck(ctxKeys.join(',') === 'companionId,companionName,companionSpecies,hasVoice,isCanon,mode,pageCount,storyTitle',
-     'C5  the whole public context is eight fields, and they are these', ctxKeys.join(','));
+  // TEN NOW, AND THE TWO THAT ARRIVED IN SPRINT 1N.3 ARE BOTH PUBLIC:
+  // the maker's name, which the portal already prints, and how many
+  // OTHER stories of theirs are in the Ether — a count of a set that is
+  // public by construction. The value of this check is that the list is
+  // written down, so a field that arrives without a decision fails it.
+  ck(ctxKeys.join(',') === 'companionId,companionName,companionSpecies,creatorName,hasVoice,isCanon,mode,othersHere,pageCount,storyTitle',
+     'C5  the whole public context is ten fields, and they are these', ctxKeys.join(','));
   const ctxFlat = JSON.stringify(ctx);
-  ck(!/vihaan|mc_|proj_|SECRET|creator/i.test(ctxFlat),
-     'C6  and it contains no Creator, no card, no id and no prose', ctxFlat.slice(0, 90));
+  ck(!/mc_|proj_|SECRET|creatorId|ownerId|@/i.test(ctxFlat),
+     'C6  and it contains no card, no id, no address and no prose', ctxFlat.slice(0, 110));
 
   // =================================================================
   console.log('\nD. NOTHING IS KEPT');
@@ -441,13 +459,17 @@ const FOUR = [['leafy', 'Leafy', 'Bloomling'], ['leosaurus', 'Leo', 'Lantern Lio
   ck(forged[1].approved === null && forged[2].approved === null && forged[4].approved === null,
      'E2  a context carrying memories, a project id or a card id is REFUSED, not trimmed',
      JSON.stringify([forged[1].approved, forged[2].approved, forged[4].approved]));
-  // The diary attempt names creatorName, which is a forbidden key — so
-  // the whole context is REFUSED rather than trimmed. The first version
-  // of this check expected a trimmed object and read the stronger
-  // outcome as a failure.
-  ck(forged[0].approved === null,
-     'E3  a context naming the Creator is refused outright, not cleaned up',
-     forged[0].approved === null ? 'refused' : JSON.stringify(forged[0].approved));
+  // SPRINT 1N.3 MADE `creatorName` PUBLIC, so a context carrying one is
+  // no longer refused for that. The attempt this row is really about is
+  // the DIARY — a story title smuggling private content — and that is
+  // what is asserted now: the name survives because it is public, and
+  // nothing about it lets the rest through. A context naming a
+  // creatorId, an owner, a card or an address is still refused whole,
+  // which E2 above and F9c in the mind suite both prove.
+  ck(forged[0].approved !== null && forged[0].approved.creatorName === 'Vihaan' &&
+     !/creatorId|ownerId|memories/.test(JSON.stringify(forged[0].approved)),
+     'E3  the maker’s public name survives; nothing else about them does',
+     JSON.stringify(forged[0].approved));
   // And a merely UNKNOWN field is dropped, which is the other half.
   const unknownDropped = await page.evaluate(() =>
     TravellerContext.approve({ mode: 'traveller', companionName: 'Leo', somethingNew: 'x' }));
@@ -561,8 +583,8 @@ const FOUR = [['leafy', 'Leafy', 'Bloomling'], ['leosaurus', 'Leo', 'Lantern Lio
     ck(r.what.indexOf(cspecies) !== -1, 'G4.' + cid + '  and knows its own species', r.what);
     ck(/not mine to tell/i.test(r.privacy),
        'G5.' + cid + '  and refuses the Creator the same way', r.privacy);
-    ck(r.ctxKeys === 'companionId,companionName,companionSpecies,hasVoice,isCanon,mode,pageCount,storyTitle',
-       'G6.' + cid + '  through the same eight-field context', r.ctxKeys);
+    ck(r.ctxKeys === 'companionId,companionName,companionSpecies,creatorName,hasVoice,isCanon,mode,othersHere,pageCount,storyTitle',
+       'G6.' + cid + '  through the same ten-field context', r.ctxKeys);
   });
   // A CANON STORY is hosted by Lumo, who belongs to VihuPlanet and
   // attributes nobody — the same encounter, no Creator to refuse.

@@ -444,8 +444,22 @@ const EtherHost = (function () {
           // and from nothing a Traveller typed.
           try {
             if (typeof TravellerTalk !== 'undefined') {
+              // HOW MANY OTHERS OF THEIRS ARE HERE — Sprint 1N.3.
+              // A count of stories already IN the Ether by the same
+              // maker: a set that is public by construction, counted
+              // from the feed the portal is already showing. Never a
+              // database total, which would include private drafts, and
+              // absent rather than guessed when the maker is unknown.
+              let others = null;
+              try {
+                const mine = story && story.creator;
+                if (mine && typeof EtherFeed !== 'undefined' && EtherFeed.othersBy) {
+                  others = EtherFeed.othersBy(mine, story.id);
+                }
+              } catch (e) { others = null; }
               TravellerTalk.offer(story, {
-                id: record.id, name: record.name, species: record.species
+                id: record.id, name: record.name, species: record.species,
+                othersHere: others
               });
             }
           } catch (e) {}

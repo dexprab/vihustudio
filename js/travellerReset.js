@@ -166,6 +166,17 @@ const TravellerReset = (function () {
       }
     } catch (e) {}
 
+    // AND WHAT A CHILD TOLD THEIR COMPANION — Sprint 1N.3, same
+    // reasoning one store along. js/companionFacts.js needs a card to
+    // write and so a Traveller cannot have told it anything; it is
+    // asked anyway, so a future change that made it writeable without
+    // one has somewhere obvious to be wrong.
+    try {
+      if (typeof CompanionFacts !== 'undefined' && CompanionFacts.forgetTraveller) {
+        out.companionFacts = !!CompanionFacts.forgetTraveller();
+      }
+    } catch (e) {}
+
     function _ready(mod, fn) {
       try {
         if (typeof mod === 'undefined' || !mod || typeof mod[fn] !== 'function') return Promise.resolve();

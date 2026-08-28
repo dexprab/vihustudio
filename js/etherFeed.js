@@ -382,6 +382,34 @@ const EtherFeed = (function () {
   // source for Stories written on another device, merged by id with
   // local winning — the same local-primary discipline
   // js/creatorProjectSync.js already holds.
+  // WHAT THE LAST LOAD ACTUALLY RETURNED — Sprint 1N.3.
+  //
+  // The Ether asks for the feed once and draws it; counting a maker's
+  // other stories must not ask again. So the list this function already
+  // produced is remembered, and `othersBy()` counts it. It is a cache
+  // of a page's own render rather than a store: it holds whatever the
+  // last load returned, it is not persisted, and it goes with the page.
+  let _lastLoaded = [];
+
+  /**
+   * How many OTHER stories by this maker are in the Ether right now.
+   * Null when nothing has been loaded, because absent is the honest
+   * answer and a guess is the one thing that must not happen.
+   */
+  function othersBy(creatorName, excludeId) {
+    if (!creatorName || !_lastLoaded.length) return null;
+    let n = 0;
+    for (let i = 0; i < _lastLoaded.length; i++) {
+      const s = _lastLoaded[i];
+      if (!s || s.creator !== creatorName) continue;
+      if (excludeId && s.id === excludeId) continue;
+      n++;
+    }
+    return n;
+  }
+
+  function _remember(list) { try { _lastLoaded = Array.isArray(list) ? list.slice() : []; } catch (e) {} return list; }
+
   function load(opts) {
     opts = opts || {};
     const creator = _creator();
@@ -434,7 +462,7 @@ const EtherFeed = (function () {
           out.push(toStory(record, null));
         });
 
-        if (opts.localOnly) return out;
+        if (opts.localOnly) return _remember(out);
 
         return _cloud().then(function (rows) {
           rows.forEach(function (record) {
@@ -466,9 +494,9 @@ const EtherFeed = (function () {
               // absent. Never from the card on this device.
               out.push(toStory(record, null));
             });
-            return out;
-          }).catch(function () { return out; });
-        }).catch(function () { return out; });
+            return _remember(out);
+          }).catch(function () { return _remember(out); });
+        }).catch(function () { return _remember(out); });
       });
     });
   }
@@ -635,6 +663,7 @@ const EtherFeed = (function () {
 
   const api = {
     load: load,
+    othersBy: othersBy,
     attach: attach,
     pagesOf: pagesOf,
     tintsOf: tintsOf,

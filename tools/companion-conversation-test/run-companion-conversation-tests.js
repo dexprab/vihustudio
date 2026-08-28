@@ -220,10 +220,22 @@ function code(rel) {
     ck(loc.every((i) => all.indexOf(i) !== -1),
        'A2b every id on the local list is a real intent',
        loc.filter((i) => all.indexOf(i) === -1).join(', ') || 'all of them');
-    ck(loc.indexOf('story-fact') === -1 && loc.indexOf('memory-recall') === -1 &&
-       loc.indexOf('unknown') === -1,
-       'A2c and the two the RECORDS prove are not on it — nor is "I did not understand"',
-       'story-fact, memory-recall and unknown all go to the server');
+    // TURNED ROUND IN SPRINT 1N.3, DELIBERATELY, for `unknown` only.
+    //
+    // 1N.2 kept "I did not understand" on the server's side of the line
+    // because the server might one day know more. 1N.3 requires that an
+    // unknown question NEVER disappears — and routing it over a network
+    // makes that promise conditional on the network. The answer needs no
+    // record, the server's own copy of the Mind says the same words, so
+    // asking it bought a failure mode and nothing else.
+    //
+    // THE LINE THAT MATTERS IS UNCHANGED AND IS STILL ASSERTED: the two
+    // things only the RECORDS can prove are still the server's.
+    ck(loc.indexOf('story-fact') === -1 && loc.indexOf('memory-recall') === -1,
+       'A2c the two the RECORDS prove are not on the local list',
+       'story-fact and memory-recall still go to the server');
+    ck(loc.indexOf('unknown') !== -1,
+       'A2d while "I do not know" is answered here, so it never depends on a network');
   }
   ck(!/if\s*\(\s*(?:companion|cid|companionId)\s*===\s*['"]/.test(mindSrc) &&
      !/if\s*\(\s*(?:companion|cid|companionId)\s*===\s*['"]/.test(chatSrc),
@@ -340,9 +352,18 @@ function code(rel) {
     const s = document.querySelector('.companion-chat-said');
     return { text: s.textContent.trim(), shown: getComputedStyle(s).display !== 'none' };
   });
-  ck(quiet.reply === '' && quietDom.shown === false,
-     'R10 silence produces no visible response — not a hole shaped like one',
-     JSON.stringify(quiet.reply) + ', displayed=' + quietDom.shown);
+  // TURNED ROUND IN SPRINT 1N.3, DELIBERATELY. This asserted that an
+  // unrecognised sentence shows nothing at all, which Decision 46 chose
+  // on purpose. 1N.3 reverses it: "an unknown question must never simply
+  // disappear", because to a child a Companion that vanishes when it
+  // does not know is indistinguishable from one that ignored them.
+  //
+  // The rule underneath is unchanged and asserted harder: it says it
+  // does not know, and it INVENTS NOTHING while doing so.
+  ck(quiet.reply.length > 0 && quietDom.shown === true &&
+     !/\d/.test(quiet.reply) && !/Tiny Forest/.test(quiet.reply),
+     'R10 an unrecognised sentence is answered honestly, and invents nothing',
+     JSON.stringify(quiet.reply));
 
   // R7 — a failure comes back to ready, and says so honestly.
   await page.evaluate(() => {
@@ -682,7 +703,10 @@ function code(rel) {
   ck(xOpen.chipW > 0 && xOpen.chipW < xOpen.barW * 0.7,
      'X0b the suggestions are chips, not four full-width banners',
      xOpen.chipW + 'px of ' + xOpen.barW);
-  ck(xOpen.rows <= 2, 'X0c on no more than two rows', xOpen.rows + ' rows');
+    // THREE, NOW THAT THE PANEL IS ANCHORED TO THE COMPANION AND SO
+  // NARROWER. What this guards is that the suggestions do not become a
+  // wall of text; three short rows in a 360px panel is not one.
+  ck(xOpen.rows <= 3, 'X0c on no more than three rows', xOpen.rows + ' rows');
   ck(!/rgba\(0, 0, 0, 0\)/.test(xOpen.opaque),
      'X0d and it is OPAQUE — the child’s page never reads through the words',
      xOpen.opaque);
@@ -784,7 +808,13 @@ function code(rel) {
   ck(proofs.noMemoryNoChip === true, 'V2  with the store emptied the memory chip goes');
   ck(proofs.farSubject === null,
      'V3  continuity does not reach past its two-turn window', JSON.stringify(proofs.farSubject));
-  ck(proofs.notMyName === '', 'V4  a word that is neither name is silence, never a guess',
+  // TURNED ROUND IN SPRINT 1N.3. It read "silence, never a guess"; the
+  // half that mattered was "never a guess", and that is what is asserted
+  // now. A word matching neither name falls to the uncertainty ladder
+  // rather than to nothing — it must not claim to be Leo, and it must
+  // not vanish either.
+  ck(proofs.notMyName.length > 0 && !/Leo/.test(proofs.notMyName),
+     'V4  a word that is neither name is answered honestly, and never guessed at',
      JSON.stringify(proofs.notMyName));
   ck(proofs.noContext === '', 'V5  and with NO context it fails closed',
      JSON.stringify(proofs.noContext));

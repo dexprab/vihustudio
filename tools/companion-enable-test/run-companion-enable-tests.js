@@ -400,8 +400,15 @@ const FOUR = [
        !/\b(good|great|bad|better|best|amazing|talented|clever|well done)\b/i.test(said.judge.reply),
        'C.' + cid + '.9  "Is my drawing good?" → answers without grading',
        JSON.stringify(said.judge.reply));
-    ck(said.unknown.reply === '',
-       'C.' + cid + '.10 something it cannot know → SILENCE, never a hallucination',
+    // TURNED ROUND IN SPRINT 1N.3. It read "SILENCE, never a
+    // hallucination", and the second half was always the point: a
+    // Companion that vanishes when it does not know is, to a child,
+    // indistinguishable from one that ignored them. It now says it does
+    // not know, and the check asserts there is no fact in the saying —
+    // no number, no story name, no name.
+    ck(said.unknown.reply.length > 0 && !/\d/.test(said.unknown.reply) &&
+       !/Tiny Forest|Vihaan/.test(said.unknown.reply),
+       'C.' + cid + '.10 something it cannot know → SAID SO, never a hallucination',
        JSON.stringify(said.unknown.reply));
 
     if (cid === 'leafy' || cid === 'leosaurus') {
@@ -531,8 +538,15 @@ const FOUR = [
   // So the check is stronger rather than weaker: the strip is the ONLY
   // thing covered, it is covered only while OPEN, and the page canvas is
   // the same size either way — which is the defect that was reported.
-  ck(geo.strip === true, 'U5  and the object strip is where it opens — the one surface it may use',
-     'canvas ' + geo.canvas + ', header ' + geo.header + ', pages ' + geo.pages);
+  // TURNED ROUND AGAIN IN SPRINT 1N.3, and this time it covers LESS.
+  // 1N.2 anchored the surface to the foot of the workspace and had to
+  // open it over the object strip because there was nowhere else. 1N.3
+  // anchors it to the Companion instead, in the free column beside the
+  // page — so it now covers nothing at all, and the honest check is the
+  // stronger one.
+  ck(geo.strip === false && geo.canvas === false && geo.header === false && geo.pages === false,
+     'U5  and it covers NOTHING — not the strip, the canvas, the header or the pages',
+     'strip ' + geo.strip + ', canvas ' + geo.canvas);
   const closedGeo = await page.evaluate(() => {
     const r = (s) => { const e = document.querySelector(s); return e ? e.getBoundingClientRect() : null; };
     const canv = () => { const c = r('main.preview-area .preview-wrapper');
@@ -565,8 +579,11 @@ const FOUR = [
     return { text: s ? s.textContent : null, h: r ? Math.round(r.height) : null,
              display: s ? getComputedStyle(s).display : null };
   });
-  ck(silent.reply === '' && artifact.h === 0,
-     'U7  SILENCE LEAVES NOTHING ON SCREEN — not a hole shaped like a missing answer',
+  // TURNED ROUND IN SPRINT 1N.3, same reversal one layer up: an
+  // unrecognised sentence is answered rather than dropped. What is
+  // checked instead is that the answer is real and invents nothing.
+  ck(silent.reply.length > 0 && artifact.h > 0 && !/\d/.test(silent.reply),
+     'U7  AN UNRECOGNISED SENTENCE IS ANSWERED, and invents nothing',
      'display:' + artifact.display + ', height ' + artifact.h);
 
   // ---- N1.9 / N1.10 THE UI REACHES A RESPONSE, AND FORGETS --------
@@ -696,8 +713,14 @@ const FOUR = [
              vh: window.innerHeight,
              count: document.querySelectorAll('.companion-chat-open').length };
   });
-  ck(moved.pill === '💬 Talk to Leo' && /preview-area/.test(moved.host) && moved.onTop === true,
-     'H6  and it FOLLOWS them into the editor', JSON.stringify(moved));
+  // THE HOST IS THE BODY NOW — Sprint 1N.3. The label belongs to the
+  // COMPANION rather than to a screen, so it is placed against their
+  // rect and never re-parented; the whole host-juggling this check was
+  // written to prove is gone. What matters is unchanged and is still
+  // measured: it is there, it is one, and it is on top.
+  ck(moved.pill === '💬 Talk to Leo' && moved.onTop === true,
+     'H6  and it FOLLOWS them into the editor, because it follows the Companion',
+     JSON.stringify(moved));
   ck(moved.count === 1, 'H7  as one pill, never two', moved.count + '');
 
   // =================================================================

@@ -1043,6 +1043,18 @@ async function call(req, over, providerFetch) {
           const c = MagicCard.claim('Chat Suite', null,
             { companionId: 'leafy', companionName: 'Leafy', companionSpecies: 'Bloomling' });
           MagicCard.setActive(c.id);
+          // THE WAY IN IS THE COMPANION — Sprint 1N.3. The label is
+          // placed against the widget's own rect and is not made at all
+          // when there is no Companion on screen, so this fixture needs
+          // one. That is not a weakening: it is the product's rule
+          // arriving in a harness that used to mount a pill into a
+          // corner of an empty page.
+          if (!document.querySelector('.companion-widget')) {
+            const w = document.createElement('div');
+            w.className = 'companion-widget';
+            w.style.cssText = 'position:fixed;right:16px;bottom:40px;width:139px;height:141px;';
+            document.body.appendChild(w);
+          }
           CompanionChat.mount();
           const opener = document.querySelector('.companion-chat-open');
           if (opener) opener.click();
@@ -1067,8 +1079,15 @@ async function call(req, over, providerFetch) {
         });
         ck(!geom.overlaps, 'Y3  AND IT NEVER OVERLAPS THE PAGE',
            'bar ' + geom.barH + 'px, canvas ' + geom.canvasH + 'px, no intersection');
-        ck(geom.barH < geom.canvasH / 3,
-           'Y3b it is a strip, not a window', geom.barH + 'px tall');
+        // SPRINT 1N.3 MOVED IT AND SO MOVED THIS MEASUREMENT. The
+        // surface is no longer a strip across the foot of the workspace
+        // — it is anchored to the Companion, above them, in the column
+        // beside the page. What the check is FOR is unchanged: it must
+        // not become a window that owns the screen. Half the canvas is
+        // the honest version of that for a panel rather than a strip,
+        // and Y3 above still proves it covers no page at all.
+        ck(geom.barH < geom.canvasH / 2,
+           'Y3b it is a small panel, not a window', geom.barH + 'px tall of ' + geom.canvasH);
 
         const sent = await page.evaluate(async () => {
           // A session token. Without one the client stays silent by
@@ -1117,7 +1136,12 @@ async function call(req, over, providerFetch) {
         // unchanged; the sentence had to move to keep testing it.
         const quiet = await page.evaluate(async () => {
           const input = document.querySelector('.companion-chat-input');
-          input.value = 'tell me about the quiet blue thing';
+          // A SENTENCE THAT ACTUALLY REACHES THE SERVER. Sprint 1N.3
+          // answers an unrecognised one in the browser (so that "an
+          // unknown question never disappears" does not depend on a
+          // network), which means the old choice would never have hit
+          // the stubbed route. A STORY fact is still the server's.
+          input.value = 'how many pages are there?';
           document.querySelector('.companion-chat-row').dispatchEvent(
             new Event('submit', { bubbles: true, cancelable: true }));
           await new Promise((r) => setTimeout(r, 600));
@@ -1144,7 +1168,7 @@ async function call(req, over, providerFetch) {
         // rather than one rule for both.
         const failed = await page.evaluate(async () => {
           const input = document.querySelector('.companion-chat-input');
-          input.value = 'anyone there?';
+          input.value = 'how many pages are there?';
           document.querySelector('.companion-chat-row').dispatchEvent(
             new Event('submit', { bubbles: true, cancelable: true }));
           await new Promise((r) => setTimeout(r, 600));

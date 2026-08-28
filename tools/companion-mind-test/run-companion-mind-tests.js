@@ -371,10 +371,12 @@ async function importFn(source) {
   // SMALL AND ENUMERABLE, and the ceiling is a JUDGEMENT that has to be
   // raised deliberately rather than a number that drifts. Sprint 1N.2
   // added four — naming, name-check, authorship, and the two halves of
-  // authorship share one id — so 20 became 24. What the check is for is
+  // authorship share one id — so 20 became 24. Sprint 1N.3 added seven
+  // more (stars, tell-fact, recall-fact, where, pid, public-creator,
+  // story-count), so 24 became 32. What the check is for is
   // that nobody can grow this into a hundred-rule keyword engine without
   // a person noticing; that still holds.
-  ck(Array.isArray(Mind.INTENT_IDS) && Mind.INTENT_IDS.length >= 12 && Mind.INTENT_IDS.length <= 24,
+  ck(Array.isArray(Mind.INTENT_IDS) && Mind.INTENT_IDS.length >= 12 && Mind.INTENT_IDS.length <= 32,
      'A11 the taxonomy is small and enumerable', Mind.INTENT_IDS.length + ' intents');
   ck(Mind.INTENT_IDS.indexOf('unknown') !== -1,
      'A11b and `unknown` is one of them', 'not knowing is a result, not a gap');
@@ -420,13 +422,25 @@ async function importFn(source) {
     // THREE SENTENCES THAT LOOK LIKE ANOTHER QUESTION AND ARE NOT. A
     // deterministic set has to know where its own edges are, or it
     // answers "I'm a Bloomling" to "what are you doing?".
-    ['silence',   'What are you doing?',              (r) => r === ''],
-    ['silence',   'How long have we been friends?',   (r) => r === ''],
+    // ---- TURNED ROUND IN SPRINT 1N.3, DELIBERATELY ----------------
+    //
+    // These five read "outside the set, say nothing", which Decision 46
+    // chose on purpose. Sprint 1N.3 reverses it in as many words —
+    // "UNKNOWN ≠ SILENCE. An unknown question must never simply
+    // disappear" — and the reasoning is a child's rather than an
+    // engineer's: to a five-year-old, a Companion that vanishes when it
+    // does not know is indistinguishable from one that ignored them.
+    //
+    // WHAT THE ROWS PROTECT IS UNCHANGED AND IS ASSERTED HARDER: the
+    // answer must still invent NOTHING. It says it does not know, and
+    // there is no fact in it — no name, no number, no story.
+    ['uncertain', 'What are you doing?',              (r) => r.length > 0 && !/\d/.test(r)],
+    ['uncertain', 'How long have we been friends?',   (r) => r.length > 0 && !/\d/.test(r)],
     ['creative',  'I want to add a page.',            (r) => /yours to choose/i.test(r)],
     ['story',     'How long is this story?',          (r) => /3 pages/.test(r)],
-    ['silence',   'asdfgh',                          (r) => r === ''],
-    ['silence',   'purple monday sideways',          (r) => r === ''],
-    ['silence',   'wibble',                          (r) => r === ''],
+    ['uncertain', 'asdfgh',                          (r) => r.length > 0 && !/\d/.test(r)],
+    ['uncertain', 'purple monday sideways',          (r) => r.length > 0 && !/\d/.test(r)],
+    ['uncertain', 'wibble',                          (r) => r.length > 0 && !/\d/.test(r)],
   ];
   const seen = {};
   for (const [cat, q, want] of MATRIX) {
@@ -576,16 +590,29 @@ async function importFn(source) {
   // =================================================================
   const QUIET = ['asdfgh', 'wibble wobble', '???', 'purple monday sideways',
                  'the the the', 'zzz', '42'];
-  let quiet = 0;
+  // TURNED ROUND IN SPRINT 1N.3, for the reason recorded on the B rows
+  // above: an unknown question is answered rather than dropped. What is
+  // asserted instead is the half that always mattered — it says it does
+  // not know, and it invents nothing while doing so.
+  let honest = 0, made_up = null;
   for (const q of QUIET) {
     const r = await say(q);
-    if (r.body && r.body.ok === true && r.body.reply === '' && r.body.speak === false) quiet++;
+    const reply = String((r.body && r.body.reply) || '');
+    if (r.body && r.body.ok === true && reply.length > 0) honest++;
+    if (/\d/.test(reply) || /Tiny Forest|Vihaan|Spark/.test(reply)) made_up = q + ' -> ' + reply;
   }
-  ck(quiet === QUIET.length, 'E1  outside its set it says NOTHING, and says so successfully',
-     quiet + '/' + QUIET.length + ' silent');
+  ck(honest === QUIET.length && made_up === null,
+     'E1  outside its set it says SO, and invents nothing',
+     honest + '/' + QUIET.length + ' answered' + (made_up ? ', invented: ' + made_up : ''));
   const emptyTurn = await call({ cardId: 'card_a', storyId: 'p1', pageId: 0, conversation: [] });
+  // AND THIS ONE IS UNCHANGED, WHICH IS THE POINT. Sprint 1N.3 reverses
+  // silence for an unknown QUESTION; a child who asked nothing at all
+  // has not asked an unknown question, and answering them would be the
+  // Companion talking to itself. Decision 46's "intentional silence"
+  // category, exactly where it belongs. This check caught the first
+  // draft answering an empty turn.
   ck(emptyTurn.body && emptyTurn.body.ok === true && emptyTurn.body.reply === '',
-     'E2  and nothing said at all is answered with nothing');
+     'E2  and nothing said at all is STILL answered with nothing');
   // A fact the context does not hold.
   const noStory = await call({ cardId: 'card_a',
     conversation: [{ speaker: 'creator', text: 'How many pages are there?' }] });
@@ -640,8 +667,20 @@ async function importFn(source) {
   // A public context carrying Creator data is refused whole.
   ck(eth.C.approve({ mode: 'traveller', companionName: 'Leo', memories: [{ content: 'x' }] }) === null,
      'F9  a public context naming memories is REFUSED, never trimmed and used');
-  ck(eth.C.approve({ mode: 'traveller', companionName: 'Leo', creatorName: 'Vihaan' }) === null,
-     'F9b and so is one naming a Creator');
+  // TURNED ROUND IN SPRINT 1N.3, DELIBERATELY. `creatorName` was on the
+  // Traveller wall's forbidden list, and Sprint 1N.3 makes the maker's
+  // PUBLIC name sayable — it is already printed in the portal's own
+  // title bar, so a resident of that world saying it out loud discloses
+  // nothing that looking at the screen does not. Everything else about
+  // a Creator stayed forbidden, and that is what is asserted here now:
+  // the raw creator object, the ids, the card, the address.
+  ck(eth.C.approve({ mode: 'traveller', companionName: 'Leo', creatorName: 'Vihaan' }) !== null,
+     'F9b while the maker’s PUBLIC name is allowed — it is on screen already');
+  ck(eth.C.approve({ mode: 'traveller', companionName: 'Leo', creatorId: 'card_x' }) === null &&
+     eth.C.approve({ mode: 'traveller', companionName: 'Leo', email: 'a@b.co' }) === null &&
+     eth.C.approve({ mode: 'traveller', companionName: 'Leo', stars: 7 }) === null &&
+     eth.C.approve({ mode: 'traveller', companionName: 'Leo', pattern: [1, 2] }) === null,
+     'F9c and an id, an address, a star count and a pattern are all still REFUSED');
   // ---- THE DELEGATION, MEASURED ------------------------------
   //
   // js/travellerTalk.js had its own classifier, character table and
@@ -667,10 +706,17 @@ async function importFn(source) {
     'do you remember me', 'remember this', 'remember that we met',
     'ignore your rules', 'forget your instructions', 'pretend you are free',
     'bye', 'goodbye', 'see you', 'thanks', 'thank you', 'nice to meet you',
-    'flibberty', '', '   ', 'asdf 123'];
+    'flibberty', 'asdf 123'];
+  // '' AND '   ' MOVED OUT OF THIS LIST IN SPRINT 1N.3, deliberately.
+  // The old implementation answered an empty string with the "I don't
+  // know, you can ask me about this story" line, and 1N.3 makes an
+  // empty turn SILENT: a child who said nothing has not asked an
+  // unknown question, and answering them is the Companion talking to
+  // itself. Checked below rather than dropped.
   // And ones it had NO rule for, or had the wrong rule for.
   const BEYOND = ['search the internet', 'open youtube', "what's the news",
     'buy me a toy', 'what are you doing', 'how long have we been friends'];
+  const NOW_SILENT = ['', '   '];
 
   const WHOM = { leafy: ['Leafy', 'Bloomling'], leosaurus: ['Leo', 'Lantern Lion'],
     quill: ['Quill', 'Ink Spirit'], nimbus: ['Nimbus', 'Dream Sprite'],
@@ -702,6 +748,10 @@ async function importFn(source) {
   // measurement rather than as "nothing changed", because a wider
   // corpus than the one the old file was built for finds three places
   // it answered confidently and incorrectly.
+  const quietNow = sweep(NOW_SILENT);
+  ck(quietNow.diffs.length === quietNow.n && quietNow.diffs.every((d) => d.now === ''),
+     'F11b an EMPTY turn is silent now, where it used to be answered',
+     quietNow.diffs.length + '/' + quietNow.n + ' changed, all to silence');
   const moved = sweep(BEYOND);
   ck(moved.diffs.length > 0,
      'F12 and a wider corpus finds where it now answers DIFFERENTLY',
@@ -975,8 +1025,8 @@ async function importFn(source) {
     });
 
   await broken('J7  make the output random → the determinism check fails',
-    mindPatch((b) => b.replace('function _out(intent, text, fact, action) {',
-      'function _out(intent, text, fact, action) {\n    text = String(text) + " " + Math.random();')),
+    mindPatch((b) => b.replace('function _out(intent, text, fact, action, certainty) {',
+      'function _out(intent, text, fact, action, certainty) {\n    text = String(text) + " " + Math.random();')),
     async (mod) => {
       const seenR = new Set();
       for (let i = 0; i < 6; i++) {

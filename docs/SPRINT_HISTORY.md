@@ -9731,3 +9731,70 @@ Decision 47 in `CLAUDE.md`; `tools/companion-conversation-test/`.
 **The Edge Function needs redeploying** for the `pages` fix — nothing in
 this sprint depends on it, but story questions stay unanswerable in
 production until it happens. `supabase/DEPLOY_companion_mind.md`.
+
+---
+
+## Sprint 1N.3 — Companion Knowledge, Talk & Voice
+
+The deterministic Companion could hold a conversation and had no
+explicit idea what it was allowed to know. This sprint gives it one, and
+gives a child two more ways to talk to it. **No OpenAI, no model, no
+external speech provider, no wake word, no always-listening, both
+production gates shut.**
+
+**THE STARS ARE THE POINT.** A constellation is a Creator's identity and
+their credential, so it is never public on any surface in any form —
+not the pattern, not the name, not the count. Four guards:
+`js/companionPerception.js` has no field for one and sweeps for one that
+arrives anyway, `js/travellerContext.js` names them on its own forbidden
+list, and the `stars` rule sits at the top of the Mind's taxonomy so
+nothing else answers first. A card carrying a real constellation builds
+a perception with no trace of it — measured.
+
+**TWO KINDS OF CREATOR KNOWLEDGE.** What a child TELLS their Companion
+("my name is Vihaan") stays in that relationship — not a memory, not a
+Bond Moment, never in the Ether. What is on the Magic Card is public,
+because the portal already prints it. `js/companionFacts.js` holds the
+first, scoped and validated like the naming store and refusing without a
+card.
+
+**UNKNOWN IS NOT SILENCE**, which amends Decision 46. A Companion that
+vanishes when it does not know is indistinguishable, to a five-year-old,
+from one that ignored them. Two rungs — *"I don't know that yet, that's
+yours to decide"* for a story nobody has written, *"I don't know that
+one"* for plain ignorance — and the real world is not the child's to
+decide, so tomorrow takes the second. **An empty turn is still silent**,
+and a shipped check caught the first draft answering one.
+
+**THE ETHER MAY NAME THE MAKER**, amending Decision 45. `creatorName`
+left the Traveller wall's forbidden list and is the only thing that did.
+A public story count is answered from the maker's other stories already
+in the Ether — a public set, counted from the feed already rendered,
+never a database total and never a guess.
+
+**THE WAY IN IS THE COMPANION.** Reported by the product owner: *"cant
+we make it part of companion circle?"* The pill was parked in the
+workspace column, and on Studio Home it sat in the garden and ran off
+the left edge. Both parts now follow the widget's own rect in the
+Companion's own layer, which deleted the screen-host juggling and the
+hit-testing that went with it. Tapping the Companion opens it through
+the `vihu:companion-gesture` event that already existed — **not one line
+of `js/companionEngine.js` changed.**
+
+**MICROPHONE AND VOICE.** `js/companionListen.js` opens only on a press,
+is explicitly not continuous, touches no audio buffer, and asks once. Its
+words land in the FIELD for the child to read and change — never sent.
+`js/companionSpeak.js` is handed the string already on screen and can
+reach no perception, context or memory.
+
+**SIX EARLIER CHECKS TURNED ROUND with the reason recorded in place,
+none weakened** — five silence assertions (B rows, `E1`, `R10`, `V4`)
+now assert the half that always mattered, *it invents nothing*; and
+`F9b` now asserts that an id, an address, a star count and a pattern are
+all still refused while the public name is allowed. Four more were
+repaired rather than changed: `Y3b`, `Y6`, `Y7` and `A2c`, whose
+sentences moved when `unknown` became a local answer. `A11`'s ceiling
+went 24 → 32.
+
+Every suite green. Decision 48 in `CLAUDE.md`;
+`tools/companion-knowledge-test/`.

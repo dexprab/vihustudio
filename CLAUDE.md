@@ -4734,6 +4734,151 @@ gates still shut.**
   `js/companionDirector.js` · `js/travellerReset.js` ·
   `tools/companion-conversation-test/run-companion-conversation-tests.js`
 
+### 48. A Companion Knows What It Knows, and Where It May Say It
+
+Locked in the Companion Knowledge, Talk & Voice sprint. It gives the
+deterministic Companion an explicit knowledge boundary and two new ways
+for a child to talk to it. **No OpenAI, no model, no provider, no
+external speech service, no wake word, no always-listening, and both
+production gates still shut.**
+
+- **TWO KINDS OF CREATOR KNOWLEDGE, AND THE LINE BETWEEN THEM.** What a
+  child TELLS their own Companion in the Studio — *"my name is
+  Vihaan"* — belongs to that relationship and nowhere else: not a
+  memory, not a Bond Moment, and never in the Ether. What is on the
+  **Magic Card** is public, because the portal already prints it.
+  Availability is decided by source, surface and authority — never by
+  "all Creator information is private" and never by "everything in the
+  database is public".
+- **THE STARS ARE THE ABSOLUTE EXCEPTION, AND THEY ARE GUARDED FOUR
+  TIMES.** A constellation is a Creator's identity and their credential
+  (Decisions 11 and 18), so it is never public on any surface in any
+  form — not the pattern, not the constellation's name, not the COUNT.
+  `js/companionPerception.js` has no field for one, refuses one that
+  arrives by any route, `js/travellerContext.js` names them on its own
+  forbidden list, and the `stars` rule sits at the TOP of the Mind's
+  taxonomy so nothing else can answer a question about them first.
+  A card carrying a real constellation builds a perception with no trace
+  of it — measured, not asserted.
+- **`js/companionPerception.js` ANSWERS ONE QUESTION: what may this
+  Companion know, HERE.** It is not the privacy gate and does not
+  re-implement it — the gate answers what may TRAVEL, and both run.
+  Every field is written out by hand and read from a named source, so a
+  field added to a card, a project or a feed record tomorrow cannot
+  arrive by being adjacent to one that is already allowed.
+- **"WHERE ARE WE?" HAS THREE TRUE ANSWERS**, one per surface, and
+  nobody's temperament changes which is true. Studio Home, the Story
+  Editor (which names the story) and the Ether.
+- **UNKNOWN IS NOT SILENCE, and this AMENDS Decision 46.** That decision
+  recorded *"silence is a result, and a common one"*, and the instinct
+  behind it was right — a Companion that confidently answers everything
+  is a failure. But a Companion that VANISHES when it does not know is a
+  different failure, and to a five-year-old it is indistinguishable from
+  being ignored. So an unknown question is answered as unknown.
+- **TWO RUNGS, AND THE FIRST IS NOT A SOFTER VERSION OF THE SECOND.**
+  *"I don't know that yet — that's yours to decide"* is the Creator's
+  authority over a story nobody has written; *"I don't know that one,
+  I'd only be guessing"* is plain ignorance. **The real world is not the
+  child's to decide** — tomorrow, yesterday and tonight take the second
+  — and the first is unreachable on a screen with no story open,
+  because there is nothing for anybody to have decided.
+- **AN EMPTY TURN IS STILL SILENT**, and that is the one place Decision
+  46's silence survives untouched. A child who said nothing has not
+  asked an unknown question, and answering them would be the Companion
+  talking to itself. A shipped check caught the first draft answering
+  one.
+- **THE ETHER MAY NAME THE MAKER, AND THIS AMENDS DECISION 45.** That
+  decision kept the Creator deliberately absent from a host's knowledge,
+  reasoning that the portal's title bar is the SCREEN's label while the
+  context is the Companion's KNOWLEDGE. That reasoning still holds for
+  everything about a Creator except the one thing the screen is already
+  showing: a Traveller asking *"whose book is this?"* is asking about a
+  line of text in front of them. `creatorName` left the Traveller wall's
+  forbidden list and is the only thing that did — the raw creator
+  object, the ids, the card, the memories, the conversation and the
+  address all stayed.
+- **A PUBLIC COUNT IS AUTHORITATIVE OR ABSENT.** *"How many other
+  stories does this Creator have?"* is answered from the maker's other
+  stories ALREADY IN THE ETHER — a set that is public by construction,
+  counted from the feed the portal already rendered, with no second
+  request. Never a database total, which would count private drafts,
+  and never a guess: with no count the Companion says it does not know.
+- **PID IS NAMED SO IT CANNOT BE INVENTED.** Nothing in this product
+  publishes an identifier of that kind, so the field exists, is always
+  absent, and is answered as a fact about this place rather than as a
+  refusal: *"There isn't one of those here. Your Magic Card is how
+  VihuPlanet knows you."*
+- **THE WAY IN IS THE COMPANION.** Asked for by the product owner
+  looking at Studio Home — *"need better way to put talk to companion.
+  instead of making it a fix place, cant we make it part of companion
+  circle?"* — and he is right twice over. A pill parked at a fixed
+  corner is a control that happens to be near somebody; the Companion IS
+  the somebody. It was measured wrong as well as designed wrong: on
+  Studio Home it sat in the garden and ran off the left edge.
+- **BOTH PARTS FOLLOW THE COMPANION AND BELONG TO NO SCREEN.** They are
+  `position:fixed` and placed against the widget's own rect, in the
+  Companion's own stacking layer — which deletes the screen-host
+  juggling this file used to do, and with it the hit-testing that had to
+  prove the surface was not underneath Studio Home's overlay. Tapping
+  the Companion opens it, through the `vihu:companion-gesture` event
+  `js/companionEngine.js` already dispatched: **not one line of that
+  file changed.**
+- **THE PANEL SITS IN THE COLUMN BESIDE THE PAGE, NOT OVER IT.**
+  Measured, the workspace ends at 1064 of 1440, 944 of 1280 and 1010 of
+  1366, so the free column is 360, 320 and 340 — never nothing, never
+  quite enough for a fixed width. The width is taken from the room that
+  is actually there. The field then needed a row of its own: with a
+  microphone beside Send and Close it came out 182px, and a child types
+  sentences into it.
+- **THE MICROPHONE EXISTS ONLY WHILE A CHILD IS HOLDING IT OPEN.** No
+  wake word, no background listening, no page-level listener, no
+  automatic recording, no timer — `js/companionListen.js` contains none
+  of them, and `continuous` is explicitly false. **Raw audio is never
+  touched**: there is no recorder, no blob and no store reachable from
+  that file. A refusal is asked ONCE and never again, and Talk carries
+  on as text.
+- **RECOGNISED WORDS LAND IN THE FIELD AND ARE NEVER SENT.** A
+  microphone that speaks for a child without showing them what it heard
+  occasionally says something they did not say, and a five-year-old
+  cannot argue with it. The send is still their own press, down the
+  identical path a typed sentence takes — the Mind cannot tell the two
+  apart, and must not be able to.
+- **THE TEXT IS THE ANSWER; SPEECH IS A SECOND COPY OF IT.**
+  `js/companionSpeak.js` is handed the string that is already on screen,
+  read off the element the child is looking at, so there is no second
+  copy that could differ and no route to anything the privacy layer has
+  not approved — it cannot reach a perception, a context or a memory,
+  and none of them is referenced in it. The Companion's own voice
+  (`js/vihuVoice.js`) first, the browser's as a fallback, and Talk is
+  never blocked by speech being unavailable.
+- **THE SAME CONVERSATION, THREE SURFACES.** Studio Home, the Story
+  Editor and the Ether share one `CompanionChat`, one `CompanionMind`,
+  one knowledge contract and one privacy gate. Only the permitted
+  context changes. There is no second chat panel anywhere.
+- **EVERY STARTER HAS A REAL ANSWER, AND NOT ONE IS PRIVATE.** Studio
+  Home offers no story question because there is no story; the Ether
+  offers nothing about memories, stars, an address or what somebody told
+  their Companion. A suggestion is an invitation, and this product does
+  not invite a stranger to ask those.
+- **`unknown` IS ANSWERED IN THE BROWSER**, which is a change to
+  Decision 47's own line. The answer needs no record and the server's
+  copy says the same words, so routing it over a network made *"an
+  unknown question never disappears"* conditional on the network. The
+  two things only the RECORDS can prove — the story and the memories —
+  are still the server's, and that is measured as traffic.
+- Out of scope and untouched: OpenAI, both production gates, the privacy
+  gate, the Bond validator, the memory schema, ownership, Edge
+  authentication, Traveller isolation, canon, and the
+  personality-runtime boundary. **Creative suggestion remains
+  permanently out of scope** (Decision 29), and Companion-initiated
+  actions remain blocked on global undo.
+- `js/companionPerception.js` · `js/companionFacts.js` ·
+  `js/companionListen.js` · `js/companionSpeak.js` ·
+  `js/companionMind.js` · `js/companionChat.js` ·
+  `js/travellerContext.js` · `js/travellerTalk.js` · `js/etherFeed.js` ·
+  `js/etherHost.js` ·
+  `tools/companion-knowledge-test/run-companion-knowledge-tests.js`
+
 ## Roadmap
 
 1. Theme Designer Polish

@@ -151,6 +151,18 @@ const TravellerTalk = (function () {
     said.setAttribute('role', 'status');
     said.setAttribute('aria-live', 'polite');
 
+    // THINGS A TRAVELLER COULD SAY — Sprint 1N.3.
+    //
+    // The same shape the Studio's own conversation uses, and the same
+    // rule: every one of them has a real answer here, and NOT ONE of
+    // them is a private question. There is no suggestion about
+    // memories, about stars, about an address, or about what somebody
+    // told their Companion — a suggestion is an invitation, and this
+    // product does not invite a stranger to ask those.
+    const starters = document.createElement('div');
+    starters.className = 'ether-talk-starters';
+    starters.hidden = true;
+
     const form = document.createElement('form');
     form.className = 'ether-talk-row';
 
@@ -173,6 +185,7 @@ const TravellerTalk = (function () {
     close.textContent = '✕';
 
     form.appendChild(input); form.appendChild(send); form.appendChild(close);
+    bar.appendChild(starters);
     bar.appendChild(said); bar.appendChild(form);
     host.appendChild(opener); host.appendChild(bar);
 
@@ -186,7 +199,8 @@ const TravellerTalk = (function () {
       if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); hide(); }
     });
 
-    _els = { opener: opener, bar: bar, said: said, form: form, input: input, send: send, close: close };
+    _els = { opener: opener, bar: bar, said: said, form: form, input: input,
+             send: send, close: close, starters: starters };
     return _els;
   }
 
@@ -222,6 +236,43 @@ const TravellerTalk = (function () {
     els.input.value = '';
   }
 
+  // Four, and every one of them answerable from the public context this
+  // encounter actually has. A suggestion the Companion would meet with
+  // "that's not mine to tell" would be teaching a child to ask.
+  function _starters() {
+    const list = ['Who are you?', 'What is this place?'];
+    if (_ctx && _ctx.creatorName) list.push('Whose story is this?');
+    if (_ctx && _ctx.storyTitle) list.push('What is this story?');
+    return list.slice(0, 4);
+  }
+
+  function _renderStarters() {
+    if (!_els || !_els.starters) return;
+    const show = _turns.length === 0;
+    _els.starters.hidden = !show;
+    _els.starters.innerHTML = '';
+    if (!show) return;
+    const lead = document.createElement('p');
+    lead.className = 'ether-talk-starters-lead';
+    lead.textContent = 'Try asking ' + ((_ctx && _ctx.companionName) || 'them') + '…';
+    _els.starters.appendChild(lead);
+    const row = document.createElement('div');
+    row.className = 'ether-talk-starter-row';
+    _starters().forEach(function (text) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'ether-talk-starter';
+      b.textContent = text;
+      // FILLS THE FIELD; NEVER SENDS. The Traveller still chooses.
+      b.addEventListener('click', function () {
+        _els.input.value = text;
+        try { _els.input.focus(); } catch (e) {}
+      });
+      row.appendChild(b);
+    });
+    _els.starters.appendChild(row);
+  }
+
   function open() {
     const els = _build();
     if (!els || !_ctx) return;
@@ -229,6 +280,7 @@ const TravellerTalk = (function () {
     els.bar.hidden = false;
     els.said.textContent = '';
     els.input.placeholder = 'Say something to ' + _ctx.companionName;
+    _renderStarters();
     _open = true;
     try { els.input.focus(); } catch (e) {}
   }
@@ -258,6 +310,9 @@ const TravellerTalk = (function () {
     _turns.push({ said: said, answer: answer.text });
     if (_turns.length > MAX_TURNS) _turns.shift();
     els.said.textContent = answer.text;
+    // The suggestions were for a Traveller who did not know what to
+    // say. Somebody has now said something.
+    _renderStarters();
     try { els.input.focus(); } catch (e) {}
   }
 

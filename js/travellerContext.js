@@ -50,19 +50,56 @@ const TravellerContext = (function () {
   // Everything a Traveller's Companion may ever be told, and nothing
   // else can be added by accident: the shape below is written out by
   // hand, field by field, from the feed's record.
+  //
+  // TWO FIELDS ARRIVED IN SPRINT 1N.3, AND BOTH ARE ALREADY ON SCREEN.
+  //
+  //   `creatorName`  — the portal's own title bar prints the maker's
+  //     name, so a resident of that world being able to say it
+  //     discloses nothing that looking at the screen does not. It is
+  //     the RECORD's creatorName, which travels with the story
+  //     (Decision 15), never the card of whoever is doing the looking.
+  //     This AMENDS the clause below that kept the Creator deliberately
+  //     absent; that clause is left standing and marked, because the
+  //     reasoning it gives is still exactly right about everything
+  //     ELSE about a Creator.
+  //
+  //   `othersHere`   — how many OTHER stories by this maker are in the
+  //     Ether right now. A count of a set that is public by
+  //     construction. Never a database total, which would count private
+  //     drafts, and never a guess: absent means the Companion says it
+  //     does not know.
+  //
+  // THE STARS ARE NOT ON THIS LIST AND NEVER WILL BE. They are in
+  // FORBIDDEN_KEYS below as well, so a field named for them is refused
+  // whatever route it took.
   const PUBLIC_FIELDS = ['storyTitle', 'pageCount', 'hasVoice', 'isCanon',
-                         'companionName', 'companionSpecies', 'companionId'];
+                         'companionName', 'companionSpecies', 'companionId',
+                         'creatorName', 'othersHere'];
 
   // Keys that must never appear in a Traveller context whatever route
   // they took to get here. The builder cannot produce them; the gate
   // refuses them anyway, because a wall with one guard is a wall with
   // one mistake in it.
+  //
+  // `creatorName` LEFT THIS LIST IN SPRINT 1N.3, and it is the only
+  // thing that did. It is the maker's public name, already printed in
+  // the portal's own title bar, and the product now lets a resident say
+  // it out loud. Everything else about a Creator stayed — the raw
+  // `creator` object, the ids, the card, the owner, the memories, the
+  // conversation, the address.
+  //
+  // THE STARS JOINED IT. A Creator's constellation is their identity
+  // and their credential (Decisions 11 and 18), and it is never public
+  // on any surface. The builder has no field for one; this is the
+  // second guard, because a wall with one guard is a wall with one
+  // mistake in it.
   const FORBIDDEN_KEYS = [
-    'creator', 'creatorName', 'creatorId', 'cardId', 'card', 'ownerId', 'owner',
+    'stars', 'star', 'starCount', 'pattern', 'constellation', 'sky', 'signature',
+    'creator', 'creatorId', 'cardId', 'card', 'ownerId', 'owner',
     'projectId', 'libraryId', 'id', 'memories', 'memory', 'bond', 'bondMoment',
     'conversation', 'history', 'preferences', 'pages', 'page', 'slides',
     'prose', 'storyBeat', 'storyDraft', 'draft', 'unpublished', 'email',
-    'token', 'session', 'auth', 'publishedAt', 'updatedAt', 'cheers'
+    'password', 'token', 'session', 'auth', 'publishedAt', 'updatedAt', 'cheers'
   ];
 
   // Values that must never appear whatever they are called: anything
@@ -117,12 +154,25 @@ const TravellerContext = (function () {
         companionSpecies: _str(host && host.species, 40),
         companionId: _str(host && host.id, 40)
       };
-      // THE CREATOR IS DELIBERATELY ABSENT, even though the portal's
-      // own title bar shows the maker's name. That is the portal's
-      // label; this is the Companion's knowledge, and every Companion's
-      // own specification says it never says anything about its own
-      // Creator. The two are consistent: the screen may name the maker,
-      // the resident does not discuss them.
+      // THE MAKER'S NAME, AND NOTHING ELSE ABOUT THEM — Sprint 1N.3.
+      //
+      // Sprint 1M kept the Creator deliberately absent here, on the
+      // reasoning that the portal's title bar is the SCREEN's label
+      // while this is the Companion's KNOWLEDGE. That reasoning still
+      // holds for everything about a Creator except the one thing the
+      // screen is already showing: a Traveller asking "whose book is
+      // this?" is asking about a line of text in front of them, and a
+      // resident of that world saying it out loud is not a disclosure.
+      //
+      // Everything else about them is exactly as absent as it was —
+      // no memories, no card, no ids, no drafts, no history, and no
+      // private name. The Companion may NAME the maker; it still does
+      // not discuss them.
+      ctx.creatorName = _str(story.creator, 40);
+      // How many OTHERS of theirs are here. Supplied by the caller from
+      // the same feed the portal is already showing, or absent.
+      ctx.othersHere = (typeof host === 'object' && host && typeof host.othersHere === 'number'
+        && isFinite(host.othersHere) && host.othersHere >= 0) ? (host.othersHere | 0) : null;
       if (!ctx.storyTitle && !ctx.companionName) return null;
       return approve(ctx);
     } catch (e) { return null; }

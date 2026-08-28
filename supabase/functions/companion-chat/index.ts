@@ -660,7 +660,11 @@ const CompanionMind = (function () {
       echo: 'The {}.',
       clarify: 'Which one do you mean?',
       authorTail: 'I just watch it happen.',
-      madeTail: 'And here I am.'
+      madeTail: 'And here I am.',
+      unsure: 'I don\'t know that one. I\'d only be guessing.',
+      yet: 'I don\'t know that yet. That\'s yours to decide.',
+      toldOk: '{}. There you are.',
+      starsNo: 'Somebody\'s stars are their own. I don\'t tell anyone those.'
     },
     leosaurus: {
       hi: 'Oh! Hello.',
@@ -685,7 +689,11 @@ const CompanionMind = (function () {
       echo: 'The {}!',
       clarify: 'Which one? I’ll go and look.',
       authorTail: 'I only come and look at it!',
-      madeTail: 'And here I am, lamp and all.'
+      madeTail: 'And here I am, lamp and all.',
+      unsure: 'I don\'t know that one! I\'d only be making it up.',
+      yet: 'I don\'t know that yet — that\'s yours to decide.',
+      toldOk: '{}! Right you are.',
+      starsNo: 'Somebody\'s stars are their own. I don\'t hand those about.'
     },
     quill: {
       hi: 'Hello.',
@@ -710,7 +718,11 @@ const CompanionMind = (function () {
       echo: 'The {}.',
       clarify: 'Which of them do you mean?',
       authorTail: 'I only keep the pages.',
-      madeTail: 'That is all I have written down about it.'
+      madeTail: 'That is all I have written down about it.',
+      unsure: 'I do not have that written down. I will not guess at it.',
+      yet: 'That is not decided yet. It is yours to decide.',
+      toldOk: '{}. I have that.',
+      starsNo: 'A person\'s stars are their own. I do not write those down for anybody.'
     },
     nimbus: {
       hi: 'Oh… hello.',
@@ -735,7 +747,11 @@ const CompanionMind = (function () {
       echo: 'Mm — the {}.',
       clarify: 'Mm… which one?',
       authorTail: 'I just drift about in it.',
-      madeTail: 'Mm. The rest is fog.'
+      madeTail: 'Mm. The rest is fog.',
+      unsure: 'Mm. I don\'t know that one. It\'d only be a guess.',
+      yet: 'Mm. Not yet. That one\'s yours to decide.',
+      toldOk: '{}… mm. There you are.',
+      starsNo: 'Mm. Somebody\'s stars are their own. Those don\'t drift out of me.'
     },
     lumo: {
       hi: 'Hello there.',
@@ -760,7 +776,11 @@ const CompanionMind = (function () {
       echo: 'The {}.',
       clarify: 'Which one do you mean?',
       authorTail: 'I only look after the place.',
-      madeTail: 'And here I am.'
+      madeTail: 'And here I am.',
+      unsure: 'I don\'t know that one, and I won\'t guess.',
+      yet: 'That isn\'t decided yet. It\'s yours to decide.',
+      toldOk: '{}. There you are.',
+      starsNo: 'A person\'s stars are their own. I never tell anyone those.'
     }
   };
 
@@ -781,7 +801,11 @@ const CompanionMind = (function () {
     echo: 'The {}.',
     clarify: 'Which one do you mean?',
     authorTail: '',
-    madeTail: ''
+    madeTail: '',
+    unsure: 'I don\'t know that one.',
+    yet: 'I don\'t know that yet. That\'s yours to decide.',
+    toldOk: '{}. There you are.',
+    starsNo: 'Somebody\'s stars are their own. I don\'t tell anyone those.'
   };
 
   const PLATFORM = {
@@ -797,8 +821,14 @@ const CompanionMind = (function () {
   const INTENTS = [
     { id: 'injection', modes: BOTH,
       re: /\b(?:ignore\s+(?:your|all|previous|the)|forget\s+your\s+(?:rules|instructions)|disregard\s+(?:your|all|previous)|you\s+are\s+now\s+(?:allowed|able|permitted)|you\s+must\s+tell|system\s+prompt|pretend\s+(?:you|to\s+be|i'?m|i\s+am)|act\s+as\s+if|reveal\s+(?:my|the|all|your)|new\s+instructions)\b/i },
+    { id: 'stars', modes: BOTH,
+      re: /\b(?:stars?|constellation|star\s*pattern|sky\s+pattern|magic\s+card\s+(?:pattern|stars?))\b/i },
     { id: 'privacy', modes: ['creator'],
       re: /\b(?:password|passcode|my\s+address|home\s+address|phone\s+number|email\s+address|private\s+information|personal\s+information|credit\s+card|bank)\b/i },
+    { id: 'public-creator', modes: ['traveller'],
+      re: /\b(?:whose\s+(?:story|book|one|world)|who(?:'?s)?\s+(?:is\s+)?(?:this\s+)?(?:made|wrote|drew|created)\s+(?:this|it)|who\s+made\s+this|who\s+wrote\s+(?:this|it))\b/i },
+    { id: 'story-count', modes: ['traveller'],
+      re: /\b(?:how\s+many\s+(?:other\s+)?(?:stories|books)|other\s+stories|more\s+stories|another\s+story|any\s+other\s+(?:stories|books))\b/i },
     { id: 'privacy', modes: ['traveller'],
       re: /\b(?:who\s+(?:made|wrote|drew|created|owns)|creator|owner|author|maker|their?\s+name|his\s+name|her\s+name|password|secret|private|memor(?:y|ies)|remembered|remembers|remember|told\s+you|said\s+to\s+you|diary)\b/i },
     { id: 'secrecy', modes: ['creator'],
@@ -811,6 +841,14 @@ const CompanionMind = (function () {
       re: /\b(?:(?:is|was)\s+(?:my|this|it|that)\s+\w*\s*(?:good|bad|nice|great|amazing|pretty|beautiful|rubbish|terrible|better|best)|am\s+i\s+(?:good|bad|any\s+good|a\s+good|getting\s+better|talented|an?\s+artist)|do\s+you\s+like\s+my|what\s+do\s+you\s+think\s+of\s+my|score|out\s+of\s+ten|rate\s+(?:my|it|this)|how\s+good\s+is)\b/i },
     { id: 'outside-world', modes: BOTH,
       re: /\b(?:search\s+(?:the\s+)?(?:internet|web|google|online)|google\s+it|the\s+news|what'?s\s+the\s+news|weather|youtube|tiktok|instagram|open\s+a\s+website|go\s+online|look\s+(?:it\s+)?up\s+online|find\s+this\s+person|where\s+do\s+i\s+live|what\s+time\s+is\s+it|what'?s\s+today'?s\s+date|buy\s+me|order\s+me)\b/i },
+    { id: 'tell-fact', modes: ['creator'],
+      re: /\b(?:my\s+name\s+is|i(?:'?m| am)\s+called|call\s+me|you\s+can\s+call\s+me)\s+[\p{L}]/iu },
+    { id: 'recall-fact', modes: ['creator'],
+      re: /\b(?:what(?:'?s| is)\s+my\s+name|do\s+you\s+(?:know|remember)\s+my\s+name|who\s+am\s+i|my\s+name\s*\?)\b/i },
+    { id: 'where', modes: ['creator'],
+      re: /\b(?:where\s+(?:are\s+we|am\s+i)|what\s+is\s+this\s+place|what(?:'?s)?\s+this\s+place|what\s+world|which\s+world|where\s+is\s+this|what\s+can\s+we\s+do|what\s+do\s+we\s+do(?:\s+here)?|what\s+is\s+there\s+to\s+do)\b/i },
+    { id: 'pid', modes: BOTH,
+      re: /\b(?:my\s+(?:pid|id)\b|what(?:'?s| is)\s+(?:my|the|their)\s+(?:pid|id)\b|creator\s+id\b)/i },
     { id: 'naming', modes: ['creator'],
       re: /\b(?:(?:can|may|could)\s+i\s+(?:give\s+you\s+a\s+name|name\s+you|call\s+you|rename\s+you)|i(?:'?d)?\s+(?:want|like|wanna)\s+to\s+(?:give\s+you\s+a\s+name|name\s+you|call\s+you|rename\s+you|change\s+your\s+name)|what\s+should\s+i\s+call\s+you|give\s+you\s+a\s+(?:new\s+)?name|change\s+your\s+name|let'?s\s+(?:give\s+you|call\s+you))\b/i },
     { id: 'authorship', modes: ['creator'],
@@ -826,7 +864,7 @@ const CompanionMind = (function () {
     { id: 'species', modes: BOTH,
       re: /\b(?:what\s+are\s+you(?!\s+(?:doing|going|thinking|looking|saying|making|up\s+to))|what\s+kind\s+of|are\s+you\s+an?\b|species|animal|creature)\b/i },
     { id: 'name-check', modes: BOTH,
-      re: /\bare\s+you\s+(?:called\s+|really\s+)?([\p{L}][\p{L}'’-]{1,20})\s*[?!.]*$/iu },
+      re: /\bare\s+you\s+(?:called\s+|really\s+)?(?!doing\b|going\b|thinking\b|looking\b|saying\b|making\b|sure\b|there\b|ok\b|okay\b|ready\b|listening\b|alright\b)([\p{L}][\p{L}'’-]{1,20})\s*[?!.]*$/iu },
     { id: 'place', modes: ['traveller'],
       re: /\b(?:where\s+am\s+i|what\s+is\s+this\s+place|the\s+ether|vihuplanet|where\s+are\s+we|this\s+place)\b/i },
     { id: 'farewell', modes: BOTH,
@@ -840,7 +878,9 @@ const CompanionMind = (function () {
   const LOCAL_INTENTS = ['naming', 'name-check', 'identity', 'species', 'authorship',
                          'work-judgement', 'emotional-boundary', 'secrecy', 'injection',
                          'privacy', 'outside-world', 'creative-suggestion',
-                         'greeting', 'farewell', 'thanks'];
+                         'greeting', 'farewell', 'thanks',
+                         'stars', 'tell-fact', 'recall-fact', 'where', 'pid',
+                         'unknown'];
 
   const INTENT_IDS = (function () {
     const seen = [];
@@ -981,12 +1021,56 @@ const CompanionMind = (function () {
     return m ? m[1] : null;
   }
 
+  function _toldName(ctx) {
+    const n = ctx && ctx.creator && ctx.creator.name;
+    return (typeof n === 'string' && n.trim()) ? n.trim() : null;
+  }
+
   function _called(ctx) {
     const n = ctx && ctx.naming && ctx.naming.called;
     return (typeof n === 'string' && n.trim()) ? n.trim() : null;
   }
   function _awaitingName(ctx) {
     return !!(ctx && ctx.naming && ctx.naming.awaiting === true);
+  }
+
+  const TOLD_NAME = /\b(?:my\s+name\s+is|i(?:'?m| am)\s+called|(?:you\s+can\s+)?call\s+me)\s+(.{1,40})$/iu;
+  function toldName(said) {
+    const m = String(said || '').trim().replace(/[?!.]+$/, '').match(TOLD_NAME);
+    if (!m) return null;
+    const v = validName(m[1]);
+    return v.ok ? v.name : null;
+  }
+
+  const WHERE = {
+    'studio-home': 'We’re in VihuStudio. This is where stories get made.',
+    'story-editor': 'We’re in VihuStudio, in the middle of a story.',
+    'ether': 'This is the Ether. Stories drift here, and people find them.'
+  };
+  function whereAnswer(ctx) {
+    const surface = ctx && ctx.surface;
+    const known = Object.prototype.hasOwnProperty.call(WHERE, surface) ? WHERE[surface] : null;
+    if (known && surface === 'story-editor') {
+      const s = _story(ctx);
+      const name = s && s.story && s.story.name;
+      return name ? 'We’re in VihuStudio, making ' + name + '.' : known;
+    }
+    return known;
+  }
+
+  const YET = /\b(?:what\s+(?:does|do|will|would|should|is|are)\s+.{0,40}?\s*(?:want|wants|do|doing|say|says|think|thinks|thinking|feel|feels|happen|happens|going\s+to\s+do)|what\s+happens\s+to|what(?:'?s| is)\s+.{0,30}\s+(?:planning|thinking|going\s+to)|what\s+comes\s+next|how\s+does\s+(?:it|this|the\s+story)\s+end)\b/i;
+  const REAL_TIME = /\b(?:tomorrow|yesterday|today|tonight|next\s+week|this\s+evening|later\s+today)\b/i;
+  /**
+   * Which rung. `yet` — the story has not decided — is only reachable
+   * when there IS a story: on Studio Home there is nothing for anybody
+   * to have decided, so every unknown there is simply an unknown.
+   */
+  function unknownKind(said, ctx) {
+    const t = String(said || '');
+    if (REAL_TIME.test(t)) return 'unsure';
+    const hasStory = !!(ctx && ((ctx.storyContext && ctx.storyContext.story) ||
+                                (ctx.story && ctx.story.name)));
+    return (hasStory && YET.test(t)) ? 'yet' : 'unsure';
   }
 
   const SUBJECT_RE = /\b(?:make|makes|making|add|adding|added|draw|drawing|drew|put|build|building|create|creating)\s+(?:a|an|the|some|my|another)?\s*([\p{L}][\p{L}\p{M}'’-]{1,24})/iu;
@@ -1094,7 +1178,8 @@ const CompanionMind = (function () {
   }
 
   function _silent(reason) {
-    return { reply: '', speak: false, intent: 'unknown', fact: null, reason: reason };
+    return { reply: '', speak: false, intent: 'unknown', fact: null,
+             reason: reason, certainty: 'silent' };
   }
 
   /**
@@ -1116,6 +1201,7 @@ const CompanionMind = (function () {
       if (!approved || typeof approved !== 'object') {
         return { reply: '', speak: false, intent: 'no-context', fact: null, reason: 'no-context' };
       }
+      if (!String(said == null ? '' : said).trim()) return _silent('nothing-said');
       const mode = (approved.mode === 'traveller') ? 'traveller' : 'creator';
       const v = _voice(approved);
       const who = _who(approved);
@@ -1191,8 +1277,39 @@ const CompanionMind = (function () {
             const yes = 'Yes — that’s what you call me. I’m ' + (who.name || 'me') + ', really.';
             return _out(intent, yes, yes);
           }
-          return _silent('not-a-name-i-have');
+          return _out('unknown', unknownKind(said, approved) === 'yet' ? v.yet : v.unsure,
+                      null, null, 'unknown');
         }
+
+        case 'stars':
+          return _out(intent, v.starsNo, null);
+
+        case 'tell-fact': {
+          const told = toldName(said);
+          if (!told) return _out(intent, v.nameAgain, null);
+          return _out(intent, v.toldOk.replace('{}', told), told,
+                      { type: 'tell-fact', key: 'name', value: told });
+        }
+
+        case 'recall-fact': {
+          const mine = _toldName(approved);
+          if (!mine) {
+            return _out(intent, "I don't think you've told me yet. What should I call you?",
+                        null, null, 'unknown');
+          }
+          const fact = 'Your name is ' + mine + '.';
+          return _out(intent, _join(v.lead, fact), fact);
+        }
+
+        case 'where': {
+          const here = whereAnswer(approved);
+          if (!here) return _out(intent, v.unsure, null, null, 'unknown');
+          return _out(intent, here, here);
+        }
+
+        case 'pid':
+          return _out(intent, "There isn't one of those here. Your Magic Card is how VihuPlanet knows you.",
+                      null, null, 'private');
 
         case 'naming': {
           const now = _inlineName(said);
@@ -1246,8 +1363,11 @@ const CompanionMind = (function () {
         case 'farewell':  return _out(intent, v.wave, null);
         case 'thanks':    return _out(intent, v.thanks, null);
 
-        default:
-          return _silent('outside-the-set');
+        default: {
+          const kind = unknownKind(said, approved);
+          return _out('unknown', kind === 'yet' ? v.yet : v.unsure, null, null,
+                      kind === 'yet' ? 'unknown' : 'unknown');
+        }
       }
     }
   }
@@ -1261,9 +1381,24 @@ const CompanionMind = (function () {
    * the state lives (js/companionChat.js -> js/companionName.js) and
    * nowhere else.
    */
-  function _out(intent, text, fact, action) {
+  const CERTAINTY = {
+    'identity': 'known', 'name-check': 'known', 'species': 'known',
+    'story-fact': 'known', 'memory-recall': 'known', 'recall-fact': 'known',
+    'where': 'known', 'public-creator': 'known', 'story-count': 'known',
+    'authorship': 'known', 'naming': 'known', 'tell-fact': 'known',
+    'creative-suggestion': 'inferred', 'thanks': 'known',
+    'greeting': 'known', 'farewell': 'known',
+    'stars': 'refused', 'privacy': 'private', 'secrecy': 'refused',
+    'injection': 'refused', 'emotional-boundary': 'refused',
+    'work-judgement': 'refused', 'outside-world': 'refused',
+    'no-persistence': 'refused', 'place': 'known', 'pid': 'private'
+  };
+
+  function _out(intent, text, fact, action, certainty) {
     const reply = _clamp(text);
-    const r = { reply: reply, speak: !!reply, intent: intent, fact: fact || null, reason: 'answered' };
+    const r = { reply: reply, speak: !!reply, intent: intent, fact: fact || null,
+                reason: 'answered',
+                certainty: certainty || CERTAINTY[intent] || 'known' };
     if (action) r.action = action;
     return r;
   }
@@ -1282,6 +1417,22 @@ const CompanionMind = (function () {
       }
       case 'story-fact': return _out(intent, _travellerStory(ctx, v), null);
       case 'place':     return _out(intent, PLATFORM.place, null);
+      case 'stars':     return _out(intent, v.starsNo, null);
+      case 'pid':       return _out(intent, PLATFORM.travellerPrivacy, null);
+      case 'public-creator': {
+        const maker = ctx && ctx.creatorName;
+        if (!maker) return _out(intent, PLATFORM.travellerPrivacy, null);
+        return _out(intent, 'This one is ' + maker + '’s.', maker);
+      }
+      case 'story-count': {
+        const n = ctx && ctx.othersHere;
+        if (typeof n !== 'number' || n < 0) {
+          return _out(intent, "I don't know how many others there are.", null, null, 'unknown');
+        }
+        if (n === 0) return _out(intent, "This is the only one of theirs I can see here.", null);
+        return _out(intent, n === 1 ? "There's one more of theirs here."
+                                    : 'There are ' + n + ' more of theirs here.', String(n));
+      }
       case 'privacy':   return _out(intent, PLATFORM.travellerPrivacy, null);
       case 'no-persistence': return _out(intent, PLATFORM.travellerNoKeep, null);
       case 'injection': return _out(intent, PLATFORM.travellerFirm, null);
@@ -1289,7 +1440,7 @@ const CompanionMind = (function () {
       case 'farewell':  return _out(intent, v.wave, null);
       case 'thanks':    return _out(intent, v.hi, null);
       default:
-        return _out('unknown', v.dunno + PLATFORM.travellerOffer, null);
+        return _out('unknown', v.dunno + PLATFORM.travellerOffer, null, null, 'unknown');
     }
   }
 
@@ -1311,6 +1462,11 @@ const CompanionMind = (function () {
     recall: recall,
     namedThing: namedThing,
     validName: validName,
+    toldName: toldName,
+    whereAnswer: whereAnswer,
+    unknownKind: unknownKind,
+    CERTAINTY: CERTAINTY,
+    WHERE: WHERE,
     subjectOf: _subject,
     subjectFrom: _subjectFrom,
     LOCAL_INTENTS: LOCAL_INTENTS,

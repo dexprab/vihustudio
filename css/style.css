@@ -440,7 +440,7 @@ button{
    default and nobody finds out until somebody looks at the screen. Any
    button added to the Studio that is not a full-width form button
    belongs on this list in the same commit that adds it. */
-button:not(.tab-btn):not(.theme-toggle):not(.export-btn):not(#openBtn):not(#saveBtn):not(.creation-flow-myprojects-btn):not(.companion-chat-open):not(.companion-chat-send):not(.companion-chat-close):not(.companion-chat-starter){
+button:not(.tab-btn):not(.theme-toggle):not(.export-btn):not(#openBtn):not(#saveBtn):not(.creation-flow-myprojects-btn):not(.companion-chat-open):not(.companion-chat-send):not(.companion-chat-close):not(.companion-chat-starter):not(.companion-chat-mic):not(.companion-chat-speak):not(.ether-talk-starter){
   width:100%;
   margin-bottom:12px;
 }
@@ -13063,6 +13063,22 @@ body.dark-theme .bia-studio-btn:hover{ background:rgba(255,255,255,0.08); }
    ground move to neutral greys for the same reason. Nothing about the
    design changed; only the colour a missing variable falls back to. */
 .companion-chat-open{
+  /* PART OF THE COMPANION, NOT A PLACE ON THE SCREEN — Sprint 1N.3.
+     It is placed against the widget's own rect by js/companionChat.js
+     -> _place(), so it follows the Companion wherever a child drags
+     them and belongs to no screen. This replaces a pill parked in the
+     workspace column, which on Studio Home sat in the garden and ran
+     off the left edge. `top`/`left` are written by that function; the
+     values here are only a first paint. */
+  position:fixed;
+  top:0; left:0;
+  /* WITH THE COMPANION, IN THE COMPANION'S OWN LAYER. The widget sits
+     at 1450, above Studio Home's overlay (1000) and above the workspace
+     — which is the whole reason a child can see their Companion on
+     every screen. Anything that belongs TO the Companion has to live
+     there too, or it is behind whichever screen is up: measured, the
+     label and the panel were both invisible on Studio Home at 30/31. */
+  z-index:1451;
   /* OPENING IT MOVES NOTHING.
      Reported by the product owner: "the talk widget is pushing
      everything upwards". Both of these were flex children of
@@ -13077,9 +13093,7 @@ body.dark-theme .bia-studio-btn:hover{ background:rgba(255,255,255,0.08); }
      predictable ~48px once; the STRIP is lifted out of it and opens
      over the object strip, so pressing the pill changes the canvas by
      nothing at all. Closed, it covers nothing. */
-  flex:0 0 auto;
-  align-self:center;
-  margin:4px auto 6px;
+  margin:0;
   padding:5px 14px;
   border:1px solid var(--border, rgba(124,124,134,.32));
   border-radius:999px;
@@ -13100,15 +13114,19 @@ body.dark-theme .bia-studio-btn:hover{ background:rgba(255,255,255,0.08); }
   /* OUT OF THE FLOW, so opening it takes nothing from the page. It
      opens over the object strip — which is what a child is not looking
      at while they are talking — and closes back off it. */
-  position:absolute;
-  left:50%;
-  transform:translateX(-50%);
+  /* ANCHORED TO THE COMPANION, ABOVE THEM AND RIGHT-ALIGNED TO THEM.
+     Fixed rather than absolute, so it belongs to no screen and needs no
+     re-parenting when Studio Home's overlay opens over the workspace —
+     which is what this file used to do, and what had to be hit-tested
+     to prove the surface was not underneath a screen. */
+  position:fixed;
+  top:0; left:0;
+  z-index:1452;
   /* IT FITS THE BAND UNDER THE PAGE, WHICH IS A MEASUREMENT. 218px at
      1440x900, 1366x700 and 1280x800 alike — the workspace column's own
      geometry — so the surface is capped to sit inside it and can never
      grow up into the child's page however much it holds. */
-  bottom:8px;
-  max-height:200px;
+  max-height:min(320px, 46vh);
   display:flex;
   flex-direction:column;
   /* ABOVE THE STRIP'S OWN CONTROLS. Measured: at z-index 5 the object
@@ -13116,11 +13134,9 @@ body.dark-theme .bia-studio-btn:hover{ background:rgba(255,255,255,0.08); }
      because they carry their own stacking. It is a thing the child just
      opened and is looking at, so it is on top of the row it opens over
      — and it goes when they close it. */
-  z-index:30;
-  flex:0 0 auto;
   margin:0;
-  max-width:640px;
-  width:min(560px, calc(100% - 32px));
+  max-width:none;
+  width:min(420px, calc(100vw - 32px));
   padding:10px 12px;
   border:1px solid rgba(255,214,140,.22);
   border-radius:14px;
@@ -13135,6 +13151,51 @@ body.dark-theme .bia-studio-btn:hover{ background:rgba(255,255,255,0.08); }
 
 /* The part that scrolls. The field and Say it are pinned below it, so
    a long answer never moves the thing a child is typing into. */
+/* THINGS A TRAVELLER COULD SAY — the Ether's own, same shape as the
+   Studio's and never a private question among them. */
+.ether-talk-starters{ margin:0 0 8px; }
+.ether-talk-starters[hidden]{ display:none; }
+.ether-talk-starters-lead{ margin:0 0 6px; font-size:.76rem; opacity:.7; }
+.ether-talk-starter-row{ display:flex; flex-wrap:wrap; gap:6px; }
+.ether-talk-starter{
+  width:auto; margin:0; padding:4px 10px;
+  border:1px solid rgba(255,255,255,.22); border-radius:999px;
+  background:rgba(255,255,255,.06); color:inherit;
+  font-size:.78rem; line-height:1.3; cursor:pointer;
+}
+.ether-talk-starter:hover{ background:rgba(255,214,140,.16); }
+
+/* THE MICROPHONE AND THE VOICE — Sprint 1N.3. Two small round
+   controls, sized like the Close, never full-width (the blanket
+   `button{width:100%}` rule again — both are on its exception list). */
+.companion-chat-mic, .companion-chat-speak{
+  width:auto;
+  margin:0;
+  padding:4px 8px;
+  border:1px solid var(--border, rgba(124,124,134,.32));
+  border-radius:999px;
+  background:transparent;
+  color:var(--text, #fff);
+  font-size:.9rem;
+  line-height:1;
+  cursor:pointer;
+}
+.companion-chat-mic[hidden], .companion-chat-speak[hidden]{ display:none; }
+.companion-chat-mic:hover, .companion-chat-speak:hover{ background:rgba(255,214,140,.14); }
+/* LISTENING IS NEVER SOMETHING A CHILD HAS TO GUESS AT. */
+.companion-chat[data-mic="on"] .companion-chat-mic{
+  border-color:rgba(255,140,140,.6);
+  background:rgba(255,140,140,.16);
+}
+.companion-chat-speak{ float:right; margin:-2px 0 4px 6px; }
+.companion-chat-heard{
+  margin:0 0 6px;
+  color:var(--text-dim, #7c7c86);
+  font-size:.8rem;
+  line-height:1.4;
+}
+.companion-chat-heard[hidden]{ display:none; }
+
 /* HIDDEN MEANS GONE. `display:flex` above overrides the browser's own
    `[hidden]{display:none}`, so a CLOSED surface kept its box — invisible,
    200px tall, at z-index 30, sitting over the object strip and over the
@@ -13219,8 +13280,16 @@ body.dark-theme .bia-studio-btn:hover{ background:rgba(255,255,255,0.08); }
 .companion-chat-said:empty{ display:none; }
 
 .companion-chat-row{
+  /* THE FIELD GETS A ROW OF ITS OWN — Sprint 1N.3.
+     Anchored to the Companion the panel is 360-400px rather than 560,
+     and with a microphone beside Send and Close the field was squeezed
+     to 182px. A child types sentences into this; it wraps instead, so
+     the field is always the full width and the three controls sit
+     under it. */
   display:flex;
+  flex-wrap:wrap;
   align-items:center;
+  justify-content:flex-end;
   gap:8px;
 }
 .companion-chat-input{
@@ -13232,6 +13301,11 @@ body.dark-theme .bia-studio-btn:hover{ background:rgba(255,255,255,0.08); }
   background:var(--input-bg, rgba(124,124,134,.10));
   color:var(--text, #fff);
   font-size:.9rem;
+  /* ITS OWN ROW. The panel is 360-400px now that it is anchored to
+     the Companion, and with a microphone beside Send and Close the
+     field came out 182px. A child types sentences into this. */
+  flex:1 1 100%;
+  min-width:0;
 }
 .companion-chat-input:focus{
   outline:none;
