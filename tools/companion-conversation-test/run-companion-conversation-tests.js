@@ -278,10 +278,33 @@ function code(rel) {
              sendOff: document.querySelector('.companion-chat-send').disabled,
              emptied: i.value === '' };
   });
-  ck(mid.state === 'sending', 'R1  idle → sending, in the same frame as the press', mid.state);
+  // ---- R1 AND R3 TURNED ROUND IN SPRINT 1N.6, WITH A REASON --------
+  //
+  // R1 read `state === 'sending'`. The CLAIM — the press is
+  // acknowledged in the same frame — is unchanged and still checked;
+  // only the name moved. js/companionTurn.js passes through `sending`
+  // and settles on `received` synchronously, because being heard is not
+  // something to wait for. This is a repair, not a weakening.
+  //
+  // R3 read "a processing state is visible" for a turn that answers in
+  // 0.2-7.5ms, and that is exactly the behaviour 1N.6 removes: §5 and
+  // §11 of the brief forbid forcing a thinking animation in front of an
+  // answer that is already there. Showing one would have been inventing
+  // a wait that does not exist. The replacement is stronger, because it
+  // asserts BOTH halves of the rule rather than one: nothing for a fast
+  // answer, and the dots for a slow one (measured in
+  // tools/companion-rhythm-test, sections A and B).
+  ck(mid.state === 'received',
+     'R1  the press is acknowledged in the same frame — idle → sending → received',
+     mid.state);
   ck(mid.you === 'Who are you?' && mid.emptied,
      'R1b and the child’s own words are acknowledged immediately', JSON.stringify(mid.you));
-  ck(mid.dots === true, 'R3  a processing state is visible', 'dots up');
+  ck(mid.dots === false,
+     'R3  NO PROCESSING ANIMATION in front of an answer that is already there',
+     'threshold ' + (await page.evaluate(() => CompanionTurn.THRESHOLDS.THINK_AFTER_MS)) +
+     'ms vs a measured 0.2–7.5ms answer');
+  ck(mid.sendOff === true,
+     'R3b and the field is held until there is something to read', 'send disabled');
   ck(mid.sendOff === true, 'R2  and a second press cannot start a second turn', 'send disabled');
   await page.screenshot({ path: path.join(SHOTS, '2-sending.png') });
   await page.waitForFunction(() => CompanionChat.state() === 'ready', null, { timeout: 15000 }).catch(() => {});

@@ -1000,6 +1000,23 @@
           engine.setState(modeCfg().poses.typing); _holdPose();
           return;
         }
+        // STILL THIS TURN — Sprint 1N.6. The scripted pose is held only
+        // briefly (SCRIPTED_POSE_HOLD_MS, so an ambient reaction cannot
+        // overwrite it — Decision 29), and a turn can outlast that hold
+        // while its voice is being fetched. Measured: the face dropped
+        // to idle at `voice-preparing` and stayed there through the
+        // Companion actually speaking.
+        //
+        // NO NEW POSE AND NO NEW ARTWORK. It re-asserts the SAME
+        // `poses.typing` the sending event uses, which resolves to
+        // `curious` and which all four Companions declare (Decision 44).
+        // A separate event rather than reusing `conversation-sending`
+        // because the child is not sending anything now, and an event
+        // name that lies is worse than a third line here.
+        if(event==='conversation-speaking'){
+          engine.setState(modeCfg().poses.typing); _holdPose();
+          return;
+        }
         if(event==='conversation-answered'){
           engine.setState('idle');
           return;

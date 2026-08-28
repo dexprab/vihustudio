@@ -1988,6 +1988,44 @@ html, body {
    two, with a comment saying why. This is the same rule, one surface
    along. */
 .ether-talk-mic[hidden], .ether-talk-speak[hidden] { display: none; }
+
+/* THE RHYTHM — Sprint 1N.6, and the same one the Studio shows.
+   Decision 48: what differs between the two relationships is what may
+   be SEEN, never the quality of the conversation, so a Traveller waits
+   in exactly the same way a Creator does. */
+.ether-talk-dots {
+  margin: 0 0 6px;
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  height: 14px;
+}
+.ether-talk-dots[hidden] { display: none; }
+.ether-talk-dots span {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .55);
+  animation: ether-talk-dot 1s ease-in-out infinite;
+}
+.ether-talk-dots span:nth-child(2) { animation-delay: .15s; }
+.ether-talk-dots span:nth-child(3) { animation-delay: .3s; }
+@keyframes ether-talk-dot {
+  0%, 100% { opacity: .3; transform: translateY(0); }
+  50% { opacity: 1; transform: translateY(-2px); }
+}
+/* Preparing to speak: the answer is already read, so only the mute
+   button breathes. */
+.ether-talk[data-state="voice-preparing"] .ether-talk-speak {
+  animation: ether-talk-dot 1.1s ease-in-out infinite;
+}
+.ether-talk[data-state="speaking"] .ether-talk-speak {
+  background: rgba(255, 214, 138, .26);
+  border-color: rgba(255, 214, 138, .5);
+}
+@media (prefers-reduced-motion: reduce) {
+  .ether-talk-dots span,
+  .ether-talk[data-state="voice-preparing"] .ether-talk-speak { animation: none; }
+}
 /* Focus must be visible — a Traveller may be doing all of this from
    the keyboard, which is the only way some of them can. */
 .ether-talk-open:focus-visible,

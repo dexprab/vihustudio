@@ -811,9 +811,28 @@ const FOUR = [
     // repository has been caught by a substring inside its own
     // vocabulary, and the first inside real code rather than prose.
     .replace(/readyState\s*!==\s*'loading'/g, ' ');
-  ck(!/spinner|thinking|loading/i.test(chatCode),
+  // ---- L2 TURNED ROUND IN SPRINT 1N.6, WITH A REASON ---------------
+  //
+  // It banned the WORD. That was a fair proxy while there was no state
+  // machine — a deterministic answer needs no spinner, and the surface
+  // had nothing that could show one. 1N.6 adds a `thinking` state, and
+  // banning its name would mean the check refuses the fix rather than
+  // the fault.
+  //
+  // WHAT THE CHECK WAS PROTECTING IS UNCHANGED and is now asserted as
+  // BEHAVIOUR instead of as vocabulary: an answer that is already there
+  // gets no processing animation. That is measured through the real
+  // surface in tools/companion-rhythm-test A1/A2 (no thinking state at
+  // all, dots never rendered, against a measured 0.2-7.5ms answer) and
+  // in companion-conversation R3. Both are stronger than a grep,
+  // because a grep cannot tell a decoration from a truthful state.
+  //
+  // `spinner` and `loading` stay banned: neither is a state this
+  // product has, and either appearing would be the decoration L2 was
+  // written to catch.
+  ck(!/spinner|loading/i.test(chatCode),
      'L2  no loading state was added to decorate it',
-     'deterministic answers do not need one');
+     'deterministic answers do not need one — and rhythm A1/A2 measures that');
   // And measured rather than only read: nothing spinner-shaped is in
   // the surface after a send.
   const spun = await page.evaluate(() => !!document.querySelector(

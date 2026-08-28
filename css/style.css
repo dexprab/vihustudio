@@ -13253,6 +13253,29 @@ body.dark-theme .bia-studio-btn:hover{ background:rgba(255,255,255,0.08); }
    it is the smallest thing that makes a turn read as a turn. */
 .companion-chat-dots{ margin:0 0 8px; display:flex; gap:5px; align-items:center; height:14px; }
 .companion-chat-dots[hidden]{ display:none; }
+/* PREPARING TO SPEAK IS NOT THINKING — Sprint 1N.6.
+   The answer is already on screen; what is still coming is only the
+   sound of it. So the dots go and a quiet mark takes their place on the
+   mute button itself, which is where a child is already looking to know
+   whether their Companion can be heard. Nothing new is added to the
+   panel: a second indicator for a wait the child is not blocked by
+   would be noise. */
+.companion-chat[data-state="voice-preparing"] .companion-chat-speak{
+  animation:companion-voice-wait 1.1s ease-in-out infinite;
+}
+.companion-chat[data-state="speaking"] .companion-chat-speak{
+  background:rgba(255,214,138,.26);
+  border-color:rgba(255,214,138,.5);
+}
+@keyframes companion-voice-wait{
+  0%,100%{ opacity:.45; }
+  50%{ opacity:1; }
+}
+@media (prefers-reduced-motion: reduce){
+  .companion-chat[data-state="voice-preparing"] .companion-chat-speak{
+    animation:none; opacity:.7;
+  }
+}
 .companion-chat-dots span{
   width:5px; height:5px; border-radius:50%;
   /* Reads on BOTH grounds. Warm gold on the dark panel was almost

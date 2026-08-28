@@ -10036,3 +10036,57 @@ own two, with a comment saying why.
 
 ether 86 · conversation 134 · mind 165 · enable 103 · knowledge 99 ·
 presence 90 · parity 84 · dialogue 56 — all green. Canon: Decision 48.
+
+## Sprint 1N.6 — Companion thinking & voice response rhythm (build 0696)
+
+Presentation and orchestration only: no intelligence added, no model, no
+provider, both OpenAI gates still shut. It fixes one thing — a Companion
+could appear to be thinking for a long time, and most of that time it was
+not thinking at all. It had already decided what to say and was waiting
+for the SOUND of it.
+
+`js/companionTurn.js` holds eight states and **both surfaces drive it**.
+The Studio had four of its own; the Ether had none, so a Traveller's
+conversation had no rhythm at all — the "lesser conversation" Decision 48
+forbids.
+
+**The thresholds are measured.** A deterministic answer arrives in
+0.2/1/4.5/7.5ms in the running Studio, a stub-server round trip in
+17.5ms, so `THINK_AFTER_MS` is 180 — an order of magnitude clear, and an
+answer this product can give instantly is never dressed as deliberation.
+Measured end to end: a local turn runs `received → response-ready →
+ready` with the dots never rendered; a 900ms-held one runs `received →
+thinking → response-ready → ready`. Every waiting state has its own bell,
+so *thinking → thinking for ever* is structurally impossible.
+
+`VihuVoice.prepare()` made the voice boundary real rather than a guess at
+a duration — it already generated and cached a line without playing it,
+so `voice-preparing` ends and `speaking` begins at an actual event.
+`CompanionSpeak` used to call itself `speaking` before a byte was
+fetched, which is why the wait was undifferentiated.
+
+**Two bugs found by measuring.** The Director holds a scripted pose only
+briefly (Decision 29), and a turn outlasts that hold while its voice is
+fetched — so the face dropped to idle at `voice-preparing` and stayed
+there through the Companion speaking. And `response-ready` fired when the
+words EXISTED rather than when they were on screen, up to 320ms apart,
+which re-enabled the field over a blank panel and broke 45 checks in
+`companion-enable` in a way that looked like an answer regression.
+
+Three checks were turned round with reasons written in place —
+`companion-conversation` R1 (a repair: the claim is unchanged, the state
+name moved) and R3, and `companion-enable` L2, which banned the WORD
+"thinking" and would have refused the fix rather than the fault. What L2
+protected is now asserted as behaviour instead of vocabulary.
+
+**Disclosed:** the audio itself is not captured. This environment's
+network policy refuses the provider, so the generate step is driven at
+`js/vihuVoice.js`'s own seam — the seam the product uses. What is proved
+is the state machine and its transitions; real ElevenLabs latency is
+unmeasured here and `VOICE_PREPARE_MS` is stated as a choice.
+
+rhythm 68 (new) · chat 233 · mind 165 · conversation 135 · edge-auth 129 ·
+identity 109 · enable 103 · knowledge 99 · canon 94 · ether 91 ·
+presence 90 · context 90 · moments 88 · parity 84 · dialogue 56 ·
+memory 56 · companion 50 · traveller-reset 16 — all green.
+Canon: Decision 50.

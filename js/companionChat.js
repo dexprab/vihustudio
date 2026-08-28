@@ -753,13 +753,27 @@ const CompanionChat = (function () {
   // scanning this file for `setState(` (the Engine's own API, which this
   // file may never call) matched the local helper and reported the
   // surface reaching into the Engine when it does not.
+  // WAITING FOR AN ANSWER, AND WAITING FOR ITS VOICE, ARE DIFFERENT
+  // THINGS TO BE TOLD — Sprint 1N.6.
+  //
+  // The dots mean "still deciding". Once the words are on screen the
+  // child is not waiting to find out WHAT their Companion said, only to
+  // hear it, so the dots go and a quieter mark takes over. Keeping the
+  // dots up through the voice fetch told a child their Companion had
+  // not made its mind up when it plainly had.
+  const THINKS = ['sending', 'thinking'];
+  const HOLDS = ['sending', 'received', 'thinking'];
+
   function _phase(name) {
     _lastState = name;
     if (!_els) return;
     _els.bar.setAttribute('data-state', name);
-    _els.dots.hidden = (name !== 'sending');
-    _els.send.disabled = (name === 'sending');
-    _els.input.disabled = (name === 'sending');
+    _els.dots.hidden = (THINKS.indexOf(name) === -1);
+    // THE FIELD IS HELD ONLY WHILE THERE IS NO ANSWER. Once the words
+    // are up the child may say the next thing, even mid-sentence — the
+    // voice is not a queue they have to wait out.
+    _els.send.disabled = (HOLDS.indexOf(name) !== -1);
+    _els.input.disabled = (HOLDS.indexOf(name) !== -1);
   }
 
   function _pose(event) {
@@ -793,10 +807,18 @@ const CompanionChat = (function () {
     try { if (typeof CompanionListen !== 'undefined') CompanionListen.stop(); } catch (e) {}
     _micState('stopped');
     _aloudStop();
-    _phase('sending');
     _pose('conversation-sending');
     _renderStarters();
     const t0 = Date.now();
+    // ---- THE TURN'S OWN RHYTHM — Sprint 1N.6 --------------------
+    //
+    // js/companionTurn.js decides WHICH of the six things is true and
+    // when to give up on each; this decides what that looks like. The
+    // machine is shared with the Ether so a rhythm cannot be fixed on
+    // one surface and left broken on the other.
+    if (_turn) _turn.cancel();
+    const turn = _turn = _newTurn(els);
+    turn.send();
     // AND THE SURFACE CANNOT STICK, WHATEVER ask() DOES. Every promise
     // inside it is bounded, and this is the floor under all of them: if
     // a future change adds one that is not, the child still gets their
@@ -809,13 +831,38 @@ const CompanionChat = (function () {
       // here; this is the smallest pause that reads as a turn being
       // taken, and it is subtracted rather than added — a slow server
       // answer waits for nothing extra.
+      if (turn !== _turn) return;   // a newer turn owns the surface
       const spent = Date.now() - t0;
-      const wait = Math.max(0, BEAT_MS - spent);
+      // THE BEAT IS FOR AN ANSWER THAT ARRIVED IN NO TIME AT ALL, and
+      // for nothing else. Decision 47: a reply that lands in under a
+      // frame reads as a glitch rather than as a turn being taken. It
+      // is SUBTRACTED — a slow answer waits for nothing extra — and the
+      // moment the machine has shown a thinking state instead, the hold
+      // it asks for replaces this one rather than stacking on it.
+      const held = turn.answered();
+      const wait = held > 0 ? held : Math.max(0, BEAT_MS - spent);
       setTimeout(function () {
+        if (turn !== _turn) return;
         _busy = false;
         _lastMs = Date.now() - t0;
-        _phase('responding');
-        _pose('conversation-answered');
+        // THE STATE FOLLOWS THE SCREEN, not the arrival of the data.
+        // The text is written a few lines below, in this same task, so
+        // by the time anything can observe `response-ready` the answer
+        // is readable.
+        if (r.ok) els.said.textContent = r.reply || '';
+        else els.said.textContent = _unheard();
+        turn.shown();
+        _phase('response-ready');
+        // THE FACE DOES NOT DROP BACK WHILE THERE IS STILL SOMETHING TO
+        // SAY — Sprint 1N.6 §17. `conversation-answered` returns the
+        // Companion to idle, and firing it here made it look finished
+        // while its voice was still being fetched. It now fires when the
+        // TURN ends: after the sound, or straight away when there is
+        // none. The curious pose carries the whole turn, which is the
+        // continuity the brief asks for and invents no new artwork —
+        // there is no `speaking` pose in any package (Decision 44), so
+        // the closest approved one is the one already in use.
+        if (!_willSpeak()) _pose('conversation-answered');
         // SILENCE SHOWS NOTHING. Not an error, not an ellipsis, not a
         // placeholder — an empty reply with speak:false is the
         // Companion choosing to be quiet, and :empty hides the line
@@ -825,13 +872,13 @@ const CompanionChat = (function () {
         // a different thing from nothing to say, and leaving a child
         // wondering whether they were heard is the one outcome worth
         // avoiding. One authored line, no status code, no provider, no
-        // reason.
-        if (r.ok) els.said.textContent = r.reply || '';
-        else els.said.textContent = _unheard();
+        // reason. (Written above, before the state moves.)
         // AND IT IS SAID OUT LOUD, unless the child has muted it. An
         // empty reply is not spoken — silence is a real answer and
-        // there is nothing to say.
-        _aloud();
+        // there is nothing to say. THE TEXT IS ALREADY ON SCREEN and
+        // stays there whatever the voice does (§14): a voice that fails
+        // must never erase an answer.
+        _aloud(turn);
         // THE ANSWER IS WHAT THE CHILD LOOKS AT. The body scrolls, so a
         // long exchange must bring the newest line into view rather than
         // leaving it below the fold of its own box.
@@ -840,8 +887,47 @@ const CompanionChat = (function () {
           if (body) body.scrollTop = body.scrollHeight;
         } catch (e) {}
         try { els.input.focus(); } catch (e) {}
-        setTimeout(function () { if (_lastState === 'responding') _phase('ready'); }, SETTLE_MS);
+        // READY unless a voice took over. `_aloud` moves the machine to
+        // voice-preparing synchronously when there is one, so this only
+        // fires for a muted or voiceless turn.
+        setTimeout(function () {
+          if (turn !== _turn) return;
+          if (_lastState === 'response-ready') { _phase('ready'); turn.done(); }
+        }, SETTLE_MS);
       }, wait);
+    });
+  }
+
+  /**
+   * A turn's machine, wired to this surface.
+   *
+   * NOTHING HERE INVENTS A WAIT. Every state is entered because
+   * something actually happened or because a bell rang, and every bell
+   * ends the state rather than extending it.
+   */
+  function _newTurn(els) {
+    return CompanionTurn.create({
+      onState: function (name) {
+        if (['sending', 'received', 'thinking', 'response-ready',
+             'voice-preparing', 'speaking'].indexOf(name) !== -1) _phase(name);
+      },
+      onGiveUp: function (kind) {
+        if (kind === 'answer') {
+          // THINKING NEVER LASTS FOR EVER. One authored line, no status
+          // code and no provider — and the field is the child's again.
+          if (els && els.said && !els.said.textContent) els.said.textContent = _unheard();
+          _busy = false;
+          _phase('ready');
+          _pose('conversation-answered');
+          return;
+        }
+        // A VOICE THAT NEVER ARRIVED COSTS THE CHILD NOTHING. The
+        // answer is already read; the sound of it is not worth waiting
+        // on, so it is dropped and the turn ends quietly.
+        _aloudStop();
+        _phase('ready');
+        _pose('conversation-answered');
+      }
     });
   }
 
@@ -909,7 +995,17 @@ const CompanionChat = (function () {
    * Companion is heard as well as seen; skipped when the child has
    * muted it. Never anything but the string already on screen.
    */
-  function _aloud() {
+  /** Is a voice going to follow this answer? Decides the pose above. */
+  function _willSpeak() {
+    try {
+      if (typeof CompanionSpeak === 'undefined') return false;
+      if (!_voiceOn()) return false;
+      if (!_els || !(_els.said.textContent || '').trim()) return false;
+      return CompanionSpeak.supported();
+    } catch (e) { return false; }
+  }
+
+  function _aloud(turn) {
     if (typeof CompanionSpeak === 'undefined' || !_els) return;
     if (!_voiceOn()) return;
     // EXACTLY WHAT IS ON SCREEN. Read off the element the child is
@@ -923,8 +1019,23 @@ const CompanionChat = (function () {
       cid = c ? c.companionId : null;
     } catch (e) {}
     if (_els.speak) _els.speak.setAttribute('data-speaking', 'yes');
-    CompanionSpeak.say(shown, cid).then(function (spoke) {
+    // THE TWO MOMENTS THE CHILD CAN SEE — Sprint 1N.6. Fetching a line
+    // and saying it are different, and only the second is the Companion
+    // talking. js/vihuVoice.js's own prepare()/speak() split is what
+    // makes the boundary real rather than a guess at a duration.
+    const mine = turn && turn === _turn ? turn : null;
+    if (mine) mine.preparingVoice();
+    // THE FACE STAYS WITH THE TURN. The Director holds a scripted pose
+    // only briefly, and fetching a voice can outlast that — so it is
+    // re-asserted here rather than letting the Companion look finished
+    // while it is about to speak.
+    _pose('conversation-speaking');
+    CompanionSpeak.say(shown, cid, {
+      onSpeaking: function () { if (mine && mine === _turn) mine.speakingNow(); }
+    }).then(function (spoke) {
       if (_els && _els.speak) _els.speak.removeAttribute('data-speaking');
+      if (mine && mine === _turn) { mine.done(); _phase('ready'); }
+      _pose('conversation-answered');
       // NOT SPOKEN IS NOT A FAILURE A CHILD MEETS. The answer is on
       // screen and always was; there is no browser voice here to say it
       // with, and saying so every turn would be a nag about something
@@ -939,6 +1050,7 @@ const CompanionChat = (function () {
   }
 
   let _lastSpoke = false;
+  let _turn = null;
 
   function _observe(said, reply, meta) {
     try {
@@ -990,6 +1102,10 @@ const CompanionChat = (function () {
     _els.you.hidden = true;
     _open = false;
     _busy = false;
+    // NO BELL FROM AN ABANDONED TURN. Cancelling first means a timer
+    // that was already in flight cannot repaint a closed surface or
+    // start a voice for a conversation nobody is having (§15, §G).
+    if (_turn) { _turn.cancel(); _turn = null; }
     _phase('idle');
     // THE CONVERSATION GOES WITH IT. Nothing is stored, so closing is
     // the whole of forgetting — the turns, and the question that was
@@ -1153,6 +1269,9 @@ const CompanionChat = (function () {
     // DOES, rather than guessing — and so "a hung request always comes
     // back" is a number somebody can read rather than a claim.
     ASK_TIMEOUT_MS: ASK_TIMEOUT_MS,
+    // The turn's own thresholds, so a suite waits exactly as long as the
+    // product does rather than guessing at it.
+    turnState: function () { return _turn ? _turn.state() : 'idle'; },
     CONFIG_TIMEOUT_MS: CONFIG_TIMEOUT_MS,
     CONVERSATION_OFFERED: CONVERSATION_OFFERED,
     MAX_TURNS: MAX_TURNS,

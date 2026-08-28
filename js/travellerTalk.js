@@ -243,6 +243,22 @@ const TravellerTalk = (function () {
     speak.className = 'ether-talk-speak';
     speak.hidden = !(typeof CompanionSpeak !== 'undefined' && CompanionSpeak.supported());
 
+    // THE COMPANION IS THINKING — Sprint 1N.6. Three dots, and they
+    // appear only when the answer is genuinely slow enough to need
+    // them; js/companionTurn.js owns that decision and the Studio shows
+    // exactly the same thing at exactly the same moment.
+    //
+    // NOT ANNOUNCED. `aria-hidden` because a screen reader must not
+    // read out an animation — the ANSWER is announced, on the line
+    // below, which already carries role=status.
+    const dots = document.createElement('p');
+    dots.className = 'ether-talk-dots';
+    dots.setAttribute('aria-hidden', 'true');
+    dots.hidden = true;
+    dots.appendChild(document.createElement('span'));
+    dots.appendChild(document.createElement('span'));
+    dots.appendChild(document.createElement('span'));
+
     // What was heard, and what could not be. Its own line, polite, and
     // empty when there is nothing to say.
     const heard = document.createElement('p');
@@ -254,6 +270,7 @@ const TravellerTalk = (function () {
     form.appendChild(input); form.appendChild(send);
     form.appendChild(mic); form.appendChild(speak); form.appendChild(close);
     bar.appendChild(starters);
+    bar.appendChild(dots);
     bar.appendChild(said); bar.appendChild(heard); bar.appendChild(form);
     host.appendChild(opener); host.appendChild(bar);
 
@@ -277,7 +294,7 @@ const TravellerTalk = (function () {
 
     _els = { opener: opener, bar: bar, said: said, form: form, input: input,
              send: send, close: close, starters: starters,
-             mic: mic, speak: speak, heard: heard };
+             mic: mic, speak: speak, heard: heard, dots: dots };
     _paintVoiceButton();
     _micState('stopped');
     return _els;
@@ -309,6 +326,9 @@ const TravellerTalk = (function () {
     // opened it.
     _aloudStop();
     try { if (typeof CompanionListen !== 'undefined') CompanionListen.stop(); } catch (e) {}
+    // NO BELL FROM AN ABANDONED TURN.
+    if (_turn) { _turn.cancel(); _turn = null; }
+    _busy = false;
     // A TRAVELLER KEEPS NOTHING. The conversation goes when the
     // encounter does, exactly as the turns do.
     try {
@@ -454,15 +474,22 @@ const TravellerTalk = (function () {
    * there is no second copy that could differ from what the public
    * context approved.
    */
-  function _aloud() {
+  function _aloud(turn) {
     if (typeof CompanionSpeak === 'undefined' || !_els) return;
     if (!_voiceOn()) return;
     const shown = (_els.said.textContent || '').trim();
     if (!shown) return;
     const who = _ctx ? _ctx.companionId : null;
     if (_els.speak) _els.speak.setAttribute('data-speaking', 'yes');
-    CompanionSpeak.say(shown, who).then(function () {
+    // FETCHING A LINE AND SAYING IT ARE DIFFERENT THINGS, and a child
+    // who has read the answer is only waiting for the second.
+    const mine = (turn && turn === _turn) ? turn : null;
+    if (mine) mine.preparingVoice();
+    CompanionSpeak.say(shown, who, {
+      onSpeaking: function () { if (mine && mine === _turn) mine.speakingNow(); }
+    }).then(function () {
       if (_els && _els.speak) _els.speak.removeAttribute('data-speaking');
+      if (mine && mine === _turn) { mine.done(); _phase('ready'); }
     });
   }
 
@@ -491,6 +518,9 @@ const TravellerTalk = (function () {
     _aloudStop();
     try { if (typeof CompanionListen !== 'undefined') CompanionListen.stop(); } catch (e) {}
     _micState('stopped');
+    // NO BELL FROM AN ABANDONED TURN.
+    if (_turn) { _turn.cancel(); _turn = null; }
+    _busy = false;
     // A TRAVELLER KEEPS NOTHING. The conversation goes when the
     // encounter does, exactly as the turns do.
     try {
@@ -507,22 +537,83 @@ const TravellerTalk = (function () {
     try { els.opener.focus(); } catch (e) {}
   }
 
+  // ---------------------------------------------------------------
+  // THE RHYTHM — Sprint 1N.6, and it is the SAME machine the Studio
+  // drives. Decision 48: what differs between the two relationships is
+  // what may be SEEN, never the quality of the conversation, so a
+  // Traveller must not get a lesser version of being answered.
+  //
+  // The Ether's own answer is deterministic and arrives in under a
+  // millisecond, so in practice the dots are never seen here — which is
+  // correct, and is why the threshold is measured rather than chosen. A
+  // future answer that takes longer gets the indication for free.
+  let _turn = null;
+  let _busy = false;
+
+  function _phase(name) {
+    const els = _els;
+    if (!els) return;
+    els.bar.setAttribute('data-state', name);
+    els.dots.hidden = (['sending', 'thinking'].indexOf(name) === -1);
+    const hold = ['sending', 'received', 'thinking'].indexOf(name) !== -1;
+    els.send.disabled = hold;
+    els.input.disabled = hold;
+  }
+
+  function _newTurn() {
+    if (typeof CompanionTurn === 'undefined') return null;
+    return CompanionTurn.create({
+      onState: function (name) { _phase(name); },
+      onGiveUp: function (kind) {
+        // NEITHER STATE LASTS FOR EVER. A voice that never arrived costs
+        // a Traveller nothing — the answer is already read.
+        if (kind !== 'answer') _aloudStop();
+        _busy = false;
+        _phase('ready');
+      }
+    });
+  }
+
   function _send() {
     const els = _els;
     if (!els || !_ctx) return;
+    // ONE PRESS, ONE TURN.
+    if (_busy) return;
     const said = els.input.value.trim();
     if (!said) return;
     els.input.value = '';
+    _busy = true;
+    // NEITHER OUTLIVES A TURN — a microphone still open would be
+    // listening to nobody, a voice still speaking would talk over the
+    // next answer.
+    try { if (typeof CompanionListen !== 'undefined') CompanionListen.stop(); } catch (e) {}
+    _micState('stopped');
+    _aloudStop();
+    if (_turn) _turn.cancel();
+    const turn = _turn = _newTurn();
+    if (turn) turn.send();
     const answer = reply(said, _ctx);
     // Bounded, and kept only while the surface is open. Nothing here is
     // written anywhere, sent anywhere, or read by anything else.
     _turns.push({ said: said, answer: answer.text });
     if (_turns.length > MAX_TURNS) _turns.shift();
-    els.said.textContent = answer.text;
-    // HEARD AS WELL AS SEEN, unless it has been muted. An empty answer
-    // is not spoken — silence is a real answer and there is nothing to
-    // say.
-    _aloud();
+    // THE WORDS GO UP THE MOMENT THEY EXIST, and the hold below only
+    // ever delays the DOTS coming down — never the answer.
+    const held = turn ? turn.answered() : 0;
+    _busy = false;
+    const show = function () {
+      if (turn && turn !== _turn) return;
+      els.said.textContent = answer.text;
+      if (turn) turn.shown();
+      _phase('response-ready');
+      // HEARD AS WELL AS SEEN, unless it has been muted. An empty
+      // answer is not spoken — silence is a real answer and there is
+      // nothing to say. The text stays whatever the voice does.
+      _aloud(turn);
+      if (!_els) return;
+      if (_els.bar.getAttribute('data-state') === 'response-ready') _phase('ready');
+    };
+    if (held > 0) setTimeout(show, held); else show();
     // The suggestions were for a Traveller who did not know what to
     // say. Somebody has now said something.
     _renderStarters();

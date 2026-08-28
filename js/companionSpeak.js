@@ -37,7 +37,7 @@
 const CompanionSpeak = (function () {
   'use strict';
 
-  let _state = 'idle';      // 'idle' | 'speaking'
+  let _state = 'idle';      // 'idle' | 'preparing' | 'speaking'
   let _onState = null;
   let _token = 0;
 
@@ -48,6 +48,9 @@ const CompanionSpeak = (function () {
 
   function state() { return _state; }
   function isSpeaking() { return _state === 'speaking'; }
+  function isPreparing() { return _state === 'preparing'; }
+  /** Either — for a caller that only wants to know whether to stop. */
+  function isBusy() { return _state !== 'idle'; }
   function onState(fn) { _onState = fn; }
 
   /** Is there any way at all to say something aloud here? */
@@ -109,7 +112,7 @@ const CompanionSpeak = (function () {
     });
   }
 
-  function _platform(text, mine) {
+  function _platform(text, mine, onStart) {
     if (!window.speechSynthesis || !window.SpeechSynthesisUtterance) return Promise.resolve(false);
     return _voicesReady().then(function (haveVoices) {
       if (mine !== _token) return false;
@@ -134,7 +137,10 @@ const CompanionSpeak = (function () {
           const pick = list.find(function (v) { return /^en[-_]/i.test(v.lang || ''); }) || list[0];
           if (pick) { u.voice = pick; u.lang = pick.lang || 'en-US'; }
         } catch (e) {}
-        u.onstart = function () { done(true); };
+        u.onstart = function () {
+          if (mine === _token && typeof onStart === 'function') { try { onStart(); } catch (e) {} }
+          done(true);
+        };
         u.onerror = function () { if (mine === _token) _set('idle'); done(false); };
         u.onend = function () { if (mine === _token) _set('idle'); done(true); };
         try { window.speechSynthesis.speak(u); } catch (e) { done(false); return; }
@@ -157,30 +163,74 @@ const CompanionSpeak = (function () {
    *
    * @param {string} text the CHILD-FACING reply, exactly as displayed.
    * @param {string} [companionId] whose voice, for js/vihuVoice.js.
+   * @param {object} [hooks] Sprint 1N.6 — the two moments a surface
+   *   needs in order to show a rhythm rather than a spinner:
+   *     onPreparing()  the line is being fetched and decoded
+   *     onSpeaking()   a sound is actually being made
+   *   Both are optional and neither changes what is said.
    * @returns {Promise<boolean>} whether anything was actually said.
    *   False is a normal outcome and never an error a child meets.
    */
-  function say(text, companionId) {
+  function say(text, companionId, hooks) {
     const words = String(text == null ? '' : text).trim();
     // NOTHING TO SAY IS NOT A FAILURE. Silence and an empty reply are
     // both correct answers, and neither is spoken.
     if (!words) return Promise.resolve(false);
     stop();
     const mine = ++_token;
-    _set('speaking');
+    const h = hooks || {};
+    const tell = function (fn) {
+      if (mine !== _token || typeof fn !== 'function') return;
+      try { fn(); } catch (e) {}
+    };
+    // PREPARING IS NOT SPEAKING, and calling it so was the bug this
+    // sprint exists to fix. `_set('speaking')` fired here — before a
+    // single byte of audio had been fetched — so a surface reading the
+    // state could only ever show one long undifferentiated wait.
+    _set('preparing');
+    tell(h.onPreparing);
 
-    // THE COMPANION'S OWN VOICE, through the existing architecture. It
-    // resolves the voice from assets/registry.json and answers silently
-    // when there is none — which is a normal state, not a fault.
+    // THE COMPANION'S OWN VOICE, through the existing architecture, and
+    // now in TWO steps rather than one.
+    //
+    // js/vihuVoice.js already separates them: prepare() generates the
+    // line and caches it, speak() plays it — and speak() on a prepared
+    // line is a cache hit, so the gap between "fetching" and "audible"
+    // is real rather than simulated. NOTHING SPECULATIVE IS GENERATED:
+    // prepare() is called with the final approved text and never before
+    // it exists.
     let viaVoice = null;
     try {
       if (companionId && typeof VihuVoice !== 'undefined' && VihuVoice.speak) {
-        viaVoice = VihuVoice.speak({ characterId: companionId, text: words });
+        if (VihuVoice.prepare) {
+          viaVoice = VihuVoice.prepare({ characterId: companionId, text: words })
+            .then(function (ready) {
+              if (mine !== _token) return false;
+              if (!ready) return false;
+              _set('speaking');
+              tell(h.onSpeaking);
+              return VihuVoice.speak({ characterId: companionId, text: words });
+            });
+        } else {
+          _set('speaking');
+          tell(h.onSpeaking);
+          viaVoice = VihuVoice.speak({ characterId: companionId, text: words });
+        }
       }
     } catch (e) { viaVoice = null; }
 
     const fallback = function () {
-      return _platform(words, mine).then(function (spoke) {
+      // THE EXISTING PRODUCT FALLBACK, kept. Sprint 1N.6's brief forbids
+      // introducing a generic browser voice "unless an existing product
+      // fallback already exists" — this one does, it shipped in Sprint
+      // 1N.3 and Decision 48 records it, and removing it would take the
+      // Companion's voice away from every browser with no configured
+      // one. It announces `speaking` at the same moment the generated
+      // path does: when a sound actually starts.
+      return _platform(words, mine, function () {
+        _set('speaking');
+        tell(h.onSpeaking);
+      }).then(function (spoke) {
         if (mine !== _token) return false;
         if (!spoke) _set('idle');
         return spoke;
@@ -236,6 +286,8 @@ const CompanionSpeak = (function () {
     stop: stop,
     state: state,
     isSpeaking: isSpeaking,
+    isPreparing: isPreparing,
+    isBusy: isBusy,
     onState: onState
   };
   try { window.CompanionSpeak = api; } catch (e) {}

@@ -568,6 +568,62 @@ const FOUR = [['leafy', 'Leafy', 'Bloomling'], ['leosaurus', 'Leo', 'Lantern Lio
      JSON.stringify(stopped));
 
   // =================================================================
+  console.log('\nR. THE SAME RHYTHM — Sprint 1N.6');
+  // =================================================================
+  //
+  // Decision 48: what differs between the two relationships is what may
+  // be SEEN, never the quality of the conversation. So a Traveller must
+  // not get a lesser version of being answered — the same machine, the
+  // same six states, the same thresholds.
+  const rhythm = await page.evaluate(async () => {
+    const bar = document.querySelector('.ether-talk');
+    const seen = [];
+    const mo = new MutationObserver(() => seen.push(bar.getAttribute('data-state')));
+    mo.observe(bar, { attributes: true, attributeFilter: ['data-state'] });
+    TravellerTalk.setVoiceOn(false);
+    document.querySelector('.ether-talk-input').value = 'who are you?';
+    document.querySelector('.ether-talk-send').click();
+    await new Promise((r) => setTimeout(r, 900));
+    mo.disconnect();
+    return { seen, state: bar.getAttribute('data-state'),
+             dots: !document.querySelector('.ether-talk-dots').hidden,
+             said: document.querySelector('.ether-talk-said').textContent.trim() };
+  });
+  ck(typeof (await page.evaluate(() => typeof CompanionTurn)) === 'string' &&
+     (await page.evaluate(() => typeof CompanionTurn)) === 'object',
+     'R1  the Ether page LOADS the shared turn machine');
+  ck(rhythm.seen.indexOf('thinking') === -1,
+     'R2  a deterministic answer shows NO thinking state here either — it arrives too fast to need one',
+     rhythm.seen.join(' → '));
+  ck(rhythm.dots === false && /Leo/i.test(rhythm.said),
+     'R3  the answer is simply there', JSON.stringify(rhythm.said));
+  ck(rhythm.state === 'ready', 'R4  and the turn ends ready', rhythm.state);
+  // AND A SLOW ANSWER WOULD SHOW IT. The Ether's own answer cannot be
+  // made slow without changing the product, so the machine is driven
+  // directly — what is proved is that this surface paints the state,
+  // which is the half that was missing.
+  const painted = await page.evaluate(async () => {
+    const bar = document.querySelector('.ether-talk');
+    const t = CompanionTurn.create({
+      onState: (n) => { bar.setAttribute('data-state', n);
+        document.querySelector('.ether-talk-dots').hidden =
+          (['sending', 'thinking'].indexOf(n) === -1); },
+      onGiveUp: () => {},
+    });
+    t.send();
+    await new Promise((r) => setTimeout(r, CompanionTurn.THRESHOLDS.THINK_AFTER_MS + 120));
+    const mid = { state: bar.getAttribute('data-state'),
+                  dots: !document.querySelector('.ether-talk-dots').hidden };
+    t.cancel();
+    bar.setAttribute('data-state', 'ready');
+    document.querySelector('.ether-talk-dots').hidden = true;
+    return mid;
+  });
+  ck(painted.state === 'thinking' && painted.dots === true,
+     'R5  and when an answer IS slow, the Ether shows the dots', JSON.stringify(painted));
+  await page.screenshot({ path: path.join(SHOTS, 'E-rhythm.png') });
+
+  // =================================================================
   console.log('\nD. NOTHING IS KEPT');
   // =================================================================
   const kept = await page.evaluate(() => {

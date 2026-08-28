@@ -5312,6 +5312,111 @@ product underneath it.
   `tools/companion-conversation-test/run-companion-conversation-tests.js` ·
   `tools/edge-auth-test/run-edge-auth-tests.js`
 
+### 50. Thinking and Preparing to Speak Are Different Waits
+
+Locked in the Companion Thinking & Voice Response Rhythm sprint (1N.6).
+It adds no intelligence and connects no model: it is about what a child
+sees between saying something and hearing an answer. **No OpenAI, no
+provider, no model call, and both production gates still shut.**
+
+- **THE FAILURE IT REMOVES.** A Companion could appear to be thinking
+  for a long time, and most of that time it was not thinking at all — it
+  had already decided what to say and was waiting for the SOUND of it.
+  Telling a child their Companion has not made its mind up when it
+  plainly has is the one thing this rhythm must not do.
+- **ONE MACHINE, EVERY SURFACE.** `js/companionTurn.js` holds eight
+  states — idle · sending · received · thinking · response-ready ·
+  voice-preparing · speaking · recovery — and both the Studio and the
+  Ether drive it. The Studio had four states of its own and **the Ether
+  had none**, so a Traveller's conversation had no rhythm at all, which
+  is exactly the "lesser conversation" Decision 48 forbids. A rhythm
+  cannot now be fixed on one surface and left broken on the other.
+- **IT ADDS NO INTELLIGENCE, AND COULD NOT.** The machine reaches no
+  network and no store, composes no sentence, reads no context, and
+  names no provider. It decides only which of six things is true.
+- **THE THRESHOLDS ARE MEASURED, NOT CHOSEN.** In the running Studio a
+  deterministic answer arrives in **0.2ms, 1ms, 4.5ms, 7.5ms**, and a
+  stub-server round trip in **17.5ms**. `THINK_AFTER_MS` is 180 — an
+  order of magnitude clear of the slowest of those — so **an answer this
+  product can give instantly is never dressed as deliberation**, and a
+  real network turn (100–400ms) crosses it and is shown. Measured
+  end to end: a local turn passes `received → response-ready → ready`
+  with the dots never rendered; a 900ms-held one passes
+  `received → thinking → response-ready → ready`.
+- **AND ONCE SHOWN, THE INDICATOR IS NOT SNATCHED AWAY.**
+  `MIN_THINK_MS` (420) is applied to the DOTS and never to the answer —
+  the words render the moment they exist. An indicator that appears and
+  vanishes inside two frames reads as a glitch rather than as thought.
+- **NO STATE LASTS FOR EVER, AND EACH HAS ITS OWN BELL.** `ANSWER_MS`
+  12000 (the same budget the request itself carries, so the machine and
+  the fetch cannot disagree), `VOICE_PREPARE_MS` 6000, `SPEAK_MS` 30000.
+  *Thinking → thinking for ever* and *voice-preparing → voice-preparing
+  for ever* are both structurally impossible.
+- **THE VOICE BUDGET IS SHORTER THAN THE ANSWER BUDGET, DELIBERATELY.**
+  By then the child ALREADY HAS THEIR ANSWER. Missing the sound of it
+  costs them nothing; waiting for it costs them the turn.
+- **`VihuVoice.prepare()` IS WHAT MAKES THE BOUNDARY REAL.** It already
+  generated and cached a line without playing it, so `preparing` ends
+  and `speaking` begins at an actual event rather than at a guess about
+  a duration — and `speak()` on a prepared line is a cache hit. Nothing
+  speculative is generated: prepare is called with the final approved
+  text and never before it exists.
+- **`_set('speaking')` FIRED BEFORE A BYTE OF AUDIO WAS FETCHED**, which
+  is why a surface reading the state could only ever show one long
+  undifferentiated wait. `CompanionSpeak` now has three states —
+  `preparing`, `speaking`, `idle` — and announces the second only when a
+  sound is actually being made.
+- **A VOICE THAT FAILS NEVER ERASES AN ANSWER.** The text is on screen
+  before the voice is asked for, and stays there through a rejection, a
+  timeout or a browser with no speech at all. No status code, no
+  provider name, no technical word ever reaches a child.
+- **ONE POSE CARRIES THE WHOLE TURN, and that was a real bug.** The
+  Director holds a scripted pose only briefly so an ambient reaction
+  cannot overwrite it (Decision 29) — and a turn outlasts that hold
+  while its voice is fetched, so the face dropped to `idle.png` at
+  `voice-preparing` and stayed there through the Companion speaking.
+  Measured, not reasoned about. A `conversation-speaking` event
+  re-asserts the SAME `poses.typing`, which resolves to `curious` and
+  which all four Companions declare: **no new pose, no new artwork**, and
+  a separate event rather than reusing `conversation-sending` because
+  the child is not sending anything then and an event name that lies is
+  worse than a third line in the Director.
+- **THE FIELD IS HELD ONLY WHILE THERE IS NO ANSWER.** Once the words
+  are up a child may say the next thing even mid-sentence — the voice is
+  not a queue they have to wait out. One press is still one turn, and
+  rapid presses produce exactly one request.
+- **THE BEAT AND THE HOLD DO NOT STACK.** Decision 47's 320ms
+  acknowledgement beat still covers an answer that lands in under a
+  frame; the moment the machine has shown a thinking state instead, its
+  hold replaces the beat rather than adding to it.
+- **A CANCELLED TURN IS SILENT.** Closing the surface cancels the
+  machine before anything else, so a bell already in flight cannot
+  repaint a closed panel or start a voice for a conversation nobody is
+  having.
+- **A SCREEN READER IS NEVER READ AN ANIMATION.** The dots are
+  `aria-hidden` on both surfaces; the answer keeps `role="status"
+  aria-live="polite"` and is announced normally.
+- **THE EXISTING BROWSER FALLBACK IS KEPT, and the brief allows it in as
+  many words** — *"unless an existing product fallback already exists"*.
+  It shipped in Sprint 1N.3, Decision 48 records it, and removing it
+  would take the Companion's voice away from every browser with no
+  configured one. It announces `speaking` at the same moment the
+  generated path does.
+- **DISCLOSED: the audio itself is not captured.** This environment's
+  network policy refuses the provider, so the generate step is driven at
+  `js/vihuVoice.js`'s own `prepare()`/`speak()` seam — the seam the
+  product uses, not one invented for the test. **What is proved is the
+  state machine and the transitions; real ElevenLabs latency is
+  unmeasured here**, and `VOICE_PREPARE_MS` is stated as a choice rather
+  than a measurement.
+- Out of scope and untouched: the intent taxonomy, the deterministic
+  knowledge, conversation reasoning, story understanding, memory, the
+  privacy gate, the Bond validator, Traveller isolation, canon, wake
+  word, always-listening, transcripts, and automatic memory.
+- `js/companionTurn.js` · `js/companionSpeak.js` · `js/companionChat.js` ·
+  `js/travellerTalk.js` · `js/companionDirector.js` ·
+  `tools/companion-rhythm-test/run-companion-rhythm-tests.js`
+
 ## Roadmap
 
 1. Theme Designer Polish
