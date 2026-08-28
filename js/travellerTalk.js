@@ -215,13 +215,58 @@ const TravellerTalk = (function () {
     close.title = 'Close';
     close.textContent = '✕';
 
-    form.appendChild(input); form.appendChild(send); form.appendChild(close);
+    // ---------------------------------------------------------------
+    // HEARD AND SPOKEN TO, IN THE ETHER TOO — Sprint 1N.5.
+    //
+    // Reported by the product owner: the Ether encounter had a field
+    // and a Say it and nothing else, while the Studio had a microphone
+    // and a mute. Voice in and voice out are SURFACE-INDEPENDENT — a
+    // child who talks to their own Companion and a Traveller who meets
+    // somebody else's are doing the same thing, and only what may be
+    // SEEN differs between them (Decision 48).
+    //
+    // The same two modules the Studio uses, unchanged and unwrapped:
+    // js/companionListen.js for the microphone and js/companionSpeak.js
+    // for the answer. Nothing is duplicated and no second voice
+    // architecture exists.
+    const mic = document.createElement('button');
+    mic.type = 'button';
+    mic.className = 'ether-talk-mic';
+    mic.textContent = '🎤';
+    // A MICROPHONE THAT IS NOT THERE IS NOT AN ERROR. Where the browser
+    // has no speech recognition the button simply never appears, and
+    // typing is the whole of it.
+    mic.hidden = !(typeof CompanionListen !== 'undefined' && CompanionListen.supported());
+
+    const speak = document.createElement('button');
+    speak.type = 'button';
+    speak.className = 'ether-talk-speak';
+    speak.hidden = !(typeof CompanionSpeak !== 'undefined' && CompanionSpeak.supported());
+
+    // What was heard, and what could not be. Its own line, polite, and
+    // empty when there is nothing to say.
+    const heard = document.createElement('p');
+    heard.className = 'ether-talk-heard';
+    heard.setAttribute('role', 'status');
+    heard.setAttribute('aria-live', 'polite');
+    heard.hidden = true;
+
+    form.appendChild(input); form.appendChild(send);
+    form.appendChild(mic); form.appendChild(speak); form.appendChild(close);
     bar.appendChild(starters);
-    bar.appendChild(said); bar.appendChild(form);
+    bar.appendChild(said); bar.appendChild(heard); bar.appendChild(form);
     host.appendChild(opener); host.appendChild(bar);
 
     opener.addEventListener('click', function () { open(); });
     close.addEventListener('click', function () { hide(); });
+    mic.addEventListener('click', function () { _mic(); });
+    speak.addEventListener('click', function () {
+      const on = !_voiceOn();
+      _setVoiceOn(on);
+      // MUTING STOPS WHAT IS BEING SAID. "Stop talking" and "be quiet"
+      // are the same thought to whoever pressed it.
+      if (!on) _aloudStop();
+    });
     form.addEventListener('submit', function (e) { e.preventDefault(); _send(); });
     // Escape closes, and only while the surface is open — no global
     // key handling, and the portal's own Escape still works when it is
@@ -231,7 +276,10 @@ const TravellerTalk = (function () {
     });
 
     _els = { opener: opener, bar: bar, said: said, form: form, input: input,
-             send: send, close: close, starters: starters };
+             send: send, close: close, starters: starters,
+             mic: mic, speak: speak, heard: heard };
+    _paintVoiceButton();
+    _micState('stopped');
     return _els;
   }
 
@@ -256,6 +304,11 @@ const TravellerTalk = (function () {
 
   /** The Story closed. Everything goes. */
   function withdraw() {
+    // THE PORTAL CLOSED. A voice must never outlive the Story it lives
+    // in, and a microphone must never outlive the moment somebody
+    // opened it.
+    _aloudStop();
+    try { if (typeof CompanionListen !== 'undefined') CompanionListen.stop(); } catch (e) {}
     // A TRAVELLER KEEPS NOTHING. The conversation goes when the
     // encounter does, exactly as the turns do.
     try {
@@ -309,6 +362,115 @@ const TravellerTalk = (function () {
     _els.starters.appendChild(row);
   }
 
+  // ---------------------------------------------------------------
+  // THE MICROPHONE
+  //
+  // Exactly the Studio's rules, because they are the Companion's rather
+  // than the Studio's: no wake word, no background listening, no page
+  // listener, no timer, and it exists only while somebody is holding it
+  // open. Raw audio is never touched — js/companionListen.js has no
+  // recorder, no blob and no store, and this file cannot reach one.
+  //
+  // AND WHAT IS HEARD LANDS IN THE FIELD, NEVER IN A SEND. A microphone
+  // that speaks for somebody without showing them what it heard will
+  // occasionally say something they did not say.
+  function _micState(state) {
+    if (!_els) return;
+    const on = (state === 'listening');
+    _els.bar.setAttribute('data-mic', on ? 'on' : 'off');
+    if (_els.mic) {
+      _els.mic.setAttribute('aria-pressed', on ? 'true' : 'false');
+      _els.mic.textContent = on ? '⏹' : '🎤';
+      _els.mic.title = on ? 'Stop listening' : 'Talk out loud';
+      _els.mic.setAttribute('aria-label', on ? 'Stop listening' : 'Talk out loud');
+    }
+    const heard = _els.heard;
+    if (!heard) return;
+    if (state === 'listening') { heard.textContent = 'Listening…'; heard.hidden = false; return; }
+    if (state === 'nothing') {
+      heard.textContent = "I didn't hear that. Try again?";
+      heard.hidden = false; return;
+    }
+    if (state === 'blocked') {
+      // ASKED ONCE, REFUSED ONCE, NEVER ASKED AGAIN. No browser error
+      // text, and the encounter carries on exactly as it was.
+      heard.textContent = "I can't hear you right now. You can type instead.";
+      heard.hidden = false;
+      if (_els.mic) _els.mic.hidden = true;
+      return;
+    }
+    heard.textContent = '';
+    heard.hidden = true;
+  }
+
+  function _mic() {
+    if (typeof CompanionListen === 'undefined') return;
+    if (CompanionListen.isListening()) { CompanionListen.stop(); _micState('stopped'); return; }
+    // A TRAVELLER'S OWN VOICE STOPS THE COMPANION'S. Two of them at
+    // once is the one thing this must not do.
+    _aloudStop();
+    CompanionListen.start({
+      onText: function (words) {
+        if (!_els) return;
+        _els.input.value = words;
+        try { _els.input.focus(); } catch (e) {}
+        try { _els.input.setSelectionRange(words.length, words.length); } catch (e) {}
+      },
+      onState: function (state) { _micState(state); }
+    });
+  }
+
+  // ---------------------------------------------------------------
+  // SAID OUT LOUD
+  //
+  // ONE SETTING, BOTH SURFACES. The same localStorage key the Studio
+  // writes, because it is about the room somebody is sitting in rather
+  // than about who they are — a Traveller who muted their Companion in
+  // the Studio has not asked to be shouted at in the Ether.
+  const VOICE_KEY = 'vihu.companion.voice';
+
+  function _voiceOn() {
+    try { return localStorage.getItem(VOICE_KEY) !== 'off'; }
+    catch (e) { return true; }
+  }
+  function _setVoiceOn(on) {
+    try { localStorage.setItem(VOICE_KEY, on ? 'on' : 'off'); } catch (e) {}
+    _paintVoiceButton();
+  }
+  function _paintVoiceButton() {
+    if (!_els || !_els.speak) return;
+    const on = _voiceOn();
+    _els.speak.textContent = on ? '🔊' : '🔇';
+    _els.speak.title = on ? 'Mute' : 'Let me be heard';
+    _els.speak.setAttribute('aria-label', on ? 'Mute the Companion' : 'Unmute the Companion');
+    _els.speak.setAttribute('aria-pressed', on ? 'false' : 'true');
+  }
+
+  /**
+   * Say the answer that is already on screen — in the HOST Companion's
+   * own voice, which is the whole point: a Traveller is meeting
+   * somebody who lives here, and `companionId` travels with the Story
+   * (Decision 24). Never anything but the string the screen shows, so
+   * there is no second copy that could differ from what the public
+   * context approved.
+   */
+  function _aloud() {
+    if (typeof CompanionSpeak === 'undefined' || !_els) return;
+    if (!_voiceOn()) return;
+    const shown = (_els.said.textContent || '').trim();
+    if (!shown) return;
+    const who = _ctx ? _ctx.companionId : null;
+    if (_els.speak) _els.speak.setAttribute('data-speaking', 'yes');
+    CompanionSpeak.say(shown, who).then(function () {
+      if (_els && _els.speak) _els.speak.removeAttribute('data-speaking');
+    });
+  }
+
+  function _aloudStop() {
+    try { if (typeof CompanionSpeak !== 'undefined') CompanionSpeak.stop(); } catch (e) {}
+    if (_els && _els.speak) _els.speak.removeAttribute('data-speaking');
+  }
+
   function open() {
     const els = _build();
     if (!els || !_ctx) return;
@@ -323,6 +485,12 @@ const TravellerTalk = (function () {
 
   /** Close the conversation and DISCARD it. */
   function hide() {
+    // A VOICE NEVER OUTLIVES ITS ENCOUNTER, and neither does a
+    // microphone — the same rule js/etherHost.js already follows for the
+    // World Host's own line.
+    _aloudStop();
+    try { if (typeof CompanionListen !== 'undefined') CompanionListen.stop(); } catch (e) {}
+    _micState('stopped');
     // A TRAVELLER KEEPS NOTHING. The conversation goes when the
     // encounter does, exactly as the turns do.
     try {
@@ -351,6 +519,10 @@ const TravellerTalk = (function () {
     _turns.push({ said: said, answer: answer.text });
     if (_turns.length > MAX_TURNS) _turns.shift();
     els.said.textContent = answer.text;
+    // HEARD AS WELL AS SEEN, unless it has been muted. An empty answer
+    // is not spoken — silence is a real answer and there is nothing to
+    // say.
+    _aloud();
     // The suggestions were for a Traveller who did not know what to
     // say. Somebody has now said something.
     _renderStarters();
@@ -364,6 +536,7 @@ const TravellerTalk = (function () {
     turns: function () { return _turns.slice(); },
     context: function () { return _ctx ? JSON.parse(JSON.stringify(_ctx)) : null; },
     MAX_CHARS: MAX_CHARS, MAX_TURNS: MAX_TURNS,
+    mic: _mic, aloud: _aloud, voiceOn: _voiceOn, setVoiceOn: _setVoiceOn,
     // The character table lives in the Mind now. Re-exported so this
     // file's public surface is exactly what it was.
     get VOICE() { return (typeof CompanionMind !== 'undefined') ? CompanionMind.VOICE : {}; }

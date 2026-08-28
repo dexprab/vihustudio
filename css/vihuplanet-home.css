@@ -1898,12 +1898,19 @@ html, body {
 .ether-talk-said:empty { display: none; }
 
 .ether-talk-row {
+  /* THE FIELD GETS A ROW OF ITS OWN — Sprint 1N.5, and it is the SAME
+     fix Decision 48 already records for the Studio one build earlier.
+     With a microphone and a mute beside Say it and Close, the field was
+     squeezed to 240px in a bar that is 560 wide. Somebody types
+     sentences into this; it wraps instead, so the field keeps the full
+     width and the four controls sit under it. */
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 6px;
 }
 .ether-talk-input {
-  flex: 1 1 auto;
+  flex: 1 1 100%;
   min-width: 0;
   padding: 6px 12px;
   border: 1px solid rgba(255, 255, 255, .22);
@@ -1927,15 +1934,67 @@ html, body {
   cursor: pointer;
 }
 .ether-talk-close { padding: 6px 10px; }
+/* THE MICROPHONE AND THE MUTE — Sprint 1N.5. Square, quiet, and the
+   same size as each other so the row reads as one control strip rather
+   than as two buttons and two icons of different weights. */
+.ether-talk-mic,
+.ether-talk-speak {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, .22);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .1);
+  color: rgba(255, 255, 255, .86);
+  font-size: .9rem;
+  line-height: 1;
+  cursor: pointer;
+}
 .ether-talk-send:hover, .ether-talk-close:hover,
-.ether-talk-send:focus-visible, .ether-talk-close:focus-visible {
+.ether-talk-mic:hover, .ether-talk-speak:hover,
+.ether-talk-send:focus-visible, .ether-talk-close:focus-visible,
+.ether-talk-mic:focus-visible, .ether-talk-speak:focus-visible {
   background: rgba(255, 255, 255, .18);
 }
+/* LISTENING IS SHOWN, NEVER ONLY IMPLIED. A microphone that is on and
+   does not look on is the one state this must not have. */
+.ether-talk[data-mic="on"] .ether-talk-mic {
+  background: rgba(255, 120, 120, .28);
+  border-color: rgba(255, 150, 150, .55);
+}
+.ether-talk-speak[data-speaking] {
+  background: rgba(255, 214, 138, .26);
+  border-color: rgba(255, 214, 138, .5);
+}
+/* What was heard, and what could not be. Absent rather than empty. */
+.ether-talk-heard {
+  margin: 0 0 6px;
+  color: rgba(255, 255, 255, .62);
+  font-size: .78rem;
+  line-height: 1.35;
+}
+.ether-talk-heard:empty { display: none; }
+.ether-talk-heard[hidden] { display: none; }
+/* AN EXPLICIT `display` BEATS `[hidden]`, and the button above has one.
+   Found by reverting the script tags to prove V1 catches them: with the
+   modules gone the mute was correctly marked hidden and still measured
+   32x32, because `display: inline-flex` wins over the UA stylesheet's
+   `[hidden]{display:none}`. Present and unusable, one more time — and
+   css/style.css already carried this exact rule for the Studio's own
+   two, with a comment saying why. This is the same rule, one surface
+   along. */
+.ether-talk-mic[hidden], .ether-talk-speak[hidden] { display: none; }
 /* Focus must be visible — a Traveller may be doing all of this from
    the keyboard, which is the only way some of them can. */
 .ether-talk-open:focus-visible,
 .ether-talk-input:focus-visible,
 .ether-talk-send:focus-visible,
+.ether-talk-mic:focus-visible,
+.ether-talk-speak:focus-visible,
 .ether-talk-close:focus-visible {
   outline: 2px solid rgba(255, 255, 255, .75);
   outline-offset: 2px;

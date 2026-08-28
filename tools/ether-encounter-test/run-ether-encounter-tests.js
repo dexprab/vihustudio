@@ -469,6 +469,105 @@ const FOUR = [['leafy', 'Leafy', 'Bloomling'], ['leosaurus', 'Leo', 'Lantern Lio
      'C*7 and it is the identical structure', JSON.stringify(travThread));
 
   // =================================================================
+  console.log('\nV. HEARD AND SPOKEN TO — Sprint 1N.5');
+  // =================================================================
+  //
+  // Reported by the product owner: the Ether encounter had a field and
+  // a Say it and nothing else, while the Studio had a microphone and a
+  // mute. Voice in and voice out are SURFACE-INDEPENDENT — only what
+  // may be SEEN differs between the two relationships (Decision 48).
+  //
+  // THE ROOT CAUSE WAS THE PAGE, NOT THE CODE. index.html never loaded
+  // js/companionListen.js or js/companionSpeak.js, and travellerTalk
+  // hides both controls when the modules are absent — so the surface
+  // was correct and empty. V1 is the check that would have caught it.
+  const modules = await page.evaluate(() => ({
+    listen: typeof CompanionListen !== 'undefined',
+    speak: typeof CompanionSpeak !== 'undefined',
+    // The Studio's, deliberately NOT here: a Traveller has no card and
+    // no Companion of their own to name (Decision 48).
+    name: typeof CompanionName !== 'undefined',
+  }));
+  ck(modules.listen && modules.speak,
+     'V1  THE VOICE MODULES ARE LOADED ON THE ETHER PAGE', JSON.stringify(modules));
+  const controls = await page.evaluate(() => {
+    const q = (s) => document.querySelector(s);
+    const box = (el) => { if (!el) return null; const r = el.getBoundingClientRect();
+      return { w: Math.round(r.width), h: Math.round(r.height) }; };
+    return {
+      mic: box(q('.ether-talk-mic')), micHidden: !!(q('.ether-talk-mic') || {}).hidden,
+      speak: box(q('.ether-talk-speak')), speakHidden: !!(q('.ether-talk-speak') || {}).hidden,
+      speakLabel: (q('.ether-talk-speak') || {}).textContent || '',
+      input: box(q('.ether-talk-input')),
+      bar: box(q('.ether-talk')),
+    };
+  });
+  // A CONTROL THAT EXISTS IS NOT A CONTROL SOMEBODY CAN SEE — the rule
+  // this repository already learned from the doodle pad. A real box, or
+  // it is not there.
+  ck(controls.speak && controls.speak.w > 0 && controls.speak.h > 0 && !controls.speakHidden,
+     'V2  the mute is on screen with a real box', JSON.stringify(controls.speak));
+  ck(/🔊|🔇/.test(controls.speakLabel),
+     'V2b and it reads as a speaker', JSON.stringify(controls.speakLabel));
+  // The microphone is allowed to be absent — this browser may have no
+  // speech recognition, and that is a normal state rather than a fault.
+  ck(controls.mic === null || controls.micHidden ||
+     (controls.mic.w > 0 && controls.mic.h > 0),
+     'V3  the microphone is either usable or absent, never a dead box',
+     JSON.stringify({ mic: controls.mic, hidden: controls.micHidden }));
+  // THE FIELD KEEPS THE FULL WIDTH. Decision 48's own fix for the
+  // Studio, applied here for the identical reason: four controls beside
+  // it squeezed it to 240px in a 560px bar, and somebody types
+  // SENTENCES into this. It wraps; the field is the whole first row.
+  ck(controls.input && controls.bar && controls.input.w > controls.bar.w * 0.8,
+     'V4  AND THE FIELD KEEPS THE FULL WIDTH — the new controls sit under it',
+     JSON.stringify({ input: controls.input, bar: controls.bar }));
+
+  // ONE SETTING, BOTH SURFACES. The Studio writes the same key, because
+  // it is about the room somebody is sitting in rather than who they are.
+  const muting = await page.evaluate(() => {
+    const before = TravellerTalk.voiceOn();
+    TravellerTalk.setVoiceOn(false);
+    const stored = localStorage.getItem('vihu.companion.voice');
+    const off = TravellerTalk.voiceOn();
+    const icon = (document.querySelector('.ether-talk-speak') || {}).textContent;
+    TravellerTalk.setVoiceOn(true);
+    return { before, stored, off, icon, after: TravellerTalk.voiceOn() };
+  });
+  ck(muting.before === true && muting.off === false && muting.after === true &&
+     muting.stored === 'off' && muting.icon === '🔇',
+     'V5  voice is ON by default and the button is a MUTE, remembered per device',
+     JSON.stringify(muting));
+
+  // MUTING CHANGES NOTHING ON SCREEN. Somebody who cannot hear, or who
+  // is somewhere they must be quiet, reads exactly what everybody reads.
+  const mutedReply = await page.evaluate(async () => {
+    TravellerTalk.setVoiceOn(false);
+    document.querySelector('.ether-talk-input').value = 'who are you?';
+    document.querySelector('.ether-talk-send').click();
+    await new Promise((r) => setTimeout(r, 250));
+    const t = document.querySelector('.ether-talk-said').textContent.trim();
+    TravellerTalk.setVoiceOn(true);
+    return t;
+  });
+  ck(/Leo/i.test(mutedReply), 'V6  and muting changes nothing on screen',
+     JSON.stringify(mutedReply));
+
+  // A VOICE NEVER OUTLIVES ITS ENCOUNTER. Closing stops it and the
+  // microphone, the same rule js/etherHost.js already follows.
+  const stopped = await page.evaluate(() => {
+    let stops = 0;
+    const realStop = CompanionSpeak.stop;
+    CompanionSpeak.stop = function () { stops++; return realStop.apply(this, arguments); };
+    TravellerTalk.close();
+    CompanionSpeak.stop = realStop;
+    return { stops, listening: CompanionListen.isListening() };
+  });
+  ck(stopped.stops > 0 && stopped.listening === false,
+     'V7  closing the encounter stops the voice and the microphone',
+     JSON.stringify(stopped));
+
+  // =================================================================
   console.log('\nD. NOTHING IS KEPT');
   // =================================================================
   const kept = await page.evaluate(() => {

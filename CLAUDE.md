@@ -5159,6 +5159,48 @@ adds no capability — it removes a restriction that was never decided.
   instead, because it was written with the same indentation and came
   first in the file. Three checks went red immediately and named the
   sentence, which is the only reason it took a minute rather than a day.
+- **THE ETHER IS HEARD AND SPOKEN TO AS WELL** (build 0695). Reported
+  by the product owner: *"ether still does not have mic and say loud"*.
+  The encounter had a field and a **Say it** and nothing else, while the
+  Studio had a microphone and a mute — and **voice in and voice out are
+  surface-independent**, which the 1N.5 brief says in as many words.
+  What differs between a child talking to their own Companion and a
+  Traveller meeting somebody else's is what may be SEEN, never whether
+  they can speak or be heard.
+- **THE ROOT CAUSE WAS THE PAGE, NOT THE CODE.** `index.html` never
+  loaded `js/companionListen.js` or `js/companionSpeak.js` — so the
+  surface behaved exactly as designed and was empty, because both
+  controls hide themselves when their module is absent. **`V1` is the
+  check that would have caught it**, and it is the general form: the
+  Ether page must LOAD the voice modules, not merely be able to use them.
+- **The same modules, unwrapped, and the same per-device setting.**
+  `vihu.companion.voice` is written by both surfaces, because it is
+  about the room somebody is sitting in rather than who they are — a
+  Traveller who muted their Companion in the Studio has not asked to be
+  shouted at in the Ether. Voice is ON by default and the button is a
+  MUTE (Decision 48's own rule), and muting changes nothing on screen.
+- **It speaks in the HOST Companion's own voice**, from `companionId` on
+  the Story record (Decision 24), and only ever the string already on
+  screen — so there is no second copy that could differ from what the
+  public context approved.
+- **A microphone that is not there is not an error**, and neither is a
+  voice: both controls are absent where the browser has neither, and
+  typing is the whole of it. A refusal is asked once and never again.
+- **A voice never outlives its encounter.** Closing the conversation and
+  closing the portal both stop the speech and the microphone — the rule
+  `js/etherHost.js` already followed for the World Host's own line.
+- **THE FIELD GETS ITS OWN ROW, which is Decision 48's fix one surface
+  along.** Four controls beside it squeezed it to 240px in a 560px bar,
+  and somebody types sentences into this. It wraps; the field is the
+  whole first row, measured at the bar's full width.
+- **AN EXPLICIT `display` BEATS `[hidden]`, and that was a second bug
+  found by proving the first check works.** With the modules removed the
+  mute was correctly marked hidden and still measured 32×32, because
+  `display: inline-flex` wins over the UA stylesheet. `css/style.css`
+  already carried this exact rule for the Studio's own two, with a
+  comment saying why. **Present and unusable, one more time** — and it
+  would have shipped a dead button to every browser with no speech
+  synthesis.
 - **Out of scope and untouched**: OpenAI (both production gates ship
   closed and are unchanged), any provider, any model call, Step 3, wake
   word, always-listening, background microphone, external AI STT or TTS,
@@ -5170,8 +5212,10 @@ adds no capability — it removes a restriction that was never decided.
 - **Verified: provider calls = 0**, in a sandbox with `fetch`,
   `XMLHttpRequest` and sockets removed rather than merely unused.
 - `js/companionMind.js` · `js/companionConversation.js` ·
-  `js/travellerTalk.js` · `js/companionChat.js` ·
-  `tools/companion-parity-test/run-companion-parity-tests.js`
+  `js/travellerTalk.js` · `js/companionChat.js` · `index.html` ·
+  `css/vihuplanet-home.css` ·
+  `tools/companion-parity-test/run-companion-parity-tests.js` ·
+  `tools/ether-encounter-test/run-ether-encounter-tests.js`
 
 ### 49. A Promise That Cannot Settle Is Not a Failure Mode This Product May Have
 

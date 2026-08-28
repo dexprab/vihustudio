@@ -10003,3 +10003,36 @@ probe stops being worthless, with `K4d` keeping the verifier's expected
 build in step with the function's own.
 
 Canon: CLAUDE.md → Decision 49 (extended).
+
+## Build 0695 — The Ether is heard and spoken to
+
+Reported by the product owner: *"ether still does not have mic and say
+loud"*. The encounter had a field and a **Say it** and nothing else,
+while the Studio had a microphone and a mute. Voice in and voice out are
+surface-independent — what differs between a child talking to their own
+Companion and a Traveller meeting somebody else's is what may be SEEN,
+never whether they can speak or be heard.
+
+**The root cause was the page, not the code.** `index.html` never loaded
+`js/companionListen.js` or `js/companionSpeak.js`, and both controls hide
+themselves when their module is absent — so the surface behaved exactly
+as designed and was empty. `V1` is the check that would have caught it.
+
+The same two modules, unwrapped, and the same per-device
+`vihu.companion.voice` key both surfaces write: voice ON by default, the
+button a MUTE, muting changing nothing on screen. It speaks in the HOST
+Companion's own voice from `companionId` on the Story record, and only
+ever the string already on screen. A voice never outlives its encounter —
+closing the conversation and closing the portal both stop it and the
+microphone.
+
+Two layout facts came with it. The field gets its own row (Decision 48's
+fix one surface along — four controls beside it squeezed it to 240px in a
+560px bar). And **an explicit `display` beats `[hidden]`**: proving `V1`
+catches the missing scripts showed the mute correctly marked hidden and
+still measuring 32×32, because `display: inline-flex` wins over the UA
+stylesheet. `css/style.css` already carried that rule for the Studio's
+own two, with a comment saying why.
+
+ether 86 · conversation 134 · mind 165 · enable 103 · knowledge 99 ·
+presence 90 · parity 84 · dialogue 56 — all green. Canon: Decision 48.
