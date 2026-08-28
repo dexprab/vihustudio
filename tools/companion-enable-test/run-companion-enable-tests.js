@@ -307,6 +307,13 @@ const FOUR = [
     await arrive(bondedAs(cid, name, species));
     const who = await registerWithServer(fn, cid, name, species);
     if (!who.cardId) { no('C.' + cid + '  a card is active after the journey', 'none'); continue; }
+    // WAIT, DO NOT SAMPLE. The Companion is re-rendered when a story
+    // opens, and a bare evaluate() caught it mid-swap on roughly one run
+    // in five — a flake in this harness, not in the product.
+    await page.waitForFunction((want) => {
+      const i = document.querySelector('.companion-widget img');
+      return !!(i && new RegExp(want + '/').test(i.getAttribute('src') || ''));
+    }, cid, { timeout: 20000 }).catch(() => {});
     const widget = await page.evaluate(() => {
       const el = document.querySelector('.companion-widget img, .companion-widget');
       const img = document.querySelector('.companion-widget img');
