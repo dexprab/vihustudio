@@ -4503,19 +4503,54 @@ gates still closed.**
   asking fifty times gives one answer and never modifies the context.
   Classification runs at 0.0015ms median, a complete response at 0.005ms;
   the whole round trip through the real handler is about a millisecond.
-- **THE STUDIO STILL DOES NOT OFFER A CONVERSATION IT CANNOT HAVE.**
-  `CONVERSATION_OFFERED` stays `false`. The client already sends exactly
-  what the Mind needs — a card, a story, a page and what was just said —
-  so no client change was required; what is missing is a DEPLOY, and Edge
-  Functions are deployed by hand here. Two steps, in that
-  order — and the second reason is MEASURED rather than cautious: with
-  the flag unset a Creator request does not fall through to silence, it
-  falls into the FIXTURE branch, and the mock answers from a synthetic
-  story with synthetic memories. A request naming a real card and a real
-  story and asking *"what story am I making?"* came back
-  `{"reply":"I am here.","meta":{"synthetic":true,"fixture":"hello"}}`.
-  A child would be answered about a story they never made — which is
-  worse than the always-silent door Decision 41 removed, not better.
+- **THE DOOR IS OPEN** (build 0687). The product owner deployed
+  `companion-chat` and set `COMPANION_MIND_ENABLED` on the server, and
+  `CONVERSATION_OFFERED` was flipped last — Step 4 of
+  `supabase/DEPLOY_companion_mind.md`. A Creator in the editor is now
+  offered **💬 Talk to <their Companion>** at the foot of the workspace;
+  a Traveller is offered nothing, because `_mountOpener()` returns
+  without a card. **The order was not a formality and it was measured:**
+  with the server flag unset a Creator request does not fall through to
+  silence, it falls into the synthetic FIXTURE branch and the mock
+  answers from an invented story — a child would be told about a story
+  they never made. The flag went first, the function's own GET probe
+  confirmed it, and the constant went last.
+- **TWO EXISTING CHECKS ASSERTED THE OPPOSITE, AND WERE TURNED ROUND
+  RATHER THAN WEAKENED.** `companion-presence`'s N1 and N2 read *"no
+  conversation surface is offered anywhere in the Studio"* and
+  *"CONVERSATION_OFFERED = false"* — correct for Sprint 1K, and exactly
+  the behaviour this changes. They now assert that a Creator IS offered
+  it, with `N2b` added for what stays true (nothing is OPEN until the
+  child presses it) and `E5` untouched: a Traveller is still offered
+  nothing.
+- **WHAT SHIPPED WITH IT WAS THE REASON THE DOOR WAS WORTH OPENING**
+  (Sprint 1N.1). The conversation strip was measured in the running
+  Studio for the first time and it was **unusable**: `css/style.css`
+  carries a blanket `button:not(…) { width:100% }` with a hand-kept
+  exception list, the strip's Send and Close were not on it, each took
+  the whole 614px row, and flexbox squeezed the text field to
+  **twenty-four pixels** while Close overflowed the strip entirely.
+  Every `.companion-chat-*` rule asked for `flex:0 0 auto` and every one
+  of them lost. That rule's own comment already recorded the identical
+  bug happening to `.creation-flow-myprojects-btn`; this was the second
+  time, so the comment now states the rule it keeps teaching — **a
+  blanket width with an exception list means every new control is broken
+  by default and nobody finds out until somebody looks at the screen.**
+- **AND THE WAY IN WAS INVISIBLE.** `--text-dim` and `--border` are
+  defined nowhere in that stylesheet, so
+  `var(--text-dim, rgba(255,255,255,.62))` fell through to 62%-opaque
+  WHITE TEXT on the light theme's near-white `#F1F4FC`. For the one
+  affordance a child has to find, that is the same as not being there.
+  Both were found by measuring the real Studio; **reading the CSS would
+  have agreed with the bug.**
+- ~~**THE STUDIO STILL DOES NOT OFFER A CONVERSATION IT CANNOT HAVE.**~~
+  **Superseded above.** Sprint 1N left `CONVERSATION_OFFERED` at `false`
+  and recorded why: the client already sent exactly what the Mind needs —
+  a card, a story, a page and what was just said — so no client change
+  was ever required, and what was missing was a DEPLOY. Edge Functions
+  are deployed by hand here, and that is what happened between 1N and
+  1N.1. The measurement that fixed the ORDER is kept in the open clause
+  above, because it is the reason the two steps are not interchangeable.
 - **Disclosed, and not fixed here:** the MODEL path still builds a real
   Creator context with the fixture personality, so if production ever
   opened, a child bonded to Leo would be answered as Leafy. It is a

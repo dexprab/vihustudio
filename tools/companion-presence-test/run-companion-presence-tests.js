@@ -405,7 +405,7 @@ function LOOK() {
      F1.line + ' / hasEverMade=' + F1.signals.hasEverMade);
 
   // =================================================================
-  console.log('\nWHAT A CHILD IS NOT GIVEN');
+  console.log('\nWHAT A CHILD IS GIVEN');
   // =================================================================
   // IN THE EDITOR, AND AFTER A REAL PULSE. The first version of this
   // checked from Studio Home, where the opener could not have mounted
@@ -430,12 +430,26 @@ function LOOK() {
     flagOff: (typeof CompanionChat !== 'undefined') ? CompanionChat.CONVERSATION_OFFERED : null,
     apiStillThere: typeof CompanionChat !== 'undefined' && typeof CompanionChat.mount === 'function'
   }));
-  ck(nothingOffered.chat === false && nothingOffered.bar === false && nothingOffered.input === false,
-     'N1  no conversation surface is offered anywhere in the Studio',
-     'no pill, no bar, no input');
-  ck(nothingOffered.flagOff === false,
-     'N2  and the reason is one readable constant, not a deletion',
+  // ---- THIS SECTION USED TO ASSERT THE OPPOSITE ------------------
+  //
+  // N1 and N2 read "no conversation surface is offered anywhere in the
+  // Studio" and "CONVERSATION_OFFERED = false", which was the whole
+  // point of Sprint 1K: the reply could not come back, so the door was
+  // shut. Sprint 1N built the deterministic Mind, the product owner
+  // deployed it and set COMPANION_MIND_ENABLED, and Step 4 of
+  // supabase/DEPLOY_companion_mind.md opened the door. So these now
+  // assert what is true instead — CHANGED DELIBERATELY, not weakened:
+  // the checks are the same strength pointing the other way, and E5
+  // above still proves a Traveller is offered nothing.
+  ck(nothingOffered.chat === true,
+     'N1  a Creator IS offered the conversation, in the editor, by itself',
+     'the pill mounts on the Studio’s own pulse');
+  ck(nothingOffered.flagOff === true,
+     'N2  and it is one readable constant that says so',
      'CONVERSATION_OFFERED=' + nothingOffered.flagOff);
+  ck(nothingOffered.bar === false && nothingOffered.input === false,
+     'N2b while nothing is OPEN until the child chooses it',
+     'a pill, and no bar and no input until it is pressed');
   ck(nothingOffered.apiStillThere === true,
      'N3  while the surface itself is untouched and still testable');
 
@@ -621,12 +635,22 @@ function LOOK() {
       CompanionMoments.MOMENTS.forEach((m) => CompanionMoments.decide(m));
       try { PageRuntime.notify(); } catch (e) {}
     }
+    const pill = document.querySelector('.companion-chat-open');
     return { before: before, after: CompanionMemory.list({ status: 'any' }).length,
-             chat: !!document.querySelector('.companion-chat-open') };
+             chat: !!pill, chatLabel: pill ? pill.textContent : null };
   });
   ck(leoQuietFacts.after === leoQuietFacts.before,
      'L12 being Leo writes no memory', leoQuietFacts.before + ' -> ' + leoQuietFacts.after);
-  ck(leoQuietFacts.chat === false, 'L13 and Leo is offered no conversation either');
+  // TURNED ROUND BY SPRINT 1N.1's STEP 4, not weakened. This read "and
+  // Leo is offered no conversation either", which was true while
+  // CONVERSATION_OFFERED was false and the reply could not come back.
+  // It can now, so what this proves is that the offer is THE SAME for
+  // every Companion — Leo gets exactly what Leafy gets, and it is his
+  // own name on it, which is the Sprint 1K.1 property this section
+  // exists for.
+  ck(leoQuietFacts.chat === true && /Leo/.test(leoQuietFacts.chatLabel || ''),
+     'L13 and Leo is offered the same conversation, in his own name',
+     leoQuietFacts.chatLabel);
 
   // ---- THE POINT OF THE SPRINT: there is no Leo branch to find.
   const presenceSrc = ['companionMoments.js', 'companionDirector.js', 'companionBrain.js',
@@ -726,6 +750,17 @@ function LOOK() {
       "const c=MagicCard.claim('Vihaan',null,{companionId:'" + cid + "',companionName:'" + cname +
       "',companionSpecies:'" + cspecies + "'}); MagicCard.setActive(c.id);");
     await arrive(setup);
+    // WAIT FOR THE COMPANION, DO NOT SAMPLE IT. arrive()'s fixed pause
+    // caught the widget mid-mount on roughly one run in four — and on a
+    // DIFFERENT Companion each time, which is what shows it is a race in
+    // this harness rather than anything about Quill or Nimbus. One
+    // missed sample also cascaded into W3, W4 and W5, so a single flake
+    // read as four failures. Same fix as Sprint 1N.1 made in its own
+    // suite, for the same reason.
+    await page.waitForFunction((want) => {
+      const i = document.querySelector('.companion-widget img');
+      return !!(i && (i.getAttribute('src') || '').indexOf(want + '/') === 0);
+    }, cid, { timeout: 20000 }).catch(() => {});
     const look = await page.evaluate(LOOK);
     await page.screenshot({ path: path.join(SHOTS, 'four-' + cid + '.png') });
     seen.push({ cid, cname, look });

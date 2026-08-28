@@ -292,27 +292,35 @@ const CompanionChat = (function () {
   }
 
   // ---------------------------------------------------------------
-  // THE STUDIO DOES NOT OFFER THIS YET — Sprint 1K.
+  // THE STUDIO OFFERS IT NOW — Sprint 1N.1, Step 4.
   //
-  // Decision 36 built the surface and Decision 34 left BOTH production
-  // gates shut, and those two facts together are what a child actually
-  // meets: they press "Talk to Leafy", type a sentence, and receive
-  // silence. That silence is correct — Decision 36 chose it deliberately
-  // over an apology or an error — but a door that is always silent is
-  // worse than no door, and it is the one thing in the Studio that says
-  // conversational intelligence already exists when it does not.
+  // Sprint 1K switched this OFF, and was right to: Decision 36 built the
+  // surface and Decision 34 left both production gates shut, so a child
+  // pressing "Talk to Leafy" met silence. That silence was correct and
+  // the door was not — a door that is always silent is worse than no
+  // door, and it was the one thing in the Studio claiming conversational
+  // intelligence already existed when it did not.
   //
-  // So the Studio stops OFFERING it. Nothing is deleted, no behaviour
-  // inside this file changed, and mount() still works exactly as it
-  // always did when something calls it — the suite drives the real
-  // surface through the real API, unchanged. What is switched off is the
-  // Studio putting the pill on screen by itself.
+  // A reply can come back now. Sprint 1N built the deterministic
+  // Companion Mind (Decision 46) and 1N.1 walked it through the real
+  // Studio for all four Companions; the product owner deployed
+  // companion-chat and set COMPANION_MIND_ENABLED on the server, and
+  // this is the last of the four steps in
+  // supabase/DEPLOY_companion_mind.md.
   //
-  // ONE CONSTANT, and Step 3 flips it in one line the day a reply can
-  // actually come back. Not a probe and not a fetch: whether the
-  // provider is reachable is a question only the server can answer, and
-  // asking it would be a network call this sprint may not add.
-  const CONVERSATION_OFFERED = false;
+  // THE ORDER MATTERED, AND IT WAS MEASURED. With that server flag
+  // unset a Creator request does not fall through to silence — it falls
+  // into the synthetic FIXTURE branch and the mock answers from an
+  // invented story, so a child would be told about a story they never
+  // made. That is why the flag went first and this constant went last,
+  // and it is why this line is worth nothing on its own.
+  //
+  // STILL NOT A PROBE AND NOT A FETCH. Whether the server has the Mind
+  // switched on is a question only the server can answer, and asking it
+  // on every Studio boot would be a network call for every child to pay
+  // for a fact that changes once. It stays a constant, and the function's
+  // own GET probe is where a developer asks (Step 3 of the runbook).
+  const CONVERSATION_OFFERED = true;
 
   if (CONVERSATION_OFFERED) {
     // Rides the pulse the Studio already fires on every page mutation —

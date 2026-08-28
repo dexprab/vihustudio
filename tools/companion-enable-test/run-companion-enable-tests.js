@@ -518,8 +518,8 @@ const FOUR = [
     localStorage.clear(); sessionStorage.clear();
     return typeof CompanionChat !== 'undefined' ? CompanionChat.CONVERSATION_OFFERED : null;
   });
-  ck(trav === false, 'T0  the Studio still does not OFFER the conversation by itself',
-     'CONVERSATION_OFFERED = false — the deploy has not happened');
+  ck(trav === true, 'T0  the Studio now OFFERS the conversation by itself',
+     'CONVERSATION_OFFERED = true — Step 4 of the runbook, after the deploy');
 
   await page.goto(BASE + '/index.html');
   await page.waitForFunction(() => typeof TravellerTalk !== 'undefined' &&

@@ -9558,4 +9558,27 @@ moments 88/88, ether 69/69, memory 56/56, companion 50/50, traveller
 reset 16/16. OpenAI unused, provider calls 0, both production gates
 closed. Build 0685 → 0686.
 
+**STEP 4 RAN, AND THE DOOR IS OPEN** (build 0687). The product owner
+deployed `companion-chat` and set `COMPANION_MIND_ENABLED` on the server
+— steps 1 to 3 of the runbook — and asked for the last one.
+`CONVERSATION_OFFERED` is now `true`, so a Creator in the editor is
+offered **💬 Talk to <their Companion>** at the foot of the workspace. A
+Traveller is offered nothing, because `_mountOpener()` returns without a
+card, and `E5` still proves it.
+
+**Two existing checks asserted the opposite, and were turned round
+rather than weakened.** `companion-presence`'s N1 and N2 read *"no
+conversation surface is offered anywhere in the Studio"* and
+*"CONVERSATION_OFFERED = false"* — correct for Sprint 1K, and exactly
+the behaviour Step 4 changes. They now assert that a Creator IS offered
+it, at the same strength, with `N2b` added for what stays true: nothing
+is OPEN until the child presses the pill.
+
+**What could not be verified from here, and is not claimed.** This
+environment still cannot reach the Supabase host, so the deploy and the
+server flag are taken on the product owner's word. If either is not
+actually in place the door will answer from the synthetic fixture rather
+than from the child's own story — the function's own GET probe (Step 3)
+is how that is told apart, and it reports `mindEnabled` and `build`.
+
 Runbook: `supabase/DEPLOY_companion_mind.md`.

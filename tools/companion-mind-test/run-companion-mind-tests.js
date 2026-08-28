@@ -1059,7 +1059,9 @@ async function importFn(source) {
     .test(fs.readFileSync(path.join(ROOT, 'js', f), 'utf8')));
   ck(secrets.length === 0, 'K5b nor carries anything key-shaped, comments included',
      secrets.join(', ') || 'none');
-  // The Studio still does not offer a conversation it cannot have.
+  // The Studio's conversation is behind ONE constant — which is now
+  // true (Sprint 1N.1, Step 4), and what this checks is that there is
+  // still exactly one readable place that decides it.
   const chatSrc = fs.readFileSync(path.join(ROOT, 'js', 'companionChat.js'), 'utf8');
   const offered = /const CONVERSATION_OFFERED = (true|false);/.exec(chatSrc);
   ck(!!offered, 'K6  the Studio’s conversation is behind one constant',
