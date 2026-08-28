@@ -368,7 +368,13 @@ async function importFn(source) {
      'Decision 32 unchanged: those files describe, they do not control');
 
   // THE INTENT TAXONOMY IS SMALL, EXPLICIT AND PUBLISHED.
-  ck(Array.isArray(Mind.INTENT_IDS) && Mind.INTENT_IDS.length >= 12 && Mind.INTENT_IDS.length <= 20,
+  // SMALL AND ENUMERABLE, and the ceiling is a JUDGEMENT that has to be
+  // raised deliberately rather than a number that drifts. Sprint 1N.2
+  // added four — naming, name-check, authorship, and the two halves of
+  // authorship share one id — so 20 became 24. What the check is for is
+  // that nobody can grow this into a hundred-rule keyword engine without
+  // a person noticing; that still holds.
+  ck(Array.isArray(Mind.INTENT_IDS) && Mind.INTENT_IDS.length >= 12 && Mind.INTENT_IDS.length <= 24,
      'A11 the taxonomy is small and enumerable', Mind.INTENT_IDS.length + ' intents');
   ck(Mind.INTENT_IDS.indexOf('unknown') !== -1,
      'A11b and `unknown` is one of them', 'not knowing is a result, not a gap');
@@ -954,8 +960,13 @@ async function importFn(source) {
     });
 
   await broken('J6  allow an outside-world action → the boundary checks fail',
-    mindPatch((b) => b.replace(/outside: "I can't go out there\. I only know what's here\.",\n      firm: "I only know what's here\. That's all I've got\."\n    \},\n    leosaurus/,
-                               'outside: "Searching the internet now. Opening YouTube for you.",\n      firm: "I only know what\'s here. That\'s all I\'ve got."\n    },\n    leosaurus')),
+    // ANCHORED ON ONE LINE, NOT ON ITS NEIGHBOURS. The first version
+    // matched leafy's `outside` together with the `firm` and the row
+    // that followed it, and Sprint 1N.2 added seven slots between them —
+    // so the patch silently stopped applying and the check reported
+    // that it proves nothing, which is exactly what broken() is for.
+    mindPatch((b) => b.replace(`outside: "I can't go out there. I only know what's here.",`,
+                               `outside: "Searching the internet now. Opening YouTube for you.",`)),
     async (mod) => {
       const r = await call({ cardId: 'card_a', storyId: 'p1', pageId: 0,
         conversation: [{ speaker: 'creator', text: 'Search the internet.' }] }, null, undefined, mod);
@@ -964,8 +975,8 @@ async function importFn(source) {
     });
 
   await broken('J7  make the output random → the determinism check fails',
-    mindPatch((b) => b.replace('function _out(intent, text, fact) {',
-      'function _out(intent, text, fact) {\n    text = String(text) + " " + Math.random();')),
+    mindPatch((b) => b.replace('function _out(intent, text, fact, action) {',
+      'function _out(intent, text, fact, action) {\n    text = String(text) + " " + Math.random();')),
     async (mod) => {
       const seenR = new Set();
       for (let i = 0; i < 6; i++) {

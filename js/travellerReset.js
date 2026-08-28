@@ -155,6 +155,17 @@ const TravellerReset = (function () {
       }
     } catch (e) {}
 
+    // AND WHAT A CHILD CALLS THEIR COMPANION — same reasoning again, one
+    // store along. js/companionName.js is keyed on a card and refuses to
+    // write without one, so a Traveller cannot have chosen a name; it is
+    // asked anyway so that a future change making that store writeable
+    // without a card has somewhere obvious to be wrong.
+    try {
+      if (typeof CompanionName !== 'undefined' && CompanionName.forgetTraveller) {
+        out.companionName = !!CompanionName.forgetTraveller();
+      }
+    } catch (e) {}
+
     function _ready(mod, fn) {
       try {
         if (typeof mod === 'undefined' || !mod || typeof mod[fn] !== 'function') return Promise.resolve();

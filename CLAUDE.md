@@ -4595,6 +4595,145 @@ gates still closed.**
   `tools/edge-auth-test/sync-shared.js` ·
   `tools/companion-mind-test/run-companion-mind-tests.js`
 
+### 47. A Companion You Can Talk To, and a Name You Can Give It
+
+Locked in the Companion Conversation Experience sprint. It is Decision
+46 made usable: the deterministic Mind already knew what a sentence
+meant, and this is a child being able to feel it. **No OpenAI, no
+model, no provider, no microphone, no wake word, and both production
+gates still shut.**
+
+- **A RESPONSE THAT ARRIVES IN NO TIME AT ALL READS AS A GLITCH.** The
+  surface had no states: type, press, and the answer either appeared or
+  did not. It now runs `idle → sending → responding → ready`, and the
+  press is acknowledged in the same frame — the child's own words go up,
+  the field empties, the Companion's face turns to `curious`, three dots
+  hold the turn. **The beat is 320ms and it is SUBTRACTED, never
+  added**: a slow answer waits for nothing extra, and a fast one is not
+  decorated into a pretend five seconds of thinking.
+- **THE POSE INTRODUCES NO NEW VOCABULARY.** `poses.typing` is already
+  the Director's own name for *somebody is saying something*, it
+  resolves to `curious`, and all four Companions declare it — so nobody
+  asks for an image that is not there. Quill declares eight of twelve
+  poses (Decision 44) and this is deliberately not one of the missing
+  four.
+- **THE BROWSER MAY ANSWER WHAT THE CARD PROVES. THE SERVER STILL OWNS
+  THE RECORDS.** `CompanionMind.LOCAL_INTENTS` is the line and it is
+  data rather than a habit: the story's name, its length, this page,
+  whether there is a picture and what the two of them have done together
+  are read server-side exactly as Sprints 1E.1 and 1F left them, and
+  nothing moved back. What the browser answers is who the Companion is,
+  what kind of thing it is, whose story this is, every boundary the
+  platform holds — and one thing the server **cannot** answer at all.
+- **A CHILD-GIVEN NAME HAS NO COLUMN, AND MUST NOT BE GIVEN ONE HERE.**
+  It is relationship state, so the server does not know it and inventing
+  a schema for it is out of scope. That is why there is a local answer
+  path at all; the rest of the list keeps the boundary in one readable
+  place instead of scattering it. A browser lying about its own card
+  lies only to itself — none of these answers reads a record, so there
+  is nothing of anybody else's to reach.
+- **THE CANONICAL IDENTITY NEVER DISAPPEARS.** Leo called *Spark* is
+  still Leo: *"I'm Leo. You call me Spark."* Asked *"Are you Leo?"* he
+  says yes; asked *"Are you Spark?"* he says yes and names himself
+  anyway. `MagicCard.companionName` is never written by any of this.
+- **A NAME IS REFUSED BY CONSTRUCTION, NOT BY A LIST OF THINGS TO LOOK
+  FOR.** Letters, marks, a digit or two, spaces, apostrophes and
+  hyphens; at most 24 characters and three words. Every character a URL,
+  an email, a token, an identifier or a fragment of markup needs is
+  absent from that set. `CompanionPrivacyGate`'s own value shapes are
+  then asked as a **second, independent reading**, because one check
+  that agrees with itself is not two checks.
+- **ONE COPY OF THAT RULE, AND IT IS IN THE MIND.** `validName()` is a
+  pure question about a sentence, so it sits with the other ones and
+  `js/companionName.js` calls it. Two implementations of *is this a
+  name* is two things that can disagree about what a child may be
+  called, and the stricter one would be the one nobody was looking at.
+  **With the Mind absent the store REFUSES** — everything else in this
+  codebase fails open so a missing subsystem never strands a child; a
+  write gated on a validator does the opposite, for the privacy gate's
+  own reason.
+- **A REFUSED NAME IS NEVER ECHOED AND NEVER EXPLAINED.** No "invalid",
+  no "wrong", no reason, and the thing they typed is not repeated back.
+  It asks again, kindly, in its own voice.
+- **THE CHILD MAY ALWAYS CHANGE THE SUBJECT.** A sentence the taxonomy
+  recognises is answered as itself and the waiting stops, so a child who
+  asks how many pages there are while a name is being waited for is not
+  told that is a poor name. A plain *no* stops it too.
+- **THE NAME IS A SETTING, NOT A MOMENT.** No Bond validator, no
+  proposal, no memory, no transcript — measured as a difference across
+  the store rather than by pattern-matching keys, which is what the
+  first draft did and why it failed on a deterministic recorder's own
+  `bonded` memory. It is scoped to `card | companion`, so a second
+  Creator on the same machine sees the canonical name and the first
+  child's choice survives them walking past. Renaming REPLACES; there is
+  no history of what a child used to call somebody.
+- **"IT" MEANS ONE THING, FOR TWO TURNS, AND THEN NOTHING.** Continuity
+  is a pure function of the conversation array the surface already
+  holds — which lives in a variable while the surface is open and goes
+  when it closes — so there is nothing to expire, nothing to store, and
+  nothing that could become a memory. Bounded to the two most recent
+  Creator turns; **an unresolved "it" is asked about, never guessed.**
+- **THE SUGGESTIONS ARE THINGS A CHILD COULD SAY, NOT A MENU OF WHAT THE
+  COMPANION CAN DO.** Three or four, no headings, no categories, nothing
+  that names the internal taxonomy, and **every one of them has a real
+  answer** — a suggestion the Companion would meet with silence teaches
+  a child that talking to it does not work. Tapping one FILLS THE FIELD
+  and never sends it: the child can edit it, add to it, or ignore it,
+  which is the whole difference between a suggestion and a command.
+- **NOTHING IS PERSONALISED THAT IS NOT REAL.** The memory suggestion is
+  offered only when a memory exists to answer it. Asking *"what did we
+  make together?"* of a Companion that has nothing is a promise the next
+  second breaks.
+- **A FAILURE IS NOT A SILENCE, AND THEY LOOK DIFFERENT.** An empty
+  reply shows nothing at all — `:empty` hides the line, so there is no
+  hole shaped like a missing answer. A round trip that does not come
+  back gets one authored line — *"I didn't catch that. Say it again?"* —
+  with no status code, no provider and no reason. Decision 36 chose
+  silence for both; leaving a child wondering whether they were heard is
+  the one outcome worth a sentence.
+- **THREE LAYOUT DEFECTS, ALL FOUND BY LOOKING AT THE SCREENSHOT.** The
+  chips stacked full-width (the stylesheet's blanket `button{width:100%}`
+  and its hand-kept exception list — the third time that rule has caught
+  this surface); the panel was translucent and the child's own white
+  page read straight through the words; and the object strip's tiles and
+  arrows drew over it, because they carry their own stacking and the bar
+  sat at z-index 5.
+- **AND A GEOMETRY CHECK THAT MEASURED THE WRONG MOMENT.** It read the
+  surface AFTER a turn, when the suggestions have already gone — a 116px
+  strip, no overlap, green — while the screenshot showed the open
+  surface sitting over the page. It is measured in its TALLEST state
+  now, which is the one a child meets first. **The band under the page
+  is exactly 218px at 1440×900, 1366×700 and 1280×800 alike**, so the
+  surface is capped to fit inside it and its content scrolls; it can
+  never grow up into the child's page however much it holds.
+- **THE ANSWER MUST BE SOMETHING A CHILD CAN SEE.** The suggestions
+  stood down on the first TURN rather than on the first PRESS, so all
+  four stayed up through the exchange and pushed the reply below the
+  fold of its own scroll box. Present and unusable, one more time.
+- **CHARACTER IS STILL DATA.** Seven new slots per voice and not one
+  `if (companion === …)` anywhere; a fifth Companion is a row. All four
+  give the same fact — *"There are 3 pages."*, word for word — in four
+  different voices, and refuse to grade in four different ways.
+  `assets/*/personality.json` is still not read at runtime, so Decision
+  32's boundary is exactly where it was.
+- **NOT ONE ANSWER CARRIES A NAME, A CARD, A PROJECT OR AN ADDRESS.**
+  Swept across all nine everyday questions with the Creator's own
+  nickname sitting on the card the browser holds. *"Who is writing this
+  story?"* is *"You are. It's your story."* and *"Who made you?"* is
+  canon (`companion-self`: a Companion does not know how it works, and
+  knows it chose its Creator, once, finished) — **never invented lore.**
+- Out of scope and untouched: OpenAI, both production gates, the privacy
+  gate, the Bond validator, the memory schema, ownership, Edge
+  authentication, Traveller isolation, canon, the personality-runtime
+  boundary, voice, animation, and every Presence decision rule. A
+  Traveller still meets no conversation of their own and cannot name
+  anybody's Companion — the store needs a card and refuses without one.
+  **Creative suggestion remains permanently out of scope** (Decision 29),
+  and Companion-initiated actions remain blocked on global undo.
+- `js/companionMind.js` · `js/companionName.js` · `js/companionChat.js` ·
+  `js/companionDirector.js` · `js/travellerReset.js` ·
+  `tools/companion-conversation-test/run-companion-conversation-tests.js`
+
 ## Roadmap
 
 1. Theme Designer Polish

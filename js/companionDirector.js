@@ -984,6 +984,26 @@
           if(currentMode==='traveller') engine.setState('idle');
           return;
         }
+        // ---------- Sprint 1N.2: the conversation's own rhythm --------
+        //
+        // A CHILD SPOKE, SO THE COMPANION LOOKS AT THEM. Two events, one
+        // pose each, and no new pose vocabulary: 'typing' is already
+        // this table's name for "somebody is saying something", it
+        // resolves to 'curious', and every one of the four Companions
+        // declares it — so nobody asks for an image that is not there.
+        //
+        // DETERMINISTIC, BRIEF, REVERSIBLE. No timer of its own, no
+        // autonomous loop, and nothing here decides to speak: the
+        // Companion's WORDS are js/companionMind.js's, and this is only
+        // its face.
+        if(event==='conversation-sending'){
+          engine.setState(modeCfg().poses.typing); _holdPose();
+          return;
+        }
+        if(event==='conversation-answered'){
+          engine.setState('idle');
+          return;
+        }
         const cfg=modeCfg();
         if(event==='story-started'){
           engine.setState(cfg.poses.creating);

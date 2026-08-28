@@ -42,19 +42,6 @@ const CompanionName = (function () {
   'use strict';
 
   const KEY = 'vihu.companion.called';
-  const MAX = 24;
-  const MAX_WORDS = 3;
-
-  // WHAT A NAME MAY BE MADE OF. Letters (including accented ones), a
-  // digit or two, spaces, apostrophes and hyphens. Everything a URL, an
-  // email, a token, an internal identifier or a fragment of markup
-  // needs — : / @ . < > _ { } = — is absent from this set, so those are
-  // refused by construction rather than by a list of things to look
-  // for. The value-shape rules in js/companionPrivacyGate.js are then
-  // asked as a second, independent reading, because one check that
-  // agrees with itself is not two checks.
-  const ALLOWED = /^[\p{L}\p{M}0-9 '’-]+$/u;
-  const HAS_LETTER = /\p{L}/u;
 
   function _read() {
     try {
@@ -82,31 +69,28 @@ const CompanionName = (function () {
   /**
    * Is this something a child may call their Companion?
    *
-   * Bounded, plain, and free of anything that is not a name. The reason
-   * is a DIAGNOSTIC — it is for a suite and a developer, and no child
-   * ever meets one: the Companion's answer to a refused name is a
-   * sentence in its own voice, asked for again kindly.
+   * ONE COPY OF THE RULE, and it is not here. The shape of a name is a
+   * pure question about a sentence, so it lives with the other ones in
+   * js/companionMind.js -> validName(); this store calls it. Two
+   * implementations of "is this a name" is two things that can
+   * disagree about what a child is allowed to be called, and the one
+   * that refuses would be the one nobody was looking at.
+   *
+   * WITH THE MIND ABSENT THIS REFUSES. Everything else in this codebase
+   * fails open so a missing subsystem never strands a child; a WRITE
+   * gated on a validator does the opposite, for the same reason the
+   * privacy gate does — failing open here means storing something
+   * nobody checked.
    *
    * @returns {{ok:boolean, name:(string|null), reason:string}}
    */
   function validate(raw) {
-    const t = String(raw == null ? '' : raw).replace(/\s+/g, ' ').trim();
-    if (!t) return { ok: false, name: null, reason: 'empty' };
-    if (t.length > MAX) return { ok: false, name: null, reason: 'too-long' };
-    if (!ALLOWED.test(t)) return { ok: false, name: null, reason: 'not-a-name' };
-    if (!HAS_LETTER.test(t)) return { ok: false, name: null, reason: 'no-letters' };
-    if (t.split(' ').length > MAX_WORDS) return { ok: false, name: null, reason: 'too-many-words' };
-    // A SECOND, INDEPENDENT READING. The charset above already refuses
-    // every shape below; this asks the privacy gate's own rules as
-    // well, so if that set is ever widened the two disagree loudly
-    // rather than quietly.
     try {
-      if (typeof CompanionPrivacyGate !== 'undefined' && CompanionPrivacyGate.audit) {
-        const seen = CompanionPrivacyGate.audit({ called: t }, { keys: false });
-        if (seen && seen.clean === false) return { ok: false, name: null, reason: 'not-a-name' };
+      if (typeof CompanionMind !== 'undefined' && CompanionMind.validName) {
+        return CompanionMind.validName(raw);
       }
     } catch (e) {}
-    return { ok: true, name: t, reason: 'ok' };
+    return { ok: false, name: null, reason: 'no-validator' };
   }
 
   /** What this Creator calls this Companion, or null. */
@@ -156,8 +140,7 @@ const CompanionName = (function () {
 
   const api = {
     KEY: KEY,
-    MAX: MAX,
-    MAX_WORDS: MAX_WORDS,
+    MAX: (typeof CompanionMind !== 'undefined' && CompanionMind.NAME_MAX) || 24,
     get: get,
     set: set,
     clear: clear,

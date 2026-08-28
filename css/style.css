@@ -440,7 +440,7 @@ button{
    default and nobody finds out until somebody looks at the screen. Any
    button added to the Studio that is not a full-width form button
    belongs on this list in the same commit that adds it. */
-button:not(.tab-btn):not(.theme-toggle):not(.export-btn):not(#openBtn):not(#saveBtn):not(.creation-flow-myprojects-btn):not(.companion-chat-open):not(.companion-chat-send):not(.companion-chat-close){
+button:not(.tab-btn):not(.theme-toggle):not(.export-btn):not(#openBtn):not(#saveBtn):not(.creation-flow-myprojects-btn):not(.companion-chat-open):not(.companion-chat-send):not(.companion-chat-close):not(.companion-chat-starter){
   width:100%;
   margin-bottom:12px;
 }
@@ -13103,8 +13103,20 @@ body.dark-theme .bia-studio-btn:hover{ background:rgba(255,255,255,0.08); }
   position:absolute;
   left:50%;
   transform:translateX(-50%);
-  bottom:56px;
-  z-index:5;
+  /* IT FITS THE BAND UNDER THE PAGE, WHICH IS A MEASUREMENT. 218px at
+     1440x900, 1366x700 and 1280x800 alike — the workspace column's own
+     geometry — so the surface is capped to sit inside it and can never
+     grow up into the child's page however much it holds. */
+  bottom:8px;
+  max-height:200px;
+  display:flex;
+  flex-direction:column;
+  /* ABOVE THE STRIP'S OWN CONTROLS. Measured: at z-index 5 the object
+     strip's tiles and its two arrows drew straight through the surface,
+     because they carry their own stacking. It is a thing the child just
+     opened and is looking at, so it is on top of the row it opens over
+     — and it goes when they close it. */
+  z-index:30;
   flex:0 0 auto;
   margin:0;
   max-width:640px;
@@ -13112,11 +13124,88 @@ body.dark-theme .bia-studio-btn:hover{ background:rgba(255,255,255,0.08); }
   padding:10px 12px;
   border:1px solid rgba(255,214,140,.22);
   border-radius:14px;
-  /* A pool of warm light rather than a tinted card — the same reading
-     Decision 22 settled for the Studio door. */
+  /* OPAQUE. A pool of warm light over a solid panel — the same reading
+     Decision 22 settled for the Studio door. It was translucent, and
+     measured over a white page the child's own canvas showed straight
+     through the words. */
   background:radial-gradient(120% 160% at 50% 0%, rgba(255,214,140,.10), rgba(0,0,0,0) 70%),
-             rgba(255,255,255,.03);
+             var(--panel, #2a2a2a);
+  box-shadow:0 8px 28px rgba(0,0,0,.28);
 }
+
+/* The part that scrolls. The field and Say it are pinned below it, so
+   a long answer never moves the thing a child is typing into. */
+/* HIDDEN MEANS GONE. `display:flex` above overrides the browser's own
+   `[hidden]{display:none}`, so a CLOSED surface kept its box — invisible,
+   200px tall, at z-index 30, sitting over the object strip and over the
+   pill that opens it. Two suites caught it from opposite directions: the
+   strip was still covered while closed, and the pill failed a hit test
+   against an element nobody could see. */
+.companion-chat[hidden]{ display:none; }
+
+.companion-chat-body{
+  flex:1 1 auto;
+  min-height:0;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+}
+
+/* THINGS A CHILD COULD SAY — Sprint 1N.2.
+   A quiet row of suggestions above the field, gone the moment the
+   conversation starts. Deliberately not a menu: no headings, no
+   categories, no icons, nothing that reads as a settings screen. */
+.companion-chat-starters{ margin:0 0 8px; }
+.companion-chat-starters[hidden]{ display:none; }
+.companion-chat-starters-lead{
+  margin:0 0 6px;
+  color:var(--text-dim, #7c7c86);
+  font-size:.76rem;
+  letter-spacing:.01em;
+}
+.companion-chat-starter-row{ display:flex; flex-wrap:wrap; gap:6px; }
+.companion-chat-starter{
+  width:auto;
+  margin:0;
+  padding:4px 10px;
+  border:1px solid var(--border, rgba(124,124,134,.32));
+  border-radius:999px;
+  background:rgba(255,255,255,.04);
+  color:var(--text, #fff);
+  font-size:.78rem;
+  line-height:1.3;
+  cursor:pointer;
+}
+.companion-chat-starter:hover{ background:rgba(255,214,140,.12); border-color:rgba(255,214,140,.34); }
+
+/* What the child said, echoed back the instant they press — so "did it
+   hear me?" is answered in the same frame as the press. */
+.companion-chat-you{
+  margin:0 0 6px;
+  color:var(--text-dim, #7c7c86);
+  font-size:.82rem;
+  line-height:1.4;
+}
+.companion-chat-you[hidden]{ display:none; }
+
+/* THE BEAT. Three dots while the turn is being taken. It is not a
+   "thinking" performance — the deterministic answer is already here —
+   it is the smallest thing that makes a turn read as a turn. */
+.companion-chat-dots{ margin:0 0 8px; display:flex; gap:5px; align-items:center; height:14px; }
+.companion-chat-dots[hidden]{ display:none; }
+.companion-chat-dots span{
+  width:5px; height:5px; border-radius:50%;
+  /* Reads on BOTH grounds. Warm gold on the dark panel was almost
+     invisible on the light one, where --panel is white. */
+  background:var(--text-dim, #7c7c86);
+  animation:companionChatDot 1s ease-in-out infinite;
+}
+.companion-chat-dots span:nth-child(2){ animation-delay:.15s; }
+.companion-chat-dots span:nth-child(3){ animation-delay:.3s; }
+@keyframes companionChatDot{ 0%,100%{ opacity:.25; } 50%{ opacity:1; } }
+@media (prefers-reduced-motion: reduce){
+  .companion-chat-dots span{ animation:none; opacity:.6; }
+}
+.companion-chat-input:disabled{ opacity:.6; }
 
 /* What the Companion said. One line, quiet, and ABSENT rather than
    empty when there is nothing — silence is a real answer and must not

@@ -553,9 +553,32 @@ async function call(req, over, providerFetch) {
      'J5  EXACTLY ONE FILE CALLS IT, and it is the conversation surface',
      anyClient.join(', ') || 'none');
   const chatSrc = fs.readFileSync(path.join(ROOT, 'js', 'companionChat.js'), 'utf8');
-  ck(!/CompanionEngine|CompanionDirector|CompanionBrain|setState\(|speak\(/.test(
-       chatSrc.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n')),
-     'J5b and it touches no pose, no voice and no runtime Companion module',
+  // ---- J5b WAS TURNED ROUND IN SPRINT 1N.2, DELIBERATELY -----------
+  //
+  // It read "it touches no pose, no voice and no runtime Companion
+  // module", written when Sprint 1F built a surface that had no rhythm
+  // at all — press, and the answer either appeared or did not. Sprint
+  // 1N.2 asks in as many words for the Companion to be put into a
+  // visual state while a turn is taken, so a FACE is now touched and
+  // nothing else is.
+  //
+  // The rule that actually mattered survives, and is asserted harder:
+  // the surface does not reach INTO the engine, does not choose a pose
+  // name, does not speak, and does not touch the Brain. It sends one
+  // event through the Director's own public notify() — the same table
+  // every other Studio moment goes through — and the Director decides
+  // what face that is. `speak` still comes back from the server and is
+  // still deliberately ignored.
+  const chatCode = chatSrc.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
+  ck(!/CompanionEngine|CompanionBrain|setState\(|VihuVoice|\.speak\(/.test(chatCode),
+     'J5b it still sets no pose itself, plays no voice and does not touch the Brain',
+     'the engine, the Brain and the voice are all unreachable from it');
+  const notifies = (chatCode.match(/CompanionDirector\.notify\(/g) || []).length;
+  const otherDirector = (chatCode.match(/CompanionDirector\.(?!notify)/g) || []).length;
+  ck(notifies > 0 && otherDirector === 0,
+     'J5c and reaches the Companion ONLY through the Director’s own notify()',
+     notifies + ' notify calls, ' + otherDirector + ' other uses');
+  ck(true,
      'speak comes back and is deliberately ignored');
   ck(/speak/.test(src) && !/audio|play\(|Audio\(/.test(src),
      'J6  `speak` is returned and never acted on', 'voice belongs to a later sprint');
@@ -1087,9 +1110,14 @@ async function call(req, over, providerFetch) {
           await route.fulfill({ status: 200, contentType: 'application/json',
             body: JSON.stringify({ ok: true, reply: '', speak: false }) });
         });
+        // A SENTENCE THAT ACTUALLY GOES TO THE SERVER. This used to say
+        // "hello again", and Sprint 1N.2 answers a greeting in the
+        // browser — so the stubbed route never fired and the check was
+        // measuring a local reply rather than silence. The RULE is
+        // unchanged; the sentence had to move to keep testing it.
         const quiet = await page.evaluate(async () => {
           const input = document.querySelector('.companion-chat-input');
-          input.value = 'hello again';
+          input.value = 'tell me about the quiet blue thing';
           document.querySelector('.companion-chat-row').dispatchEvent(
             new Event('submit', { bubbles: true, cancelable: true }));
           await new Promise((r) => setTimeout(r, 600));
@@ -1104,6 +1132,16 @@ async function call(req, over, providerFetch) {
         await page.route('**/functions/v1/companion-chat', async (route) => {
           await route.fulfill({ status: 500, contentType: 'application/json', body: '{"ok":false}' });
         });
+        // ---- Y7 WAS TURNED ROUND IN SPRINT 1N.2, DELIBERATELY ----
+        //
+        // It read "A FAILURE IS SILENCE TOO", which Decision 36 chose on
+        // purpose — an apology is worse than nothing. Sprint 1N.2 asks
+        // for the opposite and gives a reason: silence and a failed
+        // round trip look identical to a child, and "did it even hear
+        // me?" is the one question worth a sentence. So a failure now
+        // gets ONE authored line and a real silence still gets nothing,
+        // which is what the check below now asserts — both halves,
+        // rather than one rule for both.
         const failed = await page.evaluate(async () => {
           const input = document.querySelector('.companion-chat-input');
           input.value = 'anyone there?';
@@ -1112,7 +1150,11 @@ async function call(req, over, providerFetch) {
           await new Promise((r) => setTimeout(r, 600));
           return document.querySelector('.companion-chat-said').textContent;
         });
-        ck(failed === '', 'Y7  A FAILURE IS SILENCE TOO',
+        ck(/catch that/i.test(failed) &&
+           !/error|unavailable|provider|openai|500|token|sorry/i.test(failed),
+           'Y7  A FAILURE SAYS ONE HONEST LINE — no status code, no provider, no apology',
+           JSON.stringify(failed));
+        ck(true,
            'no status code, no provider word, no apology — the Studio carries on');
 
         // NOTHING IS PERSISTED.

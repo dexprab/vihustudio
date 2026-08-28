@@ -51,7 +51,16 @@ function LOOK() {
     visible: w ? (getComputedStyle(w).visibility === 'visible' && getComputedStyle(w).opacity !== '0') : false,
     rect: r ? { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) } : null,
     who: (w && w.querySelector('img')) ? w.querySelector('img').src.split('/').slice(-2).join('/') : null,
-    line: bub && bs.opacity !== '0' && !/companion-bubble-hidden/.test(bub.className)
+    // THE LINE AS IT IS NOW, or the first one this document ever showed.
+    // A Companion's arrival line FADES, so "is the bubble up right now"
+    // is a race against a 1400ms window — and it lost three times under
+    // load, on a different Companion each time, which is exactly what
+    // shows it is the harness rather than the product. window.__firstLine
+    // is recorded by an init script the moment the bubble first carries
+    // text, so what is read is the EVENT rather than the state after it.
+    line: (bub && bs.opacity !== '0' && !/companion-bubble-hidden/.test(bub.className)
+      ? (bub.textContent || '').trim() : null) || window.__firstLine || null,
+    lineNow: bub && bs.opacity !== '0' && !/companion-bubble-hidden/.test(bub.className)
       ? (bub.textContent || '').trim() : null,
     ledger: (typeof CompanionMoments !== 'undefined') ? CompanionMoments.diagnostics().ledger : null,
     signals: (typeof CompanionMoments !== 'undefined') ? CompanionMoments.signals() : null,
@@ -70,6 +79,24 @@ function LOOK() {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   const pageErrors = [];
   page.on('pageerror', (e) => pageErrors.push(String(e)));
+
+  // RECORD THE ARRIVAL LINE WHEN IT HAPPENS. Runs before any script on
+  // every document this page loads, and simply remembers the first text
+  // the Companion's bubble ever carries. It asserts nothing and changes
+  // nothing; it exists so a check can read what was SAID rather than
+  // having to catch it still on screen.
+  await page.addInitScript(() => {
+    window.__firstLine = null;
+    setInterval(() => {
+      if (window.__firstLine) return;
+      const b = document.querySelector('.companion-widget .companion-bubble');
+      if (!b) return;
+      if (/companion-bubble-hidden/.test(b.className)) return;
+      if (getComputedStyle(b).opacity === '0') return;
+      const t = (b.textContent || '').trim();
+      if (t) window.__firstLine = t;
+    }, 60);
+  });
 
   // A REAL ARRIVAL. Author Mode is used only to reach a document that
   // has the modules in it; the arrival itself is then made through the
@@ -158,7 +185,11 @@ function LOOK() {
   // The line goes away on its own. A greeting that stays is a banner.
   await page.waitForTimeout(6500);
   const settled = await page.evaluate(LOOK);
-  ck(settled.line === null && settled.present,
+  // `lineNow`, NOT `line`. This asks whether the bubble is up AT THIS
+  // MOMENT, which is the whole of what it is checking; `line` now falls
+  // back to the arrival line this document recorded when it happened,
+  // and would never be null again.
+  ck(settled.lineNow === null && settled.present,
      'A6  the line fades and Leafy simply stays', 'still present, no line');
 
   // ---- the same arrival cannot speak twice
@@ -802,11 +833,11 @@ function LOOK() {
       if (!i) return false;
       const who = i.src.split('/').slice(-2).join('/');
       if (who.indexOf(want + '/') !== 0) return false;
-      const bub = w.querySelector('.companion-bubble');
-      if (!bub) return false;
-      const up = getComputedStyle(bub).opacity !== '0'
-        && !/companion-bubble-hidden/.test(bub.className);
-      return up && (bub.textContent || '').trim().length > 0;
+      // NOT "is the bubble up NOW" — that is a race against a fading
+      // window, and it is the one this wait keeps losing under load.
+      // The init script above records the line the moment it appears,
+      // so the wait is satisfied by the line HAVING BEEN SAID.
+      return !!window.__firstLine;
     }, cid, { timeout: 20000 }).catch(() => {});
     const look = await page.evaluate(LOOK);
     await page.screenshot({ path: path.join(SHOTS, 'four-' + cid + '.png') });

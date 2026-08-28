@@ -51,6 +51,26 @@ const CompanionChat = (function () {
   let _open = false;
   let _busy = false;
   let _els = null;
+  // THE NAMING EXCHANGE'S ONE PIECE OF STATE, and it lives no longer
+  // than the surface does. What a child CALLS their Companion is kept
+  // (js/companionName.js); whether a name is being waited for is not,
+  // because a half-finished question is not a relationship setting.
+  let _awaiting = false;
+  let _lastState = 'idle';
+  // THE SUGGESTIONS GO THE MOMENT THE CHILD SPEAKS, not when the first
+  // turn lands. Measured: _turns is filled inside ask(), so re-rendering
+  // on the press left all four chips up through the whole exchange and
+  // pushed the answer below the fold of its own scroll box.
+  let _spoke = false;
+
+  // A BRIEF BEAT, NEVER A PRETEND ONE. The deterministic answer arrives
+  // in under a millisecond, and a reply that appears in the same frame
+  // as the press reads as a glitch rather than as somebody answering.
+  // This is the smallest pause that reads as a turn being taken; it is
+  // not a "thinking" animation and nothing here waits on a clock to
+  // decide what to say.
+  const BEAT_MS = 320;
+  const SETTLE_MS = 140;
 
   // ---------------------------------------------------------------
   // WHO AND WHERE — locators only.
@@ -110,6 +130,78 @@ const CompanionChat = (function () {
    *   the surface simply says nothing. A child never meets a status
    *   code, which is Canon 5's own rule for the Companion's voice.
    */
+  /**
+   * The context the browser is allowed to build.
+   *
+   * FOUR THINGS, AND NOT ONE OF THEM IS A RECORD: who the Companion is
+   * (from the active card, the same authority the Studio uses to decide
+   * whose portrait is on screen), what this child calls it, whether a
+   * name is being waited for, and the turns of this conversation. There
+   * is deliberately no `storyContext` and no `memories` — a browser that
+   * could supply either could invent either, which is the whole of
+   * Sprints 1E.1 and 1F, and a question that needs one is sent to the
+   * server instead.
+   */
+  function _localContext() {
+    let card = null;
+    try {
+      card = (typeof MagicCard !== 'undefined' && MagicCard.getActive)
+        ? MagicCard.getActive() : null;
+    } catch (e) { card = null; }
+    if (!card) return null;
+    let called = null;
+    try {
+      if (typeof CompanionName !== 'undefined' && CompanionName.get) called = CompanionName.get();
+    } catch (e) {}
+    return {
+      mode: 'creator',
+      personality: { name: card.companionName || null, species: card.companionSpecies || null },
+      naming: { called: called, awaiting: _awaiting },
+      conversation: _turns.slice(),
+    };
+  }
+
+  /**
+   * The answer, if this is one of ours. Null means "the server's".
+   *
+   * The Mind is asked either way — there is ONE taxonomy and it decides
+   * what a sentence means. What this function decides is only WHERE the
+   * answer may honestly come from, and it reads that off the Mind's own
+   * published list rather than keeping a second one.
+   */
+  function _answerHere(said) {
+    let mind = null;
+    try { mind = (typeof CompanionMind !== 'undefined') ? CompanionMind : null; } catch (e) {}
+    if (!mind || !mind.answer) return null;
+    const ctx = _localContext();
+    if (!ctx) return null;
+    let a = null;
+    try { a = mind.answer(said, ctx); } catch (e) { return null; }
+    if (!a) return null;
+    // THE ACTION IS APPLIED WHATEVER HAPPENS NEXT. A child who asks how
+    // many pages there are while a name is being waited for has changed
+    // the subject, and the waiting stops even though the answer itself
+    // is the server's.
+    _applyAction(a.action);
+    const local = (mind.LOCAL_INTENTS || []).indexOf(a.intent) !== -1;
+    if (!local) return null;
+    return { reply: a.reply, speak: a.speak };
+  }
+
+  function _applyAction(action) {
+    if (!action || !action.type) return;
+    if (action.type === 'await-name') { _awaiting = true; return; }
+    if (action.type === 'stop-await') { _awaiting = false; return; }
+    if (action.type === 'set-name') {
+      _awaiting = false;
+      try {
+        if (typeof CompanionName !== 'undefined' && CompanionName.set) CompanionName.set(action.name);
+      } catch (e) {}
+      // WHAT THEY CALL IT IS WHAT THE SCREEN CALLS IT, from this moment.
+      try { _refreshNames(); } catch (e) {}
+    }
+  }
+
   function ask(text) {
     const said = String(text || '').trim().slice(0, MAX_CHARS);
     if (!said) return Promise.resolve({ ok: false, reason: 'empty' });
@@ -119,6 +211,27 @@ const CompanionChat = (function () {
 
     _turns.push({ speaker: 'creator', text: said });
     _turns = _turns.slice(-MAX_TURNS);
+
+    // ---- WHAT THE BROWSER MAY ANSWER FOR ITSELF -------------------
+    //
+    // The line is js/companionMind.js -> LOCAL_INTENTS, and it is
+    // stated there. In short: the SERVER answers what only the RECORDS
+    // can prove — the story's name, its length, this page, what the two
+    // of them have done together — and nothing about that moved. The
+    // BROWSER answers what the CARD already proves and what is a
+    // constant sentence, and one thing the server CANNOT answer at all:
+    // what this child calls their Companion, which is relationship
+    // state with no column behind it.
+    //
+    // A browser lying to itself about its own card lies only to itself.
+    // None of these answers reads a record, so there is nothing of
+    // anybody else's to reach.
+    const here = _answerHere(said);
+    if (here) {
+      if (here.reply) _turns.push({ speaker: 'companion', text: here.reply });
+      _turns = _turns.slice(-MAX_TURNS);
+      return Promise.resolve({ ok: true, reply: here.reply, speak: here.speak, where: 'local' });
+    }
 
     return Promise.all([_config(), _token()]).then(function (both) {
       const cfg = both[0], token = both[1];
@@ -187,8 +300,28 @@ const CompanionChat = (function () {
     const bar = document.createElement('div');
     bar.className = 'companion-chat';
     bar.hidden = true;
+    bar.setAttribute('data-state', 'idle');
     bar.innerHTML =
-      '<p class="companion-chat-said" aria-live="polite"></p>' +
+      // THINGS A CHILD COULD SAY, not a menu of what the Companion can
+      // do. No category headings, no intent names, nothing that reads
+      // as a settings screen — the internal taxonomy stays internal.
+      // THE CONTENT SCROLLS; THE FIELD NEVER MOVES. Measured, the band
+      // under the page is exactly 218px at 1440x900, 1366x700 and
+      // 1280x800 alike — so the surface is capped to fit inside it and
+      // whatever it holds scrolls, rather than the surface growing up
+      // into the child's own page.
+      '<div class="companion-chat-body">' +
+      '<div class="companion-chat-starters" hidden>' +
+        '<p class="companion-chat-starters-lead"></p>' +
+        '<div class="companion-chat-starter-row"></div>' +
+      '</div>' +
+      '<p class="companion-chat-you" hidden></p>' +
+      // NOT announced. Three dots are an animation, and a screen reader
+      // reading "…" on every turn is the noise Sprint 1N.2 asked to
+      // avoid; the ANSWER is what gets announced, once, below.
+      '<p class="companion-chat-dots" aria-hidden="true" hidden><span></span><span></span><span></span></p>' +
+      '<p class="companion-chat-said" role="status" aria-live="polite"></p>' +
+      '</div>' +
       '<form class="companion-chat-row">' +
         '<input class="companion-chat-input" type="text" maxlength="' + MAX_CHARS + '" ' +
           // NOT a hard-coded name. This was 'Say something to Leafy',
@@ -201,24 +334,30 @@ const CompanionChat = (function () {
           // authority for who this is.
           'autocomplete="off" placeholder="Say something to ' + _name() + '">' +
         '<button class="companion-chat-send" type="submit">Say it</button>' +
-        '<button class="companion-chat-close" type="button" title="Close">✕</button>' +
+        '<button class="companion-chat-close" type="button" title="Close" aria-label="Close">✕</button>' +
       '</form>';
     host.appendChild(bar);
 
     const els = {
       bar: bar,
       said: bar.querySelector('.companion-chat-said'),
+      you: bar.querySelector('.companion-chat-you'),
+      dots: bar.querySelector('.companion-chat-dots'),
+      starters: bar.querySelector('.companion-chat-starters'),
+      startersLead: bar.querySelector('.companion-chat-starters-lead'),
+      starterRow: bar.querySelector('.companion-chat-starter-row'),
       form: bar.querySelector('.companion-chat-row'),
       input: bar.querySelector('.companion-chat-input'),
       send: bar.querySelector('.companion-chat-send'),
     };
+    els.input.setAttribute('aria-label', 'Say something to ' + _name());
 
     els.form.addEventListener('submit', function (e) {
       e.preventDefault();
       _send();
     });
     bar.querySelector('.companion-chat-close').addEventListener('click', function () { close(); });
-    els.input.addEventListener('keydown', function (e) {
+    bar.addEventListener('keydown', function (e) {
       if (e.key === 'Escape') { e.preventDefault(); close(); }
     });
 
@@ -226,35 +365,203 @@ const CompanionChat = (function () {
     return els;
   }
 
+  /**
+   * WHAT A CHILD CALLS THEIR COMPANION, which is what every child-facing
+   * word on this surface uses. The canonical name is unchanged and is
+   * what the Companion says when asked who it is — a child choosing to
+   * call Leo "Spark" is not a rename of Leo.
+   */
   function _name() {
+    try {
+      if (typeof CompanionName !== 'undefined' && CompanionName.get) {
+        const mine = CompanionName.get();
+        if (mine) return mine;
+      }
+    } catch (e) {}
+    return _canonicalName();
+  }
+
+  function _canonicalName() {
     try {
       const c = (typeof MagicCard !== 'undefined' && MagicCard.getActive) ? MagicCard.getActive() : null;
       return (c && c.companionName) || 'your companion';
     } catch (e) { return 'your companion'; }
   }
 
+  /** The pill, the placeholder and the starters, after a name changes. */
+  function _refreshNames() {
+    const n = _name();
+    try {
+      const pill = document.querySelector('.companion-chat-open');
+      if (pill) pill.textContent = '💬 Talk to ' + n;
+    } catch (e) {}
+    if (!_els) return;
+    try {
+      _els.input.placeholder = 'Say something to ' + n;
+      _els.input.setAttribute('aria-label', 'Say something to ' + n);
+    } catch (e) {}
+    _renderStarters();
+  }
+
+  // ---------------------------------------------------------------
+  // THINGS A CHILD COULD SAY
+  //
+  // FOUR AT MOST, AND EVERY ONE OF THEM HAS A REAL ANSWER. A suggestion
+  // the Companion would meet with silence teaches a child that talking
+  // to it does not work, so each of these is a sentence the
+  // deterministic Mind actually classifies.
+  //
+  // NOTHING HERE IS PERSONALISED THAT IS NOT REAL. The memory
+  // suggestion is offered only when a memory exists to answer it —
+  // asking "what did we make together?" of a Companion that has nothing
+  // is a promise the next second breaks.
+  function _starters() {
+    const list = ['Who are you?'];
+    let named = null;
+    try {
+      if (typeof CompanionName !== 'undefined' && CompanionName.get) named = CompanionName.get();
+    } catch (e) {}
+    list.push(named ? 'Can I change your name?' : 'Can I give you a name?');
+    list.push(_storyId() ? 'What story am I making?' : 'What are you?');
+    list.push(_hasMemory() ? 'What did we make together?' : 'What should happen next?');
+    return list;
+  }
+
+  function _hasMemory() {
+    try {
+      if (typeof CompanionMemory === 'undefined' || !CompanionMemory.list) return false;
+      const l = CompanionMemory.list({ limit: 1 });
+      return Array.isArray(l) && l.length > 0;
+    } catch (e) { return false; }
+  }
+
+  function _renderStarters() {
+    if (!_els) return;
+    // THEY GO WHEN THE CONVERSATION STARTS. They are for a child who
+    // does not know what to say, and once somebody has said something
+    // they are in the way.
+    const show = !_spoke && _turns.length === 0;
+    _els.starters.hidden = !show;
+    if (!show) { _els.starterRow.innerHTML = ''; return; }
+    _els.startersLead.textContent = 'Try asking ' + _name() + '…';
+    _els.starterRow.innerHTML = '';
+    _starters().forEach(function (text) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'companion-chat-starter';
+      b.textContent = text;
+      // IT FILLS THE FIELD; IT NEVER SENDS. A child can change it, add
+      // to it, or leave it alone — which is the whole difference
+      // between a suggestion and a command, and it is how a child
+      // learns that the field is theirs.
+      b.addEventListener('click', function () {
+        _els.input.value = text;
+        try { _els.input.focus(); } catch (e) {}
+        try {
+          _els.input.setSelectionRange(text.length, text.length);
+        } catch (e) {}
+      });
+      _els.starterRow.appendChild(b);
+    });
+  }
+
+  // ---------------------------------------------------------------
+  // THE RHYTHM
+  //
+  //   idle -> sending -> responding -> ready
+  //
+  // Four named states and nothing invented between them. `sending` is
+  // what makes the press feel received; `responding` is the answer
+  // arriving; `ready` is the field being the child's again. The pose
+  // rides the Director's own event table, so no new pose vocabulary is
+  // introduced and a Companion that does not declare one degrades the
+  // way it already does.
+  // NAMED `_phase`, NOT `_setState`. The conversation's phase is not a
+  // Companion pose, and the two must not read as one thing — a suite
+  // scanning this file for `setState(` (the Engine's own API, which this
+  // file may never call) matched the local helper and reported the
+  // surface reaching into the Engine when it does not.
+  function _phase(name) {
+    _lastState = name;
+    if (!_els) return;
+    _els.bar.setAttribute('data-state', name);
+    _els.dots.hidden = (name !== 'sending');
+    _els.send.disabled = (name === 'sending');
+    _els.input.disabled = (name === 'sending');
+  }
+
+  function _pose(event) {
+    try {
+      if (typeof CompanionDirector !== 'undefined' && CompanionDirector.notify) {
+        CompanionDirector.notify(event);
+      }
+    } catch (e) {}
+  }
+
   function _send() {
+    // R2 — ONE PRESS, ONE TURN. A second press while the first is in
+    // flight is not a second question.
     if (_busy) return;
     const els = _build();
     const said = els.input.value.trim();
     if (!said) return;
     _busy = true;
+    // THE PRESS IS ACKNOWLEDGED BEFORE ANYTHING ELSE HAPPENS. The
+    // child's own words go up, the field empties, and the Companion
+    // looks at them — so "did it hear me?" is answered in the same
+    // frame as the press rather than at the end of a round trip.
     els.input.value = '';
-    els.send.disabled = true;
-    // No spinner and no "thinking…" — this sprint measures latency
-    // rather than decorating it, and a loading state is a UX decision
-    // that has not been taken yet.
+    els.you.textContent = said;
+    els.you.hidden = false;
     els.said.textContent = '';
+    _spoke = true;
+    _phase('sending');
+    _pose('conversation-sending');
+    _renderStarters();
     const t0 = Date.now();
     ask(said).then(function (r) {
-      _busy = false;
-      els.send.disabled = false;
-      _lastMs = Date.now() - t0;
-      // NOTHING IS SHOWN WHEN THERE IS NOTHING TO SAY. Not an error,
-      // not an ellipsis, not "…". A Companion is allowed to be quiet.
-      els.said.textContent = (r.ok && r.reply) ? r.reply : '';
-      try { els.input.focus(); } catch (e) {}
+      // A BEAT, NOT A PERFORMANCE. The deterministic answer is already
+      // here; this is the smallest pause that reads as a turn being
+      // taken, and it is subtracted rather than added — a slow server
+      // answer waits for nothing extra.
+      const spent = Date.now() - t0;
+      const wait = Math.max(0, BEAT_MS - spent);
+      setTimeout(function () {
+        _busy = false;
+        _lastMs = Date.now() - t0;
+        _phase('responding');
+        _pose('conversation-answered');
+        // SILENCE SHOWS NOTHING. Not an error, not an ellipsis, not a
+        // placeholder — an empty reply with speak:false is the
+        // Companion choosing to be quiet, and :empty hides the line
+        // entirely so there is no hole shaped like a missing answer.
+        //
+        // A FAILURE IS NOT A SILENCE. The round trip not coming back is
+        // a different thing from nothing to say, and leaving a child
+        // wondering whether they were heard is the one outcome worth
+        // avoiding. One authored line, no status code, no provider, no
+        // reason.
+        if (r.ok) els.said.textContent = r.reply || '';
+        else els.said.textContent = _unheard();
+        // THE ANSWER IS WHAT THE CHILD LOOKS AT. The body scrolls, so a
+        // long exchange must bring the newest line into view rather than
+        // leaving it below the fold of its own box.
+        try {
+          const body = els.bar.querySelector('.companion-chat-body');
+          if (body) body.scrollTop = body.scrollHeight;
+        } catch (e) {}
+        try { els.input.focus(); } catch (e) {}
+        setTimeout(function () { if (_lastState === 'responding') _phase('ready'); }, SETTLE_MS);
+      }, wait);
     });
+  }
+
+  function _unheard() {
+    try {
+      if (typeof CompanionMind !== 'undefined' && CompanionMind.PLATFORM &&
+          CompanionMind.PLATFORM.unheard) return CompanionMind.PLATFORM.unheard;
+    } catch (e) {}
+    return "I didn't catch that. Say it again?";
   }
 
   let _lastMs = 0;
@@ -266,7 +573,12 @@ const CompanionChat = (function () {
     els.bar.hidden = false;
     _open = true;
     els.said.textContent = '';
-    els.input.placeholder = 'Say something to ' + _name();
+    els.you.textContent = '';
+    els.you.hidden = true;
+    _spoke = false;
+    _phase('idle');
+    _refreshNames();
+    _renderStarters();
     try { els.input.focus(); } catch (e) {}
   }
 
@@ -275,10 +587,18 @@ const CompanionChat = (function () {
     _els.bar.hidden = true;
     _els.input.value = '';
     _els.said.textContent = '';
+    _els.you.textContent = '';
+    _els.you.hidden = true;
     _open = false;
+    _busy = false;
+    _phase('idle');
     // THE CONVERSATION GOES WITH IT. Nothing is stored, so closing is
-    // the whole of forgetting.
+    // the whole of forgetting — the turns, and the question that was
+    // half-asked. What a child CALLS their Companion is not part of
+    // that: it is a setting they chose, not something they said.
     _turns = [];
+    _awaiting = false;
+    _spoke = false;
   }
 
   function toggle() { _open ? close() : open(); }
@@ -389,6 +709,12 @@ const CompanionChat = (function () {
     isOpen: function () { return _open; },
     turns: function () { return _turns.slice(); },
     lastMs: function () { return _lastMs; },
+    state: function () { return _lastState; },
+    starters: _starters,
+    awaitingName: function () { return _awaiting; },
+    displayName: _name,
+    canonicalName: _canonicalName,
+    BEAT_MS: BEAT_MS,
     CONVERSATION_OFFERED: CONVERSATION_OFFERED,
     MAX_TURNS: MAX_TURNS,
     MAX_CHARS: MAX_CHARS,

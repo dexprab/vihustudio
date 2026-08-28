@@ -9637,3 +9637,97 @@ those neighbours were run directly — each is in the list above with its
 own count.
 
 Runbook: `supabase/DEPLOY_companion_mind.md`.
+
+---
+
+## Sprint 1N.2 — The Companion Conversation Experience
+
+The deterministic Mind was reachable and it did not feel like talking to
+anybody. Type, press, and the answer either appeared or did not: no
+state, no acknowledgement, an empty field and a Companion who did not
+look up. This sprint is that made usable, and it connects nothing —
+**no OpenAI, no model, no provider, no microphone, both production
+gates still shut, provider calls measured at 0 across 48 requests.**
+
+**TWO USER-REPORTED DEFECTS CLOSED FIRST.** *"I asked and this is the
+answer I got"* — an open story of three pages and Leo saying *"I don't
+know!"*. The Mind was right; `authorizeStory()` read
+`record.data.slides` and `ProjectManager.serialize()` has always named
+that array **`pages`**, so every story on the platform authorized as
+zero pages. **Both new suites' fixtures used `slides`, copied from the
+line under test** — a fixture derived from the code under test cannot
+catch the code under test being wrong. And *"the talk widget is pushing
+everything upwards"*: the pill and the strip were both flex children of
+the workspace column, so the canvas gave up ~150px the moment a child
+pressed the pill. Measured, there is no free band at the foot to escape
+into, so the two are treated differently — the pill stays in the flow,
+the strip is lifted out of it. `U5` was **turned round rather than
+weakened**, and now asserts the object strip is the only thing covered,
+that closing gives it back, and that the canvas is identical either way.
+
+**THE RHYTHM.** `idle → sending → responding → ready`, with the press
+acknowledged in the same frame: the child's words go up, the field
+empties, the Companion's face turns to `curious`, three dots hold the
+turn. The beat is 320ms and it is SUBTRACTED, never added. The pose
+introduces no new vocabulary — `poses.typing` is already the Director's
+own name for *somebody is saying something* and all four Companions
+declare it.
+
+**THE BOUNDARY.** `CompanionMind.LOCAL_INTENTS` is the line, and it is
+data. The server still owns the records — the story's name, its length,
+this page, what the two of them have done together — exactly as Sprints
+1E.1 and 1F left them. The browser answers what the card proves and what
+is a constant sentence, and one thing the server cannot answer at all: a
+child-given name is relationship state with no column behind it.
+
+**THE NAME.** Scoped to `card | companion`, replaced rather than
+accumulated, refused by construction rather than by a list of things to
+look for, and asked of `CompanionPrivacyGate`'s own value shapes as a
+second independent reading. `validName()` lives in the Mind so there is
+one copy of the rule, and the store REFUSES with it absent. The
+canonical identity never disappears: *"I'm Leo. You call me Spark."*
+No Bond Moment, no memory, no transcript — measured as a difference
+across the store, after the first draft failed on a deterministic
+recorder's own `bonded` memory.
+
+**THE SUGGESTIONS.** Three or four, every one with a real answer, and
+tapping one fills the field rather than sending it. The memory question
+appears only when a memory exists to meet it.
+
+**THREE LAYOUT DEFECTS, ALL FOUND BY LOOKING AT THE SCREENSHOT** — chips
+stacked full-width by the stylesheet's blanket `button{width:100%}`, a
+translucent panel the child's own page read through, and the object
+strip drawing over it. **And a geometry check that measured the wrong
+moment**: it read the surface after a turn, when the suggestions have
+gone, and reported no overlap while the screenshot showed otherwise. The
+band under the page is exactly 218px at 1440×900, 1366×700 and 1280×800
+alike, so the surface is capped to fit inside it and its content
+scrolls.
+
+**A CLOSED SURFACE KEPT ITS BOX**, and two suites caught it from
+opposite directions: `display:flex` overrides the browser's own
+`[hidden]{display:none}`, so a closed strip stayed 200px tall at z-index
+30 — invisibly covering the object strip and the pill that opens it.
+
+Every suite green: chat 233, mind 163, edge auth 127, conversation 126,
+identity 109, garden 104, enable 103, canon 94, context 90, presence 90,
+moments 88, ether 69, memory 56, companion 50, traveller reset 16.
+
+Three earlier checks were **turned round with the reason recorded in
+place**, none weakened — `J5b` (the surface now sets a face, so it
+asserts the rule that mattered: no engine, no Brain, no voice, and the
+Director reached only through its public `notify()`), `Y7` (a failure now
+says one honest line, because silence and a failed round trip look
+identical to a child), and `A11`'s taxonomy ceiling 20 → 24. Three more
+were **repaired rather than changed**: `Y6`'s sentence now actually
+reaches the server, and `J6`/`J7`'s adversarial patches were re-anchored
+after seven new voice slots moved their text — both had been reporting
+*"the patch did not apply — the check proves nothing"*, which is what
+`broken()` is for. And the twelfth substring-inside-its-own-vocabulary
+catch: two write-verb scans matched the word *upsert* inside a comment.
+
+Decision 47 in `CLAUDE.md`; `tools/companion-conversation-test/`.
+
+**The Edge Function needs redeploying** for the `pages` fix — nothing in
+this sprint depends on it, but story questions stay unanswerable in
+production until it happens. `supabase/DEPLOY_companion_mind.md`.

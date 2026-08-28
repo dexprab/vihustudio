@@ -1,5 +1,24 @@
 # Turning the deterministic Companion on
 
+> **REDEPLOY NEEDED — build 0688 onward.** The function has changed
+> twice since it was first deployed and a deployed function is not the
+> same thing as a committed one (Decision 42 learned that the hard way,
+> from a person saying an email looked the same).
+>
+> 1. **The `pages` fix.** `authorizeStory()` read `record.data.slides`
+>    and the store has always written `pages`, so **every story
+>    authorized as zero pages and every story question came back "I
+>    don't know"** — which is what the product owner saw. Until this is
+>    deployed, story facts stay unanswerable in production.
+> 2. **The 1N.2 Mind.** New intents and the naming validator are
+>    generated into it. Nothing in Sprint 1N.2 *depends* on this — the
+>    browser answers identity, naming and authorship itself — but the
+>    server's copy and `js/companionMind.js` should not be allowed to
+>    drift.
+>
+> Step 1 below is unchanged; it is the same file, redeployed.
+
+
 Sprint 1N built `js/companionMind.js` and proved it. Sprint 1N.1 walked
 it through the real Studio with all four Companions. What is left is one
 thing neither sprint could do from here: **this environment cannot reach

@@ -660,6 +660,14 @@ const FOUR = [
   await page.evaluate(() => { try { CreationFlow.startBlank(); } catch (e) {} });
   await page.waitForFunction(() => !document.body.classList.contains('creation-flow-active'),
     null, { timeout: 20000 }).catch(() => {});
+  // CLOSE IT FIRST. Sections H4 and H5 left the conversation OPEN, and
+  // an open surface sits over the foot of the workspace — which is where
+  // the pill lives. Measured: the blocker was `INPUT.companion-chat-input`,
+  // the field of the surface the pill had just opened. That is correct
+  // behaviour, and hit-testing the pill through it was the wrong
+  // question; what this check is about is whether the way in followed
+  // the child into the editor.
+  await page.evaluate(() => { try { CompanionChat.close(); } catch (e) {} });
   // WAIT FOR THE MOVE, DO NOT SAMPLE IT. The pill is re-parented on the
   // Studio's own pulse, so a fixed pause reads it in whichever host it
   // happened to be in — and a screen still fading out sits ON TOP of it,
@@ -680,6 +688,12 @@ const FOUR = [
     const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
     return { pill: b.textContent, host: b.parentElement.className.slice(0, 32),
              onTop: !!(top && (top === b || b.contains(top))),
+             // WHAT IS ACTUALLY ON TOP, when something is. "false" alone
+             // cannot be diagnosed; the element's own name can.
+             blocker: (top && !(top === b || b.contains(top)))
+               ? (top.tagName + '.' + String(top.className || '').slice(0, 40)) : null,
+             rect: { y: Math.round(r.top), h: Math.round(r.height) },
+             vh: window.innerHeight,
              count: document.querySelectorAll('.companion-chat-open').length };
   });
   ck(moved.pill === '💬 Talk to Leo' && /preview-area/.test(moved.host) && moved.onTop === true,
