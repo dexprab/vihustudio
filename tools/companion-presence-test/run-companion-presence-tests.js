@@ -757,9 +757,25 @@ function LOOK() {
     // missed sample also cascaded into W3, W4 and W5, so a single flake
     // read as four failures. Same fix as Sprint 1N.1 made in its own
     // suite, for the same reason.
+    // WAIT FOR WHAT W1 AND W3 ACTUALLY READ — the Companion on screen
+    // AND the line it says — using LOOK's own derivation of the image
+    // path. The first attempt at this compared `getAttribute('src')`,
+    // which is the RELATIVE path `assets/leafy/wave.png`, against
+    // `leafy/` at index 0; it never matched, so the wait ran its whole
+    // 20-second budget and sampling landed long after the bubble had
+    // faded. Four failures, every run, caused entirely by the wait
+    // meant to remove one.
     await page.waitForFunction((want) => {
-      const i = document.querySelector('.companion-widget img');
-      return !!(i && (i.getAttribute('src') || '').indexOf(want + '/') === 0);
+      const w = document.querySelector('.companion-widget');
+      const i = w ? w.querySelector('img') : null;
+      if (!i) return false;
+      const who = i.src.split('/').slice(-2).join('/');
+      if (who.indexOf(want + '/') !== 0) return false;
+      const bub = w.querySelector('.companion-bubble');
+      if (!bub) return false;
+      const up = getComputedStyle(bub).opacity !== '0'
+        && !/companion-bubble-hidden/.test(bub.className);
+      return up && (bub.textContent || '').trim().length > 0;
     }, cid, { timeout: 20000 }).catch(() => {});
     const look = await page.evaluate(LOOK);
     await page.screenshot({ path: path.join(SHOTS, 'four-' + cid + '.png') });
