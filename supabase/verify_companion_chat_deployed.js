@@ -32,6 +32,17 @@
 // took the whole script and printed nothing, not even the step it had
 // reached. Every step is bounded now, prints as it happens, and clears
 // its own timer so a finished step cannot log a timeout afterwards.
+// THE BUILD THIS CHECKOUT EXPECTS. Kept in step by the suite rather
+// than by hand — tools/companion-mind-test reads BOTH this constant and
+// the function's own `BUILD` and fails if they disagree, so a stale
+// number here cannot quietly pass a stale deployment.
+//
+// A MISMATCH IS A WARNING, NOT A VERDICT. `BUILD` read '1N' through
+// three sprints, so it is only authoritative from the first deploy that
+// carries a bumped one; the behavioural checks below are what actually
+// decide, and they are proved through the real handler by K4b/K4c.
+const EXPECTED_BUILD = '1N.5';
+
 (async () => {
   const log = (...a) => console.log('[verify]', ...a);
   const STEP_MS = 12000;
@@ -184,7 +195,15 @@
         : 'FAIL — ' + JSON.stringify(said) + ' (the server is still reading `slides`)';
     }
 
-    console.table(Object.assign({}, flags, checks, { pagesFix }));
+    if (flags.build !== EXPECTED_BUILD) {
+      log('NOTE: the server reports build ' + JSON.stringify(flags.build) +
+          ' and this checkout expects ' + JSON.stringify(EXPECTED_BUILD) + '.');
+      log('      Expected until the next deploy — `BUILD` was not bumped for 1N.1 or 1N.5,');
+      log('      so it only starts meaning something from the first deploy that carries a new one.');
+      log('      The behavioural checks below are what decide.');
+    }
+    console.table(Object.assign({}, flags, checks,
+      { buildMatchesCheckout: flags.build === EXPECTED_BUILD, pagesFix }));
     const verdict = flags.mindEnabled && flags.productionClosed &&
       Object.values(checks).every(Boolean) && !/^FAIL/.test(pagesFix);
     console.log(verdict

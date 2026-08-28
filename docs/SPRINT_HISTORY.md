@@ -9973,3 +9973,33 @@ before breaking it — the fifteenth entry in this repository's family of
 checks that confirm themselves.
 
 Canon: CLAUDE.md → Decision 49.
+
+## Build 0694 — The auth gate's one await
+
+The redeployed `companion-chat` stopped answering. Diagnosed rather than
+guessed at: a bare GET with no headers was refused 401 by the gateway in
+milliseconds, the same on `voice-speak`, the CORS preflight answered 200
+— and the **authenticated** GET, the first request that actually reaches
+our code, returned nothing at all.
+
+On a GET there is exactly one `await` on that path: `guard()` skips the
+rate limiter when there is no bucket, so `resolveCaller()`'s call to
+`/auth/v1/user` is the only thing that can block. It had a `try/catch`
+and no timeout, and a request that never settles never rejects — the
+same defect build 0693 had just fixed on the client, sitting server-side.
+
+It races **and** aborts now. The first version aborted only, and `A4c`
+hung the suite until it was killed: `abort()` ends a request only if the
+fetch honours the signal, so an abort alone is a bound that depends on
+somebody else's cooperation. No new policy — the catch already failed
+closed on an unreachable auth server, so a timeout reaches the same
+decision.
+
+Confirmed live afterwards: every verifier row green, including
+`pagesFix: PASS — "There are 3 pages."`. **What fixed the hang is not
+claimed** — the redeploy carried the bound and replaced the instance,
+and nothing can tell those apart. `BUILD` is `'1N.5'` from now on so the
+probe stops being worthless, with `K4d` keeping the verifier's expected
+build in step with the function's own.
+
+Canon: CLAUDE.md → Decision 49 (extended).

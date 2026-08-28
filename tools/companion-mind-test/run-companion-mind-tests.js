@@ -1151,6 +1151,21 @@ async function importFn(source) {
      'K4c and "is this story any good?" meets the Companion that never grades',
      JSON.stringify(liveGood.body && liveGood.body.reply));
 
+  // ---- AND THE VERIFIER'S EXPECTED BUILD IS KEPT IN STEP BY THIS
+  //
+  // supabase/verify_companion_chat_deployed.js hardcodes the build it
+  // expects, because a browser paste cannot read the repository. A
+  // hand-mirrored copy of a fact is a promise nobody can keep
+  // (Decision 30), so it is read from BOTH files here: a bump to the
+  // function that forgets the verifier fails, and so does the reverse.
+  const verifySrc = fs.readFileSync(
+    path.join(ROOT, 'supabase', 'verify_companion_chat_deployed.js'), 'utf8');
+  const wantBuild = (verifySrc.match(/EXPECTED_BUILD\s*=\s*'([^']+)'/) || [])[1];
+  const fnBuild = (fs.readFileSync(FN, 'utf8').match(/^const BUILD = '([^']+)'/m) || [])[1];
+  ck(!!wantBuild && wantBuild === fnBuild,
+     'K4d the deployment verifier expects the build the function actually declares',
+     JSON.stringify({ verifier: wantBuild, function: fnBuild }));
+
   // No key, no host, no provider name anywhere a browser can see it.
   const shippedJs = fs.readdirSync(path.join(ROOT, 'js')).filter((f) => f.endsWith('.js'));
   // PROSE IS NOT A REFERENCE. js/companionMind.js's own header says

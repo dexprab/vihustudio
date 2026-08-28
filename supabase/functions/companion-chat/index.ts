@@ -65,7 +65,7 @@
 //
 // Leave JWT verification ON. This spends money per call.
 
-const BUILD = '1N';
+const BUILD = '1N.5';
 
 // ===== BEGIN GENERATED edgeAuth — do not edit below this line =====
 // Generated from supabase/functions/_shared/edgeAuth.js, which is the

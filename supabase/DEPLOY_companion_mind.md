@@ -50,6 +50,30 @@
 >
 > The other five functions carry the same generated gate and the same
 > latent hazard. None is known to be hanging; redeploy them at leisure.
+>
+> ---
+>
+> **CONFIRMED LIVE.** The redeploy answered, and the verifier reads
+> green on every row: `mindEnabled` true, both OpenAI gates closed, both
+> 1N.5 behavioural checks passing, and
+> `pagesFix: PASS — "Ooh, let me see. There are 3 pages."` — the exact
+> sentence that used to be *"I don't know!"*.
+>
+> **WHAT FIXED THE HANG IS NOT KNOWN, AND IS NOT CLAIMED.** The redeploy
+> carried the auth-call bound AND replaced the running instance, and
+> nothing here can tell those apart. The bound is correct on its own
+> terms either way — an unbounded await on a metered function is a
+> defect whether or not it was today's — but if the hang returns, that
+> is the evidence it was the instance rather than the code, and the
+> function logs are where to look.
+>
+> **`BUILD` IS `'1N.5'` FROM NOW ON.** It read `'1N'` through three
+> sprints, so the probe could not tell a fresh deployment from a stale
+> one — the check this runbook used to give was worthless. The next
+> deploy makes it authoritative; until then the live one correctly
+> reports `'1N'` and the verifier says so as a NOTE rather than a
+> failure. `K4d` keeps the verifier's expected build and the function's
+> own declaration in step, so a bump that forgets one fails.
 
 
 Sprint 1N built `js/companionMind.js` and proved it. Sprint 1N.1 walked

@@ -5235,9 +5235,38 @@ product underneath it.
 - `HANG1`–`HANG7` in `tools/companion-conversation-test/` hang the
   network on purpose against the real Studio surface. Proved by
   reverting the bound and watching four of them go red.
+- **AND THE SAME DEFECT WAS SERVER-SIDE** (build 0694). The redeployed
+  `companion-chat` stopped answering, and the verifier narrowed it
+  rather than shrugging: a bare GET was refused 401 by the gateway in
+  milliseconds, the same on a sibling function, the preflight answered
+  200 — and the AUTHENTICATED GET, the first request that actually
+  reaches our code, returned nothing. On a GET there is exactly one
+  `await` on that path, because `guard()` skips the rate limiter when
+  there is no bucket: `resolveCaller()`'s call to `/auth/v1/user`, with
+  a `try/catch` and no timeout. An invocation that cannot finish holds
+  its slot until the platform kills it.
+- **IT RACES AS WELL AS ABORTS, and the suite is what insisted.**
+  `abort()` ends a request only if the fetch HONOURS the signal, so an
+  abort alone is a bound that depends on somebody else's cooperation.
+  The first version aborted only and `A4c` hung until it was killed.
+  **No new policy**: the catch already failed CLOSED on an unreachable
+  auth server, so a timeout reaches the same decision — the one place in
+  VihuPlanet where an unreadable signal means no.
+- **WHAT FIXED IT IS NOT CLAIMED.** The redeploy carried the bound AND
+  replaced the running instance, and nothing available can tell those
+  apart. The bound is correct on its own terms either way; if the hang
+  returns, that is the evidence it was the instance.
+- **`BUILD` NOW MEANS SOMETHING.** It read `'1N'` from the first
+  deployment through 1N.1 and 1N.5, so the probe could not tell a fresh
+  deployment from a stale one and the runbook's own check passed either
+  way. It is `'1N.5'` from the next deploy, and `K4d` keeps the
+  verifier's expected build and the function's own declaration in step —
+  a hand-mirrored fact is a promise nobody can keep (Decision 30).
 - `js/companionChat.js` · `js/vihuVoice.js` · `js/companionSpeak.js` ·
+  `supabase/functions/_shared/edgeAuth.js` ·
   `supabase/verify_companion_chat_deployed.js` ·
-  `tools/companion-conversation-test/run-companion-conversation-tests.js`
+  `tools/companion-conversation-test/run-companion-conversation-tests.js` ·
+  `tools/edge-auth-test/run-edge-auth-tests.js`
 
 ## Roadmap
 
