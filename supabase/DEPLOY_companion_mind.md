@@ -1,20 +1,19 @@
 # Turning the deterministic Companion on
 
-> **REDEPLOY NEEDED — build 0688 onward.** The function has changed
-> twice since it was first deployed and a deployed function is not the
-> same thing as a committed one (Decision 42 learned that the hard way,
-> from a person saying an email looked the same).
+> **DEPLOYED AT BUILD 0692** — the product owner redeployed it carrying
+> the `pages` fix and the 1N.5 Mind. **Confirm it with
+> `supabase/verify_companion_chat_deployed.js`, not with the build
+> string** — see Step 3 for why the build string cannot answer.
+>
+> What that deployment carries:
 >
 > 1. **The `pages` fix.** `authorizeStory()` read `record.data.slides`
 >    and the store has always written `pages`, so **every story
 >    authorized as zero pages and every story question came back "I
->    don't know"** — which is what the product owner saw. Until this is
->    deployed, story facts stay unanswerable in production.
-> 2. **The 1N.2 Mind.** New intents and the naming validator are
->    generated into it. Nothing in Sprint 1N.2 *depends* on this — the
->    browser answers identity, naming and authorship itself — but the
->    server's copy and `js/companionMind.js` should not be allowed to
->    drift.
+>    don't know"** — which is what the product owner saw.
+> 2. **The 1N.5 Mind.** `SURFACE_RULE`, `_universal()`, the eight `modes`
+>    corrections, and the widened stars / work-judgement /
+>    creative-suggestion / privacy patterns.
 >
 > Step 1 below is unchanged; it is the same file, redeployed.
 
@@ -111,9 +110,34 @@ Expected:
 ```
 
 **`mindEnabled` must read `true` and `productionEnabled` must read
-`false`.** If `build` is not `1N`, the server is running an older
-version and Step 1 did not take — that state looks completely healthy
-otherwise, which is why it is checked here.
+`false`.**
+
+### THE BUILD STRING CANNOT TELL YOU WHETHER STEP 1 TOOK
+
+`BUILD` has read `'1N'` since the first deployment — through Sprint
+1N.1's `pages` fix and Sprint 1N.5's Mind corrections alike. **A stale
+server and a fresh one say the same word.** This runbook used to say "if
+`build` is not `1N`, Step 1 did not take", and that check is now
+worthless: it passes either way.
+
+So ask the server to BEHAVE instead. Paste
+**`supabase/verify_companion_chat_deployed.js`** into the same console.
+It checks the flags, then sends two sentences whose answer CHANGED in
+1N.5 and one that needs a real story:
+
+| sentence | before | after |
+|---|---|---|
+| *"What could happen next?"* | "I don't know that one." | "That's yours to choose." |
+| *"Is this story any good?"* | answered as a story fact | "I don't think about it that way." |
+| *"How many pages are there?"* (story open) | "I don't know" | "There are N pages." |
+
+Every expectation there is proved through the real handler by
+`tools/companion-mind-test` (`K4b`, `K4c`) rather than asserted in the
+verifier — a check that agrees with itself proves nothing.
+
+**Bump `BUILD` in any commit that changes this function**, so the probe
+starts meaning something again. It was not bumped for 1N.1 or 1N.5, and
+this section is the cost of that.
 
 ---
 

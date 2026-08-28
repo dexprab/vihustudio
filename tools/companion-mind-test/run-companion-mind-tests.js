@@ -1126,6 +1126,31 @@ async function importFn(source) {
   ck(shipped.production === false && shipped.mind === false,
      'K4  and with nothing configured at all, BOTH ship closed',
      JSON.stringify({ production: shipped.production, mind: shipped.mind }));
+  // ---- WHAT A DEPLOYED SERVER CAN BE ASKED, TO PROVE IT IS THIS ONE
+  //
+  // `BUILD` still reads '1N', and it read '1N' before Sprints 1N.1 and
+  // 1N.5 changed this file — so the GET probe CANNOT tell a fresh
+  // deployment from a stale one. That is the Decision 42 failure exactly:
+  // everything reports success and only a person notices the behaviour
+  // did not change.
+  //
+  // These two sentences separate them, need no story, and are answered
+  // by the SERVER's own copy of the Mind (a raw POST does not go through
+  // js/companionChat.js's LOCAL_INTENTS shortcut). Before 1N.5 the first
+  // classified `unknown` and the second `story-fact`; after it they are
+  // `creative-suggestion` and `work-judgement`. They are the check the
+  // runbook hands a person with the Dashboard open, so they are proved
+  // HERE, through the real handler, rather than asserted there.
+  const liveNext = await say('What could happen next?');
+  ck(/yours to (?:choose|decide)/i.test(String(liveNext.body && liveNext.body.reply)),
+     'K4b A DEPLOYED SERVER PROBE — "what could happen next?" is the Creator\'s to choose',
+     JSON.stringify(liveNext.body && liveNext.body.reply));
+  const liveGood = await say('Is this story any good?');
+  ck(/don'?t think about it|only notice|only look|only come and look/i
+       .test(String(liveGood.body && liveGood.body.reply)),
+     'K4c and "is this story any good?" meets the Companion that never grades',
+     JSON.stringify(liveGood.body && liveGood.body.reply));
+
   // No key, no host, no provider name anywhere a browser can see it.
   const shippedJs = fs.readdirSync(path.join(ROOT, 'js')).filter((f) => f.endsWith('.js'));
   // PROSE IS NOT A REFERENCE. js/companionMind.js's own header says
