@@ -2028,6 +2028,17 @@
       // recording is already in this browser.
       audioOwner = (pid && window.EtherFeed && EtherFeed.ownerOf) ? EtherFeed.ownerOf(pid) : null;
 
+      // A HEAD START, WHILE THEY ARE STILL DECIDING.
+      //
+      // Meeting a Spirit puts its name, its maker and Read story on
+      // screen, and a child takes a moment over that. Signing the first
+      // page's recording during that moment is free, and it is very
+      // often the whole of the wait — by the time they press Read story
+      // the voice is already here. Nothing is fetched for a Story with
+      // no voice; audio[] is empty and warmVoice returns at once.
+      dropWarmed();
+      warmVoice(0);
+
       // Everything said here is something the Story actually knows
       // about itself. No invented blurb, no fabricated popularity.
       var bits = [];
@@ -2118,6 +2129,10 @@
       // there is a host to wait for — with no EtherHost there will be no
       // openingDone to release it, and the cap would just delay every
       // story's narration by eight silent seconds.
+      // ASKED FOR BEFORE IT IS HELD. The hold decides when the voice
+      // speaks; this decides when it is fetched, and the two used to be
+      // the same moment.
+      warmVoice(0);
       if (window.EtherHost) holdNarration();
       showPage();
       el.portalTitle.textContent = met.title || 'A story';
@@ -2186,6 +2201,8 @@
     function closePortal() {
       // A voice must never outlive the page it belongs to.
       stopVoice();
+      // Neither must a voice that was only ever waiting its turn.
+      dropWarmed();
       // The hold is DROPPED, not released: EtherHost.close() below
       // settles a pending opening, which fires openingDone, which is
       // releaseNarration — and a release with narrationWaiting still
@@ -2221,6 +2238,82 @@
     // still talking about a page nobody is looking at is the one thing
     // this must not do.
     var voice = null;
+
+    // LOADING IS NOT PLAYING, AND THEY WERE THE SAME THING.
+    //
+    // Reported by the product owner: "in ether if a story has audio, it
+    // takes too long to load. kids wont be able to wait for this long."
+    // Measured against the code path, the first page's voice could not
+    // even begin to arrive until the Companion had finished greeting —
+    // the narration is HELD (Decision 26) and playVoice() is what
+    // resolves it, so the whole network chain started only once the hold
+    // released: a signed URL from Storage (two round trips, since the
+    // current session can never own a shared Story's folder), and only
+    // then the audio file itself.
+    //
+    // Nothing about Decision 26 needs to change: the welcome still comes
+    // first and the story's voice still does not SPEAK until the
+    // greeting has landed. What changes is that it is fetched while
+    // Lumo is talking rather than afterwards, so by the time the hold
+    // lifts the bytes are already here. A held voice is a voice waiting
+    // its turn, not a voice that has not been sent for.
+    //
+    // One page ahead, never the whole story: a Traveller reading page
+    // one has no use for page nine's recording, and asking for it costs
+    // somebody's data.
+    // KEYED BY REFERENCE, NOT ONE SLOT. A single slot looks right and is
+    // wrong by one line: showPage() warms the NEXT page immediately
+    // after asking for this one, so the page being read had its own
+    // warmed voice evicted by its successor and re-fetched when the
+    // hold lifted — measured, exactly one round trip late, which is the
+    // whole of what this was meant to remove.
+    var warm = Object.create(null);   // ref -> { el } — buffered, not playing
+    function _keepOnly(refs) {
+      Object.keys(warm).forEach(function (k) {
+        if (refs.indexOf(k) >= 0) return;
+        if (warm[k] && warm[k].el) { try { warm[k].el.src = ''; } catch (e) {} }
+        delete warm[k];
+      });
+    }
+    function warmVoice(index) {
+      // The page in hand and the one after it, and nothing else.
+      _keepOnly([audio[pageIndex], audio[pageIndex + 1]].filter(Boolean));
+      var ref = audio[index];
+      if (!ref || warm[ref]) return;
+      var slot = warm[ref] = { el: null };
+      _resolveVoice(ref).then(function (src) {
+        // The child may have moved on while the URL was being signed.
+        if (!src || warm[ref] !== slot) return;
+        try {
+          var el2 = new Audio();
+          el2.preload = 'auto';
+          el2.src = src;
+          el2.load();
+          slot.el = el2;
+        } catch (e) { /* a slower voice, never a broken one */ }
+      }).catch(function () {});
+    }
+    function dropWarmed() { _keepOnly([]); }
+
+    // A Canon Story carries its narration inline, so this is already a
+    // data: URI; a child's own Story carries a reference that only
+    // resolves through Storage. AssetStore passes a data: URI straight
+    // through, so one path serves both — and it is one function now
+    // because the warm-up and the play must resolve identically or the
+    // warm one is never the one that plays.
+    //
+    // `preferOwnerId` is the whole point for a Story somebody else
+    // shared: the recording is in THEIR folder, and asking under this
+    // session's own owner first is a round trip that cannot succeed.
+    function _resolveVoice(ref) {
+      if (typeof AssetStore === 'undefined' || !AssetStore.resolve) {
+        return Promise.resolve(ref);
+      }
+      return AssetStore.resolve(ref, audioOwner
+        ? { ownerId: audioOwner, preferOwnerId: audioOwner }
+        : undefined);
+    }
+
     function stopVoice() {
       if (!voice) return;
       try { voice.pause(); voice.src = ''; } catch (e) {}
@@ -2267,11 +2360,11 @@
       if (!ref) return;
       if (narrationHeld) { narrationWaiting = true; return; }
       var at = pageIndex;
-      var start = function (src) {
+      var start = function (src, warmEl) {
         // The child may have turned the page while this resolved.
-        if (!src || at !== pageIndex || el.portal.hidden) return;
+        if ((!src && !warmEl) || at !== pageIndex || el.portal.hidden) return;
         try {
-          voice = new Audio(src);
+          voice = warmEl || new Audio(src);
           var p = voice.play();
           // Autoplay may be refused until the child has touched
           // something. That is not an error and there is nothing to
@@ -2279,6 +2372,16 @@
           if (p && p.catch) p.catch(function () { stopVoice(); });
         } catch (e) { stopVoice(); }
       };
+
+      // Already here, because the portal asked for it the moment it
+      // opened rather than when the hold lifted. Nothing is fetched and
+      // nothing is signed; it simply plays.
+      if (warm[ref] && warm[ref].el) {
+        var ready = warm[ref].el;
+        delete warm[ref];
+        start(null, ready);
+        return;
+      }
       // A Canon Story carries its narration inline, so this is already
       // a data: URI; a child's own Story carries a reference that only
       // resolves on the device that recorded it. AssetStore passes a
@@ -2293,12 +2396,7 @@
       // The owner matters for a Story somebody ELSE shared: the
       // recording is not in this browser, and the Storage path it lives
       // at is built from whoever recorded it.
-      if (typeof AssetStore !== 'undefined' && AssetStore.resolve) {
-        AssetStore.resolve(ref, audioOwner ? {ownerId: audioOwner} : undefined)
-          .then(start).catch(function () {});
-      } else {
-        start(ref);
-      }
+      _resolveVoice(ref).then(function (src) { start(src); }).catch(function () {});
     }
 
     function showPage() {
@@ -2328,6 +2426,8 @@
       el.prev.disabled = pageIndex === 0;
       el.next.disabled = pageIndex >= pages.length - 1;
       playVoice();
+      // The next page's voice, while this one is being listened to.
+      warmVoice(pageIndex + 1);
     }
 
     // The page turns, and the new one is swapped in at the halfway

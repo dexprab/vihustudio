@@ -331,13 +331,27 @@
   // "recalled") -- Storage's own createSignedUrl already fails cleanly
   // for a path that doesn't exist under the tried owner, which is
   // exactly the signal this fallback needs.
-  function _resolveFromStorage(parsed, fallbackOwnerId) {
+  // WHOEVER IS MOST LIKELY TO OWN IT, FIRST.
+  //
+  // Signing is a network round trip and this does up to two of them, so
+  // the ORDER is worth a sentence. The default is right for the case it
+  // was written for — this device's own asset, occasionally reached
+  // under a recalled Magic Card's owner — and exactly wrong for reading
+  // somebody else's Story in the Ether, where the current session can
+  // never own the folder and the first attempt is GUARANTEED to fail.
+  // A caller that already knows the owner (the Ether portal does: the
+  // shared record carries it) can say so, and `preferOwnerId` puts that
+  // one first. The other is still tried, so nothing that worked before
+  // can stop working — only the order changes.
+  function _resolveFromStorage(parsed, fallbackOwnerId, preferOwnerId) {
     if (typeof window.ThemeRepositoryClient === 'undefined') return Promise.resolve(null);
     return window.ThemeRepositoryClient.getClient().then(function (client) {
       return _currentOwnerId().then(function (ownerId) {
-        return _signedUrlFor(client, parsed, ownerId).catch(function (err) {
-          if (!fallbackOwnerId || fallbackOwnerId === ownerId) throw err;
-          return _signedUrlFor(client, parsed, fallbackOwnerId);
+        const first = preferOwnerId || ownerId;
+        const second = (first === ownerId) ? fallbackOwnerId : ownerId;
+        return _signedUrlFor(client, parsed, first).catch(function (err) {
+          if (!second || second === first) throw err;
+          return _signedUrlFor(client, parsed, second);
         });
       });
     }).catch(function () { return null; });
@@ -373,7 +387,8 @@
         _warmCache[ref] = src;
         return src;
       }
-      return _resolveFromStorage(parsed, opts && opts.ownerId).then(function (signedUrl) {
+      return _resolveFromStorage(parsed, opts && opts.ownerId,
+                                 opts && opts.preferOwnerId).then(function (signedUrl) {
         if (signedUrl) _warmCache[ref] = signedUrl;
         return signedUrl;
       });

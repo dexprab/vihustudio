@@ -1878,6 +1878,61 @@ Theme hook and changes nothing else about it.
 - `js/audioManager.js` · `js/themeEngine.js` · `js/storyDestinations.js` ·
   `tools/atmosphere-test/run-atmosphere-tests.js`
 
+### 51. A Held Voice Is a Voice Waiting Its Turn, Not One Nobody Sent For
+
+Locked after a report from the product owner: *"in ether if a story has
+audio, it takes too long to load. kids wont be able to wait for this
+long."* It changes WHEN a Story's narration is fetched and nothing about
+when it plays.
+
+- **LOADING IS NOT PLAYING, AND THEY WERE THE SAME MOMENT.** The portal
+  holds the arrival page's narration until the Companion has finished
+  greeting (Decision 26) — and `playVoice()` was also the thing that
+  FETCHED it. So nothing was even asked for until the greeting ended,
+  and only then came a signed URL from Storage and then the audio file.
+  Measured in a real browser: the first fetch began at the exact
+  millisecond the greeting ended, and the voice started a full round
+  trip after that.
+- **Decision 26 is untouched, and that is the test this had to pass.**
+  The welcome still comes first and the story's voice still does not
+  SPEAK until the greeting has landed. It is simply fetched while Lumo
+  is talking rather than afterwards. Measured: the voice now starts
+  **0ms** after the greeting ends instead of one round trip later.
+- **The wait begins before the child does.** Meeting a Spirit puts its
+  name, its maker and Read story on screen, and a child takes a moment
+  over that. The first page's recording is signed during that moment, so
+  by the time they press Read story it is very often already here.
+  Nothing is fetched for a Story with no voice.
+- **ONE PAGE AHEAD, NEVER THE WHOLE STORY.** A Traveller reading page
+  one has no use for page nine's recording, and asking for it spends
+  somebody's data.
+- **KEYED BY REFERENCE, NOT ONE SLOT** — and a single slot was wrong by
+  one line. `showPage()` warms the NEXT page immediately after asking
+  for this one, so the page being read had its own warmed voice evicted
+  by its successor and re-fetched when the hold lifted: exactly one
+  round trip late, which is the whole of what this was meant to remove.
+  Caught by the suite, not by reading.
+- **THE FOLDER ASKED FOR FIRST IS THE ONE THAT HOLDS THE RECORDING.**
+  `AssetStore.resolve` tries the current session's owner and falls back
+  to a supplied one — right for this device's own asset, and exactly
+  wrong for reading somebody else's Story, where the current session can
+  never own the folder and the FIRST attempt is guaranteed to fail. The
+  shared record already carries the owner, so `preferOwnerId` puts it
+  first. The other is still tried, so nothing that worked can stop
+  working — only the order changes.
+- **A MODULE DECLARED `const` CANNOT BE SWAPPED THROUGH `window`.**
+  `EtherFeed`, `EtherHost` and `AssetStore` are top-level `const`
+  bindings, so replacing `window.EtherFeed` is invisible to the code
+  that uses them — the same trap Decision 40 already records. The suite
+  MUTATES them in place instead, after load and before the threshold.
+- **A check that hears the wrong sound proves nothing.** The first draft
+  read AudioManager's own ambience (Decision 39 — it is playing the
+  whole time, and it is an `<audio>` element like any other) as the
+  child's story starting, and reported a narration that had not
+  happened. It filters to the Story's own voice now.
+- `js/vihuplanetHome.js` · `js/assetStore.js` ·
+  `tools/ether-voice-test/run-ether-voice-tests.js`
+
 ### 21. VihuPlanet Is For Everybody; the Studio Needs a Laptop
 
 Locked by the product owner: *"vihuplanet is meant for laptop screens
