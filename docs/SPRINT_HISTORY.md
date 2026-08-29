@@ -10090,3 +10090,54 @@ identity 109 · enable 103 · knowledge 99 · canon 94 · ether 91 ·
 presence 90 · context 90 · moments 88 · parity 84 · dialogue 56 ·
 memory 56 · companion 50 · traveller-reset 16 — all green.
 Canon: Decision 50.
+
+---
+
+## A held voice is a voice waiting its turn (build 0697)
+
+*"in ether if a story has audio, it takes too long to load. kids wont be
+able to wait for this long."*
+
+Measured in a real browser rather than guessed at. The portal HOLDS the
+arrival page's narration until the Companion has finished greeting
+(Decision 26) — and `playVoice()` was also the thing that FETCHED it. So
+nothing was even asked for until the greeting ended: the first fetch
+began at the exact millisecond the greeting ended, and the voice started
+a full round trip after that. On a real deployment that round trip is a
+signed URL from Storage, twice over for a Story somebody else shared,
+and then the audio file itself.
+
+Loading is not playing. Decision 26 is untouched — the welcome still
+comes first and the story's voice still does not speak until the greeting
+has landed — but the voice is now fetched while Lumo is talking. Measured:
+it starts **0ms** after the greeting ends instead of one round trip later.
+The first page is also signed while the child is still on the preview
+looking at the Story's name, which is very often the whole of the wait.
+
+One page ahead, never the whole story. And keyed by reference rather than
+by a single slot, which was wrong by one line: `showPage()` warms the next
+page immediately after asking for this one, so the page being read had its
+own warmed voice evicted by its successor and re-fetched when the hold
+lifted — exactly one round trip late, which is the whole of what this was
+meant to remove. The suite caught that, not a reading of the code.
+
+`AssetStore.resolve` gained `preferOwnerId`. It tries the current
+session's owner and falls back to a supplied one, which is right for this
+device's own asset and exactly wrong for reading somebody else's Story,
+where the current session can never own the folder and the first attempt
+is guaranteed to fail. The shared record already carries the owner. The
+other owner is still tried, so nothing that worked can stop working.
+
+Two things the suite had to learn. `EtherFeed`, `EtherHost` and
+`AssetStore` are top-level `const` bindings, so replacing
+`window.EtherFeed` is invisible to the code that uses them — the same trap
+Decision 40 records; they are mutated in place instead. And the first
+draft read AudioManager's own ambience as the child's story starting
+(Decision 39 — it is playing the whole time and it is an `<audio>` element
+like any other), reporting a narration that had not happened.
+
+Proved by reverting: V1, V3, V5 and V6 go red, with the first fetch and
+the greeting's end landing on the same millisecond.
+
+Ether voice 8/8, celebration 31/31, garden 104/104, zero page errors.
+Build 0696 → 0697.
