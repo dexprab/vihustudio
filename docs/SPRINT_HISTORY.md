@@ -10090,3 +10090,53 @@ identity 109 · enable 103 · knowledge 99 · canon 94 · ether 91 ·
 presence 90 · context 90 · moments 88 · parity 84 · dialogue 56 ·
 memory 56 · companion 50 · traveller-reset 16 — all green.
 Canon: Decision 50.
+
+## Step 3A — Leo has a real Mind (build 0697)
+
+The first real model in this product, behind the existing seam, with
+production CLOSED and Leo alone listed.
+
+**The order was the blocker.** `if (policy.mind)` returned
+unconditionally, so on a server with the deterministic Mind switched on —
+which is how the product owner's is configured — the model path was
+unreachable by construction. The Mind now yields to the model for a
+Companion on `COMPANION_MODEL_COMPANIONS` and answers for everybody else.
+The list is empty by default, the id comes from the card row rather than
+the request (a request claiming to be Leo on Leafy's card still gets
+Leafy), and clearing the variable puts every child back on the
+deterministic Mind with no deploy.
+
+**The deterministic Mind is now the model's fallback.** Unreachable,
+slow, unconfigured or invalid output all give the child the same answer
+in the same voice they would have had yesterday, with
+`meta.modelFellBack` recording it. The worst case of Step 3A is the
+product as it was before it.
+
+**Leo's character is generated, not hand-copied.** `sync-shared.js`
+projects `assets/<id>/personality.json` — Decision 44's specifications,
+which Decision 32 recorded the Mind as the intended consumer of —
+through a whitelist of descriptive fields. `boundaries` and
+`presenceLines` are deliberately excluded: a character says how a
+Companion talks and can never widen what one may say.
+
+Two existing checks encoded the pre-Step-3 architecture and were turned
+round with reasons in place — `K2` (mind) and `N1.2` (enable) both
+grepped the Mind branch for `makeProvider`. What they protected is kept
+and now measured: nobody listed → zero provider calls; one listed →
+exactly one attempted. The first draft of that measurement was vacuous
+twice (`>= 0`, and a keyless provider refusing before it fetched).
+
+**No model was ever called.** The network policy refuses
+`api.openai.com` and there is no key here, so model selection, the real
+first call and the real journeys are the product owner's to run —
+`supabase/DEPLOY_step3a_leo.md`. **The Ether is deliberately not
+included**: it makes no server call at all today, so a real Mind there
+means a new cardless authenticated path into a metered function, and
+building a second unverifiable path was refused.
+
+chat 251 · mind 166 · edge-auth 129 · conversation 135 · identity 109 ·
+enable 103 · rite 103 · garden 104 · knowledge 99 · canon 91 · ether 91 ·
+presence 90 · context 84 · creation-home 84 · parity 84 · moments 88 ·
+rhythm 68 · levels 59 · dialogue 56 · memory 56 · companion 50 ·
+gate 25 · traveller-reset 16 · atmosphere 14 — all green.
+Canon: Decision 51.

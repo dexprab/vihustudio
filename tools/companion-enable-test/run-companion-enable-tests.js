@@ -245,13 +245,29 @@ const FOUR = [
      'N1.1b MIND FLAG OFF → a fixture answers, and it is a DIFFERENT answer',
      JSON.stringify(off.body && off.body.reply));
 
-  // ---- N1.2 THE DETERMINISTIC PATH IS THE ONE SELECTED ------------
-  const mindBranch = src.slice(src.indexOf('if (policy.mind) {'));
-  const branchEnd = mindBranch.indexOf('\n    let raw;');
-  ck(branchEnd > 0 && mindBranch.slice(0, branchEnd).indexOf('makeProvider') === -1
-     && mindBranch.slice(0, branchEnd).indexOf('CompanionMind.answer') !== -1,
-     'N1.2  the Mind branch calls the Mind and never constructs a provider',
-     'control flow, not a promise');
+  // ---- N1.2 REWRITTEN IN STEP 3A, WITH A REASON -------------------
+  //
+  // It sliced the source between `if (policy.mind) {` and a `let raw;`
+  // below it and asserted `makeProvider` was not in between. Step 3A
+  // hoists `raw` above that branch — so the branch can hand its context
+  // to the model instead of building it twice — and the ASSERTION
+  // itself is now the opposite of the intended architecture: a
+  // Companion on COMPANION_MODEL_COMPANIONS is meant to reach the
+  // provider from exactly there.
+  //
+  // The half that is still true and still worth protecting is that the
+  // Mind is what answers when nobody is listed, and that is checked
+  // BEHAVIOURALLY above (N1.1/N1.1b: the flag on gives the real story,
+  // the flag off gives a fixture). This keeps the structural part that
+  // did not change — the Mind branch really does call the Mind — and
+  // drops the part that Step 3A deliberately reversed. The provider
+  // guarantee is measured rather than grepped, in
+  // tools/companion-mind-test K2/K2b: nobody listed, zero provider
+  // calls; one listed, exactly one attempted.
+  ck(src.indexOf('if (policy.mind) {') !== -1
+     && src.indexOf('CompanionMind.answer') !== -1,
+     'N1.2  the Mind branch is still what calls the deterministic Mind',
+     'and whether a provider is reached is now the gate\'s business, measured in K2/K2b');
   ck(on.body.meta && on.body.meta.synthetic === false && on.body.meta.fixture === null,
      'N1.2b and the answer says it came from real context, not a fixture',
      JSON.stringify(on.body.meta && { synthetic: on.body.meta.synthetic, fixture: on.body.meta.fixture }));

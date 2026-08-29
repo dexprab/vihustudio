@@ -1532,6 +1532,156 @@ async function call(req, over, providerFetch) {
       });
   }
 
+  // =================================================================
+  console.log('\n3A. LEO HAS A REAL MIND — Step 3A');
+  // =================================================================
+  //
+  // NOTHING HERE REACHES OPENAI. This environment's network policy
+  // refuses the provider, so the model is the `mock` provider
+  // throughout and what is proved is the ROUTING, the gating, the
+  // fallback and the boundaries — never the model's own words. That
+  // limitation is stated in the sprint report rather than papered over.
+  {
+    const LEO_CARD = 'card_leo';
+    const LEAFY_CARD = 'card_leafy';
+    DB.cards.length = 0;
+    DB.cards.push(
+      { id: LEO_CARD, owner_id: 'user-aaaa', companion_id: 'leosaurus',
+        companion_name: 'Leo', companion_species: 'Lantern Lion' },
+      { id: LEAFY_CARD, owner_id: 'user-aaaa', companion_id: 'leafy',
+        companion_name: 'Leafy', companion_species: 'Bloomling' });
+    DB.projects.length = 0;
+
+    const MIND_ON = { COMPANION_MIND_ENABLED: 'true' };
+    const askAs = (card, over) => call(post({
+      cardId: card, storyId: null, pageId: null,
+      conversation: [{ speaker: 'creator', text: 'who are you?' }],
+    }), Object.assign({}, MIND_ON, over || {}));
+
+    // ---- THE GATE ------------------------------------------------
+    const noList = await askAs(LEO_CARD, {});
+    ck(noList.body && noList.body.ok === true && !noList.body.meta.modelFellBack,
+       '3A1  with no COMPANION_MODEL_COMPANIONS, Leo gets the deterministic Mind',
+       JSON.stringify(noList.body.reply));
+
+    const leoModel = await askAs(LEO_CARD, { COMPANION_MODEL_COMPANIONS: 'leosaurus' });
+    ck(leoModel.body && leoModel.body.ok === true,
+       '3A2  LISTED, Leo\'s turn goes to the model path', JSON.stringify(leoModel.body.reply));
+    ck(leoModel.body.reply !== noList.body.reply,
+       '3A2b and it is a DIFFERENT answer from the deterministic one — the routing really changed',
+       JSON.stringify({ mind: noList.body.reply, model: leoModel.body.reply }));
+
+    // ---- LEO FIRST, AND ONLY LEO (§46) ---------------------------
+    const leafyStill = await askAs(LEAFY_CARD, { COMPANION_MODEL_COMPANIONS: 'leosaurus' });
+    ck(leafyStill.body && leafyStill.body.ok === true &&
+       leafyStill.body.reply === (await askAs(LEAFY_CARD, {})).body.reply,
+       '3A3  LEAFY IS UNTOUCHED — byte for byte the deterministic answer she gave before',
+       JSON.stringify(leafyStill.body.reply));
+
+    // ---- THE ID COMES FROM THE CARD, NEVER THE REQUEST -----------
+    const forged = await call(post({
+      cardId: LEAFY_CARD, companionId: 'leosaurus', companion: { id: 'leosaurus' },
+      conversation: [{ speaker: 'creator', text: 'who are you?' }],
+    }), Object.assign({}, MIND_ON, { COMPANION_MODEL_COMPANIONS: 'leosaurus' }));
+    ck(forged.body && forged.body.reply === leafyStill.body.reply,
+       '3A4  a request CLAIMING to be Leo on Leafy\'s card still gets Leafy',
+       JSON.stringify(forged.body.reply));
+
+    // ---- THE DETERMINISTIC ANSWER CATCHES A MODEL FAILURE (§32) --
+    // THE MODEL MUST ACTUALLY BE ATTEMPTED, or this proves nothing.
+    //
+    // The first draft set provider=openai with both gates shut, and
+    // `modelWanted` is false in that state — so the Mind answered
+    // directly, the fallback never ran, and 3A5 passed for entirely the
+    // wrong reason while 3A5b correctly failed. Synthetic mode is what
+    // makes the openai provider reachable with production closed; with
+    // no key it then refuses, which is a REAL model failure.
+    const brokenEnv = Object.assign({}, MIND_ON, {
+      COMPANION_MODEL_COMPANIONS: 'leosaurus',
+      COMPANION_SYNTHETIC_ENABLED: 'true',
+      COMPANION_MODEL_PROVIDER: 'openai',      // configured, but…
+    });  // …no OPENAI_API_KEY, so the provider refuses
+    const attempted = await call(get(), brokenEnv);
+    ck(attempted.body.syntheticEnabled === true && attempted.body.configured === false,
+       '3A5.pre the model IS reachable and IS unconfigured — so it will really be tried and really fail',
+       JSON.stringify({ synthetic: attempted.body.syntheticEnabled,
+                        configured: attempted.body.configured }));
+    const broken = await call(post({
+      cardId: LEO_CARD,
+      conversation: [{ speaker: 'creator', text: 'who are you?' }],
+    }), brokenEnv);
+    ck(broken.body && broken.body.ok === true && broken.body.reply === noList.body.reply,
+       '3A5  A MODEL FAILURE COSTS THE CHILD NOTHING — the deterministic answer stands in',
+       JSON.stringify(broken.body.reply));
+    ck(broken.body.meta && broken.body.meta.modelFellBack === true,
+       '3A5b and it is recorded, so a silent fallback is not mistaken for a working model',
+       JSON.stringify(broken.body.meta.modelFellBack));
+    ck(!/openai|api|key|provider|401|500/i.test(String(broken.body.reply)),
+       '3A5c with no provider word, status code or technical term in it');
+
+    // ---- THE CONTROLLED FIRST CALL (§6) --------------------------
+    const first = await call(post({ fixture: 'first-call' }),
+      Object.assign({}, MIND_ON, { COMPANION_MODEL_COMPANIONS: 'leosaurus' }));
+    ck(first.body && first.body.ok === true,
+       '3A6  the controlled first call runs end to end on synthetic material',
+       JSON.stringify(first.body.reply));
+    const fx = M.FIXTURES['first-call'];
+    ck(fx && fx.story.story.name === 'The Dragon and the Forest' &&
+       fx.personality.id === 'leosaurus',
+       '3A6b it is Leo, in a Story that does not exist', fx.story.story.name);
+    ck(!/vihaan|creator_|mc_|proj_|@/i.test(JSON.stringify(fx)),
+       '3A6c and carries no real Creator, card, id or address');
+
+    // ---- LEO'S CHARACTER REACHES THE MODEL (§15, §16) ------------
+    const leoMsgs = M.buildMessages(
+      { personality: { id: 'leosaurus', name: 'Leo' }, canon: null, memories: [],
+        storyContext: null, conversation: [] }, 'Leo');
+    const sys = leoMsgs[0].content;
+    ck(/Lantern Lion/.test(sys) && /lamp lit/.test(sys),
+       '3A7  the system instruction carries LEO — species and identity, not a name substitution');
+    ck(/Oh/.test(sys) && /forward-going/i.test(sys),
+       '3A7b including how he sounds', 'sentence style and temperament');
+    const leafyMsgs = M.buildMessages(
+      { personality: { id: 'leafy', name: 'Leafy' }, canon: null, memories: [],
+        storyContext: null, conversation: [] }, 'Leafy');
+    ck(!/Lantern Lion/.test(leafyMsgs[0].content) && /Bloomling/.test(leafyMsgs[0].content),
+       '3A7c and a different Companion gets a different one — no cross-Companion leakage');
+    const noneMsgs = M.buildMessages(
+      { personality: { name: 'Nobody' }, canon: null, memories: [], storyContext: null,
+        conversation: [] }, 'Nobody');
+    ck(!/WHO YOU ARE/.test(noneMsgs[0].content),
+       '3A7d a Companion with no character block gets no invented one');
+
+    // ---- THE CHARACTER MAY NOT WIDEN A BOUNDARY ------------------
+    const charBlock = src.match(/BEGIN GENERATED companionCharacters[\s\S]*?END GENERATED companionCharacters/)[0];
+    ck(!/"boundaries"/.test(charBlock) && !/presenceLines/.test(charBlock),
+       '3A8  the generated characters carry NO boundaries and NO presenceLines',
+       'what a Companion may say is the instruction\'s business');
+    ck(!/neverSays|greetings"|"lines"|"play"/.test(charBlock),
+       '3A8b nor any of the four runtime keys Decision 32 keeps out of them');
+
+    // ---- STILL NO TOOLS, STILL NO WRITES (§13, §14) --------------
+    ck(!/tools\s*:|tool_choice|function_call|functions\s*:/.test(src),
+       '3A9  the model is given NO tools — no functions, no retrieval, no web');
+    const writesBefore = dbWrites;
+    await askAs(LEO_CARD, { COMPANION_MODEL_COMPANIONS: 'leosaurus' });
+    ck(dbWrites === writesBefore,
+       '3A9b and a Leo turn writes nothing to any table', (dbWrites - writesBefore) + ' writes');
+
+    // ---- PRODUCTION IS STILL CLOSED (§39) ------------------------
+    const probe = await call(get(), Object.assign({}, MIND_ON,
+      { COMPANION_MODEL_COMPANIONS: 'leosaurus' }));
+    ck(probe.body.productionEnabled === false && probe.body.syntheticEnabled === false,
+       '3A10 PRODUCTION REMAINS CLOSED — listing a Companion does not open a gate',
+       JSON.stringify({ production: probe.body.productionEnabled,
+                        synthetic: probe.body.syntheticEnabled }));
+    ck(Array.isArray(probe.body.modelCompanions) &&
+       probe.body.modelCompanions.join(',') === 'leosaurus',
+       '3A10b and the probe reports WHO has a real Mind — ids only, no key, no organisation',
+       JSON.stringify(probe.body.modelCompanions));
+    DB.cards.length = 0;
+  }
+
   try { fs.unlinkSync(tmp); } catch (e) {}
   console.log('\n' + (failed ? 'FAILED' : (skipped ? 'PASSED (incomplete)' : 'PASSED')) +
     ' — ' + passed + ' passed, ' + failed + ' failed, ' + skipped + ' skipped');

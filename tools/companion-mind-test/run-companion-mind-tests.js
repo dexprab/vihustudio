@@ -1103,13 +1103,53 @@ async function importFn(source) {
   const hosts = Array.from(new Set(outbound.map((c) => c.url.split('/').slice(0, 3).join('/'))));
   ck(hosts.length === 1 && hosts[0] === SUPABASE_URL,
      'K1b and they reach exactly one host', hosts.join(', '));
-  // Structural, not behavioural: the Mind branch returns before a
-  // provider is ever constructed.
-  const mindBranch = fnSrc.slice(fnSrc.indexOf('if (policy.mind) {'));
-  const branchEnd = mindBranch.indexOf('\n    let raw;');
-  ck(branchEnd > 0 && mindBranch.slice(0, branchEnd).indexOf('makeProvider') === -1,
-     'K2  and makeProvider() is not reachable from the Mind branch at all',
-     'a property of the control flow, not a promise');
+  // ---- K2 REPLACED IN STEP 3A, WITH A REASON ---------------------
+  //
+  // It sliced the source from `if (policy.mind) {` to a `let raw;` a
+  // few lines below and asserted `makeProvider` was not in between —
+  // "a property of the control flow, not a promise". Two problems, and
+  // the second is why it is being replaced rather than re-anchored:
+  //
+  //   1. THE ANCHOR IS GONE. Step 3A hoists `raw` above the Mind branch
+  //      so that branch can hand its context to the model rather than
+  //      building it twice. The slice now runs off the end and the
+  //      check fails for a reason that has nothing to do with what it
+  //      was watching.
+  //   2. THE PROPERTY GENUINELY CHANGED, and by design. The whole of
+  //      Step 3A is that a Companion on COMPANION_MODEL_COMPANIONS
+  //      reaches the provider FROM that branch. Keeping the old
+  //      assertion would mean the check forbids the feature.
+  //
+  // WHAT K2 WAS PROTECTING IS KEPT and is now MEASURED rather than
+  // inferred from a substring: with the Mind on and nobody listed, no
+  // provider call is made. And the new guarantee is asserted in the
+  // positive too, so a gate that silently does nothing cannot pass.
+  outbound = [];
+  await say('who are you?', { COMPANION_MODEL_COMPANIONS: '' });
+  const unlisted = outbound.filter((c) => /openai|anthropic/i.test(c.url));
+  ck(unlisted.length === 0,
+     'K2  WITH NOBODY LISTED, the Mind alone makes no provider call',
+     outbound.length + ' outbound, ' + unlisted.length + ' to a provider');
+  outbound = [];
+  // A KEY IS NEEDED FOR A REQUEST TO BE ATTEMPTED AT ALL. Without one
+  // openAIProvider returns `not-configured` BEFORE it fetches, so
+  // nothing outbound is recorded and "0 calls" would look like a gate
+  // that does not work when it is a provider that refused early.
+  // Measured: the first draft of this check read 0 for exactly that
+  // reason. The value is not a real key and never leaves the stub.
+  await say('who are you?', { COMPANION_MODEL_COMPANIONS: 'leafy',
+                              COMPANION_SYNTHETIC_ENABLED: 'true',
+                              OPENAI_API_KEY: 'test-value-not-a-real-key',
+                              COMPANION_MODEL_PROVIDER: 'openai' });
+  // A CHECK THAT CANNOT FAIL PROVES NOTHING. `>= 0` was the first
+  // draft of this line and it is true of every number there is; the
+  // gate is only meaningful if listing a Companion DOES change the
+  // route, so that is what is asserted. card_a is bonded to leafy, so
+  // listing leafy is listing the Companion this request actually has.
+  const listedCalls = outbound.filter((c) => /openai/i.test(c.url));
+  ck(listedCalls.length === 1,
+     'K2b AND LISTING ONE CHANGES THE ROUTE — the gate is what decides, not the control flow',
+     listedCalls.length + ' provider call(s) attempted once listed');
   // The gates ship closed, and this sprint did not touch them.
   const probe = await (async () => {
     const h = M.makeHandler({ env: envFrom({ COMPANION_MIND_ENABLED: 'true' }),

@@ -5417,6 +5417,92 @@ provider, no model call, and both production gates still shut.**
   `js/travellerTalk.js` · `js/companionDirector.js` ·
   `tools/companion-rhythm-test/run-companion-rhythm-tests.js`
 
+### 51. Leo Has a Real Mind, and the Deterministic One Catches Him
+
+Locked in Step 3A — the first real model in this product. **Production
+ships CLOSED**, Leo alone is listed, and the other three Companions are
+untouched.
+
+- **THE ORDER WAS WRONG, AND THAT WAS THE WHOLE BLOCKER.**
+  `if (policy.mind)` returned unconditionally, so on the product owner's
+  own server — where the deterministic Mind is switched on — **the model
+  path was unreachable by construction.** A key, a model and both gates
+  could all have been in place and every child would still have met the
+  deterministic answers. The Mind now yields to the model for a listed
+  Companion and answers for everybody else.
+- **LEO FIRST, AND IT IS A LIST RATHER THAN A BOOLEAN.**
+  `COMPANION_MODEL_COMPANIONS` is empty by default, so a deployment that
+  says nothing gets nobody. Adding Quill later is one environment
+  variable, which is what §46's "later Companions use the same Mind"
+  requires. The other three are the control group.
+- **THE COMPANION ID COMES FROM THE CARD ROW, NEVER THE REQUEST.**
+  Measured: a request claiming `companionId: 'leosaurus'` on Leafy's
+  card still gets Leafy. A browser cannot talk its way onto the model
+  path with somebody else's card.
+- **THE DETERMINISTIC MIND IS NOW THE MODEL'S FALLBACK, and that is the
+  safest rollout there is.** A model that is unreachable, slow,
+  unconfigured or that returns something failing validation costs a
+  child NOTHING — they get the same answer in the same Companion's voice
+  that they would have got yesterday. The worst case of Step 3A is the
+  product as it was before it. `meta.modelFellBack` records it, so a
+  silent fallback is never mistaken for a working model.
+- **LEO'S CHARACTER IS GENERATED, NEVER HAND-COPIED.** Decision 44 wrote
+  four specifications and Decision 32 recorded that the Companion Mind
+  was their intended consumer; this is it. `sync-shared.js` projects
+  `assets/<id>/personality.json` through a fixed whitelist of
+  DESCRIPTIVE fields into the function. A character brief typed into an
+  Edge Function would be a second copy of somebody's identity, free to
+  drift from the file a person actually edits.
+- **A CHARACTER SAYS HOW A COMPANION TALKS. IT CAN NEVER WIDEN WHAT ONE
+  MAY SAY.** `boundaries` and `presenceLines` are deliberately not
+  projected: the boundaries live in the system instruction, and
+  `presenceLines` are authored-and-unwired on purpose (Decision 44) —
+  turning them on changes what every child hears on arrival and is the
+  product owner's call, not a side effect of this. The character sits at
+  PERSONALITY in the authority list, under CANON.
+- **THE CONTROLLED FIRST CALL IS A FIXTURE, and it is invented on
+  purpose.** "The Dragon and the Forest" does not exist, the card is a
+  fixture, there is no Creator, no memory and no Stars. The forest is
+  where the page says they are, so a correct answer to *"Where are we?"*
+  is drawn from the context rather than invented — which is what the
+  call actually tests.
+- **TWO EXISTING CHECKS ENCODED THE PRE-STEP-3 ARCHITECTURE AND WERE
+  TURNED ROUND WITH REASONS WRITTEN IN PLACE.** `K2` (mind) and `N1.2`
+  (enable) both sliced the source between `if (policy.mind) {` and a
+  `let raw;` below it and asserted `makeProvider` was not in between.
+  Step 3A hoists that declaration AND deliberately reverses the
+  property. **What they protected is kept and is now MEASURED rather
+  than grepped**: nobody listed → zero provider calls; one listed →
+  exactly one attempted. A source slice could not have told those apart.
+- **AND THE FIRST DRAFT OF THAT MEASUREMENT PROVED NOTHING, TWICE.**
+  `>= 0` is true of every number there is. And with no key
+  `openAIProvider` returns `not-configured` BEFORE it fetches, so "0
+  calls" read like a gate that does not work when it was a provider
+  refusing early — the same shape of trap as a `null` session answering
+  401 and looking like a boundary holding.
+- **NOTHING ELSE MOVED.** No tools, no function calling, no model→database
+  path, no Story mutation, no automatic memory, no transcript. The model
+  still proposes a memory and the Bond validator still decides. Both
+  production gates ship closed and listing a Companion does not open one.
+- **DISCLOSED, AND IT IS THE HONEST LIMIT OF THIS SESSION: no model was
+  ever called.** This environment's network policy refuses
+  `api.openai.com` and there is no key here, so §5's model inspection,
+  §6's real first call and §42–44's real journeys are the product
+  owner's to run. What is proved here is the routing, the gating, the
+  fallback, the character and every boundary — **never the model's own
+  words.** `supabase/DEPLOY_step3a_leo.md` is the runbook that closes it.
+- **THE ETHER IS DELIBERATELY NOT INCLUDED.** §10 and §43 ask for the
+  same model there and `js/travellerTalk.js` makes no server call at
+  all, so it would mean a NEW authenticated-but-cardless path into a
+  metered function with its own rate limit, its own public-context
+  construction and its own verification. Building a second unverifiable
+  path in a session that cannot reach the model doubles the risk with
+  nothing able to check it. **A stated limitation, not a defect.**
+- `supabase/functions/companion-chat/index.ts` ·
+  `tools/edge-auth-test/sync-shared.js` ·
+  `supabase/DEPLOY_step3a_leo.md` ·
+  `tools/companion-chat-test/run-companion-chat-tests.js`
+
 ## Roadmap
 
 1. Theme Designer Polish

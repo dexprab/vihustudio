@@ -247,6 +247,80 @@ const BOND_BLOCK = [
 const BOND_BLOCK_RE = new RegExp(BOND_BEGIN.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') +
   '[\\s\\S]*?' + BOND_END.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'm');
 
+// ---------------------------------------------------------------
+// AND THE COMPANION CHARACTERS (Step 3A)
+//
+// A model needs to know WHO it is being, and Decision 44 already wrote
+// that down — four specifications, authored from each Companion's own
+// artwork, species and registry entry. Until now they were descriptive
+// only (Decision 32): read by nobody, because the Studio's four runtime
+// keys are deliberately absent from them and the deterministic Mind
+// carries its voices as a table of its own.
+//
+// The Mind is the intended consumer Decision 32 named, and this is it.
+//
+// GENERATED, NEVER HAND-COPIED. A character brief typed into the Edge
+// Function would be a second copy of somebody's identity, free to drift
+// from the file a person actually edits — the exact failure Decision 30
+// records for the auth gate. The projection is mechanical: a fixed
+// whitelist of DESCRIPTIVE fields, in a fixed order.
+//
+// WHAT IT DELIBERATELY LEAVES OUT:
+//   presenceLines  — authored and unwired on purpose (Decision 44);
+//                    turning them on changes what every child hears on
+//                    arrival and is the product owner's call, not a
+//                    side effect of this.
+//   boundaries     — the system instruction owns those, and a
+//                    personality file must never be able to widen them.
+//   voiceDirection — ElevenLabs' business, not the model's.
+//   evidence, runtimeKeysDeliberatelyAbsent, containsNo — bookkeeping.
+const CHAR_FIELDS = ['identity', 'temperament', 'energy', 'curiosity', 'warmth',
+  'humour', 'conversationalStyle', 'sentenceStyle', 'vocabulary',
+  'responseToUncertainty', 'responseToDisagreement', 'silenceBehaviour',
+  'creativeBehaviour'];
+
+function characterOf(id) {
+  const file = path.join(ROOT, 'assets', id, 'personality.json');
+  if (!fs.existsSync(file)) return null;
+  let p = null;
+  try { p = JSON.parse(fs.readFileSync(file, 'utf8')); } catch (e) { return null; }
+  const out = { name: p.name, species: p.species };
+  if (Array.isArray(p.traits)) out.traits = p.traits.slice(0, 8);
+  CHAR_FIELDS.forEach(function (k) {
+    if (typeof p[k] === 'string' && p[k].trim()) out[k] = p[k].trim();
+  });
+  return out;
+}
+
+const CHAR_IDS = ['leafy', 'leosaurus', 'quill', 'nimbus'];
+const CHARACTERS = {};
+CHAR_IDS.forEach(function (id) {
+  const c = characterOf(id);
+  if (c) CHARACTERS[id] = c;
+});
+
+const CHAR_BEGIN = '// ===== BEGIN GENERATED companionCharacters — do not edit below this line =====';
+const CHAR_END   = '// ===== END GENERATED companionCharacters =====';
+const CHAR_BLOCK = [
+  CHAR_BEGIN,
+  '// Generated from assets/<id>/personality.json — Decision 44\'s own',
+  '// specifications, projected through a fixed whitelist of descriptive',
+  '// fields. Regenerate with:',
+  '//   node tools/edge-auth-test/sync-shared.js',
+  '//',
+  '// A character says HOW a Companion talks. It can never widen what one',
+  '// is allowed to say: the boundaries live in the system instruction and',
+  '// are not projected from here.',
+  'const COMPANION_CHARACTERS = ' + JSON.stringify(CHARACTERS, null, 2) + ';',
+  CHAR_END,
+].join('\n');
+const CHAR_BLOCK_RE = new RegExp(CHAR_BEGIN.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') +
+  '[\\s\\S]*?' + CHAR_END.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'm');
+function withCharacters(src) {
+  if (!CHAR_BLOCK_RE.test(src)) throw new Error('no companionCharacters marker block to replace');
+  return src.replace(CHAR_BLOCK_RE, CHAR_BLOCK);
+}
+
 function withBond(src) {
   if (!BOND_BLOCK_RE.test(src)) throw new Error('no bondValidator marker block to replace');
   return src.replace(BOND_BLOCK_RE, BOND_BLOCK);
@@ -270,7 +344,9 @@ FUNCTIONS.forEach((name) => {
   let after;
   try {
     after = inlined(before);
-    if (GATE_FUNCTIONS.indexOf(name) !== -1) after = withMind(withBond(withRank(withGate(after))));
+    if (GATE_FUNCTIONS.indexOf(name) !== -1) {
+      after = withCharacters(withMind(withBond(withRank(withGate(after)))));
+    }
   } catch (e) { console.log('  ERROR   ' + rel + ' — ' + e.message); drifted++; return; }
 
   if (after === before) { console.log('  ok      ' + rel); return; }
