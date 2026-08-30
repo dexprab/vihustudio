@@ -894,7 +894,19 @@ async function call(req, over, providerFetch) {
   // Comment-stripped: this file's prose says "nothing here persists
   // it" in several places, and matching that would be matching the
   // promise rather than checking the code.
-  const fnOwn = src.slice(src.indexOf('// ===== END GENERATED memoryRank'))
+  // ---- AND THE CANON IS NOT CODE EITHER ---------------------------
+  //
+  // Step 3B generates assets/canon/vihuplanet.canon.json into this file,
+  // and one of its truths reads "...meaningful experiences, CONVERSATIONS
+  // and creations shared with its Creator" — English, in a worldview
+  // document, matching a scan for a table name. Sixteenth time this
+  // repository has been caught by a word matching inside its own
+  // vocabulary, and the first where the vocabulary is product content
+  // rather than a comment. Comments were already stripped for exactly
+  // this reason; the canon block is stripped for the same one.
+  const withoutCanon = src.replace(
+    /\/\/ ===== BEGIN GENERATED vihuplanetCanon[\s\S]*?\/\/ ===== END GENERATED vihuplanetCanon =====/, '');
+  const fnOwn = withoutCanon.slice(withoutCanon.indexOf('// ===== END GENERATED memoryRank'))
     .split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
   ck(!/\bremember\s*\(|conversation_history|conversations/i.test(fnOwn),
      'X12b and the function has nowhere to put one',

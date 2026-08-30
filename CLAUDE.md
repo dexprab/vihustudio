@@ -5646,12 +5646,109 @@ untouched.
   shipped. A shorter format is a real transfer saving AND a real change
   to how a Companion sounds, and no environment here can hear either —
   so it is offered to be judged by ears rather than chosen by argument.
-- `supabase/functions/companion-chat/index.ts` ·
+- **A COMPANION WITH A REAL MIND WAS NEVER ASKED, AND WHEN IT WAS, IT WAS
+  HANDED A STUB** (Step 3B). Reported by the product owner: *"what is
+  2 + 2?"* and *"what is VihuPlanet?"* both came back *"I don't know,
+  I'd be making it up."* Two independent causes, and neither was in the
+  routing Step 3A fixed.
+- **THE QUESTION NEVER LEFT THE BROWSER.** `unknown` is in
+  `js/companionMind.js`'s `LOCAL_INTENTS`, so a question nobody could
+  answer was answered HERE — which is right for a Companion with no
+  model (Sprint 1N.3: an unknown question must not disappear because the
+  network did) and is exactly wrong for one with a real Mind. `unknown`
+  and `outside-world` are now `MODEL_ROUTED`: their local answer becomes
+  the FALLBACK, and only when a model is actually there to take it.
+- **NOTHING ELSE MOVED, AND THAT IS THE SECURITY HALF.** Stars, privacy,
+  secrecy, injection, work-judgement and the emotional boundary are
+  refusals that must never depend on a round trip — **a boundary that
+  needs the network to hold is not a boundary.** Identity, naming and
+  what a child told their own Companion stay local because the CARD
+  proves them and the server cannot. `creative-suggestion` stays local
+  too: Decision 29 puts it permanently out of scope, and widening it is
+  a canon change rather than a routing one.
+- **THE BROWSER ASKS WHICH COMPANIONS HAVE ONE, once per session**, from
+  the GET probe that has reported `modelCompanions` since Step 3A — ids
+  only, no key, no organisation. Fired when the surface OPENS, so it
+  costs a child nothing; a failed probe is **not remembered**, because
+  caching one would cost the whole session for one blink of the network
+  (Decision 49's own lesson). **Unreadable means no**: the Companion is
+  exactly what it was before this sprint.
+- **AND THE MODEL WAS BEING HANDED `SYNTHETIC_CANON`** — four sections
+  whose `canonVersion` is literally `'synthetic-1'`, written to exercise
+  the privacy gate. So even once the model WAS asked, it had been told
+  nothing about the Ether, the Studio, a Magic Card or the Garden. The
+  live path now carries `assets/canon/vihuplanet.canon.json`, the same
+  file the browser's own context builder consumes, generated in by
+  `sync-shared.js` exactly as the auth gate, the privacy gate, the
+  ranking and the characters already are. **One canon, not two.**
+- **NOTHING WAS INVENTED, AND EVERY SECTION SAYS WHERE IT CAME FROM.**
+  The canon already established VihuPlanet, the Ether, the Creator, the
+  Companion, Stories and the Traveller. Four concepts the brief named
+  were missing and are added from CLAUDE.md by name — the Hall of
+  Creation (Decisions 10, 22, 23), the Magic Card (8, 11, 16, 48), the
+  Garden (27) and Cheer (20). **What is NOT settled is recorded rather
+  than filled in**: where the Ether came from is now an open question,
+  because nothing in this repository establishes an origin for it.
+- **THE STORY RITES ARE DELIBERATELY ABSENT.** Decision 22 keeps them
+  off every screen — no level, no rite, no progress — so a Companion
+  that could name one would put on screen the very thing that decision
+  removes. The suite fails on the word.
+- **A COUNT COPIED INTO A TEST GOES STALE SILENTLY.**
+  `companion-context`'s A1 asserted `sections.length === 15`, true when
+  written and false the moment the canon grew. It reads the file now:
+  the property worth checking is that the WHOLE canon travels, whatever
+  it currently holds.
+- **AND THE CANON IS NOT CODE.** One of its truths reads *"...meaningful
+  experiences, CONVERSATIONS and creations shared with its Creator"* —
+  English, in a worldview document, matching a scan for a table name.
+  Sixteenth time this repository has been caught by a word matching
+  inside its own vocabulary, and the first where the vocabulary is
+  product content rather than a comment. Step 3B's own "no deterministic
+  2 + 2 rule" check went red on the comment explaining why the rule
+  exists, which is the seventeenth.
+- **NOTICING IS NOT OWNING.** *"Why is the sky blue?"* was answered
+  *"I don't know that yet — you can decide"*: the conversation layer
+  pulled "sky" out of the question, started a thread on it and answered
+  from a thread that held nothing. Its own rule is CONTEXT BEFORE
+  UNCERTAINTY — if the thread holds it, that is the answer — so a
+  subject introduced by the very question being asked, with nothing
+  known about it, is not this layer's and goes on. The thread is still
+  started, so the next turn about it has something to attach to.
+- **MEASURED, NOT ASSERTED.** The live request went from ~1,950 tokens
+  to **5,594** — the canon is 3,820 of them, and no truth is restated in
+  the system instruction, so it travels once. No embeddings, no vector
+  store, no retrieval service: at this size a compact curated context is
+  the smallest thing that works, and the point at which retrieval would
+  become appropriate is when the canon alone passes roughly a third of
+  the request budget.
+- **THE FIXTURES WERE THE THING THAT WAS WRONG, THREE TIMES.** A project
+  row invented from reading the reader produced a null story name and
+  looked exactly like a product bug; the real shape is
+  `{ id, name, cardId, data: <serialize() payload> }` and the whole of
+  it goes in the `data` column. The suites' own rows still used
+  `data.data.slides`, a key Decision 46 already records as one nothing
+  in that table has ever had — so they passed while proving a path no
+  real story takes. `FnServer.projectRow()` is now the one place that
+  shape is built.
+- **THE ETHER IS STILL NOT INCLUDED, and this is the same stated
+  limitation Step 3A recorded.** `js/travellerTalk.js` makes no server
+  call at all, so giving a Traveller a real Mind means a NEW
+  authenticated-but-cardless path into a metered function, with its own
+  rate limit, its own public-context construction and its own
+  verification — and Decision 36 requires a card precisely so two
+  children's pasts can never be blended. **Knowledge parity holds by
+  construction and is currently vacuous**: both surfaces run the same
+  `CompanionMind` over the same canon file, so a definition cannot
+  differ; what differs is that only the Studio has a model to speak it.
+- `assets/canon/vihuplanet.canon.json` · `js/companionMind.js` ·
+  `js/companionChat.js` · `js/companionConversation.js` ·
+  `supabase/functions/companion-chat/index.ts` ·
   `supabase/functions/voice-speak/index.ts` ·
   `tools/edge-auth-test/sync-shared.js` ·
   `supabase/DEPLOY_step3a_leo.md` ·
   `tools/companion-chat-test/run-companion-chat-tests.js` ·
-  `tools/companion-sync-test/run-companion-sync-tests.js`
+  `tools/companion-sync-test/run-companion-sync-tests.js` ·
+  `tools/companion-world-test/run-companion-world-tests.js`
 
 ## Roadmap
 

@@ -171,5 +171,38 @@ async function start(port, env) {
     stop: () => new Promise((r) => server.close(r)) };
 }
 
-module.exports = { start, USER_TOKEN, DB, slides, reset,
+/**
+ * A project row shaped the way CreatorProjectStore actually writes one.
+ *
+ * THE FIXTURES HERE WERE WRONG, and in the direction that hides a bug.
+ * They built `data: { data: { slides: [...] } }` — but
+ * ProjectManager.serialize() writes `pages`, and Decision 46 already
+ * records `slides` as a key nothing in this table has ever had. The
+ * function tolerates it through a fallback, so every suite passed while
+ * proving a path no real story takes. They also carried no
+ * `project.bookTitle`, so the story's own NAME was never exercised at
+ * all — which is exactly how Step 3B's name lookup went unchecked.
+ *
+ * One helper, so nobody hand-builds it a fifth time.
+ */
+function projectRow(id, opts) {
+  const o = opts || {};
+  return {
+    id: id,
+    owner_id: o.ownerId || 'user-po',
+    // The whole store record goes in the `data` column…
+    data: {
+      id: id,
+      name: o.name || 'The Tiny Forest',
+      cardId: o.cardId || 'card_leo',
+      // …and serialize()'s payload sits inside it under `data`.
+      data: {
+        project: { bookTitle: o.name || 'The Tiny Forest' },
+        pages: o.pages || slides(),
+      },
+    },
+  };
+}
+
+module.exports = { start, USER_TOKEN, DB, slides, projectRow, reset,
   outbound: () => outbound.slice(), writes: () => dbWrites };

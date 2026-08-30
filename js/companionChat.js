@@ -319,6 +319,12 @@ const CompanionChat = (function () {
     } catch (e) { return null; }
   }
 
+  /** The Mind, or nothing. One place to ask, so no caller re-derives it. */
+  function mindOf() {
+    try { return (typeof CompanionMind !== 'undefined') ? CompanionMind : {}; }
+    catch (e) { return {}; }
+  }
+
   function _answerHere(said) {
     let mind = null;
     try { mind = (typeof CompanionMind !== 'undefined') ? CompanionMind : null; } catch (e) {}
@@ -371,6 +377,64 @@ const CompanionChat = (function () {
     }
   }
 
+  // ---------------------------------------------------------------
+  // DOES THIS COMPANION HAVE A REAL MIND? — Step 3B.
+  //
+  // The browser has to know, because it decides whether an unknown
+  // question is answered here or carried to the model. It asks the
+  // function's own GET probe, which has reported `modelCompanions` since
+  // Step 3A: ids only, no key, no organisation, nothing an attacker
+  // learns anything from — the same rule every other field on that probe
+  // follows.
+  //
+  // ONCE PER SESSION, and it costs a child nothing: it is fired when the
+  // surface OPENS, so by the time anybody has finished typing it is
+  // already here. A model-routed question waits for it because that
+  // question is making a round trip anyway; every local answer — every
+  // boundary, every refusal — is unchanged and still instant.
+  //
+  // UNREADABLE MEANS NO. A probe that fails, times out or answers
+  // something unexpected leaves the Companion exactly as it was before
+  // this sprint: honest local uncertainty, with no network needed. The
+  // one place this codebase fails closed is a privacy gate; this is not
+  // one, and failing closed here would mean a child whose network
+  // blinked losing the deterministic answer as well.
+  const PROBE_TIMEOUT_MS = 5000;
+  let _probe = null;
+
+  function _mindProbe() {
+    if (_probe) return _probe;
+    _probe = Promise.all([_config(), _token()]).then(function (both) {
+      const cfg = both[0], token = both[1];
+      if (!cfg || !cfg.url || !token) return null;
+      return _fetchBounded(cfg.url.replace(/\/+$/, '') + '/functions/v1/' + FN, {
+        headers: { Authorization: 'Bearer ' + token, apikey: cfg.anonKey },
+      }, PROBE_TIMEOUT_MS)
+        .then(function (r) { return r.json().catch(function () { return null; }); })
+        .then(function (b) {
+          return (b && b.ok && Array.isArray(b.modelCompanions)) ? b.modelCompanions : null;
+        })
+        .catch(function () { return null; });
+    }).catch(function () { return null; })
+      .then(function (list) {
+        // A FAILURE IS NOT REMEMBERED. Caching a null would cost the
+        // whole session for one blink of the network — the same lesson
+        // Decision 49 records for the config cache.
+        if (list === null) _probe = null;
+        return list;
+      });
+    return _probe;
+  }
+
+  /** Has THIS Companion got one? Never "is a model configured". */
+  function _hasRealMind() {
+    const cid = _companionId();
+    if (!cid) return Promise.resolve(false);
+    return _mindProbe().then(function (list) {
+      return !!list && list.indexOf(String(cid).toLowerCase()) !== -1;
+    });
+  }
+
   function ask(text) {
     const said = String(text || '').trim().slice(0, MAX_CHARS);
     if (!said) return Promise.resolve({ ok: false, reason: 'empty' });
@@ -396,13 +460,32 @@ const CompanionChat = (function () {
     // None of these answers reads a record, so there is nothing of
     // anybody else's to reach.
     const here = _answerHere(said);
-    if (here && here.local) {
+    const answerLocally = function () {
       if (here.reply) _turns.push({ speaker: 'companion', text: here.reply });
       _turns = _turns.slice(-MAX_TURNS);
       _observe(said, here.reply, { intent: here.intent, certainty: here.certainty });
-      return Promise.resolve({ ok: true, reply: here.reply, speak: here.speak, where: 'local' });
+      return { ok: true, reply: here.reply, speak: here.speak, where: 'local' };
+    };
+    if (here && here.local) {
+      // A REAL MIND OUTRANKS THE HONEST SHRUG — Step 3B. Two intents
+      // only (js/companionMind.js -> MODEL_ROUTED): a question nobody
+      // could answer, and a question about the world outside. Every
+      // other local answer is a boundary or a card fact and is returned
+      // here exactly as it always was.
+      const routed = (mindOf().MODEL_ROUTED || []).indexOf(here.intent) !== -1;
+      if (!routed) return Promise.resolve(answerLocally());
+      return _hasRealMind().then(function (yes) {
+        if (!yes) return answerLocally();
+        return _remote(said, here);
+      }, function () { return answerLocally(); });
     }
 
+    return _remote(said, here);
+  }
+
+  /** The server's turn — it holds the records, and now the world too. */
+  function _remote(said, here) {
+    const cardId = _cardId();
     return Promise.all([_config(), _token()]).then(function (both) {
       const cfg = both[0], token = both[1];
       if (!cfg || !cfg.url) return { ok: false, reason: 'unavailable' };

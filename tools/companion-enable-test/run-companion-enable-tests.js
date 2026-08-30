@@ -173,9 +173,7 @@ const FOUR = [
         companion_name: name, companion_species: species });
     }
     if (who.storyId) {
-      server.DB.projects.push({ id: who.storyId, owner_id: 'user-po',
-        data: { cardId: who.cardId, name: 'The Tiny Forest',
-                data: { slides: FnServer.slides() } } });
+      server.DB.projects.push(FnServer.projectRow(who.storyId, { cardId: who.cardId }));
     }
     return who;
   }
@@ -228,12 +226,10 @@ const FOUR = [
   }
   fn.DB.cards.push({ id: 'card_probe', owner_id: 'user-po', companion_id: 'leafy',
     companion_name: 'Leafy', companion_species: 'Bloomling' });
-  fn.DB.projects.push({ id: 'proj_probe', owner_id: 'user-po',
-    data: { cardId: 'card_probe', name: 'The Moon Garden', data: { slides: FnServer.slides() } } });
+  fn.DB.projects.push(FnServer.projectRow('proj_probe', { cardId: 'card_probe', name: 'The Moon Garden', pages: FnServer.slides() }));
   fnOff.DB.cards.push({ id: 'card_probe', owner_id: 'user-po', companion_id: 'leafy',
     companion_name: 'Leafy', companion_species: 'Bloomling' });
-  fnOff.DB.projects.push({ id: 'proj_probe', owner_id: 'user-po',
-    data: { cardId: 'card_probe', name: 'The Moon Garden', data: { slides: FnServer.slides() } } });
+  fnOff.DB.projects.push(FnServer.projectRow('proj_probe', { cardId: 'card_probe', name: 'The Moon Garden', pages: FnServer.slides() }));
 
   const ASK = { cardId: 'card_probe', storyId: 'proj_probe', pageId: 0,
     conversation: [{ speaker: 'creator', text: 'What story am I making?' }] };
@@ -295,8 +291,7 @@ const FOUR = [
   fn.reset();
   fn.DB.cards.push({ id: 'card_probe', owner_id: 'user-po', companion_id: 'leafy',
     companion_name: 'Leafy', companion_species: 'Bloomling' });
-  fn.DB.projects.push({ id: 'proj_probe', owner_id: 'user-po',
-    data: { cardId: 'card_probe', name: 'The Moon Garden', data: { slides: FnServer.slides() } } });
+  fn.DB.projects.push(FnServer.projectRow('proj_probe', { cardId: 'card_probe', name: 'The Moon Garden', pages: FnServer.slides() }));
   const CORPUS = ['Who are you?', 'What are you?', 'What story am I making?',
     'How many pages does it have?', 'What page am I on?', 'Do you remember our forest?',
     'What should happen next?', 'I want to add a dragon.', 'Is my drawing good?',

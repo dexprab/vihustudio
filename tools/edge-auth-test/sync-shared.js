@@ -321,6 +321,69 @@ function withCharacters(src) {
   return src.replace(CHAR_BLOCK_RE, CHAR_BLOCK);
 }
 
+// ---------------------------------------------------------------
+// THE WORLD KNOWLEDGE — Step 3B.
+//
+// assets/canon/vihuplanet.canon.json is the ONE authoritative statement
+// of what VihuPlanet is (Decision 31), and it is already what the
+// browser's own context builder consumes. Generating it here rather
+// than retyping it means there is one canon and not two: a truth edited
+// in the file reaches the model on the next sync, and a truth that
+// drifts fails --check.
+//
+// A COMPACT PROJECTION, not the whole file. `purpose` and
+// `readingOrder` are notes to the people who maintain the canon;
+// `openQuestions` is a record of what has NOT been settled and is
+// deliberately withheld, because a list of unanswered questions handed
+// to a model is an invitation to answer them. What travels is what a
+// Companion is meant to believe: the version, and each section's key,
+// title and truths.
+// NAMED `WORLD`, NOT `CANON`. This file already uses "canon" for the
+// CANONICAL COPY of a shared module — CANON, GATE_CANON, RANK_CANON,
+// MIND_CANON all mean "the original this block is generated from". A
+// second meaning of the same word in the same file is how two things
+// end up looking like one; the interpreter caught it as a redeclaration
+// and the name is clearer for it.
+const WORLD_SRC = path.join(ROOT, 'assets', 'canon', 'vihuplanet.canon.json');
+const WORLD_RAW = JSON.parse(fs.readFileSync(WORLD_SRC, 'utf8'));
+const WORLD = {
+  canonVersion: WORLD_RAW.canonVersion,
+  title: WORLD_RAW.title,
+  sections: (WORLD_RAW.sections || []).map(function (s) {
+    const out = { key: s.key, title: s.title };
+    if (Array.isArray(s.truths) && s.truths.length) out.truths = s.truths;
+    // The behaviour section carries its rules as `may`/`mayNot` rather
+    // than truths, and they are the whole of what a Companion may do —
+    // dropping them because of a field name would have quietly removed
+    // the line this canon exists to draw.
+    if (Array.isArray(s.may)) out.may = s.may;
+    if (Array.isArray(s.mayNot)) out.mayNot = s.mayNot;
+    if (s.opinionTest) out.opinionTest = s.opinionTest;
+    return out;
+  }),
+};
+
+const WORLD_BEGIN = '// ===== BEGIN GENERATED vihuplanetCanon — do not edit below this line =====';
+const WORLD_END   = '// ===== END GENERATED vihuplanetCanon =====';
+const WORLD_BLOCK = [
+  WORLD_BEGIN,
+  '// Generated from assets/canon/vihuplanet.canon.json — Decision 31.',
+  '// Regenerate with:  node tools/edge-auth-test/sync-shared.js',
+  '//',
+  '// This is WORLDVIEW. It holds no Creator, no card, no Story, no',
+  '// memory and no identifier: it is product content, committed,',
+  '// reviewed and identical for every child, which is exactly why the',
+  '// privacy gate sweeps it for values and exempts its keys.',
+  'const VIHUPLANET_CANON = ' + JSON.stringify(WORLD, null, 2) + ';',
+  WORLD_END,
+].join('\n');
+const WORLD_BLOCK_RE = new RegExp(WORLD_BEGIN.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') +
+  '[\\s\\S]*?' + WORLD_END.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'm');
+function withCanon(src) {
+  if (!WORLD_BLOCK_RE.test(src)) return src;   // only companion-chat carries it
+  return src.replace(WORLD_BLOCK_RE, WORLD_BLOCK);
+}
+
 function withBond(src) {
   if (!BOND_BLOCK_RE.test(src)) throw new Error('no bondValidator marker block to replace');
   return src.replace(BOND_BLOCK_RE, BOND_BLOCK);
@@ -345,7 +408,7 @@ FUNCTIONS.forEach((name) => {
   try {
     after = inlined(before);
     if (GATE_FUNCTIONS.indexOf(name) !== -1) {
-      after = withCharacters(withMind(withBond(withRank(withGate(after)))));
+      after = withCanon(withCharacters(withMind(withBond(withRank(withGate(after))))));
     }
   } catch (e) { console.log('  ERROR   ' + rel + ' — ' + e.message); drifted++; return; }
 

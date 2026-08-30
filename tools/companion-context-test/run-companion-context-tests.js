@@ -62,8 +62,18 @@ const creator = build({
 });
 const A = creator.approved || {};
 
-ck(!!A.canon && Array.isArray(A.canon.sections) && A.canon.sections.length === 15,
-   'A1  Creator mode includes the Canon', (A.canon && A.canon.sections || []).length + ' sections');
+// READ FROM THE FILE, NEVER RESTATED. This asserted `=== 15`, which was
+// true when it was written and became false the moment Step 3B added
+// the Studio, the Magic Card, the Garden and Cheer to the canon. A count
+// copied into a test is a second copy of a fact, and it goes stale
+// silently — the property worth checking is that the WHOLE canon is
+// carried, whatever it currently holds.
+const CANON_FILE = JSON.parse(require('fs').readFileSync(
+  require('path').join(ROOT, 'assets', 'canon', 'vihuplanet.canon.json'), 'utf8'));
+ck(!!A.canon && Array.isArray(A.canon.sections) &&
+   A.canon.sections.length === CANON_FILE.sections.length,
+   'A1  Creator mode includes the Canon — all of it',
+   (A.canon && A.canon.sections || []).length + ' of ' + CANON_FILE.sections.length + ' sections');
 ck(A.canon && A.canon.sections[0].key === 'vihuplanet',
    'A1b and it is the ONE canon, not a copy of it', 'consumed from assets/canon/, never reimplemented');
 

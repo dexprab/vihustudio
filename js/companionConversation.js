@@ -726,6 +726,7 @@ const CompanionConversation = (function () {
     // unknown if nobody has said. If the thread holds it, that is the
     // answer, and it came from the child rather than from anywhere this
     // Companion made up.
+    let _fresh = false;
     if (act === 'question') {
       // A QUESTION THAT NAMES SOMETHING NEW STARTS THE THREAD. Sprint
       // 1N.5: in the Ether a conversation usually BEGINS with a
@@ -733,10 +734,26 @@ const CompanionConversation = (function () {
       // a Traveller could never start one.
       if (entities.object && (!_s.thread || _s.thread.subject !== entities.object)) {
         _startThread(entities.object);
+        // ...AND NOTICING IS NOT OWNING — Step 3B.
+        //
+        // The subject was pulled out of the very question being asked,
+        // so the thread holds nothing about it yet. Answering from here
+        // means saying "I don't know that yet — you can decide" about
+        // something the child never said they were making, which is how
+        // "why is the sky blue?" came back as a creative shrug.
+        //
+        // This layer's own rule is CONTEXT BEFORE UNCERTAINTY: if the
+        // thread holds it, that is the answer. When it holds nothing,
+        // there is no context, so the question is not this layer's — it
+        // goes on to the Mind, and from there to a real Mind if the
+        // Companion has one. The thread is still started, so the NEXT
+        // turn about it has something to attach to.
+        _fresh = true;
       }
     }
     if (act === 'question' && _s.thread) {
       const th = _s.thread;
+      if (_fresh && !th.home && !th.colour && !th.action && !th.size) return null;
       const aboutIt = PRONOUN_ANY.test(t) || t.toLowerCase().indexOf(th.subject) !== -1;
       if (aboutIt) {
         // WHAT SHOULD IT DO IS ALWAYS THE CREATOR'S, and it is asked

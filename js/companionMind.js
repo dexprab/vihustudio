@@ -506,6 +506,33 @@ const CompanionMind = (function () {
                          // buy a failure mode and nothing else.
                          'unknown'];
 
+  // ---------------------------------------------------------------
+  // ...AND THE TWO OF THOSE THAT A REAL MIND OUTRANKS — Step 3B.
+  //
+  // `unknown` and `outside-world` are in LOCAL_INTENTS because a
+  // Companion with no model genuinely cannot do better than an honest
+  // "I don't know" and "I can't go out there" — and Sprint 1N.3's rule
+  // stands: an unknown question must never DISAPPEAR just because the
+  // network did.
+  //
+  // But a Companion that HAS a real Mind can answer "what is 2 + 2?"
+  // and "why is the sky blue?", and answering them with a refusal was
+  // the deterministic layer speaking over something better. So for
+  // these two only, the local answer becomes the FALLBACK rather than
+  // the answer, and only when a model is actually there to take it.
+  //
+  // NOTHING ELSE MOVES, and that is the security half. Stars, privacy,
+  // secrecy, injection, work-judgement and the emotional boundary are
+  // refusals that must never depend on a round trip — a boundary that
+  // needs the network to hold is not a boundary. Identity, naming and
+  // what a child told their own Companion stay local because the CARD
+  // already proves them and the server cannot.
+  //
+  // `creative-suggestion` deliberately stays local too: Decision 29
+  // puts it permanently out of scope, and widening it is a canon change
+  // rather than a routing one.
+  const MODEL_ROUTED = ['unknown', 'outside-world'];
+
   // Every id the taxonomy can produce, including the two that are not
   // patterns. Published so a suite can prove the table is the whole set.
   const INTENT_IDS = (function () {
@@ -1459,6 +1486,7 @@ const CompanionMind = (function () {
     subjectOf: _subject,
     subjectFrom: _subjectFrom,
     LOCAL_INTENTS: LOCAL_INTENTS,
+    MODEL_ROUTED: MODEL_ROUTED,
     NAME_MAX: NAME_MAX,
     NAME_MAX_WORDS: NAME_MAX_WORDS,
     storyFact: storyFact,
