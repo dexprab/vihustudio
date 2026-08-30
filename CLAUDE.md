@@ -5957,6 +5957,149 @@ untouched.
   `tools/companion-sync-test/run-companion-sync-tests.js` ·
   `tools/companion-world-test/run-companion-world-tests.js`
 
+### 52. Look What I Made — a Creation Becomes Something to Show Somebody
+
+Locked in the LOOK WHAT I MADE sprint brief from the product owner:
+*"A child creates something in VihuPlanet and can turn that exact
+creation into something they can show another person."* The entry
+point is never "VihuPlanet" generically — it is always the child's
+own creation, and VihuPlanet is discovered THROUGH it.
+
+- **ONE CREATION SHARE OBJECT, THREE KINDS, AND THE CHILD NEVER
+  PICKS.** `js/creationShare.js` infers moment ("Look what I made"),
+  sequence ("Look what happened") and story ("Read my story") from
+  the pages themselves — more than one content page is a story, one
+  page with several authored marks is a sequence, one making is a
+  moment — and every way a creation leaves VihuPlanet starts from
+  this one contract. The presentation adapts; nothing asks "what type
+  of content is this?".
+- **THE HUB IS ✨ LOOK WHAT I MADE**: the creation first, then
+  exactly four doors — 💌 Share with Parent · 📄 Print Foldable ·
+  🃏 Print Story Card · 🎬 Watch. No email, URL, PDF, QR, scan or
+  printer vocabulary anywhere a child can see; the one exception is
+  "Who should I send it to?", which reuses the Share Ceremony's own
+  established grown-up-address ask word for word rather than
+  inventing a second way to speak to a child about an address.
+- **IT IS THE THIRD STORY ACTION, AND THE CELEBRATION IS UNTOUCHED.**
+  `#lookBtn` stands beside Play My Story and Finish Story, wakes and
+  sleeps on the same `refreshStoryActions` pulse (content alone — a
+  moment needs no name to be shown to somebody; only FINISHING
+  requires one), and is held asleep while a rite runs like its
+  siblings. Decision 12's two equal celebration choices stand exactly
+  as they are — the brief's "one simple action after a creation is
+  complete" lives on the screen the celebration returns to, not as a
+  third button inside it. My Projects cards gain a quiet nested
+  ✨ Look action (the 🗑 Delete pattern), because an older creation
+  can be shown to somebody too.
+- **THE SHARE IS AN OPAQUE TOKEN, NEVER A PROJECT ID** —
+  `creation_shares`, RLS on with NO policies, everything through two
+  SECURITY DEFINER functions (the `story_cheers` / `family_album_links`
+  discipline). **One stable token per creation**: re-sharing refreshes
+  the snapshot behind the SAME token, so a Story Card printed in March
+  still comes alive in June. Resolve returns the swept payload and
+  nothing else — no owner, no card, no project id, no count — and an
+  unknown token answers identically to a malformed one.
+- **WHAT TRAVELS IS CONSTRUCTED, NEVER TRIMMED.** The snapshot is a
+  whitelist — reading-size page images, bounded making frames, a
+  title, a first name, `madeIn` — and the Edge Function's sweep
+  refuses ANY unknown key at any depth, naming the key (Decision 33's
+  deny-by-shape, applied to the share). The one deliberate exception
+  is `ether`: the project id of a creation ALREADY public in the
+  shared feed, which Decision 9 made the public deep link years of
+  builds ago; for an unshared creation it is never set, and a forged
+  one resolves to nothing.
+- **WATCH IS DERIVED, NOT STORED.** The Magic Creation video is
+  ephemeral by design (revoked when the celebration closes) — but
+  `MagicReveal.revealStages()` is a pure function of the final saved
+  page, so the MAKING travels as a bounded set of frames rendered at
+  share time and replays anywhere the snapshot goes: the hub's 🎬,
+  the parent's WATCH button, the scanned card. child → imagination →
+  making → creation, with no video file ever uploaded. The exported
+  mp4 itself is not shared; a parent who wants the file gets it the
+  way the child does.
+- **THIS AMENDS DECISION 14, and says so.** That decision drew a hard
+  line — the parent email is STORAGE, not a channel, and the moment a
+  second kind of message is sent to it, it becomes a mailing list.
+  The line was about VIHUPLANET writing to a parent uninvited. A
+  "look what I made" letter is the CHILD writing, one press, one
+  creation, one letter — the child is the sender and the product is
+  the envelope. Everything else in Decision 14 holds unchanged: an
+  address on file is never asked for again (the send is silent), a
+  first-given address is kept on the card only where none exists
+  (`parent_email=is.null` — a fill, never an overwrite), and nothing
+  is ever revealed to the browser.
+- **THE LETTER CONTAINS THE CREATION, NOT MARKETING.** Subject
+  "«name» made something!", one cover image (served by the function's
+  own token-gated `?cover=` route, because mail clients strip `data:`
+  images), WATCH and SEE links to the exact creation, WhatsApp
+  (wa.me) and Instagram share routes, both halves in the same order —
+  the Decision 42 learnings applied: no masthead, no image grid, no
+  pill CTA. **Disclosed: Instagram publishes no web prefill**, so its
+  button opens the landing's native share sheet, which includes
+  Instagram on a phone.
+- **THE FOLDABLE IS PHYSICS, AND THE SUITE FOLDS THE PAPER.** One
+  landscape sheet, eight panels, one slit — which turns the grid into
+  a single CYCLE of eight panels, and reading order follows the
+  cycle with the top row printed head-down. The composer's imposition
+  table is verified against an independent adjacency model (edges
+  minus the slit → one 8-cycle; every consecutive reading pair
+  physically joined), proved by swapping two panels and watching it
+  go red. A story's foldable holds its first six pages and SAYS so
+  when there are more; a moment's foldable holds the making, finished
+  creation last — a one-drawing book of blank pages would be a book
+  about nothing.
+- **THE QR CODE IS NOT THE PRODUCT.** The card back says "Come see it
+  in VihuPlanet" and the square of stars simply works — the child's
+  words are "my card comes alive", and the hub never says QR, scan,
+  code or link. Encoder: vendored bwip-js (`js/vendor/`, MIT, ~1 MB,
+  loaded lazily only when a card composes). The Data Matrix lab's
+  "do not integrate" verdict stands untouched — it was about
+  camouflaging a symbol into the Magic Card's art, and a plain
+  printed QR on a white quiet zone is the opposite case (the quiet
+  zone itself is that lab's first measured rule). The suite scans the
+  composed card with the lab's own vendored zxing decoder and
+  requires the share URL back — "scan works without knowing the
+  project" is measured, not asserted. A card whose door cannot be
+  minted is never printed: the mint comes before the preview.
+- **PREVIEW BEFORE PRINT, BY CONSTRUCTION.** Foldable and card render
+  the exact bitmaps that will print, show them, and only then offer
+  the print button; the print sheet reuses the Magic Card's proven
+  mechanism (`img.decode()` before `window.print()`, the blanket
+  `@media print` isolation rule extended to exempt both sheet kinds,
+  and a per-print injected `@page` orientation so the foldable prints
+  landscape without re-orienting the Magic Card's portrait printing).
+- **DEEP ENTRY NEVER LANDS ON GENERIC HOME.** `look.html` is a
+  standalone, noindex, adult-facing landing (the `family-photos.html`
+  precedent — Decision 10's one entrance is for the product's own
+  journeys, and this is a window onto one creation): "Look what Sam
+  made", the making, the pages, and VihuPlanet as a doorway at the
+  end. `?watch=1` plays the making first; an unknown token is one
+  gentle sentence, never an error code. Decision 23 is untouched —
+  the landing is its own document and carries no Studio state.
+- **RATE-LIMITED AND GATED LIKE EVERYTHING ELSE**: the
+  `creation-share` bucket (20/hr) joined the shared `LIMITS` canon in
+  the same commit as the endpoint, the caller is derived from the
+  verified session, a client-named card is a selector (somebody
+  else's is a 403), and the payload is capped in count and bytes so
+  the share store cannot become anybody's free hosting.
+- **Disclosed:** narration audio does not travel with a share in v1;
+  the environment could not reach the live Supabase project, so the
+  migration and deploy are the runbook's steps
+  (`supabase/DEPLOY_creation_share.md` — note the function deploys
+  with `--no-verify-jwt`, because the letter's cover image is fetched
+  by `<img>` tags that cannot send headers; every POST is still
+  session-gated inside the file); and the printed results were
+  verified as composed bitmaps and print-sheet mechanics, not on a
+  physical printer.
+- Architecture and detail: `docs/LOOK_WHAT_I_MADE.md`. Suite:
+  `tools/look-share-test/` (82, plus the fold-model and sweep checks
+  proved by reverting).
+- `js/creationShare.js` · `js/creationShareClient.js` ·
+  `js/lookWhatIMade.js` · `js/foldableComposer.js` ·
+  `js/storyCardComposer.js` · `look.html` ·
+  `supabase/migrations_creation_share.sql` ·
+  `supabase/functions/creation-share/index.ts`
+
 ## Roadmap
 
 1. Theme Designer Polish

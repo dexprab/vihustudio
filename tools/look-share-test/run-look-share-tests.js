@@ -1,0 +1,679 @@
+/*
+ * LOOK WHAT I MADE — the sprint's end-to-end suite.
+ *
+ * Two halves, one file:
+ *
+ *   PART 1 (no browser) drives the DEPLOYED creation-share Edge
+ *   Function artifact — supabase/functions/creation-share/index.ts,
+ *   imported directly with injected env/fetch, the companion-chat
+ *   idiom — through real Request objects: authorization, the payload
+ *   sweep, minting, the letter, recipients, the cover image, rate
+ *   limiting, and the privacy contract (nothing private in any
+ *   answer or any letter).
+ *
+ *   PART 2 (Playwright) drives the real Studio: the third story
+ *   action waking, the hub's four doors, the child-language sweep,
+ *   preview-before-print for the foldable AND the card, the QR on
+ *   the printed card DECODED BY A REAL DECODER (the vendored zxing —
+ *   the test scans the card the way a phone would, so "scan works
+ *   without knowing the project" is measured, not asserted), the
+ *   fold model re-derived independently of the composer's table, and
+ *   look.html resolving a token into the exact creation — read,
+ *   watch, and refused-unknown — with the landing page's whole
+ *   network activity measured.
+ *
+ * Run:
+ *   NODE_PATH=/opt/node22/lib/node_modules node tools/look-share-test/run-look-share-tests.js
+ * (it starts its own static server on an unshared port)
+ */
+'use strict';
+
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+const cp = require('child_process');
+
+const ROOT = path.join(__dirname, '..', '..');
+const SHOTS = path.join(__dirname, 'shots');
+const PORT = 8797;
+const BASE = 'http://127.0.0.1:' + PORT;
+
+let passed = 0, failed = 0;
+function ck(cond, name, detail) {
+  if (cond) { passed++; console.log('  ok      ' + name); }
+  else { failed++; console.log('  FAILED  ' + name + (detail ? '  — ' + detail : '')); }
+}
+
+/* A tiny real JPEG (1×1, white) so image fields are honest data URIs
+ * that also survive atob() in the cover route. */
+const JPEG_1PX = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AVN//2Q==';
+const PNG_1PX = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+
+function goodPayload(over) {
+  return Object.assign({
+    v: 1,
+    type: 'moment',
+    title: 'The Moon Dragon',
+    creatorName: 'Sam',
+    pages: [{ image: JPEG_1PX }],
+    watch: [{ image: JPEG_1PX, holdMs: 900 }],
+    madeIn: 'vihuplanet',
+  }, over || {});
+}
+
+(async () => {
+  fs.mkdirSync(SHOTS, { recursive: true });
+
+  /* ============================================================
+   * PART 1 — the deployed Edge Function artifact
+   * ============================================================ */
+  console.log('\nPART 1 — creation-share, the deployed artifact\n');
+
+  globalThis.Deno = { env: { get: () => '' }, serve: () => {} };
+  const FN = path.join(ROOT, 'supabase', 'functions', 'creation-share', 'index.ts');
+  const tmp = path.join(os.tmpdir(), 'vihu-creation-share-' + process.pid + '.mjs');
+  fs.copyFileSync(FN, tmp);
+  const M = await import('file://' + tmp);
+
+  const USER_TOKEN = 'look.suite.session.token';
+  const OTHER_TOKEN = 'look.suite.other.token';
+  const ENV = {
+    SUPABASE_URL: 'http://supa.local',
+    SUPABASE_ANON_KEY: 'anon.key.value',
+    SUPABASE_SERVICE_ROLE_KEY: 'service.key.value',
+    RESEND_API_KEY: 're_test_key',
+    SKY_FROM_EMAIL: 'Lumo from VihuPlanet <lumo@vihuplanet.com>',
+    SKY_BASE_URL: 'https://vihuplanet.com',
+  };
+  function envFrom(over) {
+    const table = Object.assign({}, ENV, over || {});
+    return (n) => table[n] || '';
+  }
+
+  const CARDS = {
+    'card-1': { id: 'card-1', owner_id: 'user-1', nickname: 'Sam', parent_email: 'mum@example.com' },
+    'card-2': { id: 'card-2', owner_id: 'user-2', nickname: 'Other', parent_email: 'their@example.com' },
+    'card-3': { id: 'card-3', owner_id: 'user-1', nickname: 'Sam', parent_email: null },
+  };
+
+  const netLog = { mints: [], patches: [], letters: [], limitHits: [] };
+  function resetNet() { netLog.mints.length = 0; netLog.patches.length = 0; netLog.letters.length = 0; netLog.limitHits.length = 0; }
+
+  const fetchStub = async (url, opts) => {
+    const u = String(url);
+    const o = opts || {};
+    const body = o.body ? JSON.parse(o.body) : null;
+    const jr = (data, status) => new Response(JSON.stringify(data), {
+      status: status || 200, headers: { 'Content-Type': 'application/json' } });
+
+    if (u.indexOf('/auth/v1/user') !== -1) {
+      const auth = (o.headers && (o.headers.Authorization || o.headers.authorization)) || '';
+      if (auth === 'Bearer ' + USER_TOKEN) return jr({ id: 'user-1' });
+      if (auth === 'Bearer ' + OTHER_TOKEN) return jr({ id: 'user-2' });
+      return jr({}, 401);
+    }
+    if (u.indexOf('/rest/v1/rpc/edge_rate_limit_hit') !== -1) {
+      netLog.limitHits.push(body);
+      if (body && body.p_limit === 0) return jr({ allowed: false, remaining: 0, retry_after: 120 });
+      return jr({ allowed: true, remaining: 5, retry_after: 0 });
+    }
+    if (u.indexOf('/rest/v1/rpc/creation_share_mint') !== -1) {
+      netLog.mints.push(body);
+      return jr('tokabc123def456ghi789jkl');
+    }
+    if (u.indexOf('/rest/v1/rpc/creation_share_resolve') !== -1) {
+      if (body && body.p_token === 'tokabc123def456ghi789jkl') {
+        return jr({ ok: true, creation: goodPayload() });
+      }
+      return jr({ ok: false, reason: 'unknown' });
+    }
+    if (u.indexOf('/rest/v1/magic_card_identities') !== -1) {
+      if ((o.method || 'GET') === 'PATCH') { netLog.patches.push({ url: u, body: body }); return new Response('', { status: 204 }); }
+      const m = /id=eq\.([^&]+)/.exec(u);
+      const row = m ? CARDS[decodeURIComponent(m[1])] : null;
+      return jr(row ? [row] : []);
+    }
+    if (u.indexOf('/rest/v1/magic_card_recalls') !== -1) return jr([]);
+    if (u.indexOf('/rest/v1/creation_shares') !== -1) return jr([]);
+    if (u.indexOf('api.resend.com/emails') !== -1) { netLog.letters.push(body); return jr({ id: 'em_1' }); }
+    return jr({ error: 'unexpected ' + u }, 500);
+  };
+
+  function handlerWith(envOver) {
+    return M.makeHandler({ env: envFrom(envOver), fetchImpl: fetchStub });
+  }
+  function post(handler, body, token) {
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers.Authorization = 'Bearer ' + token;
+    return handler(new Request('http://local/creation-share', { method: 'POST', headers: headers, body: JSON.stringify(body) }));
+  }
+  async function asJson(res) { return { status: res.status, body: await res.json() }; }
+
+  const H = handlerWith();
+
+  // ---- A. the gate holds
+  console.log('-- A: authorization');
+  let r = await asJson(await post(H, { action: 'mint', projectId: 'proj_a', payload: goodPayload() }));
+  ck(r.status === 401, 'A1 no session is refused 401', 'got ' + r.status);
+  r = await asJson(await post(H, { action: 'mint', projectId: 'proj_a', payload: goodPayload() }, 'anon.key.value'));
+  ck(r.status === 401, 'A2 the public anon key alone is refused 401', 'got ' + r.status);
+  const drift = cp.spawnSync(process.execPath, [path.join(ROOT, 'tools', 'edge-auth-test', 'sync-shared.js'), '--check']);
+  ck(drift.status === 0, 'A3 the generated gate has not drifted from the canon', String(drift.stdout));
+
+  // ---- B. the sweep is a whitelist
+  console.log('-- B: the payload sweep');
+  resetNet();
+  r = await asJson(await post(H, { action: 'mint', projectId: 'proj_a', payload: goodPayload() }, USER_TOKEN));
+  ck(r.status === 200 && r.body.ok === true && r.body.token === 'tokabc123def456ghi789jkl',
+    'B1 a contract payload mints', JSON.stringify(r.body));
+  ck(/look\.html\?t=tokabc123def456ghi789jkl$/.test(r.body.url || ''), 'B2 the share URL is look.html?t=<token>', r.body.url);
+  ck((r.body.watchUrl || '').indexOf(r.body.url + '&watch=1') === 0, 'B3 the watch URL is the same door, asked to play', r.body.watchUrl);
+  ck(netLog.mints.length === 1 && netLog.mints[0].p_project_id === 'proj_a' && netLog.mints[0].p_owner_id === 'user-1',
+    'B4 the mint names the VERIFIED caller, never a client-claimed one', JSON.stringify(netLog.mints[0]));
+
+  async function refusedKey(payload, key, name) {
+    const res = await asJson(await post(H, { action: 'mint', projectId: 'proj_a', payload: payload }, USER_TOKEN));
+    ck(res.body.ok === false && res.body.reason === 'not-shareable' && res.body.key === key,
+      name, JSON.stringify(res.body));
+  }
+  await refusedKey(goodPayload({ memories: [{ content: 'private' }] }), 'memories', 'B5 an unknown top-level key (memories) refuses the WHOLE payload, naming the key');
+  await refusedKey(goodPayload({ pages: [{ image: JPEG_1PX, cardId: 'card-1' }] }), 'cardId', 'B6 an unknown page key (cardId) refuses too — depth does not launder a field');
+  await refusedKey(goodPayload({ pages: [{ image: 'https://evil.example/x.jpg' }] }), 'image', 'B7 a page image must be a data URI, never a URL');
+  await refusedKey(goodPayload({ pages: [{ image: 'vihu-asset:abc' }] }), 'image', 'B8 an asset reference is refused — images never leave as references');
+  await refusedKey(goodPayload({ madeIn: 'elsewhere' }), 'madeIn', 'B9 the provenance field is fixed');
+  await refusedKey(goodPayload({ ether: '../../../etc' }), 'ether', 'B10 a malformed ether id is refused');
+  await refusedKey(goodPayload({ pages: [{ image: 'data:image/jpeg;base64,' + 'A'.repeat(1000001) }] }), 'image', 'B11 an oversize page image is refused');
+  r = await asJson(await post(H, { action: 'mint', projectId: 'proj_a', payload: goodPayload({ ether: 'proj_a' }) }, USER_TOKEN));
+  ck(r.body.ok === true, 'B12 a well-formed ether id survives the sweep');
+  r = await asJson(await post(H, { action: 'mint', projectId: '../evil', payload: goodPayload() }, USER_TOKEN));
+  ck(r.status === 400, 'B13 a malformed projectId is refused', 'got ' + r.status);
+
+  // ---- C. the letter
+  console.log('-- C: share with parent');
+  resetNet();
+  r = await asJson(await post(H, { action: 'send', projectId: 'proj_a', payload: goodPayload(), identityId: 'card-1' }, USER_TOKEN));
+  ck(r.body.ok === true && r.body.sent === true && r.body.parentKnown === true,
+    'C1 an address on file sends with nothing asked', JSON.stringify(r.body));
+  const letter = netLog.letters[0] || {};
+  ck(String(letter.to) === 'mum@example.com', 'C2 to the card\'s own parent_email', String(letter.to));
+  ck(letter.subject === 'Sam made something!', 'C3 the subject is the child, not the product', letter.subject);
+  const wantLinks = ['look.html?t=tokabc123def456ghi789jkl', 'watch=1', 'wa.me', 'share=1'];
+  wantLinks.forEach((frag, i) => {
+    ck((letter.text || '').indexOf(frag) !== -1 && (letter.html || '').indexOf(frag) !== -1,
+      'C4.' + (i + 1) + ' both halves carry ' + frag);
+  });
+  ck((letter.html || '').indexOf('functions/v1/creation-share?cover=tokabc123def456ghi789jkl') !== -1,
+    'C5 the letter shows the creation via the cover route (Gmail strips data: images)');
+  ck((letter.text || '').indexOf('The Moon Dragon') !== -1 && (letter.text || '').indexOf('Sam') !== -1,
+    'C6 the letter is about the creation — name and title, not marketing');
+  const answered = JSON.stringify(r.body);
+  ck(answered.indexOf('mum@example.com') === -1 && answered.indexOf('user-1') === -1 && answered.indexOf('card-1') === -1,
+    'C7 the reply carries no address, no user id, no card id', answered);
+  const letterAll = JSON.stringify(letter);
+  ck(letterAll.indexOf('user-1') === -1 && letterAll.indexOf('card-1') === -1 && letterAll.indexOf('proj_a') === -1,
+    'C8 the letter itself carries no identifier — only the token travels');
+  ck(netLog.patches.length === 0, 'C9 an address on file is never re-written');
+
+  resetNet();
+  r = await asJson(await post(H, { action: 'send', projectId: 'proj_a', payload: goodPayload(), identityId: 'card-3' }, USER_TOKEN));
+  ck(r.body.ok === false && r.body.reason === 'no-recipient' && !!r.body.token,
+    'C10 no address anywhere → no-recipient (the hub asks the child), and the mint still stands', JSON.stringify(r.body));
+  ck(netLog.letters.length === 0, 'C11 and nothing was sent');
+
+  resetNet();
+  r = await asJson(await post(H, { action: 'send', projectId: 'proj_a', payload: goodPayload(), identityId: 'card-3', email: 'dad@example.com' }, USER_TOKEN));
+  ck(r.body.ok === true && r.body.parentKnown === false, 'C12 a given address sends', JSON.stringify(r.body));
+  ck(netLog.patches.length === 1 && /parent_email=is\.null/.test(netLog.patches[0].url) &&
+     netLog.patches[0].body.parent_email === 'dad@example.com',
+    'C13 a FIRST address is kept on the card, guarded so it can only ever fill, never overwrite',
+    JSON.stringify(netLog.patches[0]));
+
+  resetNet();
+  r = await asJson(await post(H, { action: 'send', projectId: 'proj_a', payload: goodPayload(), email: 'dad@example.com' }, USER_TOKEN));
+  ck(r.body.ok === true && netLog.patches.length === 0,
+    'C14 no card, given address: sends, stores nothing (a Traveller leaves no record)');
+
+  r = await asJson(await post(H, { action: 'send', projectId: 'proj_a', payload: goodPayload(), identityId: 'card-2' }, USER_TOKEN));
+  ck(r.status === 403, 'C15 somebody else\'s card is a 403 — a selector, never an assertion', 'got ' + r.status);
+
+  // ---- D. the cover and the probe
+  console.log('-- D: cover image and probe');
+  let cover = await H(new Request('http://local/creation-share?cover=tokabc123def456ghi789jkl', { method: 'GET' }));
+  ck(cover.status === 200 && /image\/jpeg/.test(cover.headers.get('Content-Type') || ''),
+    'D1 the cover answers image bytes with no session — the token is the capability',
+    cover.status + ' ' + cover.headers.get('Content-Type'));
+  cover = await H(new Request('http://local/creation-share?cover=no-such-token', { method: 'GET' }));
+  ck(cover.status === 404, 'D2 an unknown token\'s cover is 404, nothing more', 'got ' + cover.status);
+  r = await asJson(await H(new Request('http://local/creation-share', { method: 'GET', headers: { Authorization: 'Bearer ' + USER_TOKEN } })));
+  ck(r.body.ok === true && r.body.build === M.BUILD, 'D3 the probe reports its build', JSON.stringify(r.body));
+
+  // ---- E. the allowance
+  console.log('-- E: rate limiting');
+  resetNet();
+  await post(H, { action: 'mint', projectId: 'proj_a', payload: goodPayload() }, USER_TOKEN);
+  ck(netLog.limitHits.length === 1 && netLog.limitHits[0].p_bucket === 'creation-share',
+    'E1 a POST is counted against the creation-share bucket', JSON.stringify(netLog.limitHits[0]));
+  const closed = handlerWith({ EDGE_LIMIT_CREATION_SHARE_MAX: '0' });
+  r = await asJson(await post(closed, { action: 'mint', projectId: 'proj_a', payload: goodPayload() }, USER_TOKEN));
+  ck(r.status === 429, 'E2 the per-deployment kill switch (limit 0) closes it', 'got ' + r.status);
+
+  fs.unlinkSync(tmp);
+
+  /* ============================================================
+   * PART 2 — the child's own surfaces, in a real browser
+   * ============================================================ */
+  console.log('\nPART 2 — the hub, the prints, and the landing\n');
+
+  const server = cp.spawn(process.execPath, [path.join(ROOT, 'tools', 'bring-it-alive', 'test', 'serve.js'), String(PORT)], { stdio: 'ignore' });
+  await new Promise((res) => setTimeout(res, 700));
+
+  const { chromium } = require('playwright');
+  const browser = await chromium.launch({
+    executablePath: process.env.CHROMIUM_PATH || process.env.PW_CHROMIUM || '/opt/pw-browsers/chromium',
+    args: ['--no-sandbox', '--disable-dev-shm-usage'],
+  });
+  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  const pageErrors = [];
+  page.on('pageerror', (e) => pageErrors.push(String(e)));
+
+  // The function is faked at the network edge, programmable per check.
+  let fnPlan = { mode: 'ok' };
+  const fnCalls = [];
+  await page.route('**/functions/v1/creation-share**', (route) => {
+    const req = route.request();
+    let body = null;
+    try { body = JSON.parse(req.postData() || 'null'); } catch (e) {}
+    fnCalls.push({ method: req.method(), body: body });
+    const token = 'tokbrowser0123456789abcd';
+    const url = BASE + '/look.html?t=' + token;
+    if (fnPlan.mode === 'no-recipient') {
+      return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ ok: false, reason: 'no-recipient', token: token, url: url, watchUrl: url + '&watch=1' }) });
+    }
+    if (fnPlan.mode === 'down') {
+      return route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ ok: false, reason: 'unreachable' }) });
+    }
+    const ok = { ok: true, token: token, url: url, watchUrl: url + '&watch=1' };
+    if (body && body.action === 'send') { ok.sent = true; ok.parentKnown = fnPlan.parentKnown !== false; }
+    return route.fulfill({ contentType: 'application/json', body: JSON.stringify(ok) });
+  });
+
+  async function bootEditor() {
+    await page.goto(BASE + '/studio.html?author=on');
+    await page.waitForFunction(() =>
+      typeof CreationFlow !== 'undefined' && typeof StudioRite !== 'undefined' &&
+      typeof MagicCard !== 'undefined' && typeof LookWhatIMade !== 'undefined', null, { timeout: 20000 });
+    await page.evaluate(() => {
+      localStorage.clear(); sessionStorage.clear();
+      StudioRite.markComplete();
+      const c = MagicCard.claim('Sam', null, { companionId: 'leafy', companionName: 'Leafy', companionSpecies: 'Bloomling' });
+      MagicCard.setActive(c.id);
+      const gw = document.getElementById('gatewayOverlay');
+      if (gw) gw.style.display = 'none';
+      document.querySelectorAll('.studio-rite-overlay').forEach((n) => n.remove());
+    });
+    await page.waitForTimeout(400);
+    await page.evaluate(() => { try { CreationFlow.startBlank(); } catch (e) {} });
+    await page.waitForFunction(() => typeof AppState !== 'undefined' && Array.isArray(AppState.slides) && AppState.slides.length > 0, null, { timeout: 20000 });
+    // The platform client asks ThemeRepositoryClient for a LIVE session
+    // token; this suite has no platform, so the session is stubbed IN
+    // PLACE (mutated, never replaced through window — the const-binding
+    // trap Decision 40 records).
+    await page.evaluate(() => {
+      try {
+        ThemeRepositoryClient.getSession = function () {
+          return Promise.resolve({ access_token: 'look.suite.session.token' });
+        };
+      } catch (e) {}
+    });
+    await page.waitForTimeout(600);
+  }
+
+  await bootEditor();
+
+  // ---- F. the contract knows what a creation is
+  console.log('-- F: the type is inferred, never asked');
+  const types = await page.evaluate((png) => {
+    const page1 = { image: png, metadata: {} };
+    const page2 = { image: png, metadata: {} };
+    const busy = { image: png, metadata: { stickers: [{ id: 's1' }, { id: 's2' }] } };
+    return {
+      story: CreationShare.typeOf([page1, page2]),
+      sequence: CreationShare.typeOf([busy]),
+      moment: CreationShare.typeOf([page1]),
+      says: [CreationShare.says('moment'), CreationShare.says('sequence'), CreationShare.says('story')],
+    };
+  }, PNG_1PX);
+  ck(types.story === 'story', 'F1 many pages → story', types.story);
+  ck(types.sequence === 'sequence', 'F2 one page, many makings → sequence', types.sequence);
+  ck(types.moment === 'moment', 'F3 one page, one making → moment', types.moment);
+  ck(types.says.join('|') === 'Look what I made|Look what happened|Read my story',
+    'F4 and each speaks its own sentence', types.says.join('|'));
+
+  // ---- G. the third story action
+  console.log('-- G: the story action wakes');
+  let btn = await page.evaluate(() => {
+    const b = document.getElementById('lookBtn');
+    return b ? { asleep: b.classList.contains('is-asleep'), text: b.textContent.trim() } : null;
+  });
+  ck(btn && /Look What I Made/.test(btn.text), 'G1 ✨ Look What I Made stands beside Play and Finish', JSON.stringify(btn));
+  ck(btn && btn.asleep, 'G2 asleep while the page is empty', JSON.stringify(btn));
+  await page.evaluate((png) => {
+    AppState.slides[0].image = png;
+    AppState.slides[0]._imageDataURL = png;
+    const t = document.getElementById('bookTitle');
+    if (t) t.value = 'The Moon Dragon';
+    window.refreshStoryActions();
+    ProjectManager.markDirty();
+    ProjectManager.saveToLocalStorage();
+  }, PNG_1PX);
+  await page.waitForTimeout(300);
+  btn = await page.evaluate(() => {
+    const b = document.getElementById('lookBtn');
+    return { asleep: b.classList.contains('is-asleep') };
+  });
+  ck(!btn.asleep, 'G3 and wakes the moment there is something to look at');
+
+  // ---- H. the hub
+  console.log('-- H: the hub shows the creation first');
+  await page.evaluate(() => document.getElementById('lookBtn').click());
+  await page.waitForTimeout(400);
+  const home = await page.evaluate(() => {
+    const card = document.querySelector('.lwim-card');
+    const buttons = Array.from(card.querySelectorAll('.lwim-actions .lwim-btn')).map((b) => b.textContent.trim());
+    const img = card.querySelector('.lwim-preview-img');
+    return { open: LookWhatIMade.isOpen(), text: card.innerText, buttons: buttons, hasPreview: !!img };
+  });
+  await page.screenshot({ path: path.join(SHOTS, 'H-hub.png') });
+  ck(home.open && home.hasPreview, 'H1 the creation is the first thing shown', JSON.stringify({ hasPreview: home.hasPreview }));
+  ck(home.buttons.length === 4 &&
+     /Share with Parent/.test(home.buttons[0]) && /Print Foldable/.test(home.buttons[1]) &&
+     /Print Story Card/.test(home.buttons[2]) && /Watch/.test(home.buttons[3]),
+    'H2 exactly the four doors, in the sprint\'s own words', home.buttons.join(' | '));
+  ck(!/email|URL|http|PDF|QR|scan\b|link|settings/i.test(home.text),
+    'H3 no adult vocabulary anywhere on the hub', home.text.replace(/\n/g, ' · '));
+  ck(/Look what I made/.test(home.text), 'H4 the type speaks its own sentence (a moment)', '');
+
+  // ---- I. share with parent
+  console.log('-- I: share with parent');
+  fnPlan = { mode: 'ok' };
+  await page.evaluate(() => {
+    Array.from(document.querySelectorAll('.lwim-btn')).find((b) => /Share with Parent/.test(b.textContent)).click();
+  });
+  await page.waitForTimeout(200);
+  const shareView = await page.evaluate(() => document.querySelector('.lwim-card').innerText);
+  ck(/Send this to my parent/.test(shareView), 'I1 the child\'s sentence, then one button', shareView.replace(/\n/g, ' · '));
+  await page.evaluate(() => {
+    Array.from(document.querySelectorAll('.lwim-btn')).find((b) => /^Send/.test(b.textContent.trim())).click();
+  });
+  await page.waitForFunction(() => /on its way/.test(document.querySelector('.lwim-card').innerText), null, { timeout: 30000 });
+  ck(true, 'I2 a known parent: pressed once, on its way — nothing else asked');
+  const sent = fnCalls.filter((c) => c.body && c.body.action === 'send');
+  ck(sent.length === 1 && sent[0].body.projectId && sent[0].body.payload &&
+     sent[0].body.payload.pages.length >= 1,
+    'I3 one send, carrying the snapshot', JSON.stringify({ n: sent.length, pages: sent.length && sent[0].body.payload.pages.length }));
+  const payloadKeys = sent.length ? Object.keys(sent[0].body.payload).sort().join(',') : '';
+  ck(payloadKeys === 'creatorName,madeIn,pages,title,type,v' || payloadKeys === 'creatorName,ether,madeIn,pages,title,type,v' || payloadKeys === 'creatorName,madeIn,pages,title,type,v,watch' || payloadKeys === 'creatorName,ether,madeIn,pages,title,type,v,watch',
+    'I4 the snapshot is ONLY the contract — no card, no session, no memory, no project internals', payloadKeys);
+
+  // the ask, when nobody is on file
+  fnPlan = { mode: 'no-recipient' };
+  await page.evaluate(() => { LookWhatIMade.close(); document.getElementById('lookBtn').click(); });
+  await page.waitForTimeout(300);
+  await page.evaluate(() => {
+    Array.from(document.querySelectorAll('.lwim-btn')).find((b) => /Share with Parent/.test(b.textContent)).click();
+  });
+  await page.waitForTimeout(200);
+  await page.evaluate(() => {
+    Array.from(document.querySelectorAll('.lwim-btn')).find((b) => /^Send/.test(b.textContent.trim())).click();
+  });
+  await page.waitForFunction(() => /Who should I send it to/.test(document.querySelector('.lwim-card').innerText), null, { timeout: 30000 });
+  ck(true, 'I5 nobody on file → "Who should I send it to?"');
+  fnPlan = { mode: 'ok' };
+  await page.evaluate(() => {
+    const input = document.querySelector('.lwim-input');
+    input.value = 'dad@example.com';
+    Array.from(document.querySelectorAll('.lwim-btn')).find((b) => /^Send/.test(b.textContent.trim())).click();
+  });
+  await page.waitForFunction(() => /on its way/.test(document.querySelector('.lwim-card').innerText), null, { timeout: 30000 });
+  ck(true, 'I6 the answered address sends');
+
+  // ---- J. the foldable
+  console.log('-- J: the foldable — preview before print');
+  let printed = await page.evaluate(() => {
+    window.__prints = [];
+    window.print = function () {
+      const sheet = document.querySelector('.lwim-print-sheet');
+      window.__prints.push({
+        kind: sheet ? sheet.className : null,
+        images: sheet ? sheet.querySelectorAll('img').length : 0,
+        srcSample: sheet ? (sheet.querySelector('img') || {}).src || '' : '',
+      });
+      window.dispatchEvent(new Event('afterprint'));
+    };
+    LookWhatIMade.close();
+    document.getElementById('lookBtn').click();
+    return true;
+  });
+  await page.waitForTimeout(200);
+  await page.evaluate(() => {
+    Array.from(document.querySelectorAll('.lwim-btn')).find((b) => /Print Foldable/.test(b.textContent)).click();
+  });
+  await page.waitForFunction(() => !!document.querySelector('.lwim-sheet-img'), null, { timeout: 60000 });
+  await page.screenshot({ path: path.join(SHOTS, 'J-foldable.png') });
+  const foldableView = await page.evaluate(() => ({
+    text: document.querySelector('.lwim-card').innerText,
+    sheetSrc: (document.querySelector('.lwim-sheet-img') || {}).src || '',
+    printedYet: window.__prints.length,
+  }));
+  ck(foldableView.sheetSrc.indexOf('data:image/jpeg') === 0 && foldableView.printedYet === 0,
+    'J1 the physical sheet is SHOWN before anything prints');
+  ck(/fold/.test(foldableView.text) && /tiny book|little book/i.test(foldableView.text),
+    'J2 the child is told what folding makes', foldableView.text.replace(/\n/g, ' · '));
+  await page.evaluate(() => {
+    Array.from(document.querySelectorAll('.lwim-btn')).find((b) => /Print My Foldable/.test(b.textContent)).click();
+  });
+  await page.waitForFunction(() => window.__prints.length === 1, null, { timeout: 20000 });
+  const printedFold = await page.evaluate(() => window.__prints[0]);
+  ck(/lwim-print-foldable/.test(printedFold.kind) && printedFold.images === 1,
+    'J3 printing prints the sheet the child was just shown', JSON.stringify(printedFold.kind));
+  const sameSheet = await page.evaluate(() => window.__prints[0].srcSample === (document.querySelector('.lwim-sheet-img') || {}).src);
+  ck(sameSheet, 'J4 the printed bitmap IS the previewed bitmap — match by construction');
+
+  // the fold model, re-derived independently of the composer's table
+  const fold = await page.evaluate(() => {
+    const C = FoldableComposer;
+    // The physical model, built from the sheet itself rather than from
+    // the composer's table: horizontal neighbours always stay joined;
+    // top and bottom stay joined only where the slit did NOT sever
+    // them. The composer's IMPOSITION is then held to two facts of
+    // paper: (1) the cut sheet is ONE cycle of eight panels — that is
+    // what lets it close into a book at all — and (2) every
+    // consecutive reading pair (P1→P2 … P7→P8, and P8 wrapping to P1)
+    // sits on physically joined panels, because a book's next page is
+    // always across a fold, never across a cut or a gap.
+    const edges = {};
+    const join = (a, b) => { (edges[a] = edges[a] || []).push(b); (edges[b] = edges[b] || []).push(a); };
+    for (let c = 0; c < C.COLS - 1; c++) { join('T' + c, 'T' + (c + 1)); join('B' + c, 'B' + (c + 1)); }
+    for (let c = 0; c < C.COLS; c++) { if (C.SLIT_COLS.indexOf(c) === -1) join('T' + c, 'B' + c); }
+    const isCycle = Object.keys(edges).length === 8 && Object.values(edges).every((n) => n.length === 2);
+
+    const cellOfPanel = {};
+    C.IMPOSITION.forEach((s) => { cellOfPanel[s.panel] = (s.row === 0 ? 'T' : 'B') + s.col; });
+    let consecutiveJoins = 0;
+    for (let p = 1; p <= 8; p++) {
+      const here = cellOfPanel[p];
+      const next = cellOfPanel[(p % 8) + 1];
+      if (edges[here] && edges[here].indexOf(next) !== -1) consecutiveJoins++;
+    }
+    const topPanels = C.IMPOSITION.filter((s) => s.row === 0).map((s) => s.panel).sort().join(',');
+    return { isCycle: isCycle, consecutiveJoins: consecutiveJoins, topPanels: topPanels };
+  });
+  ck(fold.isCycle, 'J5 the slit turns the sheet into one cycle of eight panels (it can close into a book)');
+  ck(fold.consecutiveJoins === 8,
+    'J6 every consecutive reading pair is physically joined — fold order is correct', fold.consecutiveJoins + '/8 joined');
+  ck(fold.topPanels === '2,3,4,5', 'J7 exactly the head-hanging panels print rotated', fold.topPanels);
+
+  // ---- K. the story card
+  console.log('-- K: the story card — and a real scan');
+  await page.evaluate(() => {
+    LookWhatIMade.close();
+    document.getElementById('lookBtn').click();
+  });
+  await page.waitForTimeout(200);
+  await page.evaluate(() => {
+    Array.from(document.querySelectorAll('.lwim-btn')).find((b) => /Print Story Card/.test(b.textContent)).click();
+  });
+  await page.waitForFunction(() => document.querySelectorAll('.lwim-card-img').length === 2, null, { timeout: 90000 });
+  await page.screenshot({ path: path.join(SHOTS, 'K-card.png') });
+  const cardView = await page.evaluate(() => ({
+    text: document.querySelector('.lwim-card').innerText,
+    printedYet: window.__prints.length,
+  }));
+  ck(cardView.printedYet === 1, 'K1 front and back are SHOWN before anything prints');
+  ck(/point a phone|comes alive|opens for them/i.test(cardView.text),
+    'K2 the child is told what the card DOES, in magic rather than mechanism', cardView.text.replace(/\n/g, ' · '));
+  ck(!/QR|scan\b|code|link|URL/i.test(cardView.text),
+    'K3 and never the words QR, scan, code or link', cardView.text.replace(/\n/g, ' · '));
+
+  await page.addScriptTag({ url: BASE + '/tools/datamatrix-lab/vendor/zxing.min.js' });
+  const scanned = await page.evaluate(() => {
+    const img = document.querySelectorAll('.lwim-card-img')[1];
+    const cv = document.createElement('canvas');
+    cv.width = img.naturalWidth; cv.height = img.naturalHeight;
+    cv.getContext('2d').drawImage(img, 0, 0);
+    try {
+      const hints = new Map();
+      hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [ZXing.BarcodeFormat.QR_CODE]);
+      hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+      const reader = new ZXing.MultiFormatReader();
+      reader.setHints(hints);
+      const lum = new ZXing.HTMLCanvasElementLuminanceSource(cv);
+      const bmp = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(lum));
+      return { ok: true, text: reader.decode(bmp).getText() };
+    } catch (e) { return { ok: false, err: String(e) }; }
+  });
+  ck(scanned.ok, 'K4 a real decoder reads the printed card back', scanned.err);
+  ck(scanned.ok && scanned.text === BASE + '/look.html?t=tokbrowser0123456789abcd',
+    'K5 and it resolves to the creation\'s own share door — the opaque token, never a project id', scanned.text);
+  await page.evaluate(() => {
+    Array.from(document.querySelectorAll('.lwim-btn')).find((b) => /Print My Card/.test(b.textContent)).click();
+  });
+  await page.waitForFunction(() => window.__prints.length === 2, null, { timeout: 20000 });
+  const printedCard = await page.evaluate(() => window.__prints[1]);
+  ck(/lwim-print-card/.test(printedCard.kind) && printedCard.images === 2,
+    'K6 the printed card is front and back, the pair just previewed', JSON.stringify(printedCard.kind));
+
+  // ---- L. watch
+  console.log('-- L: watch how I made it');
+  await page.evaluate(() => {
+    LookWhatIMade.close();
+    document.getElementById('lookBtn').click();
+  });
+  await page.waitForTimeout(200);
+  await page.evaluate(() => {
+    Array.from(document.querySelectorAll('.lwim-btn')).find((b) => /Watch/.test(b.textContent)).click();
+  });
+  await page.waitForFunction(() => {
+    const img = document.querySelector('.lwim-watch-img');
+    return img && img.src && img.src.indexOf('data:image') === 0;
+  }, null, { timeout: 60000 });
+  const firstFrame = await page.evaluate(() => (document.querySelector('.lwim-watch-img') || {}).src);
+  await page.waitForFunction((prev) => {
+    const img = document.querySelector('.lwim-watch-img');
+    return img && img.src !== prev;
+  }, firstFrame, { timeout: 30000 }).catch(() => {});
+  const secondFrame = await page.evaluate(() => (document.querySelector('.lwim-watch-img') || {}).src);
+  ck(firstFrame && secondFrame, 'L1 the making plays as frames', '');
+  ck(pageErrors.length === 0, 'L2 zero page errors across the whole Studio run', pageErrors.join(' | '));
+
+  // ---- M. the landing — deep entry
+  console.log('-- M: look.html opens the EXACT creation');
+  const landingRequests = [];
+  const landingPage = await browser.newPage({ viewport: { width: 900, height: 900 } });
+  landingPage.on('request', (r) => landingRequests.push(r.url()));
+  const landingErrors = [];
+  landingPage.on('pageerror', (e) => landingErrors.push(String(e)));
+
+  const storyCreation = {
+    v: 1, type: 'story', title: 'The Dragon Who Found the Moon', creatorName: 'Sam',
+    pages: [{ image: JPEG_1PX }, { image: PNG_1PX }, { image: JPEG_1PX }],
+    watch: [{ image: PNG_1PX, holdMs: 400 }, { image: JPEG_1PX, holdMs: 400 }],
+    madeIn: 'vihuplanet', ether: 'proj_pub1',
+  };
+  await landingPage.route('**/rest/v1/rpc/creation_share_resolve', (route) => {
+    const body = JSON.parse(route.request().postData() || '{}');
+    if (body.p_token === 'goodtoken') {
+      return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ ok: true, creation: storyCreation }) });
+    }
+    return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ ok: false, reason: 'unknown' }) });
+  });
+  await landingPage.route('**/supabase-config.json', (route) => route.fulfill({
+    contentType: 'application/json', body: JSON.stringify({ url: 'http://supa.local.test', anonKey: 'anon.key' }) }));
+  // The landing's own REST call goes to the configured platform host —
+  // route it there too.
+  await landingPage.route('http://supa.local.test/**', (route) => {
+    const body = JSON.parse(route.request().postData() || '{}');
+    if (route.request().url().indexOf('creation_share_resolve') !== -1 && body.p_token === 'goodtoken') {
+      return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ ok: true, creation: storyCreation }) });
+    }
+    return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ ok: false, reason: 'unknown' }) });
+  });
+
+  await landingPage.goto(BASE + '/look.html?t=goodtoken');
+  await landingPage.waitForFunction(() => !document.getElementById('creation').classList.contains('hidden'), null, { timeout: 15000 });
+  await landingPage.screenshot({ path: path.join(SHOTS, 'M-landing.png') });
+  const landing = await landingPage.evaluate(() => ({
+    headline: document.getElementById('headline').textContent,
+    title: document.getElementById('ctitle').textContent,
+    count: document.getElementById('count').textContent,
+    pagerShown: !document.getElementById('pager').classList.contains('hidden'),
+    watchShown: !document.getElementById('watchBtn').classList.contains('hidden'),
+    etherShown: !document.getElementById('ether').classList.contains('hidden'),
+    etherHref: document.getElementById('ether').getAttribute('href'),
+    body: document.body.innerText,
+  }));
+  ck(landing.headline === 'Look what Sam made', 'M1 "Look what Sam made" — never "Welcome to VihuPlanet"', landing.headline);
+  ck(/The Dragon Who Found the Moon/.test(landing.title), 'M2 the exact creation, by name', landing.title);
+  ck(landing.pagerShown && landing.count === '1 / 3', 'M3 a story reads page by page', landing.count);
+  ck(landing.watchShown, 'M4 the making is offered beside the finished creation');
+  ck(landing.etherShown && landing.etherHref === './?story=proj_pub1',
+    'M5 a creation already public in the Ether offers its Ether door', landing.etherHref);
+  ck(/Come see VihuPlanet/.test(landing.body), 'M6 VihuPlanet is discovered THROUGH the creation — a doorway at the end');
+
+  // page turning
+  await landingPage.evaluate(() => document.getElementById('next').click());
+  const turned = await landingPage.evaluate(() => document.getElementById('count').textContent);
+  ck(turned === '2 / 3', 'M7 the pager turns pages', turned);
+
+  // ?watch=1 plays the making first
+  await landingPage.goto(BASE + '/look.html?t=goodtoken&watch=1');
+  await landingPage.waitForFunction(() => !document.getElementById('creation').classList.contains('hidden'), null, { timeout: 15000 });
+  const watching = await landingPage.evaluate(() => ({
+    pagerHidden: document.getElementById('pager').classList.contains('hidden'),
+    src: (document.getElementById('page') || {}).src || '',
+  }));
+  ck(watching.pagerHidden && watching.src.indexOf('data:image') === 0,
+    'M8 the WATCH door plays the making before the pages');
+
+  // an unknown token refuses gently
+  await landingPage.goto(BASE + '/look.html?t=neverminted');
+  await landingPage.waitForFunction(() => !document.getElementById('lost').classList.contains('hidden'), null, { timeout: 15000 });
+  const lostText = await landingPage.evaluate(() => document.getElementById('lost').innerText);
+  ck(/didn’t open|didn't open/.test(lostText) && !/error|invalid|failed|404/i.test(lostText),
+    'M9 an unknown token is a gentle sentence, never an error code', lostText.replace(/\n/g, ' · '));
+
+  // the landing page talks ONLY to the platform it was configured for
+  const offHost = landingRequests.filter((u) =>
+    u.indexOf(BASE) !== 0 && u.indexOf('http://supa.local.test') !== 0);
+  ck(offHost.length === 0, 'M10 the landing reaches its own host and the platform, nothing else', offHost.join(' | '));
+  ck(landingErrors.length === 0, 'M11 zero page errors on the landing', landingErrors.join(' | '));
+
+  await browser.close();
+  server.kill();
+
+  console.log('\n' + passed + ' passed, ' + failed + ' failed');
+  process.exit(failed ? 1 : 0);
+})().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});

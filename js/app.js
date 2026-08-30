@@ -793,6 +793,17 @@ if(shareBtn){
     PublishStudio.open();
   };
 }
+// Sprint LOOK WHAT I MADE — the third story action. The hub, not a
+// destination: preview first, then Share with Parent / Print
+// Foldable / Print Story Card / Watch.
+const lookBtn=document.getElementById('lookBtn');
+if(lookBtn){
+  lookBtn.onclick=function(){
+    if(lookBtn.disabled) return;
+    if(typeof LookWhatIMade==='undefined') return;
+    LookWhatIMade.open();
+  };
+}
 
 // Asleep until there is a story.
 //
@@ -839,6 +850,10 @@ window.refreshStoryActions=function(){
   }catch(e){}
   _setActionAsleep(playStoryBtn, riteHold || !content);
   _setActionAsleep(shareBtn,     riteHold || !content || !named);
+  // Look What I Made wakes with content alone — a moment needs no
+  // name to be shown to somebody (the hub falls back to a warm,
+  // type-shaped title; only FINISHING requires a name).
+  _setActionAsleep(lookBtn,      riteHold || !content);
   // The rail's door rides this same pulse: it already fires on every
   // page mutation and when a rite starts or ends, which is exactly when
   // whether there IS a next door can change.

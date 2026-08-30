@@ -265,6 +265,28 @@ const CreationFlow=(function(){
     del.setAttribute('aria-label','Delete this project');
     del.addEventListener('click',function(e){ e.stopPropagation(); _deleteProjectRecord(record); });
     card.appendChild(del);
+    // Sprint LOOK WHAT I MADE — an older creation can be shown to
+    // somebody too. The hub reads the OPEN project's live slides, so
+    // this opens the record first and then the hub; same nested-
+    // action pattern as Delete.
+    if(typeof window.LookWhatIMade!=='undefined'){
+      const look=_el('button','creation-flow-project-look','✨ Look');
+      look.type='button';
+      look.setAttribute('aria-label','Look what I made');
+      look.addEventListener('click',function(e){
+        e.stopPropagation();
+        if(typeof ProjectManager==='undefined'||typeof ProjectManager.openProjectRecord!=='function') return;
+        ProjectManager.openProjectRecord(record).then(function(){
+          _closeOverlay();
+          try{
+            if(typeof PageRuntime!=='undefined') PageRuntime.openPage(AppState.currentSlide);
+            else if(typeof window.showSlide==='function') window.showSlide(AppState.currentSlide);
+          }catch(err){}
+          try{ window.LookWhatIMade.open(); }catch(err){}
+        });
+      });
+      card.appendChild(look);
+    }
     function open(){ _openProjectRecord(record); }
     card.addEventListener('click',open);
     card.addEventListener('keydown',function(e){

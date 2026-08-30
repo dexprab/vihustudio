@@ -44,7 +44,7 @@ const CANON = path.join(ROOT, 'supabase', 'functions', '_shared', 'edgeAuth.js')
 // Every function that imports it. A function added later belongs here in
 // the same commit that adds it — the same rule Decision 22 states for a
 // new Add tile and the Rite's own reduction list.
-const FUNCTIONS = ['voice-speak', 'sky-protection', 'family-album', 'invite-send', 'creator-born', 'companion-chat'];
+const FUNCTIONS = ['voice-speak', 'sky-protection', 'family-album', 'invite-send', 'creator-born', 'companion-chat', 'creation-share'];
 
 const checkOnly = process.argv.includes('--check');
 

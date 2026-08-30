@@ -40,6 +40,12 @@ Marked with `<meta name="robots" content="noindex">` in the page itself:
   the link that letter carries. It is parent-facing rather than admin, so it
   is meta-tagged like the other application pages rather than living under
   `/admin/`.
+- **`/look.html`** — the Creation Share landing (Decision 52): the page a
+  "look what I made" letter, a WhatsApp message or a printed Story Card's
+  code opens. `noindex` for the same reason as family-photos: it is reached
+  by an invitation, never found, and renders nothing without the token the
+  invitation carries. Each token shows one child's deliberately shared
+  creation, which is theirs to hand out — not a page for an index.
 
 Blocked from crawling entirely in `robots.txt` (they are internal, and
 there are too many to meta-tag individually):

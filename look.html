@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- Sprint LOOK WHAT I MADE — the share landing.
+
+     The entry point is never "VihuPlanet" generically: a letter, a
+     WhatsApp message or a printed Story Card opens THIS page with an
+     opaque share token, and the EXACT creation opens — "Look what Sam
+     made", never "Welcome to VihuPlanet". VihuPlanet is discovered
+     through the child's creation, at the bottom, as a doorway.
+
+     Like family-photos.html this is a standalone adult-facing page:
+     no Studio scripts, no runtime, no session required. The token is
+     resolved through creation_share_resolve (SECURITY DEFINER,
+     callable by anon), which returns the deliberately shared snapshot
+     and nothing else — no owner, no card, no project id, no memory,
+     no Stars, no conversation. Application page, so noindex from its
+     first commit (Decision 28). -->
+<meta name="robots" content="noindex">
+<title>Look what I made — VihuPlanet</title>
+<style>
+  :root{
+    --night1:#101527; --night2:#1c2444;
+    --cream:#f4efe2; --gold:#e8c476; --soft:#9aa3c4;
+  }
+  *{ box-sizing:border-box; }
+  body{
+    margin:0;
+    min-height:100vh;
+    background:linear-gradient(180deg,var(--night1),var(--night2));
+    color:var(--cream);
+    font-family:Georgia,'Times New Roman',serif;
+    display:flex;
+    justify-content:center;
+    padding:32px 18px 60px;
+  }
+  .wrap{ width:min(680px,100%); text-align:center; }
+  .spark{ font-size:34px; margin-top:8px; }
+  h1{ font-size:clamp(24px,5vw,34px); margin:10px 0 4px; font-weight:700; }
+  .title{ font-style:italic; color:var(--gold); font-size:19px; margin:0 0 22px; }
+  .stage{
+    background:rgba(255,255,255,0.04);
+    border:1px solid rgba(232,196,118,0.25);
+    border-radius:16px;
+    padding:18px;
+    margin:0 auto 18px;
+  }
+  .stage img{
+    max-width:100%;
+    max-height:70vh;
+    border-radius:10px;
+    box-shadow:0 14px 40px rgba(0,0,0,0.45);
+  }
+  .arrive{ animation:arrive .5s ease; }
+  @keyframes arrive{ from{opacity:.25; transform:scale(.985);} to{opacity:1; transform:scale(1);} }
+  @media (prefers-reduced-motion: reduce){ .arrive{ animation:none; } }
+  button, .doorway{
+    font-family:inherit;
+    font-size:16px;
+    border-radius:12px;
+    cursor:pointer;
+    text-decoration:none;
+    display:inline-block;
+  }
+  .watch-btn{
+    background:var(--gold);
+    color:#232323;
+    border:none;
+    font-weight:700;
+    padding:12px 22px;
+    margin:2px 6px 18px;
+  }
+  .quiet{
+    background:transparent;
+    color:var(--soft);
+    border:1px solid rgba(154,163,196,0.4);
+    padding:10px 18px;
+    margin:2px 6px;
+  }
+  .pager{ display:flex; align-items:center; justify-content:center; gap:14px; margin-bottom:8px; }
+  .pager button{ background:transparent; border:1px solid rgba(232,196,118,0.4); color:var(--gold); font-size:20px; width:44px; height:44px; border-radius:50%; }
+  .pager button[disabled]{ opacity:.25; cursor:default; }
+  .count{ color:var(--soft); font-size:14px; min-width:64px; }
+  .made-line{ color:var(--soft); margin:26px 0 10px; }
+  .doorway{
+    color:var(--gold);
+    border:1px solid rgba(232,196,118,0.5);
+    padding:12px 22px;
+    margin:4px 6px;
+  }
+  .lost{ color:var(--soft); max-width:44ch; margin:80px auto; font-size:18px; line-height:1.6; }
+  .hidden{ display:none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="lost" class="lost hidden">
+    ✦<br><br>
+    This little door didn’t open just now.<br>
+    The creation may have a new door — ask the person who shared it
+    with you.<br><br>
+    <a class="doorway" href="./">Visit VihuPlanet</a>
+  </div>
+
+  <div id="creation" class="hidden">
+    <div class="spark">✨</div>
+    <h1 id="headline">Look what I made</h1>
+    <p class="title" id="ctitle"></p>
+
+    <div id="watchRow">
+      <button type="button" class="watch-btn hidden" id="watchBtn">▶ Watch how it was made</button>
+    </div>
+
+    <div class="stage">
+      <div class="pager hidden" id="pager">
+        <button type="button" id="prev" aria-label="Previous page">‹</button>
+        <span class="count" id="count"></span>
+        <button type="button" id="next" aria-label="Next page">›</button>
+      </div>
+      <img id="page" alt="The creation">
+    </div>
+
+    <div id="shareRow">
+      <button type="button" class="quiet hidden" id="shareBtn">Share it onwards</button>
+    </div>
+
+    <p class="made-line" id="madeLine">Made in VihuPlanet — where children make, keep and share their own stories.</p>
+    <a class="doorway" href="./" id="visit">Come see VihuPlanet</a>
+    <a class="doorway hidden" href="#" id="ether">See it living in the Ether</a>
+  </div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  var params=new URLSearchParams(window.location.search);
+  var token=(params.get('t')||'').trim();
+  var wantWatch=params.get('watch')==='1';
+  var wantShare=params.get('share')==='1';
+
+  var el=function(id){ return document.getElementById(id); };
+
+  function lost(){
+    el('lost').classList.remove('hidden');
+    el('creation').classList.add('hidden');
+  }
+
+  if(!token){ lost(); }
+
+  function resolve(cfg){
+    return fetch(cfg.url.replace(/\/+$/,'')+'/rest/v1/rpc/creation_share_resolve',{
+      method:'POST',
+      headers:{
+        apikey:cfg.anonKey,
+        Authorization:'Bearer '+cfg.anonKey,
+        'Content-Type':'application/json'
+      },
+      body:JSON.stringify({p_token:token})
+    }).then(function(r){ return r.ok?r.json():null; }).catch(function(){ return null; });
+  }
+
+  var watching=null;
+
+  function playWatch(creation){
+    var frames=creation.watch||[];
+    if(!frames.length) return;
+    if(watching){ clearTimeout(watching); watching=null; }
+    var img=el('page');
+    el('pager').classList.add('hidden');
+    var i=0;
+    function step(){
+      var f=frames[i];
+      img.src=f.image;
+      img.classList.remove('arrive');
+      void img.offsetWidth;
+      img.classList.add('arrive');
+      i++;
+      if(i<frames.length){
+        watching=setTimeout(step,Math.max(350,Math.min(3200,f.holdMs||900)));
+      }else{
+        watching=null;
+        // The making ends on the finished creation; the reader
+        // returns so the pages can be looked at slowly.
+        showPages(creation,0);
+      }
+    }
+    step();
+  }
+
+  function showPages(creation,index){
+    var pages=creation.pages||[];
+    if(!pages.length) return;
+    var img=el('page');
+    var i=Math.max(0,Math.min(pages.length-1,index||0));
+    img.src=pages[i].image;
+    img.classList.remove('arrive');
+    void img.offsetWidth;
+    img.classList.add('arrive');
+    if(pages.length>1){
+      el('pager').classList.remove('hidden');
+      el('count').textContent=(i+1)+' / '+pages.length;
+      el('prev').disabled=(i===0);
+      el('next').disabled=(i===pages.length-1);
+      el('prev').onclick=function(){ showPages(creation,i-1); };
+      el('next').onclick=function(){ showPages(creation,i+1); };
+    }
+  }
+
+  function render(creation){
+    var name=(creation.creatorName||'').trim();
+    el('headline').textContent=name?('Look what '+name+' made'):'Look what I made';
+    var title=(creation.title||'').trim();
+    if(title){ el('ctitle').textContent='“'+title+'”'; }
+    if(name){
+      el('madeLine').textContent=name+' made this in VihuPlanet — where children make, keep and share their own stories.';
+    }
+
+    var hasWatch=(creation.watch||[]).length>0;
+    if(hasWatch){
+      var wb=el('watchBtn');
+      wb.textContent=name?('▶ Watch how '+name+' made it'):'▶ Watch how it was made';
+      wb.classList.remove('hidden');
+      wb.onclick=function(){ playWatch(creation); };
+    }
+
+    if(creation.ether){
+      var eth=el('ether');
+      eth.href='./?story='+encodeURIComponent(creation.ether);
+      eth.classList.remove('hidden');
+    }
+
+    // Onward sharing: the native share sheet where one exists (it is
+    // the only honest route into Instagram from the web), a WhatsApp
+    // share otherwise.
+    var cleanUrl=window.location.origin+window.location.pathname+'?t='+encodeURIComponent(token);
+    var sb=el('shareBtn');
+    if(navigator.share){
+      sb.classList.remove('hidden');
+      sb.onclick=function(){
+        navigator.share({
+          title:name?(name+' made something in VihuPlanet'):'Look what I made in VihuPlanet',
+          url:cleanUrl
+        }).catch(function(){});
+      };
+    }else{
+      sb.classList.remove('hidden');
+      sb.onclick=function(){
+        window.open('https://wa.me/?text='+encodeURIComponent('Look what was made in VihuPlanet! '+cleanUrl),'_blank');
+      };
+    }
+    if(wantShare){ sb.focus(); }
+
+    el('creation').classList.remove('hidden');
+
+    // The making before the made thing, when it was asked for; the
+    // finished creation first otherwise, with Watch one press away.
+    if(wantWatch&&hasWatch) playWatch(creation);
+    else showPages(creation,0);
+  }
+
+  if(token){
+    fetch('supabase-config.json',{cache:'no-store'})
+      .then(function(r){ return r.ok?r.json():null; })
+      .then(function(cfg){
+        if(!cfg||!cfg.url||!cfg.anonKey){ lost(); return; }
+        resolve(cfg).then(function(answer){
+          if(!answer||answer.ok!==true||!answer.creation||!(answer.creation.pages||[]).length){ lost(); return; }
+          render(answer.creation);
+        });
+      })
+      .catch(lost);
+  }
+})();
+</script>
+</body>
+</html>

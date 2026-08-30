@@ -10192,3 +10192,36 @@ rhythm 68 · levels 59 · dialogue 56 · memory 56 · companion 50 ·
 gate 25 · traveller-reset 16 · atmosphere 14 — all green.
 Canon: Decision 51.
 
+
+---
+
+## Sprint LOOK WHAT I MADE — Creation → Share / Print / Watch (build 0705)
+
+THE ASK: every creation naturally shareable in the physical world, with
+the child understanding none of the technology — "Look what I made",
+never "Welcome to VihuPlanet". Shipped whole: the CreationShare
+contract (`js/creationShare.js` — moment/sequence/story INFERRED from
+the pages, never asked), the ✨ Look What I Made hub as the THIRD story
+action beside Play and Finish (Decision 12's celebration deliberately
+untouched), 💌 Share with Parent through a new `creation-share` Edge
+Function (edgeAuth-gated, payload swept by shape, letter via Resend to
+the card's own `parent_email` — Decision 14 amended on the record: the
+child is the sender, the product is the envelope), 📄 Print Foldable
+(one-sheet eight-panel zine whose imposition the suite verifies against
+an independent fold model — adjacency minus the slit must be one
+8-cycle with every consecutive reading pair physically joined; proved
+by swapping two panels), 🃏 Print Story Card (2.5×3.5in front/back, QR
+via lazily-loaded vendored bwip-js, and the suite SCANS the composed
+card with the DataMatrix lab's vendored zxing and requires the share
+URL back), 🎬 Watch (the making derived live from
+`MagicReveal.revealStages` as ≤28 frames — no video stored, none
+uploaded), and `look.html` deep entry (standalone noindex landing;
+opaque 24-char token minted server-side, ONE STABLE TOKEN per creation
+so a printed card never dies; resolve returns the swept payload and
+nothing else). One real trap hit and recorded again: `window.AppState`
+does not exist — AppState is a bare top-level const (Decision 40's own
+family). Deploy: `supabase/DEPLOY_creation_share.md` (migration +
+`--no-verify-jwt`, because the letter's cover image is fetched by <img>
+tags that cannot send headers). Detail: `docs/LOOK_WHAT_I_MADE.md`.
+look-share 82 · edge-auth 129 · companion-chat 256 · creation-home 84 —
+all green. Canon: Decision 52.

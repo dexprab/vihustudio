@@ -131,6 +131,13 @@ export const LIMITS = {
   // few turns, and every turn costs money twice (a model call and a
   // speech call).
   'companion-chat': { max: 40, windowSeconds: 3600 },
+
+  // LOOK WHAT I MADE. Mints share tokens and sends "look what I made"
+  // letters. A child shares a handful of creations in a sitting and a
+  // card or foldable re-mints the same stable token, so twenty an hour
+  // covers real enthusiasm; anything past that is a script, not a
+  // child.
+  'creation-share': { max: 20, windowSeconds: 3600 },
 };
 
 // The safe failure shape. Consistent everywhere, and it never carries a
