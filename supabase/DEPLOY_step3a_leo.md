@@ -29,6 +29,18 @@ commands below are the exact ones that close the gap.
 
 ---
 
+## Step 0 — where am I?
+
+Paste **`supabase/verify_step3a_state.js`** into the Studio console
+(signed in). One GET, read-only, and it prints exactly what is still
+missing. Run it again after every change below.
+
+`BUILD` is **`'3A'`** from this sprint on. If the probe reports anything
+else, the function on the server is not this code and nothing below has
+taken effect yet.
+
+---
+
 ## Step 1 — choose the model (§5)
 
 `MODEL_DEFAULTS.name` is `gpt-4.1-mini` and has been since Sprint 1E.
