@@ -24,7 +24,7 @@
   // call. Decision 49 — a version label is the wrong instrument for "is
   // this deployed at all", and the right one for "which one is it".
   const isStep3A = Array.isArray(p.modelCompanions);
-  const FIXED = '3D';
+  const FIXED = '3E';
   if (!isStep3A)  need.push('DEPLOY the function — this server predates Step 3A (build "' + p.build + '")');
   else if (p.build !== FIXED)
     need.push('REDEPLOY the function — this is an early Step 3A build ("' + p.build

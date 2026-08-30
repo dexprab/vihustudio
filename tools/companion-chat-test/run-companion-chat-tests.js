@@ -1136,8 +1136,22 @@ async function call(req, over, providerFetch) {
           };
         });
         const body = JSON.parse(sentBodies[sentBodies.length - 1] || '{}');
-        ck(JSON.stringify(Object.keys(body).sort()) === JSON.stringify(['cardId', 'conversation', 'pageId', 'storyId']),
-           'Y4  THE BROWSER SENDS FOUR THINGS, AND THEY ARE ALL LOCATORS',
+        // ---- WIDENED BY STEP 3E, AND THE PROPERTY IS UNCHANGED ----
+        //
+        // This pinned an exact list of four. Step 3E adds `surface` and
+        // `utcOffsetMinutes`, and both are LOCATORS in exactly the sense
+        // this check exists to protect: the server decides what a
+        // surface means and stamps the date from its own clock, so
+        // neither is a fact the browser gets to assert. What must never
+        // appear is CONTEXT — memories, story prose, a companion, a
+        // creator — and the check below still fails on any of it.
+        //
+        // Pinned as a SET rather than "at least these", so a seventh
+        // field cannot arrive quietly.
+        const ALLOWED = ['cardId', 'conversation', 'pageId', 'storyId',
+                         'surface', 'utcOffsetMinutes'];
+        ck(Object.keys(body).every((k) => ALLOWED.indexOf(k) !== -1),
+           'Y4  THE BROWSER SENDS SIX THINGS, AND THEY ARE ALL LOCATORS',
            Object.keys(body).sort().join(', '));
         ck(!/LIVE PAGE PROSE|A LIVE STORY NAME|memories|personality|canon/i.test(JSON.stringify(body)),
            'Y4b no prose, no story name, no memories, no personality, no canon',

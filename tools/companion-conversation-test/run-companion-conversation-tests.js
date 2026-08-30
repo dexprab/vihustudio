@@ -788,9 +788,19 @@ function code(rel) {
   const sent = await page.evaluate(() => window.__lastConversationBody || null);
   ck(true, 'P2  the browser sends locators only — card, story, page, what was said',
      'proved by js/companionChat.js -> ask()');
-  const bodyKeys = (chatSrc.match(/body: JSON\.stringify\(\{[\s\S]*?\}\)/) || [''])[0];
+  // The body is `JSON.stringify(Object.assign({...}, _live()))` since
+  // Step 3E, so the old pattern stopped at the first `})` and captured
+  // half of it. It reads the whole call now.
+  const bodyKeys = (chatSrc.match(/body: JSON\.stringify\(Object\.assign\(\{[\s\S]*?\}, _live\(\)\)\)/)
+    || chatSrc.match(/body: JSON\.stringify\(\{[\s\S]*?\}\)/) || [''])[0];
+  // Step 3E adds two locators to this body (`surface`,
+  // `utcOffsetMinutes`, via _live()). Neither is context: the server
+  // decides what a surface means and stamps the date itself. THE
+  // PROPERTY IS UNCHANGED and is what is still asserted — no memories,
+  // no story context, no personality, no canon.
   ck(/cardId/.test(bodyKeys) && /storyId/.test(bodyKeys) && /pageId/.test(bodyKeys) &&
-     /conversation/.test(bodyKeys) && !/memories/.test(bodyKeys) && !/storyContext/.test(bodyKeys),
+     /conversation/.test(bodyKeys) && !/memories/.test(bodyKeys) &&
+     !/storyContext/.test(bodyKeys) && !/personality/.test(bodyKeys) && !/canon/.test(bodyKeys),
      'P2b and the request body still carries no memories and no story context',
      bodyKeys.replace(/\s+/g, ' ').slice(0, 120));
   const trav = code('js/travellerTalk.js');

@@ -459,6 +459,11 @@ const TravellerTalk = (function () {
           },
           body: JSON.stringify({
             mode: 'traveller',
+            // WHERE, AND HOW FAR FROM UTC — the same two locators the
+            // Studio sends. A Traveller's date must be right too.
+            surface: 'ether',
+            utcOffsetMinutes: (typeof CompanionLive !== 'undefined'
+              && CompanionLive.utcOffsetMinutes) ? CompanionLive.utcOffsetMinutes() : null,
             storyId: _storyId,
             conversation: _turns.reduce(function (out, t) {
               out.push({ role: 'traveller', text: t.said });

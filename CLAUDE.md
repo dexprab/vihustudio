@@ -5872,6 +5872,79 @@ untouched.
   tell those apart — Decision 51 records this exact lesson and it was
   then not applied twice running. It is `3D`, and both verifiers expect
   it.
+- **THE COMPANION KNEW WHAT A CHILD WAS MAKING AND NOT WHERE THEY WERE
+  STANDING** (Step 3E). So it could tell a child on Studio Home to tap
+  something that only exists in the Story Editor. `js/companionLive.js`
+  answers three questions — which screen, which story, and what day it
+  is — and it is a WHITELIST of six fields, read fresh every turn.
+- **LIVE CONTEXT IS NOT MEMORY, and it cannot become one.** Nothing in
+  that file stores, syncs or remembers: walking Studio Home → Story
+  Editor → Studio Home changes the answer three times and leaves nothing
+  behind. A screen a child was on ten minutes ago is not a fact about
+  them. `localStorage`, `CompanionMemory` and `remember(` appear nowhere
+  in it, which is what makes that structural rather than intended.
+- **THE DATE IS A FACT, SO THE CLIENT MAY NOT SUPPLY ONE.** It is
+  stamped from the server's own clock. The single thing the server
+  cannot know is how far the child is from UTC, so that one number is
+  accepted as a locator — a coarse band of longitude that names nobody —
+  and an implausible one falls back to UTC rather than being refused,
+  because a date is not worth failing a conversation over. Measured: a
+  request supplying its own `now` does not move the day.
+- **STUDIO HOME'S GAP WAS THAT `AppState.project.id` IS ONLY SET ONCE A
+  STORY IS OPEN.** The session slot is the fallback — the same thing
+  Studio Home is already reading to render *"You were making
+  something"* — so no new state and no new store. An open project still
+  wins, and `'Untitled'` comes back as NO name rather than as a name,
+  because it is the store's placeholder and not something a child chose.
+- **STUDIO KNOWLEDGE IS A SECOND FILE, DELIBERATELY.**
+  `assets/canon/studio.knowledge.json` is WHERE A CONTROL IS and WHAT
+  PRESSING IT DOES; the canon is worldview and is the same for ever.
+  Merging them would mean a UI change editing a document about what
+  VihuPlanet IS. Every entry was read off the running product — the Add
+  panel's nine tiles from `js/contextPanel.js`, `Play My Story`,
+  `Finish Story` and `+ Add Page` from `studio.html` — and every entry
+  names where it was read from. The suite fails on a tile that is not a
+  real tile.
+- **ONLY THE SURFACE THE CHILD IS ON TRAVELS.** A Companion must not
+  send a child looking for a control that is not there, and the cheapest
+  way to make that impossible is not to send it: Studio Home gets two
+  capabilities, the Story Editor nine. What the Studio Home entry DOES
+  carry is a `notHere` list naming what is elsewhere, because *"that one
+  is not on this screen, open your story first"* is the answer and it
+  needs the name to give it.
+- **`evidence` NEVER TRAVELS.** A file path is exactly the kind of
+  internal detail a Companion must never hold, let alone repeat.
+- **`id` IS FORBIDDEN, AND SO IS `key`.** The projection first renamed
+  the semantic ids to `key` — and `key` is on `FORBIDDEN_KEYS` too,
+  because there it means a credential. Two forbidden names in a row is
+  the sign that a field is not wanted rather than mis-named: they are
+  dropped. `youAreOn` already says which surface it is, and every
+  capability carries a `name`.
+- **MEASURED.** Story Editor 7,975 tokens, Studio Home 7,307 — the
+  Studio knowledge is ~1,900 of them before filtering and the filter is
+  what keeps the two apart. No retrieval system: ten capabilities, and
+  the thing that decides which are relevant is a fact the request
+  already carries.
+- **THREE CHECKS WERE WIDENED, none weakened.** `Y4` (chat) and `P2b`
+  (conversation) pinned the request's exact field list, and `F3c`
+  (ether) pinned two locators; all three now name the new ones and all
+  three still fail on CONTEXT — a memory, a story, a personality, a
+  canon. `Y4` is pinned as a SET, so a seventh field cannot arrive
+  quietly.
+- **DISCLOSED, AND IT IS THE HONEST LIMIT: the model's own words are
+  unverified.** This environment cannot reach the provider, so §60's
+  human review of real answers, and every "is this answer
+  child-appropriate" question, were not run. What is proved is what
+  reaches the model and what cannot.
+- **DISCLOSED: §18's Ether prose question is NOT resolved here.**
+  Decision 45 says a count travels and a word never does, and Decision
+  26 that a host never describes the Story. The brief asks for public
+  Story content in the Ether and explicitly says not to override an
+  existing decision silently. It is reported as a conflict for the
+  product owner and nothing was changed.
+- `js/companionLive.js` · `assets/canon/studio.knowledge.json` ·
+  `js/companionPrivacyGate.js` ·
+  `tools/companion-guide-test/run-companion-guide-tests.js` ·
 - `js/themeRepositoryClient.js` · `js/travellerTalk.js` ·
   `tools/companion-unified-test/run-companion-unified-tests.js` ·
 - `assets/canon/vihuplanet.canon.json` · `js/companionMind.js` ·

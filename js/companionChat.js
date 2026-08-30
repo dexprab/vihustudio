@@ -181,10 +181,40 @@ const CompanionChat = (function () {
     } catch (e) { return null; }
   }
 
+  /**
+   * WHICH STORY — and on Studio Home too, which is the gap Step 3E
+   * closes. js/companionLive.js falls back to the session slot that
+   * Studio Home is already reading to render "You were making
+   * something", so a child there can ask what they are making and get
+   * an answer. No new state, no new store.
+   */
   function _storyId() {
+    try {
+      if (typeof CompanionLive !== 'undefined' && CompanionLive.story) {
+        const s = CompanionLive.story();
+        if (s && s.id) return s.id;
+      }
+    } catch (e) {}
     try {
       return (typeof AppState !== 'undefined' && AppState.project && AppState.project.id) || null;
     } catch (e) { return null; }
+  }
+
+  /**
+   * WHERE THE CHILD IS STANDING, as locators — never as context. The
+   * server decides what any of it means; this only says which screen
+   * and how far from UTC. Absent when the module is not loaded, and the
+   * turn works exactly as it did before.
+   */
+  function _live() {
+    try {
+      if (typeof CompanionLive === 'undefined' || !CompanionLive.locators) return {};
+      const l = CompanionLive.locators();
+      const out = {};
+      if (l.surface) out.surface = l.surface;
+      if (typeof l.utcOffsetMinutes === 'number') out.utcOffsetMinutes = l.utcOffsetMinutes;
+      return out;
+    } catch (e) { return {}; }
   }
 
   function _pageId() {
@@ -499,12 +529,12 @@ const CompanionChat = (function () {
           apikey: cfg.anonKey,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
+        body: JSON.stringify(Object.assign({
           cardId: cardId,
           storyId: _storyId(),
           pageId: _pageId(),
           conversation: _turns,
-        }),
+        }, _live())),
       }, ASK_TIMEOUT_MS).then(function (r) {
         return r.json().catch(function () { return null; });
       }).then(function (body) {

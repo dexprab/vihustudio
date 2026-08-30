@@ -363,6 +363,41 @@ const WORLD = {
   }),
 };
 
+// ---------------------------------------------------------------
+// STUDIO PROCEDURAL KNOWLEDGE — Step 3E.
+//
+// assets/canon/studio.knowledge.json is WHERE A CONTROL IS and WHAT
+// PRESSING IT DOES, read off the running product. It is deliberately a
+// SECOND file rather than more sections in the canon: the canon is
+// worldview and is the same for ever, this changes every time the
+// Studio does, and merging them would mean a UI change editing a
+// document about what VihuPlanet IS.
+//
+// `neverSay` travels with it, because "do not invent a button" is a
+// rule about this knowledge rather than about the world.
+const STUDIO_SRC = path.join(ROOT, 'assets', 'canon', 'studio.knowledge.json');
+const STUDIO = JSON.parse(fs.readFileSync(STUDIO_SRC, 'utf8'));
+
+const STUDIO_BEGIN = '// ===== BEGIN GENERATED studioKnowledge — do not edit below this line =====';
+const STUDIO_END   = '// ===== END GENERATED studioKnowledge =====';
+const STUDIO_BLOCK = [
+  STUDIO_BEGIN,
+  '// Generated from assets/canon/studio.knowledge.json — Step 3E.',
+  '// Regenerate with:  node tools/edge-auth-test/sync-shared.js',
+  '//',
+  '// PROCEDURAL, not worldview, and not memory. It holds no Creator, no',
+  '// card, no Story and no identifier: it is the product describing',
+  '// itself, identical for every child.',
+  'const STUDIO_KNOWLEDGE = ' + JSON.stringify(STUDIO, null, 2) + ';',
+  STUDIO_END,
+].join('\n');
+const STUDIO_BLOCK_RE = new RegExp(STUDIO_BEGIN.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') +
+  '[\\s\\S]*?' + STUDIO_END.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'm');
+function withStudio(src) {
+  if (!STUDIO_BLOCK_RE.test(src)) return src;   // only companion-chat carries it
+  return src.replace(STUDIO_BLOCK_RE, STUDIO_BLOCK);
+}
+
 const WORLD_BEGIN = '// ===== BEGIN GENERATED vihuplanetCanon — do not edit below this line =====';
 const WORLD_END   = '// ===== END GENERATED vihuplanetCanon =====';
 const WORLD_BLOCK = [
@@ -408,7 +443,7 @@ FUNCTIONS.forEach((name) => {
   try {
     after = inlined(before);
     if (GATE_FUNCTIONS.indexOf(name) !== -1) {
-      after = withCanon(withCharacters(withMind(withBond(withRank(withGate(after))))));
+      after = withStudio(withCanon(withCharacters(withMind(withBond(withRank(withGate(after)))))));
     }
   } catch (e) { console.log('  ERROR   ' + rel + ' — ' + e.message); drifted++; return; }
 

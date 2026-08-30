@@ -1,0 +1,159 @@
+{
+  "knowledgeVersion": "1.0",
+  "title": "What a Companion Knows About the Hall of Creation",
+  "purpose": "PROCEDURAL knowledge of VihuStudio as it is actually built — where a control is, what pressing it does, and what to say to a child who cannot find it. It is not world canon: what VihuPlanet IS lives in vihuplanet.canon.json, and nothing here restates it. Every entry was read off the running product; nothing was inferred from how software usually works.",
+  "howToUse": "A Companion may say where a control is and what it does. It never presses one, never claims to have done anything, and never names a control that is not on the screen the child is looking at.",
+  "surfaces": [
+    {
+      "id": "studio-home",
+      "name": "Studio Home",
+      "childName": "the screen you land on when you come to make something",
+      "whatIsHere": [
+        "Your journey begins / Now Look What You Can Make — the screen that offers ways to start.",
+        "Three named starting points once a first story is finished: My Little Story, Character Card, Little Message.",
+        "If a story was left unfinished: 'You were making something', its name, and Carry on.",
+        "A door to the next story, when there is one waiting."
+      ],
+      "notHere": ["pages", "the Add panel", "Play My Story", "Finish Story"],
+      "evidence": "js/creationFlow.js — 'Begin', 'Carry on', 'Discover', 'My Little Story', 'Character Card', 'Little Message'"
+    },
+    {
+      "id": "story-editor",
+      "name": "the Story Editor",
+      "childName": "where your story is",
+      "whatIsHere": [
+        "The page itself, in the middle.",
+        "PAGES down the left, with + Add Page under them.",
+        "The panel on the right, where things are added and changed.",
+        "Play My Story and Finish Story at the top, which wake up once there is something on the page.",
+        "The story's name at the top, which can be tapped and changed."
+      ],
+      "evidence": "studio.html — #slideList, #addPageBtn, #previewCanvas, #playStoryBtn, #shareBtn, #bookTitle"
+    },
+    {
+      "id": "ether",
+      "name": "the Ether",
+      "childName": "out among the stories",
+      "whatIsHere": [
+        "Stories other people have shared, drifting.",
+        "Nothing is made here — this is where finished stories live."
+      ],
+      "evidence": "index.html · js/etherFeed.js"
+    }
+  ],
+  "capabilities": [
+    {
+      "id": "start-a-story",
+      "name": "Starting a story",
+      "where": ["studio-home"],
+      "entryPoint": "One of the named starting points on Studio Home — My Little Story, Character Card or Little Message.",
+      "steps": ["Pick the one that sounds like what you want to make.", "The story opens, with one page ready."],
+      "expectedResult": "The Story Editor opens with an empty first page.",
+      "commonProblems": ["Nothing to pick from — a first story has not been finished yet, and there is a Begin instead."],
+      "evidence": "js/creationFlow.js"
+    },
+    {
+      "id": "add-something",
+      "name": "Putting something on the page",
+      "where": ["story-editor"],
+      "entryPoint": "The panel on the right of the page.",
+      "controls": [
+        { "label": "Emojis", "icon": "😀", "id": "stickers" },
+        { "label": "Shapes", "icon": "🔺", "id": "shapes" },
+        { "label": "Text", "icon": "🅰️", "id": "text" },
+        { "label": "Doodle", "icon": "✏️", "id": "doodle" },
+        { "label": "Photo", "icon": "🖼️", "id": "photo" },
+        { "label": "My Garden", "icon": "🪴", "id": "library" },
+        { "label": "Family Photos", "icon": "📷", "id": "family" },
+        { "label": "From This World", "icon": "🎁", "id": "fromWorld" },
+        { "label": "Voice", "icon": "🎤", "id": "voice" }
+      ],
+      "steps": ["Look at the panel on the right.", "Tap the one you want. It goes on the page and you can move it."],
+      "expectedResult": "The thing appears on the page and can be dragged.",
+      "commonProblems": [
+        "A tile is not there — not everything is there from the start. What a child has met so far is what shows.",
+        "On Studio Home there is no panel at all: a story has to be open first."
+      ],
+      "evidence": "js/contextPanel.js lines 3678-3705 — the real tile list, with its real labels"
+    },
+    {
+      "id": "add-a-page",
+      "name": "Adding a page",
+      "where": ["story-editor"],
+      "entryPoint": "+ Add Page, under the list of pages on the left.",
+      "steps": ["Find PAGES down the left.", "Tap + Add Page at the bottom of that list."],
+      "expectedResult": "A new empty page appears at the end and opens.",
+      "evidence": "studio.html — #addPageBtn, label '+ Add Page'"
+    },
+    {
+      "id": "name-the-story",
+      "name": "Naming a story",
+      "where": ["story-editor"],
+      "entryPoint": "The story's name across the top.",
+      "steps": ["Tap the name at the top.", "Type the new one."],
+      "expectedResult": "The story is called that everywhere — in your stories, and on the page if the World shows it.",
+      "evidence": "studio.html — #bookTitle, #bookTitleEdit"
+    },
+    {
+      "id": "play-the-story",
+      "name": "Playing a story back",
+      "where": ["story-editor"],
+      "entryPoint": "Play My Story, at the top.",
+      "steps": ["Tap Play My Story."],
+      "expectedResult": "The story plays through, page by page.",
+      "commonProblems": ["It looks asleep — there is nothing on the page yet, or a story chapter is running and has not finished."],
+      "evidence": "studio.html — #playStoryBtn, label 'Play My Story', class is-asleep when disabled"
+    },
+    {
+      "id": "finish-the-story",
+      "name": "Finishing a story",
+      "where": ["story-editor"],
+      "entryPoint": "Finish Story, at the top.",
+      "steps": ["Tap Finish Story.", "Two choices come up: take the story, or share it with VihuPlanet.", "Neither one is the one you have to pick."],
+      "expectedResult": "Every part of the story is made and handed over. Sharing is a separate choice.",
+      "commonProblems": ["It looks asleep — same as Play My Story."],
+      "evidence": "studio.html — #shareBtn, label 'Finish Story' · CLAUDE.md Decision 12"
+    },
+    {
+      "id": "go-back",
+      "name": "Going back",
+      "where": ["story-editor"],
+      "entryPoint": "🏠 at the top left goes to Studio Home. 🌌 goes back out to the Ether.",
+      "steps": ["Tap 🏠 for Studio Home, or 🌌 to go out to VihuPlanet."],
+      "expectedResult": "The story is kept on its own — nothing has to be saved by hand.",
+      "evidence": "studio.html — #homeBtn '🏠', #etherBtn '🌌'"
+    },
+    {
+      "id": "the-garden",
+      "name": "My Garden",
+      "where": ["story-editor"],
+      "entryPoint": "🪴 My Garden in the panel on the right.",
+      "steps": ["Tap 🪴 My Garden.", "It opens on two rooms — your drawings, and your letters.", "Tap one to put it on the page, or tap an empty letter to make it."],
+      "expectedResult": "Your own drawing or your own letter goes on the page.",
+      "commonProblems": ["The tile is not there — My Garden is one of the things a child meets as they go."],
+      "evidence": "js/contextPanel.js — data-add-id 'library', label 'My Garden' · CLAUDE.md Decision 27"
+    },
+    {
+      "id": "talk-to-me",
+      "name": "Talking to your Companion",
+      "where": ["studio-home", "story-editor", "ether"],
+      "entryPoint": "The small opener at the foot of the screen, or tapping the Companion.",
+      "steps": ["Tap it.", "Type, or use 🎤 to say it out loud."],
+      "expectedResult": "The conversation opens at the bottom. Closing it forgets what was said.",
+      "evidence": "js/companionChat.js · js/travellerTalk.js"
+    },
+    {
+      "id": "saving",
+      "name": "Keeping a story safe",
+      "where": ["story-editor"],
+      "entryPoint": "Nothing — it keeps itself.",
+      "steps": ["Nothing to do. It saves on its own while you work."],
+      "expectedResult": "The story is there when you come back, on Studio Home under 'You were making something'.",
+      "evidence": "studio.html — #autosaveStatus 'Saved locally' · js/creatorProjectStore.js"
+    }
+  ],
+  "neverSay": [
+    "Any control not listed above — a Companion that invents a button sends a child looking for something that is not there.",
+    "That it pressed anything, added anything, changed anything or saved anything itself."
+  ]
+}

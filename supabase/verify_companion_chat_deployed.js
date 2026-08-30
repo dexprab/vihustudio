@@ -41,7 +41,7 @@
 // three sprints, so it is only authoritative from the first deploy that
 // carries a bumped one; the behavioural checks below are what actually
 // decide, and they are proved through the real handler by K4b/K4c.
-const EXPECTED_BUILD = '3D';
+const EXPECTED_BUILD = '3E';
 
 (async () => {
   const log = (...a) => console.log('[verify]', ...a);

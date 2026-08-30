@@ -40,14 +40,20 @@ const CompanionPrivacyGate = (function () {
 
   // The contract. A member not in this list does not reach a model,
   // whoever put it in the raw context.
+  // `now` and `studio` joined in Step 3E. Both are LIVE and both are
+  // PRODUCT CONTENT rather than anybody's data — the date from the
+  // server's own clock, and the Studio describing its own controls —
+  // and both are swept for values exactly like everything else. They
+  // are named here because a member not in the contract is REFUSED,
+  // which is the property that makes this a contract and not a filter.
   const CONTRACT = ['contextVersion', 'mode', 'authority', 'canon', 'personality',
-                    'memories', 'storyContext', 'conversation'];
+                    'memories', 'storyContext', 'now', 'studio', 'conversation'];
 
   // What Traveller mode is allowed. Deliberately a second, smaller list
   // rather than a set of exceptions inside the first: a mode that
   // permits less should be expressed by permitting less.
   const TRAVELLER_CONTRACT = ['contextVersion', 'mode', 'authority', 'canon', 'personality',
-                              'storyContext', 'conversation'];
+                              'storyContext', 'now', 'studio', 'conversation'];
 
   // ---------------------------------------------------------------
   // KEYS THAT NEVER LEAVE. Matched case-insensitively, whole word

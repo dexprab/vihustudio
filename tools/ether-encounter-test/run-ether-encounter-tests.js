@@ -768,11 +768,17 @@ const FOUR = [['leafy', 'Leafy', 'Bloomling'], ['leosaurus', 'Leo', 'Lantern Lio
      'F3b and the public-context wall still makes no request at all',
      ctxNet.join(', ') || 'none');
   const bodyKeys = (talkSrc.match(/JSON\.stringify\(\{\s*\n?\s*mode: 'traveller'[\s\S]*?\}\)/) || [''])[0];
-  const SENT = ['mode', 'storyId', 'conversation'];
+  // WIDENED BY STEP 3E, PROPERTY UNCHANGED. `surface` and
+  // `utcOffsetMinutes` joined — both LOCATORS in exactly the sense this
+  // check protects: the server decides what a surface means and stamps
+  // the date from its own clock, so neither is a fact the browser
+  // asserts. A Traveller's date has to be right too. What must never
+  // appear is CONTEXT, and F3d below still fails on any of it.
+  const SENT = ['mode', 'surface', 'utcOffsetMinutes', 'storyId', 'conversation'];
   const extra = (bodyKeys.match(/^\s*([a-zA-Z]+):/gm) || [])
     .map((m) => m.trim().replace(':', '')).filter((k) => SENT.indexOf(k) === -1);
   ck(bodyKeys && extra.length === 0,
-     'F3c WHAT IT SENDS IS TWO LOCATORS AND A SENTENCE — nothing else',
+     'F3c WHAT IT SENDS IS FOUR LOCATORS AND A SENTENCE — nothing else',
      extra.join(', ') || SENT.join(', '));
   ck(!/companionId\s*:|cardId\s*:|creatorName\s*:|memories\s*:/.test(bodyKeys),
      'F3d and never a companion, a card, a creator or a memory');
