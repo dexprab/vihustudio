@@ -5539,13 +5539,14 @@ untouched.
   path, no Story mutation, no automatic memory, no transcript. The model
   still proposes a memory and the Bond validator still decides. Both
   production gates ship closed and listing a Companion does not open one.
-- **DISCLOSED, AND IT IS THE HONEST LIMIT OF THIS SESSION: no model was
-  ever called.** This environment's network policy refuses
-  `api.openai.com` and there is no key here, so §5's model inspection,
-  §6's real first call and §42–44's real journeys are the product
-  owner's to run. What is proved here is the routing, the gating, the
-  fallback, the character and every boundary — **never the model's own
-  words.** `supabase/DEPLOY_step3a_leo.md` is the runbook that closes it.
+- **DISCLOSED, AND IT WAS THE HONEST LIMIT OF THE BUILDING SESSION: no
+  model was ever called there** (closed by the product owner at build
+  `3A.1` — see above). That environment's network policy refuses
+  `api.openai.com` and there is no key there, so §5's model inspection,
+  §6's real first call and §42–44's real journeys were the product
+  owner's to run; §6 is now run and §42–44 are not. What was proved
+  there is the routing, the gating, the fallback, the character and
+  every boundary — **never the model's own words.** `supabase/DEPLOY_step3a_leo.md` is the runbook that closes it.
 - **THE ETHER IS DELIBERATELY NOT INCLUDED.** §10 and §43 ask for the
   same model there and `js/travellerTalk.js` makes no server call at
   all, so it would mean a NEW authenticated-but-cardless path into a
@@ -5572,6 +5573,22 @@ untouched.
   listed and unlisted, and requires the two replies to DIFFER with no
   recorded fallback. **A fallback that cannot be told from a success is
   the one thing a rollout behind a fallback must be able to see.**
+- **THE FIRST REAL MODEL CALL IN THIS PRODUCT ANSWERED CORRECTLY** (build
+  `3A.1`, run by the product owner). Asked *"Where are we?"* of the
+  invented Story, Leo said *"We are at the edge of the forest, where the
+  story begins to unfold."* — `ok: true`, `synthetic: true`, and **no
+  `modelFellBack`**, which is the only thing that distinguishes a model
+  from its own fallback. It answered **from the page** rather than from
+  anywhere else, which is what the controlled call exists to prove: the
+  forest is what the fixture's page says, so a correct answer could only
+  have been drawn from the context it was given.
+- **WATCH THE SECOND HALF OF THAT SENTENCE.** *"where the story begins
+  to unfold"* is a narrator's clause, and Decisions 26 and 31 are
+  explicit that a Companion is not a narrator. One line at temperature
+  0.5 is not evidence of a drift, and it is the exact thing §42's real
+  journey is for: a Companion that describes the story rather than being
+  in it has stopped being company. If it recurs, the instruction is
+  where to fix it, never the character file.
 - **A BUILD STRING IS THE WRONG INSTRUMENT FOR "IS IT DEPLOYED" AND THE
   RIGHT ONE FOR "WHICH ONE IS IT".** The state check asked whether the
   probe reported `modelCompanions`, deliberately, because Decision 49
