@@ -220,6 +220,28 @@ Clone or a designed voice is the recommendation.
 
 ### The trade-off, stated plainly
 
+**Moving a character to v3 also gives up LATENCY, and that half was not
+written down here until Sprint 3A.1.** `eleven_v3` is the expressive
+model; `eleven_turbo_v2_5` (the function's own default, and what a
+registry entry gets if it names no model) and `eleven_flash_v2_5` are the
+low-latency ones. The whole cast is on v3, so every generated line pays
+the expressive model's generation time — and since Sprint 3A.1 holds a
+Companion's words until its voice is ready, that time is now time a child
+spends looking at a "getting ready" indicator rather than time they spend
+reading an answer they already have.
+
+Nothing has been changed on that basis. It was **chosen by ear** and it is
+a product decision, not an engineering one; this is only the fact that
+belongs beside it. The knobs, in the order they cost something:
+
+| lever | costs | how |
+|---|---|---|
+| `ELEVENLABS_OUTPUT_FORMAT` | a little fidelity | one env var, e.g. `mp3_22050_32`; unset changes nothing |
+| `modelId` per character | expression, and audio tags | a registry edit, no code, no redeploy |
+
+Judge both by ear. Neither can be measured from a build environment,
+because neither the provider nor a pair of ears is reachable from one.
+
 **Moving a character to v3 gives up `speed`.** The base pace above is a
 turbo setting; v3 has no equivalent, so a v3 character speaks at whatever
 pace the voice itself has. If slowness matters more than expression for a
