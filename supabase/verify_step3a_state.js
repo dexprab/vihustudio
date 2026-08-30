@@ -8,10 +8,24 @@
   const p = await r.json();
   console.log(p);
   const need = [];
-  if (p.build !== '3A')            need.push('DEPLOY the function — server says build "' + p.build + '", Step 3A is "3A"');
+  // ---- IS THIS STEP 3A's CODE? ASK WHAT IT CAN DO, NOT WHAT IT SAYS.
+  //
+  // The build string was bumped to '3A' AFTER Step 3A was first
+  // deployable, so a correct Step 3A deployment can honestly report
+  // '1N.5' — and the first draft of this check told the product owner
+  // to redeploy a function that was already right. Twice now a version
+  // label has been the wrong instrument (Decisions 42, 49).
+  //
+  // `modelCompanions` is the honest signal: the probe only reports it
+  // at all from Step 3A onward, so its PRESENCE is the deploy and its
+  // CONTENTS are the gate.
+  const isStep3A = Array.isArray(p.modelCompanions);
+  if (!isStep3A)  need.push('DEPLOY the function — this server predates Step 3A (build "' + p.build + '")');
+  else if (p.build !== '3A') console.log('[note] Step 3A code is live; its build stamp reads "'
+    + p.build + '" because the stamp was bumped after you deployed. Harmless — the next deploy says "3A".');
   if (p.provider !== 'openai')     need.push('set COMPANION_MODEL_PROVIDER = openai   (now: "' + p.provider + '")');
   if (!p.configured)               need.push('OPENAI_API_KEY is not visible to the function');
-  if (!(p.modelCompanions||[]).includes('leosaurus'))
+  if (isStep3A && !p.modelCompanions.includes('leosaurus'))
                                    need.push('set COMPANION_MODEL_COMPANIONS = leosaurus');
   if (!p.syntheticEnabled && !p.productionEnabled)
                                    need.push('set COMPANION_SYNTHETIC_ENABLED = true   (for the safe first call)');
