@@ -8,21 +8,27 @@
   const p = await r.json();
   console.log(p);
   const need = [];
-  // ---- IS THIS STEP 3A's CODE? ASK WHAT IT CAN DO, NOT WHAT IT SAYS.
+  // ---- IS THIS THE STEP 3A CODE, AND IS IT THE FIXED ONE?
   //
-  // The build string was bumped to '3A' AFTER Step 3A was first
-  // deployable, so a correct Step 3A deployment can honestly report
-  // '1N.5' — and the first draft of this check told the product owner
-  // to redeploy a function that was already right. Twice now a version
-  // label has been the wrong instrument (Decisions 42, 49).
+  // Two separate questions, and the first draft of this check could
+  // only ask the first. `modelCompanions` is reported by the probe from
+  // Step 3A onward, so its PRESENCE says the routing exists — but the
+  // FIRST Step 3A deploy carried a real bug (the fixture's Companion was
+  // overwritten before the model gate read its id, so the controlled
+  // first call was answered by the deterministic Mind and looked exactly
+  // like a working deployment). Presence alone would have called that
+  // done.
   //
-  // `modelCompanions` is the honest signal: the probe only reports it
-  // at all from Step 3A onward, so its PRESENCE is the deploy and its
-  // CONTENTS are the gate.
+  // So the build string is used for the SECOND question only, and it now
+  // means something: '3A.1' is the first build that can pass the first
+  // call. Decision 49 — a version label is the wrong instrument for "is
+  // this deployed at all", and the right one for "which one is it".
   const isStep3A = Array.isArray(p.modelCompanions);
+  const FIXED = '3A.1';
   if (!isStep3A)  need.push('DEPLOY the function — this server predates Step 3A (build "' + p.build + '")');
-  else if (p.build !== '3A') console.log('[note] Step 3A code is live; its build stamp reads "'
-    + p.build + '" because the stamp was bumped after you deployed. Harmless — the next deploy says "3A".');
+  else if (p.build !== FIXED)
+    need.push('REDEPLOY the function — this is an early Step 3A build ("' + p.build
+      + '") whose first call is answered by the deterministic Mind. The fix is build "' + FIXED + '".');
   if (p.provider !== 'openai')     need.push('set COMPANION_MODEL_PROVIDER = openai   (now: "' + p.provider + '")');
   if (!p.configured)               need.push('OPENAI_API_KEY is not visible to the function');
   if (isStep3A && !p.modelCompanions.includes('leosaurus'))

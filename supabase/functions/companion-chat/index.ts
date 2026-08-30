@@ -65,7 +65,7 @@
 //
 // Leave JWT verification ON. This spends money per call.
 
-const BUILD = '3A';
+const BUILD = '3A.1';
 
 // ===== BEGIN GENERATED edgeAuth — do not edit below this line =====
 // Generated from supabase/functions/_shared/edgeAuth.js, which is the
@@ -3121,7 +3121,24 @@ function makeHandler(deps) {
       // personality would answer a nameless Companion's Creator as
       // Leafy, which is the "never lend somebody else's Companion" rule
       // broken by a default.
-      src.raw.personality = (live ? companionOf(src.identity) : SYNTHETIC_PERSONALITY)
+      // A FIXTURE'S OWN COMPANION SURVIVES — Step 3A, and this line
+      // silently threw it away.
+      //
+      // syntheticContext() already resolves `fixture.personality ||
+      // SYNTHETIC_PERSONALITY`, and this overwrote that with
+      // SYNTHETIC_PERSONALITY unconditionally — which is Leafy, and
+      // which carries no `id`. So the controlled first call, whose
+      // whole point is to hear LEO, arrived with no companion id at
+      // all: `modelWanted` was false, the deterministic Mind answered,
+      // and the reply came back "I don't know that one. I'd only be
+      // guessing." Reported by the product owner running the real
+      // probe, which is the only place it could have shown up —
+      // 3A6 asserted `ok: true` and nothing more.
+      //
+      // The LIVE branch is unchanged: the card row still wins, and a
+      // card with no bond still gets a nameless Companion rather than
+      // borrowing somebody's.
+      src.raw.personality = (live ? companionOf(src.identity) : src.raw.personality)
         || { name: null, species: null };
 
       // ---- DOES THIS COMPANION HAVE A REAL MIND? — Step 3A --------

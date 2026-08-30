@@ -1620,11 +1620,19 @@ async function call(req, over, providerFetch) {
        '3A5c with no provider word, status code or technical term in it');
 
     // ---- THE CONTROLLED FIRST CALL (§6) --------------------------
+    // `ok: true` PROVES NOTHING HERE, and that is how a real bug shipped.
+    // The deterministic Mind also answers `ok: true`; the question is
+    // WHO answered. Measured against the Mind's own answer for the same
+    // fixture, and against the fallback flag.
+    const firstMind = await call(post({ fixture: 'first-call' }), MIND_ON);
     const first = await call(post({ fixture: 'first-call' }),
       Object.assign({}, MIND_ON, { COMPANION_MODEL_COMPANIONS: 'leosaurus' }));
     ck(first.body && first.body.ok === true,
        '3A6  the controlled first call runs end to end on synthetic material',
        JSON.stringify(first.body.reply));
+    ck(first.body.reply !== firstMind.body.reply && !first.body.meta.modelFellBack,
+       '3A6a  AND THE MODEL IS WHAT ANSWERED IT — not the deterministic Mind',
+       JSON.stringify({ mind: firstMind.body.reply, model: first.body.reply }));
     const fx = M.FIXTURES['first-call'];
     ck(fx && fx.story.story.name === 'The Dragon and the Forest' &&
        fx.personality.id === 'leosaurus',
