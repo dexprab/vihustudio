@@ -5827,7 +5827,52 @@ untouched.
   flag of its own because it has no intelligence of its own. Only
   `leosaurus` is listed on the live server, and adding a name is one
   environment variable with no deploy.
-- `js/travellerTalk.js` ·
+- **AND THE TOKEN THAT CARRIES ALL OF IT EXPIRED SILENTLY** (build
+  0703). Reported by the product owner: the Ether answered *"I don't
+  know"* for Leafy. Measured in production, and it was none of the three
+  faults the diagnosis had ranked — `token present: true (length 808) ·
+  expires 09:19:21Z *** EXPIRED *** · auth/v1/user 403 · function 401
+  UNAUTHORIZED_ASYMMETRIC_JWT`. A page refresh fixed it, which is the
+  tell: a fresh token, and an hour until the next time.
+- **`js/themeRepositoryClient.js` CACHED A SNAPSHOT OF A THING THAT
+  EXPIRES.** `_authPromise` held the session OBJECT resolved by the
+  first caller and handed it to every caller for the life of the page;
+  `refreshSession` appeared nowhere in the file and nothing read
+  `expires_at`. **Eleven modules depend on that one function** — Talk,
+  voice, project sync, memory, the library, handwriting, the family
+  album, sky protection, the card platform, asset resolution — so past
+  the hour they failed together, on every surface. It is a live session
+  now, checked with a minute of headroom, refreshed rather than
+  re-minted (a new anonymous session is a DIFFERENT `auth.uid()` and
+  therefore a different person to every RLS policy), one refresh in
+  flight for all eleven callers, and a failure is not remembered.
+- **THE ETHER SENT AN ID THE SERVER COULD NEVER FIND.**
+  `js/etherFeed.js` builds an entity as `id: 'story-' + record.id` with
+  the real id on `source.projectId`, and Step 3C read
+  `story.projectId || story.id` — so every Ether turn named
+  `story-proj_…` and got 403 `no-such-story`, for every Companion. **The
+  fallback to `story.id` is gone rather than corrected**: it is the
+  wrong id, and falling back to it is what made a broken path look like
+  a working one. No locator now means no remote turn.
+- **NO SUITE COULD SEE IT, and the reason is the recurring one.** The
+  ether-encounter fixture story has no top-level `id` AT ALL, only
+  `source.projectId`, so the derivation came out null, the remote path
+  was never entered, and every check passed. A fixture that does not
+  match the real shape cannot catch a bug about the real shape — the
+  fourth time in this sequence. The guard now reads the entity shape out
+  of `js/etherFeed.js` and runs the real derivation against it.
+- **A STATIC CHECK WAS NOT ENOUGH FOR THE FAULT THAT TOOK PRODUCTION
+  DOWN.** `T7` runs the real client in a real browser with supabase-js
+  stubbed at its own `esm.sh` import, feeds it an expired stored session,
+  and measures what eleven callers are handed: `fresh.token.1`, and zero
+  further auth calls. Proved by reverting — it comes back
+  `"expired.token"`.
+- **`BUILD` MEANT NOTHING AGAIN.** The live probe read `3A.1` while
+  Steps 3B and 3C were simply not deployed, and the string could not
+  tell those apart — Decision 51 records this exact lesson and it was
+  then not applied twice running. It is `3D`, and both verifiers expect
+  it.
+- `js/themeRepositoryClient.js` · `js/travellerTalk.js` ·
   `tools/companion-unified-test/run-companion-unified-tests.js` ·
 - `assets/canon/vihuplanet.canon.json` · `js/companionMind.js` ·
   `js/companionChat.js` · `js/companionConversation.js` ·

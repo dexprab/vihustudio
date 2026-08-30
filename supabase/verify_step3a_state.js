@@ -24,11 +24,11 @@
   // call. Decision 49 — a version label is the wrong instrument for "is
   // this deployed at all", and the right one for "which one is it".
   const isStep3A = Array.isArray(p.modelCompanions);
-  const FIXED = '3A.1';
+  const FIXED = '3D';
   if (!isStep3A)  need.push('DEPLOY the function — this server predates Step 3A (build "' + p.build + '")');
   else if (p.build !== FIXED)
     need.push('REDEPLOY the function — this is an early Step 3A build ("' + p.build
-      + '") whose first call is answered by the deterministic Mind. The fix is build "' + FIXED + '".');
+      + '") — Step 3B\'s world knowledge and Step 3C\'s Ether path are not on it. The current build is "' + FIXED + '".');
   if (p.provider !== 'openai')     need.push('set COMPANION_MODEL_PROVIDER = openai   (now: "' + p.provider + '")');
   if (!p.configured)               need.push('OPENAI_API_KEY is not visible to the function');
   if (isStep3A && !p.modelCompanions.includes('leosaurus'))

@@ -65,7 +65,20 @@
 //
 // Leave JWT verification ON. This spends money per call.
 
-const BUILD = '3A.1';
+// ---- WHICH CODE IS THIS? --------------------------------------
+//
+// BUMPED FOR EVERY SPRINT THAT CHANGES THIS FILE, and Steps 3B and 3C
+// both failed to. The live probe reported '3A.1' while the server was
+// running 3A.1 — correct, and useless, because it read the same for a
+// server that had 3B and 3C and one that had neither. The product owner
+// could not tell that the world knowledge and the Ether path were
+// simply not deployed.
+//
+// Decision 51 already records this exact lesson — "a build string is
+// the wrong instrument for is it deployed and the right one for which
+// one is it" — and it was written after the last time and then not
+// applied twice running. It is applied now.
+const BUILD = '3D';
 
 // ===== BEGIN GENERATED edgeAuth — do not edit below this line =====
 // Generated from supabase/functions/_shared/edgeAuth.js, which is the

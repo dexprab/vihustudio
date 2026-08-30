@@ -49,7 +49,43 @@ const ThemeRepositoryClient = (function () {
   let _client = null;
   let _clientPromise = null;
   let _configPromise = null;
+  // ---- A SESSION IS NOT A SNAPSHOT — the token expires ------------
+  //
+  // `_authPromise` used to be the whole cache: the first caller resolved
+  // a session object and every caller afterwards got THAT OBJECT for the
+  // life of the page. An access token lives about an hour, so on any tab
+  // left open past it, the token handed out was dead — and eleven
+  // modules depend on this one function (Talk, voice, project sync,
+  // memory, the library, handwriting, the family album, sky protection,
+  // the card platform, asset resolution).
+  //
+  // Measured in production before this was fixed:
+  //     token present: true (length 808)
+  //     expires      : 2026-08-30T09:19:21.000Z  *** EXPIRED ***
+  //     auth/v1/user : 403      <- the exact call the Edge gate makes
+  //     function GET : 401 {"code":"UNAUTHORIZED_ASYMMETRIC_JWT"}
+  //
+  // Refreshing the page fixed it, which is the tell: a fresh token, and
+  // then an hour until the next time. Nothing in this file called
+  // `refreshSession` and nothing looked at `expires_at`.
+  //
+  // So `_session` is the cache now and it is CHECKED before it is
+  // handed out; `_authPromise` is only ever the one refresh in flight,
+  // so eleven callers asking at once make one call rather than eleven.
   let _authPromise = null;
+  let _session = null;
+  // A minute of headroom. A token that is valid *now* but expires while
+  // the request is in the air is the same failure with better timing.
+  const TOKEN_MARGIN_MS = 60000;
+
+  function _stale(session) {
+    if (!session || !session.access_token) return true;
+    // NO EXPIRY MEANS TRUST IT. A session shape without `expires_at` is
+    // not evidence of a dead token, and treating it as one would refresh
+    // on every single call.
+    if (!session.expires_at) return false;
+    return (Number(session.expires_at) * 1000) - Date.now() < TOKEN_MARGIN_MS;
+  }
 
   function _loadConfig() {
     if (_configPromise) return _configPromise;
@@ -88,15 +124,42 @@ const ThemeRepositoryClient = (function () {
   // neither one is required for Builder to keep working exactly as it
   // always has.
   function _ensureAuth() {
+    // The common case, and it costs nothing: a live token already in hand.
+    if (_session && !_stale(_session)) return Promise.resolve(_session);
+    // ONE REFRESH IN FLIGHT. Every caller that arrives while it is
+    // running waits on the same promise.
     if (_authPromise) return _authPromise;
     _authPromise = _getClient().then(function (client) {
       return client.auth.getSession().then(function (res) {
-        if (res.data && res.data.session) return res.data.session;
-        return client.auth.signInAnonymously().then(function (res2) {
-          if (res2.error) throw res2.error;
-          return res2.data.session;
+        const have = res.data && res.data.session;
+        if (have && !_stale(have)) return have;
+        // STALE, OR NONE AT ALL. Ask for a new access token with the
+        // refresh token first — that keeps the same identity, which
+        // matters because ownership is `auth.uid()` and a new anonymous
+        // session is a DIFFERENT person as far as every RLS policy is
+        // concerned. Signing in afresh is the last resort, not the first.
+        return client.auth.refreshSession().then(function (r2) {
+          const got = r2 && r2.data && r2.data.session;
+          if (got && !_stale(got)) return got;
+          throw new Error('refresh produced no usable session');
+        }).catch(function () {
+          return client.auth.signInAnonymously().then(function (res2) {
+            if (res2.error) throw res2.error;
+            return res2.data.session;
+          });
         });
       });
+    }).then(function (session) {
+      _session = session;
+      _authPromise = null;
+      return session;
+    }, function (error) {
+      // A FAILURE IS NOT REMEMBERED. Caching one would cost the rest of
+      // the visit for a single blink of the network — the lesson
+      // Decision 49 already records for the config cache.
+      _authPromise = null;
+      _session = null;
+      throw error;
     });
     return _authPromise;
   }
@@ -132,7 +195,8 @@ const ThemeRepositoryClient = (function () {
         // list()/load()/publish()/getStats()/reset() call (all of which
         // call _authIfPersonal -> _ensureAuth) immediately sees the new
         // session instead of the stale cached one.
-        _authPromise = Promise.resolve(res.data.session);
+        _session = res.data.session;
+        _authPromise = null;
         return { ok: true, session: res.data.session };
       });
     }).catch(function (error) {
@@ -161,7 +225,8 @@ const ThemeRepositoryClient = (function () {
         if (!res.data.session) {
           return { ok: true, session: null, needsConfirmation: true };
         }
-        _authPromise = Promise.resolve(res.data.session);
+        _session = res.data.session;
+        _authPromise = null;
         return { ok: true, session: res.data.session };
       });
     }).catch(function (error) {
@@ -180,6 +245,7 @@ const ThemeRepositoryClient = (function () {
       return client.auth.signOut().then(function (res) {
         if (res.error) throw res.error;
         _authPromise = null;
+        _session = null;
         return { ok: true };
       });
     }).catch(function (error) {

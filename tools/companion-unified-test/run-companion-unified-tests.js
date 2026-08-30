@@ -392,6 +392,151 @@ const NICKNAME = 'Spark';
   ck(/CompanionSpeak\.ready\(/.test(chat) && /CompanionSpeak\.ready\(/.test(talk),
      'V5  BOTH surfaces still hold the words for their voice — 3A.1 intact');
 
+  // =================================================================
+  section('L. THE LOCATOR — the id the browser actually sends');
+  // =================================================================
+  // THE BUG THIS EXISTS FOR. js/etherFeed.js builds an entity as
+  // `id: 'story-' + record.id` with the real project id on `source`.
+  // travellerTalk read `story.projectId || story.id`, so it sent the
+  // PREFIXED runtime id and the server answered 403 no-such-story on
+  // every Ether turn, for every Companion.
+  //
+  // NO SUITE CAUGHT IT, and the reason is worth writing down: the
+  // ether-encounter fixture story has no top-level `id` AT ALL, only
+  // `source.projectId`, so the derivation came out null, the remote
+  // path was never entered, and every check passed. A fixture that does
+  // not match the real shape cannot see a bug about the real shape —
+  // the fourth time in this sprint sequence.
+  //
+  // So this reads the entity shape OUT OF js/etherFeed.js rather than
+  // restating it, and drives the real derivation against it.
+  const feedSrc = fs.readFileSync(path.join(ROOT, 'js', 'etherFeed.js'), 'utf8');
+  ck(/id:\s*'story-'\s*\+\s*record\.id/.test(feedSrc),
+     'L1  the feed still prefixes the entity id — the fact this guards');
+  ck(/projectId:\s*record\.id/.test(feedSrc),
+     'L1b and still keeps the real project id on `source`');
+  const talkSrc2 = fs.readFileSync(path.join(ROOT, 'js', 'travellerTalk.js'), 'utf8');
+  const line = (talkSrc2.match(/_storyId = [^;]+;/) || [''])[0];
+  ck(/source && story\.source\.projectId/.test(line),
+     'L2  THE LOCATOR IS `source.projectId`', line.slice(0, 80));
+  ck(!/\|\|\s*story\.id\b/.test(line),
+     'L2b AND THERE IS NO FALLBACK TO `story.id` — the wrong id must not be sent',
+     /story\.id/.test(line) ? 'STILL FALLS BACK' : 'no fallback');
+  // Driven, not read: the real derivation against the real entity.
+  const entity = { id: 'story-proj_abc123', title: 'A Story',
+                   source: { projectId: 'proj_abc123', origin: 'creator',
+                             companion: { id: 'leafy', name: 'Leafy' } } };
+  const derive = new Function('story', 'let _storyId; ' + line + ' return _storyId;');
+  ck(derive(entity) === 'proj_abc123',
+     'L3  and it derives the id the server can actually find',
+     JSON.stringify(derive(entity)));
+  ck(derive({ id: 'story-x' }) === null,
+     'L3b while an entity with no project id yields NOTHING rather than a wrong guess',
+     JSON.stringify(derive({ id: 'story-x' })));
+
+  // =================================================================
+  section('T. THE SESSION — a token that expires is refreshed, not reused');
+  // =================================================================
+  // THE OTHER BUG THIS EXISTS FOR, and it was upstream of everything:
+  // js/themeRepositoryClient.js cached a SESSION OBJECT for the life of
+  // the page, so once the access token expired (about an hour) every
+  // one of eleven callers was handed a dead one. Measured in production:
+  // auth/v1/user 403, the function 401 UNAUTHORIZED_ASYMMETRIC_JWT.
+  const trc = fs.readFileSync(path.join(ROOT, 'js', 'themeRepositoryClient.js'), 'utf8');
+  ck(/refreshSession\s*\(/.test(trc),
+     'T1  THE CLIENT CAN REFRESH — the call that was missing entirely');
+  ck(/function _stale\(/.test(trc) && /expires_at/.test(trc),
+     'T2  and it looks at `expires_at` before handing a token out');
+  ck(/if \(_session && !_stale\(_session\)\) return Promise\.resolve\(_session\)/.test(trc),
+     'T3  a LIVE token is returned straight away — the common case costs nothing');
+  ck(/if \(_authPromise\) return _authPromise;/.test(trc),
+     'T4  and eleven callers arriving at once make ONE refresh, not eleven');
+  const refreshIdx = trc.indexOf('refreshSession');
+  const anonIdx = trc.indexOf('signInAnonymously', refreshIdx);
+  ck(refreshIdx > 0 && anonIdx > refreshIdx,
+     'T5  REFRESH COMES FIRST, a new anonymous session second — the identity is `auth.uid()`, '
+     + 'and a fresh one is a different person to every RLS policy');
+  ck(/_authPromise = null;\s*\n\s*_session = null;\s*\n\s*throw error;/.test(trc),
+     'T6  and a failed refresh is NOT remembered — one blink must not cost the visit');
+
+  // =================================================================
+  section('T7. THE SESSION, MEASURED — not read off the source');
+  // =================================================================
+  // The checks above read the file. This one RUNS it: a real browser, the
+  // real js/themeRepositoryClient.js, and a stubbed supabase-js served in
+  // place of the esm.sh module it imports. An expired session goes in;
+  // what comes out is what eleven callers would actually be handed.
+  {
+    const { chromium } = require('playwright');
+    const http = require('http');
+    const PORT = Number(process.env.UNI_PORT || 8811);
+    const srv = http.createServer((req, res) => {
+      const rel = decodeURIComponent(req.url.split('?')[0]).replace(/^\/+/, '') || 'index.html';
+      const file = path.join(ROOT, rel);
+      if (!file.startsWith(ROOT) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) {
+        res.writeHead(404); res.end('no'); return;
+      }
+      const type = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css',
+        '.json': 'application/json' }[path.extname(file)] || 'application/octet-stream';
+      res.writeHead(200, { 'Content-Type': type }); res.end(fs.readFileSync(file));
+    });
+    await new Promise((r) => srv.listen(PORT, '127.0.0.1', r));
+    const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium',
+      args: ['--no-sandbox', '--disable-dev-shm-usage'] });
+    const page = await browser.newPage();
+    await page.route('**/supabase-config.json', (r) => r.fulfill({ status: 200,
+      contentType: 'application/json', body: JSON.stringify({ url: 'https://db.example', anonKey: 'anon' }) }));
+    // THE STUB IS THE PROVIDER, NOT THE PRODUCT. It records which auth
+    // calls were made and hands back an EXPIRED session first.
+    await page.route('**/esm.sh/**', (r) => r.fulfill({ status: 200,
+      contentType: 'application/javascript', body: `
+        globalThis.__calls = [];
+        export function createClient() {
+          let n = 0;
+          return { auth: {
+            getSession() {
+              globalThis.__calls.push('getSession');
+              // Already stored, and DEAD — the production state.
+              return Promise.resolve({ data: { session: {
+                access_token: 'expired.token', expires_at: Math.floor(Date.now()/1000) - 60 } } });
+            },
+            refreshSession() {
+              globalThis.__calls.push('refreshSession');
+              n++;
+              return Promise.resolve({ data: { session: {
+                access_token: 'fresh.token.' + n, expires_at: Math.floor(Date.now()/1000) + 3600 } } });
+            },
+            signInAnonymously() {
+              globalThis.__calls.push('signInAnonymously');
+              return Promise.resolve({ data: { session: {
+                access_token: 'brand.new', expires_at: Math.floor(Date.now()/1000) + 3600 } } });
+            },
+          } };
+        }` }));
+    await page.goto('http://127.0.0.1:' + PORT + '/index.html');
+    await page.waitForFunction(() => typeof ThemeRepositoryClient !== 'undefined', null, { timeout: 20000 });
+    const out = await page.evaluate(async () => {
+      const first = await ThemeRepositoryClient.getSession();
+      // Eleven callers at once — how many refreshes does that make?
+      globalThis.__calls.length = 0;
+      const many = await Promise.all(Array.from({ length: 11 },
+        () => ThemeRepositoryClient.getSession()));
+      return { token: first && first.access_token,
+               calls: globalThis.__calls.slice(),
+               same: many.every((s) => s && s.access_token === many[0].access_token),
+               reused: many[0].access_token };
+    });
+    await browser.close(); srv.close();
+    ck(out.token === 'fresh.token.1',
+       'T7  AN EXPIRED STORED SESSION IS REFRESHED, and the fresh token is what callers get',
+       JSON.stringify(out.token));
+    ck(out.calls.length === 0,
+       'T7b and a LIVE token afterwards costs no auth call at all — 11 callers, ' +
+       out.calls.length + ' calls', out.calls.join(',') || 'none');
+    ck(out.same === true, 'T7c all eleven got the same live token', out.reused);
+    await new Promise((r) => setTimeout(r, 50));
+  }
+
   console.log('\n' + (failed ? 'FAILURES' : 'ALL GREEN') +
     ' — ' + passed + ' passed, ' + failed + ' failed');
   failures.forEach((f) => console.log('   · ' + f));

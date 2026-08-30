@@ -325,7 +325,17 @@ const TravellerTalk = (function () {
     // the id is held here, beside the approved context and never inside
     // it — the same shape the Studio uses, where `storyId` is a locator
     // and everything about the Story is read server-side.
-    _storyId = (story && (story.projectId || story.id)) || null;
+    //
+    // AND IT IS `source.projectId`, NOT `story.id`. Measured in a real
+    // browser: js/etherFeed.js builds the entity as
+    // `id: 'story-' + record.id` with the real project id on `source`,
+    // so `story.id` is 'story-proj_abc123' and the server looked up a
+    // row that does not exist — 403 no-such-story, every time, for every
+    // Companion. THERE IS NO FALLBACK TO `story.id` any more: it is the
+    // wrong id, and falling back to it is exactly what made this look
+    // like a working path. No locator means no remote turn, and the
+    // deterministic answer stands.
+    _storyId = (story && ((story.source && story.source.projectId) || story.projectId)) || null;
     _turns = [];
     if (!_ctx || !_ctx.companionName) { withdraw(); return; }
     els.opener.textContent = 'Talk to ' + _ctx.companionName;
