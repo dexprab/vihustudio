@@ -30,6 +30,24 @@
 //     glitch rather than as thought.
 //
 // ---------------------------------------------------------------
+// TEXT AND VOICE ARE ONE EVENT — Sprint 3A.1.
+//
+// This machine originally let the surface paint the answer the moment it
+// existed and fetch its voice afterwards, and Decision 50 recorded that
+// as a virtue: "a voice that fails never erases an answer". The first
+// real model turn showed what it costs in practice — the words appeared,
+// then two to three seconds of nothing, then Leo spoke. A child does not
+// read that as a fast answer with a slow voice; they read it as their
+// Companion writing something and refusing to say it.
+//
+// So the answer is now HELD behind its own voice, and the hold is
+// bounded. `voice-preparing` moved to BEFORE the reveal, and it carries
+// its own bell — HOLD_MS — after which the text is shown whatever the
+// audio is doing. The accessibility half of Decision 50 is unchanged and
+// is now the fallback rather than the rule: no voice, muted, unsupported,
+// failed or simply slow, and the words go up.
+//
+// ---------------------------------------------------------------
 // AND NO STATE LASTS FOR EVER.
 //
 // Every waiting state carries its own bell. "Thinking" that never ends
@@ -67,10 +85,24 @@ const CompanionTurn = (function () {
   //                 the sound of it costs nothing; waiting for it does.
   // SPEAK_MS        A ceiling on the sound itself, so a stalled audio
   //                 element cannot hold the turn open.
+  // HOLD_MS      How long the words may be held waiting for their own
+  //              voice. It is the ONE number in this sprint that trades
+  //              synchronisation against silence, so it is written down
+  //              rather than spread across the surfaces: under it, text
+  //              and sound arrive together; over it, the child gets
+  //              their answer and the voice joins late. 2500 is chosen
+  //              to sit above a healthy generated line and below the
+  //              point at which a blank panel stops reading as a
+  //              Companion drawing breath. It is deliberately NOT
+  //              VOICE_PREPARE_MS: that one is when to give up on the
+  //              sound, this one is when to stop making the child wait
+  //              for it, and conflating them would mean either
+  //              revealing too early or holding for six seconds.
   const T = {
     THINK_AFTER_MS: 180,
     MIN_THINK_MS: 420,
     ANSWER_MS: 12000,
+    HOLD_MS: 2500,
     VOICE_PREPARE_MS: 6000,
     SPEAK_MS: 30000
   };
@@ -89,6 +121,17 @@ const CompanionTurn = (function () {
     let alive = true;
     let thinkingShownAt = 0;
     const timers = {};
+    // ---- TIMING, AND ONLY TIMING — Sprint 3A.1 §8.
+    //
+    // Seven moments in one turn, so where the wait actually goes is
+    // measured rather than guessed at. NOT ONE OF THEM HOLDS A WORD OF
+    // WHAT WAS SAID: no question, no answer, no reply length, no
+    // Companion, no card. A marks() object is numbers and nothing else,
+    // it is never persisted, never sent anywhere and dies with the turn.
+    const marks = {};
+    function mark(name, at) {
+      if (marks[name] == null) marks[name] = (at == null ? Date.now() : at);
+    }
 
     function clear(name) {
       if (timers[name]) { clearTimeout(timers[name]); timers[name] = null; }
@@ -115,6 +158,25 @@ const CompanionTurn = (function () {
       thresholds: function () { return Object.assign({}, T); },
 
       /**
+       * The seven moments, as milliseconds since this turn began, plus
+       * the segments the brief asks to be reported. Numbers only.
+       * @returns {object}
+       */
+      marks: function () {
+        const t0 = marks.t0 || 0;
+        const rel = {};
+        Object.keys(marks).forEach(function (k) { rel[k] = marks[k] - t0; });
+        const seg = {};
+        if (marks.answer)     seg.toAnswer = marks.answer - t0;
+        if (marks.voiceReady && marks.answer) seg.answerToVoice = marks.voiceReady - marks.answer;
+        if (marks.speaking && marks.voiceReady) seg.voiceToSound = marks.speaking - marks.voiceReady;
+        if (marks.speaking && marks.shown)     seg.textToSound = marks.speaking - marks.shown;
+        if (marks.speaking)   seg.total = marks.speaking - t0;
+        else if (marks.shown) seg.total = marks.shown - t0;
+        return { at: rel, segments: seg };
+      },
+
+      /**
        * The child pressed. THEIR WORDS GO UP IN THE SAME FRAME — being
        * heard is not something to wait for — and only then does the
        * machine start deciding whether this is going to take a moment.
@@ -122,6 +184,7 @@ const CompanionTurn = (function () {
       send: function () {
         if (!alive) return;
         clearAll();
+        mark('t0');
         to('sending');
         to('received');
         // NOTHING IS SHOWN YET. If the answer beats this, the child
@@ -152,6 +215,7 @@ const CompanionTurn = (function () {
        */
       answered: function () {
         if (!alive) return 0;
+        mark('answer');
         clear('think');
         clear('answer');
         let hold = 0;
@@ -165,6 +229,7 @@ const CompanionTurn = (function () {
       /** The words are on screen. NOW it is response-ready. */
       shown: function () {
         if (!alive) return;
+        mark('shown');
         to('response-ready');
       },
 
@@ -174,17 +239,54 @@ const CompanionTurn = (function () {
        * not waiting to find out what it is, and calling that "thinking"
        * would tell them their Companion had not decided yet.
        */
-      preparingVoice: function () {
+      /**
+       * The answer EXISTS and its voice is being fetched — and as of
+       * Sprint 3A.1 the child has not read it yet, because text and
+       * voice are one event.
+       *
+       * A SEPARATE STATE ON PURPOSE, and now for a second reason. It was
+       * always wrong to call a finished thought "thinking"; it is also
+       * the state the child spends the whole synchronising wait in, so
+       * it is what the docker has to be able to describe.
+       *
+       * @param {function} [onHold] rings at HOLD_MS — "show the words
+       *   now, whatever the sound is doing". The accessibility exception
+       *   with teeth: without it, a slow voice would hold an answer the
+       *   child already has a right to.
+       */
+      preparingVoice: function (onHold) {
         if (!alive) return;
+        mark('voiceStart');
         clear('voice');
+        clear('hold');
         to('voice-preparing');
+        if (typeof onHold === 'function') {
+          timers.hold = setTimeout(function () {
+            clear('hold');
+            try { onHold(); } catch (e) {}
+          }, T.HOLD_MS);
+        }
         timers.voice = setTimeout(function () { giveUp('voice'); }, T.VOICE_PREPARE_MS);
+      },
+
+      /**
+       * The audio is in hand and has not been played yet. The surface
+       * reveals the words and starts the sound off the back of this, so
+       * the two are the same task rather than two decisions that could
+       * drift apart.
+       */
+      voiceReady: function () {
+        if (!alive) return;
+        mark('voiceReady');
+        clear('hold');
       },
 
       /** A sound is actually being made. */
       speakingNow: function () {
         if (!alive) return;
+        mark('speaking');
         clear('voice');
+        clear('hold');
         to('speaking');
         timers.speech = setTimeout(function () { giveUp('speech'); }, T.SPEAK_MS);
       },

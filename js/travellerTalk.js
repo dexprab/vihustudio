@@ -255,6 +255,12 @@ const TravellerTalk = (function () {
     dots.className = 'ether-talk-dots';
     dots.setAttribute('aria-hidden', 'true');
     dots.hidden = true;
+    // AND A WORD FOR IT — Sprint 3A.1. Thinking and getting ready to
+    // speak are different things to be told, and the dots cannot say
+    // which. Still aria-hidden: it is a state indicator, not the answer.
+    const wait = document.createElement('em');
+    wait.className = 'ether-talk-wait';
+    dots.appendChild(wait);
     dots.appendChild(document.createElement('span'));
     dots.appendChild(document.createElement('span'));
     dots.appendChild(document.createElement('span'));
@@ -294,7 +300,7 @@ const TravellerTalk = (function () {
 
     _els = { opener: opener, bar: bar, said: said, form: form, input: input,
              send: send, close: close, starters: starters,
-             mic: mic, speak: speak, heard: heard, dots: dots };
+             mic: mic, speak: speak, heard: heard, dots: dots, wait: wait };
     _paintVoiceButton();
     _micState('stopped');
     return _els;
@@ -550,24 +556,126 @@ const TravellerTalk = (function () {
   let _turn = null;
   let _busy = false;
 
+  // SPRINT 3A.1 — THE SAME LISTS AS THE STUDIO'S, for the same reason.
+  // `voice-preparing` now happens BEFORE the words are shown, so it is
+  // part of the wait rather than something that follows it. Decision 48:
+  // what differs between the two surfaces is what may be SEEN, never the
+  // mechanics of a conversation.
+  const THINKS = ['sending', 'thinking', 'voice-preparing'];
+  const HOLDS = ['sending', 'received', 'thinking', 'voice-preparing'];
+  const WAIT_WORDS = { thinking: 'is thinking', 'voice-preparing': 'is getting ready' };
+
   function _phase(name) {
     const els = _els;
     if (!els) return;
     els.bar.setAttribute('data-state', name);
-    els.dots.hidden = (['sending', 'thinking'].indexOf(name) === -1);
-    const hold = ['sending', 'received', 'thinking'].indexOf(name) !== -1;
+    els.dots.hidden = (THINKS.indexOf(name) === -1);
+    if (els.wait) {
+      els.wait.textContent = WAIT_WORDS[name] ? (_hostName() + ' ' + WAIT_WORDS[name]) : '';
+    }
+    const hold = HOLDS.indexOf(name) !== -1;
+    try { els.said.setAttribute('aria-busy', hold ? 'true' : 'false'); } catch (e) {}
     els.send.disabled = hold;
     els.input.disabled = hold;
   }
 
+  /**
+   * The words are held behind their own voice and released the instant
+   * it is in hand — or when the hold rings, or when there was never
+   * going to be one. Every way out puts the answer on screen.
+   */
+  function _present(turn, els, words) {
+    const who = _hostId();
+    let out = false;
+    const go = function (play, stillComing) {
+      if (out || (turn && turn !== _turn)) return;
+      out = true;
+      _pendingReveal = null;
+      _reveal(turn, els, words, play, stillComing);
+    };
+    if (!turn || !_canSpeakText(words)) { go(null); return; }
+    // The words go up, but a voice is still coming — so the turn is not
+    // declared over yet.
+    _pendingReveal = function () { go(null, true); };
+    turn.preparingVoice(_pendingReveal);
+    CompanionSpeak.ready(words, who, {
+      onSpeaking: function () { if (turn === _turn) turn.speakingNow(); }
+    }).then(function (play) {
+      if (turn !== _turn) return;
+      turn.voiceReady();
+      if (out) {
+        if (play) _sayLate(turn, play);
+        else if (turn === _turn) { turn.done(); _phase('ready'); }
+        return;
+      }
+      go(play);
+    }, function () { go(null); });
+  }
+
+  /** Who is standing here — the STORY's host, never the reader's own. */
+  function _hostId() { return _ctx ? _ctx.companionId : null; }
+  function _hostName() { return (_ctx && _ctx.companionName) || 'They'; }
+
+  function _canSpeakText(words) {
+    try {
+      if (typeof CompanionSpeak === 'undefined') return false;
+      if (!_voiceOn()) return false;
+      if (!String(words || '').trim()) return false;
+      return CompanionSpeak.supported();
+    } catch (e) { return false; }
+  }
+
+  function _reveal(turn, els, words, play, stillComing) {
+    _busy = false;
+    _pendingReveal = null;
+    els.said.textContent = words;
+    if (turn) turn.shown();
+    _phase('response-ready');
+    if (!play) {
+      if (stillComing) return;
+      if (_els && _els.bar.getAttribute('data-state') === 'response-ready') _phase('ready');
+      if (turn) turn.done();
+      return;
+    }
+    if (_els && _els.speak) _els.speak.setAttribute('data-speaking', 'yes');
+    play().then(function () {
+      if (_els && _els.speak) _els.speak.removeAttribute('data-speaking');
+      if (turn === _turn) { turn.done(); _phase('ready'); }
+    });
+  }
+
+  function _sayLate(turn, play) {
+    if (_els && _els.speak) _els.speak.setAttribute('data-speaking', 'yes');
+    play().then(function () {
+      if (_els && _els.speak) _els.speak.removeAttribute('data-speaking');
+      if (turn === _turn) turn.done();
+    });
+  }
+
+  let _pendingReveal = null;
+
   function _newTurn() {
     if (typeof CompanionTurn === 'undefined') return null;
     return CompanionTurn.create({
-      onState: function (name) { _phase(name); },
+      // ONLY THE STATES A CHILD CAN SEE, which is what the Studio's own
+      // hook has always done. `idle` is the machine being finished, not
+      // a phase to paint — and since Sprint 3A.1 calls done() on the
+      // no-voice path (so a turn cannot be left open), painting it here
+      // flipped the bar straight past `ready` into `idle`.
+      onState: function (name) {
+        if (['sending', 'received', 'thinking', 'response-ready',
+             'voice-preparing', 'speaking'].indexOf(name) !== -1) _phase(name);
+      },
       onGiveUp: function (kind) {
         // NEITHER STATE LASTS FOR EVER. A voice that never arrived costs
         // a Traveller nothing — the answer is already read.
-        if (kind !== 'answer') _aloudStop();
+        // A VOICE THAT NEVER ARRIVED REVEALS THE ANSWER — the words may
+        // still be held behind it. The hold's own bell rings first in
+        // every ordinary case; this is the floor under it.
+        if (kind !== 'answer') {
+          if (_pendingReveal) { const r = _pendingReveal; _pendingReveal = null; try { r(); } catch (e) {} }
+          _aloudStop();
+        }
         _busy = false;
         _phase('ready');
       }
@@ -590,6 +698,7 @@ const TravellerTalk = (function () {
     _micState('stopped');
     _aloudStop();
     if (_turn) _turn.cancel();
+    _pendingReveal = null;
     const turn = _turn = _newTurn();
     if (turn) turn.send();
     const answer = reply(said, _ctx);
@@ -597,21 +706,15 @@ const TravellerTalk = (function () {
     // written anywhere, sent anywhere, or read by anything else.
     _turns.push({ said: said, answer: answer.text });
     if (_turns.length > MAX_TURNS) _turns.shift();
-    // THE WORDS GO UP THE MOMENT THEY EXIST, and the hold below only
-    // ever delays the DOTS coming down — never the answer.
+    // ONE CONVERSATIONAL EVENT — Sprint 3A.1 §30. The same presentation
+    // the Studio uses, through the same two modules, because a second
+    // implementation of "text and voice arrive together" is a second
+    // thing that can be fixed on one surface and left broken on the
+    // other. What differs is the CONTEXT a host may see, never this.
     const held = turn ? turn.answered() : 0;
-    _busy = false;
     const show = function () {
       if (turn && turn !== _turn) return;
-      els.said.textContent = answer.text;
-      if (turn) turn.shown();
-      _phase('response-ready');
-      // HEARD AS WELL AS SEEN, unless it has been muted. An empty
-      // answer is not spoken — silence is a real answer and there is
-      // nothing to say. The text stays whatever the voice does.
-      _aloud(turn);
-      if (!_els) return;
-      if (_els.bar.getAttribute('data-state') === 'response-ready') _phase('ready');
+      _present(turn, els, answer.text);
     };
     if (held > 0) setTimeout(show, held); else show();
     // The suggestions were for a Traveller who did not know what to

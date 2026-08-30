@@ -352,7 +352,7 @@ async function guard(req, opts) {
 
 // ===== END GENERATED edgeAuth =====
 
-const BUILD = '2026-08-26 · vihu voice · caller verified';
+const BUILD = '2026-08-30 · vihu voice · ephemeral + pass-through';
 const TTS_ROOT = 'https://api.elevenlabs.io/v1/text-to-speech';
 const MAX_CHARS = 600; // a spoken line, not a chapter
 
@@ -378,6 +378,11 @@ const cors = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
+  // A cross-origin caller sees no response header it is not told it may
+  // see. Both of these are diagnostics — which path served the line, and
+  // how long the provider took — and without this they were invisible to
+  // the browser that had just received them.
+  'Access-Control-Expose-Headers': 'X-Vihu-Voice, X-Vihu-Provider-Ms',
 };
 
 function json(body: unknown, status = 200) {
@@ -502,22 +507,48 @@ Deno.serve(async (req) => {
   if (!text || !voiceId) return json({ ok: false, reason: 'no-voice' }, 200);
   if (text.length > MAX_CHARS) return json({ ok: false, reason: 'too-long' }, 200);
 
-  const key = await cacheKey({ ...p, text, voiceId, modelId });
+  // ---- EPHEMERAL LINES — Sprint 3A.1 -------------------------------
+  //
+  // A conversation reply is said once, to one child, and never again, so
+  // the cache can only ever miss on it — and a miss here is not free: it
+  // is a Storage round trip inside the request the child is waiting on,
+  // taken before the provider is even called. The write afterwards is
+  // worse than useless: it is private one-shot audio kept for nobody,
+  // which the sprint forbids outright (§16).
+  //
+  // A caller that says the line is ephemeral gets neither. Everything
+  // else — recorded lines, rite lines, the World Host's greetings, the
+  // audition room — is unchanged and still cached both ways.
+  const ephemeral = p.ephemeral === true;
+  const key = ephemeral ? '' : await cacheKey({ ...p, text, voiceId, modelId });
   const path = `${key}.mp3`;
 
   // Cached already? Serve it and never call the provider.
-  const hit = await storage(path, 'GET');
-  if (hit && hit.ok) {
-    return new Response(await hit.arrayBuffer(), {
-      headers: { ...cors, 'Content-Type': 'audio/mpeg', 'X-Vihu-Voice': 'cache' },
-    });
+  if (!ephemeral) {
+    const hit = await storage(path, 'GET');
+    if (hit && hit.ok) {
+      return new Response(await hit.arrayBuffer(), {
+        headers: { ...cors, 'Content-Type': 'audio/mpeg', 'X-Vihu-Voice': 'cache' },
+      });
+    }
   }
 
   const apiKey = env('ELEVENLABS_API_KEY');
   if (!apiKey) return json({ ok: false, reason: 'not-configured' }, 200);
 
   const settings = (p.settings && typeof p.settings === 'object') ? p.settings : {};
-  const res = await fetch(`${TTS_ROOT}/${encodeURIComponent(voiceId)}`, {
+  // AUDIO FORMAT IS A KNOB, NOT A REWRITE — §15.
+  //
+  // Unset means EXACTLY what shipped before: no `output_format` on the
+  // query, so ElevenLabs answers in its own default (mp3_44100_128). A
+  // shorter format is a real transfer saving and a real change to how a
+  // Companion sounds, and this environment cannot hear either — so it is
+  // offered as one environment variable to be A/B'd against real ears,
+  // and defaults to changing nothing. e.g. mp3_22050_32.
+  const fmt = env('ELEVENLABS_OUTPUT_FORMAT');
+  const q = fmt ? `?output_format=${encodeURIComponent(fmt)}` : '';
+  const t5 = Date.now();
+  const res = await fetch(`${TTS_ROOT}/${encodeURIComponent(voiceId)}${q}`, {
     method: 'POST',
     headers: {
       'xi-api-key': apiKey,
@@ -543,12 +574,39 @@ Deno.serve(async (req) => {
     return json({ ok: false, reason: 'provider', status: res.status, detail: body }, 200);
   }
 
-  const audio = new Uint8Array(await res.arrayBuffer());
-  // Fire-and-forget: a cache write failing costs a regeneration later,
-  // never this line of speech.
-  storage(path, 'POST', audio).catch(() => {});
-
-  return new Response(audio, {
-    headers: { ...cors, 'Content-Type': 'audio/mpeg', 'X-Vihu-Voice': 'fresh' },
-  });
+  // ---- THE BYTES GO STRAIGHT THROUGH — Sprint 3A.1 §13 -------------
+  //
+  // This used to `await res.arrayBuffer()` and only then answer, which
+  // made the two hops STRICTLY SEQUENTIAL: every byte had to arrive from
+  // the provider before the first one left for the browser. Passing the
+  // body through overlaps them, and for an ephemeral line there is
+  // nothing to collect, so it is a plain hand-off.
+  //
+  // A cached line still needs the whole thing, and tee() is what lets it
+  // have both: one branch to the child now, one gathered for the write.
+  // The write stays fire-and-forget — a cache miss later is not worth a
+  // millisecond of a child's wait.
+  const took = String(Date.now() - t5);
+  const head = {
+    ...cors,
+    'Content-Type': 'audio/mpeg',
+    'X-Vihu-Voice': ephemeral ? 'ephemeral' : 'fresh',
+    // Timing only. No text, no voice id, no child, no key — a number a
+    // suite and a console can read, and nothing worth reading in a log.
+    'X-Vihu-Provider-Ms': took,
+  };
+  if (!res.body) {
+    const audio = new Uint8Array(await res.arrayBuffer());
+    if (!ephemeral) storage(path, 'POST', audio).catch(() => {});
+    return new Response(audio, { headers: head });
+  }
+  if (ephemeral) return new Response(res.body, { headers: head });
+  const [toChild, toCache] = res.body.tee();
+  (async () => {
+    try {
+      const buf = new Uint8Array(await new Response(toCache).arrayBuffer());
+      await storage(path, 'POST', buf);
+    } catch (_e) { /* a cache write failing costs a regeneration, never speech */ }
+  })();
+  return new Response(toChild, { headers: head });
 });

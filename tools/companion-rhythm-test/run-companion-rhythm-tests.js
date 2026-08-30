@@ -231,7 +231,8 @@ const noComments = turnSrc.replace(/\/\*[\s\S]*?\*\//g, '')
     document.querySelector('.companion-chat-input').value = 'how many pages are there?';
     document.querySelector('.companion-chat-send').click();
     await new Promise((r) => setTimeout(r, 420));
-    const mid = { state: bar.getAttribute('data-state'),
+    const mid = { wait: (document.querySelector('.companion-chat-wait') || {}).textContent,
+                  state: bar.getAttribute('data-state'),
                   dots: !document.querySelector('.companion-chat-dots').hidden,
                   said: document.querySelector('.companion-chat-said').textContent.trim() };
     await new Promise((r) => setTimeout(r, 1700));
@@ -271,7 +272,8 @@ const noComments = turnSrc.replace(/\/\*[\s\S]*?\*\//g, '')
     document.querySelector('.companion-chat-input').value = 'who are you?';
     document.querySelector('.companion-chat-send').click();
     await new Promise((r) => setTimeout(r, 600));
-    const mid = { state: bar.getAttribute('data-state'),
+    const mid = { wait: (document.querySelector('.companion-chat-wait') || {}).textContent,
+                  state: bar.getAttribute('data-state'),
                   dots: !document.querySelector('.companion-chat-dots').hidden,
                   said: document.querySelector('.companion-chat-said').textContent.trim() };
     await new Promise((r) => setTimeout(r, 1400));
@@ -284,10 +286,32 @@ const noComments = turnSrc.replace(/\/\*[\s\S]*?\*\//g, '')
   });
   ck(voice.mid.state === 'voice-preparing',
      'C1  once the words exist the state is VOICE-PREPARING, not thinking', JSON.stringify(voice.mid.state));
-  ck(voice.mid.said.length > 0,
-     'C2  AND THE ANSWER IS ALREADY ON SCREEN — the child is not waiting to find out what it says',
+  // ---- TURNED ROUND BY SPRINT 3A.1, WITH A REASON --------------------
+  //
+  // C2 and C3 asserted the OPPOSITE of what they assert now, and both
+  // were right for Sprint 1N.6: there, the words were painted the moment
+  // they existed and their voice was fetched afterwards, so during
+  // voice-preparing the answer WAS on screen and the dots SHOULD have
+  // been down.
+  //
+  // The first real model turn showed what that costs. Text appeared,
+  // then two to three seconds of nothing, then Leo spoke — and a child
+  // reads that as their Companion writing something and refusing to say
+  // it. §1 makes the written and spoken answer ONE conversational event,
+  // so `voice-preparing` moved to BEFORE the reveal.
+  //
+  // So during it the child is still waiting, which means the answer is
+  // NOT yet on screen and the indicator IS still up. What changes is the
+  // WORD beside it — "is thinking" becomes "is getting ready" (§5), so a
+  // Companion that has decided what to say is never described as still
+  // deciding. Neither check was weakened: each asserts the same property
+  // from the other side, and C5 still requires the answer to survive.
+  ck(voice.mid.said.length === 0,
+     'C2  THE ANSWER IS HELD FOR ITS VOICE — text and sound are one event',
      JSON.stringify(voice.mid.said));
-  ck(voice.mid.dots === false, 'C3  the thinking dots are gone');
+  ck(voice.mid.dots === true && /getting ready/.test(voice.mid.wait || ''),
+     'C3  and the indicator says GETTING READY, not thinking',
+     JSON.stringify(voice.mid.wait));
   ck(voice.seen.indexOf('voice-preparing') !== -1 &&
      voice.seen.indexOf('speaking') > voice.seen.indexOf('voice-preparing'),
      'C4  voice-preparing → speaking, in that order', voice.seen.join(' → '));
@@ -307,7 +331,14 @@ const noComments = turnSrc.replace(/\/\*[\s\S]*?\*\//g, '')
   await page.evaluate(() => {
     const real = { prepare: VihuVoice.prepare, speak: VihuVoice.speak };
     window.__realVoice = real;
-    VihuVoice.prepare = function () { return new Promise((r) => setTimeout(() => r(true), 2500)); };
+    // 1200ms, DELIBERATELY UNDER CompanionTurn's HOLD_MS. Sprint 3A.1
+    // holds the words behind the audio and releases them together, and
+    // that synchronised path is what these five photographs are of. The
+    // OTHER path — a voice so slow the hold rings first — is a different
+    // behaviour and is checked on its own in D3/D4, rather than being
+    // whichever one this stub happened to land on. The first version of
+    // this sat exactly ON the threshold and raced it.
+    VihuVoice.prepare = function () { return new Promise((r) => setTimeout(() => r(true), 1200)); };
     VihuVoice.speak = function () { return new Promise((r) => setTimeout(() => r(true), 2500)); };
     window.__rf4 = window.fetch;
     window.fetch = function (u) {

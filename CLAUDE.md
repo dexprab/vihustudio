@@ -5468,6 +5468,35 @@ provider, no model call, and both production gates still shut.**
   knowledge, conversation reasoning, story understanding, memory, the
   privacy gate, the Bond validator, Traveller isolation, canon, wake
   word, always-listening, transcripts, and automatic memory.
+- **AMENDED BY SPRINT 3A.1: THE ANSWER IS NOW HELD FOR ITS VOICE.** This
+  decision recorded *"a voice that fails never erases an answer"* and
+  built the order to match — words on screen the moment they existed,
+  voice fetched afterwards. The first real model turn showed what that
+  costs: the words appeared, then two to three seconds of nothing, then
+  Leo spoke. A child does not read that as a fast answer with a slow
+  voice; they read it as their Companion writing something and refusing
+  to say it. **Text and voice are ONE conversational event**, so
+  `voice-preparing` moved to BEFORE the reveal.
+- **THE ACCESSIBILITY HALF IS UNCHANGED — it became the FALLBACK rather
+  than the rule.** The hold is bounded by `HOLD_MS` (2500), and there
+  are four ways out of it, every one of which puts the words on screen:
+  the audio arrives, the hold rings, the voice fails, or there was never
+  going to be one. A voice that arrives after the hold rang is still
+  said — it is the same answer, and cutting it would be a second failure
+  stacked on a slow one.
+- **`HOLD_MS` IS DELIBERATELY NOT `VOICE_PREPARE_MS`.** One is when to
+  stop making a child wait for a sound; the other is when to give up on
+  it entirely. Conflating them would mean either revealing too early or
+  holding a blank panel for six seconds.
+- **A LOCAL VOICE IS NEVER WAITED FOR, and that was a measured
+  regression rather than a preference.** The first version gated the
+  reveal on `_voicesReady()`, which waits up to 1.2s for Chrome's lazily
+  loaded voice list — so on any browser with no voices at all every
+  answer was held 1.2 seconds for a voice that was never coming. The
+  words are held behind a GENERATED voice because that is a network
+  round trip worth hiding; `speechSynthesis` is local and there is
+  nothing to hide. Caught by two existing checks going red, not by
+  reading.
 - `js/companionTurn.js` · `js/companionSpeak.js` · `js/companionChat.js` ·
   `js/travellerTalk.js` · `js/companionDirector.js` ·
   `tools/companion-rhythm-test/run-companion-rhythm-tests.js`
@@ -5596,10 +5625,33 @@ untouched.
   exactly like a fixed one, so presence would have called the broken
   deployment done. Both questions are asked now, each by the instrument
   that can answer it.
+- **CONVERSATION AUDIO IS EPHEMERAL, AND THAT IS A POLICY AS MUCH AS A
+  SPEED-UP** (Sprint 3A.1). A child's reply is said once, to one child,
+  and never again — so the voice cache could only ever miss on it, and
+  the miss was not free: a Supabase Storage round trip inside the
+  request the child was waiting on, taken before the provider was even
+  called, plus a write afterwards that kept private one-shot audio for
+  nobody. `ephemeral: true` skips both, in the browser's Cache API and in
+  the function alike, and an older deployment that has never heard of
+  the field ignores it and behaves exactly as it always did. Recorded
+  lines, rite lines and the World Host's greetings are untouched and
+  still cached both ways.
+- **AND THE BYTES GO STRAIGHT THROUGH.** `voice-speak` used to
+  `await res.arrayBuffer()` before answering, which made the two hops —
+  provider to function, function to browser — STRICTLY SEQUENTIAL. The
+  body is passed through now, and a cached line uses `tee()` so it can
+  still be collected for the write without the child waiting on it.
+- **THE AUDIO FORMAT IS A KNOB WHOSE DEFAULT CHANGES NOTHING.**
+  `ELEVENLABS_OUTPUT_FORMAT` unset sends exactly the query that always
+  shipped. A shorter format is a real transfer saving AND a real change
+  to how a Companion sounds, and no environment here can hear either —
+  so it is offered to be judged by ears rather than chosen by argument.
 - `supabase/functions/companion-chat/index.ts` ·
+  `supabase/functions/voice-speak/index.ts` ·
   `tools/edge-auth-test/sync-shared.js` ·
   `supabase/DEPLOY_step3a_leo.md` ·
-  `tools/companion-chat-test/run-companion-chat-tests.js`
+  `tools/companion-chat-test/run-companion-chat-tests.js` ·
+  `tools/companion-sync-test/run-companion-sync-tests.js`
 
 ## Roadmap
 

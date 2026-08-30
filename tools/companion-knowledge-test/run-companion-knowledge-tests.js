@@ -516,9 +516,29 @@ const ETHER = (over) => Object.assign({
   await page.evaluate(() => CompanionChat.open());
   await page.waitForTimeout(250);
   const spoken = await page.evaluate(async () => {
+    // ---- THE SEAM MOVED IN SPRINT 3A.1, AND THIS FOLLOWED IT -------
+    //
+    // The surface used to call CompanionSpeak.say(), which prepared and
+    // played in one breath. Text and voice are now one conversational
+    // event, so it calls ready() — prepare, hand back a way to play —
+    // and a counter watching say() sees nothing at all.
+    //
+    // NOT A WEAKENING: the question is unchanged and so are the four
+    // assertions. "Does the surface ask for this answer to be said, in
+    // this Companion's voice, with exactly the words on screen" is now
+    // asked at ready(); both are stubbed so a caller on either seam is
+    // still counted.
     const real = CompanionSpeak.say;
+    const realReady = CompanionSpeak.ready;
     const asked = [];
     CompanionSpeak.say = function (text, cid) { asked.push({ text: text, cid: cid }); return Promise.resolve(true); };
+    CompanionSpeak.ready = function (text, cid, hooks) {
+      asked.push({ text: text, cid: cid });
+      return Promise.resolve(function () {
+        try { if (hooks && hooks.onSpeaking) hooks.onSpeaking(); } catch (e) {}
+        return Promise.resolve(true);
+      });
+    };
     const send = async (t) => {
       document.querySelector('.companion-chat-input').value = t;
       document.querySelector('.companion-chat-send').click();
@@ -536,6 +556,7 @@ const ETHER = (over) => Object.assign({
     const shownMuted = document.querySelector('.companion-chat-said').textContent.trim();
     document.querySelector('.companion-chat-speak').click();
     CompanionSpeak.say = real;
+    CompanionSpeak.ready = realReady;
     return { defaultOn: on, afterOn: afterOn, mutedNow: mutedNow, afterMute: afterMute,
              shownOn: shownOn, shownMuted: shownMuted,
              saidText: asked.length ? asked[0].text : null,

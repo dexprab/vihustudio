@@ -595,6 +595,30 @@
 
   var _mem = Object.create(null);   // key -> object URL
 
+  // ---------------------------------------------------------------
+  // EPHEMERAL LINES — Sprint 3A.1 §16.
+  //
+  // A conversation reply is said once, to one child, and never again.
+  // Caching it is all cost and no hit: it fills the browser's Cache API
+  // and the platform's Storage bucket with private one-shot audio, and
+  // the sprint forbids persisting conversation audio in as many words.
+  //
+  // It is also LATENCY. Every generated line paid a Storage GET inside
+  // the Edge Function before the provider was called — a round trip that
+  // for a sentence nobody has ever said is a guaranteed miss.
+  //
+  // So an ephemeral line lives in ONE slot, is played, and is revoked.
+  // The slot is not a cache: it holds at most one line, and preparing
+  // the next one lets the last go. Recorded lines, rite lines and host
+  // lines are untouched and still cached exactly as before.
+  var _eph = null;              // { key, url }
+
+  function _ephDrop() {
+    if (!_eph) return;
+    try { URL.revokeObjectURL(_eph.url); } catch (e) {}
+    _eph = null;
+  }
+
   function _key(v, text) {
     var canonical = JSON.stringify({ v: v.voiceId, m: v.modelId, s: v.settings || null, t: text });
     // A short, stable, non-cryptographic hash. This names a cache entry;
@@ -652,6 +676,7 @@
 
   /** Forgets everything cached in this browser. For the audition page. */
   function clearCache() {
+    _ephDrop();
     Object.keys(_mem).forEach(function (k) {
       try { URL.revokeObjectURL(_mem[k]); } catch (e) {}
       delete _mem[k];
@@ -664,7 +689,7 @@
 
   var _inflight = Object.create(null);
 
-  function _generate(v, text, emotion) {
+  function _generate(v, text, emotion, ephemeral) {
     // The feeling is resolved into the request BEFORE the key is taken,
     // which is what makes emotion cache correctly for free: a happy line
     // and a sad line have different settings, so they have different
@@ -674,8 +699,12 @@
     var spoken = _textFor(v, emotion, text);
     var key = _key({ voiceId: v.voiceId, modelId: v.modelId, settings: settings }, spoken);
     if (_inflight[key]) return _inflight[key];
+    // The one slot, so prepare() then speak() is a hit rather than a
+    // second round trip — which is what makes the two-step presentation
+    // free rather than double the work.
+    if (ephemeral && _eph && _eph.key === key) return Promise.resolve(_eph.url);
 
-    _inflight[key] = _fromCache(key).then(function (hit) {
+    _inflight[key] = (ephemeral ? Promise.resolve(null) : _fromCache(key)).then(function (hit) {
       if (hit) return hit;
       return Promise.all([_config(), _token()]).then(function (both) {
         var cfg = both[0], token = both[1];
@@ -702,7 +731,13 @@
             voiceId: v.voiceId,
             modelId: v.modelId,
             settings: settings,
-            text: spoken
+            text: spoken,
+            // NOTHING TO KEEP. The function skips its own Storage read
+            // AND its write for this line — two round trips saved on the
+            // path a child actually waits on, and no private audio left
+            // behind. An older deployment that has never heard of this
+            // field ignores it and behaves exactly as it always did.
+            ephemeral: !!ephemeral
           })
         }, GENERATE_TIMEOUT_MS).then(function (r) {
           var type = (r.headers.get('Content-Type') || '');
@@ -717,7 +752,12 @@
               return null;
             }).catch(function () { return null; });
           }
-          return r.blob().then(function (b) { return _toCache(key, b); });
+          return r.blob().then(function (b) {
+            if (!ephemeral) return _toCache(key, b);
+            _ephDrop();
+            _eph = { key: key, url: URL.createObjectURL(b) };
+            return _eph.url;
+          });
         }).catch(function (e) {
           _note('unreachable —', String(e).slice(0, 200));
           return null;
@@ -863,7 +903,7 @@
         _note('no voice for "' + who + '" yet — staying silent');
         return false;
       }
-      return _generate(v, words, o.emotion).then(function (src) {
+      return _generate(v, words, o.emotion, o.ephemeral).then(function (src) {
         if (!src) return false;
         return _play(src);
       });
@@ -896,7 +936,7 @@
     }
     return voiceOf(who).then(function (v) {
       if (!v) return false;
-      return _generate(v, words, o.emotion).then(function (src) { return !!src; });
+      return _generate(v, words, o.emotion, o.ephemeral).then(function (src) { return !!src; });
     }).catch(function () { return false; });
   }
 

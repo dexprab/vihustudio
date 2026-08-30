@@ -171,6 +171,113 @@ const CompanionSpeak = (function () {
    * @returns {Promise<boolean>} whether anything was actually said.
    *   False is a normal outcome and never an error a child meets.
    */
+  /**
+   * Get a line READY without saying it, and hand back the way to say it.
+   *
+   * Sprint 3A.1. `say()` used to be the only door, and it prepared and
+   * played in one breath — which is why a surface could not present the
+   * words and the sound as one event: by the time it knew a voice
+   * existed, the voice was already talking. This splits the two.
+   *
+   *   ready(text, id).then(play => { showTheWords(); play(); })
+   *
+   * @returns {Promise<function|null>} a play function, or null when
+   *   there is no way to say this — muted upstream, no voice, no
+   *   session, unsupported, or the provider had nothing for us. NULL IS
+   *   A NORMAL ANSWER and the caller shows the words regardless.
+   */
+  function ready(text, companionId, hooks) {
+    const words = String(text == null ? '' : text).trim();
+    if (!words) return Promise.resolve(null);
+    stop();
+    const mine = ++_token;
+    const h = hooks || {};
+    const tell = function (fn) {
+      if (mine !== _token || typeof fn !== 'function') return;
+      try { fn(); } catch (e) {}
+    };
+    _set('preparing');
+    tell(h.onPreparing);
+
+    // THE COMPANION'S OWN VOICE FIRST, and its bytes are fetched here
+    // rather than at play time — which is the whole point: when the
+    // caller says go, the sound is already in the browser.
+    //
+    // CONVERSATION AUDIO IS EPHEMERAL (§16). A child's own sentence is
+    // never said twice, so caching it would fill a store with private
+    // one-shot audio for no hit rate at all — and the sprint forbids
+    // persisting it in as many words. `ephemeral` is passed through to
+    // js/vihuVoice.js, which skips both caches and tells the function to
+    // skip its own.
+    const req = { characterId: companionId, text: words, ephemeral: true };
+    let own = null;
+    try {
+      if (companionId && typeof VihuVoice !== 'undefined' && VihuVoice.prepare && VihuVoice.speak) {
+        own = VihuVoice.prepare(req);
+      }
+    } catch (e) { own = null; }
+
+    const platform = function () {
+      // THE EXISTING PRODUCT FALLBACK, kept (Decision 48) — AND IT IS
+      // READY IMMEDIATELY, which is a decision rather than an oversight.
+      //
+      // The words are held behind a voice because a GENERATED one is a
+      // network round trip worth hiding. `speechSynthesis` is local:
+      // there is no fetch to wait out, so holding for it buys nothing.
+      //
+      // Measured, and it was a real regression: the first version
+      // gated this on `_voicesReady()`, which waits up to VOICE_WAIT_MS
+      // for Chrome's lazily-loaded voice list — so on any browser with
+      // no voices at all (a headless one, and any machine with none
+      // installed) every answer was held 1.2 seconds for a voice that
+      // was never coming. §35 forbids inventing latency, and that is
+      // what it would have been.
+      //
+      // The wait still happens — inside _platform(), where it belongs —
+      // so a browser whose voices arrive late still speaks. It just no
+      // longer costs the child their answer.
+      if (!window.speechSynthesis || !window.SpeechSynthesisUtterance) return Promise.resolve(null);
+      return Promise.resolve(function () {
+        return _platform(words, mine, function () {
+          _set('speaking');
+          tell(h.onSpeaking);
+        }).then(function (spoke) {
+          if (mine !== _token) return false;
+          if (!spoke) _set('idle');
+          return spoke;
+        });
+      });
+    };
+
+    if (own && typeof own.then === 'function') {
+      const bounded = Promise.race([
+        own,
+        new Promise(function (resolve) { setTimeout(function () { resolve(false); }, OWN_VOICE_WAIT_MS); })
+      ]);
+      return bounded.then(function (got) {
+        if (mine !== _token) return null;
+        if (!got) return platform();
+        return function () {
+          _set('speaking');
+          tell(h.onSpeaking);
+          return VihuVoice.speak(req).then(function (spoke) {
+            if (mine !== _token) return false;
+            if (!spoke) _set('idle');
+            return !!spoke;
+          }, function () { if (mine === _token) _set('idle'); return false; });
+        };
+      }, function () {
+        if (mine !== _token) return null;
+        return platform();
+      });
+    }
+    return platform().then(function (p) {
+      if (mine !== _token) return null;
+      if (!p) _set('idle');
+      return p;
+    });
+  }
+
   function say(text, companionId, hooks) {
     const words = String(text == null ? '' : text).trim();
     // NOTHING TO SAY IS NOT A FAILURE. Silence and an empty reply are
@@ -282,6 +389,7 @@ const CompanionSpeak = (function () {
 
   const api = {
     supported: supported,
+    ready: ready,
     say: say,
     stop: stop,
     state: state,

@@ -13251,7 +13251,7 @@ body.dark-theme .bia-studio-btn:hover{ background:rgba(255,255,255,0.08); }
 /* THE BEAT. Three dots while the turn is being taken. It is not a
    "thinking" performance — the deterministic answer is already here —
    it is the smallest thing that makes a turn read as a turn. */
-.companion-chat-dots{ margin:0 0 8px; display:flex; gap:5px; align-items:center; height:14px; }
+.companion-chat-dots{ margin:0 0 8px; display:flex; gap:5px; align-items:center; min-height:14px; }
 .companion-chat-dots[hidden]{ display:none; }
 /* PREPARING TO SPEAK IS NOT THINKING — Sprint 1N.6.
    The answer is already on screen; what is still coming is only the
@@ -13283,8 +13283,32 @@ body.dark-theme .bia-studio-btn:hover{ background:rgba(255,255,255,0.08); }
   background:var(--text-dim, #7c7c86);
   animation:companionChatDot 1s ease-in-out infinite;
 }
-.companion-chat-dots span:nth-child(2){ animation-delay:.15s; }
-.companion-chat-dots span:nth-child(3){ animation-delay:.3s; }
+/* nth-of-type, NOT nth-child. The wait label is an <em> and it is the
+   first child of this row, so nth-child(2)/(3) would name the first and
+   second dots and leave the third with no delay — the stagger silently
+   half-gone. nth-of-type counts spans and is immune to a sibling of
+   another kind being added beside them. */
+.companion-chat-dots span:nth-of-type(2){ animation-delay:.15s; }
+.companion-chat-dots span:nth-of-type(3){ animation-delay:.3s; }
+/* A WORD FOR THE WAIT — Sprint 3A.1 §2/§18. The dots say "something is
+   happening"; they cannot say WHICH something, and a child who has been
+   told their Companion is getting ready to speak is not wondering
+   whether it heard them. It sits on the same row as the dots so the
+   panel does not grow a line, and it is empty (and takes no space) for
+   any state that has no word for itself. */
+.companion-chat-wait{
+  font-style:normal; font-size:11.5px; letter-spacing:.01em;
+  /* A LITERAL, NOT A VARIABLE. `--text-dim` is referenced by the
+     starters lead just above and is defined nowhere in this stylesheet,
+     so that rule renders its fallback — which is fine, because #7c7c86
+     is a mid-grey that reads on both themes. Decision 46 records what
+     happens when the fallback is NOT theme-safe: `--text-dim` there fell
+     through to 62%-opaque white on a near-white light theme, and the one
+     affordance a child had to find was invisible. Same grey, no
+     indirection, nothing to fall through. */
+  color:#7c7c86; margin-right:2px;
+}
+.companion-chat-wait:empty{ display:none; }
 @keyframes companionChatDot{ 0%,100%{ opacity:.25; } 50%{ opacity:1; } }
 @media (prefers-reduced-motion: reduce){
   .companion-chat-dots span{ animation:none; opacity:.6; }
