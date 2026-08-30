@@ -35,9 +35,16 @@ Paste **`supabase/verify_step3a_state.js`** into the Studio console
 (signed in). One GET, read-only, and it prints exactly what is still
 missing. Run it again after every change below.
 
-`BUILD` is **`'3A'`** from this sprint on. If the probe reports anything
-else, the function on the server is not this code and nothing below has
-taken effect yet.
+`BUILD` is **`'3A.1'`**. If the probe reports anything else, the
+function on the server is not this code and nothing below has taken
+effect yet.
+
+**`'3A'` is a real build and it does not work.** It carries the whole of
+the routing — it reports `modelCompanions` exactly like a fixed one — and
+its controlled first call is answered by the deterministic Mind, because
+the fixture's Companion was overwritten before the model gate read its
+id. It looks like a healthy deployment from every angle except the
+answer. If you deployed before build `3A.1`, redeploy.
 
 ---
 

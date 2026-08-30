@@ -5553,6 +5553,32 @@ untouched.
   construction and its own verification. Building a second unverifiable
   path in a session that cannot reach the model doubles the risk with
   nothing able to check it. **A stated limitation, not a defect.**
+- **THE FIRST REAL CALL WAS ANSWERED BY THE DETERMINISTIC MIND** (build
+  `3A.1`). Reported by the product owner running the runbook's own
+  controlled first call: back came *"I don't know that one. I'd only be
+  guessing."* — Leo's uncertainty line, not a model's. The routing was
+  correct and the personality was gone before the gate could read it:
+  the synthetic path overwrote `src.raw.personality` with
+  `SYNTHETIC_PERSONALITY` (Leafy, carrying no `id`), so the `first-call`
+  fixture's Leo was discarded, `cid` came out null and `modelWanted` was
+  false on every probe. **The live branch was never affected** — it
+  resolves the Companion from the card row and never from the request,
+  which is the boundary that matters and which this did not touch.
+- **`ok: true` IS RETURNED BY BOTH PATHS, so `3A6` proved nothing.**
+  Sixteenth check in this repository that confirms itself, and the first
+  where the two things being confused were a working model and a working
+  fallback — which is precisely the pair Step 3A's whole design makes
+  indistinguishable to a caller. `3A6a` runs the same fixture twice,
+  listed and unlisted, and requires the two replies to DIFFER with no
+  recorded fallback. **A fallback that cannot be told from a success is
+  the one thing a rollout behind a fallback must be able to see.**
+- **A BUILD STRING IS THE WRONG INSTRUMENT FOR "IS IT DEPLOYED" AND THE
+  RIGHT ONE FOR "WHICH ONE IS IT".** The state check asked whether the
+  probe reported `modelCompanions`, deliberately, because Decision 49
+  had just recorded a version label crying wolf. Build `3A` reports it
+  exactly like a fixed one, so presence would have called the broken
+  deployment done. Both questions are asked now, each by the instrument
+  that can answer it.
 - `supabase/functions/companion-chat/index.ts` ·
   `tools/edge-auth-test/sync-shared.js` ·
   `supabase/DEPLOY_step3a_leo.md` ·
