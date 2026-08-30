@@ -734,10 +734,48 @@ const FOUR = [['leafy', 'Leafy', 'Bloomling'], ['leosaurus', 'Leo', 'Lantern Lio
      'F1  neither file can write a memory — CompanionMemory is not in them');
   ck(!/[Bb]ondValidator|memoryProposal|validateProposal/.test(talkSrc + ctxSrc),
      'F2  and neither knows Bond Moments exist');
-  const NET = ['fetch(', 'XMLHttpRequest', 'WebSocket', 'EventSource', 'openai',
-               'supabase', 'https://', 'http://'];
-  const net = NET.filter((t) => (talkSrc + ctxSrc).toLowerCase().indexOf(t.toLowerCase()) !== -1);
-  ck(net.length === 0, 'F3  no network call of any kind', net.join(', ') || 'none');
+  // ---- F3 WAS TURNED ROUND BY STEP 3C, AND HERE IS WHY -------------
+  //
+  // It read "no network call of any kind", which was correct for Sprint
+  // 1M: the Ether encounter was entirely client-side and deliberately
+  // made no request. Step 3C gives the Ether the SAME real Mind the
+  // Studio uses — Decision 48's rule that a Traveller's Companion must
+  // not be a lesser conversation — so it now asks the same Edge
+  // Function, and asserting silence would assert the old architecture.
+  //
+  // THE PROPERTY IT PROTECTED IS PRESERVED AND SPLIT IN TWO, because
+  // "makes no request" was only ever a proxy for the two things that
+  // actually matter:
+  //
+  //   F3a — no provider is reachable from the browser. OpenAI and
+  //         ElevenLabs are named nowhere in either file, so there is no
+  //         client-side model access to have.
+  //   F3b — what the browser sends is LOCATORS, never context. Two
+  //         fields and a sentence; no companion id, no creator, no card,
+  //         no memories, no context object. The server reads the Story
+  //         row itself and decides what may be seen.
+  //
+  // js/travellerContext.js is unchanged and still makes no request at
+  // all — the wall is exactly where it was.
+  const PROVIDERS = ['openai', 'elevenlabs', 'api.openai', 'anthropic'];
+  const prov = PROVIDERS.filter((t) => (talkSrc + ctxSrc).toLowerCase().indexOf(t) !== -1);
+  ck(prov.length === 0,
+     'F3a NO PROVIDER IS REACHABLE FROM THE BROWSER — the property F3 protected',
+     prov.join(', ') || 'none named');
+  const CTX_NET = ['fetch(', 'XMLHttpRequest', 'WebSocket', 'EventSource', 'https://', 'http://'];
+  const ctxNet = CTX_NET.filter((t) => ctxSrc.toLowerCase().indexOf(t.toLowerCase()) !== -1);
+  ck(ctxNet.length === 0,
+     'F3b and the public-context wall still makes no request at all',
+     ctxNet.join(', ') || 'none');
+  const bodyKeys = (talkSrc.match(/JSON\.stringify\(\{\s*\n?\s*mode: 'traveller'[\s\S]*?\}\)/) || [''])[0];
+  const SENT = ['mode', 'storyId', 'conversation'];
+  const extra = (bodyKeys.match(/^\s*([a-zA-Z]+):/gm) || [])
+    .map((m) => m.trim().replace(':', '')).filter((k) => SENT.indexOf(k) === -1);
+  ck(bodyKeys && extra.length === 0,
+     'F3c WHAT IT SENDS IS TWO LOCATORS AND A SENTENCE — nothing else',
+     extra.join(', ') || SENT.join(', '));
+  ck(!/companionId\s*:|cardId\s*:|creatorName\s*:|memories\s*:/.test(bodyKeys),
+     'F3d and never a companion, a card, a creator or a memory');
   const LISTEN = ['getUserMedia', 'SpeechRecognition', 'webkitSpeechRecognition',
                   'setInterval', 'requestAnimationFrame', 'MutationObserver'];
   const listen = LISTEN.filter((t) => (talkSrc + ctxSrc).indexOf(t) !== -1);

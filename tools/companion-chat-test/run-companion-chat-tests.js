@@ -549,9 +549,23 @@ async function call(req, over, providerFetch) {
   // one of the four Companion runtime modules (J4 above). Before 1F
   // this asserted zero callers; asserting zero now would be asserting
   // the sprint did not happen.
-  ck(anyClient.length === 1 && anyClient[0] === 'companionChat.js',
-     'J5  EXACTLY ONE FILE CALLS IT, and it is the conversation surface',
-     anyClient.join(', ') || 'none');
+  ck(anyClient.length === 2 &&
+     anyClient.indexOf('companionChat.js') !== -1 && anyClient.indexOf('travellerTalk.js') !== -1,
+     // ---- TURNED ROUND BY STEP 3C, WITH THE PROPERTY PRESERVED ----
+     //
+     // This read "EXACTLY ONE FILE CALLS IT", which was right while the
+     // Studio was the only surface with a real Mind. Step 3C gives the
+     // Ether the SAME Mind — Decision 48's rule that a Traveller's
+     // Companion must not be a lesser conversation — so there are two
+     // conversation surfaces now, and asserting one would assert the old
+     // architecture.
+     //
+     // THE PROPERTY IS UNCHANGED: the Edge Function is reached from the
+     // CONVERSATION SURFACES and from nowhere else. A third caller — a
+     // renderer, a store, the Director, a rite — still fails this, which
+     // is the whole thing it was guarding.
+     'J5  EXACTLY TWO FILES CALL IT, and both are conversation surfaces',
+     anyClient.join(', '))
   const chatSrc = fs.readFileSync(path.join(ROOT, 'js', 'companionChat.js'), 'utf8');
   // ---- J5b WAS TURNED ROUND IN SPRINT 1N.2, DELIBERATELY -----------
   //
@@ -1653,9 +1667,25 @@ async function call(req, over, providerFetch) {
        '3A6c and carries no real Creator, card, id or address');
 
     // ---- LEO'S CHARACTER REACHES THE MODEL (§15, §16) ------------
+    // ---- THE ID IS THE THIRD ARGUMENT NOW, AND HERE IS WHY --------
+    //
+    // buildMessages() used to resolve the character from
+    // `approved.personality.id`. Step 3C found that `id` is on the
+    // privacy gate's FORBIDDEN_KEYS — correctly, an identifier has no
+    // business reaching a model — so on every LIVE turn the gate
+    // stripped it and every Companion arrived with a name and NO
+    // character at all. Only the fixture path, which this check drives,
+    // ever saw one.
+    //
+    // The id is resolved before the gate and travels beside the approved
+    // context, as `companionName` already did. THE PROPERTY HERE IS
+    // UNCHANGED — Leo's authored character reaches the model — and
+    // tools/companion-unified-test C2 proves the same thing through the
+    // real handler for all four, on both surfaces, which is where the
+    // live gap would have shown up.
     const leoMsgs = M.buildMessages(
       { personality: { id: 'leosaurus', name: 'Leo' }, canon: null, memories: [],
-        storyContext: null, conversation: [] }, 'Leo');
+        storyContext: null, conversation: [] }, 'Leo', 'leosaurus');
     const sys = leoMsgs[0].content;
     ck(/Lantern Lion/.test(sys) && /lamp lit/.test(sys),
        '3A7  the system instruction carries LEO — species and identity, not a name substitution');
@@ -1663,7 +1693,7 @@ async function call(req, over, providerFetch) {
        '3A7b including how he sounds', 'sentence style and temperament');
     const leafyMsgs = M.buildMessages(
       { personality: { id: 'leafy', name: 'Leafy' }, canon: null, memories: [],
-        storyContext: null, conversation: [] }, 'Leafy');
+        storyContext: null, conversation: [] }, 'Leafy', 'leafy');
     ck(!/Lantern Lion/.test(leafyMsgs[0].content) && /Bloomling/.test(leafyMsgs[0].content),
        '3A7c and a different Companion gets a different one — no cross-Companion leakage');
     const noneMsgs = M.buildMessages(

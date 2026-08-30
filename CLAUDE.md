@@ -5740,6 +5740,95 @@ untouched.
   construction and is currently vacuous**: both surfaces run the same
   `CompanionMind` over the same canon file, so a definition cannot
   differ; what differs is that only the Studio has a model to speak it.
+- **ONE MIND, BOTH SURFACES, ALL FOUR COMPANIONS** (Step 3C/3D). The
+  Ether's conversation was entirely client-side and deterministic, which
+  made a Traveller's Companion the "lesser conversation" Decision 48
+  forbids. It now asks the SAME Edge Function in `mode: 'traveller'`.
+  There is one `classify()`, one `systemInstructions()`, one
+  `buildMessages()` and one canon; no `TravellerBrain`, no
+  `CreatorBrain`, no per-Companion brain, and the suite fails if one
+  appears.
+- **TWO AXES, AND NEITHER MAY STAND IN FOR THE OTHER.** WHERE (Studio or
+  Ether) decides only what may be SEEN. WHO (which of the four) decides
+  identity, character and voice. A surface never changes how much a
+  Companion understands, and a Companion's identity never changes what a
+  surface may reveal.
+- **A SHARED STORY IS THE WHOLE OF THE ETHER'S AUTHORITY.** A Traveller
+  has no card (Canon 8), so Decision 36's "a conversation is with ONE
+  Companion" is satisfied by the STORY instead: `companion` travels with
+  a Story (Decision 24) and `is_shared` is a GENERATED column a client
+  cannot set independently of actually sharing (Decision 15). Name a
+  Story; if it is genuinely public you may talk to whoever lives in it.
+  **The Companion is read from the row, never from the request** — the
+  same rule the Studio already follows for a card, and a request
+  claiming Leo on Quill's Story still gets Quill.
+- **AN UNSHARED DRAFT AND A STORY THAT DOES NOT EXIST ANSWER
+  IDENTICALLY**, and the model is never asked for either. Otherwise this
+  becomes an oracle for which project ids are real, and worse, for which
+  of them are private.
+- **NOT AN UNAUTHENTICATED PROXY.** The caller is still resolved from a
+  verified session by the same gate every other path uses, and still
+  counted against the same allowance. What it does not need is a Magic
+  Card, because a Traveller does not have one.
+- **A COUNT TRAVELS; A WORD NEVER DOES — AND THAT IS WHY THE PAGES ARE
+  NOT SENT.** Decision 45 says a World Host may say how long a Story is
+  and may not quote a line of it; Decision 26 says it never describes or
+  explains the Story. A model handed the pages WILL quote them, so the
+  pages are not handed over. The Ether context is the Story's name, its
+  length, whether it has a voice, and its maker's public name — and
+  nothing else about it. **This is a canon boundary, not a limitation of
+  this sprint**, and it is the one place a Traveller's Companion is
+  quieter than a Creator's.
+- **THE ETHER CONTEXT IS A WHITELIST, never the Creator context with
+  fields deleted.** A subtraction has to stay complete for ever and one
+  field added upstream leaks. Nothing that is not written out can arrive
+  by being adjacent to something that is; the privacy gate's
+  `TRAVELLER_CONTRACT` does not even name `memories`, so one smuggled in
+  is refused rather than trimmed.
+- **NO COMPANION'S CHARACTER HAD EVER REACHED THE MODEL ON A LIVE
+  TURN**, and this is the sprint's real find. `characterFor()` read
+  `approved.personality.id` — and `id` is on the privacy gate's
+  `FORBIDDEN_KEYS`, correctly, because an identifier has no business
+  reaching a model. So the gate did exactly its job and stripped it, and
+  every real conversation arrived with a name and NO character:
+  Decision 44's authored identities were reaching only the FIXTURE path,
+  which is where Step 3A's own check drove them. It is resolved from the
+  ungated context before the gate runs and travels beside it, exactly as
+  the Companion's NAME already did. **The gate is untouched** — `id`
+  still never reaches the model.
+- **A CHECK THAT DRIVES A FIXTURE CANNOT SEE A LIVE PATH.** 3A7 passed
+  for four sprints while the thing it describes was true nowhere a child
+  could reach. The replacement drives the real handler for all four
+  Companions on both surfaces, and measures four distinct temperaments
+  arriving.
+- **THREE CHECKS WERE TURNED ROUND, EACH WITH ITS REASON IN PLACE.**
+  `F3` (ether-encounter) read *"no network call of any kind"* — true of
+  a client-only Ether, and split into the two properties it was
+  standing for: no provider is reachable from the browser, and what is
+  sent is two locators and a sentence. `F10` (mind) the same, keeping
+  *"reaches no store"* on its own. `J5` (chat) read *"exactly one file
+  calls it"* and now reads *exactly two, and both are conversation
+  surfaces* — a third caller still fails it, which is what it guarded.
+- **MEASURED.** Four Companions × two surfaces: 6,334–6,479 tokens, a
+  97-token spread that is their own character and not architecture. The
+  Ether request is smaller than the Studio's every time, by construction.
+  Only the active Companion appears in any request.
+- **STARS ARE ABSENT, NOT FORBIDDEN.** A request carrying a pattern, a
+  constellation name and star counts at three depths reaches the model
+  with none of them, and the Ether context has no field at any depth
+  that could hold one. **The canon's own prose mentions stars** — a
+  Creator is recognised by their constellation, and a Companion never
+  says what is on anybody's card — and that sentence is what TELLS a
+  model the boundary exists. The first draft of the check scanned for
+  the word and went red on it: eighteenth time this repository has been
+  caught by a word matching inside its own vocabulary.
+- **THE ROLLOUT IS UNCHANGED AND STILL ONE LIST.**
+  `COMPANION_MODEL_COMPANIONS` gates both surfaces; the Ether has no
+  flag of its own because it has no intelligence of its own. Only
+  `leosaurus` is listed on the live server, and adding a name is one
+  environment variable with no deploy.
+- `js/travellerTalk.js` ·
+  `tools/companion-unified-test/run-companion-unified-tests.js` ·
 - `assets/canon/vihuplanet.canon.json` · `js/companionMind.js` ·
   `js/companionChat.js` · `js/companionConversation.js` ·
   `supabase/functions/companion-chat/index.ts` ·

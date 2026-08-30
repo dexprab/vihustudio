@@ -317,12 +317,153 @@ const TravellerTalk = (function () {
     if (!els) return;
     _ctx = (typeof TravellerContext !== 'undefined')
       ? TravellerContext.build(story, host) : null;
+    // THE STORY'S ID IS A LOCATOR, AND IT LIVES OUTSIDE THE CONTEXT —
+    // Step 3C. TravellerContext strips `projectId` on purpose: it is an
+    // identifier and identifiers do not travel to a model. But the
+    // server has to be TOLD which Story is being talked about, and it
+    // then reads that row itself and decides whether it is shared. So
+    // the id is held here, beside the approved context and never inside
+    // it — the same shape the Studio uses, where `storyId` is a locator
+    // and everything about the Story is read server-side.
+    _storyId = (story && (story.projectId || story.id)) || null;
     _turns = [];
     if (!_ctx || !_ctx.companionName) { withdraw(); return; }
     els.opener.textContent = 'Talk to ' + _ctx.companionName;
     els.opener.hidden = false;
     els.bar.hidden = true;
     _open = false;
+  }
+
+  // ---------------------------------------------------------------
+  // THE SAME MIND, ASKED OVER THE NETWORK — Step 3C.
+  //
+  // The Ether had no server path at all: every answer was deterministic,
+  // which made a Traveller's Companion the "lesser conversation"
+  // Decision 48 forbids. It now asks the SAME Edge Function the Studio
+  // asks, in `mode: 'traveller'` — one intelligence implementation, and
+  // the only difference is which context the server builds.
+  //
+  // WHAT THE BROWSER SENDS IS TWO LOCATORS AND A SENTENCE. No context,
+  // no companion id, no creator, no card. The server reads the Story
+  // row, checks `is_shared`, and takes the Companion from it — so a
+  // browser cannot talk its way into an unshared Story or borrow
+  // somebody else's Companion by naming one.
+  const FN = 'companion-chat';
+  const ASK_TIMEOUT_MS = 12000;
+  const PROBE_TIMEOUT_MS = 5000;
+  let _probe = null;
+
+  function _cfg() {
+    if (_cfgP) return _cfgP;
+    _cfgP = fetch('supabase-config.json', { cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (c) { return (c && c.url && c.anonKey) ? c : null; })
+      .catch(function () { return null; })
+      .then(function (c) { if (!c) _cfgP = null; return c; });
+    return _cfgP;
+  }
+  let _cfgP = null;
+
+  function _token() {
+    try {
+      if (typeof ThemeRepositoryClient === 'undefined' || !ThemeRepositoryClient.getSession) {
+        return Promise.resolve(null);
+      }
+      return ThemeRepositoryClient.getSession()
+        .then(function (s) { return (s && s.access_token) ? s.access_token : null; })
+        .catch(function () { return null; });
+    } catch (e) { return Promise.resolve(null); }
+  }
+
+  function _bounded(url, init, ms) {
+    let ctl = null;
+    try { ctl = new AbortController(); } catch (e) {}
+    const opts = ctl ? Object.assign({}, init, { signal: ctl.signal }) : init;
+    let timer = null;
+    const capped = new Promise(function (_, reject) {
+      timer = setTimeout(function () {
+        try { if (ctl) ctl.abort(); } catch (e) {}
+        reject(new Error('timeout'));
+      }, ms);
+    });
+    return Promise.race([fetch(url, opts), capped])
+      .then(function (r) { clearTimeout(timer); return r; },
+            function (e) { clearTimeout(timer); throw e; });
+  }
+
+  /** Which Companions have a real Mind. Once per session; failures forgotten. */
+  function _mindProbe() {
+    if (_probe) return _probe;
+    _probe = Promise.all([_cfg(), _token()]).then(function (both) {
+      const cfg = both[0], token = both[1];
+      if (!cfg || !token) return null;
+      return _bounded(cfg.url.replace(/\/+$/, '') + '/functions/v1/' + FN, {
+        headers: { Authorization: 'Bearer ' + token, apikey: cfg.anonKey },
+      }, PROBE_TIMEOUT_MS)
+        .then(function (r) { return r.json().catch(function () { return null; }); })
+        .then(function (b) {
+          return (b && b.ok && Array.isArray(b.modelCompanions)) ? b.modelCompanions : null;
+        }).catch(function () { return null; });
+    }).catch(function () { return null; })
+      .then(function (list) { if (list === null) _probe = null; return list; });
+    return _probe;
+  }
+
+  function _hostHasMind() {
+    const cid = _hostId();
+    if (!cid || !_storyId) return Promise.resolve(false);
+    return _mindProbe().then(function (list) {
+      return !!list && list.indexOf(String(cid).toLowerCase()) !== -1;
+    });
+  }
+
+  /**
+   * One turn. The deterministic answer is computed FIRST and kept — it
+   * is the fallback if the model is unreachable, slow or says something
+   * that fails validation, so a Traveller is never worse off than they
+   * were before this sprint.
+   */
+  function ask(said) {
+    const here = reply(said, _ctx);
+    // A BOUNDARY NEVER DEPENDS ON A ROUND TRIP. The Mind's own
+    // MODEL_ROUTED names the only two intents a real Mind outranks;
+    // stars, privacy, secrecy and injection are refused here, always,
+    // exactly as they are in the Studio.
+    let routed = false;
+    try {
+      const M = (typeof CompanionMind !== 'undefined') ? CompanionMind : null;
+      routed = !!M && (M.MODEL_ROUTED || []).indexOf(here.intent) !== -1;
+    } catch (e) {}
+    if (!routed) return Promise.resolve(here);
+    return _hostHasMind().then(function (yes) {
+      if (!yes) return here;
+      return Promise.all([_cfg(), _token()]).then(function (both) {
+        const cfg = both[0], token = both[1];
+        if (!cfg || !token) return here;
+        return _bounded(cfg.url.replace(/\/+$/, '') + '/functions/v1/' + FN, {
+          method: 'POST',
+          headers: {
+            Authorization: 'Bearer ' + token,
+            apikey: cfg.anonKey,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            mode: 'traveller',
+            storyId: _storyId,
+            conversation: _turns.reduce(function (out, t) {
+              out.push({ role: 'traveller', text: t.said });
+              if (t.answer) out.push({ role: 'companion', text: t.answer });
+              return out;
+            }, []).concat([{ role: 'traveller', text: said }]),
+          }),
+        }, ASK_TIMEOUT_MS)
+          .then(function (r) { return r.json().catch(function () { return null; }); })
+          .then(function (b) {
+            if (!b || !b.ok || typeof b.reply !== 'string' || !b.reply) return here;
+            return { text: b.reply, intent: here.intent, remote: true };
+          }).catch(function () { return here; });
+      }).catch(function () { return here; });
+    }, function () { return here; });
   }
 
   /** The Story closed. Everything goes. */
@@ -653,6 +794,7 @@ const TravellerTalk = (function () {
   }
 
   let _pendingReveal = null;
+  let _storyId = null;
 
   function _newTurn() {
     if (typeof CompanionTurn === 'undefined') return null;
@@ -701,7 +843,16 @@ const TravellerTalk = (function () {
     _pendingReveal = null;
     const turn = _turn = _newTurn();
     if (turn) turn.send();
-    const answer = reply(said, _ctx);
+    // ONE TURN, ONE REQUEST — and it may be a round trip now (Step 3C).
+    // The deterministic answer is computed inside ask() and kept as the
+    // fallback, so a Traveller is never worse off than before.
+    ask(said).then(function (answer) {
+      if (turn && turn !== _turn) return;
+      _finishTurn(turn, els, said, answer);
+    });
+  }
+
+  function _finishTurn(turn, els, said, answer) {
     // Bounded, and kept only while the surface is open. Nothing here is
     // written anywhere, sent anywhere, or read by anything else.
     _turns.push({ said: said, answer: answer.text });

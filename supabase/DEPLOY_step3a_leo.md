@@ -198,3 +198,48 @@ deploy and no code change.
   that cannot reach the model would double the risk with nothing able to
   check it. **This is a stated limitation, not a defect**, and the
   Ether's deterministic conversation is unchanged.
+
+---
+
+## Step 5 — the other three, and the Ether (Step 3C/3D)
+
+Step 3C proves ONE implementation serves all four Companions on both
+surfaces. It does **not** turn any of them on: the gate is unchanged and
+is still `COMPANION_MODEL_COMPANIONS`.
+
+**The staged rollout, and it is yours to walk:**
+
+```
+    COMPANION_MODEL_COMPANIONS = leosaurus                     ← where you are
+    COMPANION_MODEL_COMPANIONS = leosaurus,leafy
+    COMPANION_MODEL_COMPANIONS = leosaurus,leafy,quill
+    COMPANION_MODEL_COMPANIONS = leosaurus,leafy,quill,nimbus
+```
+
+Each step is one environment variable and no deploy. **To stop, at any
+point, remove a name** — that Companion is back on the deterministic
+Mind on the next request.
+
+**The Ether needs nothing extra.** It uses the same gate and the same
+list: a shared Story hosted by a listed Companion gets a real Mind, and
+one hosted by an unlisted Companion keeps the deterministic host. There
+is no separate Ether flag, because there is no separate Ether
+intelligence.
+
+**What a Traveller can and cannot reach**, so it is written down rather
+than assumed:
+
+| | Studio | Ether |
+|---|---|---|
+| VihuPlanet canon | yes | **yes — the same file** |
+| Companion character | yes | yes |
+| Story name and length | yes | yes |
+| Story PAGES | yes | **no** — Decision 45: a count travels, a word never does |
+| Maker's public name | n/a | yes — the portal already prints it |
+| Memories | yes | **no** — the field does not exist in that shape |
+| Creator's private name, nickname, card | yes | **no** |
+| Stars | never | never |
+
+**A redeploy is required** for Step 3C — the traveller path, the shared-
+story authorization and the character fix are all server-side.
+

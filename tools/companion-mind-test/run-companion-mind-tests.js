@@ -799,8 +799,27 @@ async function importFn(source) {
   const talkSrc = fs.readFileSync(path.join(ROOT, 'js', 'travellerTalk.js'), 'utf8')
     .replace(/\/\*[\s\S]*?\*\//g, ' ').split('\n')
     .map((l) => l.replace(/^\s*\/\/.*$/, '')).join('\n');
-  ck(!/CompanionMemory|\.remember\s*\(|fetch\(/.test(talkSrc),
-     'F10 and the Ether surface still reaches no store and no network');
+  // ---- F10 WAS TURNED ROUND BY STEP 3C, WITH A REASON --------------
+  //
+  // It read "no store and no network", and the network half was right
+  // only while the Ether had no real Mind. Step 3C gives it the SAME
+  // Edge Function the Studio uses, so it makes a request now.
+  //
+  // THE PROPERTY THAT MATTERED IS THE STORE, and it is unchanged and
+  // asserted on its own: nothing in the Ether path can reach a
+  // Creator's memory. What replaces the network half is the honest
+  // form of it — the request carries LOCATORS and nothing else, and no
+  // provider is named anywhere in the file, so there is no client-side
+  // model access to have. tools/companion-unified-test proves the
+  // server end: an unshared Story is refused and a client-supplied
+  // memory is rejected rather than trimmed.
+  ck(!/CompanionMemory|\.remember\s*\(/.test(talkSrc),
+     'F10  THE ETHER SURFACE STILL REACHES NO STORE — the half that matters');
+  ck(!/openai|elevenlabs|api\.openai/i.test(talkSrc),
+     'F10b and no provider is reachable from it — no client-side model access');
+  ck(!/memories\s*:|cardId\s*:|companionId\s*:/.test(
+       (talkSrc.match(/JSON\.stringify\(\{[\s\S]*?\}\)/g) || []).join('\n')),
+     'F10c and what it sends carries no memory, no card and no Companion');
 
   // =================================================================
   console.log('\nG. AUTHORITY — the browser only points');
