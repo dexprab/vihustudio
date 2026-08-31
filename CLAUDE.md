@@ -6481,7 +6481,10 @@ it → wants to see more from that creator. That loop, and nothing else.
 - **THE CHILD CHOOSES. NOTHING IS EVER GENERATED.** Never
   moonmaker8472, no suggestions, no pre-filled field — the dialog's
   input starts empty and stays the child's own words. The suite scans
-  the layer for name generation and fails on any.
+  the layer for name generation and fails on any. (The backfill below
+  DERIVES a name from a nickname the child already chose — a
+  normalization of their own word, never an invention, and where it
+  cannot, the invitation stands.)
 - **One writer, and ownership is verified where it counts.**
   `creator_username_claim()` is SECURITY DEFINER, requires
   `owner_id = auth.uid()`, and a stranger's identity answers exactly
@@ -6555,6 +6558,41 @@ it → wants to see more from that creator. That loop, and nothing else.
   surfaces are scanned for that vocabulary and fail on any of it.
   SOCIAL 2 (My Circle) arrives as its own decision on the seams this
   one leaves; nothing here presumes it.
+- **EXISTING ACCOUNTS ARE NAMED FROM THEIR OWN DISPLAY NAME** (Sprint
+  S1.1, decided by the product owner: *"for existing accounts create
+  username from their display name"*). The migration's backfill walks
+  every identity with no username, in claimed_at order, and sets it to
+  the nickname normalized to the username shape — case folded,
+  everything outside `a-z 0-9 _` removed, NOTHING appended. A nickname
+  that cannot be a name (too short after cleaning, no letter,
+  reserved) is skipped, and a collision keeps the EARLIEST account —
+  the later one keeps the invitation, never a suffixed variant. The
+  backfill renames nobody: only null usernames are touched, so
+  re-running it is safe. **It also stamps the stories those accounts
+  ALREADY shared, server-side** — the record's own `cardId` IS the
+  identity id (Decision 19), so `creator_projects.data` gains
+  `creatorUsername` for shared, unstamped, provably-owned records
+  only, with `updated_at` deliberately untouched so no open story
+  conflicts over it. Every other child's Ether shows the names the
+  moment the migration runs, without waiting for each maker's device.
+- **THE DEVICE ADOPTS THE BACKFILLED NAME; IT NEVER RE-DERIVES IT.**
+  `MagicCard.refreshUsername()` reads the caller's own identity row
+  (owner-only RLS — it can only ever see its own card) once per load
+  and adopts what the platform holds; Studio Home asks it BEFORE
+  offering the invitation, so a Creator who already has a name is
+  never invited to choose a second one, and an invitation is never
+  raced by a refetch. A network failure is not remembered
+  (Decision 49); a row genuinely holding no name is.
+- **THE NAME IS ON THE FOUR SURFACES THE PRODUCT OWNER NAMED** —
+  *"on card, in ether, on shared story card, shared foldable book"*.
+  The Ether and the Story Card shipped with S1; S1.1 adds the **Magic
+  Card's own face** (gold, beside the YOUNG CREATOR role line, and
+  centred on a companion-less card) — a deliberate product-owner
+  amendment to Decision 22's "nothing new on the card's face" for this
+  one line — and the **foldable's back cover** (*by @moonmaker* under
+  vihuplanet.com). Absent rather than empty everywhere while no name
+  exists, and the landing's `plainShare()` was caught dropping the
+  field on the kind-printing path and fixed.
 - **Proved as sessions, not asserted**: the claim/taken/reserved/
   invalid/not-yours/already-named behaviour and recall runs against a
   real PostgreSQL as real sessions; the Studio and Ether journeys are

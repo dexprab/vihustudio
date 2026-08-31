@@ -10491,3 +10491,29 @@ followers, DMs, chat, comments, likes or leaderboards — the suite
 scans for the vocabulary. tools/social-identity-test (69, with a real
 PostgreSQL as real sessions) + look-share 156 + ether-share 21 —
 green. Canon: Decision 53. Architecture: docs/SOCIAL_IDENTITY.md.
+
+## SOCIAL 1.1 — existing accounts are named, and the name is everywhere it was asked for (build 0717)
+
+Asked for directly: *"the username should be there on card, in ether,
+on shared story card, shared foldable book. for existing accounts
+create username from their display name."* The migration's new
+backfill names every existing identity from its own nickname —
+normalized, never invented: invalid/reserved nicknames and collisions
+(earliest account wins) are skipped and keep the choose-your-name
+invitation, and nobody already named is renamed. It also stamps
+`creatorUsername` onto the stories those accounts already shared,
+server-side, with `updated_at` untouched — so every child's Ether
+shows the names the moment the migration runs.
+`MagicCard.refreshUsername()` adopts the backfilled name onto the
+device (owner-only RLS, once per load, failure not remembered), and
+Studio Home asks it before offering the invitation so nobody with a
+name is invited to choose another. The two missing surfaces joined
+the Ether and the Story Card: the Magic Card's own face carries
+@name beside the YOUNG CREATOR line (a product-owner amendment to
+Decision 22's card-face discipline), and the foldable's back cover
+says *by @moonmaker*. The landing's `plainShare()` was caught
+dropping the field on the kind-printing path and fixed.
+social-identity grew to 85 (backfill derivation, collision, skip,
+rename-nobody, story stamping, device adopt, card face, foldable —
+backfill proved by reverting) + look-share 156 + ether-share 21 —
+green. Canon: Decision 53 (amended in place).

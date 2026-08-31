@@ -174,7 +174,8 @@ const FoldableComposer=(function(){
     }
   }
 
-  function _drawBack(ctx,w,h){
+  function _drawBack(ctx,w,h,share){
+    const s=share||{};
     ctx.fillStyle=PAPER; ctx.fillRect(0,0,w,h);
     ctx.fillStyle=INK;
     ctx.textAlign='center';
@@ -185,6 +186,14 @@ const FoldableComposer=(function(){
     ctx.fillStyle=SOFT;
     ctx.font=Math.round(w*0.045)+'px Georgia, serif';
     ctx.fillText('vihuplanet.com',w/2,h*0.64);
+    // SOCIAL 1.1 — the maker's public VihuPlanet name on the little
+    // book's own back cover, asked for by the product owner.
+    // Attribution only: the book's door stays the printed address and
+    // the Story Card's own code. Absent while no name is chosen.
+    if(s.creatorUsername&&/^[a-z0-9_]{3,20}$/.test(String(s.creatorUsername))){
+      ctx.font='italic 700 '+Math.round(w*0.05)+'px Georgia, serif';
+      ctx.fillText('by @'+s.creatorUsername,w/2,h*0.74);
+    }
   }
 
   function _wrapText(ctx,text,x,y,maxW,lineH){
@@ -431,7 +440,7 @@ const FoldableComposer=(function(){
         const panel=_blank(Math.round(cellW),Math.round(cellH));
         const pctx=panel.getContext('2d');
         if(slot.panel===1) _drawCover(pctx,panel.width,panel.height,share||{},coverImg);
-        else if(slot.panel===8) _drawBack(pctx,panel.width,panel.height);
+        else if(slot.panel===8) _drawBack(pctx,panel.width,panel.height,share||{});
         else _drawPage(pctx,panel.width,panel.height,innerImgs[slot.panel-2]||null);
 
         uprightPanels[slot.panel-1]={ n:slot.panel, image:panel.toDataURL('image/jpeg',0.85) };

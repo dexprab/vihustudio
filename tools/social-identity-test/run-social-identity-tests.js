@@ -205,6 +205,54 @@ function sqlSection() {
     ck(/all checks pass/.test(verdict) && !/FAIL/.test(verdict),
        'A12 supabase/verify_social_identity.sql answers all-PASS',
        (verdict.split('\n').find((l) => /OVERALL/.test(l)) || '').trim());
+
+    // ---- THE BACKFILL: existing accounts are named from their own
+    // display name (product owner's decision). Seed accounts the way
+    // the real platform holds them — nicknames of every shape, and a
+    // story one of them already shared — then RE-RUN the migration,
+    // which is exactly how the backfill meets a live project.
+    psql(pg, `insert into public.magic_card_identities(id,owner_id,nickname,constellation,pattern,claimed_at)
+              values ('card_c','${A_UID}','Vihu 01!','ORION','[[1,1]]', now() - interval '9 days'),
+                     ('card_d','${B_UID}','MoonMaker','LYRA','[[1,3]]', now() - interval '8 days'),
+                     ('card_e','${A_UID}','Vi','CYGNUS','[[1,4]]', now() - interval '7 days'),
+                     ('card_f','${B_UID}','123','LYRA','[[1,5]]', now() - interval '6 days'),
+                     ('card_g','${A_UID}','Lumo','ORION','[[1,6]]', now() - interval '5 days'),
+                     ('card_h','${B_UID}','Asha','LYRA','[[1,7]]', now() - interval '4 days'),
+                     ('card_i','${A_UID}','asha','ORION','[[1,8]]', now() - interval '3 days');`);
+    psql(pg, `insert into public.creator_projects(id,owner_id,data,updated_at)
+              values ('proj_c1','${A_UID}',
+                      '{"id":"proj_c1","name":"The Old Story","cardId":"card_c","publishedAt":"2026-01-01T00:00:00Z"}'::jsonb,
+                      '2026-02-01T00:00:00Z'),
+                     ('proj_c2','${A_UID}',
+                      '{"id":"proj_c2","name":"A Draft","cardId":"card_c"}'::jsonb,
+                      '2026-02-01T00:00:00Z'),
+                     ('proj_c3','${A_UID}',
+                      '{"id":"proj_c3","name":"Already Named","cardId":"card_c","publishedAt":"2026-01-01T00:00:00Z","creatorUsername":"kept"}'::jsonb,
+                      '2026-02-01T00:00:00Z');`);
+    const m3 = loadFile(pg, path.join(ROOT, 'supabase', 'migrations_social_identity.sql'));
+    ck(!m3, 'A13 the migration re-runs over a live population', m3 || 'clean');
+
+    const back = psql(pg,
+      "select id||'='||coalesce(username,'∅') from public.magic_card_identities order by id;")
+      .split('\n').join(' ');
+    ck(/card_c=vihu01/.test(back),
+       'A14 A DISPLAY NAME BECOMES THE NAME — normalized, nothing invented', back);
+    ck(/card_d=∅/.test(back),
+       'A14b a nickname colliding with a chosen name is SKIPPED, never suffixed');
+    ck(/card_e=∅/.test(back) && /card_f=∅/.test(back) && /card_g=∅/.test(back),
+       'A14c too short, no letter and reserved are skipped — those keep the invitation');
+    ck(/card_h=asha/.test(back) && /card_i=∅/.test(back),
+       'A14d two accounts with one nickname: the earlier keeps it, the later keeps the invitation');
+    ck(/card_a=moonmaker/.test(back) && /card_b=stargirl/.test(back),
+       'A14e THE BACKFILL RENAMES NOBODY — chosen names stand', back);
+
+    const proj = psql(pg,
+      "select id||'='||coalesce(data->>'creatorUsername','∅')||'@'||updated_at from public.creator_projects order by id;")
+      .split('\n').join(' ');
+    ck(/proj_c1=vihu01@2026-02-01/.test(proj),
+       'A15 THE NAME REACHES ALREADY-SHARED STORIES server-side — and updated_at never moves', proj);
+    ck(/proj_c2=∅/.test(proj), 'A15b a private draft is never stamped');
+    ck(/proj_c3=kept@/.test(proj), 'A15c a record already carrying a name is never rewritten');
   } finally { stopPg(pg); }
 }
 
@@ -391,6 +439,46 @@ function sqlSection() {
      'C10b and it carries NO NUMBER and NO CHEERER — Decision 20 held, nobody named');
   ck(activity.seen.length === 0, 'C11 once seen, quiet', 'markSeen spent it');
   ck(activity.again.length === 1, 'C11b until more starlight actually arrives');
+
+  // ---- the platform's backfilled name is ADOPTED, not asked for ----
+  // An existing account was named server-side from their nickname; the
+  // device learns it by reading its own identity row, and the
+  // invitation never appears for a Creator who already has a name.
+  const adopted = await page.evaluate(async () => {
+    const prev = MagicCard.getActiveId();
+    const c2 = MagicCard.claim('Meera2', null, { companionId: 'quill' });
+    MagicCard.setActive(c2.id);
+    // A shared story of their own, so C12b's "no invitation" is
+    // attributable to the NAME rather than to nothing being public.
+    const s2 = CreatorProjectStore.newId();
+    CreatorProjectStore.upsert(s2, { name: 'Meera2 Story' }, { version: 1, pages: [{ id: 'p1' }] });
+    CreatorProjectStore.markPublished(s2);
+    const trc = ThemeRepositoryClient;
+    const orig = { isConfigured: trc.isConfigured, getClient: trc.getClient };
+    // Mutated IN PLACE — a top-level const survives window swaps.
+    trc.isConfigured = () => Promise.resolve(true);
+    trc.getClient = () => Promise.resolve({
+      from: () => ({ select: () => ({ eq: () => ({
+        maybeSingle: () => Promise.resolve({ data: { username: 'meera2' }, error: null })
+      }) }) })
+    });
+    try {
+      const got = await MagicCard.refreshUsername();
+      const again = await MagicCard.refreshUsername(); // already local
+      return { got: got, again: again,
+               card: MagicCard.getActive().username,
+               need: CreatorSocial.inviteNeeded() };
+    } finally {
+      trc.isConfigured = orig.isConfigured;
+      trc.getClient = orig.getClient;
+      MagicCard.setActive(prev); // hand the stage back to the first Creator
+    }
+  });
+  ck(adopted.got === 'meera2' && adopted.card === 'meera2' && adopted.again === 'meera2',
+     'C12 A BACKFILLED NAME IS ADOPTED FROM THE PLATFORM — the device learns it without asking anybody',
+     JSON.stringify(adopted));
+  ck(adopted.need === false,
+     'C12b so the invitation never appears for an account that already has a name');
 
   await page.screenshot({ path: path.join(SHOTS, 'C-studio.png') });
 
@@ -682,6 +770,68 @@ function sqlSection() {
   ck(card.okB && card.withoutTexts.indexOf('@moonmaker') === -1
      && !card.withoutTexts.some((t) => /^@/.test(t)),
      'E8b and a nameless maker\'s card carries no @ line at all — never a placeholder');
+
+  // ---- the foldable's back cover and the Magic Card's own face -----
+  const faces = await (async () => {
+    const p5 = await browser.newPage();
+    await p5.addInitScript(() => {
+      window.__texts = [];
+      const orig = CanvasRenderingContext2D.prototype.fillText;
+      CanvasRenderingContext2D.prototype.fillText = function (t) {
+        window.__texts.push(String(t)); return orig.apply(this, arguments);
+      };
+    });
+    await p5.route('**/supabase-config.json', (route) => route.fulfill({
+      contentType: 'application/json', body: JSON.stringify({ url: 'http://supa.local.test', anonKey: 'k' }) }));
+    await p5.route('http://supa.local.test/**', (route) => route.fulfill({ contentType: 'application/json', body: '[]' }));
+    await p5.goto(BASE + '/studio.html?author=on');
+    await p5.waitForFunction(() => typeof FoldableComposer !== 'undefined' &&
+      typeof MagicCardArt !== 'undefined', null, { timeout: 20000 });
+    const out = await p5.evaluate(async () => {
+      function px() {
+        const c = document.createElement('canvas'); c.width = 8; c.height = 8;
+        const x = c.getContext('2d'); x.fillStyle = '#c0272d'; x.fillRect(0, 0, 8, 8);
+        return c.toDataURL('image/png');
+      }
+      const share = { type: 'story', title: 'The Moon Dragon', creatorName: 'Vihaan',
+        creatorUsername: 'moonmaker', pages: [{ image: px() }, { image: px() }], watch: [] };
+      window.__texts.length = 0;
+      await FoldableComposer.compose(share, { cardUrl: null });
+      const foldWith = window.__texts.slice();
+      window.__texts.length = 0;
+      await FoldableComposer.compose(Object.assign({}, share, { creatorUsername: null }), { cardUrl: null });
+      const foldWithout = window.__texts.slice();
+
+      const iso = new Date().toISOString();
+      window.__texts.length = 0;
+      MagicCardArt.drawFront(document.createElement('canvas'),
+        { nickname: 'Vihaan', claimedAt: iso, companionName: 'Leo',
+          companionSpecies: 'Lantern Lion', username: 'moonmaker' });
+      const faceWith = window.__texts.slice();
+      window.__texts.length = 0;
+      MagicCardArt.drawFront(document.createElement('canvas'),
+        { nickname: 'Vihaan', claimedAt: iso, username: 'moonmaker' });
+      const faceBare = window.__texts.slice();
+      window.__texts.length = 0;
+      MagicCardArt.drawFront(document.createElement('canvas'),
+        { nickname: 'Vihaan', claimedAt: iso, companionName: 'Leo' });
+      const faceNone = window.__texts.slice();
+      return { foldWith: foldWith, foldWithout: foldWithout,
+               faceWith: faceWith, faceBare: faceBare, faceNone: faceNone };
+    });
+    await p5.close();
+    return out;
+  })();
+  ck(faces.foldWith.indexOf('by @moonmaker') !== -1,
+     'E9  THE FOLDABLE\'S BACK COVER CARRIES by @moonmaker');
+  ck(!faces.foldWithout.some((t) => /@/.test(t)),
+     'E9b and a nameless maker\'s book carries no @ line');
+  ck(faces.faceWith.indexOf('· @moonmaker') !== -1,
+     'E10 THE MAGIC CARD\'S OWN FACE CARRIES @moonmaker — beside the role line');
+  ck(faces.faceBare.indexOf('@moonmaker') !== -1,
+     'E10b and on a companion-less card too');
+  ck(!faces.faceNone.some((t) => /@/.test(t)),
+     'E10c a card with no name drawn shows nothing — absent rather than empty');
 
   // ---------------------------------------------------------------
   console.log('\nF. NOTHING PRIVATE, NOTHING SOCIAL-NETWORK');

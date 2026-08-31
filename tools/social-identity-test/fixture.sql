@@ -68,6 +68,14 @@ create table if not exists public.magic_card_recalls (
   recalled_at   timestamptz not null default now()
 );
 
+create table if not exists public.creator_projects (
+  id          text primary key,
+  owner_id    text not null,
+  data        jsonb not null,
+  updated_at  timestamptz not null default now(),
+  is_shared   boolean generated always as ((data->>'publishedAt') is not null) stored
+);
+
 alter table public.magic_card_identities enable row level security;
 alter table public.magic_card_recalls enable row level security;
 

@@ -55,6 +55,23 @@ create unique index if not exists magic_card_identities_username_key
 -- Answers are one word each, and none of them leaks whether some
 -- OTHER identity exists: `taken` says only that the NAME is in use.
 -- -------------------------------------------------------------------
+-- ONE reserved list, shared by the claim function and the backfill
+-- below — a third copy of it would be a third thing to drift. Kept in
+-- step with js/creatorHandle.js; the social-identity suite
+-- cross-checks the two files.
+create or replace function public._creator_username_reserved()
+returns text[]
+language sql
+immutable
+as $$
+  select array[
+    'admin','support','vihuplanet','vihustudio','studio','ether','system',
+    'official','vihu','lumo','leafy','quill','nimbus','leo','leosaurus',
+    'canon','traveller','creator','moderator','mod','help','about','root',
+    'api','www','magic','magiccard','staff','team','planet','home'
+  ];
+$$;
+
 create or replace function public.creator_username_claim(p_identity_id text, p_username text)
 returns jsonb
 language plpgsql
@@ -87,15 +104,8 @@ begin
     return jsonb_build_object('ok', false, 'reason', 'invalid');
   end if;
 
-  -- Platform names and routes. Kept in step with js/creatorHandle.js
-  -- (the client's copy of the same rules); the social-identity suite
-  -- cross-checks the two lists.
-  if v_name = any (array[
-    'admin','support','vihuplanet','vihustudio','studio','ether','system',
-    'official','vihu','lumo','leafy','quill','nimbus','leo','leosaurus',
-    'canon','traveller','creator','moderator','mod','help','about','root',
-    'api','www','magic','magiccard','staff','team','planet','home'
-  ]) then
+  -- Platform names and routes — the one shared list above.
+  if v_name = any (public._creator_username_reserved()) then
     return jsonb_build_object('ok', false, 'reason', 'reserved');
   end if;
 
@@ -122,6 +132,71 @@ end;
 $$;
 
 grant execute on function public.creator_username_claim(text, text) to anon, authenticated;
+
+-- -------------------------------------------------------------------
+-- EXISTING ACCOUNTS ARE NAMED FROM THEIR OWN DISPLAY NAME.
+-- Decided by the product owner ("for existing accounts create
+-- username from their display name"): a Creator who was here before
+-- usernames existed should not have to ask for one — their nickname,
+-- normalized to the username shape, becomes their public name.
+--
+--   * DERIVED, NEVER INVENTED: the candidate is the nickname with
+--     case folded and everything outside [a-z0-9_] removed — nothing
+--     is appended, no digits are made up (the brief's own "never
+--     moonmaker8472" rule holds even here).
+--   * A nickname that cannot be a name (too short after cleaning, no
+--     letter, reserved) is SKIPPED — that Creator keeps the
+--     choose-your-name invitation instead of getting a mangled one.
+--   * A collision keeps the EARLIEST account (claimed_at order); the
+--     later one is skipped and keeps the invitation. First come is
+--     the only fair rule a backfill can apply.
+--   * IDEMPOTENT: only rows with no username are touched, so
+--     re-running the migration renames nobody.
+-- -------------------------------------------------------------------
+do $$
+declare
+  rec record;
+  v_cand text;
+begin
+  for rec in
+    select id, nickname
+      from public.magic_card_identities
+     where username is null
+     order by claimed_at, id
+  loop
+    v_cand := regexp_replace(lower(coalesce(rec.nickname, '')), '[^a-z0-9_]', '', 'g');
+    if v_cand !~ '^[a-z0-9_]{3,20}$' or v_cand !~ '[a-z]' then
+      continue;
+    end if;
+    if v_cand = any (public._creator_username_reserved()) then
+      continue;
+    end if;
+    begin
+      update public.magic_card_identities
+         set username = v_cand
+       where id = rec.id and username is null;
+    exception when unique_violation then
+      null; -- taken by an earlier account — this one keeps the invitation
+    end;
+  end loop;
+end $$;
+
+-- And the name reaches the stories those accounts ALREADY shared,
+-- server-side, so every other child's Ether shows it without waiting
+-- for each maker's own device to visit and sweep. The same rules the
+-- client sweep applies (js/creatorProjectStore.js → _sweepUsernames):
+-- only SHARED stories, only records provably owned (the record's own
+-- cardId IS the identity id, Decision 19), never rewriting a record
+-- that already carries a name. `updated_at` is deliberately left
+-- alone: the devices' optimistic pushes compare against it, and a
+-- moved clock would make every open story conflict once for nothing.
+update public.creator_projects p
+   set data = p.data || jsonb_build_object('creatorUsername', i.username)
+  from public.magic_card_identities i
+ where i.username is not null
+   and p.data->>'cardId' = i.id
+   and p.data->>'publishedAt' is not null
+   and p.data->>'creatorUsername' is null;
 
 -- -------------------------------------------------------------------
 -- The name travels with the identity. recall_magic_card() is

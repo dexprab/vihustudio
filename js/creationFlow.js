@@ -872,7 +872,21 @@ const CreationFlow=(function(){
       }).catch(function(){});
     }catch(e){}
 
-    if(CreatorSocial.inviteNeeded()){
+    // The platform may already hold a name this device has not heard
+    // of — the backfill derives one from the nickname for accounts
+    // that predate usernames, and a claim on another device lands on
+    // the same row. Ask first, and only invite if there is genuinely
+    // nothing: an invitation raced by a refetch would flash and
+    // vanish, which reads as a glitch.
+    const refreshed=(typeof MagicCard!=='undefined'&&MagicCard.refreshUsername)
+      ? MagicCard.refreshUsername().catch(function(){ return null; })
+      : Promise.resolve(null);
+    Promise.resolve(refreshed).then(function(name){
+      // A name that just arrived stamps the already-shared stories on
+      // the next store read — ask for one now, while we are here.
+      if(name){ try{ CreatorProjectStore.list(); }catch(e){} }
+      if(!slot.isConnected) return; // the screen moved on
+      if(!CreatorSocial.inviteNeeded()) return;
       const invite=_el('button','creation-flow-name-invite');
       invite.type='button';
       invite.appendChild(_el('div','creation-flow-name-invite-title','✨ Choose your VihuPlanet name'));
@@ -883,7 +897,7 @@ const CreationFlow=(function(){
         });
       });
       slot.appendChild(invite);
-    }
+    });
   }
 
   function _renderMakeScreen(){

@@ -55,7 +55,12 @@ without it — nothing breaks, shares simply travel unattributed until
 the redeploy. The identity half is its own migration:
 
 1. Run `supabase/migrations_social_identity.sql` whole (returns
-   nothing).
+   nothing). Besides the column and the claim function, it BACKFILLS:
+   every existing account is named from its own nickname (normalized;
+   collisions and un-nameable nicknames are skipped and keep the
+   invitation), and their already-shared stories are stamped with the
+   name so the whole Ether shows it immediately. Safe to re-run —
+   it renames nobody.
 2. Run `supabase/verify_social_identity.sql` — one word per check,
    `all checks pass` in the OVERALL row.
 

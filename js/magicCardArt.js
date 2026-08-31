@@ -392,6 +392,17 @@ const MagicCardArt=(function(){
       ctx.font='600 12px -apple-system, Helvetica, Arial, sans-serif';
       ctx.fillStyle='rgba(238,241,255,0.55)';
       ctx.fillText('YOUNG CREATOR',px+22,y+50);
+      // SOCIAL 1.1 — the public VihuPlanet name, on the card's own
+      // face beside the role line. Asked for by the product owner
+      // ("the username should be there on card"), amending Decision
+      // 22's nothing-new-on-the-face discipline for this one line.
+      // Absent rather than empty while no name is chosen.
+      if(card.username){
+        const roleW=ctx.measureText('YOUNG CREATOR').width;
+        ctx.font='700 12px -apple-system, Helvetica, Arial, sans-serif';
+        ctx.fillStyle=GOLD;
+        ctx.fillText('· @'+card.username,px+22+roleW+8,y+50);
+      }
 
       // Disclosed static placeholder — see this file's header comment.
       ctx.textAlign='right';
@@ -417,6 +428,13 @@ const MagicCardArt=(function(){
       ctx.fillStyle='rgba(238,241,255,0.6)';
       ctx.fillText('Creator since '+_formatDate(card.claimedAt),CARD_ART_W/2,y+6);
       y+=34;
+      // SOCIAL 1.1 — the same public name on the companion-less face.
+      if(card.username){
+        ctx.font='italic 700 15px Georgia, serif';
+        ctx.fillStyle=GOLD;
+        ctx.fillText('@'+card.username,CARD_ART_W/2,y);
+        y+=26;
+      }
     }
 
     // Real, derived Stories/Worlds counts (MagicCard.growthSignals()'s

@@ -1377,6 +1377,37 @@ const MagicCard=(function(){
     return true;
   }
 
+  // The platform may know a name this device does not: the backfill
+  // (migrations_social_identity.sql) derives one from the nickname for
+  // every account that existed before usernames did, and a claim made
+  // on another device lands on the row too. Read our own identity row
+  // once per load and adopt what it holds — owner-only RLS means this
+  // can only ever read the caller's own card. A network failure is not
+  // remembered (Decision 49's lesson); a row genuinely holding no name
+  // is, so the invitation is not raced by a refetch.
+  let _usernameRefreshed=false;
+  function refreshUsername(){
+    const active=getActive();
+    if(!active) return Promise.resolve(null);
+    if(active.username) return Promise.resolve(active.username);
+    if(_usernameRefreshed) return Promise.resolve(null);
+    if(typeof ThemeRepositoryClient==='undefined') return Promise.resolve(null);
+    return ThemeRepositoryClient.isConfigured().then(function(ok){
+      if(!ok) return null;
+      return ThemeRepositoryClient.getClient().then(function(client){
+        return client.from('magic_card_identities')
+          .select('username').eq('id',active.id).maybeSingle()
+          .then(function(res){
+            if(res&&res.error) return null;
+            _usernameRefreshed=true; // the row answered, name or not
+            const name=res&&res.data&&res.data.username;
+            if(name){ _setLocalUsername(active.id,String(name)); return String(name); }
+            return null;
+          });
+      });
+    }).catch(function(){ return null; });
+  }
+
   function claimUsername(raw){
     const active=getActive();
     if(!active) return Promise.resolve({ok:false,reason:'no_card'});
@@ -1446,6 +1477,7 @@ const MagicCard=(function(){
     // one write path; _setLocalUsername is exposed for the harness
     // and for a platformless device adopting a name it was told.
     claimUsername:claimUsername,
+    refreshUsername:refreshUsername,
     _setLocalUsername:_setLocalUsername,
     orderLikeAnySky:orderLikeAnySky,
     // The library, for anything that wants to describe a sky. Copies

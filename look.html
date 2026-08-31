@@ -236,14 +236,14 @@
   </div>
 </div>
 
-<script src="js/creationPlayback.js?v=0716"></script>
+<script src="js/creationPlayback.js?v=0717"></script>
 <!-- 1.1.5 — the print composers. All three are guard-safe outside the
      Studio (typeof checks throughout); CreationShare is here only for
      displayTitle, so the printed cover names the creation the same
      way the hub does. -->
-<script src="js/creationShare.js?v=0716"></script>
-<script src="js/storyCardComposer.js?v=0716"></script>
-<script src="js/foldableComposer.js?v=0716"></script>
+<script src="js/creationShare.js?v=0717"></script>
+<script src="js/storyCardComposer.js?v=0717"></script>
+<script src="js/foldableComposer.js?v=0717"></script>
 <script>
 (function(){
   'use strict';
@@ -441,7 +441,8 @@
     function plainShare(){
       var pages=(creation.pagesPlain&&creation.pagesPlain.length)?creation.pagesPlain:creation.pages;
       return { v:creation.v, type:creation.type, title:creation.title,
-               creatorName:creation.creatorName, pages:pages,
+               creatorName:creation.creatorName,
+               creatorUsername:creation.creatorUsername||null, pages:pages,
                watch:creation.watch, madeIn:creation.madeIn, ether:creation.ether };
     }
     function openPrint(kind){

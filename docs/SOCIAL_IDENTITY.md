@@ -49,6 +49,33 @@ it.
   `MagicCard.adopt()` carries it, `_pushIdentitySnapshot` cannot lose
   it (it updates only the columns it names).
 
+## Existing accounts (S1.1)
+
+The migration's backfill names every account that existed before
+usernames did, **from its own display name** (product owner's
+decision): the nickname normalized to the username shape — case
+folded, everything outside `a-z 0-9 _` removed, nothing ever
+appended. A nickname that cannot be a name (too short, no letter,
+reserved) is skipped; a collision keeps the earliest account
+(claimed_at order); nobody already named is renamed. Skipped accounts
+keep the choose-your-name invitation. The backfill also stamps
+`creatorUsername` onto those accounts' **already-shared** stories
+server-side (`creator_projects.data`, cardId-matched, `updated_at`
+untouched), so the whole Ether shows names the moment the migration
+runs. `MagicCard.refreshUsername()` adopts the backfilled name onto
+the device (owner-only RLS, once per load, network failure not
+remembered), and Studio Home asks it before offering the invitation.
+
+## The four surfaces
+
+*"on card, in ether, on shared story card, shared foldable book"* —
+the product owner's list, all shipped: the **Magic Card's own face**
+(gold, beside the YOUNG CREATOR line; centred on a companion-less
+card — a deliberate amendment to Decision 22's card-face discipline),
+the **Ether** (the Preview chip and the shelf), the **Story Card**
+back, and the **foldable's back cover** (*by @moonmaker*). Absent
+rather than empty everywhere while no name exists.
+
 ## Attribution
 
 `creatorUsername` is stamped onto project records exactly as

@@ -77,6 +77,8 @@ begin
         coalesce((v_claim like '%[a-z0-9_]{3,20}%')::text, 'false')),
     (10, 'claim refuses reserved names', 'true',
         coalesce((v_claim ~* '''reserved''')::text, 'false')),
+    (18, 'one shared reserved list (_creator_username_reserved)', 'true',
+        coalesce((v_claim ~* '_creator_username_reserved')::text, 'false')),
     (11, 'claim guards the unique race (taken)', 'true',
         coalesce((v_claim ~* 'unique_violation')::text, 'false')),
     (12, 'claim writes only a null username (stable v1)', 'true',
