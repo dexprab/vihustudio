@@ -146,6 +146,28 @@ const CreatorPresence=(function(){
     row.appendChild(input);
     _body.appendChild(row);
 
+    // Suggestions after a few typed characters (product owner's ask).
+    // Drawn ONLY from EtherFeed.suggestUsernames — names already on
+    // public shared stories in the loaded feed, so nothing is offered
+    // that the universe is not already showing. Tapping one opens
+    // that Creator's shelf; typing on simply redraws.
+    const suggest=_el('div','creator-presence-suggest');
+    _body.appendChild(suggest);
+    function _redrawSuggestions(){
+      while(suggest.firstChild) suggest.removeChild(suggest.firstChild);
+      let names=[];
+      try{
+        names=(typeof EtherFeed!=='undefined'&&EtherFeed.suggestUsernames)
+          ? EtherFeed.suggestUsernames(input.value) : [];
+      }catch(e){}
+      names.forEach(function(name){
+        suggest.appendChild(_button(_handle(name),'creator-presence-suggest-btn',function(){
+          open(name,{meet:_meet});
+        }));
+      });
+    }
+    input.addEventListener('input',_redrawSuggestions);
+
     const note=_el('p','creator-presence-note','');
     const btns=_el('div','creator-presence-btns');
     const go=_button('Find ✨','creator-presence-go',function(){

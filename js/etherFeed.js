@@ -470,6 +470,34 @@ const EtherFeed = (function () {
     return out;
   }
 
+  /* Name suggestions for 🔎 Find a Creator, offered once a child has
+   * typed a few characters (asked for by the product owner). The SAME
+   * authority as byUsername and for the same reason: only names
+   * already riding on public shared stories in the loaded feed can be
+   * suggested, so this reveals nothing the universe is not already
+   * showing on the Spirits themselves — a Creator who never shared is
+   * not suggestible anywhere, by construction. Still no server
+   * endpoint, so there is still nothing to enumerate beyond what is
+   * public. Prefix match, case-insensitive, a handful at most. */
+  const SUGGEST_MIN = 3;
+  const SUGGEST_MAX = 6;
+  function suggestUsernames(prefix) {
+    const want = String(prefix || '').trim().replace(/^@+/, '').toLowerCase();
+    if (want.length < SUGGEST_MIN || !_lastLoaded.length) return [];
+    const seen = {};
+    const out = [];
+    for (let i = 0; i < _lastLoaded.length; i++) {
+      const s = _lastLoaded[i];
+      if (!s || !s.creatorUsername) continue;
+      const u = String(s.creatorUsername).toLowerCase();
+      if (u.indexOf(want) !== 0 || seen[u]) continue;
+      seen[u] = true;
+      out.push(u);
+    }
+    out.sort();
+    return out.slice(0, SUGGEST_MAX);
+  }
+
   function load(opts) {
     opts = opts || {};
     const creator = _creator();
@@ -725,6 +753,7 @@ const EtherFeed = (function () {
     load: load,
     othersBy: othersBy,
     byUsername: byUsername,
+    suggestUsernames: suggestUsernames,
     attach: attach,
     pagesOf: pagesOf,
     pagesPlainOf: pagesPlainOf,

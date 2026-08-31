@@ -10517,3 +10517,18 @@ social-identity grew to 85 (backfill derivation, collision, skip,
 rename-nobody, story stamping, device adopt, card face, foldable —
 backfill proved by reverting) + look-share 156 + ether-share 21 —
 green. Canon: Decision 53 (amended in place).
+
+## SOCIAL 1.2 — Find a Creator suggests after three characters (build 0718)
+
+Asked for directly: *"in the search field can we start showing
+suggestion after 3-4 characters?"* `EtherFeed.suggestUsernames()` is
+a case-insensitive prefix filter over the already-loaded public feed
+— the same authority `byUsername` uses, so a name is suggestible
+exactly when it already rides a shared Spirit the universe shows;
+still no server endpoint, still nothing to enumerate, and an empty
+field offers no directory. The Find panel redraws quiet gold chips on
+every keystroke past three characters; tapping one opens that
+Creator's shelf. social-identity grew to 89 (under-three silent,
+prefix offers, case/@ cosmetic, unknown offers nothing, tap opens the
+shelf) + ether-share 21 — green. Canon: Decision 53 (amended in
+place).

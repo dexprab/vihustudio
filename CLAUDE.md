@@ -6521,6 +6521,15 @@ it → wants to see more from that creator. That loop, and nothing else.
   Preview's chip empty. It rides on `source` now (copied wholesale,
   never read by physics, the renderer or the story layer), the same
   seam `origin` and the Companion already use; proved by reverting.
+- **FIND SUGGESTS AFTER THREE CHARACTERS, from the same public feed**
+  (S1.2, asked for by the product owner). Typing three letters into
+  🔎 Find a Creator offers matching names as tappable chips — drawn
+  ONLY from `EtherFeed.suggestUsernames()`, a prefix filter over the
+  loaded shared feed, so a name is suggestible exactly when it is
+  already visible on a public Spirit. Still no server endpoint, so
+  there is still nothing to enumerate beyond what the universe
+  already shows; an empty field offers no directory, and a Creator
+  who never shared is not suggestible anywhere.
 - **Three doors into a maker's shelf, all creation-first.** The
   Preview's tappable `@moonmaker` chip; 🔎 Find a Creator — a quiet
   corner affordance, NOT a third permanent action (Decision 10's two

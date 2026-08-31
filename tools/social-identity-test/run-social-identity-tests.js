@@ -615,6 +615,48 @@ function sqlSection() {
   ck(unknown === 'No Creator by that name is in the Ether yet.',
      'D7  an unknown name is told gently — never "not found", never an error', unknown);
 
+  // ---- suggestions after a few characters (product owner's ask) ----
+  const suggests = await page.evaluate(() => {
+    const input = document.querySelector('.creator-presence-input');
+    function type(v) {
+      input.value = v;
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      return Array.from(document.querySelectorAll('.creator-presence-suggest-btn'))
+        .map((b) => b.textContent);
+    }
+    return { two: type('st'), three: type('sta'), caps: type('@STA'),
+             moon: type('moo'), none: type('zzz'), all: type('') };
+  });
+  ck(suggests.two.length === 0 && suggests.all.length === 0,
+     'D8a UNDER THREE CHARACTERS, NO SUGGESTIONS — and an empty field offers no directory');
+  ck(suggests.three.length === 1 && suggests.three[0] === '@stargirl'
+     && suggests.caps.length === 1,
+     'D8b THREE CHARACTERS IN, THE NAME IS OFFERED — case and @ cosmetic', JSON.stringify(suggests.three));
+  ck(suggests.moon.length === 1 && suggests.moon[0] === '@moonmaker' && suggests.none.length === 0,
+     'D8c a prefix finds its own name and an unknown one offers nothing', JSON.stringify(suggests.moon));
+
+  const viaSuggest = await page.evaluate(() => {
+    const input = document.querySelector('.creator-presence-input');
+    input.value = 'moo';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    document.querySelector('.creator-presence-suggest-btn').click();
+    return {
+      title: document.querySelector('.creator-presence-title').textContent,
+      rows: Array.from(document.querySelectorAll('.creator-presence-name')).map((r) => r.textContent),
+    };
+  });
+  ck(viaSuggest.title === '@moonmaker' && viaSuggest.rows.length >= 1,
+     'D8d TAPPING A SUGGESTION OPENS THAT SHELF', JSON.stringify(viaSuggest));
+
+  // Back to Find for the exact-match checks below.
+  await page.evaluate(() => {
+    document.querySelector('.creator-presence-quiet').click();
+    document.querySelector('[data-find]').click();
+  });
+  await page.waitForFunction(() =>
+    /Find a Creator/.test(document.querySelector('.creator-presence-title').textContent),
+    null, { timeout: 10000 });
+
   const found = await page.evaluate(() => {
     document.querySelector('.creator-presence-input').value = ' @StarGirl ';
     document.querySelector('.creator-presence-go').click();
