@@ -219,7 +219,9 @@ function sqlSection() {
                      ('card_g','${A_UID}','Lumo','ORION','[[1,6]]', now() - interval '5 days'),
                      ('card_h','${B_UID}','Asha','LYRA','[[1,7]]', now() - interval '4 days'),
                      ('card_i','${A_UID}','asha','ORION','[[1,8]]', now() - interval '3 days'),
-                     ('card_j','${B_UID}','Asha','LYRA','[[1,9]]', now() - interval '2 days');`);
+                     ('card_j','${B_UID}','Asha','LYRA','[[1,9]]', now() - interval '2 days'),
+                     ('card_k','${A_UID}','Rio','ORION','[[2,1]]', now() - interval '9 days'),
+                     ('card_l','${B_UID}','Rio!','LYRA','[[2,2]]', now() - interval '1 day');`);
     psql(pg, `insert into public.creator_projects(id,owner_id,data,updated_at)
               values ('proj_c1','${A_UID}',
                       '{"id":"proj_c1","name":"The Old Story","cardId":"card_c","publishedAt":"2026-01-01T00:00:00Z"}'::jsonb,
@@ -235,6 +237,9 @@ function sqlSection() {
                       '2026-02-01T00:00:00Z'),
                      ('proj_c5','${B_UID}',
                       '{"id":"proj_c5","name":"Two Ashas","creatorName":"Asha","publishedAt":"2025-06-01T00:00:00Z"}'::jsonb,
+                      '2026-02-01T00:00:00Z'),
+                     ('proj_c6','${B_UID}',
+                      '{"id":"proj_c6","name":"Rio Story","cardId":"card_l","publishedAt":"2026-01-01T00:00:00Z"}'::jsonb,
                       '2026-02-01T00:00:00Z');`);
     const m3 = loadFile(pg, path.join(ROOT, 'supabase', 'migrations_social_identity.sql'));
     ck(!m3, 'A13 the migration re-runs over a live population', m3 || 'clean');
@@ -250,6 +255,9 @@ function sqlSection() {
        'A14c too short, no letter and reserved are skipped — those keep the invitation');
     ck(/card_h=asha/.test(back) && /card_i=∅/.test(back),
        'A14d two accounts with one nickname: the earlier keeps it, the later keeps the invitation');
+    ck(/card_l=rio/.test(back) && /card_k=∅/.test(back),
+       'A14f BUT CREATIONS OUTRANK AGE — the card with SHARED STORIES wins a contested name over an idle older one',
+       back);
     ck(/card_a=moonmaker/.test(back) && /card_b=stargirl/.test(back),
        'A14e THE BACKFILL RENAMES NOBODY — chosen names stand', back);
 
@@ -490,6 +498,34 @@ function sqlSection() {
      JSON.stringify(adopted));
   ck(adopted.need === false,
      'C12b so the invitation never appears for an account that already has a name');
+
+  // ---- and the device RECONCILES, not only fills: a name the
+  // platform moved away (a repair) must stop showing on the old
+  // card's face here.
+  const reconciled = await page.evaluate(async () => {
+    const prev = MagicCard.getActiveId();
+    const c3 = MagicCard.claim('Ghost', null, { companionId: 'nimbus' });
+    MagicCard._setLocalUsername(c3.id, 'ghostname'); // remembered locally…
+    const trc = ThemeRepositoryClient;
+    const orig = { isConfigured: trc.isConfigured, getClient: trc.getClient };
+    trc.isConfigured = () => Promise.resolve(true);
+    trc.getClient = () => Promise.resolve({
+      from: () => ({ select: () => ({ in: () => Promise.resolve({
+        data: [{ id: c3.id, username: null }], error: null // …moved on the platform
+      }) }) })
+    });
+    try {
+      const changed = await MagicCard.refreshUsernames();
+      return { changed: changed, left: MagicCard.get(c3.id).username || null };
+    } finally {
+      trc.isConfigured = orig.isConfigured;
+      trc.getClient = orig.getClient;
+      MagicCard.setActive(prev);
+    }
+  });
+  ck(reconciled.changed === true && reconciled.left === null,
+     'C12c A NAME THE PLATFORM MOVED AWAY IS UNLEARNED — no card face claims a name it no longer holds',
+     JSON.stringify(reconciled));
 
   await page.screenshot({ path: path.join(SHOTS, 'C-studio.png') });
 

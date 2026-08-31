@@ -1417,23 +1417,32 @@ const MagicCard=(function(){
   let _allUsernamesRefreshed=false;
   function refreshUsernames(){
     if(_allUsernamesRefreshed) return Promise.resolve(false);
-    const missing=_readCards().filter(function(c){ return c&&!c.username; });
-    if(!missing.length){ _allUsernamesRefreshed=true; return Promise.resolve(false); }
+    const cards=_readCards().filter(function(c){ return !!c; });
+    if(!cards.length){ _allUsernamesRefreshed=true; return Promise.resolve(false); }
     if(typeof ThemeRepositoryClient==='undefined') return Promise.resolve(false);
     return ThemeRepositoryClient.isConfigured().then(function(ok){
       if(!ok) return false;
       return ThemeRepositoryClient.getClient().then(function(client){
         return client.from('magic_card_identities')
           .select('id,username')
-          .in('id',missing.map(function(c){ return c.id; }))
+          .in('id',cards.map(function(c){ return c.id; }))
           .then(function(res){
             if(res&&res.error) return false;
             _allUsernamesRefreshed=true; // the platform answered
             let changed=false;
+            // RECONCILE, not only fill: a returned row is the owner's
+            // own, read under RLS, so what it holds is the truth —
+            // including that a name this device remembered has been
+            // moved elsewhere (a repair on the platform must not
+            // leave a card's face claiming a name it no longer has).
+            // A card the platform did not answer for is left alone:
+            // absence of a row is not evidence of anything.
             ((res&&res.data)||[]).forEach(function(row){
-              if(row&&row.username){
-                if(_setLocalUsername(row.id,String(row.username))) changed=true;
-              }
+              if(!row||!row.id) return;
+              const local=cards.find(function(c){ return c.id===row.id; });
+              const remote=row.username?String(row.username):null;
+              if(((local&&local.username)||null)===remote) return;
+              if(_setLocalUsername(row.id,remote||undefined)) changed=true;
             });
             return changed;
           });

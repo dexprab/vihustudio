@@ -147,9 +147,13 @@ grant execute on function public.creator_username_claim(text, text) to anon, aut
 --   * A nickname that cannot be a name (too short after cleaning, no
 --     letter, reserved) is SKIPPED — that Creator keeps the
 --     choose-your-name invitation instead of getting a mangled one.
---   * A collision keeps the EARLIEST account (claimed_at order); the
---     later one is skipped and keeps the invitation. First come is
---     the only fair rule a backfill can apply.
+--   * A collision keeps the account WITH SHARED STORIES first, then
+--     the earliest (claimed_at). Measured on the live platform: one
+--     person's three test cards all derived "vihupapa", first-come
+--     handed the name to an idle card, and the card that actually
+--     made the shared stories was skipped as taken — leaving its
+--     stories unattributable. The name exists to lead to creations,
+--     so the card with creations outranks an empty one.
 --   * IDEMPOTENT: only rows with no username are touched, so
 --     re-running the migration renames nobody.
 -- -------------------------------------------------------------------
@@ -159,10 +163,16 @@ declare
   v_cand text;
 begin
   for rec in
-    select id, nickname
-      from public.magic_card_identities
-     where username is null
-     order by claimed_at, id
+    select i.id, i.nickname
+      from public.magic_card_identities i
+     where i.username is null
+     order by
+       -- creations outrank age: the card that shared stories gets
+       -- first claim on a contested name (see the header)
+       (exists (select 1 from public.creator_projects p
+                 where p.data->>'cardId' = i.id
+                   and p.data->>'publishedAt' is not null)) desc,
+       i.claimed_at, i.id
   loop
     v_cand := regexp_replace(lower(coalesce(rec.nickname, '')), '[^a-z0-9_]', '', 'g');
     if v_cand !~ '^[a-z0-9_]{3,20}$' or v_cand !~ '[a-z]' then

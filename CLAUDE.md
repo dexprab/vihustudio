@@ -6574,8 +6574,17 @@ it → wants to see more from that creator. That loop, and nothing else.
   the nickname normalized to the username shape — case folded,
   everything outside `a-z 0-9 _` removed, NOTHING appended. A nickname
   that cannot be a name (too short after cleaning, no letter,
-  reserved) is skipped, and a collision keeps the EARLIEST account —
-  the later one keeps the invitation, never a suffixed variant. The
+  reserved) is skipped, and a collision prefers the account WITH
+  SHARED STORIES, then the earliest — measured on the live platform,
+  where one person's three test cards all derived "vihupapa" and
+  first-come handed the name to an idle card while the card that made
+  the shared stories was skipped, leaving its stories unattributable.
+  The name exists to lead to creations, so the card with creations
+  outranks an empty one; the loser keeps the invitation, never a
+  suffixed variant. The device RECONCILES with the platform too:
+  `refreshUsernames()` reads all local cards' rows and unlearns a name
+  the platform moved away, so no card face claims a name it no longer
+  holds. The
   backfill renames nobody: only null usernames are touched, so
   re-running it is safe. **It also stamps the stories those accounts
   ALREADY shared, server-side** — the record's own `cardId` IS the

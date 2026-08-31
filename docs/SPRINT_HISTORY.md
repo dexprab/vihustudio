@@ -10583,3 +10583,19 @@ username. A stranger's shared story is never placed by local cards —
 a coinciding nickname must not pin the wrong name on their work —
 and two same-named local cards place nothing. social-identity 96 +
 ether-share 21 — green. Canon: Decision 53 (amended in place).
+
+## SOCIAL 1.2e — creations outrank age on a contested name (build 0722)
+
+The product owner ran diagnose_social_identity.sql and it named the
+trap exactly: three test cards all derived "vihupapa", first-come
+gave the name to an idle card, and the card that made PERFECTION and
+My Adventure was skipped as taken — so its stories read "maker has no
+username yet" for ever. The backfill's collision rule now prefers the
+account WITH SHARED STORIES, then the earliest: the name exists to
+lead to creations, so a card with creations outranks an empty one.
+And the device reconciles rather than only fills — refreshUsernames()
+reads every local card's own row and unlearns a name the platform
+moved away, so a repair on the platform never leaves a card face here
+claiming a name it no longer holds. social-identity 98 (the
+preference and the unlearning, both against the real migration and
+the real card store). Canon: Decision 53 (amended in place).
