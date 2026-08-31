@@ -355,7 +355,7 @@ async function guard(req, opts) {
 
 // ===== END GENERATED edgeAuth =====
 
-const BUILD = 'LW2';
+const BUILD = 'LW3';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -398,7 +398,7 @@ function refuse(key) {
 function sweepPayload(p) {
   if (!p || typeof p !== 'object' || Array.isArray(p)) return refuse('payload');
 
-  const allowed = ['v', 'type', 'title', 'creatorName', 'pages', 'watch', 'madeIn', 'ether'];
+  const allowed = ['v', 'type', 'title', 'creatorName', 'pages', 'pagesPlain', 'watch', 'madeIn', 'ether'];
   for (const k of Object.keys(p)) {
     if (allowed.indexOf(k) === -1) return refuse(k);
   }
@@ -409,17 +409,30 @@ function sweepPayload(p) {
   if (typeof p.creatorName !== 'string' || p.creatorName.length > SHARE_LIMITS.creator) return refuse('creatorName');
   if (p.madeIn !== 'vihuplanet') return refuse('madeIn');
 
-  if (!Array.isArray(p.pages) || p.pages.length < 1 || p.pages.length > SHARE_LIMITS.pages) return refuse('pages');
-  const pages = [];
-  for (const entry of p.pages) {
-    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return refuse('pages');
-    for (const k of Object.keys(entry)) {
-      if (k !== 'image') return refuse(k);
+  // One rule for a list of page images — `pages` (required) and
+  // `pagesPlain` (optional, 1.2: the ☀️ plain-paper renders, so the
+  // landing can print a plain sheet from baked pixels) are the same
+  // shape under the same caps.
+  function sweepPages(list, keyName, required) {
+    if (list == null) return required ? refuse(keyName) : { ok: true, pages: null };
+    if (!Array.isArray(list) || list.length < 1 || list.length > SHARE_LIMITS.pages) return refuse(keyName);
+    const out = [];
+    for (const entry of list) {
+      if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return refuse(keyName);
+      for (const k of Object.keys(entry)) {
+        if (k !== 'image') return refuse(k);
+      }
+      if (typeof entry.image !== 'string' || entry.image.length > SHARE_LIMITS.pageImage) return refuse('image');
+      if (!IMAGE_RE.test(entry.image)) return refuse('image');
+      out.push({ image: entry.image });
     }
-    if (typeof entry.image !== 'string' || entry.image.length > SHARE_LIMITS.pageImage) return refuse('image');
-    if (!IMAGE_RE.test(entry.image)) return refuse('image');
-    pages.push({ image: entry.image });
+    return { ok: true, pages: out };
   }
+  const sweptPages = sweepPages(p.pages, 'pages', true);
+  if (!sweptPages.ok) return sweptPages;
+  const pages = sweptPages.pages;
+  const sweptPlain = sweepPages(p.pagesPlain, 'pagesPlain', false);
+  if (!sweptPlain.ok) return sweptPlain;
 
   const watch = [];
   if (p.watch != null) {
@@ -447,6 +460,7 @@ function sweepPayload(p) {
     watch: watch,
     madeIn: 'vihuplanet',
   };
+  if (sweptPlain.pages) clean.pagesPlain = sweptPlain.pages;
   // Public-only by construction: the Ether deep link is the project
   // id Decision 9 already made public FOR SHARED STORIES; for an
   // unshared one a forged value resolves to nothing, because the
@@ -585,7 +599,13 @@ function linksFor(env, token) {
     watchUrl: watchUrl,
     coverUrl: supa + '/functions/v1/creation-share?cover=' + encodeURIComponent(token),
     // wa.me is WhatsApp's own share URL and needs nothing but text.
-    whatsapp: 'https://wa.me/?text=' + encodeURIComponent('Look what was made in VihuPlanet! ' + url),
+    // `pv=2` is a preview-generation marker, nothing more: WhatsApp
+    // caches a link preview PER URL, and a creation's token URL is
+    // deliberately stable — so a link first shared before the OG tags
+    // existed kept its cached blank card for ever ("whatsapp share
+    // still does not have any preview", after the tags were live).
+    // A different URL is a fresh fetch; the landing ignores pv.
+    whatsapp: 'https://wa.me/?text=' + encodeURIComponent('Look what was made in VihuPlanet! ' + url + '&pv=2'),
     // Instagram publishes no web prefill; the honest route is the
     // landing page's native share sheet, which includes Instagram on
     // a phone. Recorded as a disclosed limit in the decision entry.

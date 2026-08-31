@@ -213,6 +213,7 @@
         <p class="share-hint" id="printNote"></p>
         <div class="share-panel-btns">
           <button type="button" class="watch-btn" id="printGo">🖨 Print</button>
+          <button type="button" class="quiet" id="printPaper"></button>
           <button type="button" class="quiet" id="printClose">Close</button>
         </div>
       </div>
@@ -224,14 +225,14 @@
   </div>
 </div>
 
-<script src="js/creationPlayback.js?v=0711"></script>
+<script src="js/creationPlayback.js?v=0712"></script>
 <!-- 1.1.5 — the print composers. All three are guard-safe outside the
      Studio (typeof checks throughout); CreationShare is here only for
      displayTitle, so the printed cover names the creation the same
      way the hub does. -->
-<script src="js/creationShare.js?v=0711"></script>
-<script src="js/storyCardComposer.js?v=0711"></script>
-<script src="js/foldableComposer.js?v=0711"></script>
+<script src="js/creationShare.js?v=0712"></script>
+<script src="js/storyCardComposer.js?v=0712"></script>
+<script src="js/foldableComposer.js?v=0712"></script>
 <script>
 (function(){
   'use strict';
@@ -373,7 +374,12 @@
       el('shareHint').textContent='For Instagram: copy the link and paste it there.';
     }
 
-    el('shareWa').href='https://wa.me/?text='+encodeURIComponent(shareText+cleanUrl);
+    // The `pv=2` marker makes the WhatsApp-bound URL differ from any
+    // copy of it shared before the preview tags existed — WhatsApp
+    // caches its link card PER URL, and the token URL is deliberately
+    // stable, so a stale blank card would otherwise stick for ever.
+    // This page ignores pv; Copy and 📤 Share keep the clean URL.
+    el('shareWa').href='https://wa.me/?text='+encodeURIComponent(shareText+cleanUrl+'&pv=2');
 
     var copyBtn=el('shareCopy');
     copyBtn.onclick=function(){
@@ -399,7 +405,21 @@
 
     // 1.1.5 — printing from the letter. The same composers the hub
     // uses, fed the same snapshot, previewed before anything prints.
-    var printMade=null, printKind=null;
+    //
+    // 1.2 — ☀️ Plain paper stands beside this print button too ("kind
+    // printing should be everywhere where there is print option").
+    // Where the share carries the Studio's own plain renders
+    // (`pagesPlain`, new shares), the plain sheet is the full plain
+    // sheet; an older share without them still gets the composers'
+    // paper palette — everything the paper itself draws goes to ink,
+    // and the pages print as they were shared.
+    var printMade=null, printKind=null, printPlain=false, printSeq=0;
+    function plainShare(){
+      var pages=(creation.pagesPlain&&creation.pagesPlain.length)?creation.pagesPlain:creation.pages;
+      return { v:creation.v, type:creation.type, title:creation.title,
+               creatorName:creation.creatorName, pages:pages,
+               watch:creation.watch, madeIn:creation.madeIn, ether:creation.ether };
+    }
     function openPrint(kind){
       var pv=el('printPreview');
       el('printTitle').textContent=(kind==='foldable')?'The foldable little book':'A little card to give away';
@@ -407,11 +427,19 @@
       el('printNote').textContent='Making it…';
       el('printGo').disabled=true;
       printMade=null;
+      var paper=el('printPaper');
+      paper.textContent=printPlain?'🌈 Bring the colours back':'☀️ Plain paper — kind to the printer';
+      paper.onclick=function(){ printPlain=!printPlain; openPrint(kind); };
       pv.classList.remove('hidden');
+      var share=printPlain?plainShare():creation;
+      // A toggle mid-compose starts a newer compose; the older one
+      // landing late must not paint over it.
+      var seq=++printSeq;
       var work=(kind==='foldable')
-        ? FoldableComposer.compose(creation,{cardUrl:cleanUrl})
-        : StoryCardComposer.compose(creation,cleanUrl);
+        ? FoldableComposer.compose(share,{cardUrl:cleanUrl,plain:printPlain})
+        : StoryCardComposer.compose(share,cleanUrl,{plain:printPlain});
       work.then(function(made){
+        if(seq!==printSeq) return;
         var imgs,note;
         if(kind==='foldable'){
           imgs=(made&&made.sheet)?(made.guide?[made.sheet,made.guide]:[made.sheet]):null;
@@ -432,6 +460,7 @@
         el('printNote').textContent=note;
         el('printGo').disabled=false;
       }).catch(function(){
+        if(seq!==printSeq) return;
         el('printNote').textContent='This can’t be made just now — the creation itself is right here to look at, though.';
       });
     }

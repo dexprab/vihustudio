@@ -2050,3 +2050,128 @@ html, body {
   .ether-talk-open { max-width: 40vw; }
   .ether-talk { width: min(280px, 58vw); }
 }
+
+/* =====================================================================
+   Ether Share (Sprint 1.2) — a story met in the Ether, sent onwards.
+   An overlay on the living universe (the Decision 21 shape): the Ether
+   carries on behind the veil, and Back costs nothing.
+   ===================================================================== */
+.ether-share[hidden] { display: none !important; } /* an explicit display beats [hidden] — Decision 48's own recorded trap */
+.ether-share {
+  position: fixed;
+  inset: 0;
+  /* Above the Preview (6800) and the portal (7200) it was opened
+     from — a panel a child is answering must never have the thing
+     behind it drawing through. Below the threshold (8000). */
+  z-index: 7700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4vh 16px;
+}
+.ether-share-veil {
+  position: absolute;
+  inset: 0;
+  background: rgba(6, 9, 22, 0.72);
+}
+.ether-share-panel {
+  position: relative;
+  width: min(460px, 94vw);
+  max-height: 88vh;
+  overflow-y: auto;
+  border-radius: 18px;
+  border: 1px solid rgba(241, 234, 208, 0.22);
+  background: rgba(14, 19, 40, 0.96);
+  color: var(--vp-paper, #F1EAD0);
+  padding: 22px 22px 18px;
+  text-align: center;
+}
+.ether-share-title {
+  font-family: 'Kalam', system-ui, sans-serif;
+  font-size: 1.25rem;
+  margin: 0 0 2px;
+}
+.ether-share-sub {
+  font-style: italic;
+  opacity: 0.75;
+  margin: 0 0 16px;
+  font-size: 0.95rem;
+}
+.ether-share-door {
+  display: block;
+  width: 100%;
+  margin: 8px 0;
+  padding: 0.7rem 1rem;
+  border-radius: 12px;
+  border: 1px solid rgba(241, 234, 208, 0.26);
+  background: rgba(241, 234, 208, 0.07);
+  color: var(--vp-paper, #F1EAD0);
+  font-family: 'Kalam', system-ui, sans-serif;
+  font-size: 1rem;
+  cursor: pointer;
+}
+.ether-share-door:hover { background: rgba(241, 234, 208, 0.14); }
+.ether-share-quiet {
+  margin: 10px 4px 0;
+  padding: 0.45rem 1rem;
+  border-radius: 999px;
+  border: 1px solid rgba(241, 234, 208, 0.22);
+  background: transparent;
+  color: rgba(241, 234, 208, 0.75);
+  font-family: inherit;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+.ether-share-go {
+  margin: 10px 4px 0;
+  padding: 0.5rem 1.3rem;
+  border-radius: 999px;
+  border: none;
+  background: #e8c476;
+  color: #232323;
+  font-weight: 700;
+  font-family: inherit;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+.ether-share-go:disabled { opacity: 0.45; cursor: default; }
+.ether-share-ask {
+  font-family: 'Kalam', system-ui, sans-serif;
+  font-size: 1.05rem;
+  margin: 4px 0 10px;
+}
+.ether-share-input {
+  width: 100%;
+  padding: 0.55rem 0.8rem;
+  border-radius: 10px;
+  border: 1px solid rgba(241, 234, 208, 0.3);
+  background: rgba(241, 234, 208, 0.08);
+  color: var(--vp-paper, #F1EAD0);
+  font-family: inherit;
+  font-size: 0.95rem;
+}
+.ether-share-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; }
+.ether-share-note {
+  font-size: 0.85rem;
+  opacity: 0.8;
+  margin: 10px 0 0;
+  min-height: 1.1em;
+}
+.ether-share-imgs img {
+  max-width: 100%;
+  background: #fff;
+  border-radius: 8px;
+  border: 1px solid rgba(241, 234, 208, 0.25);
+  margin: 5px 0;
+  display: block;
+}
+
+/* The print sheet: hidden on screen, the ONLY thing on paper —
+   the same blanket-isolation rule the Studio's print sheets use. */
+.ether-print-sheet { display: none; }
+@media print {
+  body > *:not(.ether-print-sheet) { display: none !important; }
+  .ether-print-sheet { display: block; }
+  .ether-print-sheet img { width: 100%; display: block; page-break-after: always; break-after: page; }
+  .ether-print-sheet img:last-child { page-break-after: auto; break-after: auto; }
+}

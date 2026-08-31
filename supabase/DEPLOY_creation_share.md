@@ -39,7 +39,7 @@ Probe (any signed-in session):
 
 ```
 GET  {SUPABASE_URL}/functions/v1/creation-share
-→ { ok:true, build:'LW2', creationShares:true, mail:true, base:'https://vihuplanet.com' }
+→ { ok:true, build:'LW3', creationShares:true, mail:true, base:'https://vihuplanet.com' }
 ```
 
 `creationShares:false` means step 1 has not run; `mail:false` means

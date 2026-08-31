@@ -6281,6 +6281,58 @@ own creation, and VihuPlanet is discovered THROUGH it.
   so the landing prints what was shared and the plain print stays
   where the story lives. Function BUILD is `LW2` — a redeploy of
   `creation-share` is what puts the new letter in the post.
+- **A STORY MET IN THE ETHER CAN BE SENT ONWARDS** (1.2, build 0712).
+  Asked for by the product owner: *"can you add these share options on
+  ether stories also. email, print foldable and print story card."*
+  The Preview gains a fourth action — **Share** — and it opens an
+  overlay on the living Ether (`js/etherShare.js`, the Decision 21
+  shape) with three doors: 💌 Send it to someone · 📄 Print a little
+  book · 🃏 Print a little card. **The same system, not a second
+  one**: the letter goes through the existing `creation-share`
+  function and the prints through the SAME composers the hub and the
+  landing use, fed a payload assembled from what the Ether already
+  shows — the feed's own page images, the story's name, its maker.
+- **THE PAPER'S DOOR IS THE STORY'S OWN PUBLIC DEEP LINK.** A child's
+  own creation shares an opaque token because that rule protects an
+  UNSHARED creation; a story in the Ether already has the public
+  address Decision 9 minted — `?story=<projectId>` — so the printed QR
+  encodes that, and the paper opens the story living in the universe.
+  No mint, no upload, no network needed to print. **The letter does
+  need the platform**, so the send door mints under the viewer's own
+  session from the same public material — always `once:true` and never
+  an identityId, so sharing somebody's story onwards can never store
+  an address on anybody's card (proved by reverting).
+- **THE QR IS DRAWN IN WHOLE PIXELS NOW, AND THAT WAS A REAL BUG
+  FOUND BY THE NEW SUITE.** The card drew bwip's canvas into a fixed
+  420px box — a non-integer rescale with smoothing on — and whether
+  the blurred modules still decoded depended on the mask pattern the
+  CONTENT happened to produce: measured, one 50-character URL
+  scanned and another refused on the identical card. Integer
+  upscale, smoothing off; every card is equally crisp.
+- **KIND PRINTING IS EVERYWHERE THERE IS A PRINT OPTION** — the
+  product owner's rule, verbatim. The share payload gains
+  `pagesPlain` (the Studio's own ☀️ plain renders, merged into every
+  uploaded payload so a later mint can never drop what a send put
+  there), the landing's print previews offer the toggle — full plain
+  where the share carries `pagesPlain`, the composers' paper palette
+  otherwise — and the Ether's print previews offer it too
+  (palette-plain: the feed holds only baked pixels, disclosed).
+- **BOTH KEEPSAKES CARRY THE WRITTEN ADDRESS.** *"on each foldable
+  and on story card add the vihuplanet link also"* — the card back
+  now prints **vihuplanet.com** under "Come see it in VihuPlanet",
+  both palettes; the foldable's back panel already carried it.
+- **WHATSAPP'S BLANK PREVIEW WAS A CACHE, NOT A MISSING TAG.** The
+  1.1.4 OG tags were live (Pages deployed, verified by the build
+  log) and the preview stayed blank — because WhatsApp caches its
+  link card PER URL and a creation's token URL is deliberately
+  stable, so a link first shared before the tags existed kept its
+  cached blank card for ever. The WhatsApp-bound URLs (the letter's
+  and the landing's) now carry a `pv=2` preview-generation marker —
+  a different URL is a fresh fetch, and the landing ignores it. Copy
+  and 📤 Share keep the clean URL.
+- Function BUILD is `LW3` — a redeploy of `creation-share` carries
+  the `pagesPlain` sweep, the letter's print doors and the `pv`
+  marker.
 - Architecture and detail: `docs/LOOK_WHAT_I_MADE.md`. Suite:
   `tools/look-share-test/` (118 — the 1.0 82 plus playback
   continuity, music lifecycle, fold steps, folded geometry, the
@@ -6290,12 +6342,17 @@ own creation, and VihuPlanet is discovered THROUGH it.
   paper choice and plain Story Card, and 1.1.4's raw-HTML preview
   card, the letter-opened share panel, WhatsApp prefill, clean-link
   copy and the share-sheet path, and 1.1.5's letter print doors and
-  the landing's compose-preview-print for both keepsakes (141 in
-  all); the fold-model, sweep, blank-flash, once-guard, preview,
-  panel and print-door checks each proved by reverting).
+  the landing's compose-preview-print for both keepsakes, and 1.2's
+  pagesPlain sweep, uploaded-payload plain renders and landing paper
+  toggles (148 in all); the fold-model, sweep, blank-flash,
+  once-guard, preview, panel and print-door checks each proved by
+  reverting) · `tools/ether-share-test/` (18 — the Ether journey:
+  seed a shared story, meet its Spirit, all three doors driven for
+  real, the deep-link QR decoded by zxing in both palettes, once:true
+  proved by reverting).
 - `js/creationShare.js` · `js/creationShareClient.js` ·
   `js/lookWhatIMade.js` · `js/foldableComposer.js` ·
-  `js/storyCardComposer.js` · `look.html` ·
+  `js/storyCardComposer.js` · `js/etherShare.js` · `look.html` ·
   `supabase/migrations_creation_share.sql` ·
   `supabase/functions/creation-share/index.ts`
 

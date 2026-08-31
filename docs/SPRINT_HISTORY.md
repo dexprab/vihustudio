@@ -10372,3 +10372,32 @@ the live renderer's background seam, and a snapshot is baked pixels.
 Function BUILD LW2; redeploying creation-share is what mails the new
 letter. look-share 141 — green; C4.5 and N2 proved by reverting.
 Canon: Decision 52 (amended in place).
+
+## LOOK WHAT I MADE 1.2 — the Ether shares too, and kind printing is everywhere (build 0712)
+
+Four asks in one sitting. *"add these share options on ether stories
+also"* — the Ether Preview gains Share: an overlay on the living
+universe (js/etherShare.js) with 💌 Send it to someone · 📄 Print a
+little book · 🃏 Print a little card, built on the SAME creation-share
+function and the SAME composers, from a payload assembled out of what
+the Ether already shows. The printed QR is the story's own public
+`?story=` deep link (Decision 9's address — no mint, no upload needed
+to print); the letter mints under the viewer's own session, always
+once:true and never an identityId, so sharing onwards stores nothing
+on anybody's card. *"kind printing should be everywhere where there is
+print option"* — the payload gains pagesPlain (the Studio's plain
+renders travel in every upload), the landing's previews toggle to the
+full plain sheet, and the Ether's toggle uses the composers' paper
+palette (baked pixels, disclosed). *"add the vihuplanet link also"* —
+the card back now prints vihuplanet.com; the foldable already did.
+*"whatsapp share still does not have any preview"* — the tags were
+live (Pages build verified); WhatsApp caches its card PER URL and the
+token URL is stable, so pre-tag links kept their blank card for ever;
+the WhatsApp-bound URLs now carry a pv=2 marker to be a fresh URL.
+And the new suite caught a real bug: the card's QR was a non-integer
+rescale of bwip's canvas, and whether it decoded depended on the mask
+pattern the content produced — one 50-char URL scanned, another
+refused. Whole pixels per module now, smoothing off, proved across
+four URLs. look-share 148 + ether-share 18 — green; once:true and the
+pagesPlain sweep proved by reverting. creation-share BUILD LW3 needs a
+redeploy. Canon: Decision 52 (amended in place).

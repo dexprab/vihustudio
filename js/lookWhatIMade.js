@@ -105,9 +105,25 @@ const LookWhatIMade=(function(){
   }
 
   // The shareable payload, built once per opening.
+  //
+  // 1.2 — the ☀️ plain renders travel WITH the share (`pagesPlain`),
+  // because the landing can only print what the snapshot carries:
+  // plain pages are re-rendered from the live story through the
+  // renderer's background seam, which only the Studio has. Merged
+  // into the ONE payload every upload uses, so a later mint (the
+  // card's QR refreshes the snapshot behind the same token) can
+  // never quietly drop what a send put there. A failed plain render
+  // never costs the share itself.
   function _payload(){
     if(_payloadPromise) return _payloadPromise;
     _payloadPromise=CreationShare.snapshot(_ctx.record,_ctx.slides)
+      .then(function(payload){
+        if(!payload) return payload;
+        return _payloadPlain().then(function(plain){
+          if(plain&&plain.pages&&plain.pages.length) payload.pagesPlain=plain.pages;
+          return payload;
+        }).catch(function(){ return payload; });
+      })
       .catch(function(){ return null; });
     return _payloadPromise;
   }

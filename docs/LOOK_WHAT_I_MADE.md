@@ -203,13 +203,15 @@ from a browser.
   Instagram on a phone. Recorded, not worked around.
 - **Narration audio does not travel** with a share in v1. Pages and
   making frames only.
-- **☀️ Plain paper is a Studio choice, not a landing one.** Plain
-  pages are RE-RENDERED from the live story through the renderer
-  (`_plainClone` → the background override seam), and the landing
-  holds only the baked snapshot bitmaps — it cannot lift a background
-  out of pixels. A card-chrome-only plain would be a half-answer, so
-  the landing prints what was shared, in colour, and a parent's B&W
-  printer grayscales it. The plain print lives where the story lives.
+- **☀️ Plain paper is everywhere a print button is (1.2), and the
+  plain PAGES travel where they can.** Plain pages are re-rendered
+  from the live story through the renderer's background seam, which
+  only the Studio has — so the hub now merges them into every
+  uploaded payload as `pagesPlain`, and the landing's toggle prints
+  the full plain sheet for shares that carry them. An older share, and
+  the Ether (whose feed holds only baked pixels), still get the
+  toggle: the composers' paper palette — everything the paper itself
+  draws goes to ink, and the pages print as they were shared.
 - **The exported Magic Creation video itself is not shared** — the
   watch replay is the same making, derived live. A parent who wants
   the mp4 gets it the way the child does: 📦 Take My Story.
@@ -230,3 +232,22 @@ from a browser.
 `supabase/functions/creation-share/index.ts` ·
 `supabase/DEPLOY_creation_share.md` ·
 `tools/look-share-test/run-look-share-tests.js`
+
+## Sharing from the Ether (1.2)
+
+A story met in the Ether can be sent onwards: the Preview's Share
+action opens `js/etherShare.js` — an overlay on the living universe —
+with three doors (💌 Send it to someone · 📄 Print a little book ·
+🃏 Print a little card). The payload is assembled from what the Ether
+already shows (the feed's page images, the story's name, its maker;
+`ether: <projectId>`), so nothing private exists to leak and the
+server's sweep refuses anything unexpected anyway. The printed QR is
+the story's own public `?story=` deep link — no mint or upload is
+needed to print — while the send door mints under the viewer's own
+session, always `once:true` and never with an identityId, so sharing
+somebody's story onwards stores nothing on anybody's card. The card's
+QR is drawn at an integer multiple of bwip's modules with smoothing
+off: a non-integer rescale decoded or not depending on the mask
+pattern the content happened to produce (measured). Both keepsakes
+carry the written address vihuplanet.com. Suite:
+`tools/ether-share-test/`.

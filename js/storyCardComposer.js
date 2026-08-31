@@ -192,22 +192,42 @@ const StoryCardComposer=(function(){
           eclevel:'M'
         });
       }catch(e){ return null; }
-      const pad=26;
-      const x=(CARD_W-420)/2;
-      const y=330;
+      // AN INTEGER UPSCALE, SMOOTHING OFF — measured, not a taste.
+      // Drawing bwip's canvas into a fixed 420px box rescaled the
+      // modules by a non-integer factor with smoothing on, and
+      // whether the blurred result still decoded depended on the
+      // mask pattern the CONTENT happened to produce: one 50-char
+      // URL scanned, another refused, on the identical card. Whole
+      // pixels per module make every card equally crisp.
+      const box=420, pad=26;
+      const mult=Math.max(1,Math.floor(box/qr.width));
+      const size=qr.width*mult;
+      const x=(CARD_W-size)/2;
+      const y=330+Math.floor((box-size)/2);
       ctx.fillStyle='#ffffff';
-      ctx.fillRect(x-pad,y-pad,420+pad*2,420+pad*2);
+      ctx.fillRect(x-pad,y-pad,size+pad*2,size+pad*2);
       if(pal.plain){
         ctx.strokeStyle=pal.frame; ctx.lineWidth=3;
-        ctx.strokeRect(x-pad,y-pad,420+pad*2,420+pad*2);
+        ctx.strokeRect(x-pad,y-pad,size+pad*2,size+pad*2);
       }
-      ctx.drawImage(qr,x,y,420,420);
+      ctx.save();
+      ctx.imageSmoothingEnabled=false;
+      ctx.drawImage(qr,x,y,size,size);
+      ctx.restore();
     }
 
     ctx.fillStyle=pal.accent;
     ctx.font='italic 42px Georgia, serif';
     ctx.fillText('Come see it',CARD_W/2,880);
     ctx.fillText('in VihuPlanet',CARD_W/2,932);
+    // The written address (1.2) — asked for by the product owner, so
+    // somebody holding the paper with no phone to point can still
+    // type their way there. The foldable's back panel already
+    // carries the same line; this is the card catching up, in the
+    // same quiet register.
+    ctx.fillStyle=pal.plain?'rgba(90,80,60,0.75)':'rgba(238,241,255,0.7)';
+    ctx.font='30px Georgia, serif';
+    ctx.fillText('vihuplanet.com',CARD_W/2,986);
     _frame(ctx,CARD_W,CARD_H,pal);
     return c;
   }

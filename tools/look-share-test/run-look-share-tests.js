@@ -187,6 +187,14 @@ function goodPayload(over) {
   ck(r.body.ok === true, 'B12 a well-formed ether id survives the sweep');
   r = await asJson(await post(H, { action: 'mint', projectId: '../evil', payload: goodPayload() }, USER_TOKEN));
   ck(r.status === 400, 'B13 a malformed projectId is refused', 'got ' + r.status);
+  // 1.2 — the ☀️ plain renders travel in the share, under the same law
+  // as the pages themselves.
+  r = await asJson(await post(H, { action: 'mint', projectId: 'proj_a', payload: goodPayload({ pagesPlain: [{ image: PNG_1PX }] }) }, USER_TOKEN));
+  ck(r.body.ok === true, 'B14 pagesPlain survives the sweep — the plain sheet can travel');
+  await refusedKey(goodPayload({ pagesPlain: [{ image: PNG_1PX, note: 'x' }] }), 'note',
+    'B15 an unknown key inside pagesPlain refuses — same shape, same law');
+  await refusedKey(goodPayload({ pagesPlain: [{ image: 'https://evil.example/x.jpg' }] }), 'image',
+    'B16 a pagesPlain image must be a data URI, never a URL');
 
   // ---- C. the letter
   console.log('-- C: share with parent');
@@ -463,9 +471,15 @@ function goodPayload(over) {
   ck(sent.length === 1 && sent[0].body.projectId && sent[0].body.payload &&
      sent[0].body.payload.pages.length >= 1,
     'I3 one send, carrying the snapshot', JSON.stringify({ n: sent.length, pages: sent.length && sent[0].body.payload.pages.length }));
-  const payloadKeys = sent.length ? Object.keys(sent[0].body.payload).sort().join(',') : '';
-  ck(payloadKeys === 'creatorName,madeIn,pages,title,type,v' || payloadKeys === 'creatorName,ether,madeIn,pages,title,type,v' || payloadKeys === 'creatorName,madeIn,pages,title,type,v,watch' || payloadKeys === 'creatorName,ether,madeIn,pages,title,type,v,watch',
-    'I4 the snapshot is ONLY the contract — no card, no session, no memory, no project internals', payloadKeys);
+  // 1.2 widened the contract by exactly one key: `pagesPlain`, the ☀️
+  // plain renders, so the landing can print a plain sheet. The check
+  // stays a pinned SET — an eighth key still cannot arrive quietly.
+  const payloadKeys = sent.length
+    ? Object.keys(sent[0].body.payload).filter((k) => k !== 'ether' && k !== 'watch' && k !== 'pagesPlain').sort().join(',')
+      + (sent[0].body.payload.pagesPlain ? '+pagesPlain' : '')
+    : '';
+  ck(payloadKeys === 'creatorName,madeIn,pages,title,type,v+pagesPlain',
+    'I4 the snapshot is ONLY the contract (now incl. the plain renders) — no card, no session, no memory, no project internals', payloadKeys);
 
   // the ask, when nobody is on file
   fnPlan = { mode: 'no-recipient' };
@@ -551,6 +565,17 @@ function goodPayload(over) {
   ck(savedAfter === 'mum@example.com' && nextTime === 'mum@example.com',
     'S6 the saved address is untouched and is still the NEXT share\'s default', nextTime);
   await page.evaluate(() => { localStorage.removeItem('vihu-sky-parent-email'); LookWhatIMade.close(); });
+
+  // 1.2 — every payload the hub uploads carries the ☀️ plain renders,
+  // so the landing can print a plain sheet and a later mint (the
+  // card's QR refreshes the same token) can never drop what a send
+  // put there.
+  const anyPayload = fnCalls.filter((c) => c.body && c.body.payload).pop();
+  const upPay = (anyPayload && anyPayload.body.payload) || {};
+  ck(Array.isArray(upPay.pagesPlain) && upPay.pagesPlain.length === (upPay.pages || []).length
+    && upPay.pagesPlain.every((p) => /^data:image\//.test(p.image)),
+    'S7 every uploaded payload carries pagesPlain — the plain sheet travels with the share',
+    JSON.stringify({ pages: (upPay.pages || []).length, plain: (upPay.pagesPlain || []).length }));
 
   // ---- J. the foldable
   console.log('-- J: the foldable — preview before print');
@@ -1054,6 +1079,7 @@ function goodPayload(over) {
   const storyCreation = {
     v: 1, type: 'story', title: 'The Dragon Who Found the Moon', creatorName: 'Sam',
     pages: [{ image: JPEG_1PX }, { image: PNG_1PX }, { image: JPEG_1PX }],
+    pagesPlain: [{ image: PNG_1PX }, { image: PNG_1PX }, { image: PNG_1PX }],
     watch: [{ image: PNG_1PX, holdMs: 400 }, { image: JPEG_1PX, holdMs: 400 }],
     madeIn: 'vihuplanet', ether: 'proj_pub1',
   };
@@ -1163,7 +1189,7 @@ function goodPayload(over) {
     nativeHidden: document.getElementById('shareNative').classList.contains('hidden'),
   }));
   const wantWa = 'https://wa.me/?text=' + encodeURIComponent(
-    'Look what Sam made in VihuPlanet! ' + BASE + '/look.html?t=goodtoken');
+    'Look what Sam made in VihuPlanet! ' + BASE + '/look.html?t=goodtoken&pv=2');
   ck(sharePanel.panelOpen && sharePanel.toggleHidden,
     'M13 ?share=1 lands with the panel already open — the letter’s buttons deliver, not hint', JSON.stringify(sharePanel));
   ck(sharePanel.waHref === wantWa,
@@ -1261,6 +1287,51 @@ function goodPayload(over) {
   const cardPrint = await landingPage.evaluate(() => window.__prints[0]);
   ck(cardPrint.images === 2 && cardPrint.landscape === false,
     'N5 the card prints front and back, upright', JSON.stringify(cardPrint));
+
+  // 1.2 — ☀️ Plain paper stands beside the landing's print buttons too
+  // ("kind printing should be everywhere where there is print
+  // option"), and the plain sheet uses the pagesPlain the share
+  // carried.
+  const landColorFront = await landingPage.evaluate(() =>
+    document.querySelectorAll('#printImgs img')[0].src);
+  const landToggle = await landingPage.evaluate(() =>
+    document.getElementById('printPaper').textContent);
+  ck(/Plain paper/.test(landToggle), 'N6 the paper choice is offered on the landing', landToggle);
+  await landingPage.evaluate(() => document.getElementById('printPaper').click());
+  await landingPage.waitForFunction((prev) => {
+    const imgs = document.querySelectorAll('#printImgs img');
+    return imgs.length === 2 && imgs[0].src && imgs[0].src !== prev
+      && !document.getElementById('printGo').disabled;
+  }, landColorFront, { timeout: 60000 });
+  const landPlain = await landingPage.evaluate(async (prevFront) => {
+    async function lum(src) {
+      const img = new Image(); img.src = src;
+      await (img.decode ? img.decode() : new Promise((res) => { img.onload = res; }));
+      const c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
+      const x = c.getContext('2d'); x.drawImage(img, 0, 0);
+      const d = x.getImageData(0, 0, c.width, c.height).data;
+      let sum = 0, n = 0;
+      for (let i = 0; i < d.length; i += 64) { sum += (d[i] + d[i + 1] + d[i + 2]) / 3; n++; }
+      return sum / n / 255;
+    }
+    const imgs = document.querySelectorAll('#printImgs img');
+    return {
+      colorLum: await lum(prevFront), plainLum: await lum(imgs[0].src),
+      label: document.getElementById('printPaper').textContent,
+    };
+  }, landColorFront);
+  ck(landPlain.plainLum > landPlain.colorLum + 0.1 && /colours back/.test(landPlain.label),
+    'N6b the plain card is measurably lighter, and the way back to colour is one press',
+    JSON.stringify({ color: landPlain.colorLum.toFixed(3), plain: landPlain.plainLum.toFixed(3) }));
+
+  // and on the foldable preview too
+  await landingPage.goto(BASE + '/look.html?t=goodtoken&print=foldable');
+  await landingPage.waitForFunction(() =>
+    !document.getElementById('printPreview').classList.contains('hidden')
+    && !document.getElementById('printGo').disabled, null, { timeout: 30000 });
+  const foldToggleLand = await landingPage.evaluate(() =>
+    document.getElementById('printPaper').textContent);
+  ck(/Plain paper/.test(foldToggleLand), 'N7 and on the foldable preview', foldToggleLand);
 
   // the landing page talks ONLY to the platform it was configured for
   const offHost = landingRequests.filter((u) =>

@@ -182,6 +182,7 @@
       meta:     document.querySelector('[data-preview-meta]'),
       read:     document.querySelector('[data-act="read"]'),
       cheer:    document.querySelector('[data-act="cheer"]'),
+      share:    document.querySelector('[data-act="share"]'),
       back:     document.querySelector('[data-act="back"]'),
       portal:   document.querySelector('[data-portal]'),
       page:     document.querySelector('[data-portal-page]'),
@@ -2056,6 +2057,18 @@
       el.cheer.textContent = cheerLabel(pid);
       el.cheer.disabled = hasCheered(pid);
 
+      // Share (Sprint 1.2) — offered only when there is something to
+      // share: pages the Ether actually holds, and the module here to
+      // do it. Hidden rather than dead, like every absent door.
+      if (el.share) {
+        var shareable = false;
+        try {
+          shareable = !!(pid && typeof EtherShare !== 'undefined' &&
+            EtherShare.available({ title: met.title, creator: met.creator, pages: pages }));
+        } catch (e) { shareable = false; }
+        el.share.hidden = !shareable;
+      }
+
       el.preview.hidden = false;
       // The permanent actions stand down while a Spirit is met: the
       // child is looking at one story, not at the whole universe.
@@ -2067,9 +2080,18 @@
       el.preview.hidden = true;
       document.querySelector('.vp-home').classList.remove('is-met');
       setLink(null);
+      // A share panel never outlives the Spirit it was about.
+      if (typeof EtherShare !== 'undefined') { try { EtherShare.close(); } catch (e) {} }
     });
 
     el.back.addEventListener('click', function () { universe.focus.close(); });
+
+    if (el.share) el.share.addEventListener('click', function () {
+      if (!met) return;
+      var pid = projectIdOf(met);
+      if (!pid || typeof EtherShare === 'undefined') return;
+      EtherShare.open(pid, { title: met.title, creator: met.creator, pages: pages });
+    });
 
     el.cheer.addEventListener('click', function () {
       if (!met) return;
