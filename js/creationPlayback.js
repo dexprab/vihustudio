@@ -53,7 +53,20 @@
 const CreationPlayback=(function(){
   'use strict';
 
-  const MUSIC_SRC='assets/audio/foundation/harmony.mp3';
+  // The Watch is scored by the product's own MUSIC — a World track,
+  // supplied by the product owner and already the Studio's shipped
+  // rotation — never by a Foundation layer. The first build used
+  // harmony.mp3 (the exported films' quiet under-bed), and the owner
+  // reported it as horror-movie music: the foundation README already
+  // measures harmony as the most drone-like held pitch of all five
+  // layers (spectral flatness 0.09), one of the exact three banished
+  // from the atmosphere FOR sounding like horror — and the films hide
+  // it at gain 0.22 under a child's artwork, while the Watch plays
+  // its music solo and foreground. A drone under content passes; a
+  // drone alone is a horror cue. Decision 39's own line, relearned:
+  // the bed is weather, and the MUSIC is the World track.
+  // One constant: b.mp3–e.mp3 are the other owner-supplied tracks.
+  const MUSIC_SRC='assets/audio/worlds/a.mp3';
   const MUTE_KEY='vihu-audio-muted';
   const FADE_MS=260;          // the crossfade between frames
   const MUSIC_VOLUME=0.45;

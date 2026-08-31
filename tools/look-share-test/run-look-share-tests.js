@@ -799,10 +799,10 @@ function goodPayload(over) {
   // Music first, while the playback is certainly still running — a
   // finished playback has already taken its bow, and measuring the
   // bow as "music broken" would be measuring the wrong moment. The
-  // filter is the player's own marked element: AudioManager keeps a
-  // foundation layer of the SAME file idling at volume zero, and a
-  // filter by filename hears the wrong sound (the atmosphere
-  // suite's own recorded lesson).
+  // filter is the player's own marked element: AudioManager plays
+  // the SAME World tracks in its own rotation, and a filter by
+  // filename hears the wrong sound (the atmosphere suite's own
+  // recorded lesson).
   const music = await page.evaluate(async () => {
     const list = (window.__audios || []).filter((a) => a.__cpBed);
     const a = list[list.length - 1];
@@ -811,10 +811,13 @@ function goodPayload(over) {
     await new Promise((res) => setTimeout(res, 700));
     return { found: true, count: list.length, playing: !paused1 && !a.paused,
              monotonic: a.currentTime >= t1, loop: a.loop,
-             bed: (a.src || '').indexOf('harmony.mp3') !== -1 };
+             bed: (a.src || '').indexOf('worlds/a.mp3') !== -1 };
   });
+  // 1.1.2: the Watch is scored by the product's own MUSIC (a World
+  // track the owner supplied), never a Foundation drone — harmony
+  // solo was reported, correctly, as horror-movie music.
   ck(music.found && music.playing && music.bed,
-    'L5 the shared bed (harmony.mp3) plays with the experience', JSON.stringify(music));
+    'L5 the music is a World track — the product\'s own music, not a drone', JSON.stringify(music));
   ck(music.count === 1 && music.monotonic && music.loop,
     'L6 ONE continuous track — never restarted between frames', JSON.stringify(music));
 
@@ -1024,7 +1027,7 @@ function goodPayload(over) {
   const landingMusic = await landingPage.evaluate(() => {
     const list = (window.__audios || []).filter((a) => a.__cpBed);
     return { n: list.length, playing: list.some((a) => !a.paused),
-             bed: list.every((a) => (a.src || '').indexOf('harmony.mp3') !== -1) };
+             bed: list.every((a) => (a.src || '').indexOf('worlds/a.mp3') !== -1) };
   });
   ck(landingMusic.n === 1 && landingMusic.playing && landingMusic.bed,
     'M8b and the same music bed plays there too', JSON.stringify(landingMusic));

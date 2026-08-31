@@ -10286,3 +10286,23 @@ the toggle (P4). One self-caught trap: the white override is itself a
 background, so the plain filter runs BEFORE cloning or blank pages
 would suddenly count as content. look-share 118 — all green. Canon:
 Decision 52 (amended in place).
+
+---
+
+## LOOK WHAT I MADE 1.1.2 — the Watch stops sounding like a horror film (build 0708)
+
+Reported by the product owner: *"which music are we adding to watch
+option. it shounds like horror movie music."* Right twice over. The
+Watch borrowed `harmony.mp3` because it is the exported films' shared
+bed — which looked like reuse of an approved asset and was not: the
+foundation README measures harmony as the most drone-like held pitch
+of all five layers (flatness 0.09), one of the exact three Decision 39
+banished from the atmosphere FOR sounding like horror-movie music, and
+the films hide it at gain 0.22 UNDER a child's artwork while the Watch
+played it solo and foreground at twice that. A drone under content
+passes; a drone alone is a horror cue. The Watch now plays
+`assets/audio/worlds/a.mp3` — the product's own music, supplied by the
+owner, already the Studio's shipped rotation — one constant in
+`js/creationPlayback.js` to retune to b–e. The films' under-bed is
+deliberately unchanged. look-share 118 — green. Canon: Decision 52
+(clause corrected in place).

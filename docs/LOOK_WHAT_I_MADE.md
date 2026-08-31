@@ -51,10 +51,13 @@ from the first frame and is never torn down; frames advance by
 crossfade between two stacked layers with the old frame whole
 underneath, so no instant shows less than a complete frame (the
 opening frame lands instantly — the reveal's own first stage is the
-empty page). Music: `assets/audio/foundation/harmony.mp3`, the same
-bed Decision 39 unified the exported films on — one continuous looped
-track per replay, faded out after the finished creation rests, stopped
-on destroy, clean restart on replay. Global mute (`vihu-audio-muted` /
+empty page). Music (corrected at 0708): `assets/audio/worlds/a.mp3` —
+one of the owner-supplied World tracks, the product's actual MUSIC.
+The first pick, harmony.mp3 (the films' quiet under-bed), is a
+held-pitch drone and was reported as horror-movie music the moment it
+played solo and foreground; the films keep it, quiet, under content.
+One continuous looped track per replay, faded out after the finished
+creation rests, stopped on destroy, clean restart on replay. Global mute (`vihu-audio-muted` /
 `AudioManager.isMuted()`) is respected; where AudioManager exists the
 Studio atmosphere ducks under the music (`duckFor`, released on stop);
 a per-playback speaker on the stage mutes this playback only — and

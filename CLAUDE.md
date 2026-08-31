@@ -6104,20 +6104,31 @@ own creation, and VihuPlanet is discovered THROUGH it.
   player caught its own first bug**: a one-frame making fired onDone
   synchronously inside play()'s own resolution and the hub painted
   over its own "Watch again" button — onDone is a macrotask now.
-- **AND IT IS SCORED, BY THE BED THE FILMS ALREADY SHARE.** The same
-  `harmony.mp3` Decision 39 unified both exported films on: one
-  continuous track per replay, never restarted between frames,
-  faded out after the finished creation rests, stopped dead when the
-  experience closes, restarted cleanly on replay. Nothing is
-  generated or stored per creation. The child's own global mute
-  (`vihu-audio-muted` / AudioManager) silences it and the pictures
-  play on; where AudioManager is present the Studio's atmosphere
-  DUCKS under it (released on stop, never persisted — Decision 26's
-  own rule); the player carries a per-playback 🔊 that changes
-  nothing global. **The suite filters on the player's own marked
-  element** — AudioManager keeps a foundation layer of the SAME file
-  idling at volume zero, and a filter by filename heard the wrong
-  sound (the atmosphere suite's recorded lesson, met again).
+- **AND IT IS SCORED — BY THE PRODUCT'S OWN MUSIC, NOT A DRONE**
+  (corrected at build 0708, reported by the product owner: *"it
+  shounds like horror movie music"* — and he was right twice over).
+  The first build borrowed `harmony.mp3`, the exported films' shared
+  bed, which LOOKED like reuse of an approved asset and was not: the
+  foundation README measures harmony as the most drone-like held
+  pitch of all five layers (spectral flatness 0.09), one of the
+  exact three Decision 39 banished from the atmosphere FOR sounding
+  like horror-movie music — and the films hide it at gain 0.22
+  UNDER a child's artwork, while the Watch plays its music solo and
+  foreground at twice that. **A drone under content passes; a drone
+  alone is a horror cue.** Decision 39's own sentence, relearned:
+  the bed is weather, and the MUSIC is the World track — so the
+  Watch now plays `assets/audio/worlds/a.mp3`, one of the five real
+  music tracks the product owner supplied and already ships in the
+  Studio's own rotation (one constant to retune to b–e). The films'
+  own quiet under-bed is deliberately unchanged. Everything else
+  holds: one continuous track per replay, never restarted between
+  frames, faded after the finished creation rests, stopped dead on
+  close, clean on replay, global mute respected, the atmosphere
+  ducked and released (Decision 26's rule), a per-playback speaker
+  that changes nothing global. **The suite filters on the player's
+  own marked element** — AudioManager plays the SAME World tracks in
+  its rotation, and a filter by filename hears the wrong sound (the
+  atmosphere suite's recorded lesson, met again).
 - **THE FOLD IS EXPERIENCED, NOT DESCRIBED** (1.1 §3). Three beats:
   the OPEN sheet exactly as it prints · **Fold it ✨** (a stylised
   physical gesture on that same bitmap; skipped under reduced
