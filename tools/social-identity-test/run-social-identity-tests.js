@@ -218,7 +218,8 @@ function sqlSection() {
                      ('card_f','${B_UID}','123','LYRA','[[1,5]]', now() - interval '6 days'),
                      ('card_g','${A_UID}','Lumo','ORION','[[1,6]]', now() - interval '5 days'),
                      ('card_h','${B_UID}','Asha','LYRA','[[1,7]]', now() - interval '4 days'),
-                     ('card_i','${A_UID}','asha','ORION','[[1,8]]', now() - interval '3 days');`);
+                     ('card_i','${A_UID}','asha','ORION','[[1,8]]', now() - interval '3 days'),
+                     ('card_j','${B_UID}','Asha','LYRA','[[1,9]]', now() - interval '2 days');`);
     psql(pg, `insert into public.creator_projects(id,owner_id,data,updated_at)
               values ('proj_c1','${A_UID}',
                       '{"id":"proj_c1","name":"The Old Story","cardId":"card_c","publishedAt":"2026-01-01T00:00:00Z"}'::jsonb,
@@ -228,6 +229,12 @@ function sqlSection() {
                       '2026-02-01T00:00:00Z'),
                      ('proj_c3','${A_UID}',
                       '{"id":"proj_c3","name":"Already Named","cardId":"card_c","publishedAt":"2026-01-01T00:00:00Z","creatorUsername":"kept"}'::jsonb,
+                      '2026-02-01T00:00:00Z'),
+                     ('proj_c4','${A_UID}',
+                      '{"id":"proj_c4","name":"Before Ownership","creatorName":"Vihu 01!","publishedAt":"2025-06-01T00:00:00Z"}'::jsonb,
+                      '2026-02-01T00:00:00Z'),
+                     ('proj_c5','${B_UID}',
+                      '{"id":"proj_c5","name":"Two Ashas","creatorName":"Asha","publishedAt":"2025-06-01T00:00:00Z"}'::jsonb,
                       '2026-02-01T00:00:00Z');`);
     const m3 = loadFile(pg, path.join(ROOT, 'supabase', 'migrations_social_identity.sql'));
     ck(!m3, 'A13 the migration re-runs over a live population', m3 || 'clean');
@@ -253,6 +260,10 @@ function sqlSection() {
        'A15 THE NAME REACHES ALREADY-SHARED STORIES server-side — and updated_at never moves', proj);
     ck(/proj_c2=∅/.test(proj), 'A15b a private draft is never stamped');
     ck(/proj_c3=kept@/.test(proj), 'A15c a record already carrying a name is never rewritten');
+    ck(/proj_c4=vihu01@/.test(proj),
+       'A15d A STORY FROM BEFORE cardId IS PLACED BY DECISION 19\'S EVIDENCE — owner + creatorName, stamped', proj);
+    ck(/proj_c5=∅/.test(proj),
+       'A15e and an AMBIGUOUS one (two same-named cards on one session) is never stamped — the wrong child is worse than no name');
   } finally { stopPg(pg); }
 }
 
@@ -545,6 +556,25 @@ function sqlSection() {
   });
   ck(chip.there && chip.hidden === false && chip.text === '@moonmaker',
      'D1  THE PREVIEW SAYS WHO MADE IT — @moonmaker, tappable', JSON.stringify(chip));
+
+  // ---- and so does the READER, while the story is open -------------
+  // (reported by the product owner: the portal named the maker and
+  // not their public name)
+  await page.evaluate(() => document.querySelector('[data-act="read"]').click());
+  const reader = await page.waitForFunction(() => {
+    const p = document.querySelector('[data-portal]');
+    if (!p || p.hidden) return false;
+    const c = document.querySelector('[data-portal-creator]');
+    return c ? { text: c.textContent, hidden: c.hidden } : false;
+  }, null, { timeout: 15000 }).then((h) => h.jsonValue()).catch(() => null);
+  ck(!!reader && reader.hidden === false && /· @moonmaker$/.test(reader.text) && /^by /.test(reader.text),
+     'D1b THE READER NAMES THE MAKER\'S PUBLIC NAME TOO — "by … · @moonmaker"',
+     reader && reader.text);
+  await page.evaluate(() => document.querySelector('[data-portal-close]').click());
+  await page.waitForFunction(() => {
+    const p = document.querySelector('[data-portal]');
+    return p && p.hidden;
+  }, null, { timeout: 10000 });
 
   // ---- the shelf: public only -------------------------------------
   await page.evaluate(() => document.querySelector('[data-preview-handle]').click());

@@ -2249,8 +2249,16 @@
       // a story that simply is.
       if (el.portalCreator) {
         var maker = met.creator || '';
-        el.portalCreator.textContent = maker ? ('by ' + maker) : '';
-        el.portalCreator.hidden = !maker;
+        // SOCIAL 1.2 — the maker's public VihuPlanet name rides with
+        // their nickname while the story is being read (reported by
+        // the product owner: the reader named the maker but not their
+        // @name). One line, absent rather than empty when no name
+        // exists — same rule as the Preview's chip.
+        var readerHandle = usernameOf(met);
+        el.portalCreator.textContent = maker
+          ? ('by ' + maker + (readerHandle ? ' · @' + readerHandle : ''))
+          : (readerHandle ? '@' + readerHandle : '');
+        el.portalCreator.hidden = !(maker || readerHandle);
       }
       el.portal.hidden = false;
 

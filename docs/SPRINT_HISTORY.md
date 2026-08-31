@@ -10532,3 +10532,21 @@ Creator's shelf. social-identity grew to 89 (under-three silent,
 prefix offers, case/@ cosmetic, unknown offers nothing, tap opens the
 shelf) + ether-share 21 — green. Canon: Decision 53 (amended in
 place).
+
+## SOCIAL 1.2b — the reader shows the name, and legacy stories are placed by evidence (build 0719)
+
+Two reports from the live Ether. *"i dont see username here"* — the
+reading portal named the maker ("by the god") but not their public
+name: the @name now rides the same line ("by the god · @thegod"),
+absent rather than empty, the Preview chip's own rule. *"typing vih
+is giving nothing"* — the suggestion mechanism was fine; the DATA was
+missing: the live Ether's stories predate cardId stamping, so the
+migration's cardId-matched story stamp skipped every one of them. A
+second pass places those by Decision 19's own evidence standard —
+owner session + creatorName naming exactly ONE identity — and an
+ambiguous pair (two same-named cards on one session) stamps nothing,
+because the wrong child is worse than no name. social-identity grew
+to 92 (the reader line, the legacy stamp, the ambiguity refusal).
+Canon: Decision 53 (amended in place). Re-run
+supabase/migrations_social_identity.sql to pick up the legacy pass —
+it is idempotent and renames nobody.

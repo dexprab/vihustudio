@@ -6584,6 +6584,16 @@ it → wants to see more from that creator. That loop, and nothing else.
   only, with `updated_at` deliberately untouched so no open story
   conflicts over it. Every other child's Ether shows the names the
   moment the migration runs, without waiting for each maker's device.
+  **Stories from before cardId stamping are placed by Decision 19's
+  own evidence standard** (S1.2, after the product owner's live Ether
+  showed no names): a shared row with no cardId whose owner session
+  and creatorName name exactly ONE identity is that identity's, and
+  is stamped; an ambiguous pair (two same-named cards on one session)
+  stamps nothing — the wrong child is worse than no name.
+- **The reading portal names the maker's public name too** — *"by the
+  god · @thegod"* under the title while a story is open (reported by
+  the product owner: the reader named the maker and not their @name).
+  Absent rather than empty, the Preview chip's own rule.
 - **THE DEVICE ADOPTS THE BACKFILLED NAME; IT NEVER RE-DERIVES IT.**
   `MagicCard.refreshUsername()` reads the caller's own identity row
   (owner-only RLS — it can only ever see its own card) once per load

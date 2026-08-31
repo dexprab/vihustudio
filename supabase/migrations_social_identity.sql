@@ -198,6 +198,29 @@ update public.creator_projects p
    and p.data->>'publishedAt' is not null
    and p.data->>'creatorUsername' is null;
 
+-- AND THE STORIES THAT PREDATE cardId, BY DECISION 19'S OWN EVIDENCE
+-- STANDARD. A story shared before ownership stamping exists carries no
+-- cardId, so the pass above rightly skips it — and those are exactly
+-- the oldest shared stories, the ones a live Ether is full of. They
+-- are placed the way Decision 19 places legacy work: on evidence,
+-- never by guessing. The row's own owner_id is the session that made
+-- it, the record's creatorName was stamped from the card that was
+-- active, so an identity on the SAME session with the SAME nickname is
+-- its maker — and only where that (owner, nickname) pair names exactly
+-- ONE identity, so a shared device with two same-named cards stamps
+-- nothing rather than the wrong child.
+update public.creator_projects p
+   set data = p.data || jsonb_build_object('creatorUsername', i.username)
+  from public.magic_card_identities i
+ where i.username is not null
+   and p.data->>'cardId' is null
+   and p.owner_id = i.owner_id
+   and p.data->>'creatorName' = i.nickname
+   and p.data->>'publishedAt' is not null
+   and p.data->>'creatorUsername' is null
+   and (select count(*) from public.magic_card_identities x
+         where x.owner_id = i.owner_id and x.nickname = i.nickname) = 1;
+
 -- -------------------------------------------------------------------
 -- The name travels with the identity. recall_magic_card() is
 -- redefined from its migrations_taught.sql shape with ONE new field —
