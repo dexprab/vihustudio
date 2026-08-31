@@ -98,6 +98,34 @@
     } catch (e) {}
   }
 
+  // ---------------------------------------------------------------
+  // SOCIAL 1 — index.html?creator=moonmaker
+  //
+  // A one-shot INTENT, exactly like ?story= and ?born= (Decision 23:
+  // intent may cross; state may not): the landing's "See more from
+  // @moonmaker" arrives here, the Creator's shelf opens over the
+  // living Ether, and the parameter is consumed. Never a route and
+  // never authorization — a share still enters through its opaque
+  // token; the username only ever names whose public shelf to show.
+  // ---------------------------------------------------------------
+  var CREATOR = 'creator';
+  function linkedCreator() {
+    try {
+      var raw = new URLSearchParams(window.location.search).get(CREATOR);
+      if (!raw) return null;
+      return (typeof CreatorHandle !== 'undefined')
+        ? (CreatorHandle.normalize(raw) || null)
+        : String(raw).trim().replace(/^@+/, '').toLowerCase() || null;
+    } catch (e) { return null; }
+  }
+  function clearCreatorParam() {
+    try {
+      var url = new URL(window.location.href);
+      url.searchParams.delete(CREATOR);
+      window.history.replaceState(null, '', url.toString());
+    } catch (e) {}
+  }
+
   function setLink(projectId) {
     try {
       var url = new URL(window.location.href);
@@ -112,6 +140,13 @@
 
   function projectIdOf(entity) {
     return (entity && entity.source && entity.source.projectId) || null;
+  }
+
+  // SOCIAL 1 — the maker's public name rides on `source`, which the
+  // runtime copies wholesale; a top-level field would be dropped by
+  // storyEntity.js's fixed field list (measured, not assumed).
+  function usernameOf(entity) {
+    return (entity && entity.source && entity.source.creatorUsername) || null;
   }
 
   // A Canon Story: made by the VihuPlanet team, owned by nobody, and
@@ -183,6 +218,7 @@
       read:     document.querySelector('[data-act="read"]'),
       cheer:    document.querySelector('[data-act="cheer"]'),
       share:    document.querySelector('[data-act="share"]'),
+      handle:   document.querySelector('[data-preview-handle]'),
       back:     document.querySelector('[data-act="back"]'),
       portal:   document.querySelector('[data-portal]'),
       page:     document.querySelector('[data-portal-page]'),
@@ -258,6 +294,12 @@
           requestAnimationFrame(function () { actionsEl.classList.add('is-in'); });
         });
       }
+      // SOCIAL 1 — the quiet Find a Creator corner control arrives
+      // with the universe's other controls, never on the threshold.
+      try {
+        var findBtn = document.querySelector('[data-find]');
+        if (findBtn) findBtn.hidden = false;
+      } catch (e) {}
 
       thresholdCrossed = true;
       // An invitation that was followed has now actually been ANSWERED —
@@ -2015,6 +2057,17 @@
       el.title.textContent = met.title || 'A story';
       el.creator.textContent = met.creator ? 'by ' + met.creator : '';
 
+      // SOCIAL 1 — the maker's public VihuPlanet name, secondary to
+      // the creation (the title stands above both). Absent rather
+      // than empty for canon and for makers with no public name.
+      if (el.handle) {
+        var handleName = usernameOf(met);
+        el.handle.textContent = handleName
+          ? ((typeof CreatorHandle !== 'undefined') ? CreatorHandle.display(handleName) : '@' + handleName)
+          : '';
+        el.handle.hidden = !handleName;
+      }
+
       // The pages come first, because the count shown below is the
       // number actually readable — not a number from the record that
       // might disagree with what the portal can open. The Story Entity
@@ -2094,7 +2147,31 @@
       // stamped them — aligned with pages, so kind printing from the
       // Ether can print truly plain pages.
       var plain = (window.EtherFeed && EtherFeed.pagesPlainOf) ? EtherFeed.pagesPlainOf(pid) : [];
-      EtherShare.open(pid, { title: met.title, creator: met.creator, pages: pages, pagesPlain: plain });
+      EtherShare.open(pid, { title: met.title, creator: met.creator, pages: pages, pagesPlain: plain,
+                             username: usernameOf(met) });
+    });
+
+    // SOCIAL 1 — meeting one of a Creator's other stories, in place.
+    // The universe is never torn down (Decision 9): the panel closes,
+    // the current Spirit is let go, and the chosen one is met through
+    // the same focus seam the deep link already uses.
+    function meetStory(pid) {
+      try { universe.focus.close(); } catch (e) {}
+      window.setTimeout(function () {
+        try { universe.focus.open('story-' + pid); } catch (e) {}
+      }, 350);
+    }
+
+    if (el.handle) el.handle.addEventListener('click', function () {
+      if (!met || !usernameOf(met)) return;
+      if (typeof CreatorPresence === 'undefined') return;
+      CreatorPresence.open(usernameOf(met), { meet: meetStory });
+    });
+
+    var findEl = document.querySelector('[data-find]');
+    if (findEl) findEl.addEventListener('click', function () {
+      if (typeof CreatorPresence === 'undefined') return;
+      CreatorPresence.find({ meet: meetStory });
     });
 
     el.cheer.addEventListener('click', function () {
@@ -2625,6 +2702,26 @@
         quiet(null);
         if (thresholdCrossed) bringItIn();
         else onThreshold = bringItIn;
+        return;
+      }
+
+      // SOCIAL 1 — a creator intent opens that Creator's shelf once
+      // the child is actually looking (after the threshold), built
+      // from the feed that just loaded. Consumed either way.
+      var wantedCreator = linkedCreator();
+      if (wantedCreator) {
+        clearCreatorParam();
+        var showShelf = function () {
+          if (typeof CreatorPresence === 'undefined') return;
+          window.setTimeout(function () {
+            CreatorPresence.open(wantedCreator, { meet: function (pid) {
+              try { universe.focus.open('story-' + pid); } catch (e) {}
+            } });
+          }, 600);
+        };
+        quiet(null);
+        if (thresholdCrossed) showShelf();
+        else onThreshold = showShelf;
         return;
       }
 

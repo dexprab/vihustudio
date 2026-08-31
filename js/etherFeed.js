@@ -156,6 +156,11 @@ const EtherFeed = (function () {
       // none, and falls back to the old behaviour — right for the
       // common case, since a device's own stories are the ones it has.
       creator: canon ? null : (record.creatorName || creator || null),
+      // The maker's public VihuPlanet name (SOCIAL 1), travelling on
+      // the record exactly as creatorName does and for the same
+      // reason. Null for canon (never attributed, Decision 13) and
+      // for a story whose maker has not chosen one.
+      creatorUsername: canon ? null : (record.creatorUsername || null),
       origin: canon ? 'canon' : 'creator',
       publishedAt: record.publishedAt || record.updatedAt || null,
       // How many pages it has. A count, not the pages — reading
@@ -183,6 +188,14 @@ const EtherFeed = (function () {
       source: {
         projectId: record.id,
         origin: canon ? 'canon' : 'creator',
+        // The maker's public name rides HERE as well as top-level:
+        // storyEntity.js copies a fixed field list and drops what it
+        // does not declare (measured — the top-level copy above never
+        // reaches a met entity), while `source` is copied wholesale
+        // and never read by the runtime. The top-level copy stays for
+        // the feed's own cache (byUsername reads _lastLoaded, which
+        // is this object before the runtime touches it).
+        creatorUsername: canon ? null : (record.creatorUsername || null),
         // WHO LIVES IN THIS STORY (Sprint 1, Companion as World Host).
         //
         // Rides on `source` for exactly the reason `origin` does: the
@@ -422,6 +435,40 @@ const EtherFeed = (function () {
   }
 
   function _remember(list) { try { _lastLoaded = Array.isArray(list) ? list.slice() : []; } catch (e) {} return list; }
+
+  /**
+   * SOCIAL 1 — a Creator's public creations, by their public name.
+   *
+   * The whole answer comes from what the Ether ALREADY shows: the
+   * loaded feed is Canon plus everything anybody shared (Decision 15),
+   * so filtering it exposes nothing a Traveller could not already
+   * drift past — and a private Studio project is unreachable here by
+   * construction, because it never entered the feed at all. There is
+   * deliberately NO server search endpoint behind this: a name with no
+   * public creation is not discoverable anywhere, which is
+   * creation-first identity working rather than a gap.
+   *
+   * Case-insensitive, because @MoonMaker and @moonmaker are the same
+   * name however a child types it.
+   */
+  function byUsername(username) {
+    const want = String(username || '').trim().replace(/^@+/, '').toLowerCase();
+    if (!want || !_lastLoaded.length) return [];
+    const out = [];
+    for (let i = 0; i < _lastLoaded.length; i++) {
+      const s = _lastLoaded[i];
+      if (!s || !s.creatorUsername) continue;
+      if (String(s.creatorUsername).toLowerCase() !== want) continue;
+      out.push({
+        projectId: (s.source && s.source.projectId) || null,
+        title: s.title || 'A story',
+        cover: s.cover || null,
+        creator: s.creator || null,
+        username: s.creatorUsername
+      });
+    }
+    return out;
+  }
 
   function load(opts) {
     opts = opts || {};
@@ -677,6 +724,7 @@ const EtherFeed = (function () {
   const api = {
     load: load,
     othersBy: othersBy,
+    byUsername: byUsername,
     attach: attach,
     pagesOf: pagesOf,
     pagesPlainOf: pagesPlainOf,

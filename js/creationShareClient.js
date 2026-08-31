@@ -110,18 +110,24 @@ const CreationShareClient=(function(){
   // sweep doing its job, and must never cost a child their share
   // during the deploy window. One retry, without the one optional
   // key the server named; nothing else is ever stripped.
-  function _callWithPlainFallback(body){
+  // The optional keys a NEWER client sends that an OLDER deployed
+  // sweep may refuse by name. Nothing else is ever stripped: a
+  // refusal naming a required key is a real refusal.
+  const OPTIONAL_KEYS=['pagesPlain','creatorUsername'];
+  function _callWithPlainFallback(body,depth){
     return _call(body).then(function(answer){
       if(answer&&answer.ok===false&&answer.reason==='not-shareable'
-         &&answer.key==='pagesPlain'&&body.payload&&body.payload.pagesPlain){
+         &&OPTIONAL_KEYS.indexOf(answer.key)!==-1
+         &&body.payload&&body.payload[answer.key]!=null
+         &&(depth||0)<OPTIONAL_KEYS.length){
         const slim=Object.assign({},body,{
           payload:(function(){
             const p=Object.assign({},body.payload);
-            delete p.pagesPlain;
+            delete p[answer.key];
             return p;
           })()
         });
-        return _call(slim);
+        return _callWithPlainFallback(slim,(depth||0)+1);
       }
       return answer;
     });

@@ -845,11 +845,53 @@ const CreationFlow=(function(){
     {id:'little-message', type:'card',  title:'Little Message',  desc:'Make something for someone special.',   icon:'💌', accent:'rose'}
   ];
 
+  // ---------- SOCIAL 1: the quiet social band ----------
+  // Two things, both ABSENT rather than empty (the door's own rule):
+  //
+  //  * "✨ Your Moon Dragon is getting cheers!" — new starlight on the
+  //    child's own shared stories since they last looked. Derived from
+  //    counts, never a number on screen, never who (Decision 20).
+  //  * "Choose your VihuPlanet name" — offered only once there is
+  //    something public to find (a shared story) and no name yet. A
+  //    card on a shelf: no decline, no dismiss, walk past forever.
+  function _socialBand(){
+    if(typeof CreatorSocial==='undefined') return;
+
+    const slot=_el('div','creation-flow-social');
+    content.appendChild(slot);
+
+    try{
+      CreatorSocial.activityLines().then(function(res){
+        if(!res||!res.lines||!res.lines.length){ return; }
+        res.lines.slice(0,3).forEach(function(line){
+          slot.appendChild(_el('div','creation-flow-activity',line));
+        });
+        // Seen once shown — the next visit is quiet unless there is
+        // NEW starlight.
+        res.markSeen();
+      }).catch(function(){});
+    }catch(e){}
+
+    if(CreatorSocial.inviteNeeded()){
+      const invite=_el('button','creation-flow-name-invite');
+      invite.type='button';
+      invite.appendChild(_el('div','creation-flow-name-invite-title','✨ Choose your VihuPlanet name'));
+      invite.appendChild(_el('div','creation-flow-name-invite-line','The name people can use to find the things you make.'));
+      invite.addEventListener('click',function(){
+        CreatorSocial.openNameDialog(function(name){
+          if(name) invite.remove();
+        });
+      });
+      slot.appendChild(invite);
+    }
+  }
+
   function _renderMakeScreen(){
     _clear();
     _setAtmosphere(false);
     _brand();
     _resumeEntry();
+    _socialBand();
     content.appendChild(_el('div','creation-flow-eyebrow','You made something. ✨'));
     content.appendChild(_el('h1','creation-flow-question','Now Look What You Can Make'));
     content.appendChild(_el('p','creation-flow-subtitle','Try something new with what you discovered.'));

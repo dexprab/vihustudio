@@ -176,6 +176,14 @@ const StoryCardComposer=(function(){
     const who=share.creatorName||'Somebody';
     _wrap(ctx,who+' made this',CARD_W/2,150,CARD_W-160,56);
     _wrap(ctx,'in VihuPlanet.',CARD_W/2,210,CARD_W-160,56);
+    // SOCIAL 1 — the maker's public VihuPlanet name, when they have
+    // chosen one. Attribution only: the card's DOOR stays the QR
+    // below, never a name-based route.
+    if(share.creatorUsername&&/^[a-z0-9_]{3,20}$/.test(String(share.creatorUsername))){
+      ctx.fillStyle=pal.accent;
+      ctx.font='italic 36px Georgia, serif';
+      ctx.fillText('@'+share.creatorUsername,CARD_W/2,266);
+    }
 
     if(qrOk){
       // The door. Quiet-zone white behind the code — a QR drawn

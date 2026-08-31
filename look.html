@@ -107,6 +107,7 @@
   .pager button[disabled]{ opacity:.25; cursor:default; }
   .count{ color:var(--soft); font-size:14px; min-width:64px; }
   .made-line{ color:var(--soft); margin:26px 0 10px; }
+  .made-by{ color:var(--gold); font-style:italic; margin:0 0 14px; }
   .doorway{
     color:var(--gold);
     border:1px solid rgba(232,196,118,0.5);
@@ -224,19 +225,25 @@
     </div>
 
     <p class="made-line" id="madeLine">Made in VihuPlanet — where children make, keep and share their own stories.</p>
+    <!-- SOCIAL 1 — creation → Creator. The maker's public VihuPlanet
+         name, secondary to the creation, and a doorway to their other
+         PUBLIC creations. The username is identity, never access: this
+         page still opens only through its opaque share token. -->
+    <p class="made-by hidden" id="madeBy"></p>
     <a class="doorway" href="./" id="visit">Come see VihuPlanet</a>
+    <a class="doorway hidden" href="#" id="seeMore"></a>
     <a class="doorway hidden" href="#" id="ether">See it living in the Ether</a>
   </div>
 </div>
 
-<script src="js/creationPlayback.js?v=0715"></script>
+<script src="js/creationPlayback.js?v=0716"></script>
 <!-- 1.1.5 — the print composers. All three are guard-safe outside the
      Studio (typeof checks throughout); CreationShare is here only for
      displayTitle, so the printed cover names the creation the same
      way the hub does. -->
-<script src="js/creationShare.js?v=0715"></script>
-<script src="js/storyCardComposer.js?v=0715"></script>
-<script src="js/foldableComposer.js?v=0715"></script>
+<script src="js/creationShare.js?v=0716"></script>
+<script src="js/storyCardComposer.js?v=0716"></script>
+<script src="js/foldableComposer.js?v=0716"></script>
 <script>
 (function(){
   'use strict';
@@ -348,6 +355,19 @@
       var eth=el('ether');
       eth.href='./?story='+encodeURIComponent(creation.ether);
       eth.classList.remove('hidden');
+    }
+
+    // SOCIAL 1 — "who made this?" answered with a name that can be
+    // followed. The doorway carries a one-shot ?creator= intent into
+    // the Ether, where the Creator's shelf of PUBLIC creations opens.
+    if(creation.creatorUsername&&/^[a-z0-9_]{3,20}$/.test(String(creation.creatorUsername))){
+      var by=el('madeBy');
+      by.textContent='Made by @'+creation.creatorUsername;
+      by.classList.remove('hidden');
+      var more=el('seeMore');
+      more.textContent='See more from @'+creation.creatorUsername;
+      more.href='./?creator='+encodeURIComponent(creation.creatorUsername);
+      more.classList.remove('hidden');
     }
 
     // Onward sharing (1.1.4): a real panel rather than one quiet

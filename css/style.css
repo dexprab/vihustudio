@@ -440,7 +440,7 @@ button{
    default and nobody finds out until somebody looks at the screen. Any
    button added to the Studio that is not a full-width form button
    belongs on this list in the same commit that adds it. */
-button:not(.tab-btn):not(.theme-toggle):not(.export-btn):not(#openBtn):not(#saveBtn):not(.creation-flow-myprojects-btn):not(.companion-chat-open):not(.companion-chat-send):not(.companion-chat-close):not(.companion-chat-starter):not(.companion-chat-mic):not(.companion-chat-speak):not(.ether-talk-starter){
+button:not(.tab-btn):not(.theme-toggle):not(.export-btn):not(#openBtn):not(#saveBtn):not(.creation-flow-myprojects-btn):not(.companion-chat-open):not(.companion-chat-send):not(.companion-chat-close):not(.companion-chat-starter):not(.companion-chat-mic):not(.companion-chat-speak):not(.ether-talk-starter):not(.creator-name-go):not(.creator-name-quiet){
   width:100%;
   margin-bottom:12px;
 }
@@ -13813,3 +13813,143 @@ body.studio-rite-running .companion-chat-open{ display:none !important; }
   color:#6f6a60;
 }
 .lwim-paper-toggle{ margin-top:2px; }
+
+/* ================================================================
+   Sprint SOCIAL 1 — Creator identity, in the Studio.
+   The social band on Studio Home (an activity line and, when it is
+   earned, the invitation to choose a public name) and the
+   choose-your-name dialog. The band follows the door's own
+   discipline (Decision 22): absent rather than empty, a card on a
+   shelf, never a prompt.
+   ================================================================ */
+.creation-flow-social{ margin:10px auto 0; max-width:520px; }
+.creation-flow-activity{
+  font-family:Georgia,serif;
+  font-style:italic;
+  font-size:14.5px;
+  color:#8a6d3b;
+  margin:4px 0;
+}
+.creation-flow-name-invite{
+  display:block;
+  width:100%;
+  margin:10px 0 0;
+  padding:12px 16px;
+  border-radius:14px;
+  border:1px solid #eadfc4;
+  background:linear-gradient(180deg,#fffdf6,#faf3e2);
+  cursor:pointer;
+  text-align:center;
+}
+.creation-flow-name-invite:hover{ background:linear-gradient(180deg,#fffdf6,#f5ecd6); }
+.creation-flow-name-invite-title{
+  display:block;
+  font-family:Georgia,serif;
+  font-weight:700;
+  font-size:15.5px;
+  color:#3a3630;
+}
+.creation-flow-name-invite-line{
+  display:block;
+  margin-top:3px;
+  font-family:Georgia,serif;
+  font-size:12.5px;
+  color:#6f6a60;
+}
+
+/* The choose-your-name dialog. One question, in the child's words. */
+.creator-name-overlay{
+  position:fixed;
+  inset:0;
+  z-index:1450; /* above the creation flow overlay (1000) and the
+    Rite's own dock (1400) — a question a child is answering must
+    never have anything drawing through it */
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:rgba(20,16,10,0.55);
+  padding:4vh 16px;
+}
+.creator-name-panel{
+  width:min(400px,94vw);
+  border-radius:18px;
+  background:#fffdf6;
+  border:1px solid #eadfc4;
+  box-shadow:0 18px 60px rgba(30,24,12,0.35);
+  padding:22px 22px 18px;
+  text-align:center;
+}
+.creator-name-panel h3{
+  margin:0 0 4px;
+  font-family:Georgia,serif;
+  font-size:19px;
+  color:#3a3630;
+}
+.creator-name-line{
+  margin:0 0 14px;
+  font-family:Georgia,serif;
+  font-size:13.5px;
+  color:#6f6a60;
+}
+.creator-name-row{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  justify-content:center;
+  margin:0 0 6px;
+}
+.creator-name-at{
+  font-family:Georgia,serif;
+  font-size:20px;
+  font-weight:700;
+  color:#8a6d3b;
+}
+.creator-name-input{
+  flex:1 1 auto;
+  max-width:240px;
+  padding:9px 12px;
+  border:1px solid #e0d6bd;
+  border-radius:10px;
+  background:#fff;
+  font-size:16px;
+  color:#3a3630;
+}
+.creator-name-note{
+  min-height:1.2em;
+  margin:6px 0 10px;
+  font-family:Georgia,serif;
+  font-style:italic;
+  font-size:12.5px;
+  color:#8a6d3b;
+}
+.creator-name-btns{
+  display:flex;
+  gap:8px;
+  justify-content:center;
+}
+/* Both are on the blanket width:100% rule's exception list — two
+   buttons sharing one row, the rule's own recorded lesson. */
+.creator-name-go{
+  flex:0 0 auto;
+  padding:9px 18px;
+  border:none;
+  border-radius:999px;
+  background:#c9a25e;
+  color:#fff;
+  font-family:Georgia,serif;
+  font-size:14.5px;
+  font-weight:700;
+  cursor:pointer;
+}
+.creator-name-go:disabled{ opacity:0.55; cursor:default; }
+.creator-name-quiet{
+  flex:0 0 auto;
+  padding:9px 16px;
+  border:1px solid #e0d6bd;
+  border-radius:999px;
+  background:transparent;
+  color:#6f6a60;
+  font-family:Georgia,serif;
+  font-size:13.5px;
+  cursor:pointer;
+}

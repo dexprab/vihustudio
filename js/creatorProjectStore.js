@@ -285,10 +285,34 @@ const CreatorProjectStore=(function(){
     });
   }
 
+  // SOCIAL 1 — the public VihuPlanet name reaches stories that were
+  // shared BEFORE it was chosen. The exact _sweepCompanions() shape:
+  // one lazy pass per load, only once a name exists to stamp, only
+  // onto records this card provably owns, never rewriting a record
+  // that already carries one. A record's attribution stays the stamp
+  // its own maker's device applied — just applied late.
+  let _usernamesSwept=false;
+  function _sweepUsernames(){
+    if(_usernamesSwept) return;
+    const mine=_localCreatorUsername();
+    if(!mine) return;              // no card, or no name chosen yet
+    _usernamesSwept=true;          // only once we could actually have done it
+    const active=_activeCardId();
+    listAll().forEach(function(r){
+      if(!r || !r.publishedAt || r.creatorUsername) return;
+      if(!r.cardId || !active || r.cardId!==active) return;
+      const next={};
+      Object.keys(r).forEach(function(k){ next[k]=r[k]; });
+      next.creatorUsername=mine;
+      _cache().putLocal(next,{onPersistFailed:_onPersistFailed(r.id)});
+    });
+  }
+
   // Newest-first — matches World Builder's own "My World Projects" list.
   function list(){
     _claimLegacy();
     _sweepCompanions();
+    _sweepUsernames();
     var active=_activeCardId();
     return listAll().filter(function(r){
       if(!r) return false;
@@ -391,6 +415,17 @@ const CreatorProjectStore=(function(){
     }catch(e){ return null; }
   }
 
+  // The maker's public VihuPlanet name (SOCIAL 1), under the exact
+  // rule _localCreatorName() states above: read only when stamping a
+  // record this device is authoring — never the viewer's.
+  function _localCreatorUsername(){
+    try{
+      if(typeof MagicCard==='undefined') return null;
+      const card=MagicCard.getActive();
+      return (card && card.username) || null;
+    }catch(e){ return null; }
+  }
+
   // The bonded Story Companion on this device's own Magic Card, used
   // only when stamping a record this device is authoring — the exact
   // same rule _localCreatorName() above holds, and for the exact same
@@ -478,6 +513,10 @@ const CreatorProjectStore=(function(){
       // record is rebuilt on every debounced autosave, so anything not
       // carried forward is wiped the moment editing continues.
       creatorName:(meta&&meta.creatorName)||(existing&&existing.creatorName)||_localCreatorName()||undefined,
+      // The maker's public VihuPlanet name (SOCIAL 1), travelling with
+      // the story for the same reason creatorName does, carried
+      // forward for the same reason too.
+      creatorUsername:(meta&&meta.creatorUsername)||(existing&&existing.creatorUsername)||_localCreatorUsername()||undefined,
       // WHICH CREATOR'S WORK THIS IS — see list() above.
       //
       // Carried forward like publishedAt and creatorName, and for the
@@ -593,6 +632,7 @@ const CreatorProjectStore=(function(){
   function listPublished(){
     _claimLegacy();
     _sweepCompanions();
+    _sweepUsernames();
     return listAll().filter(function(r){ return !!r.publishedAt; })
       .sort(function(a,b){ return new Date(b.publishedAt)-new Date(a.publishedAt); });
   }

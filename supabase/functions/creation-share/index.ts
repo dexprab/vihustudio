@@ -355,7 +355,7 @@ async function guard(req, opts) {
 
 // ===== END GENERATED edgeAuth =====
 
-const BUILD = 'LW3';
+const BUILD = 'LW4';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -398,7 +398,7 @@ function refuse(key) {
 function sweepPayload(p) {
   if (!p || typeof p !== 'object' || Array.isArray(p)) return refuse('payload');
 
-  const allowed = ['v', 'type', 'title', 'creatorName', 'pages', 'pagesPlain', 'watch', 'madeIn', 'ether'];
+  const allowed = ['v', 'type', 'title', 'creatorName', 'creatorUsername', 'pages', 'pagesPlain', 'watch', 'madeIn', 'ether'];
   for (const k of Object.keys(p)) {
     if (allowed.indexOf(k) === -1) return refuse(k);
   }
@@ -407,6 +407,15 @@ function sweepPayload(p) {
   if (SHARE_TYPES.indexOf(p.type) === -1) return refuse('type');
   if (typeof p.title !== 'string' || p.title.length > SHARE_LIMITS.title) return refuse('title');
   if (typeof p.creatorName !== 'string' || p.creatorName.length > SHARE_LIMITS.creator) return refuse('creatorName');
+  // SOCIAL 1 — the maker's public VihuPlanet name, optional, and held
+  // to the same shape the claim function enforces. It is attribution
+  // only: the share's ACCESS stays the opaque token, never a
+  // username-based route (username is identity; the token is entry).
+  if (p.creatorUsername != null) {
+    if (typeof p.creatorUsername !== 'string' || !/^[a-z0-9_]{3,20}$/.test(p.creatorUsername)) {
+      return refuse('creatorUsername');
+    }
+  }
   if (p.madeIn !== 'vihuplanet') return refuse('madeIn');
 
   // One rule for a list of page images — `pages` (required) and
@@ -461,6 +470,7 @@ function sweepPayload(p) {
     madeIn: 'vihuplanet',
   };
   if (sweptPlain.pages) clean.pagesPlain = sweptPlain.pages;
+  if (p.creatorUsername != null) clean.creatorUsername = p.creatorUsername;
   // Public-only by construction: the Ether deep link is the project
   // id Decision 9 already made public FOR SHARED STORIES; for an
   // unshared one a forged value resolves to nothing, because the

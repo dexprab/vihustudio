@@ -148,6 +148,8 @@ const CreationShare=(function(){
       creationType: typeOf(pages),
       title: _titleOf(record),
       creatorName: String(record.creatorName||'').trim(),
+      // SOCIAL 1 — the maker's public VihuPlanet name, when chosen.
+      creatorUsername: String(record.creatorUsername||'').trim()||null,
       pages: pages,
       publishedAt: record.publishedAt||null,
       // Resolves back to the EXACT creation. For the share token
@@ -263,6 +265,10 @@ const CreationShare=(function(){
           watch: watch,
           madeIn:'vihuplanet'
         };
+        // SOCIAL 1 — attribution travels with the share, so the
+        // landing and the Story Card can say "Made by @moonmaker".
+        // Identity only: the share's ACCESS stays the opaque token.
+        if(share.creatorUsername) payload.creatorUsername=share.creatorUsername;
         // Public-only, by construction — see the header.
         if(record&&record.publishedAt&&record.id) payload.ether=record.id;
         return payload;

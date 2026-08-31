@@ -6456,6 +6456,118 @@ own creation, and VihuPlanet is discovered THROUGH it.
   `supabase/migrations_creation_share.sql` ·
   `supabase/functions/creation-share/index.ts`
 
+### 53. A Creator Has a Name, and a Creation Leads to Its Maker
+
+Locked in Sprint SOCIAL 1 (Creator Identity & Discovery), from the
+product owner's brief. It is identity and discovery, deliberately not
+a social network: a child creates something → another child discovers
+it → wants to see more from that creator. That loop, and nothing else.
+
+- **THE MODEL IS ACCOUNT → CREATOR IDENTITY → PUBLIC CREATIONS, and
+  the middle layer already existed.** `magic_card_identities` IS this
+  product's creator identity (Decision 11), and its `id` is the same
+  `cardId` every project record carries (Decision 19) — so the public
+  username is a COLUMN on that row, never a second `creator_profiles`
+  table, which would be a second identity system for the same person.
+  `auth.uid()` stays internal: never public, never searchable, never
+  beside a username anywhere.
+- **@moonmaker is globally unique, case-insensitively, and the index
+  is the rule.** A partial unique index on `lower(username)`; 3–20 of
+  `a-z 0-9 _` with at least one letter; reserved platform names
+  refused. The rules live in `js/creatorHandle.js` for an instant kind
+  answer AND inside `creator_username_claim()` beside the index that
+  enforces them — the suite fails if the two reserved lists ever
+  differ, so a client that skips its own checks changes nothing.
+- **THE CHILD CHOOSES. NOTHING IS EVER GENERATED.** Never
+  moonmaker8472, no suggestions, no pre-filled field — the dialog's
+  input starts empty and stays the child's own words. The suite scans
+  the layer for name generation and fails on any.
+- **One writer, and ownership is verified where it counts.**
+  `creator_username_claim()` is SECURITY DEFINER, requires
+  `owner_id = auth.uid()`, and a stranger's identity answers exactly
+  like a nonexistent one — never an oracle for which ids are real (the
+  sky-protection rule). Two claims racing the same identity: the loser
+  is told what the name became; two racing the same NAME: the unique
+  index answers `taken`. Names are STABLE in v1 — the first name is
+  the name, and renames are a future decision, not a gap.
+- **The name travels with the card.** `recall_magic_card()` returns it
+  (redefined with every field earlier sprints added intact — losing
+  `taught` would silently re-gate every Creator), `MagicCard.adopt()`
+  carries it, and `_pushIdentitySnapshot` cannot lose it because a
+  snapshot updates only the columns it names. A Creator recognised on
+  a brand-new device is still @moonmaker there.
+- **Attribution is the creatorName pattern, exactly.**
+  `creatorUsername` is stamped onto records on every save, carried
+  forward like `publishedAt` and `cardId`; stories shared BEFORE the
+  name was chosen are healed by `_sweepUsernames()` — the
+  `_sweepCompanions()` shape: lazy, once, only onto records the active
+  card provably owns, never rewriting one that already carries a name,
+  and **never onto a private draft**.
+- **DISCOVERY HAS NO SERVER ENDPOINT, DELIBERATELY.** The Ether is
+  already Canon + everything anybody shared (Decision 15), and the
+  username travels ON the shared record — so the Creator's shelf and
+  🔎 Find a Creator are `EtherFeed.byUsername()` filtering the feed
+  the universe already loaded. Nothing new to rate-limit, nothing to
+  enumerate, no query that could reach an email, an account id, or
+  anybody who never shared. **A Creator with no public creation is
+  not discoverable anywhere** — creation-first identity enforced by
+  the architecture rather than by filtering.
+- **The name rides the entity's `source`, and that was a measured
+  bug.** `storyEntity.js` copies a fixed field list and dropped the
+  top-level `creatorUsername` — the first suite run caught the
+  Preview's chip empty. It rides on `source` now (copied wholesale,
+  never read by physics, the renderer or the story layer), the same
+  seam `origin` and the Companion already use; proved by reverting.
+- **Three doors into a maker's shelf, all creation-first.** The
+  Preview's tappable `@moonmaker` chip; 🔎 Find a Creator — a quiet
+  corner affordance, NOT a third permanent action (Decision 10's two
+  are untouched); and `?creator=moonmaker`, a one-shot intent exactly
+  like `?story=` — consumed, stripped, opened only once the child is
+  looking (Decision 23). The shelf shows public creations — covers
+  and titles — and is never a profile. An unknown name is told
+  gently: *"No Creator by that name is in the Ether yet."* — never
+  "not found", never an error.
+- **The share carries the name; the token stays the key.** The payload
+  gains `creatorUsername` (sweep BUILD `LW4`, refused by name when
+  malformed, and the client's deploy-window retry strips exactly the
+  named optional key on an older deployment). `look.html` says
+  **Made by @moonmaker** with **See more from @moonmaker** as the
+  `?creator=` door; the Story Card back carries `@moonmaker`.
+  **Username is identity. The share token is authorization** — no
+  username-based share URLs exist and none may be added.
+- **Cheer activity is DERIVED, never logged.** *"✨ Your Moon Dragon
+  is getting cheers!"* exists only where a story's count has RISEN
+  since this card last looked (`Cheer.count` against a per-card seen
+  map) — no event store, no notification system, no number
+  (Decision 20), no cheerer (`story_cheers` keeps no social graph to
+  ask), no ranking. Shown on Studio Home's social band; quiet once
+  seen, until more starlight actually arrives.
+- **The invitation to choose a name is EARNED.** A card in hand, at
+  least one shared story, no name yet — then a card on the shelf,
+  absent rather than empty, no decline, no dismiss (Decision 22's own
+  discipline). The wrong answers are the brief's own words: *"That
+  name is already being used. Try another one."* — and a platform
+  that is away says *"Names can't be chosen just now. Your stories
+  are safe."* The language never blames.
+- **NOT A SOCIAL NETWORK, AND THE SUITE ENFORCES THE ABSENCE.** No
+  followers, friend requests, DMs, chat, "contact creator", comments,
+  likes, leaderboards, or counts a child can see — the code and the
+  surfaces are scanned for that vocabulary and fail on any of it.
+  SOCIAL 2 (My Circle) arrives as its own decision on the seams this
+  one leaves; nothing here presumes it.
+- **Proved as sessions, not asserted**: the claim/taken/reserved/
+  invalid/not-yours/already-named behaviour and recall runs against a
+  real PostgreSQL as real sessions; the Studio and Ether journeys are
+  walked in a real browser (the sweep, the shelf, find, the intent,
+  the privacy sweep); the runtime-drop fix and the username sweep are
+  proved by reverting each.
+- Architecture: `docs/SOCIAL_IDENTITY.md`. Deploy:
+  `supabase/DEPLOY_creation_share.md` §2b.
+- `supabase/migrations_social_identity.sql` ·
+  `supabase/verify_social_identity.sql` · `js/creatorHandle.js` ·
+  `js/creatorSocial.js` · `js/creatorPresence.js` ·
+  `tools/social-identity-test/run-social-identity-tests.js`
+
 ## Roadmap
 
 1. Theme Designer Polish

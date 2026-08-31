@@ -85,6 +85,10 @@ const EtherShare=(function(){
     if(plain.length&&plain.every(function(p){ return !!p; })){
       payload.pagesPlain=plain;
     }
+    // SOCIAL 1 — attribution travels onwards too: a story sent from
+    // the Ether still says who made it, by their public name.
+    const uname=String(meta.username||'').trim().toLowerCase();
+    if(/^[a-z0-9_]{3,20}$/.test(uname)) payload.creatorUsername=uname;
     return payload;
   }
 

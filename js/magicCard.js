@@ -1227,6 +1227,12 @@ const MagicCard=(function(){
       constellationOrderFixed:true
     };
     if(Array.isArray(remoteResult.taught)) card.taught=remoteResult.taught.slice();
+    // SOCIAL 1 — the public VihuPlanet name travels with the identity,
+    // exactly like the companion bond above. Absent stays absent: a
+    // deployment whose migration has not run returns nothing here, and
+    // the card simply has no name yet.
+    if(remoteResult.username) card.username=String(remoteResult.username);
+    else if(existing && existing.username) card.username=existing.username;
     const cards=cardsBefore;
     const idx=cards.findIndex(function(c){ return c.id===card.id; });
     if(idx===-1) cards.push(card); else cards[idx]=card;
@@ -1351,6 +1357,60 @@ const MagicCard=(function(){
   // still gates the "never nagged again automatically" rule -- once
   // set, it's reset only at the exact same decline point that clears
   // the active pointer (see gatewaySequence.js), never here.
+  // ---------------------------------------------------------------
+  // SOCIAL 1 — the public VihuPlanet name (@moonmaker).
+  //
+  // The name is a PUBLIC ALIAS on the card's own platform identity —
+  // creator_username_claim() is the only writer, verifies the caller
+  // owns the identity, and enforces shape, reserved names and global
+  // case-insensitive uniqueness beside the unique index itself. The
+  // client validates first (js/creatorHandle.js, the same rules) so a
+  // child gets an instant kind answer, but the server's answer is the
+  // one that counts. Stable by default: the first name is the name.
+  // ---------------------------------------------------------------
+  function _setLocalUsername(cardId,username){
+    const cards=_readCards();
+    const idx=cards.findIndex(function(c){ return c && c.id===cardId; });
+    if(idx===-1) return false;
+    cards[idx].username=username;
+    _writeCards(cards);
+    return true;
+  }
+
+  function claimUsername(raw){
+    const active=getActive();
+    if(!active) return Promise.resolve({ok:false,reason:'no_card'});
+    if(active.username) return Promise.resolve({ok:false,reason:'already_named',username:active.username});
+    const checked=(typeof CreatorHandle!=='undefined')?CreatorHandle.validate(raw):null;
+    if(checked && !checked.ok) return Promise.resolve(checked);
+    const name=checked?checked.username:String(raw||'').trim().toLowerCase();
+    if(typeof ThemeRepositoryClient==='undefined'){
+      return Promise.resolve({ok:false,reason:'not_configured'});
+    }
+    return ThemeRepositoryClient.getClient().then(function(client){
+      return ThemeRepositoryClient.getSession().then(function(){
+        return client.rpc('creator_username_claim',{
+          p_identity_id:active.id,
+          p_username:name
+        }).then(function(res){
+          if(res.error) throw res.error;
+          const out=res.data;
+          if(!out||!out.ok){
+            // An identity already named elsewhere heals this device.
+            if(out&&out.reason==='already_named'&&out.username){
+              _setLocalUsername(active.id,out.username);
+            }
+            return {ok:false,reason:(out&&out.reason)||'not_configured',username:out&&out.username};
+          }
+          _setLocalUsername(active.id,out.username);
+          return {ok:true,username:out.username};
+        });
+      });
+    }).catch(function(){
+      return {ok:false,reason:'not_configured'};
+    });
+  }
+
   function shouldOfferAwakening(){
     return !getActive() && !_readFlags().awakeningOffered;
   }
@@ -1382,6 +1442,11 @@ const MagicCard=(function(){
     rename:rename,
     recall:recall,
     adopt:adopt,
+    // SOCIAL 1 — the public VihuPlanet name. claimUsername() is the
+    // one write path; _setLocalUsername is exposed for the harness
+    // and for a platformless device adopting a name it was told.
+    claimUsername:claimUsername,
+    _setLocalUsername:_setLocalUsername,
     orderLikeAnySky:orderLikeAnySky,
     // The library, for anything that wants to describe a sky. Copies
     // out, so a caller cannot reach in and edit the catalogue.

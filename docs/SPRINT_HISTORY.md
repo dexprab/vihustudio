@@ -10464,3 +10464,30 @@ them, because paper scrolls. Proved the way a printer proves it: real
 A4 pdf renders through the real stylesheets, counting pages (2·2·1·2),
 red on revert in both directions. look-share 156 + ether-share 21 —
 green. Canon: Decision 52 (amended in place).
+
+## SOCIAL 1 — Creator Identity & Discovery (build 0716)
+
+A creation now leads to its maker. Every Creator can choose ONE public
+VihuPlanet name (@moonmaker) — a column on `magic_card_identities`
+(the card IS the Creator, Decision 11), claimed through one SECURITY
+DEFINER function beside a case-insensitive partial unique index,
+owner-verified, reserved-listed, stable in v1, returned by
+`recall_magic_card()` so a new device still knows it. The child
+chooses; nothing is ever generated. Attribution is the creatorName
+pattern exactly: stamped on every save, swept onto already-shared
+stories (own, shared, never a private draft). Discovery has NO server
+endpoint — the Creator's shelf, 🔎 Find a Creator and the landing's
+`?creator=` door all filter the public feed the Ether already loads,
+so a Creator with no public creation is not discoverable anywhere, by
+construction. The share payload, the landing ("Made by @moonmaker")
+and the Story Card back carry the name (function BUILD `LW4`); the
+opaque token stays the only access. Studio Home gains a derived
+activity line — "✨ Your Moon Dragon is getting cheers!", no number,
+no cheerer, quiet once seen — and the earned, dismissless invitation
+to choose a name. One real bug found by the suite: the runtime's
+fixed field list dropped the top-level `creatorUsername`, so it rides
+the entity's `source` like `origin` does (proved by reverting). No
+followers, DMs, chat, comments, likes or leaderboards — the suite
+scans for the vocabulary. tools/social-identity-test (69, with a real
+PostgreSQL as real sessions) + look-share 156 + ether-share 21 —
+green. Canon: Decision 53. Architecture: docs/SOCIAL_IDENTITY.md.

@@ -39,12 +39,29 @@ Probe (any signed-in session):
 
 ```
 GET  {SUPABASE_URL}/functions/v1/creation-share
-→ { ok:true, build:'LW3', creationShares:true, mail:true, base:'https://vihuplanet.com' }
+→ { ok:true, build:'LW4', creationShares:true, mail:true, base:'https://vihuplanet.com' }
 ```
 
 `creationShares:false` means step 1 has not run; `mail:false` means
 the Resend secrets are missing (mint and the Story Card still work —
 only the letter refuses, gently).
+
+## 2b. SOCIAL 1 rides the same deploy
+
+The `LW4` build of the function carries the `creatorUsername` sweep
+(the share's "Made by @moonmaker" attribution). A deployment still on
+`LW3` refuses payloads carrying it by name and the client retries
+without it — nothing breaks, shares simply travel unattributed until
+the redeploy. The identity half is its own migration:
+
+1. Run `supabase/migrations_social_identity.sql` whole (returns
+   nothing).
+2. Run `supabase/verify_social_identity.sql` — one word per check,
+   `all checks pass` in the OVERALL row.
+
+No new secrets, no new function. Claiming a name goes through the
+existing REST RPC (`creator_username_claim`); discovery has no server
+endpoint at all.
 
 ## 3. The smoke test
 
