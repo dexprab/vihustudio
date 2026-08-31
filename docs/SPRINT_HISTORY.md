@@ -10622,3 +10622,27 @@ tools/social-orbit-test (32) + social-identity 98 + ether-share 21 —
 green. Canon: Decision 54. Deploy: run
 supabase/migrations_social_orbit.sql after the identity migration,
 then verify_social_orbit.sql.
+
+## SOCIAL 2.1 — the Ether declares who is using it (build 0724)
+
+The Ether now anchors identity without becoming about it: a quiet
+corner marker reads "🌌 You're in Ether as @moonmaker · Not you?
+Change" for a Creator, the nickname for an unnamed card, and "✨
+You're exploring as a Traveller" for anybody without one — nothing
+invented, nothing inferred, and a refresh changes nothing because the
+identity is the card. "Change" deliberately routes to the EXISTING ⭐
+recognition rather than a one-tap card chooser, which would have
+handed anybody at the machine any Creator's social identity without
+the recognition every other door requires. A Traveller writes nothing
+— orbit add refuses no_card with zero local state — and the Companion
+boundary got both harder and explicit: orbit vocabulary joined
+travellerContext's FORBIDDEN_KEYS, and the suite proves no companion
+file reaches the social layer. Studio Home gained the personal area
+(🌌 My Orbit · ✨ My Circle — Circle first and intimate as chips,
+Orbit creation-oriented, Leave quiet, no digits), fed by
+publicCreations() which now merges the device's own shared records
+with the platform's; the Ether's Find panel gained the one-way
+doorway "Open in your Studio" (one-shot note, consumed on arrival).
+tools/social-ether-identity-test (20) + social-orbit 32 +
+social-identity 98 + ether-share 21 + ether-encounter 94 — green.
+Canon: Decision 55.

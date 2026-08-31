@@ -37,9 +37,10 @@ const CreatorPresence=(function(){
   // SOCIAL 2 — configured once by the page that owns the Studio door
   // (js/vihuplanetHome.js): how a make-for journey actually leaves
   // for the Studio. This panel never navigates by itself.
-  let _makeFor=null;
+  let _makeFor=null,_openSocial=null;
   function configure(opts){
     if(opts&&typeof opts.makeFor==='function') _makeFor=opts.makeFor;
+    if(opts&&typeof opts.openSocial==='function') _openSocial=opts.openSocial;
   }
 
   function _myCard(){
@@ -276,6 +277,16 @@ const CreatorPresence=(function(){
               }));
           });
           _body.appendChild(chips);
+          // SOCIAL 2.1 — the quiet doorway: the Ether lets a child ACT
+          // socially in context; understanding and managing their
+          // social world lives on Studio Home. One line, only under
+          // their own orbit, only for a card-holder.
+          if(_openSocial){
+            _body.appendChild(_button('Open in your Studio','creator-presence-social-door',function(){
+              close();
+              _openSocial();
+            }));
+          }
         }
       }
     }catch(e){}

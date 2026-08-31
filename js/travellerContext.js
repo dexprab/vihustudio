@@ -99,7 +99,13 @@ const TravellerContext = (function () {
     'projectId', 'libraryId', 'id', 'memories', 'memory', 'bond', 'bondMoment',
     'conversation', 'history', 'preferences', 'pages', 'page', 'slides',
     'prose', 'storyBeat', 'storyDraft', 'draft', 'unpublished', 'email',
-    'password', 'token', 'session', 'auth', 'publishedAt', 'updatedAt', 'cheers'
+    'password', 'token', 'session', 'auth', 'publishedAt', 'updatedAt', 'cheers',
+    // SOCIAL 2.1 — the hard identity boundary: the Ether's social
+    // layer (who is signed in, who orbits whom, circles) must NEVER
+    // enter the Companion's world. A context naming any of it is
+    // refused whole, not trimmed.
+    'orbit', 'orbits', 'orbited', 'orbiter', 'circle', 'circles',
+    'username', 'viewerUsername', 'viewer'
   ];
 
   // Values that must never appear whatever they are called: anything

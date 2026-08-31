@@ -6746,6 +6746,85 @@ whole design is that it can never become social pressure.
   `js/etherFeed.js` · `js/vihuplanetHome.js` · `js/creationFlow.js` ·
   `tools/social-orbit-test/run-social-orbit-tests.js`
 
+### 55. The Ether Declares Who Is Using It; Studio Home Is Where the Social World Lives
+
+Locked in Sprint SOCIAL 2.1, from the product owner's brief. It
+resolves the Ether identity ambiguity Social 2 left and freezes the
+distinction: *the Ether is a shared world where I discover and act;
+Studio Home is my personal world where I see and manage.* Traveller =
+no persistent social identity; Creator = persistent social identity.
+
+- **THE ETHER DECLARES WHO IS USING IT.** A quiet corner marker,
+  revealed with the universe's other controls (Decision 10's two
+  actions untouched): *🌌 You're in Ether as @moonmaker · Not you?
+  Change* for a Creator; a card with no public name is anchored by its
+  nickname with no @ invented; anybody without a card reads *✨ You're
+  exploring as a Traveller* — completely anonymous, no identity
+  invented or inferred, and no Change control. The identity anchor is
+  visible without ever becoming the focus. A refresh changes nothing:
+  the identity is the CARD, never a session variable.
+- **"NOT YOU? CHANGE" IS THE EXISTING ⭐ RECOGNITION, and that is a
+  security decision.** The brief said use the existing authenticated
+  mechanisms and add no new ceremony; a one-tap chooser over the
+  device's cards would hand anybody at the machine any Creator's
+  social identity without the recognition every other door requires
+  (Decisions 11, 18, 19). So Change presses the existing ⭐ Show Me
+  Your Stars action, and identity changes only the way it always has.
+  Once established, every subsequent social action belongs to the
+  established Creator — proved by watching which card's orbit a
+  post-change choice lands in.
+- **A TRAVELLER HAS NO SOCIAL GRAPH, AND NONE IS FAKED LOCALLY.**
+  `CreatorOrbit.add()` without a card refuses `no_card` and writes
+  NOTHING — not even browser state masquerading as persistence. No
+  orbit UI, no make-for, no activity lines. Discovery, reading, public
+  shelves and public names all remain fully open (Cheer stays
+  card-agnostic exactly as Decision 20 locked it: the cheerer is an
+  anonymous session, never a Creator identity — "no Cheer ownership"
+  is already true by that design).
+- **THE HARD IDENTITY BOUNDARY IS STRUCTURAL AND NOW ALSO EXPLICIT.**
+  The Ether identity feeds the UI/social layer (Orbit, Circle, Make
+  For) and nothing else. The Companion's Traveller context is a
+  whitelist that has no field for the viewer's identity — and the
+  orbit vocabulary (`orbit`, `circle`, `username`, `viewer`…) joined
+  `js/travellerContext.js`'s FORBIDDEN_KEYS, so a context smuggling
+  any of it is refused whole. No companion file references the social
+  layer; the suite scans for it.
+- **STUDIO HOME IS THE HOME OF THE SOCIAL WORLD.** One quiet row on
+  the social band — *🌌 My Orbit · ✨ My Circle* — opens the personal
+  panel (`CreatorSocial.openSocialPanel()`): Circle FIRST and
+  intimate, chips of creative connections; Orbit as a
+  creation-oriented list — @name and what they MAKE, never
+  follower-style statistics; Leave beside each, quiet, ending a
+  mutual Circle silently. Circle remains DERIVED — no second
+  relationship record was created and none may be. Entries lead to
+  the Creator's public shelf through the existing `?creator=` door
+  (leaving the Studio lands on VihuPlanet, Decision 23, as always).
+  Absent for a Traveller. `publicCreations()` merges the device's own
+  shared records with the platform's, so the panel names real work
+  even before a round trip.
+- **THE DOORWAY, ONE WAY ROUND.** The Ether's Find panel, under the
+  child's own Orbit chips, offers *Open in your Studio* — through the
+  one Studio door with a one-shot note Studio Home consumes to open
+  the panel on arrival (intent crosses; state does not). The Ether
+  never becomes a second Studio Home; the Studio never acts socially
+  in the Ether's stead.
+- Everything Social 1/2 froze is re-asserted, unchanged: the cheer
+  model (no numbers, no cheerer), make-for (a creation, never a
+  message), Made by @name + the opaque share token as the only
+  access, and no DMs, friend requests, counts, rankings or public
+  circle sizes anywhere.
+- Proved end to end in `tools/social-ether-identity-test` (20): the
+  three marker states, refresh stability, Change routing to real
+  recognition, post-change ownership, the Traveller writing nothing,
+  the Companion boundary (whitelist keys + forbidden vocabulary +
+  static scan), the panel journeys, and the doorway note consumed.
+  Regressions: social-orbit 32 · social-identity 98 · ether-share 21 ·
+  ether-encounter 94 — green.
+- `index.html` · `js/vihuplanetHome.js` · `js/creatorPresence.js` ·
+  `js/creatorSocial.js` · `js/creatorOrbit.js` ·
+  `js/travellerContext.js` · `js/creationFlow.js` ·
+  `tools/social-ether-identity-test/run-social-ether-identity-tests.js`
+
 ## Roadmap
 
 1. Theme Designer Polish

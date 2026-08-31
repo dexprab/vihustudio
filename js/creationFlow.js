@@ -892,6 +892,28 @@ const CreationFlow=(function(){
       }).catch(function(){});
     }catch(e){}
 
+    // SOCIAL 2.1 — Studio Home is the home of the child's social
+    // world: 🌌 My Orbit · ✨ My Circle, one quiet row for a Creator
+    // holding a card. Absent for a Traveller — a relationship needs
+    // somebody to belong to. And an Ether doorway note opens it on
+    // arrival ("Ether lets me act socially in context; Studio Home
+    // lets me understand and manage my social world").
+    try{
+      if(typeof CreatorOrbit!=='undefined'&&typeof MagicCard!=='undefined'
+         &&MagicCard.getActive&&MagicCard.getActive()
+         &&typeof CreatorSocial!=='undefined'&&CreatorSocial.openSocialPanel){
+        const socialRow=_el('div','creation-flow-socialdoor');
+        const openBtn=_el('button','creation-flow-socialdoor-btn','🌌 My Orbit · ✨ My Circle');
+        openBtn.type='button';
+        openBtn.addEventListener('click',function(){ CreatorSocial.openSocialPanel(); });
+        socialRow.appendChild(openBtn);
+        slot.appendChild(socialRow);
+        if(CreatorOrbit.consumeOpenSocial&&CreatorOrbit.consumeOpenSocial()){
+          window.setTimeout(function(){ CreatorSocial.openSocialPanel(); },250);
+        }
+      }
+    }catch(e){}
+
     // SOCIAL 2 — things happening BETWEEN Creators (never content
     // scrolling past): new work from the child's own Orbit, and
     // creations made FOR them. Derived, no numbers, quiet once seen.

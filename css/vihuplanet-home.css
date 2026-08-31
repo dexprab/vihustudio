@@ -2469,3 +2469,58 @@ html, body {
   color: #e8c476;
   opacity: 0.9;
 }
+
+/* =====================================================================
+   SOCIAL 2.1 — the Ether declares who is using it. A quiet corner
+   marker: the child's identity anchor, never the focus. Bottom-left,
+   with the universe's other quiet controls; the two permanent actions
+   are untouched (Decision 10).
+   ===================================================================== */
+.vp-identity[hidden] { display: none !important; }
+.vp-identity {
+  position: absolute;
+  left: calc(1.1rem + env(safe-area-inset-left, 0px));
+  bottom: calc(2.6rem + env(safe-area-inset-bottom, 0px));
+  z-index: 6400;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: min(70vw, 30rem);
+  pointer-events: auto;
+}
+.vp-identity-line {
+  font-family: 'Kalam', system-ui, sans-serif;
+  font-size: 0.82rem;
+  color: rgba(241, 234, 208, 0.72);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.vp-identity-change[hidden] { display: none !important; }
+.vp-identity-change {
+  flex: 0 0 auto;
+  padding: 0.18rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid rgba(241, 234, 208, 0.2);
+  background: transparent;
+  color: rgba(241, 234, 208, 0.55);
+  font-family: 'Kalam', system-ui, sans-serif;
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+.vp-identity-change:hover { color: #f1ead0; border-color: rgba(241, 234, 208, 0.4); }
+
+/* SOCIAL 2.1 — the quiet doorway from the Ether's Find panel to the
+   Studio Home social area. */
+.creator-presence-social-door {
+  margin: 8px 0 0;
+  padding: 0.35rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid rgba(241, 234, 208, 0.22);
+  background: transparent;
+  color: rgba(241, 234, 208, 0.7);
+  font-family: 'Kalam', system-ui, sans-serif;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+.creator-presence-social-door:hover { color: #f1ead0; }

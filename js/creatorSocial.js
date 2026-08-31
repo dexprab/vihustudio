@@ -201,11 +201,119 @@ const CreatorSocial=(function(){
     });
   }
 
+  // ---------- 🌌 My Orbit · ✨ My Circle (SOCIAL 2.1) ----------
+  // Studio Home is where a child SEES and MANAGES their social world
+  // (the Ether is where they act in context). One overlay, two areas:
+  // Orbit as a creation-oriented list — @name and what they MAKE,
+  // never follower-style statistics — and Circle above it, more
+  // intimate: chips, because "these are my creative connections" is
+  // not another giant list. Circle stays DERIVED (two orbits facing
+  // each other); nothing here creates a second relationship record.
+  // Entries lead to the Creator's public shelf in the Ether through
+  // the existing ?creator= door. Leave is quiet; nobody is told.
+  function openSocialPanel(){
+    const card=(typeof MagicCard!=='undefined'&&MagicCard.getActive)?MagicCard.getActive():null;
+    if(!card||typeof CreatorOrbit==='undefined') return false;
+
+    const overlay=document.createElement('div');
+    overlay.className='creator-social-overlay';
+    const panel=document.createElement('div');
+    panel.className='creator-social-panel';
+    overlay.appendChild(panel);
+
+    function el(tag,cls,text){
+      const e=document.createElement(tag);
+      if(cls) e.className=cls;
+      if(text!=null) e.textContent=text;
+      return e;
+    }
+    function done(){ try{ overlay.remove(); }catch(e){} }
+    overlay.addEventListener('click',function(ev){ if(ev.target===overlay) done(); });
+
+    function render(creations){
+      while(panel.firstChild) panel.removeChild(panel.firstChild);
+      const orbit=CreatorOrbit.list();
+      const circle=orbit.filter(function(e){ return e.circle; });
+      const plain=orbit.filter(function(e){ return !e.circle; });
+
+      function worksOf(name){
+        return creations.filter(function(s){
+          return s&&s.creatorUsername&&String(s.creatorUsername).toLowerCase()===name;
+        }).map(function(s){ return s.title||s.name||'A story'; }).slice(0,3);
+      }
+      function shelfLink(name){
+        // The Creator's public shelf lives in the Ether; leaving the
+        // Studio always lands on VihuPlanet (Decision 23), and the
+        // existing ?creator= intent opens the shelf once the child is
+        // looking.
+        window.location.href='index.html?creator='+encodeURIComponent(name);
+      }
+
+      if(circle.length){
+        panel.appendChild(el('h3','creator-social-head','✨ My Circle'));
+        panel.appendChild(el('p','creator-social-sub','Creators who choose you too.'));
+        const chips=el('div','creator-social-circle');
+        circle.forEach(function(e){
+          const chip=el('button','creator-social-circle-chip');
+          chip.type='button';
+          chip.appendChild(el('span','creator-social-circle-name','@'+e.username));
+          const first=worksOf(e.username)[0];
+          if(first) chip.appendChild(el('span','creator-social-circle-work',first));
+          chip.addEventListener('click',function(){ shelfLink(e.username); });
+          chips.appendChild(chip);
+        });
+        panel.appendChild(chips);
+      }
+
+      panel.appendChild(el('h3','creator-social-head','🌌 My Orbit'));
+      panel.appendChild(el('p','creator-social-sub','Creators you choose to see.'));
+      if(!orbit.length){
+        panel.appendChild(el('p','creator-social-note',
+          'Nobody yet — when you meet a Creator in the Ether whose things you love, add them to your Orbit.'));
+      }
+      orbit.forEach(function(e){
+        const row=el('div','creator-social-row');
+        const main=el('button','creator-social-who');
+        main.type='button';
+        main.appendChild(el('span','creator-social-name',(e.circle?'✨ ':'')+'@'+e.username));
+        const works=worksOf(e.username);
+        if(works.length) main.appendChild(el('span','creator-social-works',works.join(' · ')));
+        main.addEventListener('click',function(){ shelfLink(e.username); });
+        row.appendChild(main);
+        const leave=el('button','creator-social-leave','Leave My Orbit');
+        leave.type='button';
+        leave.addEventListener('click',function(){
+          CreatorOrbit.remove(e.username).then(function(){ render(creations); });
+          render(creations);
+        });
+        row.appendChild(leave);
+        panel.appendChild(row);
+      });
+
+      const back=el('button','creator-social-quiet','Back');
+      back.type='button';
+      back.addEventListener('click',done);
+      panel.appendChild(back);
+    }
+
+    render([]);
+    document.body.appendChild(overlay);
+    // The platform's copy first (mutuality is only ever its to say),
+    // then what everybody makes — both quiet, both bounded upstream.
+    CreatorOrbit.refresh().then(function(){
+      return CreatorOrbit.publicCreations();
+    }).then(function(creations){
+      if(overlay.isConnected) render(creations||[]);
+    }).catch(function(){});
+    return true;
+  }
+
   const api={
     inviteNeeded:inviteNeeded,
     username:username,
     openNameDialog:openNameDialog,
-    activityLines:activityLines
+    activityLines:activityLines,
+    openSocialPanel:openSocialPanel
   };
   try{ window.CreatorSocial=api; }catch(e){}
   return api;

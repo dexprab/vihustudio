@@ -184,9 +184,26 @@ const CreatorOrbit=(function(){
         if(cached&&cached.length) return Promise.resolve(cached);
       }
     }catch(e){}
+    // The device's OWN shared records first — a story shared from this
+    // machine is public whether or not the platform round trip has
+    // happened yet — then the platform's copy of everybody's.
+    let local=[];
+    try{
+      if(typeof CreatorProjectStore!=='undefined'&&CreatorProjectStore.listAll){
+        local=(CreatorProjectStore.listAll()||[]).filter(function(r){
+          return r&&r.publishedAt;
+        }).map(function(r){
+          return { id:r.id, title:r.name||'A story',
+                   creatorUsername:r.creatorUsername||null,
+                   forUsername:r.forUsername||null,
+                   publishedAt:r.publishedAt||null,
+                   source:{projectId:r.id} };
+        });
+      }
+    }catch(e){}
     try{
       if(typeof CreatorProjectSync==='undefined'||!CreatorProjectSync.listShared){
-        return Promise.resolve([]);
+        return Promise.resolve(local);
       }
       let bell=null;
       const capped=new Promise(function(resolve){
@@ -196,16 +213,25 @@ const CreatorOrbit=(function(){
         return (rows||[]).map(function(row){
           const d=row&&row.data;
           if(!d) return null;
-          return { id:d.id, creatorUsername:d.creatorUsername||null,
+          return { id:d.id, title:d.name||'A story',
+                   creatorUsername:d.creatorUsername||null,
                    forUsername:d.forUsername||null,
                    publishedAt:d.publishedAt||null,
                    source:{projectId:d.id} };
         }).filter(Boolean);
       }).catch(function(){ return []; });
       return Promise.race([real,capped]).then(function(v){
-        clearTimeout(bell); return v||[];
+        clearTimeout(bell);
+        const seen={};
+        const out=[];
+        local.concat(v||[]).forEach(function(s){
+          if(!s||seen[s.id]) return;
+          seen[s.id]=true;
+          out.push(s);
+        });
+        return out;
       });
-    }catch(e){ return Promise.resolve([]); }
+    }catch(e){ return Promise.resolve(local); }
   }
 
   function activityLines(){
@@ -290,7 +316,22 @@ const CreatorOrbit=(function(){
     noteMakeFor:noteMakeFor,
     pendingFor:pendingFor,
     clearMakeFor:clearMakeFor,
-    FOR_NOTE:FOR_NOTE
+    FOR_NOTE:FOR_NOTE,
+    // The public creations this surface can see, one shape everywhere
+    // — Studio Home's personal area lists a Creator's work from it.
+    publicCreations:_publicCreations,
+    // SOCIAL 2.1 — the one-shot doorway note: the Ether asks Studio
+    // Home to open the personal social area on arrival. Intent
+    // crosses; state does not (Decision 23).
+    SOCIAL_NOTE:'vihu.openSocial.note',
+    noteOpenSocial:function(){ try{ sessionStorage.setItem('vihu.openSocial.note','1'); }catch(e){} },
+    consumeOpenSocial:function(){
+      try{
+        const v=sessionStorage.getItem('vihu.openSocial.note');
+        sessionStorage.removeItem('vihu.openSocial.note');
+        return !!v;
+      }catch(e){ return false; }
+    }
   };
   try{ window.CreatorOrbit=api; }catch(e){}
   return api;

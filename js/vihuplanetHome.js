@@ -149,6 +149,54 @@
     return (entity && entity.source && entity.source.creatorUsername) || null;
   }
 
+  // ---------------------------------------------------------------
+  // SOCIAL 2.1 — THE ETHER DECLARES WHO IS USING IT.
+  //
+  // The marker is the child's identity anchor and never the focus: a
+  // corner line revealed with the universe's other controls. What it
+  // says is read from the ACTIVE MAGIC CARD and from nothing else —
+  // a visitor with no card is a Traveller, completely anonymous, and
+  // no identity is ever invented or inferred for them.
+  //
+  // "Not you? Change" is the existing ⭐ Show Me Your Stars
+  // recognition, reached by pressing the existing action — never a
+  // one-tap switch between the device's cards, which would hand
+  // anybody at the machine any Creator's social identity without the
+  // recognition every other door requires (Decisions 11, 18, 19).
+  //
+  // THE HARD BOUNDARY: this identity feeds the Ether's UI and social
+  // layer (Orbit, Circle, Make For) and NOTHING else. The Companion's
+  // Traveller context is a whitelist (js/travellerContext.js) that
+  // has no field for it, so it cannot arrive there by construction.
+  // ---------------------------------------------------------------
+  function refreshIdentityMarker() {
+    try {
+      var box = document.querySelector('[data-identity]');
+      if (!box) return;
+      var line = box.querySelector('[data-identity-line]');
+      var change = box.querySelector('[data-identity-change]');
+      var card = (typeof MagicCard !== 'undefined' && MagicCard.getActive) ? MagicCard.getActive() : null;
+      if (card) {
+        var who = card.username
+          ? '@' + card.username
+          : (card.nickname || 'a Creator');
+        line.textContent = '🌌 You’re in Ether as ' + who;
+        if (change) change.hidden = false;
+      } else {
+        line.textContent = '✨ You’re exploring as a Traveller';
+        if (change) change.hidden = true;
+      }
+      box.hidden = false;
+    } catch (e) {}
+  }
+  try {
+    var _changeBtn = document.querySelector('[data-identity-change]');
+    if (_changeBtn) _changeBtn.addEventListener('click', function () {
+      var stars = document.querySelector('[data-act="stars"]');
+      if (stars) stars.click();
+    });
+  } catch (e) {}
+
   // A Canon Story: made by the VihuPlanet team, owned by nobody, and
   // shipped with the application. A child never learns the distinction
   // exists — this page only asks so it can avoid saying something
@@ -300,6 +348,7 @@
       try {
         var findBtn = document.querySelector('[data-find]');
         if (findBtn) findBtn.hidden = false;
+        refreshIdentityMarker();
       } catch (e) {}
 
       thresholdCrossed = true;
@@ -2192,10 +2241,19 @@
     // learns its platform copy once per visit — fire-and-forget, so
     // a slow platform never delays anything a child is looking at.
     if (typeof CreatorPresence !== 'undefined' && CreatorPresence.configure) {
-      CreatorPresence.configure({ makeFor: function (name) {
-        try { if (typeof CreatorOrbit !== 'undefined') CreatorOrbit.noteMakeFor(name); } catch (e) {}
-        goStudio(JourneyResolver.recognised());
-      } });
+      CreatorPresence.configure({
+        makeFor: function (name) {
+          try { if (typeof CreatorOrbit !== 'undefined') CreatorOrbit.noteMakeFor(name); } catch (e) {}
+          goStudio(JourneyResolver.recognised());
+        },
+        // SOCIAL 2.1 — the doorway from acting-in-context to
+        // seeing-and-managing: Studio Home opens the personal social
+        // area on arrival (one-shot note, consumed there).
+        openSocial: function () {
+          try { if (typeof CreatorOrbit !== 'undefined') CreatorOrbit.noteOpenSocial(); } catch (e) {}
+          goStudio(JourneyResolver.recognised());
+        }
+      });
     }
     try { if (typeof CreatorOrbit !== 'undefined') CreatorOrbit.refresh(); } catch (e) {}
 
