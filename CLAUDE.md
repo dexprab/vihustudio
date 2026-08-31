@@ -6330,6 +6330,43 @@ own creation, and VihuPlanet is discovered THROUGH it.
   and the landing's) now carry a `pv=2` preview-generation marker —
   a different URL is a fresh fetch, and the landing ignores it. Copy
   and 📤 Share keep the clean URL.
+- **KIND PRINTING SHOWED COLOURS ON EVERY FINISHED STORY, AND NO
+  FIXTURE COULD SEE IT** (1.2.1, build 0713). Reported from real use:
+  *"kind printing is still showing colors."* The share ceremony
+  stamps `readImage` onto a finished story's slides, and
+  `_renderPage` rightly short-circuits on a slide that already
+  carries one — but `_plainClone` copied the slide INCLUDING it, so
+  the "plain" render was answered with the stored COLOUR bitmap,
+  untouched, on every story that had ever been finished. The suites'
+  fixture stories had never been through the stamping path, which is
+  why five sprints of plain-paper checks all passed while the owner's
+  real story printed colours. The clone now deletes the stored render
+  and forces the real plain render.
+- **AND THE FIRST REVERT-PROOF OF THE FIX PASSED ON THE BROKEN
+  BUILD.** It measured whole-sheet luminance, and the card strip's
+  palette difference alone moved the average past the threshold — a
+  check that cannot fail proves nothing (this repository's own
+  recurring lesson, met again). The shipped check asserts on WHAT
+  TRAVELS instead: the payload's plain render of page one must not be
+  the stored colour bitmap echoed back (`echoed:true, lum 0.103` on
+  the broken build).
+- **THE ETHER'S KIND PRINTING IS NOW TRULY PLAIN, FOR STORIES SHARED
+  FROM NOW ON.** The share ceremony stamps `readImagePlain` beside
+  `readImage` on the record (`_renderReadingImages`, via
+  `CreationShare.plainClone` — one definition of "this page, on plain
+  paper"), `EtherFeed.pagesPlainOf()` reads them aligned with
+  `pagesOf()`, and the Ether's ☀️ uses them — plain pages, proved by
+  pixel (white where the colour card was red), all-or-nothing so a
+  book is never half night. They ride the Ether's letter payload too,
+  so the landing kind-prints those shares in full plain. A story
+  shared before this keeps the palette-plain fallback until its maker
+  shares it again.
+- **A DEPLOY WINDOW MUST NEVER COST A CHILD THEIR SHARE.** A function
+  older than the sweep's `pagesPlain` refuses the whole payload by
+  that key's name — the sweep doing its job — so the client retries
+  exactly once without the one optional key the server named, and
+  nothing else is ever stripped. Until `LW3` is deployed, shares
+  simply travel without plain renders instead of failing.
 - Function BUILD is `LW3` — a redeploy of `creation-share` carries
   the `pagesPlain` sweep, the letter's print doors and the `pv`
   marker.
@@ -6344,12 +6381,14 @@ own creation, and VihuPlanet is discovered THROUGH it.
   copy and the share-sheet path, and 1.1.5's letter print doors and
   the landing's compose-preview-print for both keepsakes, and 1.2's
   pagesPlain sweep, uploaded-payload plain renders and landing paper
-  toggles (148 in all); the fold-model, sweep, blank-flash,
-  once-guard, preview, panel and print-door checks each proved by
-  reverting) · `tools/ether-share-test/` (18 — the Ether journey:
-  seed a shared story, meet its Spirit, all three doors driven for
-  real, the deep-link QR decoded by zxing in both palettes, once:true
-  proved by reverting).
+  toggles, and 1.2.1's poisoned-readImage plain proof, ceremony
+  stamping and deploy-window retry (152 in all); the fold-model,
+  sweep, blank-flash, once-guard, preview, panel, print-door and
+  plain-clone checks each proved by reverting) ·
+  `tools/ether-share-test/` (20 — the Ether journey: seed a shared
+  story, meet its Spirit, all three doors driven for real, the
+  deep-link QR decoded by zxing in both palettes, plain PAGES proved
+  by pixel, once:true proved by reverting).
 - `js/creationShare.js` · `js/creationShareClient.js` ·
   `js/lookWhatIMade.js` · `js/foldableComposer.js` ·
   `js/storyCardComposer.js` · `js/etherShare.js` · `look.html` ·

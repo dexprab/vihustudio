@@ -1433,10 +1433,25 @@ const PublishStudio=(function(){
     const live=_slides();
 
     Promise.all(live.map(function(s,i){
-      if(!pages[i] || pages[i].readImage) return Promise.resolve();
-      return ThumbnailEngine.generateRead(s).then(function(img){
-        if(img && pages[i]) pages[i].readImage=img;
-      }).catch(function(){});
+      const jobs=[];
+      if(pages[i] && !pages[i].readImage){
+        jobs.push(ThumbnailEngine.generateRead(s).then(function(img){
+          if(img && pages[i]) pages[i].readImage=img;
+        }).catch(function(){}));
+      }
+      // The ☀️ plain render travels WITH the record (1.2.1) — the
+      // Ether prints from baked pixels, so the only way its kind
+      // printing can show plain PAGES is if the plain render was
+      // stamped here, at share time, where the renderer lives.
+      // CreationShare.plainClone is the one definition of "this
+      // page, on plain paper".
+      if(pages[i] && !pages[i].readImagePlain &&
+         typeof CreationShare!=='undefined' && CreationShare.plainClone){
+        jobs.push(ThumbnailEngine.generateRead(CreationShare.plainClone(s)).then(function(img){
+          if(img && pages[i]) pages[i].readImagePlain=img;
+        }).catch(function(){}));
+      }
+      return Promise.all(jobs);
     })).then(function(){
       try{
         CreatorProjectStore.upsert(pid,
@@ -2080,6 +2095,7 @@ const PublishStudio=(function(){
     getStage:getStage,
     // Internal — exposed for the test harness only.
     _setStage:_setStage,
+    _renderReadingImages:_renderReadingImages,
     _publishedBlob:_publishedBlob,
     _publishedFilename:_publishedFilename,
     _downloadPublished:_downloadPublished,

@@ -10401,3 +10401,26 @@ refused. Whole pixels per module now, smoothing off, proved across
 four URLs. look-share 148 + ether-share 18 — green; once:true and the
 pagesPlain sweep proved by reverting. creation-share BUILD LW3 needs a
 redeploy. Canon: Decision 52 (amended in place).
+
+## LOOK WHAT I MADE 1.2.1 — kind printing was showing colours (build 0713)
+
+Reported from real use: *"kind printing is still showing colors."* The
+root cause was in the plain pipeline's own seam: the share ceremony
+stamps `readImage` onto a finished story's slides, `_renderPage`
+rightly short-circuits on a stored render — and `_plainClone` copied
+the slide INCLUDING it, so plain was answered with the stored COLOUR
+bitmap on every story that had ever been finished. No suite could see
+it because no fixture story had ever been through the stamping path
+(the recurring fixture lesson). The clone now drops the stored render;
+and the first revert-proof of the fix PASSED on the broken build —
+whole-sheet luminance moved by the card strip's palette alone — so the
+shipped check asserts on what travels: the payload's plain page must
+not be the colour bitmap echoed back (`echoed:true` on the broken
+build). With it: the ceremony now stamps `readImagePlain` beside
+`readImage`, `EtherFeed.pagesPlainOf()` reads them, and the Ether's ☀️
+prints truly plain pages (proved by pixel — white where the colour
+card was red) for stories shared from now on, riding the letter
+payload so the landing gets them too; and the client retries once
+without `pagesPlain` when an older deployed function refuses it by
+name, so no share is lost to the deploy window. look-share 152 +
+ether-share 20 — green. Canon: Decision 52 (amended in place).

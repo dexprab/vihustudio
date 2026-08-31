@@ -376,6 +376,19 @@ const EtherFeed = (function () {
     } catch (e) { return []; }
   }
 
+  // The ☀️ plain renders, aligned index-for-index with pagesOf()
+  // (1.2.1). Stamped by the share ceremony beside readImage, so a
+  // story shared since then can be KIND-PRINTED from the Ether with
+  // truly plain pages. A page with none is null, never a gap — the
+  // share panel decides what a missing one means.
+  function pagesPlainOf(projectId) {
+    try {
+      return _readablePages(_recordFor(projectId)).map(function (s) {
+        return s.readImagePlain || null;
+      });
+    } catch (e) { return []; }
+  }
+
   // Local first, and local is usually all of it: CreatorProjectStore
   // reads through an in-memory mirror hydrated from IndexedDB, so this
   // is synchronous once the cache is ready. The cloud is a second
@@ -666,6 +679,7 @@ const EtherFeed = (function () {
     othersBy: othersBy,
     attach: attach,
     pagesOf: pagesOf,
+    pagesPlainOf: pagesPlainOf,
     tintsOf: tintsOf,
     audioOf: audioOf,
     ownerOf: ownerOf,

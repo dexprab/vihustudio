@@ -93,11 +93,20 @@ const JPEG_1PX = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgc
   await page.goto(BASE + '/studio.html?author=on');
   await page.waitForFunction(() => typeof MagicCard !== 'undefined' &&
     typeof CreatorProjectStore !== 'undefined', null, { timeout: 20000 });
-  const seeded = await page.evaluate((img) => {
+  // The colour pages are RED and the ☀️ plain renders (stamped by the
+  // share ceremony — readImagePlain, 1.2.1) are WHITE, so which set a
+  // surface used is readable off a pixel rather than inferred.
+  const seeded = await page.evaluate(() => {
     localStorage.clear(); sessionStorage.clear();
     try { CreatorProjectStore.clearAll({ all: true }); } catch (e) {
       try { CreatorProjectStore.clearAll(); } catch (e2) {}
     }
+    function px(color) {
+      const c = document.createElement('canvas'); c.width = 8; c.height = 8;
+      const x = c.getContext('2d'); x.fillStyle = color; x.fillRect(0, 0, 8, 8);
+      return c.toDataURL('image/png');
+    }
+    const RED = px('#c0272d'), WHITE = px('#ffffff');
     const c = MagicCard.claim('Vihaan', null,
       { companionId: 'leafy', companionName: 'Leafy', companionSpecies: 'Bloomling' });
     MagicCard.setActive(c.id);
@@ -105,15 +114,15 @@ const JPEG_1PX = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgc
     CreatorProjectStore.upsert(id, { name: 'The Lantern Meadow' }, {
       version: 1,
       pages: [
-        { id: 'p1', background: '#fff', objects: [], readImage: img },
-        { id: 'p2', background: '#fff', objects: [], readImage: img },
-        { id: 'p3', background: '#fff', objects: [], readImage: img },
+        { id: 'p1', background: '#fff', objects: [], readImage: RED, readImagePlain: WHITE },
+        { id: 'p2', background: '#fff', objects: [], readImage: RED, readImagePlain: WHITE },
+        { id: 'p3', background: '#fff', objects: [], readImage: RED, readImagePlain: WHITE },
       ],
     });
     CreatorProjectStore.markPublished(id);
     MagicCard.setActive(null);
     return { id: id };
-  }, JPEG_1PX);
+  });
   const landed = await page.waitForFunction((id) => {
     try { const r = CreatorProjectStore.get(id); return !!(r && r.publishedAt); } catch (e) { return false; }
   }, seeded.id, { timeout: 20000 }).then(() => true).catch(() => false);
@@ -213,6 +222,9 @@ const JPEG_1PX = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgc
     && pl.madeIn === 'vihuplanet' && pl.title === 'The Lantern Meadow',
     'S4b the payload is the public story the Ether already shows — pages, name, its own Ether door',
     JSON.stringify({ ether: pl.ether, pages: (pl.pages || []).length, title: pl.title }));
+  ck((pl.pagesPlain || []).length === 3 && pl.pagesPlain.every((p) => /^data:image\//.test(p.image)),
+    'S4c and the ☀️ plain renders travel with it, so the letter\'s landing can kind-print too',
+    JSON.stringify({ plain: (pl.pagesPlain || []).length }));
 
   // ---- S5/S6: the printed card, its address, and its door
   await page.evaluate(() => {
@@ -296,6 +308,28 @@ const JPEG_1PX = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgc
   ck(plainState.plainLum > plainState.colorLum + 0.1 && plainState.label,
     'S7 ☀️ Plain paper stands here too, and the plain card is measurably lighter',
     JSON.stringify({ color: plainState.colorLum.toFixed(3), plain: plainState.plainLum.toFixed(3) }));
+  // The PAGES themselves went plain, not only the chrome (1.2.1):
+  // the plain card's cover must be drawn from readImagePlain (white),
+  // where the colour card's was the red readImage. Read off a pixel
+  // in the cover box, not inferred from overall luminance.
+  const coverPixels = await page.evaluate(async (prevFront) => {
+    async function pick(src) {
+      const img = new Image(); img.src = src;
+      await (img.decode ? img.decode() : new Promise((res) => { img.onload = res; }));
+      const c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
+      const x = c.getContext('2d'); x.drawImage(img, 0, 0);
+      const d = x.getImageData(375, 370, 1, 1).data;
+      return { r: d[0], g: d[1], b: d[2] };
+    }
+    return {
+      color: await pick(prevFront),
+      plain: await pick(document.querySelectorAll('.ether-share-imgs img')[0].src),
+    };
+  }, colorFront);
+  ck(coverPixels.color.r > 150 && coverPixels.color.g < 90
+    && coverPixels.plain.r > 230 && coverPixels.plain.g > 230 && coverPixels.plain.b > 230,
+    'S7c the plain card\'s PAGES are the plain renders — white where the colour card was red',
+    JSON.stringify(coverPixels));
   const scannedPlain = await scanBack();
   ck(scannedPlain.ok && scannedPlain.text === 'https://vihuplanet.com/?story=' + seeded.id,
     'S7b and the plain card\'s door still scans', scannedPlain.text || scannedPlain.err);

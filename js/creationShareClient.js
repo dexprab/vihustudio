@@ -105,13 +105,35 @@ const CreationShareClient=(function(){
     }catch(e){ return null; }
   }
 
+  // A function deployed before the sweep learned `pagesPlain`
+  // refuses the whole payload by that key's name — which is the
+  // sweep doing its job, and must never cost a child their share
+  // during the deploy window. One retry, without the one optional
+  // key the server named; nothing else is ever stripped.
+  function _callWithPlainFallback(body){
+    return _call(body).then(function(answer){
+      if(answer&&answer.ok===false&&answer.reason==='not-shareable'
+         &&answer.key==='pagesPlain'&&body.payload&&body.payload.pagesPlain){
+        const slim=Object.assign({},body,{
+          payload:(function(){
+            const p=Object.assign({},body.payload);
+            delete p.pagesPlain;
+            return p;
+          })()
+        });
+        return _call(slim);
+      }
+      return answer;
+    });
+  }
+
   // Mint (or refresh) the creation's one stable share. Used by the
   // Story Card for its QR, and by send() underneath.
   function mint(projectId,payload){
     const body={action:'mint',projectId:projectId,payload:payload};
     const id=_identityId();
     if(id) body.identityId=id;
-    return _call(body);
+    return _callWithPlainFallback(body);
   }
 
   // Send the creation to the child's grown-up. `email` is either
@@ -124,7 +146,7 @@ const CreationShareClient=(function(){
     if(id) body.identityId=id;
     if(email) body.email=String(email).trim();
     if(opts&&opts.once) body.once=true;
-    return _call(body);
+    return _callWithPlainFallback(body);
   }
 
   const api={ mint:mint, send:send };

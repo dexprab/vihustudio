@@ -2090,7 +2090,11 @@
       if (!met) return;
       var pid = projectIdOf(met);
       if (!pid || typeof EtherShare === 'undefined') return;
-      EtherShare.open(pid, { title: met.title, creator: met.creator, pages: pages });
+      // The ☀️ plain renders too (1.2.1), where the share ceremony
+      // stamped them — aligned with pages, so kind printing from the
+      // Ether can print truly plain pages.
+      var plain = (window.EtherFeed && EtherFeed.pagesPlainOf) ? EtherFeed.pagesPlainOf(pid) : [];
+      EtherShare.open(pid, { title: met.title, creator: met.creator, pages: pages, pagesPlain: plain });
     });
 
     el.cheer.addEventListener('click', function () {

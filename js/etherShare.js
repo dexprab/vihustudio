@@ -55,13 +55,22 @@ const EtherShare=(function(){
   // images, the story's name, its maker. Nothing else exists here
   // to leak — no card, no memory, no session material — and the
   // server's sweep refuses anything unexpected anyway.
+  function _validImage(src){
+    return typeof src==='string'&&IMAGE_RE.test(src)&&src.length<=MAX_IMAGE;
+  }
   function _assemble(pid,meta){
-    const pages=(meta.pages||[])
-      .filter(function(src){ return typeof src==='string'&&IMAGE_RE.test(src)&&src.length<=MAX_IMAGE; })
-      .slice(0,MAX_PAGES)
-      .map(function(src){ return {image:src}; });
+    const pages=[],plain=[];
+    (meta.pages||[]).forEach(function(src,i){
+      if(pages.length>=MAX_PAGES||!_validImage(src)) return;
+      pages.push({image:src});
+      // The ☀️ plain render of the SAME page (1.2.1), stamped by the
+      // share ceremony. Kept aligned by index, so a filtered page
+      // can never shift somebody else's plain render under this one.
+      const p=(meta.pagesPlain||[])[i];
+      plain.push(_validImage(p)?{image:p}:null);
+    });
     if(!pages.length) return null;
-    return {
+    const payload={
       v:1,
       type:pages.length>1?'story':'moment',
       title:String(meta.title||'').slice(0,120),
@@ -70,6 +79,13 @@ const EtherShare=(function(){
       madeIn:'vihuplanet',
       ether:pid
     };
+    // All or nothing: a book that is plain on some pages and night
+    // on others is neither thing. Carried in the letter's payload
+    // too, so the landing's kind printing gets the full plain sheet.
+    if(plain.length&&plain.every(function(p){ return !!p; })){
+      payload.pagesPlain=plain;
+    }
+    return payload;
   }
 
   function available(meta){
@@ -171,11 +187,18 @@ const EtherShare=(function(){
   // ---------- 📄 🃏 print ----------
   // Preview before print, always — and ☀️ Plain paper beside the
   // print button ("kind printing should be everywhere where there
-  // is print option"). The Ether holds only the story's baked page
-  // images, so plain here is the composers' own paper palette —
-  // everything the paper itself draws goes to ink, and the pages
-  // print as the universe holds them. The full plain pages live
-  // where the story lives (the Studio, and shares that carry them).
+  // is print option"). Where the record carries the share ceremony's
+  // own plain renders (readImagePlain → payload.pagesPlain, 1.2.1)
+  // the plain print is the FULL plain print — plain pages, plain
+  // chrome. An older story without them still gets the composers'
+  // paper palette: everything the paper itself draws goes to ink,
+  // and the pages print as the universe holds them.
+  function _shareForPrint(){
+    if(_plain&&_ctx.payload.pagesPlain){
+      return Object.assign({},_ctx.payload,{pages:_ctx.payload.pagesPlain});
+    }
+    return _ctx.payload;
+  }
   function _print(kind){
     _clear();
     _body.appendChild(_el('p','ether-share-ask',
@@ -196,13 +219,14 @@ const EtherShare=(function(){
     _body.appendChild(row);
 
     const door=ETHER_DOOR+encodeURIComponent(_ctx.pid);
+    const share=_shareForPrint();
     const seq=++_seq;
     const work=(kind==='foldable')
       ? ((typeof FoldableComposer!=='undefined'&&FoldableComposer.compose)
-          ? FoldableComposer.compose(_ctx.payload,{cardUrl:door,plain:_plain})
+          ? FoldableComposer.compose(share,{cardUrl:door,plain:_plain})
           : Promise.resolve(null))
       : ((typeof StoryCardComposer!=='undefined'&&StoryCardComposer.compose)
-          ? StoryCardComposer.compose(_ctx.payload,door,{plain:_plain})
+          ? StoryCardComposer.compose(share,door,{plain:_plain})
           : Promise.resolve(null));
     work.then(function(made){
       if(seq!==_seq) return;

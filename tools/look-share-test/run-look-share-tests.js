@@ -333,6 +333,12 @@ function goodPayload(over) {
     if (fnPlan.mode === 'down') {
       return route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ ok: false, reason: 'unreachable' }) });
     }
+    // 1.2.1 — a function deployed before the sweep learned pagesPlain
+    // refuses the whole payload by that key's name; the client must
+    // retry without it rather than lose the share to a deploy window.
+    if (fnPlan.mode === 'refuse-plain' && body && body.payload && body.payload.pagesPlain) {
+      return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ ok: false, reason: 'not-shareable', key: 'pagesPlain' }) });
+    }
     const ok = { ok: true, token: token, url: url, watchUrl: url + '&watch=1' };
     if (body && body.action === 'send') { ok.sent = true; ok.parentKnown = fnPlan.parentKnown !== false; }
     return route.fulfill({ contentType: 'application/json', body: JSON.stringify(ok) });
@@ -793,6 +799,102 @@ function goodPayload(over) {
     window.__prints[1].srcSample === (document.querySelector('.lwim-sheet-img') || {}).src);
   ck(printedPlain, 'P4 printing prints the plain sheet the child was just shown — the preview holds through the toggle');
   await page.evaluate(() => { LookWhatIMade.close(); });
+
+  // ---- 1.2.1 — the state the fixtures never had: a FINISHED story's
+  // slides carry readImage (the share ceremony stamps it), and
+  // _renderPage short-circuits on it. The plain clone must DROP it or
+  // "kind printing" prints the stored COLOUR bitmap — which is
+  // exactly what was reported from real use.
+  // The assertion is on the PAYLOAD, not the sheet: a first draft
+  // measured whole-sheet luminance and passed even with the fix
+  // reverted, because the card strip's palette difference alone
+  // moved the average — a check that cannot fail proves nothing.
+  // What travels is the truth: the plain render of page one must be
+  // a real plain render, never the stored colour bitmap echoed back.
+  const DARK = await page.evaluate(() => {
+    const c = document.createElement('canvas'); c.width = 8; c.height = 8;
+    const x = c.getContext('2d'); x.fillStyle = '#10152a'; x.fillRect(0, 0, 8, 8);
+    const dark = c.toDataURL('image/png');
+    AppState.slides.forEach((s) => { s.readImage = dark; });
+    document.getElementById('lookBtn').click();
+    return dark;
+  });
+  const beforePoison = fnCalls.length;
+  await page.waitForTimeout(200);
+  await page.evaluate(() => {
+    Array.from(document.querySelectorAll('.lwim-btn')).find((b) => /Print Story Card/.test(b.textContent)).click();
+  });
+  for (let i = 0; i < 120 && fnCalls.length === beforePoison; i++) await new Promise((r) => setTimeout(r, 500));
+  const poisonedCall = fnCalls.slice(beforePoison).find((c) => c.body && c.body.payload);
+  const poisonedPlainPage = poisonedCall && poisonedCall.body.payload.pagesPlain
+    && poisonedCall.body.payload.pagesPlain[0] && poisonedCall.body.payload.pagesPlain[0].image;
+  const poisonedLum = poisonedPlainPage ? await page.evaluate(async (src) => {
+    const img = new Image(); img.src = src;
+    await (img.decode ? img.decode() : new Promise((res) => { img.onload = res; }));
+    const c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
+    const x = c.getContext('2d'); x.drawImage(img, 0, 0);
+    const d = x.getImageData(0, 0, c.width, c.height).data;
+    let sum = 0, n = 0;
+    for (let i = 0; i < d.length; i += 64) { sum += (d[i] + d[i + 1] + d[i + 2]) / 3; n++; }
+    return sum / n / 255;
+  }, poisonedPlainPage) : -1;
+  ck(!!poisonedPlainPage && poisonedPlainPage !== DARK && poisonedLum > 0.6,
+    'P5 a FINISHED story (slides stamped with readImage) still ships a real PLAIN render — the clone drops the stored colour bitmap',
+    JSON.stringify({ echoed: poisonedPlainPage === DARK, lum: Number(poisonedLum).toFixed(3) }));
+  await page.evaluate(() => {
+    AppState.slides.forEach((s) => { delete s.readImage; });
+    LookWhatIMade.close();
+  });
+
+  // ---- 1.2.1 — the share ceremony stamps the PLAIN render beside the
+  // colour one, so the Ether can kind-print plain pages from the
+  // record alone. Driven through the real function the ceremony calls.
+  await page.evaluate(() => { PublishStudio._renderReadingImages(); });
+  const stamped = await page.waitForFunction(() => {
+    try {
+      const pid = ProjectManager.ensureProjectId();
+      const r = CreatorProjectStore.get(pid);
+      const pages = (r && r.data && (r.data.pages || r.data.slides)) || [];
+      return pages.length > 0 && pages.every((p) => p.readImage && p.readImagePlain);
+    } catch (e) { return false; }
+  }, null, { timeout: 60000 }).then(() => true).catch(() => false);
+  ck(stamped, 'P6 sharing stamps readImagePlain beside readImage on every page of the record');
+  const stampedLum = await page.evaluate(async () => {
+    const pid = ProjectManager.ensureProjectId();
+    const pages = CreatorProjectStore.get(pid).data.pages || CreatorProjectStore.get(pid).data.slides;
+    async function lum(src) {
+      const img = new Image(); img.src = src;
+      await (img.decode ? img.decode() : new Promise((res) => { img.onload = res; }));
+      const c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
+      const x = c.getContext('2d'); x.drawImage(img, 0, 0);
+      const d = x.getImageData(0, 0, c.width, c.height).data;
+      let sum = 0, n = 0;
+      for (let i = 0; i < d.length; i += 64) { sum += (d[i] + d[i + 1] + d[i + 2]) / 3; n++; }
+      return sum / n / 255;
+    }
+    return { color: await lum(pages[0].readImage), plain: await lum(pages[0].readImagePlain) };
+  });
+  ck(stampedLum.plain > stampedLum.color + 0.1,
+    'P6b and the stamped plain render is measurably plain',
+    JSON.stringify({ color: stampedLum.color.toFixed(3), plain: stampedLum.plain.toFixed(3) }));
+
+  // ---- 1.2.1 — the deploy window: a function older than the sweep's
+  // pagesPlain refuses the whole payload by that key's name. The
+  // client retries once without it; a child never loses a share to a
+  // deploy order.
+  fnPlan = { mode: 'refuse-plain' };
+  const beforeRetry = fnCalls.length;
+  const retried = await page.evaluate(() => CreationShareClient.send('proj_retry',
+    { v: 1, type: 'moment', title: '', creatorName: '',
+      pages: [{ image: 'data:image/png;base64,AAAA' }], watch: [],
+      madeIn: 'vihuplanet', pagesPlain: [{ image: 'data:image/png;base64,AAAA' }] },
+    'x@example.com', { once: true }));
+  const retryCalls = fnCalls.slice(beforeRetry);
+  ck(retried && retried.ok === true && retryCalls.length === 2
+    && !!retryCalls[0].body.payload.pagesPlain && !retryCalls[1].body.payload.pagesPlain,
+    'R1 an older server refusing pagesPlain gets ONE retry without it — the share survives the deploy window',
+    JSON.stringify({ ok: retried && retried.ok, calls: retryCalls.length }));
+  fnPlan = { mode: 'ok' };
 
   // ---- K. the story card
   console.log('-- K: the story card — and a real scan');

@@ -186,7 +186,18 @@ const CreationShare=(function(){
     if(!slide) return slide;
     const meta=Object.assign({},slide.metadata||{});
     meta.cardOverrides=Object.assign({},meta.cardOverrides||{},{background:'#ffffff'});
-    return Object.assign({},slide,{metadata:meta});
+    const clone=Object.assign({},slide,{metadata:meta});
+    // THE STORED RENDER MUST NOT SURVIVE THE CLONE. _renderPage
+    // short-circuits on a slide that already carries a readImage —
+    // right for the colour pipeline, and exactly wrong here: the
+    // share ceremony stamps readImage onto a finished story's
+    // slides, so a plain clone that kept it was answered with the
+    // stored COLOUR bitmap and "kind printing" printed colours
+    // (reported from real use — the suites' fixture stories had
+    // never been through the stamping path, so they could not see
+    // it). Deleting it forces the real plain render.
+    delete clone.readImage;
+    return clone;
   }
   // ---------- the making, as frames ----------
   function _watchFramesFor(slides){
@@ -265,6 +276,11 @@ const CreationShare=(function(){
     displayTitle:displayTitle,
     fromRecord:fromRecord,
     snapshot:snapshot,
+    // The one definition of "this page, on plain paper" (1.2.1) —
+    // the share ceremony uses it to stamp readImagePlain beside
+    // readImage, so the Ether can print truly plain pages from the
+    // record alone.
+    plainClone:_plainClone,
     PAGE_W:PAGE_W,
     WATCH_W:WATCH_W,
     WATCH_BUDGET:WATCH_BUDGET
