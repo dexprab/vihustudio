@@ -206,43 +206,80 @@ const FoldableComposer=(function(){
   // two different folds. Asked for from real use: the printed sheet
   // travels without the screen, and whoever folds it (often not the
   // child who pressed Print) needs the how on paper too.
+  // REWRITTEN (1.2.2) after the product owner tried to follow them and
+  // could not — "the instructions are not explicit. i myself am not
+  // able to follow them how can i think a kid be able to follow them",
+  // with a reference zine tutorial attached. The old second step was
+  // the fatal one: "cut the little line in the middle" of a FLAT
+  // sheet, which scissors cannot do. The real sequence — the one
+  // every zine tutorial teaches — is FOLD IN HALF FIRST, then cut in
+  // from the folded edge, and every step below shows the sheet in the
+  // state the folder is actually holding.
   function FOLD_STEPS(cardPresent){
     const S='stroke="#8d867b" stroke-width="2" fill="none"';
     const D='stroke="#c9c2b4" stroke-width="1.5" stroke-dasharray="4 3" fill="none"';
+    const K='stroke="#4a4540" stroke-width="2.6" fill="none"';
     const steps=[];
     if(cardPresent){
       steps.push({
         svg:'<rect x="8" y="14" width="74" height="38" rx="2" '+S+'/>'+
-            '<line x1="64" y1="14" x2="64" y2="52" stroke="#8d867b" stroke-width="2.5"/>'+
+            '<line x1="64" y1="14" x2="64" y2="52" '+K+'/>'+
             '<text x="64" y="11" font-size="9" text-anchor="middle">✂</text>',
-        words:'Cut your Story Card off the edge.'
+        words:'Cut your Story Card off the edge. The big part is your book sheet.'
       });
     }
     steps.push({
       svg:'<rect x="8" y="14" width="74" height="38" rx="2" '+S+'/>'+
-          '<line x1="27" y1="33" x2="63" y2="33" stroke="#8d867b" stroke-width="2.5"/>'+
-          '<text x="45" y="29" font-size="9" text-anchor="middle">✂</text>',
-      words:'Cut the little line in the middle.'
+          '<line x1="26.5" y1="14" x2="26.5" y2="52" '+D+'/>'+
+          '<line x1="45" y1="14" x2="45" y2="52" '+D+'/>'+
+          '<line x1="63.5" y1="14" x2="63.5" y2="52" '+D+'/>'+
+          '<line x1="8" y1="33" x2="26.5" y2="33" '+D+'/>'+
+          '<line x1="63.5" y1="33" x2="82" y2="33" '+D+'/>'+
+          '<line x1="26.5" y1="33" x2="63.5" y2="33" '+K+'/>',
+      words:'Lay the sheet flat. Dotted lines are folds. The one dark line is for scissors — but not yet.'
     });
     steps.push({
       svg:'<rect x="8" y="14" width="74" height="38" rx="2" '+S+'/>'+
-          '<line x1="8" y1="33" x2="82" y2="33" '+D+'/>'+
-          '<path d="M45 8 C 60 2, 72 8, 70 20" '+S+'/>'+
-          '<path d="M70 20 l -4 -6 m 4 6 l 6 -3" '+S+'/>',
-      words:'Fold it in half, the long way.'
+          '<line x1="45" y1="14" x2="45" y2="52" '+D+'/>'+
+          '<path d="M80 12 C 66 0, 50 2, 46 12" '+S+'/>'+
+          '<path d="M46 12 l -1 -7 m 1 7 l 7 -2" '+S+'/>',
+      // Anchored to the PRINTED lines, not to "short edges" — with
+      // the card strip cut off the book sheet is nearly square, and
+      // "short edges" stops meaning anything on a square.
+      words:'Fold it in half along the middle dotted line, pictures facing OUT — so you can still see the dark line.'
+    });
+    steps.push({
+      svg:'<rect x="26" y="14" width="38" height="38" rx="2" '+S+'/>'+
+          '<line x1="26" y1="14" x2="26" y2="52" stroke="#8d867b" stroke-width="4"/>'+
+          '<text x="20" y="60" font-size="7" text-anchor="middle">fold</text>'+
+          '<line x1="26" y1="33" x2="45" y2="33" '+K+'/>'+
+          '<text x="19" y="30" font-size="9" text-anchor="middle">✂</text>',
+      words:'Cut on the dark line — start AT the folded edge, stop halfway across. Then open the sheet flat again.'
+    });
+    steps.push({
+      svg:'<path d="M8 50 L24 26 L86 26 L70 50 Z" '+S+'/>'+
+          '<path d="M70 50 L86 26 L86 42 Z" '+S+'/>'+
+          '<line x1="43" y1="26" x2="67" y2="26" '+K+'/>',
+      words:'Now fold it in half along the line the cut is in, so it stands like a tent — the cut along the top.'
     });
     steps.push({
       svg:'<rect x="10" y="24" width="70" height="18" rx="2" '+S+'/>'+
-          '<path d="M45 26 l -6 14 l 12 0 z" '+D+'/>'+
+          '<path d="M45 24 L37 33 L45 42 L53 33 Z" '+D+'/>'+
           '<path d="M4 33 l 8 0 m -3 -3 l 3 3 l -3 3" '+S+'/>'+
           '<path d="M86 33 l -8 0 m 3 -3 l -3 3 l 3 3" '+S+'/>',
-      words:'Push the ends in — the middle opens.'
+      words:'Hold both ends and push them towards each other — the cut opens in the middle.'
+    });
+    steps.push({
+      svg:'<path d="M38 8 L52 8 L52 26 L70 26 L70 40 L52 40 L52 58 L38 58 L38 40 L20 40 L20 26 L38 26 Z" '+S+'/>'+
+          '<path d="M74 12 C 84 20, 84 32, 74 40" '+S+'/>'+
+          '<path d="M74 40 l 1 -7 m -1 7 l -7 -2" '+S+'/>',
+      words:'Keep pushing until it looks like a star, then fold all the pages around one way.'
     });
     steps.push({
       svg:'<rect x="28" y="12" width="34" height="42" rx="3" '+S+'/>'+
           '<line x1="31" y1="14" x2="31" y2="52" stroke="#c9c2b4" stroke-width="1.5"/>'+
           '<text x="45" y="38" font-size="12" text-anchor="middle">⭐</text>',
-      words:'Close it into a little book — cover in front.'
+      words:'Press it flat. A little book — ⭐ cover in front.'
     });
     return steps;
   }
@@ -268,43 +305,50 @@ const FoldableComposer=(function(){
 
       ctx.fillStyle=INK;
       ctx.textAlign='center';
-      ctx.font='700 120px Georgia, serif';
-      ctx.fillText('How to fold your little book',SHEET_W/2,240);
+      ctx.font='700 110px Georgia, serif';
+      ctx.fillText('How to fold your little book',SHEET_W/2,210);
 
       // The goal, before any step: sheet → book.
-      const gy=430;
+      const gy=330;
       ctx.strokeStyle='#8d867b'; ctx.lineWidth=8;
-      ctx.strokeRect(SHEET_W/2-560,gy,420,240);
+      ctx.strokeRect(SHEET_W/2-500,gy,360,200);
       ctx.beginPath();
-      ctx.moveTo(SHEET_W/2-60,gy+120); ctx.lineTo(SHEET_W/2+90,gy+120);
-      ctx.moveTo(SHEET_W/2+90,gy+120); ctx.lineTo(SHEET_W/2+50,gy+90);
-      ctx.moveTo(SHEET_W/2+90,gy+120); ctx.lineTo(SHEET_W/2+50,gy+150);
+      ctx.moveTo(SHEET_W/2-80,gy+100); ctx.lineTo(SHEET_W/2+70,gy+100);
+      ctx.moveTo(SHEET_W/2+70,gy+100); ctx.lineTo(SHEET_W/2+30,gy+70);
+      ctx.moveTo(SHEET_W/2+70,gy+100); ctx.lineTo(SHEET_W/2+30,gy+130);
       ctx.stroke();
-      ctx.strokeRect(SHEET_W/2+220,gy-20,190,280);
-      ctx.font='90px serif';
-      ctx.fillText('⭐',SHEET_W/2+315,gy+140);
+      ctx.strokeRect(SHEET_W/2+180,gy-20,170,240);
+      ctx.font='80px serif';
+      ctx.fillText('⭐',SHEET_W/2+265,gy+110);
 
-      // The steps, numbered, in a row.
+      // The steps, numbered, in rows of four (1.2.2 — the sequence
+      // grew to what a person can actually follow, and seven cramped
+      // cells in one row is not that). The last row centres itself.
       const n=steps.length;
-      const cellW=Math.min(620,(SHEET_W-200)/n);
-      const rowX=(SHEET_W-cellW*n)/2;
-      const rowY=1050;
+      const perRow=Math.min(4,n);
+      const cellW=Math.min(660,(SHEET_W-240)/perRow);
+      const picH=(cellW-80)*64/90;
+      const rowH=picH+430;
       steps.forEach(function(step,i){
-        const x=rowX+i*cellW;
-        if(imgs[i]) ctx.drawImage(imgs[i],x+40,rowY,cellW-80,(cellW-80)*64/90);
+        const row=Math.floor(i/perRow);
+        const inRow=Math.min(perRow,n-row*perRow);
+        const rowX=(SHEET_W-cellW*inRow)/2;
+        const x=rowX+(i-row*perRow)*cellW;
+        const y=700+row*rowH;
+        if(imgs[i]) ctx.drawImage(imgs[i],x+40,y,cellW-80,picH);
         ctx.fillStyle=INK;
-        ctx.font='700 72px Georgia, serif';
+        ctx.font='700 68px Georgia, serif';
         ctx.textAlign='center';
-        ctx.fillText(String(i+1)+'.',x+cellW/2,rowY-40);
-        ctx.font='52px Georgia, serif';
+        ctx.fillText(String(i+1)+'.',x+cellW/2,y-36);
+        ctx.font='48px Georgia, serif';
         ctx.fillStyle=SOFT;
-        _wrapText(ctx,step.words,x+cellW/2,rowY+(cellW-80)*64/90+110,cellW-60,62);
+        _wrapText(ctx,step.words,x+cellW/2,y+picH+80,cellW-70,58);
       });
 
       ctx.fillStyle=SOFT;
       ctx.textAlign='center';
-      ctx.font='italic 56px Georgia, serif';
-      ctx.fillText('Take your time — the paper knows the way.',SHEET_W/2,SHEET_H-260);
+      ctx.font='italic 52px Georgia, serif';
+      ctx.fillText('Take your time — the paper knows the way.',SHEET_W/2,SHEET_H-120);
 
       return c.toDataURL('image/jpeg',0.9);
     });
@@ -435,7 +479,10 @@ const FoldableComposer=(function(){
       ctx.fillStyle='#a09a8e';
       ctx.font='34px Georgia, serif';
       ctx.textAlign='right';
-      ctx.fillText('cut this little line',(SLIT_COLS[1]+1)*cellW-24,cellH-18);
+      // Named WITH its order (1.2.2) — "cut this little line" read as
+      // an instruction to cut the flat sheet, which scissors cannot
+      // do. The fold comes first, and the label says so.
+      ctx.fillText('fold in half first, then cut this line',(SLIT_COLS[1]+1)*cellW-24,cellH-18);
       ctx.textAlign='center';
       for(let c=1;c<COLS;c++){ ctx.fillText('fold',c*cellW,42); }
       ctx.fillText('fold',SLIT_COLS[0]*cellW/2,cellH-18);

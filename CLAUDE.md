@@ -6367,6 +6367,36 @@ own creation, and VihuPlanet is discovered THROUGH it.
   exactly once without the one optional key the server named, and
   nothing else is ever stripped. Until `LW3` is deployed, shares
   simply travel without plain renders instead of failing.
+- **THE FOLD INSTRUCTIONS ASKED FOR A CUT SCISSORS CANNOT MAKE**
+  (1.2.2, build 0714). Reported by the product owner, with a
+  reference zine tutorial attached: *"the instructions are not
+  explicit. i myself am not able to follow them how can i think a kid
+  be able to follow them."* The old second step — *"cut the little
+  line in the middle"* of a FLAT sheet — was the fatal one: scissors
+  cannot start a cut mid-sheet. The real sequence, the one every zine
+  tutorial teaches, is FOLD IN HALF FIRST and cut in from the folded
+  edge, and `FOLD_STEPS` is rewritten to it: eight explicit steps
+  with a card (seven without), each drawing the sheet in the state
+  the folder is actually holding — the flat sheet and what its lines
+  mean, the half-fold (pictures facing OUT, so the dark line stays
+  visible), the cut starting AT the fold and stopping halfway,
+  reopen, the tent, the push that opens the cut, the star, the book.
+  The guide page lays them in rows of four; the sheet's own slit
+  label now reads *"fold in half first, then cut this line"*, because
+  the old *"cut this little line"* read as an instruction to cut the
+  flat sheet. **The words anchor to the PRINTED dotted lines, never
+  to "short edges"** — with the card strip cut off, the book sheet is
+  nearly square and "short edges" stops meaning anything. `J10d`
+  guards the ORDER (fold before cut, cut from the fold, reopen, tent,
+  star), which is the fix itself. One set of drawings still serves
+  the screen and the paper.
+- **THE PANELS FOLLOW THE AUTHORED RATIO, MEASURED.** Raised in the
+  same review: *"the slide sizes should follow same ratio as
+  authored."* Measured rather than asserted: a 16:10 authored page
+  draws at 1.61 on the composed sheet — `_fitRect` preserves the
+  page image's own ratio in every panel, and the reading renders
+  carry the authored viewport (`adaptiveViewport`). The squares in
+  the review screenshot were the test fixture's own square images.
 - Function BUILD is `LW3` — a redeploy of `creation-share` carries
   the `pagesPlain` sweep, the letter's print doors and the `pv`
   marker.
@@ -6382,9 +6412,10 @@ own creation, and VihuPlanet is discovered THROUGH it.
   the landing's compose-preview-print for both keepsakes, and 1.2's
   pagesPlain sweep, uploaded-payload plain renders and landing paper
   toggles, and 1.2.1's poisoned-readImage plain proof, ceremony
-  stamping and deploy-window retry (152 in all); the fold-model,
-  sweep, blank-flash, once-guard, preview, panel, print-door and
-  plain-clone checks each proved by reverting) ·
+  stamping and deploy-window retry, and 1.2.2's fold-order guard
+  (153 in all); the fold-model,
+  sweep, blank-flash, once-guard, preview, panel, print-door,
+  plain-clone and fold-order checks each proved by reverting) ·
   `tools/ether-share-test/` (20 — the Ether journey: seed a shared
   story, meet its Spirit, all three doors driven for real, the
   deep-link QR decoded by zxing in both palettes, plain PAGES proved

@@ -692,9 +692,31 @@ function goodPayload(over) {
   // FOLD_STEPS the on-screen guide renders — one set of drawings,
   // two surfaces.
   ck(composed.guide, 'J10b the composer makes the how-to-fold guide page');
-  ck(composed.stepsWithCard === 5 && composed.stepsWithout === 4,
-    'J10c FOLD_STEPS is the one source — five steps with a card, four without',
+  // 1.2.2 — the sequence was rewritten after the product owner could
+  // not follow it ("i myself am not able to follow them"): eight
+  // explicit steps with a card, seven without, each showing the sheet
+  // in the state the folder is actually holding.
+  ck(composed.stepsWithCard === 8 && composed.stepsWithout === 7,
+    'J10c FOLD_STEPS is the one source — eight steps with a card, seven without',
     composed.stepsWithCard + '/' + composed.stepsWithout);
+  // THE ORDER IS THE FIX: the old step 2 asked scissors to start a
+  // cut in the middle of a FLAT sheet, which cannot be done. The fold
+  // must come first, the cut must start AT the fold, and the sheet's
+  // own label must say the same.
+  const foldOrder = await page.evaluate(() => {
+    const words = FoldableComposer.FOLD_STEPS(false).map((s) => s.words);
+    return {
+      foldAt: words.findIndex((w) => /Fold it in half along the middle dotted line/.test(w)),
+      cutAt: words.findIndex((w) => /start AT the folded edge/.test(w)),
+      reopen: words.some((w) => /open the sheet flat again/.test(w)),
+      tentAfter: words.findIndex((w) => /like a tent/.test(w)),
+      star: words.some((w) => /looks like a star/.test(w)),
+    };
+  });
+  ck(foldOrder.foldAt !== -1 && foldOrder.cutAt !== -1 && foldOrder.foldAt < foldOrder.cutAt
+    && foldOrder.reopen && foldOrder.cutAt < foldOrder.tentAfter && foldOrder.star,
+    'J10d fold FIRST, cut from the FOLD, reopen, tent, star — the sequence a person can actually follow',
+    JSON.stringify(foldOrder));
 
   await page.evaluate(() => {
     Array.from(document.querySelectorAll('.lwim-btn')).find((b) => /Fold it/.test(b.textContent)).click();
@@ -721,8 +743,8 @@ function goodPayload(over) {
     pics: document.querySelectorAll('.lwim-howfold-pic svg').length,
     cutCard: /Cut your Story Card off the edge/.test(document.querySelector('.lwim-card').innerText),
   }));
-  ck(guide.title && guide.steps === 5 && guide.pics === 5,
-    'J15 the folded view SHOWS how to fold — five little pictures, few words', JSON.stringify(guide));
+  ck(guide.title && guide.steps === 8 && guide.pics === 8,
+    'J15 the folded view SHOWS how to fold — eight little pictures, each in the state the folder is holding', JSON.stringify(guide));
   ck(guide.cutCard, 'J16 and the first step is cutting the Story Card off the edge');
 
   // 1.1.3: "add kind printing on the screen post fold it button" —

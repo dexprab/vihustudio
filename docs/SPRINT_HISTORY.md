@@ -10424,3 +10424,23 @@ payload so the landing gets them too; and the client retries once
 without `pagesPlain` when an older deployed function refuses it by
 name, so no share is lost to the deploy window. look-share 152 +
 ether-share 20 — green. Canon: Decision 52 (amended in place).
+
+## LOOK WHAT I MADE 1.2.2 — instructions a person can follow (build 0714)
+
+The product owner tried to fold the printed sheet and could not —
+*"the instructions are not explicit. i myself am not able to follow
+them how can i think a kid be able to follow them"* — with a reference
+zine tutorial attached, and the diagnosis was exact: the old step 2
+asked scissors to cut a line in the middle of a FLAT sheet, which
+cannot be done. FOLD_STEPS is rewritten to the real sequence — fold in
+half first (pictures out, along the middle dotted line), cut in from
+the folded edge, reopen, tent, push until the cut opens, star, flatten
+— eight explicit steps with a card, each drawn in the state the folder
+is actually holding, laid on the guide page in rows of four. The
+sheet's own slit label now says "fold in half first, then cut this
+line". J10d guards the ORDER, which is the fix itself; one set of
+drawings still serves screen and paper. Also measured in the same
+review: the panels DO follow the authored page ratio (16:10 in →
+1.61 drawn — the squares in the screenshot were square test images).
+look-share 153 + ether-share 20 — green. Canon: Decision 52 (amended
+in place).
