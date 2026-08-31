@@ -1408,6 +1408,39 @@ const MagicCard=(function(){
     }).catch(function(){ return null; });
   }
 
+  // ALL of this device's cards learn their platform names in one
+  // query (S1.2c — a device holds several Creators, Decision 19, and
+  // refreshUsername() above serves only the ACTIVE one). Owner-only
+  // RLS means the select can only ever answer for cards this
+  // session claimed, which is exactly the set being asked about.
+  // Once per load; a network failure is not remembered.
+  let _allUsernamesRefreshed=false;
+  function refreshUsernames(){
+    if(_allUsernamesRefreshed) return Promise.resolve(false);
+    const missing=_readCards().filter(function(c){ return c&&!c.username; });
+    if(!missing.length){ _allUsernamesRefreshed=true; return Promise.resolve(false); }
+    if(typeof ThemeRepositoryClient==='undefined') return Promise.resolve(false);
+    return ThemeRepositoryClient.isConfigured().then(function(ok){
+      if(!ok) return false;
+      return ThemeRepositoryClient.getClient().then(function(client){
+        return client.from('magic_card_identities')
+          .select('id,username')
+          .in('id',missing.map(function(c){ return c.id; }))
+          .then(function(res){
+            if(res&&res.error) return false;
+            _allUsernamesRefreshed=true; // the platform answered
+            let changed=false;
+            ((res&&res.data)||[]).forEach(function(row){
+              if(row&&row.username){
+                if(_setLocalUsername(row.id,String(row.username))) changed=true;
+              }
+            });
+            return changed;
+          });
+      });
+    }).catch(function(){ return false; });
+  }
+
   function claimUsername(raw){
     const active=getActive();
     if(!active) return Promise.resolve({ok:false,reason:'no_card'});
@@ -1478,6 +1511,7 @@ const MagicCard=(function(){
     // and for a platformless device adopting a name it was told.
     claimUsername:claimUsername,
     refreshUsername:refreshUsername,
+    refreshUsernames:refreshUsernames,
     _setLocalUsername:_setLocalUsername,
     orderLikeAnySky:orderLikeAnySky,
     // The library, for anything that wants to describe a sky. Copies

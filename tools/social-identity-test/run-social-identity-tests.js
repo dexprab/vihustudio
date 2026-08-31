@@ -731,6 +731,45 @@ function sqlSection() {
   ck(healed.suggest.indexOf('oldmaker') !== -1,
      'D8f and the healed name is suggestible', JSON.stringify(healed.suggest));
 
+  // ---- AND A STORY THAT LIVES ONLY LOCALLY IS PLACED BY THE CARDS
+  // THIS DEVICE HOLDS (reported: "seeing story by vihupapa in ether
+  // but not able to search him" — a local-only record has no platform
+  // row for the heal above to merge from, but its maker's own Magic
+  // Card is right here). cardId is the evidence; failing that, a
+  // creatorName naming exactly ONE local card with a username. A
+  // STRANGER'S shared story with a coinciding creatorName is never
+  // placed by local cards.
+  const localPlaced = await page.evaluate(async () => {
+    // stargirl's card is on this device (nickname 'Meera'), and knows
+    // its username. A legacy local record with no cardId names her.
+    const legacy = CreatorProjectStore.newId();
+    CreatorProjectCache.putLocal({ id: legacy, name: 'Made Long Ago',
+      creatorName: 'Meera', publishedAt: '2025-01-01T00:00:00Z',
+      data: { version: 1, pages: [{ id: 'p1' }] } });
+    // A STRANGER'S story from the shared feed, same creatorName, no
+    // username on its row — must stay unattributed.
+    const strangerId = 'proj_stranger_1';
+    const sync = CreatorProjectSync;
+    const orig = sync.listShared;
+    sync.listShared = () => Promise.resolve([{
+      id: strangerId, owner_id: 'someone-else', updated_at: '2026-01-01T00:00:00Z',
+      data: { id: strangerId, name: 'A Stranger Story', creatorName: 'Meera',
+        publishedAt: '2025-01-01T00:00:00Z', data: { version: 1, pages: [{ id: 'p1' }] } }
+    }]);
+    try {
+      await EtherFeed.load();
+      return {
+        legacy: EtherFeed.byUsername('stargirl').map((c) => c.title),
+        strangerSuggest: EtherFeed.suggestUsernames('sta'),
+      };
+    } finally { sync.listShared = orig; }
+  });
+  ck(localPlaced.legacy.indexOf('Made Long Ago') !== -1,
+     'D8g A LOCAL-ONLY LEGACY STORY IS PLACED BY THE CARDS THIS DEVICE HOLDS — creatorName naming one local card',
+     JSON.stringify(localPlaced.legacy));
+  ck(localPlaced.legacy.indexOf('A Stranger Story') === -1,
+     'D8h A STRANGER\'S STORY IS NEVER PLACED BY LOCAL CARDS — a coinciding nickname pins nothing on their work');
+
   // ---- ?creator= is a one-shot intent -----------------------------
   await page.goto(BASE + '/index.html?creator=moonmaker');
   await page.waitForFunction(() => typeof EtherFeed !== 'undefined', null, { timeout: 20000 });

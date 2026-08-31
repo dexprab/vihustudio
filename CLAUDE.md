@@ -6600,6 +6600,18 @@ it → wants to see more from that creator. That loop, and nothing else.
   exactly that one field is merged (entity and source alike). Proved
   by reverting. `supabase/diagnose_social_identity.sql` answers, per
   account and per shared story, which link in the chain is missing.
+- **A LOCAL-ONLY STORY IS PLACED BY THE CARDS THE DEVICE HOLDS**
+  (S1.2c, from a story "by vihupapa" visible in the Ether while
+  @vihupapa was unfindable): a record that never landed on the
+  platform has no stamped row to heal from, but its maker's own
+  Magic Card is right there. `MagicCard.refreshUsernames()` teaches
+  every local card its platform name in one owner-scoped query
+  (bounded — a hung platform costs four quiet seconds, never a
+  universe that will not open), and the feed places LOCAL and CLOUD
+  records by cardId, or by a creatorName naming exactly ONE local
+  card with a username. **Never a stranger's shared story** — a
+  coinciding nickname must not pin a local card's name on somebody
+  else's work — and two same-named local cards place nothing.
 - **The reading portal names the maker's public name too** — *"by the
   god · @thegod"* under the title while a story is open (reported by
   the product owner: the reader named the maker and not their @name).

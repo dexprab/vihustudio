@@ -10567,3 +10567,19 @@ one paste, and it names per account and per shared story which link
 in the chain is missing — backfill skip reason, missing evidence, or
 "stamped, so the problem is the device". social-identity 94 +
 ether-share 21 — green. Canon: Decision 53 (amended in place).
+
+## SOCIAL 1.2d — local-only stories are placed by the device's own cards (build 0721)
+
+*"i am seeing story by vihupapa in ether but not able to search him
+in creators."* A story living only locally — shared before cloud
+sync, or whose platform copy never landed — has no stamped row for
+build 0720's heal to merge from. But its maker's own Magic Card is on
+that very device. MagicCard.refreshUsernames() now teaches every
+local card its platform name in one owner-scoped query (bounded at
+four seconds so a hung platform never delays the universe), and the
+feed places local and cloud records by Decision 19's evidence:
+cardId, or a creatorName naming exactly ONE local card with a
+username. A stranger's shared story is never placed by local cards —
+a coinciding nickname must not pin the wrong name on their work —
+and two same-named local cards place nothing. social-identity 96 +
+ether-share 21 — green. Canon: Decision 53 (amended in place).

@@ -109,6 +109,35 @@ const EtherFeed = (function () {
     } catch (e) { return null; }
   }
 
+  // A LOCAL record placed by the cards THIS DEVICE holds (S1.2c). A
+  // story that lives only locally — shared before cloud sync, or
+  // whose platform copy never landed — has no stamped row for the
+  // heal below to merge from, but its maker's own Magic Card is
+  // right here. Decision 19's evidence standard, device-side: the
+  // record's cardId IS its maker; failing that, a creatorName
+  // matching exactly ONE local card with a username. Two same-named
+  // cards resolve nothing — the wrong child is worse than no name.
+  function _localUsernameFor(record) {
+    try {
+      if (typeof MagicCard === 'undefined' || !MagicCard.list) return null;
+      const cards = MagicCard.list() || [];
+      if (record.cardId) {
+        for (let i = 0; i < cards.length; i++) {
+          if (cards[i] && cards[i].id === record.cardId) {
+            return cards[i].username || null;
+          }
+        }
+        return null;
+      }
+      const name = String(record.creatorName || '');
+      if (!name) return null;
+      const matches = cards.filter(function (c) {
+        return c && c.nickname === name && c.username;
+      });
+      return matches.length === 1 ? matches[0].username : null;
+    } catch (e) { return null; }
+  }
+
   // A record → the Story Entity contract. This function IS the seam;
   // everything above and below it is plumbing.
   //
@@ -498,11 +527,32 @@ const EtherFeed = (function () {
     return out.slice(0, SUGGEST_MAX);
   }
 
+  // The device's cards learn their platform names before the feed is
+  // built, so _localUsernameFor has real names to place records with.
+  // BOUNDED (Decision 49): a hung platform costs at most four quiet
+  // seconds, never a universe that will not open — and after the
+  // first answer the call is a no-op for the rest of the visit.
+  function _cardNames() {
+    try {
+      if (typeof MagicCard === 'undefined' || !MagicCard.refreshUsernames) {
+        return Promise.resolve();
+      }
+      let bell = null;
+      const capped = new Promise(function (resolve) {
+        bell = setTimeout(resolve, 4000);
+      });
+      return Promise.race([
+        Promise.resolve(MagicCard.refreshUsernames()).catch(function () {}),
+        capped
+      ]).then(function () { clearTimeout(bell); });
+    } catch (e) { return Promise.resolve(); }
+  }
+
   function load(opts) {
     opts = opts || {};
     const creator = _creator();
 
-    return _hydrated().then(function () {
+    return _hydrated().then(_cardNames).then(function () {
       const seen = {};
       const out = [];
       // The entity each project id resolved to, so a LATER source can
@@ -542,10 +592,25 @@ const EtherFeed = (function () {
       var skip = {};
       (opts.exclude || []).forEach(function (id) { if (id) skip[id] = true; });
 
+      // Local-card evidence applies ONLY to this device's own records
+      // — never to a stranger's shared story, where a coinciding
+      // creatorName would pin the local card's name on somebody
+      // else's work.
+      function place(entity, record) {
+        if (!entity.creatorUsername) {
+          const healedName = _localUsernameFor(record);
+          if (healedName) {
+            entity.creatorUsername = healedName;
+            if (entity.source) entity.source.creatorUsername = healedName;
+          }
+        }
+        return entity;
+      }
+
       local.forEach(function (record) {
         seen[record.id] = true;
         if (skip[record.id]) return;
-        const entity = toStory(record, creator);
+        const entity = place(toStory(record, creator), record);
         kept[record.id] = entity;
         out.push(entity);
       });
@@ -580,7 +645,7 @@ const EtherFeed = (function () {
             if (seen[record.id]) { healUsername(record); return; }
             if (!opts.includeUnpublished && !record.publishedAt) return;
             seen[record.id] = true;
-            kept[record.id] = out[out.push(toStory(record, creator)) - 1];
+            kept[record.id] = out[out.push(place(toStory(record, creator), record)) - 1];
           });
 
           // ---------- everybody else's shared Stories ----------
