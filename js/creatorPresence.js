@@ -34,6 +34,19 @@ const CreatorPresence=(function(){
 
   let _overlay=null,_body=null,_title=null,_sub=null;
   let _meet=null;
+  // SOCIAL 2 — configured once by the page that owns the Studio door
+  // (js/vihuplanetHome.js): how a make-for journey actually leaves
+  // for the Studio. This panel never navigates by itself.
+  let _makeFor=null;
+  function configure(opts){
+    if(opts&&typeof opts.makeFor==='function') _makeFor=opts.makeFor;
+  }
+
+  function _myCard(){
+    try{
+      return (typeof MagicCard!=='undefined'&&MagicCard.getActive)?MagicCard.getActive():null;
+    }catch(e){ return null; }
+  }
 
   function _el(tag,cls,text){
     const e=document.createElement(tag);
@@ -120,9 +133,64 @@ const CreatorPresence=(function(){
       row.appendChild(_el('span','creator-presence-name',c.title));
       _body.appendChild(row);
     });
+    _renderRelationship(username);
     _body.appendChild(_button('Back','creator-presence-quiet',close));
     _overlay.hidden=false;
     return true;
+  }
+
+  // ---------- 🌌 Orbit · ✨ Circle · 🎨 make something -------------
+  // SOCIAL 2, and every rule is Decision 54's:
+  //  * Orbit is ONE tap and ONE-WAY — the other Creator is not told,
+  //    nothing asks them anything, no request exists.
+  //  * Circle is never a button: it appears only because both chose,
+  //    and it reads as a fact ("You're in each other's Circle"), not
+  //    an achievement.
+  //  * Leaving is as quiet as joining. No notification either way.
+  //  * A Traveller holding no card sees none of this — a
+  //    relationship needs somebody to belong to. Absent, not locked.
+  //  * And never a number anywhere.
+  function _renderRelationship(username){
+    const card=_myCard();
+    if(!card) return;
+    if(typeof CreatorOrbit==='undefined') return;
+    const me=card.username&&_normName(card.username)===_normName(username);
+    if(me) return; // your own shelf needs no relationship to yourself
+
+    const slot=_el('div','creator-presence-orbit');
+    _body.appendChild(slot);
+
+    function draw(){
+      while(slot.firstChild) slot.removeChild(slot.firstChild);
+      const inOrbit=CreatorOrbit.has(username);
+      const circle=CreatorOrbit.circleWith(username);
+      if(!inOrbit){
+        slot.appendChild(_button('🌌 Add to My Orbit','creator-presence-orbit-add',function(){
+          CreatorOrbit.add(username).then(function(){ draw(); });
+          draw(); // the choice lands instantly; mutuality refines it
+        }));
+        return;
+      }
+      slot.appendChild(_el('p','creator-presence-orbit-state',
+        circle?'✨ You’re in each other’s Circle':'In My Orbit ✓'));
+      if(_makeFor){
+        slot.appendChild(_button('🎨 Make something for them','creator-presence-makefor',function(){
+          close();
+          _makeFor(_normName(username));
+        }));
+      }
+      slot.appendChild(_button('Leave My Orbit','creator-presence-orbit-leave',function(){
+        CreatorOrbit.remove(username).then(function(){ draw(); });
+        draw();
+      }));
+    }
+    draw();
+  }
+
+  function _normName(name){
+    return (typeof CreatorHandle!=='undefined')
+      ? CreatorHandle.normalize(name)
+      : String(name||'').trim().replace(/^@+/,'').toLowerCase();
   }
 
   // ---------- 🔎 Find a Creator ----------
@@ -189,6 +257,29 @@ const CreatorPresence=(function(){
     input.addEventListener('keydown',function(ev){
       if(ev.key==='Enter'){ ev.preventDefault(); go.click(); }
     });
+
+    // 🌌 MY ORBIT — the Creators this child chose, one tap from their
+    // shelves. Their OWN list (never a directory of anybody else), so
+    // it can stand here without contradicting "an empty field offers
+    // no directory". Absent rather than empty; a ✨ chip is a Circle.
+    // No count is shown and none may be added (Decision 54).
+    try{
+      if(_myCard()&&typeof CreatorOrbit!=='undefined'){
+        const orbit=CreatorOrbit.list();
+        if(orbit.length){
+          _body.appendChild(_el('p','creator-presence-orbit-head','🌌 My Orbit'));
+          const chips=_el('div','creator-presence-suggest');
+          orbit.forEach(function(e){
+            chips.appendChild(_button((e.circle?'✨ ':'')+_handle(e.username),
+              'creator-presence-suggest-btn',function(){
+                open(e.username,{meet:_meet});
+              }));
+          });
+          _body.appendChild(chips);
+        }
+      }
+    }catch(e){}
+
     _overlay.hidden=false;
     input.focus();
   }
@@ -197,7 +288,7 @@ const CreatorPresence=(function(){
     if(_overlay) _overlay.hidden=true;
   }
 
-  const api={ open:open, find:find, close:close };
+  const api={ open:open, find:find, close:close, configure:configure };
   try{ window.CreatorPresence=api; }catch(e){}
   return api;
 })();

@@ -190,6 +190,10 @@ const EtherFeed = (function () {
       // reason. Null for canon (never attributed, Decision 13) and
       // for a story whose maker has not chosen one.
       creatorUsername: canon ? null : (record.creatorUsername || null),
+      // SOCIAL 2 — a creation made FOR somebody: "🏰 A Castle for
+      // Moonmaker's Dragon". A public dedication that travels on the
+      // record like creatorUsername; never a message.
+      forUsername: canon ? null : (record.forUsername || null),
       origin: canon ? 'canon' : 'creator',
       publishedAt: record.publishedAt || record.updatedAt || null,
       // How many pages it has. A count, not the pages — reading
@@ -225,6 +229,8 @@ const EtherFeed = (function () {
         // the feed's own cache (byUsername reads _lastLoaded, which
         // is this object before the runtime touches it).
         creatorUsername: canon ? null : (record.creatorUsername || null),
+        // SOCIAL 2 — the dedication, for the same runtime reason.
+        forUsername: canon ? null : (record.forUsername || null),
         // WHO LIVES IN THIS STORY (Sprint 1, Companion as World Host).
         //
         // Rides on `source` for exactly the reason `origin` does: the
@@ -843,6 +849,9 @@ const EtherFeed = (function () {
     othersBy: othersBy,
     byUsername: byUsername,
     suggestUsernames: suggestUsernames,
+    // The loaded public feed, read-only — CreatorOrbit derives its
+    // activity lines from it rather than fetching a second copy.
+    lastLoaded: function () { return _lastLoaded.slice(); },
     attach: attach,
     pagesOf: pagesOf,
     pagesPlainOf: pagesPlainOf,

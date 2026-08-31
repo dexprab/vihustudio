@@ -219,6 +219,7 @@
       cheer:    document.querySelector('[data-act="cheer"]'),
       share:    document.querySelector('[data-act="share"]'),
       handle:   document.querySelector('[data-preview-handle]'),
+      forLine:  document.querySelector('[data-preview-for]'),
       back:     document.querySelector('[data-act="back"]'),
       portal:   document.querySelector('[data-portal]'),
       page:     document.querySelector('[data-portal-page]'),
@@ -2068,6 +2069,16 @@
         el.handle.hidden = !handleName;
       }
 
+      // SOCIAL 2 — a creation made FOR somebody says so where it is
+      // met: "🏰 A Castle for Moonmaker's Dragon" reads 🎨 For
+      // @moonmaker. A dedication, never a message; absent rather
+      // than empty like everything else here.
+      if (el.forLine) {
+        var dedicated = (met.source && met.source.forUsername) || null;
+        el.forLine.textContent = dedicated ? ('🎨 For @' + dedicated) : '';
+        el.forLine.hidden = !dedicated;
+      }
+
       // The pages come first, because the count shown below is the
       // number actually readable — not a number from the record that
       // might disagree with what the portal can open. The Story Entity
@@ -2174,6 +2185,20 @@
       CreatorPresence.find({ meet: meetStory });
     });
 
+    // SOCIAL 2 — the shelf's 🎨 Make something for them leaves for
+    // the Studio through the ONE door (Decision 21), carrying a
+    // one-shot make-for note the store consumes on the first new
+    // story (intent crosses; state does not). And the card's orbit
+    // learns its platform copy once per visit — fire-and-forget, so
+    // a slow platform never delays anything a child is looking at.
+    if (typeof CreatorPresence !== 'undefined' && CreatorPresence.configure) {
+      CreatorPresence.configure({ makeFor: function (name) {
+        try { if (typeof CreatorOrbit !== 'undefined') CreatorOrbit.noteMakeFor(name); } catch (e) {}
+        goStudio(JourneyResolver.recognised());
+      } });
+    }
+    try { if (typeof CreatorOrbit !== 'undefined') CreatorOrbit.refresh(); } catch (e) {}
+
     el.cheer.addEventListener('click', function () {
       if (!met) return;
       var pid = projectIdOf(met);
@@ -2255,10 +2280,13 @@
         // @name). One line, absent rather than empty when no name
         // exists — same rule as the Preview's chip.
         var readerHandle = usernameOf(met);
-        el.portalCreator.textContent = maker
+        // SOCIAL 2 — the dedication travels into the reader too.
+        var readerFor = (met.source && met.source.forUsername)
+          ? ' · 🎨 for @' + met.source.forUsername : '';
+        el.portalCreator.textContent = (maker
           ? ('by ' + maker + (readerHandle ? ' · @' + readerHandle : ''))
-          : (readerHandle ? '@' + readerHandle : '');
-        el.portalCreator.hidden = !(maker || readerHandle);
+          : (readerHandle ? '@' + readerHandle : '')) + readerFor;
+        el.portalCreator.hidden = !(maker || readerHandle || readerFor);
       }
       el.portal.hidden = false;
 

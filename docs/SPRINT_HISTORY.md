@@ -10599,3 +10599,26 @@ moved away, so a repair on the platform never leaves a card face here
 claiming a name it no longer holds. social-identity 98 (the
 preference and the unlearning, both against the real migration and
 the real card store). Canon: Decision 53 (amended in place).
+
+## SOCIAL 2 — My Orbit & My Circle (build 0723)
+
+The first relationship between Creators, built so it can never become
+social pressure. Orbit is a one-way choice nobody is told about (one
+tap on the shelf, a quiet Leave, no request, no notification); Circle
+is never a button — it IS two orbit rows facing each other, derived
+at read time, ending silently when either side leaves. Nobody can
+ask "who orbits me": RLS with no policies, two owner-verified
+SECURITY DEFINER functions, and the mutual bit on my own list is the
+only fact that ever travels the other way — proved as real sessions.
+The relationship belongs to the Magic Card and is local-first. The
+first social act beyond Cheer is a CREATION: 🎨 Make something for
+them carries a one-shot note through the one Studio door, dedicates
+the first new story (forUsername, consumed — proved by reverting),
+and the story reads "🎨 For @stargirl" wherever it is met; the
+recipient hears "made something for you" once, derived, never
+logged. My Orbit stands in Find as the child's own chips. The suite
+scans the layer for pressure vocabulary and digits and fails on any.
+tools/social-orbit-test (32) + social-identity 98 + ether-share 21 —
+green. Canon: Decision 54. Deploy: run
+supabase/migrations_social_orbit.sql after the identity migration,
+then verify_social_orbit.sql.

@@ -418,6 +418,21 @@ const CreatorProjectStore=(function(){
   // The maker's public VihuPlanet name (SOCIAL 1), under the exact
   // rule _localCreatorName() states above: read only when stamping a
   // record this device is authoring — never the viewer's.
+  // SOCIAL 2 — the one-shot make-for note, consumed by the FIRST NEW
+  // record made after arriving with it (the intent-crosses-state-
+  // does-not shape, Decision 23). CreatorSocial owns writing it; this
+  // is the one consumer, and consuming here is what makes "one
+  // journey, one dedication" true by construction.
+  const FOR_NOTE='vihu.makeFor.note';
+  function _pendingForUsername(){
+    try{
+      const name=sessionStorage.getItem(FOR_NOTE);
+      if(!name) return null;
+      sessionStorage.removeItem(FOR_NOTE);
+      return String(name).toLowerCase();
+    }catch(e){ return null; }
+  }
+
   function _localCreatorUsername(){
     try{
       if(typeof MagicCard==='undefined') return null;
@@ -517,6 +532,14 @@ const CreatorProjectStore=(function(){
       // the story for the same reason creatorName does, carried
       // forward for the same reason too.
       creatorUsername:(meta&&meta.creatorUsername)||(existing&&existing.creatorUsername)||_localCreatorUsername()||undefined,
+      // SOCIAL 2 — a creation made FOR somebody ("🏰 A Castle for
+      // Moonmaker's Dragon"). Stamped ONCE, when the record is first
+      // made under a make-for intent (js/creatorSocial.js owns the
+      // one-shot note); carried forward exactly as creatorName is. A
+      // public dedication on the story — never a message, and never
+      // re-derived, so opening somebody's gift never re-addresses it.
+      forUsername:(meta&&meta.forUsername)||(existing&&existing.forUsername)
+        ||(!existing&&_pendingForUsername())||undefined,
       // WHICH CREATOR'S WORK THIS IS — see list() above.
       //
       // Carried forward like publishedAt and creatorName, and for the

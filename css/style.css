@@ -13953,3 +13953,38 @@ body.studio-rite-running .companion-chat-open{ display:none !important; }
   font-size:13.5px;
   cursor:pointer;
 }
+
+/* ================================================================
+   SOCIAL 2 — the make-for band on Studio Home. The child pressed
+   🎨 Make something for them in the Ether; this says where the next
+   new story is going. "not now" clears the intent, nothing else.
+   ================================================================ */
+.creation-flow-makefor{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  margin:6px 0 2px;
+  padding:9px 14px;
+  border-radius:12px;
+  border:1px solid #eadfc4;
+  background:linear-gradient(180deg,#fffdf6,#faf3e2);
+}
+.creation-flow-makefor-line{
+  font-family:Georgia,serif;
+  font-size:14px;
+  color:#8a6d3b;
+}
+.creation-flow-makefor-quiet{
+  flex:0 0 auto;
+  width:auto !important; /* the blanket button rule (see its comment) */
+  margin:0 !important;
+  padding:3px 10px;
+  border:1px solid #e0d6bd;
+  border-radius:999px;
+  background:transparent;
+  color:#6f6a60;
+  font-family:Georgia,serif;
+  font-size:12px;
+  cursor:pointer;
+}

@@ -6656,6 +6656,96 @@ it → wants to see more from that creator. That loop, and nothing else.
   `js/creatorSocial.js` · `js/creatorPresence.js` ·
   `tools/social-identity-test/run-social-identity-tests.js`
 
+### 54. My Orbit Is a Choice; My Circle Is Two Choices Facing Each Other
+
+Locked in Sprint SOCIAL 2 (My Orbit & My Circle), from the product
+owner's brief. It is the first relationship between Creators, and the
+whole design is that it can never become social pressure.
+
+- **🌌 ORBIT IS ONE-WAY, AND THE OTHER CREATOR IS NOT TOLD.** "Add to
+  My Orbit" on a Creator's shelf is a choice about MY OWN attention —
+  no friend request, no acceptance, no notification, no obligation.
+  One tap and *In My Orbit ✓* quietly exists; the shelf offers a quiet
+  *Leave My Orbit* beneath it. The emotional register is curiosity —
+  "I like what you make" — never connection claimed unilaterally.
+- **✨ CIRCLE IS NOT A BUTTON AND NOT A TABLE.** A Circle IS two orbit
+  rows facing each other, DERIVED at read time — the Cheer discipline
+  (the count IS the rows) applied to a relationship. Both sides then
+  read *✨ You're in each other's Circle*; either side leaving their
+  half ends it, silently, and the other simply orbits on. There is no
+  circle state to drift out of step with the choices that define it.
+- **NOBODY CAN ASK "WHO ORBITS ME."** `creator_orbits` has RLS on and
+  NO policies; exactly two SECURITY DEFINER functions touch it
+  (`creator_orbit_set` / `creator_orbit_list`, both owner-verified,
+  the sky-protection rule), and the ONLY fact ever revealed about the
+  other direction is the mutual bit on entries in MY OWN list. No
+  count, no list of admirers, no way to feel watched — a child learns
+  somebody chose them only in the moment it becomes mutual. Proved as
+  real sessions: a session that IS orbited sees zero rows, and the
+  suite counts the functions that can touch the table.
+- **THE RELATIONSHIP BELONGS TO THE MAGIC CARD** (Decision 11), so an
+  orbit follows its Creator across devices like their name and their
+  Companion. Local-first (the Cheer shape): a tap lands instantly and
+  survives a reload with no platform at all; `creator_orbit_list`
+  replaces the local guess once per visit, and mutuality is only ever
+  the platform's to say. A cardless Traveller sees no relationship
+  controls anywhere — absent, not locked.
+- **🎨 THE FIRST SOCIAL ACT BEYOND CHEER IS A CREATION, NEVER A
+  MESSAGE.** *Make something for them* on the shelf leaves through the
+  ONE Studio door (Decision 21) carrying a one-shot note (intent
+  crosses; state does not — Decision 23's own shape); Studio Home says
+  *🎨 Making something for @moonmaker ✨* with a quiet "not now"; the
+  FIRST new story is stamped `forUsername` and the note is CONSUMED —
+  one journey, one dedication, and the second story is the child's
+  alone. The dedication travels on the record like `creatorName`
+  (carried forward on every save, never re-derived), rides the feed
+  entity's `source`, and reads *🎨 For @moonmaker* on the Preview and
+  in the reader. "Send message to @moonmaker" does not exist and must
+  never be added.
+- **ACTIVITY IS THINGS HAPPENING BETWEEN CREATORS, DERIVED, NEVER A
+  FEED AND NEVER LOGGED.** Studio Home's social band gains at most
+  three quiet lines from `CreatorOrbit.activityLines()`: *🌌
+  @stargirl made something new* (an orbited Creator's newest public
+  creation is newer than this card last saw — ✨ when they are a
+  Circle), and *🎨 @sam made something for you* (a public creation
+  dedicated to this card's own name, whoever made it). No event
+  store, no notification system, no number, quiet once seen — the
+  CreatorSocial pattern exactly. In the Ether the band reads the
+  already-loaded feed; on Studio Home it asks the shared feed
+  directly, BOUNDED (Decision 49).
+- **🌌 MY ORBIT STANDS IN FIND** — the child's OWN list as tappable
+  chips (✨ prefix for a Circle), which contradicts nothing: "an empty
+  field offers no directory" was about other people, and this is
+  their own choices, one tap from each shelf.
+- **NO SOCIAL PRESSURE MECHANICS, ENFORCED BY THE SUITE.** No
+  follower/following/friend counts, popularity scores, streaks,
+  "X people are watching", public circle sizes or rankings — the
+  layer's code and surfaces are scanned for the vocabulary and for
+  digits, and fail on any. The emphasis stays "I have people whose
+  creations I enjoy," never "I need more friends."
+- **CIRCLE EXPOSES NOTHING NEW.** Even mutual, everything private
+  stays private — Studio, drafts, memories, private stories, Stars,
+  email, real identity. Circle sees only what is already public, by
+  construction: every surface here reads the same shared feed
+  Decision 15 defined, and nothing else.
+- **Deferred, deliberately, and named so nobody invents them
+  half-way:** "added something to their Story" (needs per-story
+  change tracking), *🤝 a Story to continue together* (creating
+  together is its own decision), and any richer Circle surface. The
+  loop this closes: Ether → discover → Cheer → Orbit → they discover
+  me → Circle → make for each other.
+- Proved end to end: the pg section runs both migrations in
+  deployment order and walks mutuality as real sessions; the browser
+  section walks the real Ether journey (shelf → orbit → circle →
+  make-for → the dedicated story met in the universe → the
+  recipient's line, once). The circle derivation and the note
+  consumption are each proved by reverting.
+- `supabase/migrations_social_orbit.sql` ·
+  `supabase/verify_social_orbit.sql` · `js/creatorOrbit.js` ·
+  `js/creatorPresence.js` · `js/creatorProjectStore.js` ·
+  `js/etherFeed.js` · `js/vihuplanetHome.js` · `js/creationFlow.js` ·
+  `tools/social-orbit-test/run-social-orbit-tests.js`
+
 ## Roadmap
 
 1. Theme Designer Polish

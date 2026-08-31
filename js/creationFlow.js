@@ -860,6 +860,26 @@ const CreationFlow=(function(){
     const slot=_el('div','creation-flow-social');
     content.appendChild(slot);
 
+    // SOCIAL 2 — a make-for journey says where it is going. The child
+    // pressed 🎨 Make something for them in the Ether; the first new
+    // story they start here is dedicated. "Not now" clears the intent
+    // and nothing else — no message was ever going to be sent.
+    try{
+      if(typeof CreatorOrbit!=='undefined'&&CreatorOrbit.pendingFor&&CreatorOrbit.pendingFor()){
+        const band=_el('div','creation-flow-makefor');
+        band.appendChild(_el('span','creation-flow-makefor-line',
+          '🎨 Making something for @'+CreatorOrbit.pendingFor()+' ✨'));
+        const drop=_el('button','creation-flow-makefor-quiet','not now');
+        drop.type='button';
+        drop.addEventListener('click',function(){
+          CreatorOrbit.clearMakeFor();
+          band.remove();
+        });
+        band.appendChild(drop);
+        slot.appendChild(band);
+      }
+    }catch(e){}
+
     try{
       CreatorSocial.activityLines().then(function(res){
         if(!res||!res.lines||!res.lines.length){ return; }
@@ -870,6 +890,21 @@ const CreationFlow=(function(){
         // NEW starlight.
         res.markSeen();
       }).catch(function(){});
+    }catch(e){}
+
+    // SOCIAL 2 — things happening BETWEEN Creators (never content
+    // scrolling past): new work from the child's own Orbit, and
+    // creations made FOR them. Derived, no numbers, quiet once seen.
+    try{
+      if(typeof CreatorOrbit!=='undefined'&&CreatorOrbit.activityLines){
+        CreatorOrbit.activityLines().then(function(res){
+          if(!res||!res.lines||!res.lines.length){ return; }
+          res.lines.slice(0,3).forEach(function(line){
+            slot.appendChild(_el('div','creation-flow-activity',line));
+          });
+          res.markSeen();
+        }).catch(function(){});
+      }
     }catch(e){}
 
     // The platform may already hold a name this device has not heard

@@ -2396,3 +2396,76 @@ html, body {
   cursor: pointer;
 }
 .creator-presence-suggest-btn:hover { background: rgba(232, 196, 118, 0.2); }
+
+/* =====================================================================
+   SOCIAL 2 — My Orbit & My Circle, on the Creator's shelf.
+   Orbit is a quiet one-tap choice; Circle is a fact that appears only
+   because both chose; leaving is as quiet as joining. No counts
+   anywhere, ever.
+   ===================================================================== */
+.creator-presence-orbit {
+  margin: 12px 0 2px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(241, 234, 208, 0.14);
+}
+.creator-presence-orbit-add {
+  display: block;
+  width: 100%;
+  padding: 0.6rem 1rem;
+  border-radius: 12px;
+  border: 1px solid rgba(232, 196, 118, 0.45);
+  background: rgba(232, 196, 118, 0.1);
+  color: #e8c476;
+  font-family: 'Kalam', system-ui, sans-serif;
+  font-size: 0.98rem;
+  cursor: pointer;
+}
+.creator-presence-orbit-add:hover { background: rgba(232, 196, 118, 0.2); }
+.creator-presence-orbit-state {
+  margin: 2px 0 8px;
+  font-family: 'Kalam', system-ui, sans-serif;
+  font-size: 0.95rem;
+  color: #e8c476;
+}
+.creator-presence-makefor {
+  display: block;
+  width: 100%;
+  margin: 0 0 8px;
+  padding: 0.55rem 1rem;
+  border-radius: 12px;
+  border: 1px solid rgba(241, 234, 208, 0.26);
+  background: rgba(241, 234, 208, 0.07);
+  color: var(--vp-paper, #F1EAD0);
+  font-family: 'Kalam', system-ui, sans-serif;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+.creator-presence-makefor:hover { background: rgba(241, 234, 208, 0.14); }
+.creator-presence-orbit-leave {
+  margin: 0;
+  padding: 0.3rem 0.8rem;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: rgba(241, 234, 208, 0.5);
+  font-family: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.creator-presence-orbit-leave:hover { color: rgba(241, 234, 208, 0.8); }
+.creator-presence-orbit-head {
+  margin: 14px 0 6px;
+  font-family: 'Kalam', system-ui, sans-serif;
+  font-size: 0.92rem;
+  color: rgba(241, 234, 208, 0.75);
+}
+
+/* The dedication on the Preview — 🎨 For @moonmaker. */
+.ether-preview-for[hidden] { display: none !important; }
+.ether-preview-for {
+  margin: 0 0 0.4rem;
+  font-style: italic;
+  font-size: 0.88rem;
+  color: #e8c476;
+  opacity: 0.9;
+}
