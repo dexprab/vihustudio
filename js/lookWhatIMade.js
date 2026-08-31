@@ -51,6 +51,7 @@ const LookWhatIMade=(function(){
   let _playback=null;      // the CreationPlayback controller, if playing
   let _foldCardUrl=null;   // the foldable's minted door, for recomposes
   let _foldPlain=false;    // ☀️ plain paper, for a printer with no colour
+  let _cardPlain=false;    // the Story Card's own paper choice
 
   // ---------- context ----------
   function _activeRecord(){
@@ -508,9 +509,11 @@ const LookWhatIMade=(function(){
   }
 
   // Compose (or recompose, when the paper choice flips) and show the
-  // open sheet. The preview is always the exact sheet that prints —
-  // preview-before-print holds through the toggle by construction.
-  function _composeFold(){
+  // view the child was standing in — the open sheet, or the folded
+  // book when the choice was made after folding. The preview is
+  // always the exact sheet that prints — preview-before-print holds
+  // through the toggle by construction.
+  function _composeFold(returnTo){
     const src=_foldPlain?_payloadPlain():_payload();
     src.then(function(payload){
       if(!isOpen()) return;
@@ -519,11 +522,27 @@ const LookWhatIMade=(function(){
         _body.appendChild(_note('I couldn’t get it ready just now. Let’s try again in a moment.'));
         return;
       }
-      FoldableComposer.compose(payload,{cardUrl:_foldCardUrl}).then(function(made){
+      FoldableComposer.compose(payload,{cardUrl:_foldCardUrl,plain:_foldPlain}).then(function(made){
         if(!isOpen()) return;
-        _foldableOpenSheet(made);
+        if(returnTo==='folded') _foldableFolded(made);
+        else _foldableOpenSheet(made);
       });
     });
+  }
+
+  // The ☀️ paper choice, offered wherever a print button is — the
+  // open sheet AND the folded book (asked for: "add kind printing on
+  // the screen post fold it button").
+  function _paperToggleBtn(returnTo){
+    return _button(
+      _foldPlain?'🌈 Bring the colours back':'☀️ Plain paper — kind to the printer',
+      'lwim-btn-quiet lwim-paper-toggle',
+      function(){
+        _foldPlain=!_foldPlain;
+        _foldableHeader();
+        _body.appendChild(_note('✨ Getting it ready…'));
+        _composeFold(returnTo);
+      });
   }
 
   function _foldableHeader(){
@@ -534,7 +553,9 @@ const LookWhatIMade=(function(){
 
   function _printFoldableBtn(made,cls){
     return _button('Print My Foldable 📄',cls,function(){
-      _print([made.sheet],'foldable');
+      // The sheet AND its how-to-fold page — the paper has to teach
+      // the fold to whoever ends up folding it (1.1.3).
+      _print(made.guide?[made.sheet,made.guide]:[made.sheet],'foldable');
     });
   }
 
@@ -559,60 +580,19 @@ const LookWhatIMade=(function(){
     _body.appendChild(_printFoldableBtn(made,'lwim-btn-quiet'));
     // The paper choice, previewed like everything else here: white
     // pages for a printer with no colour in it.
-    _body.appendChild(_button(
-      _foldPlain?'🌈 Bring the colours back':'☀️ Plain paper — kind to the printer',
-      'lwim-btn-quiet lwim-paper-toggle',
-      function(){
-        _foldPlain=!_foldPlain;
-        _foldableHeader();
-        _body.appendChild(_note('✨ Getting it ready…'));
-        _composeFold();
-      }));
+    _body.appendChild(_paperToggleBtn('open'));
   }
 
   // How the paper becomes the book — small pictures, few words,
   // asked for from real use ("kid might want to see how to fold").
+  // The drawings are the COMPOSER'S own (FoldableComposer.FOLD_STEPS)
+  // — the same strings the printed guide page rasters, so the screen
+  // and the paper can never teach two different folds.
   function _howToFold(made){
     const wrap=_el('div','lwim-howfold');
     wrap.appendChild(_el('h4','lwim-howfold-title','How to fold it'));
     const row=_el('div','lwim-howfold-row');
-    const S='stroke="#8d867b" stroke-width="2" fill="none"';
-    const D='stroke="#c9c2b4" stroke-width="1.5" stroke-dasharray="4 3" fill="none"';
-    const steps=[];
-    if(made.card){
-      steps.push({
-        svg:'<rect x="8" y="14" width="74" height="38" rx="2" '+S+'/>'+
-            '<line x1="64" y1="14" x2="64" y2="52" stroke="#8d867b" stroke-width="2.5"/>'+
-            '<text x="64" y="11" font-size="9" text-anchor="middle">✂</text>',
-        words:'Cut your Story Card off the edge.'
-      });
-    }
-    steps.push({
-      svg:'<rect x="8" y="14" width="74" height="38" rx="2" '+S+'/>'+
-          '<line x1="27" y1="33" x2="63" y2="33" stroke="#8d867b" stroke-width="2.5"/>'+
-          '<text x="45" y="29" font-size="9" text-anchor="middle">✂</text>',
-      words:'Cut the little line in the middle.'
-    });
-    steps.push({
-      svg:'<rect x="8" y="14" width="74" height="38" rx="2" '+S+'/>'+
-          '<line x1="8" y1="33" x2="82" y2="33" '+D+'/>'+
-          '<path d="M45 8 C 60 2, 72 8, 70 20" '+S+' marker-end="none"/>'+
-          '<path d="M70 20 l -4 -6 m 4 6 l 6 -3" '+S+'/>',
-      words:'Fold it in half, the long way.'
-    });
-    steps.push({
-      svg:'<rect x="10" y="24" width="70" height="18" rx="2" '+S+'/>'+
-          '<path d="M45 26 l -6 14 l 12 0 z" '+D+'/>'+
-          '<path d="M4 33 l 8 0 m -3 -3 l 3 3 l -3 3" '+S+'/>'+
-          '<path d="M86 33 l -8 0 m 3 -3 l -3 3 l 3 3" '+S+'/>',
-      words:'Push the ends in — the middle opens.'
-    });
-    steps.push({
-      svg:'<rect x="28" y="12" width="34" height="42" rx="3" '+S+'/>'+
-          '<line x1="31" y1="14" x2="31" y2="52" stroke="#c9c2b4" stroke-width="1.5"/>'+
-          '<text x="45" y="38" font-size="12" text-anchor="middle">⭐</text>',
-      words:'Close it into a little book — cover in front.'
-    });
+    const steps=FoldableComposer.FOLD_STEPS(!!made.card);
     steps.forEach(function(step){
       const cell=_el('div','lwim-howfold-step');
       const pic=_el('div','lwim-howfold-pic');
@@ -688,6 +668,9 @@ const LookWhatIMade=(function(){
 
     _body.appendChild(_howToFold(made));
     _body.appendChild(_printFoldableBtn(made,'lwim-btn-warm'));
+    // The paper choice lives beside BOTH print buttons — a child who
+    // folded first should not have to walk back to choose the paper.
+    _body.appendChild(_paperToggleBtn('folded'));
   }
 
   // ---------- story card ----------
@@ -713,36 +696,62 @@ const LookWhatIMade=(function(){
           note.textContent='I couldn’t make the card’s magic door right now. Let’s try again later.';
           return;
         }
-        StoryCardComposer.compose(payload,res.url).then(function(made){
-          if(!isOpen()) return;
-          if(!made||!made.ok){
-            note.textContent='I couldn’t make the card’s magic door right now. Let’s try again later.';
-            return;
-          }
-          note.textContent='';
-          const pair=_el('div','lwim-card-pair');
-          const front=_el('img','lwim-card-img'); front.src=made.front; front.alt='The front of your card';
-          const back=_el('img','lwim-card-img');  back.src=made.back;   back.alt='The back of your card';
-          pair.appendChild(front); pair.appendChild(back);
-          _body.appendChild(pair);
-          _body.appendChild(_el('p','lwim-line','Give this to someone!'));
-          // What the card DOES, shown as three little beats — magic,
-          // never mechanism (Sprint 1.1 §5).
-          const demo=_el('div','lwim-demo');
-          [['🃏','Give it'],['📱','They point a phone at it'],['✨','Your creation opens']]
-            .forEach(function(beat,i){
-              if(i) demo.appendChild(_el('span','lwim-demo-arrow','→'));
-              const step=_el('span','lwim-demo-step');
-              step.appendChild(_el('span','lwim-demo-glyph',beat[0]));
-              step.appendChild(_el('span','lwim-demo-word',beat[1]));
-              demo.appendChild(step);
-            });
-          _body.appendChild(demo);
-          _body.appendChild(_note('It is on your foldable sheet as well, ready to cut off.'));
-          _body.appendChild(_button('Print My Card 🃏','lwim-btn-warm',function(){
-            _print([made.front,made.back],'card');
+        _renderCardView(res.url);
+      });
+    });
+  }
+
+  // Rendered (and re-rendered when the ☀️ paper choice flips) with
+  // the door already minted. The plain card draws from the plain
+  // payload too, so its front carries the white-paper page.
+  function _renderCardView(url){
+    _clearBody();
+    _body.appendChild(_backRow());
+    _body.appendChild(_el('h3','lwim-view-title','🃏 Make a Story Card'));
+    const note=_note('✨ Getting it ready…');
+    _body.appendChild(note);
+
+    const src=_cardPlain?_payloadPlain():_payload();
+    src.then(function(payload){
+      if(!isOpen()||!payload) return;
+      StoryCardComposer.compose(payload,url,{plain:_cardPlain}).then(function(made){
+        if(!isOpen()) return;
+        if(!made||!made.ok){
+          note.textContent='I couldn’t make the card’s magic door right now. Let’s try again later.';
+          return;
+        }
+        note.textContent='';
+        const pair=_el('div','lwim-card-pair');
+        const front=_el('img','lwim-card-img'); front.src=made.front; front.alt='The front of your card';
+        const back=_el('img','lwim-card-img');  back.src=made.back;   back.alt='The back of your card';
+        pair.appendChild(front); pair.appendChild(back);
+        _body.appendChild(pair);
+        _body.appendChild(_el('p','lwim-line','Give this to someone!'));
+        // What the card DOES, shown as three little beats — magic,
+        // never mechanism (Sprint 1.1 §5).
+        const demo=_el('div','lwim-demo');
+        [['🃏','Give it'],['📱','They point a phone at it'],['✨','Your creation opens']]
+          .forEach(function(beat,i){
+            if(i) demo.appendChild(_el('span','lwim-demo-arrow','→'));
+            const step=_el('span','lwim-demo-step');
+            step.appendChild(_el('span','lwim-demo-glyph',beat[0]));
+            step.appendChild(_el('span','lwim-demo-word',beat[1]));
+            demo.appendChild(step);
+          });
+        _body.appendChild(demo);
+        _body.appendChild(_note('It is on your foldable sheet as well, ready to cut off.'));
+        _body.appendChild(_button('Print My Card 🃏','lwim-btn-warm',function(){
+          _print([made.front,made.back],'card');
+        }));
+        // The same ☀️ paper choice the foldable offers, previewed
+        // the same way: the card just shown is the card that prints.
+        _body.appendChild(_button(
+          _cardPlain?'🌈 Bring the colours back':'☀️ Plain paper — kind to the printer',
+          'lwim-btn-quiet lwim-paper-toggle',
+          function(){
+            _cardPlain=!_cardPlain;
+            _renderCardView(url);
           }));
-        });
       });
     });
   }
@@ -756,6 +765,7 @@ const LookWhatIMade=(function(){
     _plainPayloadPromise=null;
     _foldCardUrl=null;
     _foldPlain=false;
+    _cardPlain=false;
     _build();
     _showHome();
     _overlay.classList.remove('hidden');
@@ -772,6 +782,7 @@ const LookWhatIMade=(function(){
     _plainPayloadPromise=null;
     _foldCardUrl=null;
     _foldPlain=false;
+    _cardPlain=false;
     _ctx=null;
   }
 

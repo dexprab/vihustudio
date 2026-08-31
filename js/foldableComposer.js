@@ -199,14 +199,125 @@ const FoldableComposer=(function(){
     if(line) ctx.fillText(line,x,y);
   }
 
+  // ---------- how to fold it ----------
+  // ONE set of drawings for both surfaces: the hub's on-screen guide
+  // renders these as inline SVG, and the printed guide page rasters
+  // the SAME strings — so the screen and the paper can never teach
+  // two different folds. Asked for from real use: the printed sheet
+  // travels without the screen, and whoever folds it (often not the
+  // child who pressed Print) needs the how on paper too.
+  function FOLD_STEPS(cardPresent){
+    const S='stroke="#8d867b" stroke-width="2" fill="none"';
+    const D='stroke="#c9c2b4" stroke-width="1.5" stroke-dasharray="4 3" fill="none"';
+    const steps=[];
+    if(cardPresent){
+      steps.push({
+        svg:'<rect x="8" y="14" width="74" height="38" rx="2" '+S+'/>'+
+            '<line x1="64" y1="14" x2="64" y2="52" stroke="#8d867b" stroke-width="2.5"/>'+
+            '<text x="64" y="11" font-size="9" text-anchor="middle">✂</text>',
+        words:'Cut your Story Card off the edge.'
+      });
+    }
+    steps.push({
+      svg:'<rect x="8" y="14" width="74" height="38" rx="2" '+S+'/>'+
+          '<line x1="27" y1="33" x2="63" y2="33" stroke="#8d867b" stroke-width="2.5"/>'+
+          '<text x="45" y="29" font-size="9" text-anchor="middle">✂</text>',
+      words:'Cut the little line in the middle.'
+    });
+    steps.push({
+      svg:'<rect x="8" y="14" width="74" height="38" rx="2" '+S+'/>'+
+          '<line x1="8" y1="33" x2="82" y2="33" '+D+'/>'+
+          '<path d="M45 8 C 60 2, 72 8, 70 20" '+S+'/>'+
+          '<path d="M70 20 l -4 -6 m 4 6 l 6 -3" '+S+'/>',
+      words:'Fold it in half, the long way.'
+    });
+    steps.push({
+      svg:'<rect x="10" y="24" width="70" height="18" rx="2" '+S+'/>'+
+          '<path d="M45 26 l -6 14 l 12 0 z" '+D+'/>'+
+          '<path d="M4 33 l 8 0 m -3 -3 l 3 3 l -3 3" '+S+'/>'+
+          '<path d="M86 33 l -8 0 m 3 -3 l -3 3 l 3 3" '+S+'/>',
+      words:'Push the ends in — the middle opens.'
+    });
+    steps.push({
+      svg:'<rect x="28" y="12" width="34" height="42" rx="3" '+S+'/>'+
+          '<line x1="31" y1="14" x2="31" y2="52" stroke="#c9c2b4" stroke-width="1.5"/>'+
+          '<text x="45" y="38" font-size="12" text-anchor="middle">⭐</text>',
+      words:'Close it into a little book — cover in front.'
+    });
+    return steps;
+  }
+
+  function _stepImage(svg){
+    return new Promise(function(resolve){
+      const img=new Image();
+      img.onload=function(){ resolve(img); };
+      img.onerror=function(){ resolve(null); };
+      img.src='data:image/svg+xml;utf8,'+encodeURIComponent(
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 90 64" width="90" height="64">'+svg+'</svg>');
+    });
+  }
+
+  // The companion page that prints WITH the sheet: the goal (this
+  // flat sheet becomes this little book), then the steps, large.
+  function _composeGuide(cardPresent){
+    const steps=FOLD_STEPS(cardPresent);
+    return Promise.all(steps.map(function(s){ return _stepImage(s.svg); })).then(function(imgs){
+      const c=_blank(SHEET_W,SHEET_H);
+      const ctx=c.getContext('2d');
+      ctx.fillStyle='#ffffff'; ctx.fillRect(0,0,SHEET_W,SHEET_H);
+
+      ctx.fillStyle=INK;
+      ctx.textAlign='center';
+      ctx.font='700 120px Georgia, serif';
+      ctx.fillText('How to fold your little book',SHEET_W/2,240);
+
+      // The goal, before any step: sheet → book.
+      const gy=430;
+      ctx.strokeStyle='#8d867b'; ctx.lineWidth=8;
+      ctx.strokeRect(SHEET_W/2-560,gy,420,240);
+      ctx.beginPath();
+      ctx.moveTo(SHEET_W/2-60,gy+120); ctx.lineTo(SHEET_W/2+90,gy+120);
+      ctx.moveTo(SHEET_W/2+90,gy+120); ctx.lineTo(SHEET_W/2+50,gy+90);
+      ctx.moveTo(SHEET_W/2+90,gy+120); ctx.lineTo(SHEET_W/2+50,gy+150);
+      ctx.stroke();
+      ctx.strokeRect(SHEET_W/2+220,gy-20,190,280);
+      ctx.font='90px serif';
+      ctx.fillText('⭐',SHEET_W/2+315,gy+140);
+
+      // The steps, numbered, in a row.
+      const n=steps.length;
+      const cellW=Math.min(620,(SHEET_W-200)/n);
+      const rowX=(SHEET_W-cellW*n)/2;
+      const rowY=1050;
+      steps.forEach(function(step,i){
+        const x=rowX+i*cellW;
+        if(imgs[i]) ctx.drawImage(imgs[i],x+40,rowY,cellW-80,(cellW-80)*64/90);
+        ctx.fillStyle=INK;
+        ctx.font='700 72px Georgia, serif';
+        ctx.textAlign='center';
+        ctx.fillText(String(i+1)+'.',x+cellW/2,rowY-40);
+        ctx.font='52px Georgia, serif';
+        ctx.fillStyle=SOFT;
+        _wrapText(ctx,step.words,x+cellW/2,rowY+(cellW-80)*64/90+110,cellW-60,62);
+      });
+
+      ctx.fillStyle=SOFT;
+      ctx.textAlign='center';
+      ctx.font='italic 56px Georgia, serif';
+      ctx.fillText('Take your time — the paper knows the way.',SHEET_W/2,SHEET_H-260);
+
+      return c.toDataURL('image/jpeg',0.9);
+    });
+  }
+
   // ---------- the card strip ----------
   // Drawn from StoryCardComposer's OWN cells — one drawing of the
   // card, shared by the standalone print and this strip, so the
   // card in the foldable can never drift from the card on its own.
-  function _cardCells(share,cardUrl){
+  function _cardCells(share,cardUrl,plain){
     if(!cardUrl) return Promise.resolve(null);
     if(typeof StoryCardComposer==='undefined'||!StoryCardComposer.cells) return Promise.resolve(null);
-    return StoryCardComposer.cells(share,cardUrl).then(function(c){
+    return StoryCardComposer.cells(share,cardUrl,{plain:!!plain}).then(function(c){
       return (c&&c.ok)?c:null;
     }).catch(function(){ return null; });
   }
@@ -244,13 +355,15 @@ const FoldableComposer=(function(){
   // opts.cardUrl — the creation's own share URL. When present (and
   // the card can actually be drawn), the sheet carries the tear-off
   // Story Card strip; when not, the zine takes the whole sheet.
+  // opts.plain  — the card strip follows the paper choice (the
+  // PAGES are already plain via the payload handed in).
   function compose(share,opts){
     const o=opts||{};
     const book=bookPages(share||{});
     const coverImage=(share&&share.pages&&share.pages[0])?share.pages[0].image:null;
 
     const sources=[coverImage].concat(book.inner.map(function(p){ return p.image; }));
-    return Promise.all([Promise.all(sources.map(_loadImage)),_cardCells(share,o.cardUrl)])
+    return Promise.all([Promise.all(sources.map(_loadImage)),_cardCells(share,o.cardUrl,o.plain)])
       .then(function(got){
       const imgs=got[0];
       const cardCells=got[1];
@@ -312,28 +425,57 @@ const FoldableComposer=(function(){
       ctx.textAlign='center';
       ctx.fillText('✂',SLIT_COLS[0]*cellW+40,cellH-16);
 
-      let cardRects=null;
-      if(cardCells) cardRects=_drawCardStrip(ctx,zineW,cardCells);
+      // THE PAPER SPEAKS FOR ITSELF (1.1.3, from real use: "do u
+      // think these instructions are clear enough?" — they were
+      // not). The screen's guide does not travel with the sheet,
+      // and whoever folds it is often not the child who pressed
+      // Print — so the cuts and folds are NAMED, in the guides' own
+      // quiet gray. Adult-facing paper, like the letter; the
+      // no-explaining rule is about Lumo and a child's screens.
+      ctx.fillStyle='#a09a8e';
+      ctx.font='34px Georgia, serif';
+      ctx.textAlign='right';
+      ctx.fillText('cut this little line',(SLIT_COLS[1]+1)*cellW-24,cellH-18);
+      ctx.textAlign='center';
+      for(let c=1;c<COLS;c++){ ctx.fillText('fold',c*cellW,42); }
+      ctx.fillText('fold',SLIT_COLS[0]*cellW/2,cellH-18);
 
-      return {
-        sheet: sheet.toDataURL('image/jpeg',0.92),
-        w: SHEET_W,
-        h: SHEET_H,
-        pageCount: book.inner.length,
-        note: book.note,
-        panels: uprightPanels,
-        card: !!cardCells,
-        cardCells: cardRects,
-        cardFront: cardCells?cardCells.front.toDataURL('image/png'):null,
-        cardBack: cardCells?cardCells.back.toDataURL('image/png'):null,
-        zineW: zineW
-      };
+      let cardRects=null;
+      if(cardCells){
+        cardRects=_drawCardStrip(ctx,zineW,cardCells);
+        ctx.fillStyle='#a09a8e';
+        ctx.font='34px Georgia, serif';
+        ctx.textAlign='center';
+        ctx.save();
+        ctx.translate(zineW-14,SHEET_H/2);
+        ctx.rotate(-Math.PI/2);
+        ctx.fillText('cut the Story Card off this edge',0,0);
+        ctx.restore();
+      }
+
+      return _composeGuide(!!cardCells).then(function(guide){
+        return {
+          sheet: sheet.toDataURL('image/jpeg',0.92),
+          guide: guide,
+          w: SHEET_W,
+          h: SHEET_H,
+          pageCount: book.inner.length,
+          note: book.note,
+          panels: uprightPanels,
+          card: !!cardCells,
+          cardCells: cardRects,
+          cardFront: cardCells?cardCells.front.toDataURL('image/png'):null,
+          cardBack: cardCells?cardCells.back.toDataURL('image/png'):null,
+          zineW: zineW
+        };
+      });
     });
   }
 
   const api={
     compose:compose,
     bookPages:bookPages,
+    FOLD_STEPS:FOLD_STEPS,
     IMPOSITION:IMPOSITION,
     SLIT_COLS:SLIT_COLS,
     COLS:COLS,

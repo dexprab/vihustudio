@@ -72,23 +72,37 @@ const StoryCardComposer=(function(){
   const NIGHT_TOP='#141a33', NIGHT_BOTTOM='#232c54';
   const GOLD='#e8c476';
   const CREAM='#f4efe2';
+  // ☀️ Plain paper (1.1.3) — the same card on white, for a printer
+  // with no colour in it: dark ink, a quiet frame, the same stars
+  // drawn faint. One palette object per mode, so every drawing
+  // function reads WHICH card it is from one place.
+  const NIGHT_PALETTE={ plain:false, text:CREAM, accent:GOLD,
+    frame:'rgba(232,196,118,0.85)' };
+  const PAPER_PALETTE={ plain:true, text:'#2f2b3a', accent:'#8a6d3b',
+    frame:'rgba(90,80,60,0.55)' };
 
-  function _night(ctx,w,h){
-    const g=ctx.createLinearGradient(0,0,0,h);
-    g.addColorStop(0,NIGHT_TOP); g.addColorStop(1,NIGHT_BOTTOM);
-    ctx.fillStyle=g; ctx.fillRect(0,0,w,h);
+  function _ground(ctx,w,h,pal){
+    if(pal.plain){
+      ctx.fillStyle='#fdfaf2'; ctx.fillRect(0,0,w,h);
+      ctx.fillStyle='rgba(90,80,60,0.18)';
+    }else{
+      const g=ctx.createLinearGradient(0,0,0,h);
+      g.addColorStop(0,NIGHT_TOP); g.addColorStop(1,NIGHT_BOTTOM);
+      ctx.fillStyle=g; ctx.fillRect(0,0,w,h);
+      ctx.fillStyle='rgba(238,241,255,0.55)';
+    }
     // A calm scatter of small stars — seeded by position, so the
     // same card composes identically every time (a reprint is the
-    // same card, not a variant).
-    ctx.fillStyle='rgba(238,241,255,0.55)';
+    // same card, not a variant). The plain card keeps them, faint:
+    // it is still a night-sky card, drawn in ink.
     for(let i=0;i<46;i++){
       const x=((i*97)%w), y=((i*211)%h), r=(i%3===0)?2.4:1.4;
       ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();
     }
   }
 
-  function _frame(ctx,w,h){
-    ctx.strokeStyle='rgba(232,196,118,0.85)';
+  function _frame(ctx,w,h,pal){
+    ctx.strokeStyle=pal.frame;
     ctx.lineWidth=5;
     ctx.strokeRect(22,22,w-44,h-44);
   }
@@ -112,10 +126,10 @@ const StoryCardComposer=(function(){
       : (share.title||'Something I Made');
   }
 
-  function _drawFront(share,img){
+  function _drawFront(share,img,pal){
     const c=_blank(CARD_W,CARD_H);
     const ctx=c.getContext('2d');
-    _night(ctx,CARD_W,CARD_H);
+    _ground(ctx,CARD_W,CARD_H,pal);
 
     if(img){
       const boxX=75,boxY=110,boxW=CARD_W-150,boxH=520;
@@ -123,36 +137,40 @@ const StoryCardComposer=(function(){
       const w=img.width*s,h=img.height*s;
       const x=boxX+(boxW-w)/2,y=boxY+(boxH-h)/2;
       ctx.save();
-      ctx.fillStyle=CREAM;
+      ctx.fillStyle=pal.plain?'#ffffff':CREAM;
       ctx.fillRect(x-10,y-10,w+20,h+20);
+      if(pal.plain){
+        ctx.strokeStyle=pal.frame; ctx.lineWidth=3;
+        ctx.strokeRect(x-10,y-10,w+20,h+20);
+      }
       ctx.drawImage(img,x,y,w,h);
       ctx.restore();
     }else{
-      ctx.fillStyle='rgba(238,241,255,0.8)';
+      ctx.fillStyle=pal.plain?'rgba(90,80,60,0.6)':'rgba(238,241,255,0.8)';
       ctx.font='120px serif';
       ctx.textAlign='center';
       ctx.fillText('✨',CARD_W/2,420);
     }
 
-    ctx.fillStyle=CREAM;
+    ctx.fillStyle=pal.text;
     ctx.textAlign='center';
     ctx.font='700 58px Georgia, serif';
     const after=_wrap(ctx,_title(share).toUpperCase(),CARD_W/2,760,CARD_W-160,68);
     if(share.creatorName){
-      ctx.fillStyle=GOLD;
+      ctx.fillStyle=pal.accent;
       ctx.font='italic 44px Georgia, serif';
       ctx.fillText('— '+share.creatorName,CARD_W/2,Math.min(CARD_H-140,after+90));
     }
-    _frame(ctx,CARD_W,CARD_H);
+    _frame(ctx,CARD_W,CARD_H,pal);
     return c;
   }
 
-  function _drawBack(share,url,qrOk){
+  function _drawBack(share,url,qrOk,pal){
     const c=_blank(CARD_W,CARD_H);
     const ctx=c.getContext('2d');
-    _night(ctx,CARD_W,CARD_H);
+    _ground(ctx,CARD_W,CARD_H,pal);
 
-    ctx.fillStyle=CREAM;
+    ctx.fillStyle=pal.text;
     ctx.textAlign='center';
     ctx.font='46px Georgia, serif';
     const who=share.creatorName||'Somebody';
@@ -162,7 +180,9 @@ const StoryCardComposer=(function(){
     if(qrOk){
       // The door. Quiet-zone white behind the code — a QR drawn
       // straight onto the night sky never decodes, which is the
-      // Data Matrix lab's own first measured rule.
+      // Data Matrix lab's own first measured rule. (Black on white
+      // in BOTH palettes — the door is the one part of the card
+      // that must never be restyled.)
       const qr=_blank(420,420);
       try{
         bwipjs.toCanvas(qr,{
@@ -177,14 +197,18 @@ const StoryCardComposer=(function(){
       const y=330;
       ctx.fillStyle='#ffffff';
       ctx.fillRect(x-pad,y-pad,420+pad*2,420+pad*2);
+      if(pal.plain){
+        ctx.strokeStyle=pal.frame; ctx.lineWidth=3;
+        ctx.strokeRect(x-pad,y-pad,420+pad*2,420+pad*2);
+      }
       ctx.drawImage(qr,x,y,420,420);
     }
 
-    ctx.fillStyle=GOLD;
+    ctx.fillStyle=pal.accent;
     ctx.font='italic 42px Georgia, serif';
     ctx.fillText('Come see it',CARD_W/2,880);
     ctx.fillText('in VihuPlanet',CARD_W/2,932);
-    _frame(ctx,CARD_W,CARD_H);
+    _frame(ctx,CARD_W,CARD_H,pal);
     return c;
   }
 
@@ -195,21 +219,24 @@ const StoryCardComposer=(function(){
   // share — the payload-like object (type, title, creatorName,
   //         pages) the hub already holds.
   // url   — the creation's own share URL (from the minted token).
-  function cells(share,url){
+  // opts.plain — the ☀️ paper palette (1.1.3): dark ink on white,
+  // for a printer with no colour. The QR is untouched either way.
+  function cells(share,url,opts){
     const s=share||{};
+    const pal=(opts&&opts.plain)?PAPER_PALETTE:NIGHT_PALETTE;
     const cover=(s.pages&&s.pages[0])?s.pages[0].image:null;
     return Promise.all([_ensureBwip(),_loadImage(cover)]).then(function(got){
       const bwipOk=got[0], img=got[1];
       if(!bwipOk||!url) return {ok:false,reason:'no-door'};
-      const front=_drawFront(s,img);
-      const back=_drawBack(s,url,true);
+      const front=_drawFront(s,img,pal);
+      const back=_drawBack(s,url,true,pal);
       if(!back) return {ok:false,reason:'no-door'};
       return { ok:true, front:front, back:back };
     });
   }
 
-  function compose(share,url){
-    return cells(share,url).then(function(c){
+  function compose(share,url,opts){
+    return cells(share,url,opts).then(function(c){
       if(!c.ok) return c;
       return {
         ok:true,

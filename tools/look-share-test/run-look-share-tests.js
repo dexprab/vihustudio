@@ -581,8 +581,8 @@ function goodPayload(over) {
   });
   await page.waitForFunction(() => window.__prints.length === 1, null, { timeout: 20000 });
   const printedFold = await page.evaluate(() => window.__prints[0]);
-  ck(/lwim-print-foldable/.test(printedFold.kind) && printedFold.images === 1,
-    'J3 printing prints the sheet the child was just shown', JSON.stringify(printedFold.kind));
+  ck(/lwim-print-foldable/.test(printedFold.kind) && printedFold.images === 2,
+    'J3 printing prints the sheet AND its how-to-fold page (1.1.3)', JSON.stringify(printedFold));
   const sameSheet = await page.evaluate(() => window.__prints[0].srcSample === (document.querySelector('.lwim-sheet-img') || {}).src);
   ck(sameSheet, 'J4 the printed bitmap IS the previewed bitmap — match by construction');
 
@@ -632,6 +632,9 @@ function goodPayload(over) {
       front: made.cardCells && made.cardCells.front,
       back: made.cardCells && made.cardCells.back,
       panels: (made.panels || []).map((pn) => pn.n).join(','),
+      guide: !!(made.guide && made.guide.indexOf('data:image') === 0),
+      stepsWithCard: FoldableComposer.FOLD_STEPS(true).length,
+      stepsWithout: FoldableComposer.FOLD_STEPS(false).length,
     };
   });
   ck(composed.card && composed.stripOk,
@@ -642,6 +645,14 @@ function goodPayload(over) {
     'J9 the card rides at its EXACT printed size — 2.5in × 3.5in at 300dpi', JSON.stringify(composed.front));
   ck(composed.panels === '1,2,3,4,5,6,7,8',
     'J10 and the upright panels come back in reading order for the folded book', composed.panels);
+  // 1.1.3: the paper teaches the fold. The composer produces a
+  // how-to-fold GUIDE PAGE beside the sheet, drawn from the same
+  // FOLD_STEPS the on-screen guide renders — one set of drawings,
+  // two surfaces.
+  ck(composed.guide, 'J10b the composer makes the how-to-fold guide page');
+  ck(composed.stepsWithCard === 5 && composed.stepsWithout === 4,
+    'J10c FOLD_STEPS is the one source — five steps with a card, four without',
+    composed.stepsWithCard + '/' + composed.stepsWithout);
 
   await page.evaluate(() => {
     Array.from(document.querySelectorAll('.lwim-btn')).find((b) => /Fold it/.test(b.textContent)).click();
@@ -671,6 +682,27 @@ function goodPayload(over) {
   ck(guide.title && guide.steps === 5 && guide.pics === 5,
     'J15 the folded view SHOWS how to fold — five little pictures, few words', JSON.stringify(guide));
   ck(guide.cutCard, 'J16 and the first step is cutting the Story Card off the edge');
+
+  // 1.1.3: "add kind printing on the screen post fold it button" —
+  // the ☀️ paper choice stands beside the folded view's own Print.
+  const foldedToggle = await page.evaluate(() =>
+    Array.from(document.querySelectorAll('.lwim-btn')).some((b) => /Plain paper/.test(b.textContent)));
+  ck(foldedToggle, 'J17 the paper choice is offered AFTER folding too');
+  await page.evaluate(() => {
+    Array.from(document.querySelectorAll('.lwim-btn')).find((b) => /Plain paper/.test(b.textContent)).click();
+  });
+  await page.waitForFunction(() => !!document.querySelector('.lwim-book-page'), null, { timeout: 120000 });
+  const plainFolded = await page.evaluate(() => ({
+    book: !!document.querySelector('.lwim-book-page'),
+    back: Array.from(document.querySelectorAll('.lwim-btn')).some((b) => /Bring the colours back/.test(b.textContent)),
+  }));
+  ck(plainFolded.book && plainFolded.back,
+    'J18 choosing it post-fold recomposes and returns to the FOLDED book, plain');
+  // Back to colour so the P section starts where it expects to.
+  await page.evaluate(() => {
+    Array.from(document.querySelectorAll('.lwim-btn')).find((b) => /Bring the colours back/.test(b.textContent)).click();
+  });
+  await page.waitForFunction(() => !!document.querySelector('.lwim-book-page'), null, { timeout: 120000 });
 
   // ---- P. plain paper (1.1.1) — "if its black and white print can
   // we remove the bg color of slides?"
@@ -778,6 +810,56 @@ function goodPayload(over) {
   const printedCard = await page.evaluate(() => window.__prints[2]);
   ck(/lwim-print-card/.test(printedCard.kind) && printedCard.images === 2,
     'K6 the printed card is front and back, the pair just previewed', JSON.stringify(printedCard.kind));
+  // 1.1.3: "same add kind printing on story card." The plain card is
+  // measurably lighter, and — the part that must never regress — its
+  // door still SCANS: the QR stays black-on-white in both palettes.
+  const colorFront = await page.evaluate(() => document.querySelectorAll('.lwim-card-img')[0].src);
+  const cardToggle = await page.evaluate(() =>
+    Array.from(document.querySelectorAll('.lwim-btn')).some((b) => /Plain paper/.test(b.textContent)));
+  ck(cardToggle, 'K9 the paper choice is offered on the Story Card too');
+  await page.evaluate(() => {
+    Array.from(document.querySelectorAll('.lwim-btn')).find((b) => /Plain paper/.test(b.textContent)).click();
+  });
+  await page.waitForFunction((prev) => {
+    const imgs = document.querySelectorAll('.lwim-card-img');
+    return imgs.length === 2 && imgs[0].src && imgs[0].src !== prev;
+  }, colorFront, { timeout: 120000 });
+  const plainCard = await page.evaluate(async (prevFront) => {
+    async function lum(src) {
+      const img = new Image(); img.src = src;
+      await (img.decode ? img.decode() : new Promise((res) => { img.onload = res; }));
+      const c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
+      const x = c.getContext('2d'); x.drawImage(img, 0, 0);
+      const d = x.getImageData(0, 0, c.width, c.height).data;
+      let sum = 0, n = 0;
+      for (let i = 0; i < d.length; i += 64) { sum += (d[i] + d[i + 1] + d[i + 2]) / 3; n++; }
+      return sum / n / 255;
+    }
+    const imgs = document.querySelectorAll('.lwim-card-img');
+    return { colorLum: await lum(prevFront), plainLum: await lum(imgs[0].src) };
+  }, colorFront);
+  ck(plainCard.plainLum > plainCard.colorLum + 0.1,
+    'K10 the plain card is measurably lighter — night ink on white paper',
+    JSON.stringify({ color: plainCard.colorLum.toFixed(3), plain: plainCard.plainLum.toFixed(3) }));
+  const scannedPlain = await page.evaluate(() => {
+    const img = document.querySelectorAll('.lwim-card-img')[1];
+    const cv = document.createElement('canvas');
+    cv.width = img.naturalWidth; cv.height = img.naturalHeight;
+    cv.getContext('2d').drawImage(img, 0, 0);
+    try {
+      const hints = new Map();
+      hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [ZXing.BarcodeFormat.QR_CODE]);
+      hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+      const reader = new ZXing.MultiFormatReader();
+      reader.setHints(hints);
+      const lum = new ZXing.HTMLCanvasElementLuminanceSource(cv);
+      const bmp = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(lum));
+      return { ok: true, text: reader.decode(bmp).getText() };
+    } catch (e) { return { ok: false, err: String(e) }; }
+  });
+  ck(scannedPlain.ok && scannedPlain.text === BASE + '/look.html?t=tokbrowser0123456789abcd',
+    'K11 and the plain card\'s door still scans to the same creation', scannedPlain.text || scannedPlain.err);
+
 
   // ---- L. watch — one continuous magical making (Sprint 1.1)
   console.log('-- L: watch — continuity and music');

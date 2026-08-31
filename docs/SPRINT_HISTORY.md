@@ -10306,3 +10306,25 @@ owner, already the Studio's shipped rotation — one constant in
 `js/creationPlayback.js` to retune to b–e. The films' under-bed is
 deliberately unchanged. look-share 118 — green. Canon: Decision 52
 (clause corrected in place).
+
+---
+
+## LOOK WHAT I MADE 1.1.3 — the paper teaches the fold (build 0709)
+
+The product owner looked at the printed sheet the way a parent at the
+kitchen table will: two tiny ✂ marks, faint dashes, half the panels
+upside-down — *"do u think these instructions are clear enough?"* They
+were not: everything that explained the sheet lived on the screen, and
+the screen does not travel with the paper. Shipped together: the cuts
+and folds are NAMED on the sheet in the guides' own quiet gray; a
+how-to-fold guide page (goal + five numbered steps) prints with the
+sheet, rastered from the SAME `FoldableComposer.FOLD_STEPS` strings
+the on-screen guide renders — one set of drawings, two surfaces; and
+the ☀️ Plain paper choice now stands beside EVERY print button — the
+folded view's own ("add kind printing on the screen post fold it
+button") and the Story Card's ("same add kind printing on story
+card"), where the plain card is dark ink on cream with the same faint
+stars, its QR black-on-white in both palettes and proved to still
+scan (K11 decodes the plain back to the same door). The foldable's
+card strip follows the same choice. look-share 125 — green. Canon:
+Decision 52 (amended in place).

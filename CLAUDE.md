@@ -6208,13 +6208,39 @@ own creation, and VihuPlanet is discovered THROUGH it.
   plain sheet is provably lighter, and printing after toggling
   prints the plain bitmap). The SHARED payload is never plain — a
   screen has no ink. Colours are one press away again.
+- **THE PAPER TEACHES THE FOLD, AND THE PAPER CHOICE IS EVERYWHERE A
+  PRINT IS** (1.1.3, build 0709). The product owner looked at the
+  printed sheet as a parent would — two tiny ✂ marks, faint dashed
+  lines, half the panels upside-down — and asked whether the
+  instructions were clear enough. They were not: everything that
+  explained the sheet lived on the SCREEN, and the screen does not
+  travel with the paper; whoever folds it is often not the child who
+  pressed Print. Three answers, shipped together. **The cuts and
+  folds are NAMED on the sheet** — "fold" on every crease, "✂ cut
+  this little line" on the slit, "cut the Story Card off this edge"
+  along the strip — in the guides' own quiet gray (adult-facing
+  paper, like the letter; the no-explaining rule is about Lumo and a
+  child's screens). **A how-to-fold GUIDE PAGE prints with the
+  sheet**: the goal (flat sheet → little book) and the numbered
+  steps, drawn from `FoldableComposer.FOLD_STEPS` — the SAME strings
+  the hub's on-screen guide renders as inline SVG, so the screen and
+  the paper can never teach two different folds. **And ☀️ Plain
+  paper stands beside every print button**: the folded view's own
+  (a child who folded first no longer walks back to choose paper)
+  and the Story Card's — a paper-palette card, dark ink on white
+  with the same faint stars, whose QR stays black-on-white in both
+  palettes and provably still scans (the suite decodes the plain
+  card back to the same door). Measured lighter, previewed before
+  print, and the strip on the foldable follows the same choice.
 - Architecture and detail: `docs/LOOK_WHAT_I_MADE.md`. Suite:
   `tools/look-share-test/` (118 — the 1.0 82 plus playback
   continuity, music lifecycle, fold steps, folded geometry, the
   card/foldable relationship and the once-only destination, then
   1.1.1's speaker-truth, direct-edit field, fold guide and plain
-  paper; the fold-model, sweep, blank-flash and once-guard checks
-  each proved by reverting).
+  paper, and 1.1.3's printed guide page, on-sheet labels, post-fold
+  paper choice and plain Story Card (125 in all); the fold-model,
+  sweep, blank-flash and once-guard checks each proved by
+  reverting).
 - `js/creationShare.js` · `js/creationShareClient.js` ·
   `js/lookWhatIMade.js` · `js/foldableComposer.js` ·
   `js/storyCardComposer.js` · `look.html` ·
