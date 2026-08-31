@@ -6256,6 +6256,31 @@ own creation, and VihuPlanet is discovered THROUGH it.
   send) lands with the panel already open and the toggle gone, so
   the visitor arrives with nothing to hunt for. No dead control on any
   device: without a share sheet the 📤 button is absent, not inert.
+- **THE LETTER'S PRINT DOORS, DELIVERED ON THE LANDING** (1.1.5, build
+  0711). Asked for by the product owner: *"add print foldable story
+  and print story card option in parents email also."* The letter
+  gains a *Print it and keep it* section — **📄 A foldable little
+  book · 🃏 A little card to give away** — in both halves, in the same
+  order, and the links are `&print=foldable` / `&print=card` switches
+  on the landing. So a parent prints BOTH keepsakes from the letter
+  alone, on their own machine, without the child's device: the landing
+  loads the SAME `FoldableComposer` and `StoryCardComposer` the Studio
+  hub uses (all guard-safe outside the Studio) and composes from the
+  SAME resolved snapshot, so there is one drawing of each thing and
+  the two surfaces cannot drift — the sheet still carries its labels,
+  strip and printed fold guide, the card's QR still encodes the same
+  stable token. **Preview before print holds on the landing too**: the
+  switch lands in a preview of exactly what will print, with 🖨 Print
+  one press away, and the two doors also stand on the landing for
+  anyone who arrives without a switch. Composers missing → the doors
+  are absent, never inert; a card whose door cannot be minted says so
+  gently. **Disclosed: ☀️ Plain paper is deliberately NOT offered
+  there** — plain pages are re-rendered from the live story through
+  the renderer's background seam, and the landing holds only baked
+  snapshot bitmaps; a chrome-only plain card would be a half-answer,
+  so the landing prints what was shared and the plain print stays
+  where the story lives. Function BUILD is `LW2` — a redeploy of
+  `creation-share` is what puts the new letter in the post.
 - Architecture and detail: `docs/LOOK_WHAT_I_MADE.md`. Suite:
   `tools/look-share-test/` (118 — the 1.0 82 plus playback
   continuity, music lifecycle, fold steps, folded geometry, the
@@ -6264,9 +6289,10 @@ own creation, and VihuPlanet is discovered THROUGH it.
   paper, and 1.1.3's printed guide page, on-sheet labels, post-fold
   paper choice and plain Story Card, and 1.1.4's raw-HTML preview
   card, the letter-opened share panel, WhatsApp prefill, clean-link
-  copy and the share-sheet path (131 in all); the fold-model,
-  sweep, blank-flash, once-guard, preview and panel checks each
-  proved by reverting).
+  copy and the share-sheet path, and 1.1.5's letter print doors and
+  the landing's compose-preview-print for both keepsakes (141 in
+  all); the fold-model, sweep, blank-flash, once-guard, preview,
+  panel and print-door checks each proved by reverting).
 - `js/creationShare.js` · `js/creationShareClient.js` ·
   `js/lookWhatIMade.js` · `js/foldableComposer.js` ·
   `js/storyCardComposer.js` · `look.html` ·

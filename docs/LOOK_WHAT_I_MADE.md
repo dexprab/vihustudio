@@ -162,8 +162,12 @@ celebration is untouched** — Decision 12's two equal choices stand.
   fetched by `<img>` tags that cannot send headers); the session gate
   inside the file protects every POST.
 - The letter: subject "«name» made something!", one cover image, text
-  links (Watch · See · WhatsApp · Instagram), both halves in the same
-  order — the Decision 42 learnings applied, no campaign shapes.
+  links (Watch · See · Print the foldable little book · Print the
+  little card · WhatsApp · Instagram), both halves in the same order —
+  the Decision 42 learnings applied, no campaign shapes. The print
+  links are `&print=foldable` / `&print=card` switches on the landing
+  (1.1.5): a parent prints both keepsakes from the letter alone,
+  without the child's device.
 
 ## Deep entry
 
@@ -173,8 +177,14 @@ anon REST RPC, renders "Look what «name» made" + the exact creation:
 Watch replay, page-by-page reader, "Come see VihuPlanet" doorway, and
 the Ether door when the creation is public there. `?watch=1` plays the
 making first (the letter's WATCH button); `?share=1` is the
-Instagram/onward route via the native share sheet. An unknown token is
-one gentle sentence. Never generic Home.
+Instagram/onward route via the native share sheet; `?print=foldable` /
+`?print=card` (1.1.5) land in a preview of the composed sheet-plus-
+guide or card front-and-back, with 🖨 Print one press away — the SAME
+`FoldableComposer` / `StoryCardComposer` the Studio hub uses, fed the
+resolved snapshot, so there is one drawing of each thing on both
+surfaces. The two print doors also stand on the landing for anyone who
+arrives without a switch. An unknown token is one gentle sentence.
+Never generic Home.
 
 ## Privacy contract
 
@@ -193,6 +203,13 @@ from a browser.
   Instagram on a phone. Recorded, not worked around.
 - **Narration audio does not travel** with a share in v1. Pages and
   making frames only.
+- **☀️ Plain paper is a Studio choice, not a landing one.** Plain
+  pages are RE-RENDERED from the live story through the renderer
+  (`_plainClone` → the background override seam), and the landing
+  holds only the baked snapshot bitmaps — it cannot lift a background
+  out of pixels. A card-chrome-only plain would be a half-answer, so
+  the landing prints what was shared, in colour, and a parent's B&W
+  printer grayscales it. The plain print lives where the story lives.
 - **The exported Magic Creation video itself is not shared** — the
   watch replay is the same making, derived live. A parent who wants
   the mp4 gets it the way the child does: 📦 Take My Story.

@@ -355,7 +355,7 @@ async function guard(req, opts) {
 
 // ===== END GENERATED edgeAuth =====
 
-const BUILD = 'LW1';
+const BUILD = 'LW2';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -512,6 +512,10 @@ function letterFor(name, title, links) {
     'See the creation:',
     links.url,
     '',
+    'Print it and keep it:',
+    'A foldable little book: ' + links.foldable,
+    'A little card to give away: ' + links.card,
+    '',
     'Want to share it?',
     'WhatsApp: ' + links.whatsapp,
     'Instagram: ' + links.instagram,
@@ -527,6 +531,8 @@ function letterFor(name, title, links) {
     '<p style="margin:18px 0;"><img src="' + esc(links.coverUrl) + '" alt="' + esc(title || 'The creation') + '" style="max-width:100%;border-radius:10px;" /></p>',
     '<p style="margin:14px 0;"><a href="' + esc(links.watchUrl) + '">▶ Watch how it was made</a></p>',
     '<p style="margin:14px 0;"><a href="' + esc(links.url) + '">See the creation</a></p>',
+    '<p style="margin:22px 0 6px;">Print it and keep it:</p>',
+    '<p style="margin:6px 0;"><a href="' + esc(links.foldable) + '">📄 A foldable little book</a> · <a href="' + esc(links.card) + '">🃏 A little card to give away</a></p>',
     '<p style="margin:22px 0 6px;">Want to share it?</p>',
     '<p style="margin:6px 0;"><a href="' + esc(links.whatsapp) + '">WhatsApp</a> · <a href="' + esc(links.instagram) + '">Instagram</a></p>',
     '<p style="margin:26px 0 24px;color:#6b6b6b;font-size:13px;">This letter only opens a window onto the creation — it stays exactly where it was made. VihuPlanet is where children make, keep and share their own stories.</p>',
@@ -584,6 +590,12 @@ function linksFor(env, token) {
     // landing page's native share sheet, which includes Instagram on
     // a phone. Recorded as a disclosed limit in the decision entry.
     instagram: url + '&share=1',
+    // 1.1.5 — the letter's print doors. The landing composes the
+    // foldable and the Story Card from the SAME snapshot (the same
+    // composers the Studio hub uses), so a parent can print without
+    // the child's device. The switches open the preview directly.
+    foldable: url + '&print=foldable',
+    card: url + '&print=card',
   };
 }
 

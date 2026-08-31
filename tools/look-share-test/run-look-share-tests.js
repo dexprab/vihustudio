@@ -197,7 +197,8 @@ function goodPayload(over) {
   const letter = netLog.letters[0] || {};
   ck(String(letter.to) === 'mum@example.com', 'C2 to the card\'s own parent_email', String(letter.to));
   ck(letter.subject === 'Sam made something!', 'C3 the subject is the child, not the product', letter.subject);
-  const wantLinks = ['look.html?t=tokabc123def456ghi789jkl', 'watch=1', 'wa.me', 'share=1'];
+  const wantLinks = ['look.html?t=tokabc123def456ghi789jkl', 'watch=1', 'wa.me', 'share=1',
+    'print=foldable', 'print=card'];
   wantLinks.forEach((frag, i) => {
     ck((letter.text || '').indexOf(frag) !== -1 && (letter.html || '').indexOf(frag) !== -1,
       'C4.' + (i + 1) + ' both halves carry ' + frag);
@@ -206,6 +207,16 @@ function goodPayload(over) {
     'C5 the letter shows the creation via the cover route (Gmail strips data: images)');
   ck((letter.text || '').indexOf('The Moon Dragon') !== -1 && (letter.text || '').indexOf('Sam') !== -1,
     'C6 the letter is about the creation — name and title, not marketing');
+  // 1.1.5 — the print doors, worded as the things they make, in the
+  // same order in both halves (the plain part is the message too).
+  ['foldable little book', 'card to give away'].forEach((frag, i) => {
+    const t = (letter.text || '').toLowerCase(); const h = (letter.html || '').toLowerCase();
+    ck(t.indexOf(frag) !== -1 && h.indexOf(frag) !== -1,
+      'C6.' + (i + 1) + ' both halves offer the ' + frag);
+  });
+  ck((letter.text || '').indexOf('foldable little book') < (letter.text || '').indexOf('card to give away')
+    && (letter.html || '').indexOf('foldable little book') < (letter.html || '').indexOf('card to give away'),
+    'C6.3 and in the same order in both halves');
   const answered = JSON.stringify(r.body);
   ck(answered.indexOf('mum@example.com') === -1 && answered.indexOf('user-1') === -1 && answered.indexOf('card-1') === -1,
     'C7 the reply carries no address, no user id, no card id', answered);
@@ -1188,6 +1199,68 @@ function goodPayload(over) {
   ck(nativeShare.nativeShown && /tap 📤/.test(nativeShare.hint)
     && nativeShare.shared && nativeShare.shared.url === BASE + '/look.html?t=goodtoken',
     'M15b with a share sheet, 📤 Share… leads and hands over the clean link', JSON.stringify(nativeShare));
+
+  // ---- 1.1.5 — the letter's print doors, delivered on the landing.
+  // A parent prints the foldable and the Story Card from the letter
+  // alone: the landing composes both from the resolved snapshot
+  // through the SAME composers the Studio hub uses.
+  await landingPage.addInitScript(() => {
+    window.__prints = [];
+    window.print = function () {
+      const sheet = document.querySelector('.look-print-sheet');
+      window.__prints.push({
+        images: sheet ? sheet.querySelectorAll('img').length : 0,
+        landscape: !!Array.from(document.querySelectorAll('style'))
+          .find((s) => /size:\s*landscape/.test(s.textContent || '')),
+      });
+    };
+  });
+  await landingPage.goto(BASE + '/look.html?t=goodtoken');
+  await landingPage.waitForFunction(() => !document.getElementById('creation').classList.contains('hidden'), null, { timeout: 15000 });
+  const printDoors = await landingPage.evaluate(() => ({
+    fold: !document.getElementById('printFoldBtn').classList.contains('hidden'),
+    card: !document.getElementById('printCardBtn').classList.contains('hidden'),
+    previewClosed: document.getElementById('printPreview').classList.contains('hidden'),
+  }));
+  ck(printDoors.fold && printDoors.card && printDoors.previewClosed,
+    'N1 both print doors stand on the landing, preview closed until asked', JSON.stringify(printDoors));
+
+  await landingPage.goto(BASE + '/look.html?t=goodtoken&print=foldable');
+  await landingPage.waitForFunction(() =>
+    !document.getElementById('printPreview').classList.contains('hidden')
+    && !document.getElementById('printGo').disabled
+    && document.querySelectorAll('#printImgs img').length > 0, null, { timeout: 30000 });
+  await landingPage.screenshot({ path: path.join(SHOTS, 'N-print-foldable.png') });
+  const foldPrev = await landingPage.evaluate(() => ({
+    imgs: document.querySelectorAll('#printImgs img').length,
+    title: document.getElementById('printTitle').textContent,
+    note: document.getElementById('printNote').textContent,
+  }));
+  ck(foldPrev.imgs === 2 && /little book/.test(foldPrev.title),
+    'N2 ?print=foldable lands in the preview — the sheet AND the how-to-fold guide page', JSON.stringify(foldPrev));
+  await landingPage.evaluate(() => document.getElementById('printGo').click());
+  await landingPage.waitForFunction(() => (window.__prints || []).length === 1, null, { timeout: 15000 });
+  const foldPrint = await landingPage.evaluate(() => window.__prints[0]);
+  ck(foldPrint.images === 2 && foldPrint.landscape === true,
+    'N3 printing sends both pages, the wide way — exactly what was previewed', JSON.stringify(foldPrint));
+
+  await landingPage.goto(BASE + '/look.html?t=goodtoken&print=card');
+  await landingPage.waitForFunction(() =>
+    !document.getElementById('printPreview').classList.contains('hidden')
+    && !document.getElementById('printGo').disabled
+    && document.querySelectorAll('#printImgs img').length > 0, null, { timeout: 30000 });
+  await landingPage.screenshot({ path: path.join(SHOTS, 'N-print-card.png') });
+  const cardPrev = await landingPage.evaluate(() => ({
+    imgs: document.querySelectorAll('#printImgs img').length,
+    title: document.getElementById('printTitle').textContent,
+  }));
+  ck(cardPrev.imgs === 2 && /card/.test(cardPrev.title),
+    'N4 ?print=card previews front and back', JSON.stringify(cardPrev));
+  await landingPage.evaluate(() => document.getElementById('printGo').click());
+  await landingPage.waitForFunction(() => (window.__prints || []).length === 1, null, { timeout: 15000 });
+  const cardPrint = await landingPage.evaluate(() => window.__prints[0]);
+  ck(cardPrint.images === 2 && cardPrint.landscape === false,
+    'N5 the card prints front and back, upright', JSON.stringify(cardPrint));
 
   // the landing page talks ONLY to the platform it was configured for
   const offHost = landingRequests.filter((u) =>

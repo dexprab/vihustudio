@@ -127,6 +127,22 @@
   .share-panel-btns .watch-btn{ margin:0; }
   .share-panel-btns .quiet{ margin:0; }
   .share-hint{ color:var(--soft); font-size:14px; margin:12px 0 0; }
+  .print-imgs img{
+    max-width:100%;
+    background:#fff;
+    border-radius:8px;
+    border:1px solid rgba(154,163,196,0.35);
+    margin:6px 0;
+    display:block;
+  }
+  .look-print-sheet{ display:none; }
+  @media print{
+    body{ background:#fff; padding:0; display:block; }
+    .wrap{ display:none; }
+    .look-print-sheet{ display:block; }
+    .look-print-sheet img{ width:100%; display:block; page-break-after:always; break-after:page; }
+    .look-print-sheet img:last-child{ page-break-after:auto; break-after:auto; }
+  }
   .hidden{ display:none !important; }
 </style>
 </head>
@@ -181,13 +197,41 @@
       </div>
     </div>
 
+    <!-- 1.1.5 — the letter's print doors, delivered HERE. A parent
+         can print the foldable little book and the Story Card from
+         the letter alone, without the child's device: the landing
+         composes both from the SAME snapshot the token resolves,
+         through the SAME composers the Studio hub uses — one drawing
+         of each thing, never two interpretations. Preview before
+         print, always. -->
+    <div id="printRow">
+      <button type="button" class="quiet hidden" id="printFoldBtn">📄 Print a foldable little book</button>
+      <button type="button" class="quiet hidden" id="printCardBtn">🃏 Print a little card to give away</button>
+      <div id="printPreview" class="share-panel hidden">
+        <p class="share-panel-title" id="printTitle"></p>
+        <div id="printImgs" class="print-imgs"></div>
+        <p class="share-hint" id="printNote"></p>
+        <div class="share-panel-btns">
+          <button type="button" class="watch-btn" id="printGo">🖨 Print</button>
+          <button type="button" class="quiet" id="printClose">Close</button>
+        </div>
+      </div>
+    </div>
+
     <p class="made-line" id="madeLine">Made in VihuPlanet — where children make, keep and share their own stories.</p>
     <a class="doorway" href="./" id="visit">Come see VihuPlanet</a>
     <a class="doorway hidden" href="#" id="ether">See it living in the Ether</a>
   </div>
 </div>
 
-<script src="js/creationPlayback.js?v=0710"></script>
+<script src="js/creationPlayback.js?v=0711"></script>
+<!-- 1.1.5 — the print composers. All three are guard-safe outside the
+     Studio (typeof checks throughout); CreationShare is here only for
+     displayTitle, so the printed cover names the creation the same
+     way the hub does. -->
+<script src="js/creationShare.js?v=0711"></script>
+<script src="js/storyCardComposer.js?v=0711"></script>
+<script src="js/foldableComposer.js?v=0711"></script>
 <script>
 (function(){
   'use strict';
@@ -196,6 +240,8 @@
   var token=(params.get('t')||'').trim();
   var wantWatch=params.get('watch')==='1';
   var wantShare=params.get('share')==='1';
+  var wantPrint=params.get('print');
+  if(wantPrint!=='foldable'&&wantPrint!=='card') wantPrint=null;
 
   var el=function(id){ return document.getElementById(id); };
 
@@ -350,6 +396,91 @@
         }catch(e){ return false; }
       }
     };
+
+    // 1.1.5 — printing from the letter. The same composers the hub
+    // uses, fed the same snapshot, previewed before anything prints.
+    var printMade=null, printKind=null;
+    function openPrint(kind){
+      var pv=el('printPreview');
+      el('printTitle').textContent=(kind==='foldable')?'The foldable little book':'A little card to give away';
+      el('printImgs').innerHTML='';
+      el('printNote').textContent='Making it…';
+      el('printGo').disabled=true;
+      printMade=null;
+      pv.classList.remove('hidden');
+      var work=(kind==='foldable')
+        ? FoldableComposer.compose(creation,{cardUrl:cleanUrl})
+        : StoryCardComposer.compose(creation,cleanUrl);
+      work.then(function(made){
+        var imgs,note;
+        if(kind==='foldable'){
+          imgs=(made&&made.sheet)?(made.guide?[made.sheet,made.guide]:[made.sheet]):null;
+          note=((made&&made.note)?made.note+' ':'')+'One sheet, printed the wide way — the how-to-fold page prints with it.';
+        }else{
+          imgs=(made&&made.ok)?[made.front,made.back]:null;
+          note='Front and back. Cut it out and give it away — pointing a phone at the little square of stars opens the creation.';
+        }
+        if(!imgs){
+          el('printNote').textContent='This can’t be made just now — the creation itself is right here to look at, though.';
+          return;
+        }
+        printMade=imgs; printKind=kind;
+        imgs.forEach(function(src){
+          var im=document.createElement('img'); im.src=src;
+          el('printImgs').appendChild(im);
+        });
+        el('printNote').textContent=note;
+        el('printGo').disabled=false;
+      }).catch(function(){
+        el('printNote').textContent='This can’t be made just now — the creation itself is right here to look at, though.';
+      });
+    }
+    el('printGo').onclick=function(){
+      if(!printMade) return;
+      // The print sheet carries the full-resolution bitmaps just
+      // previewed; the page orientation belongs to the thing being
+      // printed (the hub's own mechanism, one surface along).
+      var sheet=document.createElement('div');
+      sheet.className='look-print-sheet';
+      printMade.forEach(function(src){
+        var im=document.createElement('img'); im.src=src;
+        sheet.appendChild(im);
+      });
+      var style=document.createElement('style');
+      style.textContent=(printKind==='foldable')
+        ? '@media print{ @page{ size: landscape; margin: 0.25in; } }'
+        : '@media print{ @page{ size: portrait; margin: 0.5in; } }';
+      document.body.appendChild(style);
+      document.body.appendChild(sheet);
+      function cleanup(){
+        try{ sheet.remove(); }catch(e){}
+        try{ style.remove(); }catch(e){}
+        window.removeEventListener('afterprint',cleanup);
+      }
+      window.addEventListener('afterprint',cleanup);
+      Promise.all(Array.prototype.map.call(sheet.querySelectorAll('img'),function(img){
+        if(typeof img.decode==='function') return img.decode().catch(function(){});
+        return new Promise(function(res){
+          if(img.complete) res();
+          else img.addEventListener('load',res,{once:true});
+        });
+      })).then(function(){
+        window.print();
+        setTimeout(cleanup,5000);
+      });
+    };
+    el('printClose').onclick=function(){ el('printPreview').classList.add('hidden'); };
+    var composersHere=(typeof FoldableComposer!=='undefined'&&FoldableComposer.compose
+      &&typeof StoryCardComposer!=='undefined'&&StoryCardComposer.compose);
+    if(composersHere){
+      el('printFoldBtn').classList.remove('hidden');
+      el('printCardBtn').classList.remove('hidden');
+      el('printFoldBtn').onclick=function(){ openPrint('foldable'); };
+      el('printCardBtn').onclick=function(){ openPrint('card'); };
+      // The letter's print buttons land with the preview already
+      // open — the same rule ?share=1 follows.
+      if(wantPrint) openPrint(wantPrint);
+    }
 
     // The letter's WhatsApp / Instagram buttons land here asking to
     // share — so the panel is already open, nothing to hunt for.

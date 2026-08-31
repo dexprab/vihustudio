@@ -10351,3 +10351,24 @@ letter's buttons send, lands with the panel already open. No dead
 control anywhere: without a share sheet the 📤 button is absent, not
 inert. look-share 131 — green; M12–M15b proved by reverting. Canon:
 Decision 52 (amended in place).
+
+## LOOK WHAT I MADE 1.1.5 — the letter's print doors (build 0711)
+
+Asked for directly: *"add print foldable story and print story card
+option in parents email also."* The letter gains a "Print it and keep
+it" section — 📄 A foldable little book · 🃏 A little card to give
+away — in both halves, same order, linking `&print=foldable` /
+`&print=card` on the landing. The landing now loads the SAME
+FoldableComposer and StoryCardComposer the Studio hub uses (guard-safe
+outside the Studio) and composes both keepsakes from the resolved
+snapshot, so a parent prints from the letter alone without the
+child's device — one drawing of each thing, no drift: the sheet keeps
+its labels, strip and printed fold guide; the card's QR encodes the
+same stable token. Preview before print holds (`?print=` lands in a
+preview with 🖨 one press away), the doors also stand on the plain
+landing, and composers missing means absent doors, never inert ones.
+Disclosed: ☀️ Plain paper stays a Studio choice — plain pages need
+the live renderer's background seam, and a snapshot is baked pixels.
+Function BUILD LW2; redeploying creation-share is what mails the new
+letter. look-share 141 — green; C4.5 and N2 proved by reverting.
+Canon: Decision 52 (amended in place).
