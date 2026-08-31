@@ -20,6 +20,29 @@
      first commit (Decision 28). -->
 <meta name="robots" content="noindex">
 <title>Look what I made — VihuPlanet</title>
+<!-- 1.1.4 — the link PREVIEW. WhatsApp (and every messenger) builds
+     its preview card from these tags, fetched by a crawler that runs
+     no JavaScript — so without them a shared creation arrived as a
+     bare grey link ("has no preview", reported from real use). The
+     creation itself lives behind the token and cannot be put here on
+     static hosting; what CAN be is a proper branded card — the same
+     og-image Decision 28 shipped for the home page, with the share's
+     own words. noindex above still stands: a preview crawler reads
+     these tags regardless of indexing. -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="VihuPlanet">
+<meta property="og:title" content="Look what I made ✨">
+<meta property="og:description" content="A child made something in VihuPlanet — come and see it.">
+<meta property="og:url" content="https://vihuplanet.com/look.html">
+<meta property="og:image" content="https://vihuplanet.com/assets/brand/og-image.jpg">
+<meta property="og:image:secure_url" content="https://vihuplanet.com/assets/brand/og-image.jpg">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Look what I made ✨">
+<meta name="twitter:description" content="A child made something in VihuPlanet — come and see it.">
+<meta name="twitter:image" content="https://vihuplanet.com/assets/brand/og-image.jpg">
 <style>
   :root{
     --night1:#101527; --night2:#1c2444;
@@ -91,6 +114,19 @@
     margin:4px 6px;
   }
   .lost{ color:var(--soft); max-width:44ch; margin:80px auto; font-size:18px; line-height:1.6; }
+  .share-panel{
+    margin:14px auto 4px;
+    padding:16px 18px 14px;
+    max-width:460px;
+    background:rgba(255,255,255,0.045);
+    border:1px solid rgba(232,196,118,0.3);
+    border-radius:14px;
+  }
+  .share-panel-title{ margin:0 0 12px; color:var(--gold); font-style:italic; font-size:17px; }
+  .share-panel-btns{ display:flex; flex-wrap:wrap; justify-content:center; gap:8px; }
+  .share-panel-btns .watch-btn{ margin:0; }
+  .share-panel-btns .quiet{ margin:0; }
+  .share-hint{ color:var(--soft); font-size:14px; margin:12px 0 0; }
   .hidden{ display:none !important; }
 </style>
 </head>
@@ -125,7 +161,24 @@
     </div>
 
     <div id="shareRow">
-      <button type="button" class="quiet hidden" id="shareBtn">Share it onwards</button>
+      <button type="button" class="quiet" id="shareBtn">Share it onwards</button>
+      <!-- 1.1.4 — the share PANEL. The old single quiet button was
+           easy to miss, and the letter's Instagram route landed here
+           with nothing visibly delivering it ("share on instagram
+           just redirects to vihuplanet", from real use). Instagram
+           has no web prefill — the honest route is the phone's own
+           share sheet, plus the link itself — so this panel makes
+           both unmissable, and opens already expanded when the
+           letter's share buttons brought the visitor here. -->
+      <div id="sharePanel" class="share-panel hidden">
+        <p class="share-panel-title">Send it onwards</p>
+        <div class="share-panel-btns">
+          <button type="button" class="watch-btn hidden" id="shareNative">📤 Share…</button>
+          <a class="quiet" id="shareWa" target="_blank" rel="noopener">WhatsApp</a>
+          <button type="button" class="quiet" id="shareCopy">Copy the link</button>
+        </div>
+        <p class="share-hint" id="shareHint"></p>
+      </div>
     </div>
 
     <p class="made-line" id="madeLine">Made in VihuPlanet — where children make, keep and share their own stories.</p>
@@ -134,7 +187,7 @@
   </div>
 </div>
 
-<script src="js/creationPlayback.js?v=0709"></script>
+<script src="js/creationPlayback.js?v=0710"></script>
 <script>
 (function(){
   'use strict';
@@ -246,26 +299,64 @@
       eth.classList.remove('hidden');
     }
 
-    // Onward sharing: the native share sheet where one exists (it is
-    // the only honest route into Instagram from the web), a WhatsApp
-    // share otherwise.
+    // Onward sharing (1.1.4): a real panel rather than one quiet
+    // button. The native share sheet is the only honest route into
+    // Instagram from the web, so where it exists it leads and the
+    // hint says exactly where Instagram lives; everywhere the link
+    // itself is one press away, because a copied link goes anywhere
+    // — an Instagram story, a message, a bio.
     var cleanUrl=window.location.origin+window.location.pathname+'?t='+encodeURIComponent(token);
+    var shareText=name?('Look what '+name+' made in VihuPlanet! '):'Look what was made in VihuPlanet! ';
+    var panel=el('sharePanel');
     var sb=el('shareBtn');
+    sb.onclick=function(){
+      panel.classList.toggle('hidden');
+    };
+
+    var nat=el('shareNative');
     if(navigator.share){
-      sb.classList.remove('hidden');
-      sb.onclick=function(){
+      nat.classList.remove('hidden');
+      nat.onclick=function(){
         navigator.share({
           title:name?(name+' made something in VihuPlanet'):'Look what I made in VihuPlanet',
           url:cleanUrl
         }).catch(function(){});
       };
+      el('shareHint').textContent='For Instagram: tap 📤 Share… and choose Instagram.';
     }else{
-      sb.classList.remove('hidden');
-      sb.onclick=function(){
-        window.open('https://wa.me/?text='+encodeURIComponent('Look what was made in VihuPlanet! '+cleanUrl),'_blank');
-      };
+      el('shareHint').textContent='For Instagram: copy the link and paste it there.';
     }
-    if(wantShare){ sb.focus(); }
+
+    el('shareWa').href='https://wa.me/?text='+encodeURIComponent(shareText+cleanUrl);
+
+    var copyBtn=el('shareCopy');
+    copyBtn.onclick=function(){
+      function done(ok){
+        copyBtn.textContent=ok?'Copied ✓':'Copy the link';
+        setTimeout(function(){ copyBtn.textContent='Copy the link'; },2400);
+      }
+      if(navigator.clipboard&&navigator.clipboard.writeText){
+        navigator.clipboard.writeText(cleanUrl).then(function(){ done(true); },function(){ done(fallbackCopy()); });
+      }else done(fallbackCopy());
+      function fallbackCopy(){
+        try{
+          var t=document.createElement('textarea');
+          t.value=cleanUrl;
+          document.body.appendChild(t);
+          t.select();
+          var ok=document.execCommand('copy');
+          t.remove();
+          return ok;
+        }catch(e){ return false; }
+      }
+    };
+
+    // The letter's WhatsApp / Instagram buttons land here asking to
+    // share — so the panel is already open, nothing to hunt for.
+    if(wantShare){
+      panel.classList.remove('hidden');
+      sb.classList.add('hidden');
+    }
 
     el('creation').classList.remove('hidden');
 

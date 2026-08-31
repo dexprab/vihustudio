@@ -1121,6 +1121,74 @@ function goodPayload(over) {
   ck(/didn’t open|didn't open/.test(lostText) && !/error|invalid|failed|404/i.test(lostText),
     'M9 an unknown token is a gentle sentence, never an error code', lostText.replace(/\n/g, ' · '));
 
+  // ---- 1.1.4 — the link travels with a preview, and the landing
+  // DELIVERS the share. A crawler runs no JS, so the preview must be
+  // in the raw HTML; fetching it is exactly what WhatsApp does.
+  const rawHtml = await fetch(BASE + '/look.html').then((r) => r.text());
+  const ogOk = /property="og:title" content="Look what I made ✨"/.test(rawHtml)
+    && /property="og:image" content="https:\/\/vihuplanet\.com\/[^"]+"/.test(rawHtml)
+    && /property="og:image:width" content="1200"/.test(rawHtml)
+    && /name="twitter:card" content="summary_large_image"/.test(rawHtml);
+  ck(ogOk, 'M12 the raw HTML carries the preview card — title, absolute https image, twitter card (crawlers run no JS)');
+
+  // The letter's share buttons land with ?share=1 — the panel must be
+  // already open, with WhatsApp prefilled and the link one press away.
+  await landingPage.addInitScript(() => {
+    try {
+      Object.defineProperty(navigator, 'clipboard', {
+        value: { writeText: (s) => { window.__copied = s; return Promise.resolve(); } },
+        configurable: true,
+      });
+    } catch (e) {}
+  });
+  await landingPage.goto(BASE + '/look.html?t=goodtoken&share=1');
+  await landingPage.waitForFunction(() => !document.getElementById('creation').classList.contains('hidden'), null, { timeout: 15000 });
+  await landingPage.screenshot({ path: path.join(SHOTS, 'M-share-panel.png') });
+  const sharePanel = await landingPage.evaluate(() => ({
+    panelOpen: !document.getElementById('sharePanel').classList.contains('hidden'),
+    toggleHidden: document.getElementById('shareBtn').classList.contains('hidden'),
+    waHref: document.getElementById('shareWa').getAttribute('href'),
+    hint: document.getElementById('shareHint').textContent,
+    nativeHidden: document.getElementById('shareNative').classList.contains('hidden'),
+  }));
+  const wantWa = 'https://wa.me/?text=' + encodeURIComponent(
+    'Look what Sam made in VihuPlanet! ' + BASE + '/look.html?t=goodtoken');
+  ck(sharePanel.panelOpen && sharePanel.toggleHidden,
+    'M13 ?share=1 lands with the panel already open — the letter’s buttons deliver, not hint', JSON.stringify(sharePanel));
+  ck(sharePanel.waHref === wantWa,
+    'M13b WhatsApp is prefilled with the maker’s own line and the share link', sharePanel.waHref);
+  await landingPage.evaluate(() => document.getElementById('shareCopy').click());
+  await landingPage.waitForTimeout(200);
+  const copied = await landingPage.evaluate(() => ({
+    got: window.__copied, label: document.getElementById('shareCopy').textContent,
+  }));
+  ck(copied.got === BASE + '/look.html?t=goodtoken' && copied.label === 'Copied ✓',
+    'M14 Copy the link copies the CLEAN share URL and says so', JSON.stringify(copied));
+  ck(/Instagram/.test(sharePanel.hint) && sharePanel.nativeHidden,
+    'M15 with no share sheet the hint still says where Instagram lives, and no dead 📤 is shown', sharePanel.hint);
+
+  // Where the phone HAS a share sheet, it leads — the only honest
+  // route into Instagram from the web.
+  await landingPage.addInitScript(() => {
+    try {
+      Object.defineProperty(navigator, 'share', {
+        value: (d) => { window.__shared = d; return Promise.resolve(); },
+        configurable: true,
+      });
+    } catch (e) {}
+  });
+  await landingPage.goto(BASE + '/look.html?t=goodtoken&share=1');
+  await landingPage.waitForFunction(() => !document.getElementById('creation').classList.contains('hidden'), null, { timeout: 15000 });
+  await landingPage.evaluate(() => document.getElementById('shareNative').click());
+  const nativeShare = await landingPage.evaluate(() => ({
+    nativeShown: !document.getElementById('shareNative').classList.contains('hidden'),
+    hint: document.getElementById('shareHint').textContent,
+    shared: window.__shared,
+  }));
+  ck(nativeShare.nativeShown && /tap 📤/.test(nativeShare.hint)
+    && nativeShare.shared && nativeShare.shared.url === BASE + '/look.html?t=goodtoken',
+    'M15b with a share sheet, 📤 Share… leads and hands over the clean link', JSON.stringify(nativeShare));
+
   // the landing page talks ONLY to the platform it was configured for
   const offHost = landingRequests.filter((u) =>
     u.indexOf(BASE) !== 0 && u.indexOf('http://supa.local.test') !== 0);

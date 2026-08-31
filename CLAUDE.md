@@ -6232,15 +6232,41 @@ own creation, and VihuPlanet is discovered THROUGH it.
   palettes and provably still scans (the suite decodes the plain
   card back to the same door). Measured lighter, previewed before
   print, and the strip on the foldable follows the same choice.
+- **THE LINK TRAVELS WITH A PREVIEW, AND THE LANDING DELIVERS THE
+  SHARE** (1.1.4, build 0710). Reported from real use: *"look what i
+  made when shared on whatsapp has no preview and share on instagram
+  just redirects to vihuplanet."* Two separate faults. **The preview:**
+  WhatsApp builds its card from OG tags fetched by a crawler that runs
+  no JavaScript, and `look.html` had none — so a shared creation
+  arrived as a bare grey link. The creation itself lives behind the
+  token and CANNOT be previewed on static hosting (a per-creation
+  og:image would need shares served through the Edge Function's own
+  domain — a disclosed, deliberate non-goal); what CAN be is a proper
+  branded card, so the raw HTML now carries "Look what I made ✨", the
+  invitation line, and Decision 28's own og-image, absolute https,
+  1200×630, twitter:card included. **The delivery:** Instagram
+  publishes no web prefill, so the letter's Instagram button landed on
+  a page whose only share affordance was one quiet, closed button —
+  "just redirects to vihuplanet" was a fair description. The landing
+  now has a real share panel: the phone's own 📤 share sheet where one
+  exists (the only honest route into Instagram from the web, and the
+  hint says exactly that), WhatsApp prefilled with the maker's own
+  line, and Copy the link — which copies the CLEAN token URL, stripped
+  of `share`/`watch` switches. `?share=1` (what the letter's buttons
+  send) lands with the panel already open and the toggle gone, so
+  the visitor arrives with nothing to hunt for. No dead control on any
+  device: without a share sheet the 📤 button is absent, not inert.
 - Architecture and detail: `docs/LOOK_WHAT_I_MADE.md`. Suite:
   `tools/look-share-test/` (118 — the 1.0 82 plus playback
   continuity, music lifecycle, fold steps, folded geometry, the
   card/foldable relationship and the once-only destination, then
   1.1.1's speaker-truth, direct-edit field, fold guide and plain
   paper, and 1.1.3's printed guide page, on-sheet labels, post-fold
-  paper choice and plain Story Card (125 in all); the fold-model,
-  sweep, blank-flash and once-guard checks each proved by
-  reverting).
+  paper choice and plain Story Card, and 1.1.4's raw-HTML preview
+  card, the letter-opened share panel, WhatsApp prefill, clean-link
+  copy and the share-sheet path (131 in all); the fold-model,
+  sweep, blank-flash, once-guard, preview and panel checks each
+  proved by reverting).
 - `js/creationShare.js` · `js/creationShareClient.js` ·
   `js/lookWhatIMade.js` · `js/foldableComposer.js` ·
   `js/storyCardComposer.js` · `look.html` ·

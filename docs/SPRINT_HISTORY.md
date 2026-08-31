@@ -10328,3 +10328,26 @@ stars, its QR black-on-white in both palettes and proved to still
 scan (K11 decodes the plain back to the same door). The foldable's
 card strip follows the same choice. look-share 125 — green. Canon:
 Decision 52 (amended in place).
+
+## LOOK WHAT I MADE 1.1.4 — the link travels with a preview (build 0710)
+
+Reported from real use: *"look what i made when shared on whatsapp has
+no preview and share on instagram just redirects to vihuplanet."* Two
+faults, both on look.html. WhatsApp's preview crawler runs no JS and
+the page had no OG tags, so a shared creation arrived as a bare grey
+link — it now carries a branded card in the raw HTML ("Look what I
+made ✨", the invitation line, Decision 28's og-image, absolute https,
+twitter:card); the creation itself is behind the token and cannot be
+previewed on static hosting, which is disclosed rather than worked
+around (per-creation previews would need shares served through the
+Edge Function's domain — a deliberate non-goal). And Instagram has no
+web prefill, so the letter's Instagram button landed on a page whose
+only share affordance was one quiet closed button. The landing now
+has a real share panel — the phone's own 📤 share sheet where one
+exists (the honest route into Instagram, and the hint says so),
+WhatsApp prefilled with the maker's line, and Copy the link (the
+CLEAN token URL, switches stripped) — and `?share=1`, which the
+letter's buttons send, lands with the panel already open. No dead
+control anywhere: without a share sheet the 📤 button is absent, not
+inert. look-share 131 — green; M12–M15b proved by reverting. Canon:
+Decision 52 (amended in place).
