@@ -2170,8 +2170,16 @@ html, body {
    the same blanket-isolation rule the Studio's print sheets use. */
 .ether-print-sheet { display: none; }
 @media print {
+  /* The universe never scrolls (html/body overflow:hidden, height
+     100%) — which in PRINT clamps the document to one viewport, so a
+     two-page print silently lost its second page (measured: the pdf's
+     own /Count said 1). Paper scrolls. */
+  html, body { height: auto !important; overflow: visible !important; }
   body > *:not(.ether-print-sheet) { display: none !important; }
-  .ether-print-sheet { display: block; }
-  .ether-print-sheet img { width: 100%; display: block; page-break-after: always; break-after: page; }
+  .ether-print-sheet { display: block; text-align: center; }
+  /* Sizing comes from the per-print injected style (1.2.3) — each
+     kind caps BOTH dimensions, or an A4 sheet spills onto a second
+     page the way a width-only fit measurably did. */
+  .ether-print-sheet img { display: block; margin: 0 auto; page-break-after: always; break-after: page; }
   .ether-print-sheet img:last-child { page-break-after: auto; break-after: auto; }
 }

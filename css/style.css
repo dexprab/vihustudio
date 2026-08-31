@@ -13658,12 +13658,20 @@ body.studio-rite-running .companion-chat-open{ display:none !important; }
     align-items:center;
     gap:24px;
   }
-  /* The foldable is one landscape sheet, full width of the paper
-     (the hub injects @page{size:landscape} for exactly this
-     print). */
+  /* The foldable is one landscape sheet (the hub injects
+     @page{size:landscape} for exactly this print). BOTH dimensions
+     are capped (1.2.3): a fixed width let the height follow the
+     bitmap's Letter ratio to 8.04in, which overflows A4 landscape's
+     ~7.77in usable box — and Letter's own 8.0in — so every sheet
+     spilled onto a second page ("not fitting A4 sheet", from a real
+     print dialog showing 4 pages). 10.4 × 7.5in fits inside A4 and
+     Letter alike, ratio preserved by the max pair. */
   .lwim-print-foldable img{
-    width:10.4in;
+    display:block;
+    width:auto;
     height:auto;
+    max-width:10.4in;
+    max-height:7.5in;
     page-break-inside:avoid;
   }
   /* The card prints at the Magic Card's own physical size —

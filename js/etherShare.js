@@ -265,10 +265,14 @@ const EtherShare=(function(){
       const im=document.createElement('img'); im.src=src;
       sheet.appendChild(im);
     });
+    // Each kind caps BOTH dimensions (1.2.3): the foldable inside A4
+    // landscape's and Letter's usable boxes alike; the card at the
+    // Magic Card's own physical size, front and back on one portrait
+    // page — the same treatment the Studio hub prints.
     const style=document.createElement('style');
     style.textContent=(kind==='foldable')
-      ? '@media print{ @page{ size: landscape; margin: 0.25in; } }'
-      : '@media print{ @page{ size: portrait; margin: 0.5in; } }';
+      ? '@media print{ @page{ size: landscape; margin: 0.25in; } .ether-print-sheet img{ width:auto; height:auto; max-width:10.4in; max-height:7.5in; } }'
+      : '@media print{ @page{ size: portrait; margin: 0.5in; } .ether-print-sheet img{ width:2.5in; height:3.5in; page-break-after:auto; break-after:auto; margin:0 auto 0.25in; } }';
     document.body.appendChild(style);
     document.body.appendChild(sheet);
     function cleanup(){

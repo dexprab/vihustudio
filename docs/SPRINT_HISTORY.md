@@ -10444,3 +10444,23 @@ review: the panels DO follow the authored page ratio (16:10 in →
 1.61 drawn — the squares in the screenshot were square test images).
 look-share 153 + ether-share 20 — green. Canon: Decision 52 (amended
 in place).
+
+## LOOK WHAT I MADE 1.2.3 — the print fits the paper (build 0715)
+
+Reported with a print dialog showing four pages: *"not fitting A4
+sheet."* Every print stylesheet fitted the foldable by width alone —
+the hub at a fixed 10.4in, the landing and Ether at 100% — so the
+Letter-ratio bitmap's height (8.04in) overflowed A4 landscape's usable
+box (and Letter's own), spilling each image onto a second page. Every
+surface now caps BOTH dimensions (10.4×7.5in fits A4 and Letter alike)
+and the card prints at its true 2.5×3.5in, front and back on one
+portrait page everywhere — the hub's treatment, which width-100% cards
+had broken the same way on Letter. The new checks then found a second,
+worse bug the report never mentioned: the universe's own
+`overflow:hidden` on html/body clamps PRINT to one viewport, so the
+Ether's two-page print silently lost its second page (`/Count 1` in
+the pdf with the layout measurably correct) — the print block resets
+them, because paper scrolls. Proved the way a printer proves it: real
+A4 pdf renders through the real stylesheets, counting pages (2·2·1·2),
+red on revert in both directions. look-share 156 + ether-share 21 —
+green. Canon: Decision 52 (amended in place).

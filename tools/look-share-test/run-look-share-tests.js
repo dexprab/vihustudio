@@ -627,6 +627,44 @@ function goodPayload(over) {
     'J3 printing prints the sheet AND its how-to-fold page (1.1.3)', JSON.stringify(printedFold));
   const sameSheet = await page.evaluate(() => window.__prints[0].srcSample === (document.querySelector('.lwim-sheet-img') || {}).src);
   ck(sameSheet, 'J4 the printed bitmap IS the previewed bitmap — match by construction');
+  // 1.2.3 — "not fitting A4 sheet", from a real print dialog showing
+  // FOUR pages. A width-only fit (width:10.4in → height 8.04in) let
+  // the Letter-ratio bitmap overflow A4 landscape's ~7.77in usable
+  // box — and Letter's own 8.0in — spilling each image onto a second
+  // page. Proved the way a printer proves it: the REAL stylesheet's
+  // .lwim-print-foldable rule, real composed bitmaps, a real A4 print
+  // render with the product's own margins, counting the pages. (On a
+  // fixture page rather than the live Studio: the live print sheet's
+  // 5s lifetime races a slow pdf render, and a check that can go
+  // stale mid-measure proves nothing either way.)
+  const hubCssPage = await browser.newPage();
+  await hubCssPage.goto(BASE + '/look.html');
+  await hubCssPage.addStyleTag({ url: BASE + '/css/style.css' });
+  await hubCssPage.addScriptTag({ url: BASE + '/js/creationShare.js' });
+  await hubCssPage.addScriptTag({ url: BASE + '/js/storyCardComposer.js' });
+  await hubCssPage.addScriptTag({ url: BASE + '/js/foldableComposer.js' });
+  await hubCssPage.evaluate(async () => {
+    function px(w, h, c) { const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+      const x = cv.getContext('2d'); x.fillStyle = c; x.fillRect(0, 0, w, h); return cv.toDataURL('image/png'); }
+    const share = { type: 'story', title: 'T', creatorName: 'V',
+      pages: [{ image: px(320, 200, '#2d6bc0') }, { image: px(320, 200, '#2d6bc0') }, { image: px(320, 200, '#2d6bc0') }] };
+    const made = await FoldableComposer.compose(share, {});
+    const sheet = document.createElement('div');
+    sheet.className = 'lwim-print-sheet lwim-print-foldable';
+    [made.sheet, made.guide].forEach((src) => {
+      const im = document.createElement('img'); im.src = src; sheet.appendChild(im);
+    });
+    const style = document.createElement('style');
+    style.textContent = '@media print{ @page{ size: landscape; margin: 0.25in; } body > *:not(.lwim-print-sheet){ display:none !important; } }';
+    document.body.appendChild(style);
+    document.body.appendChild(sheet);
+    await Promise.all(Array.from(sheet.querySelectorAll('img')).map((i) => i.decode().catch(() => {})));
+  });
+  const hubPdf = await hubCssPage.pdf({ format: 'A4', landscape: true, printBackground: true,
+    margin: { top: '0.25in', bottom: '0.25in', left: '0.25in', right: '0.25in' } });
+  const hubPages = (hubPdf.toString('latin1').match(/\/Type\s*\/Page[^s]/g) || []).length;
+  ck(hubPages === 2, 'J4b on A4, the sheet and the guide are ONE page each — nothing spills', hubPages + ' pages');
+  await hubCssPage.close();
 
   // the fold model, re-derived independently of the composer's table
   const fold = await page.evaluate(() => {
@@ -1393,6 +1431,11 @@ function goodPayload(over) {
   const foldPrint = await landingPage.evaluate(() => window.__prints[0]);
   ck(foldPrint.images === 2 && foldPrint.landscape === true,
     'N3 printing sends both pages, the wide way — exactly what was previewed', JSON.stringify(foldPrint));
+  // 1.2.3 — the A4 fit, proved by a real print render (see J4b).
+  const landFoldPdf = await landingPage.pdf({ format: 'A4', landscape: true, printBackground: true,
+    margin: { top: '0.25in', bottom: '0.25in', left: '0.25in', right: '0.25in' } });
+  const landFoldPages = (landFoldPdf.toString('latin1').match(/\/Type\s*\/Page[^s]/g) || []).length;
+  ck(landFoldPages === 2, 'N3b on A4, the landing\'s foldable is two pages — sheet and guide, nothing spills', landFoldPages + ' pages');
 
   await landingPage.goto(BASE + '/look.html?t=goodtoken&print=card');
   await landingPage.waitForFunction(() =>
@@ -1411,6 +1454,13 @@ function goodPayload(over) {
   const cardPrint = await landingPage.evaluate(() => window.__prints[0]);
   ck(cardPrint.images === 2 && cardPrint.landscape === false,
     'N5 the card prints front and back, upright', JSON.stringify(cardPrint));
+  // 1.2.3 — the card prints at its true 2.5×3.5in, front and back
+  // together on ONE portrait page (the hub's own treatment) — a
+  // width-100% card overflowed Letter portrait and split the pair.
+  const landCardPdf = await landingPage.pdf({ format: 'A4', landscape: false, printBackground: true,
+    margin: { top: '0.5in', bottom: '0.5in', left: '0.5in', right: '0.5in' } });
+  const landCardPages = (landCardPdf.toString('latin1').match(/\/Type\s*\/Page[^s]/g) || []).length;
+  ck(landCardPages === 1, 'N5b front and back share one page at the card\'s real size', landCardPages + ' pages');
 
   // 1.2 — ☀️ Plain paper stands beside the landing's print buttons too
   // ("kind printing should be everywhere where there is print

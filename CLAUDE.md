@@ -6397,6 +6397,35 @@ own creation, and VihuPlanet is discovered THROUGH it.
   page image's own ratio in every panel, and the reading renders
   carry the authored viewport (`adaptiveViewport`). The squares in
   the review screenshot were the test fixture's own square images.
+- **A PRINT THAT FITS ONE PAPER SIZE FITS NO OTHER BY LUCK** (1.2.3,
+  build 0715). Reported with a print dialog showing FOUR pages: *"not
+  fitting A4 sheet."* Every print stylesheet fitted the foldable by
+  WIDTH alone (the hub at a fixed 10.4in, the landing and the Ether
+  at 100%), so the Letter-ratio bitmap's height came out 8.04in —
+  past A4 landscape's ~7.77in usable box, and past Letter's own
+  8.0in — and each image spilled onto a second page. Every surface
+  now caps BOTH dimensions (10.4 × 7.5in fits A4 and Letter alike,
+  ratio preserved by the max pair), and the card prints at its true
+  2.5 × 3.5in with front and back together on ONE portrait page on
+  every surface — the hub's own treatment, which a width-100% card
+  had broken the same way on Letter.
+- **AND THE ETHER COULD NOT PRINT A SECOND PAGE AT ALL.** Found by
+  the new check, not by the report: the universe never scrolls
+  (`html, body { overflow:hidden; height:100% }`), which in PRINT
+  clamps the document to one viewport — so the Ether's two-page print
+  quietly lost its second page (the pdf's own `/Count` said 1, with
+  the layout measurably correct). The print block now sets them back
+  to `auto`/`visible`: paper scrolls.
+- **PROVED THE WAY A PRINTER PROVES IT.** The suites render REAL A4
+  pdfs through the real stylesheets and print paths with the
+  product's own margins, and count the pages that come out: hub
+  foldable 2 · landing foldable 2 · landing card 1 · Ether foldable
+  2. Reverting the width-only fit brings back the reported 4 pages;
+  reverting the overflow reset brings back the lost page. (The hub
+  and Ether checks run on fixture pages loading the real CSS and the
+  real modules — the live pages' print-sheet lifetime races a slow
+  pdf render, and a check that can go stale mid-measure proves
+  nothing either way.)
 - Function BUILD is `LW3` — a redeploy of `creation-share` carries
   the `pagesPlain` sweep, the letter's print doors and the `pv`
   marker.
@@ -6412,14 +6441,15 @@ own creation, and VihuPlanet is discovered THROUGH it.
   the landing's compose-preview-print for both keepsakes, and 1.2's
   pagesPlain sweep, uploaded-payload plain renders and landing paper
   toggles, and 1.2.1's poisoned-readImage plain proof, ceremony
-  stamping and deploy-window retry, and 1.2.2's fold-order guard
-  (153 in all); the fold-model,
+  stamping and deploy-window retry, and 1.2.2's fold-order guard,
+  and 1.2.3's A4 page-count proofs (156 in all); the fold-model,
   sweep, blank-flash, once-guard, preview, panel, print-door,
   plain-clone and fold-order checks each proved by reverting) ·
   `tools/ether-share-test/` (20 — the Ether journey: seed a shared
   story, meet its Spirit, all three doors driven for real, the
   deep-link QR decoded by zxing in both palettes, plain PAGES proved
-  by pixel, once:true proved by reverting).
+  by pixel, once:true and the print overflow fix proved by
+  reverting — 21 in all).
 - `js/creationShare.js` · `js/creationShareClient.js` ·
   `js/lookWhatIMade.js` · `js/foldableComposer.js` ·
   `js/storyCardComposer.js` · `js/etherShare.js` · `look.html` ·

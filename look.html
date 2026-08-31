@@ -139,8 +139,12 @@
   @media print{
     body{ background:#fff; padding:0; display:block; }
     .wrap{ display:none; }
-    .look-print-sheet{ display:block; }
-    .look-print-sheet img{ width:100%; display:block; page-break-after:always; break-after:page; }
+    .look-print-sheet{ display:block; text-align:center; }
+    /* Sizing comes from the per-print injected style (1.2.3): a
+       blanket width:100% let the foldable's height follow its
+       Letter-ratio bitmap past A4's usable box, spilling every
+       image onto a second page. Each kind states BOTH caps. */
+    .look-print-sheet img{ display:block; margin:0 auto; page-break-after:always; break-after:page; }
     .look-print-sheet img:last-child{ page-break-after:auto; break-after:auto; }
   }
   .hidden{ display:none !important; }
@@ -225,14 +229,14 @@
   </div>
 </div>
 
-<script src="js/creationPlayback.js?v=0714"></script>
+<script src="js/creationPlayback.js?v=0715"></script>
 <!-- 1.1.5 — the print composers. All three are guard-safe outside the
      Studio (typeof checks throughout); CreationShare is here only for
      displayTitle, so the printed cover names the creation the same
      way the hub does. -->
-<script src="js/creationShare.js?v=0714"></script>
-<script src="js/storyCardComposer.js?v=0714"></script>
-<script src="js/foldableComposer.js?v=0714"></script>
+<script src="js/creationShare.js?v=0715"></script>
+<script src="js/storyCardComposer.js?v=0715"></script>
+<script src="js/foldableComposer.js?v=0715"></script>
 <script>
 (function(){
   'use strict';
@@ -475,10 +479,14 @@
         var im=document.createElement('img'); im.src=src;
         sheet.appendChild(im);
       });
+      // Each kind caps BOTH dimensions (1.2.3): the foldable inside
+      // A4 landscape's and Letter's usable boxes alike; the card at
+      // the Magic Card's own physical size, front and back together
+      // on one portrait page — the hub's own treatment.
       var style=document.createElement('style');
       style.textContent=(printKind==='foldable')
-        ? '@media print{ @page{ size: landscape; margin: 0.25in; } }'
-        : '@media print{ @page{ size: portrait; margin: 0.5in; } }';
+        ? '@media print{ @page{ size: landscape; margin: 0.25in; } .look-print-sheet img{ width:auto; height:auto; max-width:10.4in; max-height:7.5in; } }'
+        : '@media print{ @page{ size: portrait; margin: 0.5in; } .look-print-sheet img{ width:2.5in; height:3.5in; page-break-after:auto; break-after:auto; margin:0 auto 0.25in; } }';
       document.body.appendChild(style);
       document.body.appendChild(sheet);
       function cleanup(){

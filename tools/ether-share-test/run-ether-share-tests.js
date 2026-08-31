@@ -362,6 +362,38 @@ const JPEG_1PX = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgc
   const foldPrint = await page.evaluate(() => window.__prints[1]);
   ck(foldPrint.images === 2 && foldPrint.landscape === true,
     'S8c the book prints its sheet and the how-to-fold page, the wide way', JSON.stringify(foldPrint));
+  // 1.2.3 — the A4 fit, proved by a real print render through the
+  // REAL EtherShare print path (on a light fixture page: the living
+  // universe renders a pdf slower than the print sheet's 5s lifetime,
+  // and a measure that races a timer proves nothing either way).
+  const etherCssPage = await browser.newPage();
+  await etherCssPage.goto(BASE + '/look.html');
+  await etherCssPage.addStyleTag({ url: BASE + '/css/vihuplanet-home.css' });
+  await etherCssPage.addScriptTag({ url: BASE + '/js/creationShare.js' });
+  await etherCssPage.addScriptTag({ url: BASE + '/js/storyCardComposer.js' });
+  await etherCssPage.addScriptTag({ url: BASE + '/js/foldableComposer.js' });
+  await etherCssPage.addScriptTag({ url: BASE + '/js/etherShare.js' });
+  await etherCssPage.evaluate(() => {
+    window.print = function () {};
+    function px(w, h, c) { const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+      const x = cv.getContext('2d'); x.fillStyle = c; x.fillRect(0, 0, w, h); return cv.toDataURL('image/png'); }
+    const IMG = px(320, 200, '#2d6bc0');
+    EtherShare.open('proj_fit', { title: 'F', creator: 'V', pages: [IMG, IMG, IMG] });
+    Array.from(document.querySelectorAll('.ether-share-door')).find((b) => /little book/.test(b.textContent)).click();
+  });
+  await etherCssPage.waitForFunction(() =>
+    !Array.from(document.querySelectorAll('.ether-share-go')).find((b) => /Print/.test(b.textContent)).disabled,
+    null, { timeout: 60000 });
+  await etherCssPage.evaluate(() => {
+    Array.from(document.querySelectorAll('.ether-share-go')).find((b) => /Print/.test(b.textContent)).click();
+  });
+  await etherCssPage.waitForFunction(() =>
+    document.querySelectorAll('.ether-print-sheet img').length === 2, null, { timeout: 30000 });
+  const etherPdf = await etherCssPage.pdf({ format: 'A4', landscape: true, printBackground: true,
+    margin: { top: '0.25in', bottom: '0.25in', left: '0.25in', right: '0.25in' } });
+  const etherPages = (etherPdf.toString('latin1').match(/\/Type\s*\/Page[^s]/g) || []).length;
+  ck(etherPages === 2, 'S8d on A4, the Ether\'s foldable is two pages — nothing spills', etherPages + ' pages');
+  await etherCssPage.close();
 
   // ---- S9: leaving costs nothing — the universe was never touched
   await page.keyboard.press('Escape');
