@@ -6159,12 +6159,51 @@ own creation, and VihuPlanet is discovered THROUGH it.
   was measuring a still. The words go through the real field now,
   and the fixture honestly became a SEQUENCE (image + words is two
   authored marks), so H4 turned round with its reason in place.
+- **THE SPEAKER TELLS THE TRUTH, AND A PRESS DOES WHAT IT PROMISES**
+  (1.1.1, build 0707). Reported from real use: *"the speaker button
+  on the link shared with parent does not work."* The parent's page
+  starts the making with no gesture, autoplay is refused — and the
+  old button flipped a "muted" flag that ASSUMED the music had
+  started, so its first press "muted" silence: a dead button. The
+  icon is now driven only by whether sound is actually being made
+  (play()'s own success path is the one thing that says 🔊), so a
+  refused autoplay shows 🔇 honestly and the press that follows is
+  the gesture the browser was waiting for. Proved by refusing
+  play() outright and pressing.
+- **THE ADDRESS IS A FIELD, NOT A CHIP WITH AN EDIT BESIDE IT**
+  (1.1.1). Asked for directly: the saved address arrives prefilled
+  in a directly editable field — one less press, and the field
+  itself says it can be changed. Everything the destination decision
+  already promised holds unchanged: unchanged text sends nothing
+  (the card's own address is the default), a changed address travels
+  marked `once` and is stored nowhere, and the saved address is the
+  next share's default.
+- **THE FOLD IS TAUGHT, NOT ONLY PERFORMED** (1.1.1). *"kid might
+  want to see how to fold"* — the folded view now carries **How to
+  fold it**: five little pictures with a few words each — cut the
+  Story Card off the edge, cut the little middle line, fold it in
+  half the long way, push the ends in, close it into a book. Small
+  drawings, child words, no origami vocabulary.
+- **☀️ PLAIN PAPER — THE PAGE BACKGROUND LIFTS OFF THE SHEET**
+  (1.1.1). *"if its black and white print can we remove the bg color
+  of slides?"* The renderer already had the seam: a page's own
+  background-colour override wins over the World's wall tone, so a
+  plain page is a CLONE with a white override rendered through the
+  IDENTICAL pipeline — `renderer/slideRenderer.js` untouched, chrome
+  text re-picks dark ink by itself, and the live slide is never
+  written. It is a previewed CHOICE, never silent: the toggle
+  recomposes the sheet on screen and the print is the sheet just
+  shown, so preview-before-print holds through it (measured: the
+  plain sheet is provably lighter, and printing after toggling
+  prints the plain bitmap). The SHARED payload is never plain — a
+  screen has no ink. Colours are one press away again.
 - Architecture and detail: `docs/LOOK_WHAT_I_MADE.md`. Suite:
-  `tools/look-share-test/` (109 — the 1.0 82 plus playback
+  `tools/look-share-test/` (118 — the 1.0 82 plus playback
   continuity, music lifecycle, fold steps, folded geometry, the
-  card/foldable relationship and the once-only destination; the
-  fold-model, sweep, blank-flash and once-guard checks each proved
-  by reverting).
+  card/foldable relationship and the once-only destination, then
+  1.1.1's speaker-truth, direct-edit field, fold guide and plain
+  paper; the fold-model, sweep, blank-flash and once-guard checks
+  each proved by reverting).
 - `js/creationShare.js` · `js/creationShareClient.js` ·
   `js/lookWhatIMade.js` · `js/foldableComposer.js` ·
   `js/storyCardComposer.js` · `look.html` ·

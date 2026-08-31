@@ -13772,3 +13772,36 @@ body.studio-rite-running .companion-chat-open{ display:none !important; }
   min-width:min(320px,80%);
 }
 .lwim-dest .lwim-input{ width:100%; border:none; padding:0; text-align:center; }
+
+/* ================================================================
+   Sprint LOOK WHAT I MADE 1.1.1 — how to fold, and plain paper.
+   ================================================================ */
+.lwim-howfold{ margin:14px auto 6px; }
+.lwim-howfold-title{
+  margin:0 0 8px;
+  font-family:Georgia,serif;
+  font-size:15px;
+  font-weight:700;
+  color:#3a3630;
+}
+.lwim-howfold-row{
+  display:flex;
+  gap:12px;
+  flex-wrap:wrap;
+  justify-content:center;
+}
+.lwim-howfold-step{ width:100px; }
+.lwim-howfold-pic{
+  border:1px solid #eee5d2;
+  border-radius:8px;
+  background:#fffdf6;
+  padding:2px 0;
+}
+.lwim-howfold-words{
+  margin-top:4px;
+  font-family:Georgia,serif;
+  font-size:11.5px;
+  line-height:1.35;
+  color:#6f6a60;
+}
+.lwim-paper-toggle{ margin-top:2px; }

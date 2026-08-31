@@ -172,6 +172,22 @@ const CreationShare=(function(){
     });
   }
 
+  // ---------- plain paper ----------
+  // A page re-rendered for a black-and-white printer: the SAME
+  // render, on white. The renderer already has the seam — a page's
+  // own background-colour override (metadata.cardOverrides.background)
+  // wins over the World's wall tone, and the chrome text re-picks
+  // dark ink against a light ground by itself — so a plain page is a
+  // CLONE with a white override, rendered through the identical
+  // pipeline. Nothing in renderer/slideRenderer.js changes, and the
+  // live slide is never touched: only the two objects on the path to
+  // the override are copied.
+  function _plainClone(slide){
+    if(!slide) return slide;
+    const meta=Object.assign({},slide.metadata||{});
+    meta.cardOverrides=Object.assign({},meta.cardOverrides||{},{background:'#ffffff'});
+    return Object.assign({},slide,{metadata:meta});
+  }
   // ---------- the making, as frames ----------
   function _watchFramesFor(slides){
     if(typeof MagicReveal==='undefined'||!MagicReveal.revealStages) return Promise.resolve([]);
@@ -204,10 +220,17 @@ const CreationShare=(function(){
   // slides — the RUNTIME slides of that project, open in the
   //          Studio (AppState.slides). The hub guarantees the
   //          project it shares is the project that is open.
+  // opts.plain — render every page (and every making frame) on white
+  //   paper, for a printer: the foldable's own ink-friendly mode.
+  //   The SHARED payload is never plain — a screen has no ink.
   function snapshot(record,slides,opts){
     const o=opts||{};
     const share=fromRecord(record)||{};
-    const real=(slides||[]).filter(_pageHasContent);
+    // Filter BEFORE cloning: the white override is itself a
+    // background, so a blank page's plain clone would otherwise
+    // suddenly count as content.
+    let real=(slides||[]).filter(_pageHasContent);
+    if(o.plain) real=real.map(_plainClone);
     let chain=Promise.resolve([]);
     real.forEach(function(slide){
       chain=chain.then(function(pages){
@@ -218,7 +241,7 @@ const CreationShare=(function(){
       });
     });
     return chain.then(function(pages){
-      const withWatch=(o.watch===false)?Promise.resolve([]):_watchFramesFor(slides);
+      const withWatch=(o.watch===false)?Promise.resolve([]):_watchFramesFor(real);
       return withWatch.then(function(watch){
         const payload={
           v:1,

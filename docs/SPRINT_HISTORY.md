@@ -10258,3 +10258,31 @@ write is wiped by `draw()`'s own sync from `#storyBeat` — words go
 through the real field, and the fixture honestly became a sequence.
 look-share 109 · edge-auth 129 — green; blank-flash and once-guard
 checks proved by reverting. Canon: Decision 52 (amended in place).
+
+---
+
+## Sprint LOOK WHAT I MADE 1.1.1 — four fixes from real use (build 0707)
+
+Product-owner feedback after using the shipped loop, all four applied
+and measured. **(1)** *"the speaker button on the link shared with
+parent does not work"* — root-caused, not patched: the parent's page
+starts the making with no gesture, autoplay is refused, and the button
+flipped a "muted" flag that ASSUMED the music had started, so its first
+press muted silence. The icon is now driven only by whether sound is
+actually being made (play()'s success path alone says 🔊), so a refused
+autoplay shows 🔇 honestly and the press that follows is the gesture
+the browser wanted. Proved by refusing play() and pressing (L11–L13).
+**(2)** The share destination is a directly editable prefilled field —
+the ✏️ Edit button is gone; the once-only override and never-overwrite
+guarantees are unchanged. **(3)** The folded view teaches the fold:
+five little pictures with a few words each (cut the card off, cut the
+middle line, fold the long way, push the ends in, close it into a
+book). **(4)** ☀️ Plain paper for a black-and-white printer: pages
+re-rendered on white through the IDENTICAL pipeline (a clone with a
+white background override — the renderer's own existing seam,
+`renderer/slideRenderer.js` untouched), previewed before print and
+measurably lighter (P2), with print-matches-preview holding through
+the toggle (P4). One self-caught trap: the white override is itself a
+background, so the plain filter runs BEFORE cloning or blank pages
+would suddenly count as content. look-share 118 — all green. Canon:
+Decision 52 (amended in place).

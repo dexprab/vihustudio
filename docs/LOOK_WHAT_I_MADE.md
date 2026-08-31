@@ -57,7 +57,12 @@ track per replay, faded out after the finished creation rests, stopped
 on destroy, clean restart on replay. Global mute (`vihu-audio-muted` /
 `AudioManager.isMuted()`) is respected; where AudioManager exists the
 Studio atmosphere ducks under the music (`duckFor`, released on stop);
-a per-playback 🔊 on the stage mutes this playback only. `onDone` is
+a per-playback speaker on the stage mutes this playback only — and
+its icon is driven by whether sound is ACTUALLY being made (1.1.1):
+play()'s own success path alone says 🔊, so on a page where autoplay
+was refused (the parent's landing) it says 🔇 honestly and the press
+that follows starts the music with the gesture the browser was
+waiting for. `onDone` is
 always a macrotask — a one-frame making otherwise completes inside
 `play()`'s own resolution and the caller paints over whatever onDone
 put up (a real bug the suite caught).
@@ -99,7 +104,17 @@ celebration is untouched** — Decision 12's two equal choices stand.
   preview flips through. The hub's foldable view is three beats: the
   open sheet · **Fold it ✨** (a stylised fold gesture on the same
   bitmap; skipped under reduced motion) · the finished little book,
-  tappable to turn its pages, with the card presented beside it.
+  tappable to turn its pages, with the card presented beside it and
+  **How to fold it** (1.1.1) — five small pictures, few words. The
+  open-sheet view also offers **☀️ Plain paper** (1.1.1): the whole
+  sheet recomposed from `CreationShare.snapshot(record, slides,
+  {plain:true})`, which renders CLONES of the pages carrying a white
+  background override through the identical pipeline (the renderer's
+  own seam — a page's `metadata.cardOverrides.background` wins over
+  the World's wall tone, and chrome text re-picks dark ink itself).
+  The plain filter runs before cloning, or the white override would
+  make a blank page count as content. Preview-before-print holds
+  through the toggle; the shared payload is never plain.
 - **Story Card** (`js/storyCardComposer.js`) — 750×1050 (2.5×3.5in @
   300dpi), night-sky front with the creation, back with a QR carrying
   the share URL on a white quiet zone (the Data Matrix lab's first
@@ -135,9 +150,10 @@ celebration is untouched** — Decision 12's two equal choices stand.
   when on file). A first-given address is kept on the card only where
   none exists (`parent_email=is.null` guard) and never when the
   request carries `once:true` — an override is a destination, not an
-  address to keep. The hub shows the saved address before Send with
-  ✏️ Edit beside it; the saved address is never overwritten and stays
-  the next share's default. The letter goes via Resend. GET `?cover=<token>` serves the creation's first page as an
+  address to keep. The hub shows the saved address before Send in a
+  DIRECTLY editable prefilled field (1.1.1 — no Edit button in the
+  way); the saved address is never overwritten and stays the next
+  share's default. The letter goes via Resend. GET `?cover=<token>` serves the creation's first page as an
   image for the letter (mail clients strip `data:` images), gated by
   the token itself. Deploy with `--no-verify-jwt` (the cover is
   fetched by `<img>` tags that cannot send headers); the session gate

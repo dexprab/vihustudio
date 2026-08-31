@@ -392,6 +392,11 @@ function goodPayload(over) {
     const beat = document.getElementById('storyBeat');
     if (beat) beat.value = 'The moon dragon flew all the way home.';
     AppState.slides[0].storyBeat = 'The moon dragon flew all the way home.';
+    // A dark authored page background — what ☀️ Plain paper exists to
+    // lift off the printed sheet.
+    AppState.slides[0].metadata = AppState.slides[0].metadata || {};
+    AppState.slides[0].metadata.cardOverrides = Object.assign(
+      {}, AppState.slides[0].metadata.cardOverrides, { background: '#1a2244' });
     const t = document.getElementById('bookTitle');
     if (t) t.value = 'The Moon Dragon';
     window.refreshStoryActions();
@@ -488,12 +493,14 @@ function goodPayload(over) {
   await page.waitForTimeout(200);
   const destView = await page.evaluate(() => ({
     text: document.querySelector('.lwim-card').innerText,
-    dest: ((document.querySelector('.lwim-dest') || {}).textContent || '').trim(),
-    edit: Array.from(document.querySelectorAll('.lwim-btn')).some((b) => /Edit/.test(b.textContent)),
+    value: (document.querySelector('.lwim-dest .lwim-input') || {}).value || '',
+    editBtn: Array.from(document.querySelectorAll('.lwim-btn')).some((b) => /Edit/.test(b.textContent)),
   }));
-  ck(/Send this to:/.test(destView.text) && destView.dest === 'mum@example.com',
-    'S1 the saved grown-up address is VISIBLE before anything is sent', destView.dest);
-  ck(destView.edit, 'S2 with ✏️ Edit one press away');
+  ck(/Send this to:/.test(destView.text) && destView.value === 'mum@example.com',
+    'S1 the saved grown-up address is VISIBLE before anything is sent', destView.value);
+  // 1.1.1, from real use: the field itself is editable — no Edit
+  // button standing between the child and the address.
+  ck(!destView.editBtn, 'S2 the field is DIRECTLY editable — no Edit button in the way');
 
   await page.evaluate(() => {
     Array.from(document.querySelectorAll('.lwim-btn')).find((b) => /^Send/.test(b.textContent.trim())).click();
@@ -509,11 +516,8 @@ function goodPayload(over) {
     Array.from(document.querySelectorAll('.lwim-btn')).find((b) => /Share with Parent/.test(b.textContent)).click();
   });
   await page.waitForTimeout(200);
-  await page.evaluate(() => {
-    Array.from(document.querySelectorAll('.lwim-btn')).find((b) => /Edit/.test(b.textContent)).click();
-  });
   const prefilled = await page.evaluate(() => (document.querySelector('.lwim-dest .lwim-input') || {}).value);
-  ck(prefilled === 'mum@example.com', 'S4 editing starts from the saved address, prefilled', prefilled);
+  ck(prefilled === 'mum@example.com', 'S4 the field starts from the saved address, prefilled', prefilled);
   await page.evaluate(() => {
     const input = document.querySelector('.lwim-dest .lwim-input');
     input.value = 'grandma@example.com';
@@ -532,7 +536,7 @@ function goodPayload(over) {
     Array.from(document.querySelectorAll('.lwim-btn')).find((b) => /Share with Parent/.test(b.textContent)).click();
   });
   await page.waitForTimeout(200);
-  const nextTime = await page.evaluate(() => ((document.querySelector('.lwim-dest') || {}).textContent || '').trim());
+  const nextTime = await page.evaluate(() => (document.querySelector('.lwim-dest .lwim-input') || {}).value || '');
   ck(savedAfter === 'mum@example.com' && nextTime === 'mum@example.com',
     'S6 the saved address is untouched and is still the NEXT share\'s default', nextTime);
   await page.evaluate(() => { localStorage.removeItem('vihu-sky-parent-email'); LookWhatIMade.close(); });
@@ -657,6 +661,71 @@ function goodPayload(over) {
   ck(!!turn1 && !!turn2 && turn1 !== turn2, 'J13 tapping the book turns its pages');
   ck(folded.printBtn, 'J14 and Print still waits at the end, after the child has SEEN the result');
 
+  // 1.1.1, from real use: "kid might want to see how to fold."
+  const guide = await page.evaluate(() => ({
+    title: /How to fold it/.test(document.querySelector('.lwim-card').innerText),
+    steps: document.querySelectorAll('.lwim-howfold-step').length,
+    pics: document.querySelectorAll('.lwim-howfold-pic svg').length,
+    cutCard: /Cut your Story Card off the edge/.test(document.querySelector('.lwim-card').innerText),
+  }));
+  ck(guide.title && guide.steps === 5 && guide.pics === 5,
+    'J15 the folded view SHOWS how to fold — five little pictures, few words', JSON.stringify(guide));
+  ck(guide.cutCard, 'J16 and the first step is cutting the Story Card off the edge');
+
+  // ---- P. plain paper (1.1.1) — "if its black and white print can
+  // we remove the bg color of slides?"
+  console.log('-- P: plain paper');
+  await page.evaluate(() => {
+    Array.from(document.querySelectorAll('.lwim-btn')).find((b) => /← Back/.test(b.textContent)).click();
+  });
+  await page.waitForTimeout(200);
+  await page.evaluate(() => {
+    Array.from(document.querySelectorAll('.lwim-btn')).find((b) => /Print Foldable/.test(b.textContent)).click();
+  });
+  await page.waitForFunction(() => !!document.querySelector('.lwim-sheet-img'), null, { timeout: 90000 });
+  const colorSheet = await page.evaluate(() => ({
+    src: document.querySelector('.lwim-sheet-img').src,
+    toggle: Array.from(document.querySelectorAll('.lwim-btn')).some((b) => /Plain paper/.test(b.textContent)),
+  }));
+  ck(colorSheet.toggle, 'P1 ☀️ Plain paper is offered beside the sheet');
+  await page.evaluate(() => {
+    Array.from(document.querySelectorAll('.lwim-btn')).find((b) => /Plain paper/.test(b.textContent)).click();
+  });
+  await page.waitForFunction((prev) => {
+    const img = document.querySelector('.lwim-sheet-img');
+    return img && img.src && img.src !== prev;
+  }, colorSheet.src, { timeout: 120000 });
+  const plain = await page.evaluate(async (colorSrc) => {
+    const plainSrc = document.querySelector('.lwim-sheet-img').src;
+    async function lum(src) {
+      const img = new Image(); img.src = src;
+      await (img.decode ? img.decode() : new Promise((res) => { img.onload = res; }));
+      const c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
+      const x = c.getContext('2d'); x.drawImage(img, 0, 0);
+      const d = x.getImageData(0, 0, c.width, c.height).data;
+      let sum = 0, n = 0;
+      for (let i = 0; i < d.length; i += 64) { sum += (d[i] + d[i + 1] + d[i + 2]) / 3; n++; }
+      return sum / n / 255;
+    }
+    return {
+      colorLum: await lum(colorSrc),
+      plainLum: await lum(plainSrc),
+      back: Array.from(document.querySelectorAll('.lwim-btn')).some((b) => /Bring the colours back/.test(b.textContent)),
+    };
+  }, colorSheet.src);
+  ck(plain.plainLum > plain.colorLum + 0.02,
+    'P2 the plain sheet is MEASURABLY lighter — the page background lifts off the paper',
+    JSON.stringify({ color: plain.colorLum.toFixed(3), plain: plain.plainLum.toFixed(3) }));
+  ck(plain.back, 'P3 and the colours are one press away again');
+  await page.evaluate(() => {
+    Array.from(document.querySelectorAll('.lwim-btn')).find((b) => /Print My Foldable/.test(b.textContent)).click();
+  });
+  await page.waitForFunction((n) => window.__prints.length === n, 2, { timeout: 20000 });
+  const printedPlain = await page.evaluate(() =>
+    window.__prints[1].srcSample === (document.querySelector('.lwim-sheet-img') || {}).src);
+  ck(printedPlain, 'P4 printing prints the plain sheet the child was just shown — the preview holds through the toggle');
+  await page.evaluate(() => { LookWhatIMade.close(); });
+
   // ---- K. the story card
   console.log('-- K: the story card — and a real scan');
   await page.evaluate(() => {
@@ -673,7 +742,7 @@ function goodPayload(over) {
     text: document.querySelector('.lwim-card').innerText,
     printedYet: window.__prints.length,
   }));
-  ck(cardView.printedYet === 1, 'K1 front and back are SHOWN before anything prints');
+  ck(cardView.printedYet === 2, 'K1 front and back are SHOWN before anything prints (two earlier prints were the foldable\'s own)');
   ck(/point a phone|comes alive|opens for them/i.test(cardView.text),
     'K2 the child is told what the card DOES, in magic rather than mechanism', cardView.text.replace(/\n/g, ' · '));
   ck(!/QR|scan\b|code|link|URL/i.test(cardView.text),
@@ -705,8 +774,8 @@ function goodPayload(over) {
   await page.evaluate(() => {
     Array.from(document.querySelectorAll('.lwim-btn')).find((b) => /Print My Card/.test(b.textContent)).click();
   });
-  await page.waitForFunction(() => window.__prints.length === 2, null, { timeout: 20000 });
-  const printedCard = await page.evaluate(() => window.__prints[1]);
+  await page.waitForFunction(() => window.__prints.length === 3, null, { timeout: 20000 });
+  const printedCard = await page.evaluate(() => window.__prints[2]);
   ck(/lwim-print-card/.test(printedCard.kind) && printedCard.images === 2,
     'K6 the printed card is front and back, the pair just previewed', JSON.stringify(printedCard.kind));
 
@@ -824,6 +893,53 @@ function goodPayload(over) {
     'L9 the child\'s own global mute silences the music and the making still plays', JSON.stringify(mutedRun));
   await page.evaluate(() => { AudioManager.setMuted(false); LookWhatIMade.close(); });
   ck(pageErrors.length === 0, 'L10 zero page errors across the whole Studio run', pageErrors.join(' | '));
+
+  // 1.1.1, from real use: "the speaker button on the link shared
+  // with parent does not work." The parent's page starts the making
+  // with no gesture, autoplay is refused, and the old button then
+  // 'muted' music that had never played. Simulated here by refusing
+  // play() outright, then pressing the speaker.
+  await page.evaluate(() => {
+    window.__origPlay = HTMLMediaElement.prototype.play;
+    HTMLMediaElement.prototype.play = function () { return Promise.reject(new Error('no-gesture')); };
+    document.getElementById('lookBtn').click();
+  });
+  await page.waitForTimeout(200);
+  await page.evaluate(() => {
+    Array.from(document.querySelectorAll('.lwim-btn')).find((b) => /Watch/.test(b.textContent)).click();
+  });
+  await page.waitForFunction(() => {
+    const st = document.querySelector('.cp-stage');
+    const layer = st && st.querySelector('.cp-layer');
+    return layer && layer.src;
+  }, null, { timeout: 60000 });
+  await page.waitForTimeout(400);
+  const refused = await page.evaluate(() => ({
+    icon: (document.querySelector('.cp-mute') || {}).textContent,
+    playing: (window.__audios || []).filter((a) => a.__cpBed).some((a) => !a.paused),
+  }));
+  ck(refused.icon === '🔇' && !refused.playing,
+    'L11 when the room stays silent the speaker says so — 🔇, honestly', JSON.stringify(refused));
+  await page.evaluate(() => {
+    HTMLMediaElement.prototype.play = window.__origPlay;
+    document.querySelector('.cp-mute').click();
+  });
+  await page.waitForTimeout(500);
+  const pressed = await page.evaluate(() => ({
+    icon: (document.querySelector('.cp-mute') || {}).textContent,
+    playing: (window.__audios || []).filter((a) => a.__cpBed).some((a) => !a.paused),
+  }));
+  ck(pressed.icon === '🔊' && pressed.playing,
+    'L12 and pressing it STARTS the music — the parent-link fix', JSON.stringify(pressed));
+  await page.evaluate(() => { document.querySelector('.cp-mute').click(); });
+  await page.waitForTimeout(300);
+  const repressed = await page.evaluate(() => ({
+    icon: (document.querySelector('.cp-mute') || {}).textContent,
+    playing: (window.__audios || []).filter((a) => a.__cpBed).some((a) => !a.paused),
+  }));
+  ck(repressed.icon === '🔇' && !repressed.playing,
+    'L13 pressing again stops it — the icon always tells the truth', JSON.stringify(repressed));
+  await page.evaluate(() => { LookWhatIMade.close(); });
 
   // ---- M. the landing — deep entry
   console.log('-- M: look.html opens the EXACT creation');

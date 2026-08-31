@@ -127,6 +127,7 @@ const CreationPlayback=(function(){
     let audio=null;
     let audioFadeTimer=null;
     let playbackMuted=false;
+    let musicOn=false;   // whether sound is ACTUALLY being made
     let layers=null, stage=null, muteBtn=null;
     let front=0; // index into layers of the layer currently showing
 
@@ -142,8 +143,20 @@ const CreationPlayback=(function(){
         if(typeof AudioManager!=='undefined'&&AudioManager.duckFor) AudioManager.duckFor(level,600);
       }catch(e){}
     }
+    // The speaker icon tells the TRUTH about sound, and a press does
+    // what the icon promises. The first version flipped a "muted"
+    // flag that assumed the music had started — so on a page where
+    // autoplay was refused (a parent opening the shared link plays
+    // the making with no gesture), the icon claimed 🔊 while the room
+    // was silent, and the parent's press "muted" music that had never
+    // played: a dead button. Reported from real use.
+    function _setSpeaker(){
+      if(muteBtn) muteBtn.textContent=musicOn?'🔊':'🔇';
+    }
     function _musicStart(){
-      if(!wantMusic||_globallyMuted()||playbackMuted) return;
+      if(!wantMusic||_globallyMuted()||playbackMuted){
+        musicOn=false; _setSpeaker(); return;
+      }
       try{
         if(!audio){
           audio=new Audio(MUSIC_SRC);
@@ -158,9 +171,20 @@ const CreationPlayback=(function(){
         audio.volume=MUSIC_VOLUME;
         audio.currentTime=0;
         const p=audio.play();
-        if(p&&p.catch) p.catch(function(){ /* autoplay refused: the pictures play on */ });
-        _duck(0.25);
-      }catch(e){}
+        if(p&&p.then){
+          p.then(function(){
+            if(destroyed) return;
+            musicOn=true; _setSpeaker(); _duck(0.25);
+          }).catch(function(){
+            // Autoplay refused: the pictures play on, the speaker
+            // says 🔇 honestly, and the press that follows is the
+            // gesture the browser was waiting for.
+            musicOn=false; _setSpeaker();
+          });
+        }else{
+          musicOn=true; _setSpeaker(); _duck(0.25);
+        }
+      }catch(e){ musicOn=false; _setSpeaker(); }
     }
     function _musicFadeOut(){
       if(!audio||audio.paused) return;
@@ -172,6 +196,7 @@ const CreationPlayback=(function(){
         if(v<=0.01){
           try{ audio.pause(); }catch(e){}
           clearInterval(audioFadeTimer); audioFadeTimer=null;
+          musicOn=false; _setSpeaker();
           _duck(1);
         }else audio.volume=v;
       },50);
@@ -179,6 +204,7 @@ const CreationPlayback=(function(){
     function _musicStop(){
       if(audioFadeTimer){ clearInterval(audioFadeTimer); audioFadeTimer=null; }
       if(audio){ try{ audio.pause(); audio.currentTime=0; }catch(e){} }
+      musicOn=false; _setSpeaker();
       _duck(1);
     }
 
@@ -201,12 +227,17 @@ const CreationPlayback=(function(){
         muteBtn.type='button';
         muteBtn.className='cp-mute';
         muteBtn.setAttribute('aria-label','Music on or off');
-        muteBtn.textContent=_globallyMuted()?'🔇':'🔊';
+        // 🔇 until a sound is actually being made — _musicStart's own
+        // success path is the only thing that says 🔊.
+        muteBtn.textContent='🔇';
         muteBtn.addEventListener('click',function(){
-          playbackMuted=!playbackMuted;
-          muteBtn.textContent=(playbackMuted||_globallyMuted())?'🔇':'🔊';
-          if(playbackMuted) _musicStop();
-          else _musicStart();
+          if(musicOn){
+            playbackMuted=true;
+            _musicStop();
+          }else{
+            playbackMuted=false;
+            _musicStart();
+          }
         });
         stage.appendChild(muteBtn);
       }

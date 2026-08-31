@@ -47,7 +47,10 @@ const LookWhatIMade=(function(){
   let _overlay=null,_card=null,_body=null;
   let _ctx=null;           // { record, slides, type, title, name }
   let _payloadPromise=null;
+  let _plainPayloadPromise=null; // the same creation, on white paper
   let _playback=null;      // the CreationPlayback controller, if playing
+  let _foldCardUrl=null;   // the foldable's minted door, for recomposes
+  let _foldPlain=false;    // ☀️ plain paper, for a printer with no colour
 
   // ---------- context ----------
   function _activeRecord(){
@@ -244,44 +247,37 @@ const LookWhatIMade=(function(){
       return;
     }
 
+    // The address is a FIELD, not a chip with an Edit beside it —
+    // asked for from real use: one less press, and the field itself
+    // says it can be changed. Typing a different address is still a
+    // one-time destination; the saved address is untouched and is
+    // the next share's default.
     _body.appendChild(_el('p','lwim-line','Send this to:'));
     const dest=_el('div','lwim-dest');
-    const addr=_el('span','lwim-dest-addr',saved);
-    dest.appendChild(addr);
+    const input=document.createElement('input');
+    input.type='email';
+    input.className='lwim-input';
+    input.value=saved;
+    input.setAttribute('aria-label','Send this to');
+    input.autocomplete='email';
+    dest.appendChild(input);
     _body.appendChild(dest);
-
-    let input=null;
-    const edit=_button('✏️ Edit','lwim-btn-quiet',function(){
-      if(input) return;
-      input=document.createElement('input');
-      input.type='email';
-      input.className='lwim-input';
-      input.value=saved;
-      input.setAttribute('aria-label','Send this to');
-      input.autocomplete='email';
-      while(dest.firstChild) dest.removeChild(dest.firstChild);
-      dest.appendChild(input);
-      edit.remove();
-      input.focus();
-      try{ input.select(); }catch(e){}
-    });
-    _body.appendChild(edit);
 
     const note=_note('');
     const send=_button('Send 💌','lwim-btn-warm',function(){
-      let override=null;
-      if(input){
-        const value=String(input.value||'').trim();
-        if(!_looksLikeEmail(value)){
-          note.textContent='That does not look like an email address yet.';
-          input.focus();
-          return;
-        }
-        // The typed address is this share's destination and nothing
-        // more; typing the saved one back is not an override at all.
-        if(value!==saved) override=value;
+      const value=String(input.value||'').trim();
+      if(!_looksLikeEmail(value)){
+        note.textContent='That does not look like an email address yet.';
+        input.focus();
+        return;
       }
+      // The typed address is this share's destination and nothing
+      // more; the saved one, unchanged, is not an override at all.
+      const override=(value!==saved)?value:null;
       _doSend(send,note,override,!!override);
+    });
+    input.addEventListener('keydown',function(ev){
+      if(ev.key==='Enter'){ ev.preventDefault(); send.click(); }
     });
     _body.appendChild(send);
     _body.appendChild(note);
@@ -473,6 +469,18 @@ const LookWhatIMade=(function(){
     catch(e){ return false; }
   }
 
+  // The same creation, rendered on white paper for a printer with
+  // no colour — asked for from real use ("if its black and white
+  // print can we remove the bg color of slides?"). Built through
+  // the identical snapshot pipeline with {plain:true}; never used
+  // for SHARING, only for paper.
+  function _payloadPlain(){
+    if(_plainPayloadPromise) return _plainPayloadPromise;
+    _plainPayloadPromise=CreationShare.snapshot(_ctx.record,_ctx.slides,{plain:true})
+      .catch(function(){ return null; });
+    return _plainPayloadPromise;
+  }
+
   function _showFoldable(){
     _clearBody();
     _body.appendChild(_backRow());
@@ -493,11 +501,27 @@ const LookWhatIMade=(function(){
         : Promise.resolve(null);
       mint.then(function(res){
         if(!isOpen()) return;
-        const cardUrl=(res&&res.ok&&res.url)?res.url:null;
-        FoldableComposer.compose(payload,{cardUrl:cardUrl}).then(function(made){
-          if(!isOpen()) return;
-          _foldableOpenSheet(made);
-        });
+        _foldCardUrl=(res&&res.ok&&res.url)?res.url:null;
+        _composeFold();
+      });
+    });
+  }
+
+  // Compose (or recompose, when the paper choice flips) and show the
+  // open sheet. The preview is always the exact sheet that prints —
+  // preview-before-print holds through the toggle by construction.
+  function _composeFold(){
+    const src=_foldPlain?_payloadPlain():_payload();
+    src.then(function(payload){
+      if(!isOpen()) return;
+      if(!payload||!payload.pages.length){
+        _foldableHeader();
+        _body.appendChild(_note('I couldn’t get it ready just now. Let’s try again in a moment.'));
+        return;
+      }
+      FoldableComposer.compose(payload,{cardUrl:_foldCardUrl}).then(function(made){
+        if(!isOpen()) return;
+        _foldableOpenSheet(made);
       });
     });
   }
@@ -533,6 +557,72 @@ const LookWhatIMade=(function(){
       else _foldableFolding(made,img,preview);
     }));
     _body.appendChild(_printFoldableBtn(made,'lwim-btn-quiet'));
+    // The paper choice, previewed like everything else here: white
+    // pages for a printer with no colour in it.
+    _body.appendChild(_button(
+      _foldPlain?'🌈 Bring the colours back':'☀️ Plain paper — kind to the printer',
+      'lwim-btn-quiet lwim-paper-toggle',
+      function(){
+        _foldPlain=!_foldPlain;
+        _foldableHeader();
+        _body.appendChild(_note('✨ Getting it ready…'));
+        _composeFold();
+      }));
+  }
+
+  // How the paper becomes the book — small pictures, few words,
+  // asked for from real use ("kid might want to see how to fold").
+  function _howToFold(made){
+    const wrap=_el('div','lwim-howfold');
+    wrap.appendChild(_el('h4','lwim-howfold-title','How to fold it'));
+    const row=_el('div','lwim-howfold-row');
+    const S='stroke="#8d867b" stroke-width="2" fill="none"';
+    const D='stroke="#c9c2b4" stroke-width="1.5" stroke-dasharray="4 3" fill="none"';
+    const steps=[];
+    if(made.card){
+      steps.push({
+        svg:'<rect x="8" y="14" width="74" height="38" rx="2" '+S+'/>'+
+            '<line x1="64" y1="14" x2="64" y2="52" stroke="#8d867b" stroke-width="2.5"/>'+
+            '<text x="64" y="11" font-size="9" text-anchor="middle">✂</text>',
+        words:'Cut your Story Card off the edge.'
+      });
+    }
+    steps.push({
+      svg:'<rect x="8" y="14" width="74" height="38" rx="2" '+S+'/>'+
+          '<line x1="27" y1="33" x2="63" y2="33" stroke="#8d867b" stroke-width="2.5"/>'+
+          '<text x="45" y="29" font-size="9" text-anchor="middle">✂</text>',
+      words:'Cut the little line in the middle.'
+    });
+    steps.push({
+      svg:'<rect x="8" y="14" width="74" height="38" rx="2" '+S+'/>'+
+          '<line x1="8" y1="33" x2="82" y2="33" '+D+'/>'+
+          '<path d="M45 8 C 60 2, 72 8, 70 20" '+S+' marker-end="none"/>'+
+          '<path d="M70 20 l -4 -6 m 4 6 l 6 -3" '+S+'/>',
+      words:'Fold it in half, the long way.'
+    });
+    steps.push({
+      svg:'<rect x="10" y="24" width="70" height="18" rx="2" '+S+'/>'+
+          '<path d="M45 26 l -6 14 l 12 0 z" '+D+'/>'+
+          '<path d="M4 33 l 8 0 m -3 -3 l 3 3 l -3 3" '+S+'/>'+
+          '<path d="M86 33 l -8 0 m 3 -3 l -3 3 l 3 3" '+S+'/>',
+      words:'Push the ends in — the middle opens.'
+    });
+    steps.push({
+      svg:'<rect x="28" y="12" width="34" height="42" rx="3" '+S+'/>'+
+          '<line x1="31" y1="14" x2="31" y2="52" stroke="#c9c2b4" stroke-width="1.5"/>'+
+          '<text x="45" y="38" font-size="12" text-anchor="middle">⭐</text>',
+      words:'Close it into a little book — cover in front.'
+    });
+    steps.forEach(function(step){
+      const cell=_el('div','lwim-howfold-step');
+      const pic=_el('div','lwim-howfold-pic');
+      pic.innerHTML='<svg viewBox="0 0 90 64" width="90" height="64" aria-hidden="true">'+step.svg+'</svg>';
+      cell.appendChild(pic);
+      cell.appendChild(_el('div','lwim-howfold-words',step.words));
+      row.appendChild(cell);
+    });
+    wrap.appendChild(row);
+    return wrap;
   }
 
   // Step 2 — the same sheet, folding. The animation runs on the
@@ -596,6 +686,7 @@ const LookWhatIMade=(function(){
       _body.appendChild(row);
     }
 
+    _body.appendChild(_howToFold(made));
     _body.appendChild(_printFoldableBtn(made,'lwim-btn-warm'));
   }
 
@@ -662,6 +753,9 @@ const LookWhatIMade=(function(){
     if(!ctx) return false;
     _ctx=ctx;
     _payloadPromise=null;
+    _plainPayloadPromise=null;
+    _foldCardUrl=null;
+    _foldPlain=false;
     _build();
     _showHome();
     _overlay.classList.remove('hidden');
@@ -675,6 +769,9 @@ const LookWhatIMade=(function(){
     _stopWatch();
     if(_overlay) _overlay.classList.add('hidden');
     _payloadPromise=null;
+    _plainPayloadPromise=null;
+    _foldCardUrl=null;
+    _foldPlain=false;
     _ctx=null;
   }
 
