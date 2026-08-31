@@ -52,6 +52,17 @@ const FoldableComposer=(function(){
   const COLS=4, ROWS=2;
   const INNER_PAGES=6;
 
+  // Sprint 1.1 — the Story Card is PART of the foldable. The sheet
+  // gives its right edge to a tear-off strip carrying the card's
+  // front and back at their exact printed size (750×1050 = 2.5in ×
+  // 3.5in at 300dpi, the Magic Card's own card size): one straight
+  // cut takes the card off, the rest folds into the little book.
+  // The zine's own geometry (COLS/ROWS/SLIT_COLS/IMPOSITION) is
+  // untouched — it simply lives in a narrower area when the strip
+  // is present, and in the whole sheet when it is not (no door to
+  // put on a card means no strip, never a dead card).
+  const CARD_STRIP_W=810; // 750 card + breathing room for cut guides
+
   // panel = reading position 1..8 (1 = cover, 8 = back);
   // col 0..3 left→right; row 0 = top (printed rotated 180°).
   const IMPOSITION=[
@@ -188,21 +199,76 @@ const FoldableComposer=(function(){
     if(line) ctx.fillText(line,x,y);
   }
 
+  // ---------- the card strip ----------
+  // Drawn from StoryCardComposer's OWN cells — one drawing of the
+  // card, shared by the standalone print and this strip, so the
+  // card in the foldable can never drift from the card on its own.
+  function _cardCells(share,cardUrl){
+    if(!cardUrl) return Promise.resolve(null);
+    if(typeof StoryCardComposer==='undefined'||!StoryCardComposer.cells) return Promise.resolve(null);
+    return StoryCardComposer.cells(share,cardUrl).then(function(c){
+      return (c&&c.ok)?c:null;
+    }).catch(function(){ return null; });
+  }
+
+  function _drawCardStrip(ctx,zineW,cellsGot){
+    const stripX=zineW;
+    const cardW=750,cardH=1050;
+    const cx=stripX+(CARD_STRIP_W-cardW)/2;
+    const gap=(SHEET_H-cardH*2)/3;
+    const rects=[
+      {x:cx,y:gap,w:cardW,h:cardH,canvas:cellsGot.front},
+      {x:cx,y:gap*2+cardH,w:cardW,h:cardH,canvas:cellsGot.back}
+    ];
+    // The one straight tear-off cut, sheet-tall.
+    ctx.strokeStyle='#a09a8e';
+    ctx.lineWidth=4;
+    ctx.beginPath(); ctx.moveTo(stripX,0); ctx.lineTo(stripX,SHEET_H); ctx.stroke();
+    ctx.fillStyle='#a09a8e';
+    ctx.font='60px serif';
+    ctx.textAlign='center';
+    ctx.fillText('✂',stripX,70);
+    rects.forEach(function(r){
+      ctx.drawImage(r.canvas,r.x,r.y,r.w,r.h);
+      ctx.strokeStyle='#d8d2c6';
+      ctx.lineWidth=3;
+      ctx.setLineDash([14,14]);
+      ctx.strokeRect(r.x-8,r.y-8,r.w+16,r.h+16);
+      ctx.setLineDash([]);
+    });
+    return { front:{x:rects[0].x,y:rects[0].y,w:cardW,h:cardH},
+             back:{x:rects[1].x,y:rects[1].y,w:cardW,h:cardH} };
+  }
+
   // ---------- the sheet ----------
-  function compose(share){
+  // opts.cardUrl — the creation's own share URL. When present (and
+  // the card can actually be drawn), the sheet carries the tear-off
+  // Story Card strip; when not, the zine takes the whole sheet.
+  function compose(share,opts){
+    const o=opts||{};
     const book=bookPages(share||{});
     const coverImage=(share&&share.pages&&share.pages[0])?share.pages[0].image:null;
 
     const sources=[coverImage].concat(book.inner.map(function(p){ return p.image; }));
-    return Promise.all(sources.map(_loadImage)).then(function(imgs){
+    return Promise.all([Promise.all(sources.map(_loadImage)),_cardCells(share,o.cardUrl)])
+      .then(function(got){
+      const imgs=got[0];
+      const cardCells=got[1];
       const coverImg=imgs[0];
       const innerImgs=imgs.slice(1);
+
+      const zineW=cardCells?(SHEET_W-CARD_STRIP_W):SHEET_W;
 
       const sheet=_blank(SHEET_W,SHEET_H);
       const ctx=sheet.getContext('2d');
       ctx.fillStyle='#ffffff'; ctx.fillRect(0,0,SHEET_W,SHEET_H);
 
-      const cellW=SHEET_W/COLS, cellH=SHEET_H/ROWS;
+      const cellW=zineW/COLS, cellH=SHEET_H/ROWS;
+
+      // The upright panel bitmaps, kept in READING order — they are
+      // what the folded-book preview flips through, so the child
+      // sees exactly the pages the paper will show.
+      const uprightPanels=[];
 
       IMPOSITION.forEach(function(slot){
         const panel=_blank(Math.round(cellW),Math.round(cellH));
@@ -210,6 +276,8 @@ const FoldableComposer=(function(){
         if(slot.panel===1) _drawCover(pctx,panel.width,panel.height,share||{},coverImg);
         else if(slot.panel===8) _drawBack(pctx,panel.width,panel.height);
         else _drawPage(pctx,panel.width,panel.height,innerImgs[slot.panel-2]||null);
+
+        uprightPanels[slot.panel-1]={ n:slot.panel, image:panel.toDataURL('image/jpeg',0.85) };
 
         ctx.save();
         ctx.translate(slot.col*cellW,slot.row*cellH);
@@ -234,7 +302,7 @@ const FoldableComposer=(function(){
         ctx.beginPath(); ctx.moveTo(c*cellW,0); ctx.lineTo(c*cellW,SHEET_H); ctx.stroke();
       }
       ctx.beginPath(); ctx.moveTo(0,cellH); ctx.lineTo(SLIT_COLS[0]*cellW,cellH); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo((SLIT_COLS[1]+1)*cellW,cellH); ctx.lineTo(SHEET_W,cellH); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo((SLIT_COLS[1]+1)*cellW,cellH); ctx.lineTo(zineW,cellH); ctx.stroke();
       ctx.setLineDash([]);
       ctx.strokeStyle='#a09a8e';
       ctx.lineWidth=4;
@@ -244,12 +312,21 @@ const FoldableComposer=(function(){
       ctx.textAlign='center';
       ctx.fillText('✂',SLIT_COLS[0]*cellW+40,cellH-16);
 
+      let cardRects=null;
+      if(cardCells) cardRects=_drawCardStrip(ctx,zineW,cardCells);
+
       return {
         sheet: sheet.toDataURL('image/jpeg',0.92),
         w: SHEET_W,
         h: SHEET_H,
         pageCount: book.inner.length,
-        note: book.note
+        note: book.note,
+        panels: uprightPanels,
+        card: !!cardCells,
+        cardCells: cardRects,
+        cardFront: cardCells?cardCells.front.toDataURL('image/png'):null,
+        cardBack: cardCells?cardCells.back.toDataURL('image/png'):null,
+        zineW: zineW
       };
     });
   }
@@ -261,7 +338,10 @@ const FoldableComposer=(function(){
     SLIT_COLS:SLIT_COLS,
     COLS:COLS,
     ROWS:ROWS,
-    INNER_PAGES:INNER_PAGES
+    INNER_PAGES:INNER_PAGES,
+    CARD_STRIP_W:CARD_STRIP_W,
+    SHEET_W:SHEET_W,
+    SHEET_H:SHEET_H
   };
   try{ window.FoldableComposer=api; }catch(e){}
   return api;

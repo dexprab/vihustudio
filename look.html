@@ -111,6 +111,7 @@
 
     <div id="watchRow">
       <button type="button" class="watch-btn hidden" id="watchBtn">▶ Watch how it was made</button>
+      <button type="button" class="quiet hidden" id="readBtn">Read the pages</button>
     </div>
 
     <div class="stage">
@@ -119,6 +120,7 @@
         <span class="count" id="count"></span>
         <button type="button" id="next" aria-label="Next page">›</button>
       </div>
+      <div id="watchStage" class="hidden"></div>
       <img id="page" alt="The creation">
     </div>
 
@@ -132,6 +134,7 @@
   </div>
 </div>
 
+<script src="js/creationPlayback.js?v=0706"></script>
 <script>
 (function(){
   'use strict';
@@ -162,38 +165,45 @@
     }).then(function(r){ return r.ok?r.json():null; }).catch(function(){ return null; });
   }
 
-  var watching=null;
+  // The making plays through the same CreationPlayback the Studio's
+  // own 🎬 Watch uses — one creation moment, one treatment. Frames
+  // are decoded before the first shows, the stage never tears down
+  // between stages, and the shared music bed plays for the whole
+  // replay (stopping the moment the making is left).
+  var player=null;
+
+  function stopWatch(){
+    if(player){ try{ player.destroy(); }catch(e){} player=null; }
+    el('watchStage').classList.add('hidden');
+    el('readBtn').classList.add('hidden');
+  }
 
   function playWatch(creation){
     var frames=creation.watch||[];
     if(!frames.length) return;
-    if(watching){ clearTimeout(watching); watching=null; }
-    var img=el('page');
+    if(typeof CreationPlayback==='undefined'){ showPages(creation,0); return; }
     el('pager').classList.add('hidden');
-    var i=0;
-    function step(){
-      var f=frames[i];
-      img.src=f.image;
-      img.classList.remove('arrive');
-      void img.offsetWidth;
-      img.classList.add('arrive');
-      i++;
-      if(i<frames.length){
-        watching=setTimeout(step,Math.max(350,Math.min(3200,f.holdMs||900)));
-      }else{
-        watching=null;
-        // The making ends on the finished creation; the reader
-        // returns so the pages can be looked at slowly.
-        showPages(creation,0);
+    el('page').classList.add('hidden');
+    var ws=el('watchStage');
+    ws.classList.remove('hidden');
+    if(player){ player.replay(); return; }
+    player=CreationPlayback.mount(ws,{
+      frames:frames,
+      onDone:function(){
+        // The finished creation rests on the stage; the pages are
+        // one quiet press away.
+        el('readBtn').classList.remove('hidden');
       }
-    }
-    step();
+    });
+    player.play();
   }
 
   function showPages(creation,index){
+    stopWatch();
     var pages=creation.pages||[];
     if(!pages.length) return;
     var img=el('page');
+    img.classList.remove('hidden');
     var i=Math.max(0,Math.min(pages.length-1,index||0));
     img.src=pages[i].image;
     img.classList.remove('arrive');
@@ -223,7 +233,11 @@
       var wb=el('watchBtn');
       wb.textContent=name?('▶ Watch how '+name+' made it'):'▶ Watch how it was made';
       wb.classList.remove('hidden');
-      wb.onclick=function(){ playWatch(creation); };
+      wb.onclick=function(){
+        playWatch(creation);
+        wb.textContent='▶ Watch it again';
+      };
+      el('readBtn').onclick=function(){ showPages(creation,0); };
     }
 
     if(creation.ether){

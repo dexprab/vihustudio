@@ -114,15 +114,16 @@ const CreationShareClient=(function(){
     return _call(body);
   }
 
-  // Send the creation to the child's grown-up. `email` is only ever
-  // the answer to "Who should I send it to?" — when the card already
-  // keeps an address, the server uses that and this value is not
-  // needed at all.
-  function send(projectId,payload,email){
+  // Send the creation to the child's grown-up. `email` is either
+  // the answer to "Who should I send it to?" (kept on the card as a
+  // first address) or, with opts.once, a one-time "Send this to…"
+  // destination that is used for THIS share and stored nowhere.
+  function send(projectId,payload,email,opts){
     const body={action:'send',projectId:projectId,payload:payload};
     const id=_identityId();
     if(id) body.identityId=id;
     if(email) body.email=String(email).trim();
+    if(opts&&opts.once) body.once=true;
     return _call(body);
   }
 

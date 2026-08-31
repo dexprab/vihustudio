@@ -41,6 +41,27 @@ page, so the making can be re-derived at share time and REPLAYED
 wherever the snapshot travels — the hub's 🎬 Watch, the parent's
 letter, the scanned card. Budget: ≤28 frames per share, 4–12 per page.
 
+## The player (Sprint 1.1)
+
+`js/creationPlayback.js` is the ONE way those frames are shown,
+everywhere — it styles itself, so both documents share one copy of
+everything. Pipeline: preload → stable stage → transition. Every frame
+is `img.decode()`d before the first shows; the stage takes its aspect
+from the first frame and is never torn down; frames advance by
+crossfade between two stacked layers with the old frame whole
+underneath, so no instant shows less than a complete frame (the
+opening frame lands instantly — the reveal's own first stage is the
+empty page). Music: `assets/audio/foundation/harmony.mp3`, the same
+bed Decision 39 unified the exported films on — one continuous looped
+track per replay, faded out after the finished creation rests, stopped
+on destroy, clean restart on replay. Global mute (`vihu-audio-muted` /
+`AudioManager.isMuted()`) is respected; where AudioManager exists the
+Studio atmosphere ducks under the music (`duckFor`, released on stop);
+a per-playback 🔊 on the stage mutes this playback only. `onDone` is
+always a macrotask — a one-frame making otherwise completes inside
+`play()`'s own resolution and the caller paints over whatever onDone
+put up (a real bug the suite caught).
+
 ## The child's surface
 
 `js/lookWhatIMade.js` — the hub. Preview first, then four doors:
@@ -67,6 +88,18 @@ celebration is untouched** — Decision 12's two equal choices stand.
   cannot quietly disagree with paper. A story's foldable holds its
   first six pages (said visibly when longer); a moment/sequence
   foldable holds the MAKING with the finished creation last.
+  **Sprint 1.1**: when the creation's share door can be minted, the
+  sheet gives its right edge (`CARD_STRIP_W`) to a tear-off Story Card
+  strip — front and back at their exact 750×1050 print size behind one
+  straight ✂ cut, drawn by `StoryCardComposer.cells()` so the strip
+  and the standalone card are ONE drawing; the zine keeps its own
+  imposition in the remaining area (`zineW`), or the whole sheet when
+  there is no door. `compose()` also returns the upright panel bitmaps
+  in reading order (`panels`), which is what the hub's folded-book
+  preview flips through. The hub's foldable view is three beats: the
+  open sheet · **Fold it ✨** (a stylised fold gesture on the same
+  bitmap; skipped under reduced motion) · the finished little book,
+  tappable to turn its pages, with the card presented beside it.
 - **Story Card** (`js/storyCardComposer.js`) — 750×1050 (2.5×3.5in @
   300dpi), night-sky front with the creation, back with a QR carrying
   the share URL on a white quiet zone (the Data Matrix lab's first
@@ -96,11 +129,15 @@ celebration is untouched** — Decision 12's two equal choices stand.
   (`creation-share` bucket, 20/hr), `makeHandler` testable idiom.
   POST `mint` sweeps the payload BY SHAPE (whitelist; an unknown key
   at any depth refuses the whole payload naming the key) and mints.
-  POST `send` mints, resolves the recipient — the card's own
-  `parent_email` first (never asked again when on file), else the
-  child's answered address, which is kept on the card only where none
-  exists (`parent_email=is.null` guard) — and posts the letter via
-  Resend. GET `?cover=<token>` serves the creation's first page as an
+  POST `send` mints, resolves the recipient — a provided address wins
+  for THIS delivery (the child's one-time "Send this to…" choice,
+  Sprint 1.1), else the card's own `parent_email` (never asked again
+  when on file). A first-given address is kept on the card only where
+  none exists (`parent_email=is.null` guard) and never when the
+  request carries `once:true` — an override is a destination, not an
+  address to keep. The hub shows the saved address before Send with
+  ✏️ Edit beside it; the saved address is never overwritten and stays
+  the next share's default. The letter goes via Resend. GET `?cover=<token>` serves the creation's first page as an
   image for the letter (mail clients strip `data:` images), gated by
   the token itself. Deploy with `--no-verify-jwt` (the cover is
   fetched by `<img>` tags that cannot send headers); the session gate

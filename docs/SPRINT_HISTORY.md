@@ -10225,3 +10225,36 @@ family). Deploy: `supabase/DEPLOY_creation_share.md` (migration +
 tags that cannot send headers). Detail: `docs/LOOK_WHAT_I_MADE.md`.
 look-share 82 · edge-auth 129 · companion-chat 256 · creation-home 84 —
 all green. Canon: Decision 52.
+
+---
+
+## Sprint LOOK WHAT I MADE 1.1 — Magic playback, the fold, and the destination (build 0706)
+
+THE ASK: corrective and contained — make the shipped experience feel
+complete before live-testing the loop. Five fixes, no new concepts:
+**(1)** the Watch replay's per-frame flicker was the pipeline, not a
+missing loading screen — `js/creationPlayback.js` is now the ONE player
+everywhere (hub, landing, scanned card): all frames decoded before the
+first shows, one never-torn-down stage, crossfades with the old frame
+whole underneath — and it caught its own first bug (a one-frame making
+fired onDone synchronously inside play()'s resolution and the hub
+painted over its own "Watch again" button; onDone is a macrotask now).
+**(2)** Music: Decision 39's own shared bed (`harmony.mp3`) — one
+continuous track per replay, global mute respected, atmosphere ducked
+and released, stopped on close, clean on replay; the suite filters on
+the player's own marked element because AudioManager idles the same
+file at volume zero (the atmosphere suite's "wrong sound" lesson, met
+again). **(3)** The foldable is three beats — open sheet · Fold it ✨ ·
+the finished little book flipping its real upright panels in reading
+order. **(4)** The Story Card is part of the foldable: a tear-off strip
+at exact print size behind one straight ✂ cut, drawn by
+`StoryCardComposer.cells()` so the strip and the standalone print are
+ONE drawing; same token, same door. **(5)** "Send this to:" — the
+saved address visible before Send, ✏️ Edit is a one-time destination
+(`once` — never stored, not even as a first fill; proved by removing
+the guard), the saved address never overwritten and still next time's
+default. Suite trap recorded: seeding `slide.storyBeat` by property
+write is wiped by `draw()`'s own sync from `#storyBeat` — words go
+through the real field, and the fixture honestly became a sequence.
+look-share 109 · edge-auth 129 — green; blank-flash and once-guard
+checks proved by reverting. Canon: Decision 52 (amended in place).

@@ -236,6 +236,19 @@ function goodPayload(over) {
   r = await asJson(await post(H, { action: 'send', projectId: 'proj_a', payload: goodPayload(), identityId: 'card-2' }, USER_TOKEN));
   ck(r.status === 403, 'C15 somebody else\'s card is a 403 — a selector, never an assertion', 'got ' + r.status);
 
+  // Sprint 1.1 — "Send this to…" is a one-time destination choice.
+  resetNet();
+  r = await asJson(await post(H, { action: 'send', projectId: 'proj_a', payload: goodPayload(), identityId: 'card-1', email: 'grandma@example.com', once: true }, USER_TOKEN));
+  ck(r.body.ok === true && String((netLog.letters[0] || {}).to) === 'grandma@example.com',
+    'C16 an edited destination wins for THIS delivery', String((netLog.letters[0] || {}).to));
+  ck(netLog.patches.length === 0, 'C16b and the saved address is untouched');
+
+  resetNet();
+  r = await asJson(await post(H, { action: 'send', projectId: 'proj_a', payload: goodPayload(), identityId: 'card-3', email: 'aunt@example.com', once: true }, USER_TOKEN));
+  ck(r.body.ok === true && netLog.patches.length === 0,
+    'C17 a ONCE destination is never kept — even on a card with no address at all',
+    JSON.stringify ? JSON.stringify({ patches: netLog.patches.length }) : '');
+
   // ---- D. the cover and the probe
   console.log('-- D: cover image and probe');
   let cover = await H(new Request('http://local/creation-share?cover=tokabc123def456ghi789jkl', { method: 'GET' }));
@@ -270,11 +283,20 @@ function goodPayload(over) {
   const { chromium } = require('playwright');
   const browser = await chromium.launch({
     executablePath: process.env.CHROMIUM_PATH || process.env.PW_CHROMIUM || '/opt/pw-browsers/chromium',
-    args: ['--no-sandbox', '--disable-dev-shm-usage'],
+    args: ['--no-sandbox', '--disable-dev-shm-usage', '--autoplay-policy=no-user-gesture-required'],
   });
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   const pageErrors = [];
   page.on('pageerror', (e) => pageErrors.push(String(e)));
+  // The atmosphere suite's own idiom: spy the Audio constructor,
+  // because every element the player builds is `new Audio(src)` and
+  // never enters the document — there is nothing to query for.
+  await page.addInitScript(() => {
+    window.__audios = [];
+    const A = window.Audio;
+    window.Audio = function (src) { const a = new A(src); window.__audios.push(a); return a; };
+    window.Audio.prototype = A.prototype;
+  });
 
   // The function is faked at the network edge, programmable per check.
   let fnPlan = { mode: 'ok' };
@@ -360,6 +382,16 @@ function goodPayload(over) {
   await page.evaluate((png) => {
     AppState.slides[0].image = png;
     AppState.slides[0]._imageDataURL = png;
+    // Words too — the reveal tells them word by word, which is what
+    // gives the Watch experience several stages to be continuous
+    // ACROSS (a one-frame making cannot flicker or not flicker).
+    // Written into the REAL story field, not poked onto the slide:
+    // draw() syncs slide.storyBeat FROM #storyBeat on every redraw,
+    // so a bare property write is wiped by the first render — the
+    // trap this suite itself fell into on its first 1.1 run.
+    const beat = document.getElementById('storyBeat');
+    if (beat) beat.value = 'The moon dragon flew all the way home.';
+    AppState.slides[0].storyBeat = 'The moon dragon flew all the way home.';
     const t = document.getElementById('bookTitle');
     if (t) t.value = 'The Moon Dragon';
     window.refreshStoryActions();
@@ -391,7 +423,11 @@ function goodPayload(over) {
     'H2 exactly the four doors, in the sprint\'s own words', home.buttons.join(' | '));
   ck(!/email|URL|http|PDF|QR|scan\b|link|settings/i.test(home.text),
     'H3 no adult vocabulary anywhere on the hub', home.text.replace(/\n/g, ' · '));
-  ck(/Look what I made/.test(home.text), 'H4 the type speaks its own sentence (a moment)', '');
+  // 1.1 gave the fixture words as well as a picture — two authored
+  // marks on one page IS a sequence, so the hub's sentence changed
+  // with the creation. The check follows the truth, not the old
+  // fixture.
+  ck(/Look what happened/.test(home.text), 'H4 the type speaks its own sentence (a sequence)', home.text.split('\n')[1] || '');
 
   // ---- I. share with parent
   console.log('-- I: share with parent');
@@ -437,6 +473,70 @@ function goodPayload(over) {
   await page.waitForFunction(() => /on its way/.test(document.querySelector('.lwim-card').innerText), null, { timeout: 30000 });
   ck(true, 'I6 the answered address sends');
 
+  // ---- S. the share shows its destination (Sprint 1.1 §6)
+  console.log('-- S: send this to…');
+  fnPlan = { mode: 'ok' };
+  await page.evaluate(() => {
+    localStorage.setItem('vihu-sky-parent-email', 'mum@example.com');
+    LookWhatIMade.close();
+    document.getElementById('lookBtn').click();
+  });
+  await page.waitForTimeout(200);
+  await page.evaluate(() => {
+    Array.from(document.querySelectorAll('.lwim-btn')).find((b) => /Share with Parent/.test(b.textContent)).click();
+  });
+  await page.waitForTimeout(200);
+  const destView = await page.evaluate(() => ({
+    text: document.querySelector('.lwim-card').innerText,
+    dest: ((document.querySelector('.lwim-dest') || {}).textContent || '').trim(),
+    edit: Array.from(document.querySelectorAll('.lwim-btn')).some((b) => /Edit/.test(b.textContent)),
+  }));
+  ck(/Send this to:/.test(destView.text) && destView.dest === 'mum@example.com',
+    'S1 the saved grown-up address is VISIBLE before anything is sent', destView.dest);
+  ck(destView.edit, 'S2 with ✏️ Edit one press away');
+
+  await page.evaluate(() => {
+    Array.from(document.querySelectorAll('.lwim-btn')).find((b) => /^Send/.test(b.textContent.trim())).click();
+  });
+  await page.waitForFunction(() => /on its way/.test(document.querySelector('.lwim-card').innerText), null, { timeout: 30000 });
+  let lastSend = fnCalls.filter((c) => c.body && c.body.action === 'send').pop();
+  ck(!('email' in lastSend.body) && !('once' in lastSend.body),
+    'S3 an unedited send carries NO address — the card\'s own is the default', JSON.stringify(Object.keys(lastSend.body)));
+
+  await page.evaluate(() => { LookWhatIMade.close(); document.getElementById('lookBtn').click(); });
+  await page.waitForTimeout(200);
+  await page.evaluate(() => {
+    Array.from(document.querySelectorAll('.lwim-btn')).find((b) => /Share with Parent/.test(b.textContent)).click();
+  });
+  await page.waitForTimeout(200);
+  await page.evaluate(() => {
+    Array.from(document.querySelectorAll('.lwim-btn')).find((b) => /Edit/.test(b.textContent)).click();
+  });
+  const prefilled = await page.evaluate(() => (document.querySelector('.lwim-dest .lwim-input') || {}).value);
+  ck(prefilled === 'mum@example.com', 'S4 editing starts from the saved address, prefilled', prefilled);
+  await page.evaluate(() => {
+    const input = document.querySelector('.lwim-dest .lwim-input');
+    input.value = 'grandma@example.com';
+    Array.from(document.querySelectorAll('.lwim-btn')).find((b) => /^Send/.test(b.textContent.trim())).click();
+  });
+  await page.waitForFunction(() => /on its way/.test(document.querySelector('.lwim-card').innerText), null, { timeout: 30000 });
+  lastSend = fnCalls.filter((c) => c.body && c.body.action === 'send').pop();
+  ck(lastSend.body.email === 'grandma@example.com' && lastSend.body.once === true,
+    'S5 the edited address travels marked ONCE — a destination, never an address to keep',
+    JSON.stringify({ email: lastSend.body.email, once: lastSend.body.once }));
+
+  const savedAfter = await page.evaluate(() => localStorage.getItem('vihu-sky-parent-email'));
+  await page.evaluate(() => { LookWhatIMade.close(); document.getElementById('lookBtn').click(); });
+  await page.waitForTimeout(200);
+  await page.evaluate(() => {
+    Array.from(document.querySelectorAll('.lwim-btn')).find((b) => /Share with Parent/.test(b.textContent)).click();
+  });
+  await page.waitForTimeout(200);
+  const nextTime = await page.evaluate(() => ((document.querySelector('.lwim-dest') || {}).textContent || '').trim());
+  ck(savedAfter === 'mum@example.com' && nextTime === 'mum@example.com',
+    'S6 the saved address is untouched and is still the NEXT share\'s default', nextTime);
+  await page.evaluate(() => { localStorage.removeItem('vihu-sky-parent-email'); LookWhatIMade.close(); });
+
   // ---- J. the foldable
   console.log('-- J: the foldable — preview before print');
   let printed = await page.evaluate(() => {
@@ -467,8 +567,11 @@ function goodPayload(over) {
   }));
   ck(foldableView.sheetSrc.indexOf('data:image/jpeg') === 0 && foldableView.printedYet === 0,
     'J1 the physical sheet is SHOWN before anything prints');
-  ck(/fold/.test(foldableView.text) && /tiny book|little book/i.test(foldableView.text),
-    'J2 the child is told what folding makes', foldableView.text.replace(/\n/g, ' · '));
+  // 1.1 turned the written explanation into the experience itself:
+  // the open sheet offers Fold it ✨, and the finished book is SHOWN
+  // rather than described.
+  ck(/Fold it/.test(foldableView.text) && /whole story/.test(foldableView.text),
+    'J2 the open sheet offers Fold it ✨ and says what the sheet IS', foldableView.text.replace(/\n/g, ' · '));
   await page.evaluate(() => {
     Array.from(document.querySelectorAll('.lwim-btn')).find((b) => /Print My Foldable/.test(b.textContent)).click();
   });
@@ -513,6 +616,47 @@ function goodPayload(over) {
     'J6 every consecutive reading pair is physically joined — fold order is correct', fold.consecutiveJoins + '/8 joined');
   ck(fold.topPanels === '2,3,4,5', 'J7 exactly the head-hanging panels print rotated', fold.topPanels);
 
+  // Sprint 1.1 — the Story Card rides the sheet, and the fold is
+  // EXPERIENCED: open sheet → Fold it ✨ → the finished little book.
+  const composed = await page.evaluate(async () => {
+    const payload = await CreationShare.snapshot(CreatorProjectStore.get(AppState.project.id), AppState.slides);
+    const made = await FoldableComposer.compose(payload, { cardUrl: 'http://doors.example/look.html?t=tokstrip' });
+    return {
+      card: made.card,
+      zineW: made.zineW,
+      stripOk: made.zineW === FoldableComposer.SHEET_W - FoldableComposer.CARD_STRIP_W,
+      front: made.cardCells && made.cardCells.front,
+      back: made.cardCells && made.cardCells.back,
+      panels: (made.panels || []).map((pn) => pn.n).join(','),
+    };
+  });
+  ck(composed.card && composed.stripOk,
+    'J8 with a door, the sheet gives its edge to the tear-off Story Card strip',
+    JSON.stringify({ card: composed.card, zineW: composed.zineW }));
+  ck(!!composed.front && composed.front.w === 750 && composed.front.h === 1050 &&
+     !!composed.back && composed.back.w === 750 && composed.back.h === 1050,
+    'J9 the card rides at its EXACT printed size — 2.5in × 3.5in at 300dpi', JSON.stringify(composed.front));
+  ck(composed.panels === '1,2,3,4,5,6,7,8',
+    'J10 and the upright panels come back in reading order for the folded book', composed.panels);
+
+  await page.evaluate(() => {
+    Array.from(document.querySelectorAll('.lwim-btn')).find((b) => /Fold it/.test(b.textContent)).click();
+  });
+  await page.waitForFunction(() => !!document.querySelector('.lwim-book-page'), null, { timeout: 20000 });
+  const folded = await page.evaluate(() => ({
+    text: document.querySelector('.lwim-card').innerText,
+    cardShown: !!document.querySelector('.lwim-book-card'),
+    printBtn: Array.from(document.querySelectorAll('.lwim-btn')).some((b) => /Print My Foldable/.test(b.textContent)),
+  }));
+  ck(/little book/i.test(folded.text), 'J11 the FINISHED folded book is shown, as the child would hold it');
+  ck(folded.cardShown && /cut it off and give it/i.test(folded.text),
+    'J12 with the Story Card presented as part of it');
+  const turn1 = await page.evaluate(() => (document.querySelector('.lwim-book-page') || {}).src);
+  await page.evaluate(() => document.querySelector('.lwim-book').click());
+  const turn2 = await page.evaluate(() => (document.querySelector('.lwim-book-page') || {}).src);
+  ck(!!turn1 && !!turn2 && turn1 !== turn2, 'J13 tapping the book turns its pages');
+  ck(folded.printBtn, 'J14 and Print still waits at the end, after the child has SEEN the result');
+
   // ---- K. the story card
   console.log('-- K: the story card — and a real scan');
   await page.evaluate(() => {
@@ -534,6 +678,9 @@ function goodPayload(over) {
     'K2 the child is told what the card DOES, in magic rather than mechanism', cardView.text.replace(/\n/g, ' · '));
   ck(!/QR|scan\b|code|link|URL/i.test(cardView.text),
     'K3 and never the words QR, scan, code or link', cardView.text.replace(/\n/g, ' · '));
+  ck(/Give this to someone/.test(cardView.text), 'K7 the card\'s purpose is one sentence: Give this to someone!');
+  const demoSteps = await page.evaluate(() => document.querySelectorAll('.lwim-demo-step').length);
+  ck(demoSteps === 3, 'K8 and its life is three little beats: give → a phone → the creation opens', String(demoSteps));
 
   await page.addScriptTag({ url: BASE + '/tools/datamatrix-lab/vendor/zxing.min.js' });
   const scanned = await page.evaluate(() => {
@@ -563,8 +710,8 @@ function goodPayload(over) {
   ck(/lwim-print-card/.test(printedCard.kind) && printedCard.images === 2,
     'K6 the printed card is front and back, the pair just previewed', JSON.stringify(printedCard.kind));
 
-  // ---- L. watch
-  console.log('-- L: watch how I made it');
+  // ---- L. watch — one continuous magical making (Sprint 1.1)
+  console.log('-- L: watch — continuity and music');
   await page.evaluate(() => {
     LookWhatIMade.close();
     document.getElementById('lookBtn').click();
@@ -574,23 +721,121 @@ function goodPayload(over) {
     Array.from(document.querySelectorAll('.lwim-btn')).find((b) => /Watch/.test(b.textContent)).click();
   });
   await page.waitForFunction(() => {
-    const img = document.querySelector('.lwim-watch-img');
-    return img && img.src && img.src.indexOf('data:image') === 0;
+    const st = document.querySelector('.cp-stage');
+    const layer = st && st.querySelector('.cp-layer');
+    return layer && layer.src && layer.src.indexOf('data:image') === 0;
   }, null, { timeout: 60000 });
-  const firstFrame = await page.evaluate(() => (document.querySelector('.lwim-watch-img') || {}).src);
-  await page.waitForFunction((prev) => {
-    const img = document.querySelector('.lwim-watch-img');
-    return img && img.src !== prev;
-  }, firstFrame, { timeout: 30000 }).catch(() => {});
-  const secondFrame = await page.evaluate(() => (document.querySelector('.lwim-watch-img') || {}).src);
-  ck(firstFrame && secondFrame, 'L1 the making plays as frames', '');
-  ck(pageErrors.length === 0, 'L2 zero page errors across the whole Studio run', pageErrors.join(' | '));
+  ck(true, 'L1 the making plays through the ONE shared player (.cp-stage)');
+
+  // Music first, while the playback is certainly still running — a
+  // finished playback has already taken its bow, and measuring the
+  // bow as "music broken" would be measuring the wrong moment. The
+  // filter is the player's own marked element: AudioManager keeps a
+  // foundation layer of the SAME file idling at volume zero, and a
+  // filter by filename hears the wrong sound (the atmosphere
+  // suite's own recorded lesson).
+  const music = await page.evaluate(async () => {
+    const list = (window.__audios || []).filter((a) => a.__cpBed);
+    const a = list[list.length - 1];
+    if (!a) return { found: false };
+    const t1 = a.currentTime; const paused1 = a.paused;
+    await new Promise((res) => setTimeout(res, 700));
+    return { found: true, count: list.length, playing: !paused1 && !a.paused,
+             monotonic: a.currentTime >= t1, loop: a.loop,
+             bed: (a.src || '').indexOf('harmony.mp3') !== -1 };
+  });
+  ck(music.found && music.playing && music.bed,
+    'L5 the shared bed (harmony.mp3) plays with the experience', JSON.stringify(music));
+  ck(music.count === 1 && music.monotonic && music.loop,
+    'L6 ONE continuous track — never restarted between frames', JSON.stringify(music));
+
+  // Continuity is MEASURED: mark the surface, then sample it while
+  // frames advance — the same element the whole way, two layers,
+  // and a whole frame visible at every instant. If the making has
+  // already finished, it is replayed so the sampling watches a LIVE
+  // run rather than a still.
+  const continuity = await page.evaluate(async () => {
+    const stg = document.querySelector('.cp-stage');
+    stg.__sameSurface = true;
+    const again = Array.from(document.querySelectorAll('.lwim-btn')).find((b) => /Watch again/.test(b.textContent));
+    if (again){ again.click(); await new Promise((res) => setTimeout(res, 200)); }
+    const firstSrcs = Array.from(stg.querySelectorAll('.cp-layer')).map((l) => l.src);
+    let blankSeen = false, advanced = false;
+    for (let i = 0; i < 55; i++) {
+      await new Promise((res) => setTimeout(res, 90));
+      const now = document.querySelector('.cp-stage');
+      if (!now || now.__sameSurface !== true) return { torn: true };
+      const ls = Array.from(now.querySelectorAll('.cp-layer'));
+      const whole = ls.some((l) => l.src && parseFloat(getComputedStyle(l).opacity) > 0.95);
+      if (!whole) blankSeen = true;
+      if (ls.some((l, j) => l.src !== firstSrcs[j])) advanced = true;
+    }
+    return { torn: false, blankSeen: blankSeen, advanced: advanced,
+             layers: document.querySelectorAll('.cp-stage .cp-layer').length };
+  });
+  ck(!continuity.torn && continuity.layers === 2,
+    'L2 ONE stable surface for the whole replay — never torn down between stages', JSON.stringify(continuity));
+  ck(continuity.advanced, 'L3 and the frames really advance on it', JSON.stringify(continuity));
+  ck(!continuity.blankSeen,
+    'L4 a whole frame is on screen at every sampled instant — no blank flashes', JSON.stringify(continuity));
+
+  await page.waitForFunction(() =>
+    Array.from(document.querySelectorAll('.lwim-btn')).some((b) => /Watch again/.test(b.textContent)),
+    null, { timeout: 90000 });
+  await page.evaluate(() => {
+    Array.from(document.querySelectorAll('.lwim-btn')).find((b) => /Watch again/.test(b.textContent)).click();
+  });
+  await page.waitForTimeout(600);
+  const replayed = await page.evaluate(() => {
+    const stg = document.querySelector('.cp-stage');
+    const list = (window.__audios || []).filter((a) => a.__cpBed);
+    const a = list[list.length - 1];
+    return { sameSurface: !!(stg && stg.__sameSurface), audios: list.length, playing: !!(a && !a.paused) };
+  });
+  ck(replayed.sameSurface && replayed.audios === 1 && replayed.playing,
+    'L7 replay reuses the same surface and the same track, cleanly', JSON.stringify(replayed));
+
+  await page.evaluate(() => {
+    Array.from(document.querySelectorAll('.lwim-btn')).find((b) => /← Back/.test(b.textContent)).click();
+  });
+  await page.waitForTimeout(300);
+  const afterClose = await page.evaluate(() => {
+    const list = (window.__audios || []).filter((a) => a.__cpBed);
+    return list.every((a) => a.paused);
+  });
+  ck(afterClose, 'L8 leaving the experience stops the music — it never runs underneath anything else');
+
+  await page.evaluate(() => {
+    AudioManager.setMuted(true);
+    Array.from(document.querySelectorAll('.lwim-btn')).find((b) => /Watch/.test(b.textContent)).click();
+  });
+  await page.waitForFunction(() => {
+    const st = document.querySelector('.cp-stage');
+    const layer = st && st.querySelector('.cp-layer');
+    return layer && layer.src;
+  }, null, { timeout: 60000 });
+  await page.waitForTimeout(500);
+  const mutedRun = await page.evaluate(() => {
+    const list = (window.__audios || []).filter((a) => a.__cpBed);
+    return { anyPlaying: list.some((a) => !a.paused),
+             frames: !!document.querySelector('.cp-stage .cp-layer[src]') };
+  });
+  ck(!mutedRun.anyPlaying && mutedRun.frames,
+    'L9 the child\'s own global mute silences the music and the making still plays', JSON.stringify(mutedRun));
+  await page.evaluate(() => { AudioManager.setMuted(false); LookWhatIMade.close(); });
+  ck(pageErrors.length === 0, 'L10 zero page errors across the whole Studio run', pageErrors.join(' | '));
 
   // ---- M. the landing — deep entry
   console.log('-- M: look.html opens the EXACT creation');
   const landingRequests = [];
   const landingPage = await browser.newPage({ viewport: { width: 900, height: 900 } });
   landingPage.on('request', (r) => landingRequests.push(r.url()));
+  await landingPage.addInitScript(() => {
+    window.__audios = [];
+    const A = window.Audio;
+    window.Audio = function (src) { const a = new A(src); window.__audios.push(a); return a; };
+    window.Audio.prototype = A.prototype;
+  });
   const landingErrors = [];
   landingPage.on('pageerror', (e) => landingErrors.push(String(e)));
 
@@ -645,15 +890,28 @@ function goodPayload(over) {
   const turned = await landingPage.evaluate(() => document.getElementById('count').textContent);
   ck(turned === '2 / 3', 'M7 the pager turns pages', turned);
 
-  // ?watch=1 plays the making first
+  // ?watch=1 plays the making first — through the SAME player the
+  // Studio's own 🎬 uses (Sprint 1.1: one creation moment, one
+  // treatment), with the same music bed.
   await landingPage.goto(BASE + '/look.html?t=goodtoken&watch=1');
   await landingPage.waitForFunction(() => !document.getElementById('creation').classList.contains('hidden'), null, { timeout: 15000 });
+  await landingPage.waitForFunction(() => {
+    const l = document.querySelector('#watchStage .cp-layer');
+    return l && l.src && l.src.indexOf('data:image') === 0;
+  }, null, { timeout: 15000 });
   const watching = await landingPage.evaluate(() => ({
     pagerHidden: document.getElementById('pager').classList.contains('hidden'),
-    src: (document.getElementById('page') || {}).src || '',
+    layers: document.querySelectorAll('#watchStage .cp-layer').length,
   }));
-  ck(watching.pagerHidden && watching.src.indexOf('data:image') === 0,
-    'M8 the WATCH door plays the making before the pages');
+  ck(watching.pagerHidden && watching.layers === 2,
+    'M8 the WATCH door plays the making before the pages — through the one shared player', JSON.stringify(watching));
+  const landingMusic = await landingPage.evaluate(() => {
+    const list = (window.__audios || []).filter((a) => a.__cpBed);
+    return { n: list.length, playing: list.some((a) => !a.paused),
+             bed: list.every((a) => (a.src || '').indexOf('harmony.mp3') !== -1) };
+  });
+  ck(landingMusic.n === 1 && landingMusic.playing && landingMusic.bed,
+    'M8b and the same music bed plays there too', JSON.stringify(landingMusic));
 
   // an unknown token refuses gently
   await landingPage.goto(BASE + '/look.html?t=neverminted');

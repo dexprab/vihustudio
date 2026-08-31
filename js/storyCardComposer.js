@@ -188,10 +188,14 @@ const StoryCardComposer=(function(){
     return c;
   }
 
+  // The ONE drawing of the card, as canvases. Two consumers share
+  // it — the standalone Story Card print and the foldable sheet's
+  // tear-off strip (Sprint 1.1 §8: one creation moment, never two
+  // interpretations of the card).
   // share — the payload-like object (type, title, creatorName,
   //         pages) the hub already holds.
   // url   — the creation's own share URL (from the minted token).
-  function compose(share,url){
+  function cells(share,url){
     const s=share||{};
     const cover=(s.pages&&s.pages[0])?s.pages[0].image:null;
     return Promise.all([_ensureBwip(),_loadImage(cover)]).then(function(got){
@@ -200,16 +204,23 @@ const StoryCardComposer=(function(){
       const front=_drawFront(s,img);
       const back=_drawBack(s,url,true);
       if(!back) return {ok:false,reason:'no-door'};
+      return { ok:true, front:front, back:back };
+    });
+  }
+
+  function compose(share,url){
+    return cells(share,url).then(function(c){
+      if(!c.ok) return c;
       return {
         ok:true,
-        front:front.toDataURL('image/png'),
-        back:back.toDataURL('image/png'),
+        front:c.front.toDataURL('image/png'),
+        back:c.back.toDataURL('image/png'),
         w:CARD_W,h:CARD_H
       };
     });
   }
 
-  const api={ compose:compose, CARD_W:CARD_W, CARD_H:CARD_H };
+  const api={ compose:compose, cells:cells, CARD_W:CARD_W, CARD_H:CARD_H };
   try{ window.StoryCardComposer=api; }catch(e){}
   return api;
 })();

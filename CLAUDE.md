@@ -6091,9 +6091,80 @@ own creation, and VihuPlanet is discovered THROUGH it.
   session-gated inside the file); and the printed results were
   verified as composed bitmaps and print-sheet mechanics, not on a
   physical printer.
+- **THE MAKING PLAYS AS ONE CONTINUOUS EXPERIENCE** (Sprint 1.1,
+  build 0706). The first Watch player swapped one image's src per
+  frame and restarted a from-dim animation on every swap — a flicker
+  on every single stage. `js/creationPlayback.js` is the ONE player
+  now (the hub, the parent's landing, the scanned card — §8's "one
+  treatment"): every frame decoded before the first shows, one stage
+  with a fixed aspect that is never torn down, frames advancing by
+  crossfade with the old frame whole underneath — measured by
+  sampling (at every instant a complete frame is on screen), proved
+  by breaking the crossfade and watching the check go red. **The
+  player caught its own first bug**: a one-frame making fired onDone
+  synchronously inside play()'s own resolution and the hub painted
+  over its own "Watch again" button — onDone is a macrotask now.
+- **AND IT IS SCORED, BY THE BED THE FILMS ALREADY SHARE.** The same
+  `harmony.mp3` Decision 39 unified both exported films on: one
+  continuous track per replay, never restarted between frames,
+  faded out after the finished creation rests, stopped dead when the
+  experience closes, restarted cleanly on replay. Nothing is
+  generated or stored per creation. The child's own global mute
+  (`vihu-audio-muted` / AudioManager) silences it and the pictures
+  play on; where AudioManager is present the Studio's atmosphere
+  DUCKS under it (released on stop, never persisted — Decision 26's
+  own rule); the player carries a per-playback 🔊 that changes
+  nothing global. **The suite filters on the player's own marked
+  element** — AudioManager keeps a foundation layer of the SAME file
+  idling at volume zero, and a filter by filename heard the wrong
+  sound (the atmosphere suite's recorded lesson, met again).
+- **THE FOLD IS EXPERIENCED, NOT DESCRIBED** (1.1 §3). Three beats:
+  the OPEN sheet exactly as it prints · **Fold it ✨** (a stylised
+  physical gesture on that same bitmap; skipped under reduced
+  motion) · the FINISHED little book as the child would hold it —
+  which flips through the composer's own upright panel bitmaps in
+  reading order when tapped, so what turns is exactly what the
+  folded paper will show. Print waits at the end of the journey (and
+  stays one quiet press away on the open sheet).
+- **THE STORY CARD IS PART OF THE FOLDABLE** (1.1 §4). The sheet
+  gives its right edge to a tear-off strip carrying the card's front
+  and back at their EXACT printed size (750×1050 = 2.5×3.5in at
+  300dpi), behind one straight ✂ cut — read the little book, cut the
+  card off, give it to someone. **One drawing of the card**
+  (`StoryCardComposer.cells()`), consumed by the strip and the
+  standalone print alike, so the two can never drift (§8). The same
+  token, the same door — no second QR or link system. A sheet whose
+  door cannot be minted simply carries no strip; the zine's own
+  imposition, cycle and suite model are untouched (it lives in a
+  narrower area, or the whole sheet).
+- **THE CARD SAYS WHAT IT IS FOR**: *Give this to someone!* and
+  three little beats — give it · they point a phone at it · your
+  creation opens. Magic, never mechanism; still not one word of QR,
+  scan, code or link.
+- **"SEND THIS TO:" — THE DESTINATION IS VISIBLE BEFORE SEND**
+  (1.1 §6). The saved grown-up address (SkyProtection's own mirror)
+  shows automatically with ✏️ Edit beside it. An edited address is a
+  ONE-TIME destination: it travels marked `once`, wins for that
+  delivery, and is stored NOWHERE — not over an existing address
+  (the `is.null` guard was already incapable of that) and not even
+  as a first fill, which is what the `once` mark exists to prevent
+  (proved by removing the guard and watching the write happen). The
+  saved address is still the next share's default. It is "Send this
+  to…", never "change parent email" — a destination choice, not an
+  account edit.
+- **A SUITE TRAP WORTH RECORDING**: seeding `slide.storyBeat` by
+  property write proved nothing — the editor's own `draw()` syncs
+  that field FROM `#storyBeat` on every redraw and wiped the seed,
+  so the fixture's making was one frame and every continuity check
+  was measuring a still. The words go through the real field now,
+  and the fixture honestly became a SEQUENCE (image + words is two
+  authored marks), so H4 turned round with its reason in place.
 - Architecture and detail: `docs/LOOK_WHAT_I_MADE.md`. Suite:
-  `tools/look-share-test/` (82, plus the fold-model and sweep checks
-  proved by reverting).
+  `tools/look-share-test/` (109 — the 1.0 82 plus playback
+  continuity, music lifecycle, fold steps, folded geometry, the
+  card/foldable relationship and the once-only destination; the
+  fold-model, sweep, blank-flash and once-guard checks each proved
+  by reverting).
 - `js/creationShare.js` · `js/creationShareClient.js` ·
   `js/lookWhatIMade.js` · `js/foldableComposer.js` ·
   `js/storyCardComposer.js` · `look.html` ·

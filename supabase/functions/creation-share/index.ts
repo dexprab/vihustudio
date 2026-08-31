@@ -691,10 +691,17 @@ function makeHandler(deps) {
     }
 
     // ---- send ----
+    // The DESTINATION and the SAVED ADDRESS are two different
+    // things (Sprint 1.1 §6). A provided email is the child's
+    // one-time "Send this to…" choice and wins for THIS delivery;
+    // with none provided, the card's own parent_email is the
+    // default. Nothing about an override is ever stored — the
+    // is.null guard below keeps the saved address a fill-once
+    // fact, so the next share still defaults to it.
     const onFile = identity && cleanSecret(identity.parent_email) && EMAIL_RE.test(cleanSecret(identity.parent_email))
       ? cleanSecret(identity.parent_email) : '';
     const given = cleanSecret(body.email);
-    const to = onFile || (EMAIL_RE.test(given) ? given : '');
+    const to = (EMAIL_RE.test(given) ? given : '') || onFile;
     if (!to) {
       // Not an error — the answer to "who should I send it to?" has
       // not been given yet, and the hub asks it in the child's words.
@@ -707,7 +714,11 @@ function makeHandler(deps) {
     // hold. The safe place the card is kept and the address the
     // creation goes to are the same grown-up (Decision 14, amended
     // by this sprint's decision entry).
-    if (!onFile && identity && identity.id) {
+    //
+    // `once` marks a one-time "Send this to…" choice (Sprint 1.1):
+    // an override is a destination, never an address to keep, even
+    // when the card happens to have none on file yet.
+    if (!onFile && identity && identity.id && body.once !== true) {
       await restPatch(url, serviceKey, 'magic_card_identities',
         'id=eq.' + encodeURIComponent(identity.id) + '&parent_email=is.null',
         { parent_email: to }, deps.fetchImpl);

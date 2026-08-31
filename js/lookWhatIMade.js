@@ -47,7 +47,7 @@ const LookWhatIMade=(function(){
   let _overlay=null,_card=null,_body=null;
   let _ctx=null;           // { record, slides, type, title, name }
   let _payloadPromise=null;
-  let _watchTimer=null;
+  let _playback=null;      // the CreationPlayback controller, if playing
 
   // ---------- context ----------
   function _activeRecord(){
@@ -203,6 +203,24 @@ const LookWhatIMade=(function(){
   }
 
   // ---------- share with parent ----------
+  function _savedParent(){
+    try{
+      return (typeof SkyProtection!=='undefined'&&SkyProtection.parentEmail&&SkyProtection.parentEmail())||'';
+    }catch(e){ return ''; }
+  }
+
+  function _looksLikeEmail(value){
+    try{
+      if(typeof SkyProtection!=='undefined'&&SkyProtection.looksLikeEmail) return SkyProtection.looksLikeEmail(value);
+    }catch(e){}
+    return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(value||'').trim());
+  }
+
+  // The child sees WHERE it is going before anything goes (Sprint
+  // 1.1 §6). The saved grown-up address shows automatically; ✏️
+  // Edit chooses a destination for THIS SHARE ONLY — it is "Send
+  // this to…", never "change parent email": nothing here writes
+  // the saved address, and the next share defaults to it again.
   function _showShare(){
     _clearBody();
     _body.appendChild(_backRow());
@@ -212,15 +230,64 @@ const LookWhatIMade=(function(){
     const cover=_coverImage();
     if(cover){ const img=_el('img','lwim-preview-img'); img.src=cover; img.alt=''; preview.appendChild(img); }
     _body.appendChild(preview);
-    _body.appendChild(_el('p','lwim-line','Send this to my parent'));
+
+    const saved=_savedParent();
+    if(!saved){
+      // Nobody known on this device: the server may still know the
+      // card's own address (another device gave it) — press once
+      // and find out, exactly as before.
+      _body.appendChild(_el('p','lwim-line','Send this to my parent'));
+      const note=_note('');
+      const send=_button('Send 💌','lwim-btn-warm',function(){ _doSend(send,note,null); });
+      _body.appendChild(send);
+      _body.appendChild(note);
+      return;
+    }
+
+    _body.appendChild(_el('p','lwim-line','Send this to:'));
+    const dest=_el('div','lwim-dest');
+    const addr=_el('span','lwim-dest-addr',saved);
+    dest.appendChild(addr);
+    _body.appendChild(dest);
+
+    let input=null;
+    const edit=_button('✏️ Edit','lwim-btn-quiet',function(){
+      if(input) return;
+      input=document.createElement('input');
+      input.type='email';
+      input.className='lwim-input';
+      input.value=saved;
+      input.setAttribute('aria-label','Send this to');
+      input.autocomplete='email';
+      while(dest.firstChild) dest.removeChild(dest.firstChild);
+      dest.appendChild(input);
+      edit.remove();
+      input.focus();
+      try{ input.select(); }catch(e){}
+    });
+    _body.appendChild(edit);
 
     const note=_note('');
-    const send=_button('Send 💌','lwim-btn-warm',function(){ _doSend(send,note,null); });
+    const send=_button('Send 💌','lwim-btn-warm',function(){
+      let override=null;
+      if(input){
+        const value=String(input.value||'').trim();
+        if(!_looksLikeEmail(value)){
+          note.textContent='That does not look like an email address yet.';
+          input.focus();
+          return;
+        }
+        // The typed address is this share's destination and nothing
+        // more; typing the saved one back is not an override at all.
+        if(value!==saved) override=value;
+      }
+      _doSend(send,note,override,!!override);
+    });
     _body.appendChild(send);
     _body.appendChild(note);
   }
 
-  function _doSend(sendBtn,note,email){
+  function _doSend(sendBtn,note,email,once){
     if(sendBtn.disabled) return;
     sendBtn.disabled=true;
     note.textContent='✨ Getting it ready…';
@@ -231,7 +298,7 @@ const LookWhatIMade=(function(){
         return;
       }
       note.textContent='Sending it…';
-      CreationShareClient.send(_ctx.record.id,payload,email).then(function(res){
+      CreationShareClient.send(_ctx.record.id,payload,email,once?{once:true}:null).then(function(res){
         sendBtn.disabled=false;
         if(res&&res.ok){
           note.textContent='';
@@ -297,8 +364,14 @@ const LookWhatIMade=(function(){
   }
 
   // ---------- watch ----------
+  // One continuous magical making, through CreationPlayback: every
+  // frame decoded before the first shows, one stable stage for the
+  // whole replay, crossfades rather than swaps, and the shared
+  // music bed for as long as the experience is open. Leaving the
+  // view (or the hub) destroys the controller, which is what stops
+  // the music — it never runs underneath anything else.
   function _stopWatch(){
-    if(_watchTimer){ clearTimeout(_watchTimer); _watchTimer=null; }
+    if(_playback){ try{ _playback.destroy(); }catch(e){} _playback=null; }
   }
 
   function _showWatch(){
@@ -306,8 +379,6 @@ const LookWhatIMade=(function(){
     _body.appendChild(_backRow());
     _body.appendChild(_el('h3','lwim-view-title','🎬 Watch how I made it'));
     const stage=_el('div','lwim-watch-stage');
-    const img=_el('img','lwim-watch-img');
-    stage.appendChild(img);
     _body.appendChild(stage);
     const note=_note('✨ Getting it ready…');
     _body.appendChild(note);
@@ -321,27 +392,33 @@ const LookWhatIMade=(function(){
         note.textContent='There is nothing to watch just yet.';
         return;
       }
-      note.textContent='';
-      let i=0;
-      function step(){
-        if(!isOpen()) return;
-        const f=frames[i];
-        img.src=f.image;
-        img.classList.remove('lwim-watch-arrive');
-        void img.offsetWidth; // restart the little arrival
-        img.classList.add('lwim-watch-arrive');
-        i++;
-        if(i<frames.length){
-          _watchTimer=setTimeout(step,Math.max(350,Math.min(3200,f.holdMs||900)));
-        }else{
-          _watchTimer=null;
+      if(typeof CreationPlayback==='undefined'){
+        // The player missing must never strand the child — the
+        // finished creation still shows, plainly.
+        const img=_el('img','lwim-watch-img');
+        img.src=frames[frames.length-1].image;
+        stage.appendChild(img);
+        note.textContent='';
+        return;
+      }
+      _playback=CreationPlayback.mount(stage,{
+        frames:frames,
+        onDone:function(){
+          if(!isOpen()) return;
+          note.textContent='';
           const again=_button('▶ Watch again','lwim-btn-quiet',function(){
-            again.remove(); i=0; step();
+            again.remove();
+            note.textContent='';
+            if(_playback) _playback.replay();
           });
           note.appendChild(again);
         }
-      }
-      step();
+      });
+      _playback.play().then(function(ok){
+        if(!isOpen()) return;
+        if(ok) note.textContent='';
+        else note.textContent='There is nothing to watch just yet.';
+      });
     });
   }
 
@@ -384,6 +461,18 @@ const LookWhatIMade=(function(){
   }
 
   // ---------- foldable ----------
+  // Three beats (Sprint 1.1 §3): the OPEN sheet, the FOLD, and the
+  // FINISHED little book the child would actually hold — because a
+  // printable sheet alone does not answer "what will my story look
+  // like when I fold it?". The Story Card rides the same sheet as a
+  // tear-off strip whenever its door can be minted (§4), so one
+  // print is the whole physical journey: read the little book, cut
+  // the card off, give it to someone.
+  function _reducedMotion(){
+    try{ return window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches; }
+    catch(e){ return false; }
+  }
+
   function _showFoldable(){
     _clearBody();
     _body.appendChild(_backRow());
@@ -397,22 +486,117 @@ const LookWhatIMade=(function(){
         note.textContent='I couldn’t get it ready just now. Let’s try again in a moment.';
         return;
       }
-      FoldableComposer.compose(payload).then(function(made){
+      // The card's door first — without one the sheet simply has no
+      // card strip, never a card that opens onto nothing.
+      const mint=_ctx.record.id
+        ? CreationShareClient.mint(_ctx.record.id,payload)
+        : Promise.resolve(null);
+      mint.then(function(res){
         if(!isOpen()) return;
-        note.textContent='';
-        const preview=_el('div','lwim-sheet-preview');
-        const img=_el('img','lwim-sheet-img');
-        img.src=made.sheet;
-        img.alt='Your foldable';
-        preview.appendChild(img);
-        _body.appendChild(preview);
-        _body.appendChild(_el('p','lwim-line','This is what your story will look like. Cut the little ✂ line, fold it, and it becomes a tiny book.'));
-        if(made.note) _body.appendChild(_note(made.note));
-        _body.appendChild(_button('Print My Foldable 📄','lwim-btn-warm',function(){
-          _print([made.sheet],'foldable');
-        }));
+        const cardUrl=(res&&res.ok&&res.url)?res.url:null;
+        FoldableComposer.compose(payload,{cardUrl:cardUrl}).then(function(made){
+          if(!isOpen()) return;
+          _foldableOpenSheet(made);
+        });
       });
     });
+  }
+
+  function _foldableHeader(){
+    _clearBody();
+    _body.appendChild(_backRow());
+    _body.appendChild(_el('h3','lwim-view-title','📄 Make a Foldable'));
+  }
+
+  function _printFoldableBtn(made,cls){
+    return _button('Print My Foldable 📄',cls,function(){
+      _print([made.sheet],'foldable');
+    });
+  }
+
+  // Step 1 — the open sheet, exactly as it will print.
+  function _foldableOpenSheet(made){
+    _foldableHeader();
+    const preview=_el('div','lwim-sheet-preview');
+    const img=_el('img','lwim-sheet-img');
+    img.src=made.sheet;
+    img.alt='Your foldable, open';
+    preview.appendChild(img);
+    _body.appendChild(preview);
+    _body.appendChild(_el('p','lwim-line',
+      made.card
+        ? 'This one sheet is your whole story — and your Story Card is on it too.'
+        : 'This one sheet is your whole story.'));
+    if(made.note) _body.appendChild(_note(made.note));
+    _body.appendChild(_button('Fold it ✨','lwim-btn-warm',function(){
+      if(_reducedMotion()) _foldableFolded(made);
+      else _foldableFolding(made,img,preview);
+    }));
+    _body.appendChild(_printFoldableBtn(made,'lwim-btn-quiet'));
+  }
+
+  // Step 2 — the same sheet, folding. The animation runs on the
+  // exact bitmap the child was just looking at, then hands over to
+  // the folded book. Never under reduced motion.
+  function _foldableFolding(made,img,preview){
+    preview.classList.add('lwim-fold-perspective');
+    img.classList.add('lwim-folding');
+    let done=false;
+    function finish(){
+      if(done) return; done=true;
+      if(!isOpen()) return;
+      _foldableFolded(made);
+    }
+    img.addEventListener('animationend',finish,{once:true});
+    setTimeout(finish,2100); // the animation's own length plus grace
+  }
+
+  // Step 3 — the finished little book, as the child would hold it.
+  // Tapping it turns its pages, in reading order, upright — the
+  // panels are the composer's own upright bitmaps, so what flips
+  // here is exactly what the folded paper will show.
+  function _foldableFolded(made){
+    _foldableHeader();
+    const panels=made.panels||[];
+    let idx=0;
+
+    const book=_el('div','lwim-book');
+    book.setAttribute('role','button');
+    book.setAttribute('tabindex','0');
+    book.setAttribute('aria-label','Your little book — turn the page');
+    const pageImg=_el('img','lwim-book-page');
+    if(panels[0]) pageImg.src=panels[0].image;
+    pageImg.alt='Your little book';
+    book.appendChild(pageImg);
+    _body.appendChild(book);
+
+    const caption=_el('p','lwim-line','Your little book! Tap it to turn the pages.');
+    _body.appendChild(caption);
+
+    function turn(){
+      if(!panels.length) return;
+      idx=(idx+1)%panels.length;
+      pageImg.src=panels[idx].image;
+      pageImg.classList.remove('lwim-book-turn');
+      void pageImg.offsetWidth;
+      pageImg.classList.add('lwim-book-turn');
+    }
+    book.addEventListener('click',turn);
+    book.addEventListener('keydown',function(e){
+      if(e.key==='Enter'||e.key===' '){ e.preventDefault(); turn(); }
+    });
+
+    if(made.card&&made.cardFront){
+      const row=_el('div','lwim-book-card-row');
+      const cardImg=_el('img','lwim-book-card');
+      cardImg.src=made.cardFront;
+      cardImg.alt='Your Story Card';
+      row.appendChild(cardImg);
+      row.appendChild(_el('p','lwim-line','Your Story Card is on the sheet too — cut it off and give it to someone.'));
+      _body.appendChild(row);
+    }
+
+    _body.appendChild(_printFoldableBtn(made,'lwim-btn-warm'));
   }
 
   // ---------- story card ----------
@@ -450,7 +634,20 @@ const LookWhatIMade=(function(){
           const back=_el('img','lwim-card-img');  back.src=made.back;   back.alt='The back of your card';
           pair.appendChild(front); pair.appendChild(back);
           _body.appendChild(pair);
-          _body.appendChild(_el('p','lwim-line','Give it to someone. When they point a phone at the little square of stars, your creation opens for them in VihuPlanet.'));
+          _body.appendChild(_el('p','lwim-line','Give this to someone!'));
+          // What the card DOES, shown as three little beats — magic,
+          // never mechanism (Sprint 1.1 §5).
+          const demo=_el('div','lwim-demo');
+          [['🃏','Give it'],['📱','They point a phone at it'],['✨','Your creation opens']]
+            .forEach(function(beat,i){
+              if(i) demo.appendChild(_el('span','lwim-demo-arrow','→'));
+              const step=_el('span','lwim-demo-step');
+              step.appendChild(_el('span','lwim-demo-glyph',beat[0]));
+              step.appendChild(_el('span','lwim-demo-word',beat[1]));
+              demo.appendChild(step);
+            });
+          _body.appendChild(demo);
+          _body.appendChild(_note('It is on your foldable sheet as well, ready to cut off.'));
           _body.appendChild(_button('Print My Card 🃏','lwim-btn-warm',function(){
             _print([made.front,made.back],'card');
           }));
