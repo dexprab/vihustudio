@@ -10550,3 +10550,20 @@ to 92 (the reader line, the legacy stamp, the ambiguity refusal).
 Canon: Decision 53 (amended in place). Re-run
 supabase/migrations_social_identity.sql to pick up the legacy pass —
 it is idempotent and renames nobody.
+
+## SOCIAL 1.2c — the maker's own device shows the stamped names (build 0720)
+
+*"i reran the migration. still not showing anything with vih."* The
+migration had done its work — on the PLATFORM rows. The feed's dedupe
+lets the device's own local record win the id collision, which is
+right for content and silently dropped the platform's stamped copy —
+so the maker, whose device holds local copies of everything, was the
+one person whose Ether never showed a single @name. The feed now
+merges exactly the attribution field from a later source onto a kept
+entity that lacks it (entity and source alike, since the runtime
+reads only source), for the cloud and shared passes both. Proved by
+reverting. supabase/diagnose_social_identity.sql added: read-only,
+one paste, and it names per account and per shared story which link
+in the chain is missing — backfill skip reason, missing evidence, or
+"stamped, so the problem is the device". social-identity 94 +
+ether-share 21 — green. Canon: Decision 53 (amended in place).

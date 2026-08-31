@@ -6590,6 +6590,16 @@ it → wants to see more from that creator. That loop, and nothing else.
   and creatorName name exactly ONE identity is that identity's, and
   is stamped; an ambiguous pair (two same-named cards on one session)
   stamps nothing — the wrong child is worse than no name.
+- **THE PLATFORM HEALS A LOCAL COPY'S ATTRIBUTION** (S1.2b, from the
+  product owner re-running the migration and still seeing nothing).
+  The feed's dedupe lets a device's own LOCAL record win the id
+  collision — right for content, and it silently dropped the
+  platform's stamped copy, so the maker was the one person whose
+  Ether never showed their own @name. When a later source turns up a
+  kept story WITH a creatorUsername and the kept entity has none,
+  exactly that one field is merged (entity and source alike). Proved
+  by reverting. `supabase/diagnose_social_identity.sql` answers, per
+  account and per shared story, which link in the chain is missing.
 - **The reading portal names the maker's public name too** — *"by the
   god · @thegod"* under the title while a story is open (reported by
   the product owner: the reader named the maker and not their @name).

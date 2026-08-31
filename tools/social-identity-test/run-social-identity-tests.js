@@ -698,6 +698,39 @@ function sqlSection() {
   ck(found.title === '@stargirl' && found.rows.length === 1 && found.rows[0] === 'The Star Garden',
      'D8  EXACT NAME, ANY CASE, FINDS THE SHELF — and only theirs', JSON.stringify(found));
 
+  // ---- THE PLATFORM HEALS A LOCAL COPY'S ATTRIBUTION ---------------
+  // The maker's own device wins the id collision with its LOCAL copy
+  // of a story — which predates the name and carries none. The
+  // migration stamped the PLATFORM row; the feed must merge exactly
+  // that field, or the maker is the one person who never sees their
+  // own @name (reported from the live Ether: "typing vih is giving
+  // nothing" on the device that made everything).
+  const healed = await page.evaluate(async () => {
+    const id = CreatorProjectStore.newId();
+    const rec = { id: id, name: 'The Old Legacy Story', creatorName: 'Old Maker',
+      publishedAt: '2025-06-01T00:00:00Z',
+      data: { version: 1, pages: [{ id: 'p1' }] } };
+    CreatorProjectCache.putLocal(rec); // straight in: no card, no username
+    const sync = (typeof CreatorProjectSync !== 'undefined') ? CreatorProjectSync : null;
+    const orig = sync && sync.listShared;
+    if (sync) sync.listShared = () => Promise.resolve([{
+      id: id, owner_id: 'someone', updated_at: '2026-02-01T00:00:00Z',
+      data: Object.assign({}, rec, { creatorUsername: 'oldmaker' })
+    }]);
+    try {
+      await EtherFeed.load();
+      return {
+        byName: EtherFeed.byUsername('oldmaker').map((c) => c.title),
+        suggest: EtherFeed.suggestUsernames('old')
+      };
+    } finally { if (sync && orig) sync.listShared = orig; }
+  });
+  ck(healed.byName.length === 1 && healed.byName[0] === 'The Old Legacy Story',
+     'D8e THE PLATFORM HEALS A LOCAL COPY\'S ATTRIBUTION — the maker\'s own device shows the stamped name',
+     JSON.stringify(healed.byName));
+  ck(healed.suggest.indexOf('oldmaker') !== -1,
+     'D8f and the healed name is suggestible', JSON.stringify(healed.suggest));
+
   // ---- ?creator= is a one-shot intent -----------------------------
   await page.goto(BASE + '/index.html?creator=moonmaker');
   await page.waitForFunction(() => typeof EtherFeed !== 'undefined', null, { timeout: 20000 });

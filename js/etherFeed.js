@@ -505,6 +505,26 @@ const EtherFeed = (function () {
     return _hydrated().then(function () {
       const seen = {};
       const out = [];
+      // The entity each project id resolved to, so a LATER source can
+      // heal attribution on a kept one (see the shared pass below).
+      const kept = {};
+
+      // THE PLATFORM IS THE AUTHORITY ON ATTRIBUTION (S1.2b). A
+      // device's own copy of a story rightly wins the id collision
+      // for CONTENT — but a record saved before its maker had a
+      // public name carries no creatorUsername, while the platform's
+      // row was stamped by the migration's backfill. So when a later
+      // source turns up the same story WITH a name and the kept
+      // entity has none, exactly that one field is merged — entity
+      // and source alike, since the runtime reads only source. This
+      // is why the maker's own Ether shows their @name without
+      // waiting for their local records to be rewritten.
+      function healUsername(record) {
+        const entity = kept[record.id];
+        if (!entity || entity.creatorUsername || !record.creatorUsername) return;
+        entity.creatorUsername = record.creatorUsername;
+        if (entity.source) entity.source.creatorUsername = record.creatorUsername;
+      }
 
       let local = [];
       try {
@@ -525,7 +545,9 @@ const EtherFeed = (function () {
       local.forEach(function (record) {
         seen[record.id] = true;
         if (skip[record.id]) return;
-        out.push(toStory(record, creator));
+        const entity = toStory(record, creator);
+        kept[record.id] = entity;
+        out.push(entity);
       });
 
       // ---------- Canon ----------
@@ -554,10 +576,11 @@ const EtherFeed = (function () {
 
         return _cloud().then(function (rows) {
           rows.forEach(function (record) {
-            if (!record || seen[record.id] || skip[record.id]) return;
+            if (!record || skip[record.id]) return;
+            if (seen[record.id]) { healUsername(record); return; }
             if (!opts.includeUnpublished && !record.publishedAt) return;
             seen[record.id] = true;
-            out.push(toStory(record, creator));
+            kept[record.id] = out[out.push(toStory(record, creator)) - 1];
           });
 
           // ---------- everybody else's shared Stories ----------
@@ -574,7 +597,8 @@ const EtherFeed = (function () {
           // child still sees Canon plus their own.
           return _shared().then(function (sharedRows) {
             sharedRows.forEach(function (record) {
-              if (!record || seen[record.id] || skip[record.id]) return;
+              if (!record || skip[record.id]) return;
+              if (seen[record.id]) { healUsername(record); return; }
               if (!record.publishedAt) return;
               seen[record.id] = true;
               // No local creator passed: this Story is somebody else's,
