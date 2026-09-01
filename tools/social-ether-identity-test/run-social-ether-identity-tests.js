@@ -276,14 +276,14 @@ function ck(c, n, note) { (c ? ok : no)(n, note); }
     const p = document.querySelector('.social-sky-panel');
     return {
       text: p ? p.innerText : null,
-      mutualBand: !!document.querySelector('.social-sky-band.is-mutual'),
+      mutualStar: !!document.querySelector('.social-sky-star.is-mutual'),
       star: !!document.querySelector('.social-sky-star'),
     };
   }, unnamed);
   ck(!!panel.text && /🌌 My Sky/.test(panel.text),
      'D1  🌌 MY SKY opens from Studio Home — seeing and understanding live here');
-  ck(panel.star && panel.mutualBand && /@stargirl/.test(panel.text),
-     'D2  THE CHOSEN CREATOR STANDS IN THE SKY — @stargirl, in the we-chose-each-other layer',
+  ck(panel.star && panel.mutualStar && /@stargirl/.test(panel.text),
+     'D2  THE CHOSEN CREATOR STANDS IN THE SKY — @stargirl, nearest, as a mutual star',
      (panel.text || '').replace(/\n/g, ' · '));
   ck(!/\d/.test((panel.text || '').replace(/[🌌✨🎨🎁]/g, '')),
      'D3  NOT ONE NUMBER IN THE SKY — no follower counts, no circle size');

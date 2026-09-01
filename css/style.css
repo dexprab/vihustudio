@@ -14192,72 +14192,112 @@ body.studio-rite-running .companion-chat-open{ display:none !important; }
 }
 
 /* ---------- 🌌 the Sky itself ---------- */
+/* A spatial creative universe, not a panel of lists: the child's own
+   Companion at the centre, mutual choices closest (joined by faint
+   constellation lines), chosen Creators further out, and new/incoming
+   stars further and fainter still. No rings drawn, no layer labelled,
+   no counts anywhere. Spacious on purpose — VihuPlanet is tablet-size
+   and above, and a sky needs room to breathe. */
 .social-sky-overlay{
   position:fixed; inset:0; z-index:2600;
-  background:rgba(10,13,26,0.55);
+  background:rgba(10,13,26,0.6);
   display:flex; align-items:center; justify-content:center;
 }
 .social-sky-panel{
-  width:min(680px,calc(100% - 48px));
-  max-height:min(640px,calc(100% - 48px));
-  overflow:auto;
-  border-radius:18px;
-  padding:18px 20px;
-  background:#141a2e;
-  border:1px solid rgba(241,234,208,0.18);
-  color:#f1ead0;
-  box-shadow:0 24px 60px rgba(0,0,0,0.45);
+  width:min(1120px,calc(100% - 56px));
+  height:min(720px,calc(100% - 56px));
+  border-radius:22px;
+  overflow:hidden;
+  background:#0c1120;
+  border:1px solid rgba(241,234,208,0.16);
+  box-shadow:0 30px 80px rgba(0,0,0,0.5);
+  display:flex;
 }
-.social-sky-title{ margin:0 0 10px; font-size:18px; color:#f1ead0; }
 .social-sky-field{
   position:relative;
-  border-radius:14px;
-  padding:18px 14px 10px;
+  flex:1;
+  /* The night the Ether already taught the child, quiet and deep. */
   background:
-    radial-gradient(circle at 22% 18%, rgba(255,255,255,0.06) 0 1.5px, transparent 2px),
-    radial-gradient(circle at 71% 32%, rgba(255,255,255,0.05) 0 1px, transparent 2px),
-    radial-gradient(circle at 48% 64%, rgba(255,255,255,0.05) 0 1px, transparent 2px),
-    linear-gradient(180deg,#0c1120 0%,#131a30 100%);
-  border:1px solid rgba(241,234,208,0.1);
+    radial-gradient(circle at 21% 16%, rgba(255,255,255,0.09) 0 1.4px, transparent 2.4px),
+    radial-gradient(circle at 67% 11%, rgba(255,255,255,0.07) 0 1px, transparent 2px),
+    radial-gradient(circle at 84% 34%, rgba(255,255,255,0.08) 0 1.2px, transparent 2.2px),
+    radial-gradient(circle at 9% 58%, rgba(255,255,255,0.06) 0 1px, transparent 2px),
+    radial-gradient(circle at 38% 82%, rgba(255,255,255,0.07) 0 1px, transparent 2px),
+    radial-gradient(circle at 74% 76%, rgba(255,255,255,0.06) 0 1.1px, transparent 2.1px),
+    radial-gradient(circle at 54% 38%, rgba(255,255,255,0.05) 0 1px, transparent 2px),
+    radial-gradient(ellipse at 50% 52%, rgba(52,66,118,0.30) 0%, transparent 62%),
+    linear-gradient(180deg,#0a0e1c 0%,#121a32 58%,#0c1120 100%);
 }
-.social-sky-band{ margin-bottom:14px; }
-.social-sky-caption{
-  display:block;
-  font-size:11px;
-  letter-spacing:0.4px;
-  color:rgba(241,234,208,0.55);
-  margin:0 0 4px 4px;
-}
-.social-sky-band.is-mutual .social-sky-caption{ color:rgba(255,220,140,0.85); }
-.social-sky-stars{ display:flex; flex-wrap:wrap; gap:14px; align-items:flex-start; }
-.social-sky-star{
-  width:auto !important; height:auto !important; margin:0 !important;
-  padding:6px 8px !important;
-  display:flex; flex-direction:column; align-items:center; gap:3px;
-  background:transparent; border:none; cursor:pointer;
+.social-sky-title{
+  position:absolute; left:22px; top:16px; margin:0;
+  font-size:17px; font-weight:600;
   color:rgba(241,234,208,0.85);
+  pointer-events:none;
+  z-index:3;
 }
-.social-sky-star:hover{ color:#fff; }
+.social-sky-lines{
+  position:absolute; inset:0; width:100%; height:100%;
+  pointer-events:none; z-index:1;
+}
+.social-sky-lines line{
+  stroke:rgba(255,215,130,0.28);
+  stroke-width:0.28;
+  stroke-linecap:round;
+  stroke-dasharray:1.1 1.5;
+}
+/* One star = one Creator, standing where the relationship puts them.
+   Positioned absolutely (inline left/top from the layout), centred on
+   its own point. */
+.social-sky-star{
+  position:absolute;
+  transform:translate(-50%,-50%);
+  display:flex; flex-direction:column; align-items:center; gap:2px;
+  cursor:pointer;
+  color:rgba(241,234,208,0.85);
+  z-index:2;
+  -webkit-user-select:none; user-select:none;
+}
+.social-sky-star:hover,.social-sky-star:focus-visible{ color:#fff; z-index:4; outline:none; }
 .social-sky-figure{
   position:relative;
-  width:56px; height:56px;
   display:flex; align-items:center; justify-content:center;
   border-radius:50%;
   background:radial-gradient(circle,rgba(255,255,255,0.10) 0%,transparent 70%);
+  transition:transform 220ms ease;
 }
+.social-sky-star:hover .social-sky-figure,
+.social-sky-star:focus-visible .social-sky-figure{ transform:scale(1.08); }
 .social-sky-companion{
-  max-width:52px; max-height:52px;
-  filter:drop-shadow(0 0 6px rgba(255,255,255,0.25));
+  filter:drop-shadow(0 0 7px rgba(255,255,255,0.28));
 }
-.social-sky-plain{ font-size:26px; color:#e8e2c8; }
-.social-sky-name{ font-size:11px; }
-/* The layers are told apart by presence, size and light — never a
-   label with a rank in it. */
-.social-sky-band.is-chose-me .social-sky-figure{ transform:scale(0.78); opacity:0.72; }
-.social-sky-band.is-chosen .social-sky-figure{ transform:scale(0.92); }
-.social-sky-band.is-mutual .social-sky-figure{
-  background:radial-gradient(circle,rgba(255,215,130,0.22) 0%,transparent 72%);
+.social-sky-plain{ color:#e8e2c8; }
+/* The name is contextual, never the identity: small and dim until the
+   child reaches for the star. */
+.social-sky-name{
+  font-size:11px;
+  opacity:0.55;
+  transition:opacity 180ms ease;
+  white-space:nowrap;
 }
+.social-sky-star:hover .social-sky-name,
+.social-sky-star:focus-visible .social-sky-name{ opacity:1; }
+/* THE SPATIAL HIERARCHY — closeness, scale and light, never a label:
+   mutual nearest and warmest · chosen at mid distance · they-chose-me
+   far and faint. */
+.social-sky-star.is-mutual .social-sky-figure{
+  width:66px; height:66px;
+  background:radial-gradient(circle,rgba(255,215,130,0.24) 0%,transparent 72%);
+}
+.social-sky-star.is-mutual .social-sky-companion{ max-width:60px; max-height:60px; }
+.social-sky-star.is-mutual .social-sky-plain{ font-size:30px; }
+.social-sky-star.is-chosen .social-sky-figure{ width:54px; height:54px; }
+.social-sky-star.is-chosen .social-sky-companion{ max-width:48px; max-height:48px; }
+.social-sky-star.is-chosen .social-sky-plain{ font-size:24px; }
+.social-sky-star.is-far{ opacity:0.68; }
+.social-sky-star.is-far .social-sky-figure{ width:42px; height:42px; }
+.social-sky-star.is-far .social-sky-companion{ max-width:36px; max-height:36px; }
+.social-sky-star.is-far .social-sky-plain{ font-size:19px; }
+.social-sky-star.is-far:hover,.social-sky-star.is-far:focus-visible{ opacity:1; }
 /* TEMPORARY glows — a new star, and the distinct mutual shimmer.
    They settle once the sky has been seen; the star stays. */
 .social-sky-star.is-new .social-sky-figure{
@@ -14267,36 +14307,62 @@ body.studio-rite-running .companion-chat-open{ display:none !important; }
   0%,100%{ box-shadow:0 0 0 0 rgba(255,255,255,0.0); }
   50%{ box-shadow:0 0 18px 4px rgba(255,255,255,0.35); }
 }
-.social-sky-band.is-mutual .social-sky-star.is-new .social-sky-figure{
+.social-sky-star.is-mutual.is-new .social-sky-figure{
   animation:social-sky-mutual 2.1s ease-in-out infinite;
 }
 @keyframes social-sky-mutual{
   0%,100%{ box-shadow:0 0 0 0 rgba(255,215,130,0.0); }
-  50%{ box-shadow:0 0 22px 6px rgba(255,215,130,0.45); }
+  50%{ box-shadow:0 0 24px 7px rgba(255,215,130,0.45); }
 }
 @media (prefers-reduced-motion: reduce){
   .social-sky-star.is-new .social-sky-figure{ animation:none; box-shadow:0 0 14px 3px rgba(255,255,255,0.3); }
+  .social-sky-star.is-mutual.is-new .social-sky-figure{ animation:none; box-shadow:0 0 16px 4px rgba(255,215,130,0.4); }
 }
+/* "They have something to show me" — one small mark on the star, a
+   real control of its own, never a badge with a number. */
 .social-sky-gift{
-  position:absolute; right:-4px; top:-4px; font-size:14px;
+  position:absolute; right:2px; top:-2px;
+  width:auto !important; height:auto !important;
+  margin:0 !important; padding:1px 3px !important;
+  font-size:15px; line-height:1;
+  background:transparent; border:none; cursor:pointer;
+  filter:drop-shadow(0 0 5px rgba(255,215,130,0.5));
+  z-index:5;
 }
+/* The child's own Companion — the centre of their creative universe,
+   resting in a soft pool of warm light. */
 .social-sky-me{
-  display:flex; flex-direction:column; align-items:center; gap:2px;
-  margin-top:8px; padding-top:10px;
-  border-top:1px dashed rgba(241,234,208,0.15);
-  color:rgba(241,234,208,0.75);
+  position:absolute; left:50%; top:50%;
+  transform:translate(-50%,-50%);
+  display:flex; flex-direction:column; align-items:center; gap:3px;
+  color:rgba(241,234,208,0.9);
+  pointer-events:none;
+  z-index:2;
 }
-.social-sky-me .social-sky-name{ font-size:11px; }
+.social-sky-me .social-sky-figure{
+  width:96px; height:96px;
+  background:radial-gradient(circle,rgba(255,224,150,0.20) 0%,rgba(255,224,150,0.06) 55%,transparent 75%);
+}
+.social-sky-me .social-sky-companion{ max-width:86px; max-height:86px;
+  filter:drop-shadow(0 0 12px rgba(255,224,150,0.35)); }
+.social-sky-me .social-sky-plain{ font-size:44px; }
+.social-sky-me .social-sky-name{ font-size:12px; opacity:0.7; }
 .social-sky-empty{
-  margin:14px 6px; font-size:13px; line-height:1.5;
-  color:rgba(241,234,208,0.7);
+  position:absolute; left:50%; bottom:15%;
+  transform:translateX(-50%);
+  width:min(440px,80%);
+  margin:0; text-align:center;
+  font-size:13.5px; line-height:1.55;
+  color:rgba(241,234,208,0.65);
 }
 .social-sky-quiet{
+  position:absolute; right:18px; bottom:14px;
   width:auto !important; height:auto !important;
-  margin:12px 0 0 !important; padding:6px 16px !important;
+  margin:0 !important; padding:6px 18px !important;
   border-radius:999px; border:1px solid rgba(241,234,208,0.3);
-  background:transparent; color:rgba(241,234,208,0.8);
+  background:rgba(12,17,32,0.5); color:rgba(241,234,208,0.8);
   font-size:13px; cursor:pointer;
+  z-index:3;
 }
 .social-sky-quiet:hover{ color:#fff; border-color:rgba(241,234,208,0.55); }
 

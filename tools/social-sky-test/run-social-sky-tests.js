@@ -348,38 +348,63 @@ function sqlSection() {
   await page.screenshot({ path: path.join(SHOTS, 'B1-studio-home.png') });
 
   // ---- the sky itself ----------------------------------------------
+  // SOCIAL SKY R1.1 turned these checks around: the sky is SPATIAL now
+  // — the child's Companion at the centre, mutual stars nearest (with
+  // constellation lines), incoming stars far and faint — and the three
+  // states are told apart by distance, scale and light, never by three
+  // list sections with graph labels.
   const sky = await page.evaluate(() => {
     document.querySelectorAll('.creation-flow-socialdoor-btn').forEach((b) => {
       if (/My Sky/.test(b.textContent)) b.click();
     });
     return new Promise((resolve) => setTimeout(() => {
       const panel = document.querySelector('.social-sky-panel');
-      const bands = Array.from(document.querySelectorAll('.social-sky-band')).map((b) => ({
-        cls: b.className,
-        caption: (b.querySelector('.social-sky-caption') || {}).textContent,
-        stars: Array.from(b.querySelectorAll('.social-sky-star')).map((s) => {
-          const img = s.querySelector('.social-sky-companion');
-          return {
-            name: (s.querySelector('.social-sky-name') || {}).textContent,
-            companion: img ? img.getAttribute('src') : null,
-            glow: s.classList.contains('is-new'),
-          };
-        }),
-      }));
-      resolve({ open: !!panel, bands, text: panel ? panel.innerText : '' });
+      const field = document.querySelector('.social-sky-field');
+      const fr = field ? field.getBoundingClientRect() : null;
+      const cx = fr ? fr.left + fr.width / 2 : 0, cy = fr ? fr.top + fr.height / 2 : 0;
+      const stars = Array.from(document.querySelectorAll('.social-sky-star')).map((s) => {
+        const r = s.getBoundingClientRect();
+        const img = s.querySelector('.social-sky-companion');
+        return {
+          cls: s.className,
+          name: (s.querySelector('.social-sky-name') || {}).textContent,
+          companion: img ? img.getAttribute('src') : null,
+          glow: s.classList.contains('is-new'),
+          dist: Math.round(Math.hypot(r.left + r.width / 2 - cx, r.top + r.height / 2 - cy)),
+        };
+      });
+      const me = document.querySelector('.social-sky-me');
+      const meR = me ? me.getBoundingClientRect() : null;
+      resolve({
+        open: !!panel,
+        fieldW: fr ? Math.round(fr.width) : 0,
+        stars,
+        meCentered: meR ? Math.round(Math.hypot(meR.left + meR.width / 2 - cx,
+                                                meR.top + meR.height / 2 - cy)) : null,
+        lines: document.querySelectorAll('.social-sky-lines line').length,
+        bands: document.querySelectorAll('.social-sky-band').length,
+        text: panel ? panel.innerText : '',
+      });
     }, 700));
   });
-  const mutualBand = (sky.bands || []).find((b) => /is-mutual/.test(b.cls));
-  const choseMeBand = (sky.bands || []).find((b) => /is-chose-me/.test(b.cls));
-  ck(sky.open && !!mutualBand && !!choseMeBand,
-     'B3  THE SKY OPENS WITH DISTINGUISHABLE LAYERS — mutual and they-chose-me both present',
-     JSON.stringify((sky.bands || []).map((b) => b.caption)));
-  ck(!!mutualBand && mutualBand.stars.length === 1
-     && /quill\/idle\.png/.test(mutualBand.stars[0].companion || '')
-     && mutualBand.stars[0].name === '@stargirl',
-     'B4  A CREATOR APPEARS THROUGH THEIR COMPANION — Quill stands for @stargirl, the name underneath',
-     JSON.stringify(mutualBand && mutualBand.stars));
-  ck(!!choseMeBand && choseMeBand.stars[0].glow === true && mutualBand.stars[0].glow === true,
+  const mStar = (sky.stars || []).find((s) => /is-mutual/.test(s.cls));
+  const fStar = (sky.stars || []).find((s) => /is-far/.test(s.cls));
+  ck(sky.open && !!mStar && !!fStar && sky.bands === 0
+     && !/They chose me|I chose them|We chose each other/.test(sky.text),
+     'B3  THE SKY IS SPATIAL — no list sections, no graph labels, the states are places',
+     JSON.stringify({ bands: sky.bands, stars: sky.stars.length }));
+  ck(sky.meCentered !== null && sky.meCentered < 40 && mStar.dist < fStar.dist,
+     'B3b MY COMPANION IS THE CENTRE, the mutual star nearest, the new chooser furthest',
+     JSON.stringify({ me: sky.meCentered, mutual: mStar.dist, far: fStar.dist }));
+  ck(sky.lines === 1,
+     'B3c a faint constellation line joins the mutual pair — "we chose each other", drawn, not said');
+  ck(sky.fieldW >= 900,
+     'B3d and the sky has room to breathe — a spacious canvas, not a small modal', sky.fieldW + 'px wide');
+  ck(!!mStar && /quill\/idle\.png/.test(mStar.companion || '')
+     && mStar.name === '@stargirl',
+     'B4  A CREATOR APPEARS THROUGH THEIR COMPANION — Quill stands for @stargirl, the name a small label',
+     JSON.stringify({ companion: mStar.companion, name: mStar.name }));
+  ck(fStar.glow === true && mStar.glow === true,
      'B5  THE NEW STAR GLOWS, AND THE NEW MUTUAL GLOWS ITS OWN WAY — both unseen right now');
   ck(!/\d/.test(sky.text.replace(/🌌|✨|🎁/g, '')),
      'B5b and NOT ONE NUMBER anywhere in the sky', sky.text.replace(/\n/g, ' · '));

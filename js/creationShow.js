@@ -370,7 +370,7 @@ const CreationShow=(function(){
   }
 
   // ---------- 🎁 Gifts ----------
-  function _viewGift(panel,gift,rerenderList){
+  function _viewGift(panel,gift,rerenderList,onBack){
     while(panel.firstChild) panel.removeChild(panel.firstChild);
     panel.appendChild(_el('h3','creation-show-title',gift.name||'A gift'));
     panel.appendChild(_el('p','creation-show-sub','from @'+gift.from));
@@ -460,10 +460,19 @@ const CreationShow=(function(){
         btns.appendChild(_el('span','creation-gift-kept','Kept ✓'));
       }
       panel.appendChild(btns);
+      if(typeof onBack==='function'){
+        const back=_el('button','creation-show-quiet','Back');
+        back.type='button';
+        back.addEventListener('click',onBack);
+        panel.appendChild(back);
+      }
     });
   }
 
-  function openGifts(){
+  // opts.from — the sky's 🎁 leads straight to that Creator's gift:
+  // the newest unseen one from them opens at once, no intermediate
+  // screen, with the list one Back away.
+  function openGifts(opts){
     const card=_card();
     if(!card) return false;
     const overlay=_el('div','creation-show-overlay');
@@ -472,6 +481,7 @@ const CreationShow=(function(){
     function done(){ try{ overlay.remove(); }catch(e){} }
     overlay.addEventListener('click',function(ev){ if(ev.target===overlay) done(); });
     document.body.appendChild(overlay);
+    const fromWho=(opts&&opts.from)?_norm(opts.from):null;
 
     function renderList(){
       while(panel.firstChild) panel.removeChild(panel.firstChild);
@@ -487,7 +497,7 @@ const CreationShow=(function(){
         row.appendChild(_el('span','creation-gift-name',(g.seen?'':'✨ ')+(g.name||'A gift')));
         row.appendChild(_el('span','creation-gift-from','from @'+g.from+(g.kept?' · kept ✓':'')));
         row.addEventListener('click',function(){
-          _viewGift(panel,g,function(){ /* status refreshed on next open */ });
+          _viewGift(panel,g,function(){ /* status refreshed on next open */ },renderList);
         });
         panel.appendChild(row);
       });
@@ -502,8 +512,14 @@ const CreationShow=(function(){
     }
 
     renderList();
+    if(fromWho){
+      const theirs=gifts().filter(function(g){
+        return g&&_norm(g.from)===fromWho&&!g.seen;
+      })[0]||gifts().filter(function(g){ return g&&_norm(g.from)===fromWho; })[0];
+      if(theirs) _viewGift(panel,theirs,function(){},renderList);
+    }
     refresh().then(function(changed){
-      if(changed&&overlay.isConnected) renderList();
+      if(changed&&overlay.isConnected&&!fromWho) renderList();
     });
     return true;
   }

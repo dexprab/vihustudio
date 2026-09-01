@@ -6936,6 +6936,28 @@ where they were.
   otherwise. Their Ether keeps the id-seeded placement everybody
   always had. Cheer stays card-agnostic exactly as Decision 20 locked
   it.
+- **THE SKY IS SPATIAL, NOT A PRETTIER LIST** (build 0726, the UX
+  correction sprint). The first rendering put the three states into
+  three captioned horizontal sections — functionally right, visually a
+  relationship panel, which is the exact thing the canon forbids. The
+  sky is now a spacious night field (a wide tablet canvas, not a small
+  modal): the child's own Companion rests at the CENTRE in a pool of
+  warm light; mutual Companions stand nearest, larger and warmer,
+  joined to the child by a faint dashed constellation line — "we chose
+  each other", drawn, never said; chosen Companions further out; new
+  choosers furthest and faintest. NO ring is drawn, NO layer is
+  captioned, and the graph labels appear nowhere on screen — distance,
+  scale and light carry the whole model. Positions are deterministic
+  (per-name, evenly shared per layer, layers turned to interleave), so
+  the same sky draws the same way every visit and looks intentional
+  with one star or ten. Names are small dim labels that brighten on
+  reach — the Companion is the identity. The 🎁 became its own small
+  control on the star, leading STRAIGHT to that Creator's newest
+  unseen gift (openGifts({from})), no intermediate screen; the gift
+  view gained its quiet Back to the list. Everything else — data,
+  seams, glows-settle-on-seen, Show permissions, gravity — is
+  untouched, which is what made this a rendering correction rather
+  than a redesign.
 - **THE BAND'S OWN COST WAS MEASURED, AND IT PAID AN OLD DEBT.** Two
   doors stacked full-width would have doubled the social band; they
   share one row. And measuring found the Social 2.1 band had ALREADY

@@ -235,16 +235,16 @@ const SocialSky=(function(){
     return (h%1000)/1000*span-span/2;
   }
 
-  function _star(entry,opts){
-    const name=_norm(entry.username);
-    const b=_el('button','social-sky-star'+(opts.glow?' is-new':'')+(opts.dim?' is-far':''));
-    b.type='button';
+  // A companion figure — the primary visual identity everywhere in the
+  // sky. The name is a small, dim, contextual label underneath, never
+  // the thing the eye reads first.
+  function _figure(companionId){
     const fig=_el('span','social-sky-figure');
-    if(entry.companion){
+    if(companionId){
       const img=document.createElement('img');
       img.className='social-sky-companion';
       img.alt='';
-      img.src='assets/'+encodeURIComponent(entry.companion)+'/idle.png';
+      img.src='assets/'+encodeURIComponent(companionId)+'/idle.png';
       img.addEventListener('error',function(){
         img.remove();
         fig.appendChild(_el('span','social-sky-plain','✦'));
@@ -253,14 +253,74 @@ const SocialSky=(function(){
     }else{
       fig.appendChild(_el('span','social-sky-plain','✦'));
     }
-    if(opts.gift) fig.appendChild(_el('span','social-sky-gift','🎁'));
-    b.appendChild(fig);
-    // The username appears contextually, under the companion — the
-    // companion is the primary representation.
+    return fig;
+  }
+
+  // One star in the spatial sky. A role=button div rather than a
+  // <button>, because the 🎁 indicator inside it is its own real
+  // control (a button may not legally contain one) — the same pattern
+  // My Projects' cards already use for their nested actions.
+  function _star(entry,opts){
+    const b=_el('div','social-sky-star '+opts.cls+(opts.glow?' is-new':''));
+    b.setAttribute('role','button');
+    b.setAttribute('tabindex','0');
+    b.style.left=opts.x.toFixed(2)+'%';
+    b.style.top=opts.y.toFixed(2)+'%';
+    b.appendChild(_figure(entry.companion));
     b.appendChild(_el('span','social-sky-name','@'+entry.username));
-    b.style.marginTop=Math.round(_jitter(name,26))+'px';
-    b.addEventListener('click',function(){ _goCreator(entry.username); });
+    if(opts.gift){
+      // "Somebody has something to show me." Tapping the little gift
+      // goes straight to it; tapping the companion meets the Creator.
+      const g=_el('button','social-sky-gift','🎁');
+      g.type='button';
+      g.setAttribute('aria-label','They have something to show you');
+      g.addEventListener('click',function(ev){
+        ev.stopPropagation();
+        try{
+          if(typeof CreationShow!=='undefined'&&CreationShow.openGifts){
+            if(opts.onGift) opts.onGift();
+            CreationShow.openGifts({from:entry.username});
+          }
+        }catch(e){}
+      });
+      b.appendChild(g);
+    }
+    function go(){ _goCreator(entry.username); }
+    b.addEventListener('click',go);
+    b.addEventListener('keydown',function(ev){
+      if(ev.key==='Enter'||ev.key===' '){ ev.preventDefault(); go(); }
+    });
     return b;
+  }
+
+  // WHERE A STAR STANDS — the whole relationship model, said spatially
+  // and never as a list: mutual choices closest around the child's own
+  // Companion, the Creators they chose further out, and the Creators
+  // who chose them further and fainter still. No rings are drawn, no
+  // layer is labelled, and an empty layer simply isn't there — the
+  // hierarchy is felt, not explained.
+  //
+  // Positions are deterministic: within a layer the stars share the
+  // circle evenly (sorted by name, starting at the top), with a small
+  // per-name jitter so three companions never look like a diagram —
+  // and each layer's ring is turned a little so layers interleave
+  // instead of stacking into columns. The same sky draws the same way
+  // every time.
+  function _placed(list,rx,ry,turn){
+    const sorted=list.slice().sort(function(a,b){
+      return _norm(a.username)<_norm(b.username)?-1:1;
+    });
+    const n=sorted.length;
+    return sorted.map(function(e,i){
+      const name=_norm(e.username);
+      const a=-Math.PI/2+turn+(2*Math.PI*i)/Math.max(n,1)
+        +(_jitter(name,1000)/1000)*(Math.PI/Math.max(n*3,6));
+      return {
+        entry:e,
+        x:50+Math.cos(a)*rx+(_jitter(name+'x',4)),
+        y:50+Math.sin(a)*ry+(_jitter(name+'y',4))
+      };
+    });
   }
 
   function open(){
@@ -289,57 +349,59 @@ const SocialSky=(function(){
       u.stars.forEach(function(e){ newStar[_norm(e.username)]=true; });
       u.mutuals.forEach(function(e){ newMutual[_norm(e.username)]=true; });
 
-      panel.appendChild(_el('h3','social-sky-title','🌌 My Sky'));
-
       const field=_el('div','social-sky-field');
       panel.appendChild(field);
 
-      function band(cls,caption,entries,opts){
-        // Absent rather than empty — an empty layer draws no band, so
-        // there is never a ladder of labels to compare or to fill.
-        if(!entries.length) return;
-        const row=_el('div','social-sky-band '+cls);
-        row.appendChild(_el('span','social-sky-caption',caption));
-        const stars=_el('div','social-sky-stars');
-        entries.forEach(function(e){
-          const name=_norm(e.username);
-          stars.appendChild(_star(e,{
-            glow:(opts.glowMap&&opts.glowMap[name])||false,
-            dim:!!opts.dim,
-            gift:!!gifts[name]
+      // The title floats quietly in a corner OF the sky — the sky is
+      // the screen, not a box the screen contains.
+      field.appendChild(_el('h3','social-sky-title','🌌 My Sky'));
+
+      const mutual=_placed(l.mutual,15,20,0);
+      const chosen=_placed(l.chosen,28,33,Math.PI/5);
+      const far=_placed(l.choseMe,40,43,Math.PI/3);
+
+      // Constellation lines — the mutual pairs are DRAWN as connected
+      // to the child's own Companion, which is what "we chose each
+      // other" looks like without a word of it.
+      if(mutual.length){
+        const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+        svg.setAttribute('class','social-sky-lines');
+        svg.setAttribute('viewBox','0 0 100 100');
+        svg.setAttribute('preserveAspectRatio','none');
+        svg.setAttribute('aria-hidden','true');
+        mutual.forEach(function(p){
+          const line=document.createElementNS('http://www.w3.org/2000/svg','line');
+          line.setAttribute('x1','50'); line.setAttribute('y1','50');
+          line.setAttribute('x2',p.x.toFixed(2)); line.setAttribute('y2',p.y.toFixed(2));
+          svg.appendChild(line);
+        });
+        field.appendChild(svg);
+      }
+
+      function put(list,cls,glowMap){
+        list.forEach(function(p){
+          const name=_norm(p.entry.username);
+          field.appendChild(_star(p.entry,{
+            cls:cls, x:p.x, y:p.y,
+            glow:!!(glowMap&&glowMap[name]),
+            gift:!!gifts[name],
+            onGift:done
           }));
         });
-        row.appendChild(stars);
-        field.appendChild(row);
       }
+      put(far,'is-far',newStar);
+      put(chosen,'is-chosen',null);
+      put(mutual,'is-mutual',newMutual);
 
-      // Furthest first, so the nearest (strongest) layer sits closest
-      // to the child's own companion at the foot of the sky.
-      band('is-chose-me','They chose me',l.choseMe,{dim:true,glowMap:newStar});
-      band('is-chosen','I chose them',l.chosen,{});
-      band('is-mutual','We chose each other',l.mutual,{glowMap:newMutual});
-
-      // The child themselves, at the foot of their own sky.
+      // The child themselves — their Companion is the centre of their
+      // own creative universe.
       const me=_el('div','social-sky-me');
-      const myFig=_el('span','social-sky-figure');
-      const myCompanion=card.companionId||null;
-      if(myCompanion){
-        const img=document.createElement('img');
-        img.className='social-sky-companion';
-        img.alt='';
-        img.src='assets/'+encodeURIComponent(myCompanion)+'/idle.png';
-        img.addEventListener('error',function(){
-          img.remove();
-          myFig.appendChild(_el('span','social-sky-plain','✦'));
-        });
-        myFig.appendChild(img);
-      }else{
-        myFig.appendChild(_el('span','social-sky-plain','✦'));
-      }
-      me.appendChild(myFig);
+      me.appendChild(_figure(card.companionId||null));
       me.appendChild(_el('span','social-sky-name',card.username?('@'+card.username):(card.nickname||'you')));
       field.appendChild(me);
 
+      // A mostly-empty sky is allowed to be mostly empty — one gentle
+      // line low in the field, never an empty section per layer.
       if(!l.mutual.length&&!l.chosen.length&&!l.choseMe.length){
         field.appendChild(_el('p','social-sky-empty',
           'Your sky is waiting. When you meet a Creator in the Ether whose things you love, choose them — and they appear here.'));
@@ -348,7 +410,7 @@ const SocialSky=(function(){
       const back=_el('button','social-sky-quiet','Back');
       back.type='button';
       back.addEventListener('click',done);
-      panel.appendChild(back);
+      field.appendChild(back);
     }
 
     render();

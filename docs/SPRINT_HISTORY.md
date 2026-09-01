@@ -10682,3 +10682,26 @@ into historical-rule checks with reasons in place), social-ether-identity
 20 (panel checks became sky checks), social-identity 98, ether-share 21,
 ether-encounter 94, look-share 156. Deploy: `migrations_social_sky.sql`
 then `verify_social_sky.sql`. Decision 56.
+
+## Sprint SOCIAL SKY R1.1 — the Sky becomes spatial (build 0726)
+
+A UX correction to R1, no canon or persistence change: the first My Sky
+rendered the three states as three captioned list sections — a
+relationship panel wearing a dark theme. `SocialSky.open()` now draws a
+spacious night field (min(1120px, viewport) — tablet-first, never a
+small modal): the child's own Companion centred in warm light, mutual
+Companions nearest and largest with a faint dashed constellation line
+to the centre, chosen Companions further out, new choosers furthest and
+faintest with the temporary new-star glow. No rings drawn, no layer
+captioned, no graph label anywhere — distance, scale and light carry
+the model; positions are deterministic per name and interleaved per
+layer so two or three companions look intentional, not broken. Names
+are small dim contextual labels that brighten on hover/focus. The 🎁
+became a real nested control (role=button star, the My Projects card
+pattern) opening that Creator's newest unseen gift directly via
+`CreationShow.openGifts({from})`; the gift view gained a Back to the
+list. Show permissions, gravity, glow-settling, Traveller refusals and
+all seams untouched. Suites turned around with reasons in place
+(band checks → spatial measurements: centre distance, mutual < far,
+line count, ≥900px field): social-sky 62, social-ether-identity 20,
+creation-home 84 — green.
