@@ -6936,6 +6936,25 @@ where they were.
   otherwise. Their Ether keeps the id-seeded placement everybody
   always had. Cheer stays card-agnostic exactly as Decision 20 locked
   it.
+- **ONLY THE COMPANION TRAVELS BETWEEN WORLDS** (build 0727, the
+  consolidated R1 sprint's one genuinely new rule — a CORE VIHUPLANET
+  RULE, stated by the product owner). A Creator never crosses their
+  world boundary and neither does their original creation; a Show is
+  the child's Companion carrying something they made to another
+  Creator's world so they can see it, a Gift is a Companion arriving
+  with something to reveal, and Keep is the recipient's own Companion
+  bringing a COPY in. The snapshot model already implemented this
+  mechanically (the original never moves); this makes it the
+  EXPERIENCE: the Show confirmation is the sender's Companion setting
+  off ("✨ [name] is carrying it… your creation stays right here with
+  you"), the gift view draws the CARRIER — the sender's Companion,
+  which `creation_show_list`/`_get` now return beside the username —
+  revealing what it brought, the Gifts area reads "Companions have
+  carried these here for you", and a kept copy is announced as "[my
+  Companion] carried a copy into My Projects / your garden / your
+  letters". The Show picker's groups are named for the world (My
+  stories & cards · From my Garden · My letters), because characters,
+  scenes and cards are all creations a child can Show.
 - **THE SKY IS SPATIAL, NOT A PRETTIER LIST** (build 0726, the UX
   correction sprint). The first rendering put the three states into
   three captioned horizontal sections — functionally right, visually a

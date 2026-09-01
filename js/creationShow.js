@@ -79,6 +79,58 @@ const CreationShow=(function(){
     return e;
   }
 
+  // ---------- the carrier ----------
+  // THE CORE WORLD RULE: a Creator never crosses their world boundary,
+  // and neither does their original creation. ONLY THE COMPANION
+  // TRAVELS. A Show is my Companion carrying something I made to
+  // another Creator's world so they can see it; a Gift is a Companion
+  // arriving with something to reveal; Keep is my own Companion
+  // bringing a copy into my world. The helpers below are how every
+  // surface in this file says and draws that.
+  function _myCompanion(){
+    const card=_card();
+    return {
+      id:(card&&card.companionId)||null,
+      name:(card&&card.companionName)||'Your Companion'
+    };
+  }
+  // The sender's Companion on a gift — the platform sends it with the
+  // gift row; an older cached row falls back to the sky's own copy of
+  // that Creator's Companion (the sender necessarily stands in my sky:
+  // they chose me, or we chose each other).
+  function _carrierOf(gift){
+    if(gift&&gift.companion) return gift.companion;
+    try{
+      if(typeof SocialSky!=='undefined'&&SocialSky.layers&&gift&&gift.from){
+        const l=SocialSky.layers();
+        if(l){
+          const name=_norm(gift.from);
+          const all=[].concat(l.mutual,l.chosen,l.choseMe);
+          for(let i=0;i<all.length;i++){
+            if(all[i]&&_norm(all[i].username)===name) return all[i].companion||null;
+          }
+        }
+      }
+    }catch(e){}
+    return null;
+  }
+  function _companionFig(companionId,cls){
+    const fig=_el('span',cls||'creation-gift-carrier-figure');
+    if(companionId){
+      const img=document.createElement('img');
+      img.alt='';
+      img.src='assets/'+encodeURIComponent(companionId)+'/idle.png';
+      img.addEventListener('error',function(){
+        img.remove();
+        fig.appendChild(_el('span','creation-gift-carrier-plain','✦'));
+      });
+      fig.appendChild(img);
+    }else{
+      fig.appendChild(_el('span','creation-gift-carrier-plain','✦'));
+    }
+    return fig;
+  }
+
   // ---------- what I can show ----------
   // My own creations, grouped — each item carries the place its copy
   // would belong in a recipient's world, and a lazy payload() so
@@ -315,9 +367,9 @@ const CreationShow=(function(){
         });
         panel.appendChild(row);
       }
-      group('Stories',mine.stories);
-      group('Drawings',mine.drawings);
-      group('Letters',mine.letters);
+      group('My stories & cards',mine.stories);
+      group('From my Garden',mine.drawings);
+      group('My letters',mine.letters);
       const back=_el('button','creation-show-quiet','Back');
       back.type='button';
       back.addEventListener('click',done);
@@ -341,8 +393,15 @@ const CreationShow=(function(){
           send(item,e.username).then(function(res){
             while(panel.firstChild) panel.removeChild(panel.firstChild);
             if(res&&res.ok){
-              panel.appendChild(_el('h3','creation-show-title','✨ On its way'));
-              panel.appendChild(_el('p','creation-show-note','@'+e.username+' will find it with their gifts.'));
+              // The creation has not gone anywhere — it stays in this
+              // child's world. What crosses is the Companion.
+              const mine=_myCompanion();
+              panel.appendChild(_el('h3','creation-show-title','✨ '+mine.name+' is carrying it'));
+              const crossing=_el('div','creation-show-crossing');
+              crossing.appendChild(_companionFig(mine.id));
+              panel.appendChild(crossing);
+              panel.appendChild(_el('p','creation-show-note',
+                'Across the sky to @'+e.username+'’s world, so they can see what you made. Your creation stays right here with you.'));
             }else{
               panel.appendChild(_el('h3','creation-show-title','Not just now'));
               panel.appendChild(_el('p','creation-show-note',
@@ -373,7 +432,14 @@ const CreationShow=(function(){
   function _viewGift(panel,gift,rerenderList,onBack){
     while(panel.firstChild) panel.removeChild(panel.firstChild);
     panel.appendChild(_el('h3','creation-show-title',gift.name||'A gift'));
-    panel.appendChild(_el('p','creation-show-sub','from @'+gift.from));
+    // The Companion that carried it stands beside what it brought —
+    // a Gift is "a Companion came carrying something for me", never
+    // a message that arrived.
+    const carrier=_el('div','creation-gift-carrier');
+    carrier.appendChild(_companionFig(_carrierOf(gift)));
+    carrier.appendChild(_el('span','creation-gift-carrier-line',
+      '@'+gift.from+'’s Companion carried this across to show you'));
+    panel.appendChild(carrier);
     const stage=_el('div','creation-gift-stage');
     panel.appendChild(stage);
     const note=_el('p','creation-show-note','');
@@ -388,6 +454,13 @@ const CreationShow=(function(){
       }
       _mark(gift.id,'seen');
       if(typeof rerenderList==='function') rerenderList();
+      if(full.companion&&!gift.companion){
+        const fig=panel.querySelector('.creation-gift-carrier-figure');
+        if(fig&&!fig.querySelector('img')){
+          const fresh=_companionFig(full.companion);
+          fig.replaceWith(fresh);
+        }
+      }
       const payload=full.payload||{};
       if(full.kind==='story'){
         // The pages the story can show of itself: baked reading
@@ -442,9 +515,12 @@ const CreationShow=(function(){
           keep(full).then(function(res){
             if(res&&res.ok){
               keepBtn.textContent='Kept ✓';
+              const mine=_myCompanion();
               note.textContent=full.kind==='story'
-                ? 'It lives in My Projects now.'
-                : (full.kind==='letter'?'It lives with your letters now.':'It lives in your garden now.');
+                ? mine.name+' carried a copy into My Projects for you.'
+                : (full.kind==='letter'
+                    ? mine.name+' carried a copy to your letters.'
+                    : mine.name+' carried a copy into your garden.');
               if(typeof rerenderList==='function') rerenderList();
             }else if(res&&res.reason==='have_own'){
               keepBtn.disabled=false;
@@ -486,7 +562,7 @@ const CreationShow=(function(){
     function renderList(){
       while(panel.firstChild) panel.removeChild(panel.firstChild);
       panel.appendChild(_el('h3','creation-show-title','🎁 Gifts'));
-      panel.appendChild(_el('p','creation-show-sub','Things other Creators have shown you.'));
+      panel.appendChild(_el('p','creation-show-sub','Companions have carried these here for you.'));
       const list=gifts();
       if(!list.length){
         panel.appendChild(_el('p','creation-show-note','Nothing here yet.'));

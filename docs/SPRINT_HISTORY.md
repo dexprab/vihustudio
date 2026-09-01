@@ -10705,3 +10705,29 @@ all seams untouched. Suites turned around with reasons in place
 (band checks → spatial measurements: centre distance, mutual < far,
 line count, ≥900px field): social-sky 62, social-ether-identity 20,
 creation-home 84 — green.
+
+## Sprint SOCIAL SKY R1.2 — only the Companion travels (build 0727)
+
+The consolidated R1 brief re-froze what builds 0725–0726 already shipped
+(spatial Sky, three states, glows, Show permissions, Gifts, Keep,
+gravity, mutual visibility, traveller boundary — all verified green) and
+added one genuinely new thing: the CORE WORLD RULE that a Creator and
+their original creation never cross their world boundary — ONLY THE
+COMPANION TRAVELS. The mechanics already obeyed it (a Show is a
+snapshot; the original never moves); this sprint made it the experience.
+`creation_show_list`/`_get` now return the CARRIER — the sender's
+companion_id — beside the public username (re-run
+migrations_social_sky.sql; verify gains check 21). The Show confirmation
+is the child's own Companion setting off ("✨ Your Companion is carrying
+it… your creation stays right here with you", with the figure drawn);
+the gift view draws the carrier revealing what it brought ("@name's
+Companion carried this across to show you", falling back to the sky's
+own copy of that Creator's Companion for older cached rows); Gifts reads
+"Companions have carried these here for you"; Keep announces "[my
+Companion] carried a copy into My Projects / your garden / your
+letters". Show picker groups renamed for the world: My stories & cards ·
+From my Garden · My letters. Suite grew to 65 (A8 asserts the carrier on
+the row; B8c drives the confirmation through the real dialog; B13/B13b
+drive the sky's 🎁 → gift → Keep path and read the carrier line and the
+keep words). Regressions: social-orbit 31 · social-ether-identity 20 ·
+creation-home 84 — green.

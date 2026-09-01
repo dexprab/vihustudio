@@ -70,7 +70,9 @@ begin
     (12, 'gifts list is owner-verified', 'true',
         coalesce((v_list ~* 'owner_id is distinct from v_caller')::text,'false')),
     (13, 'a sender can never list what they sent', 'true',
-        coalesce((v_list ~* 'to_id = p_identity_id')::text,'false'));
+        coalesce((v_list ~* 'to_id = p_identity_id')::text,'false')),
+    (21, 'gift rows carry the CARRIER — the sender''s Companion', 'true',
+        coalesce((v_list ~* 'companion_id')::text,'false'));
 
   select pg_get_functiondef(p.oid) into v_get
     from pg_proc p join pg_namespace n on n.oid=p.pronamespace

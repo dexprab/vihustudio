@@ -175,8 +175,10 @@ function sqlSection() {
     // ---- gifts: recipient-only -------------------------------------
     let g = call(B_UID, 'creation_show_list', `'card_b'`);
     ck(g.ok === true && g.gifts.length === 1 && g.gifts[0].from === 'moonmaker'
+       && g.gifts[0].companion === 'leafy'
        && g.gifts[0].seen === false && !('payload' in g.gifts[0]),
-       'A8  THE RECIPIENT LISTS THEIR GIFTS — metadata only, unseen, from @moonmaker', JSON.stringify(g.gifts));
+       'A8  THE RECIPIENT LISTS THEIR GIFTS — metadata only, unseen, and the row names the CARRIER (the sender\'s Companion)',
+       JSON.stringify(g.gifts));
     const senderList = call(A_UID, 'creation_show_list', `'card_a'`);
     ck(senderList.ok === true && senderList.gifts.length === 0,
        'A8b A SENDER CANNOT LIST WHAT THEY SENT — no read receipts, ever');
@@ -462,6 +464,26 @@ function sqlSection() {
   ck(showSent.results.every((r) => r.ok) && showSent.kinds.join(',') === 'story,drawing,letter',
      'B8  EVERY KIND SENDS — a snapshot each, with its place riding along', JSON.stringify(showSent.places));
 
+  // THE CORE WORLD RULE, said at the moment of sending: the creation
+  // stays in the child's world; the COMPANION is what crosses.
+  const crossing = await page.evaluate(async () => {
+    const m = CreationShow.myShowables();
+    CreationShow.openShowDialog(m.stories[0]);
+    await new Promise((r) => setTimeout(r, 200));
+    document.querySelector('.creation-show-who-btn').click();
+    await new Promise((r) => setTimeout(r, 400));
+    const panel = document.querySelector('.creation-show-panel');
+    const out = {
+      text: panel ? panel.innerText : '',
+      figure: !!document.querySelector('.creation-show-crossing .creation-gift-carrier-figure'),
+    };
+    document.querySelector('.creation-show-overlay').remove();
+    return out;
+  });
+  ck(/is carrying it/.test(crossing.text) && /stays right here/.test(crossing.text) && crossing.figure,
+     'B8c THE COMPANION IS THE CARRIER — the confirmation is a Companion setting off, and the creation stays home',
+     crossing.text.replace(/\n/g, ' · '));
+
   const nothingMoved = await page.evaluate((s) => ({
     published: CreatorProjectStore.listPublished().length,
     orbit: JSON.parse(localStorage.getItem('vihu.orbit.' + s.aCard)),
@@ -557,6 +579,48 @@ function sqlSection() {
   }, seeded);
   ck(indicator.map.moonmaker === true && indicator.badge,
      'B11 🎁 RIDES THE RIGHT STAR — "moonmaker has something to show me", never a feed', JSON.stringify(indicator.map));
+
+  // ---- the gift is revealed by the Companion that carried it -------
+  const revealed = await page.evaluate(async (s) => {
+    const g5 = { id: 'g5', from: 'moonmaker', companion: 'leafy', kind: 'letter',
+                 name: 'My letter Q', place: { store: 'letters', ch: 'Q' },
+                 at: '2026-02-04T00:00:00Z', seen: false, kept: false };
+    ThemeRepositoryClient.isConfigured = () => Promise.resolve(true);
+    ThemeRepositoryClient.getClient = () => Promise.resolve({
+      rpc: (fn, args) => {
+        if (fn === 'creation_show_list') return Promise.resolve({ data: { ok: true, gifts: [g5] }, error: null });
+        if (fn === 'creation_show_get') return Promise.resolve({ data: { ok: true,
+          gift: Object.assign({ payload: { ch: 'Q', png: s.px, w: 8, h: 8 } }, g5) }, error: null });
+        if (fn === 'creation_show_mark') return Promise.resolve({ data: { ok: true }, error: null });
+        return Promise.resolve({ data: null, error: null });
+      }
+    });
+    localStorage.setItem('vihu.gifts.' + s.bCard, JSON.stringify([g5]));
+    // The sky's 🎁 path: straight to that Creator's gift.
+    CreationShow.openGifts({ from: 'moonmaker' });
+    await new Promise((r) => setTimeout(r, 600));
+    const panel = document.querySelector('.creation-show-panel');
+    const carrier = panel ? panel.querySelector('.creation-gift-carrier') : null;
+    const carrierImg = carrier ? carrier.querySelector('img') : null;
+    const line = carrier ? carrier.innerText : '';
+    const keepBtn = panel ? panel.querySelector('.creation-gift-keep') : null;
+    let keepNote = '';
+    if (keepBtn) {
+      keepBtn.click();
+      await new Promise((r) => setTimeout(r, 500));
+      keepNote = (panel.querySelector('.creation-show-note') || {}).textContent || '';
+    }
+    document.querySelector('.creation-show-overlay').remove();
+    return { line, img: carrierImg ? carrierImg.getAttribute('src') : null, keepNote,
+             haveQ: !!HandwritingStore.get('Q') };
+  }, seeded);
+  ck(/Companion carried this across to show you/.test(revealed.line)
+     && /leafy\/idle\.png/.test(revealed.img || ''),
+     'B13 A GIFT IS REVEALED BY THE COMPANION THAT CARRIED IT — @moonmaker\'s own, drawn beside what it brought',
+     revealed.line);
+  ck(/carried a copy/.test(revealed.keepNote) && revealed.haveQ,
+     'B13b AND KEEP IS MY OWN COMPANION BRINGING THE COPY IN — into its own slot, in those words',
+     revealed.keepNote);
 
   // ---- a Traveller has none of this --------------------------------
   const traveller = await page.evaluate(async () => {

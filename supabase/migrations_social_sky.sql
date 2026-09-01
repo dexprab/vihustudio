@@ -254,9 +254,15 @@ begin
     return jsonb_build_object('ok', false, 'reason', 'not_yours');
   end if;
 
+  -- `companion` is the CARRIER: the sender's own Companion, which is
+  -- the thing that crossed between worlds (a Creator and their
+  -- creation never do — the core world rule). The client draws it
+  -- revealing the gift; no identifier beyond the public username
+  -- travels with it.
   select coalesce(jsonb_agg(jsonb_build_object(
            'id', s.id,
            'from', i.username,
+           'companion', i.companion_id,
            'kind', s.kind,
            'name', s.name,
            'place', s.place,
@@ -312,6 +318,7 @@ begin
   return jsonb_build_object('ok', true, 'gift', jsonb_build_object(
     'id', v_show.id,
     'from', v_from,
+    'companion', (select companion_id from public.magic_card_identities where id = v_show.from_id),
     'kind', v_show.kind,
     'name', v_show.name,
     'place', v_show.place,

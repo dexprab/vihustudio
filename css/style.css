@@ -14450,3 +14450,37 @@ body.studio-rite-running .companion-chat-open{ display:none !important; }
   font-size:13.5px; font-weight:600; cursor:pointer;
 }
 .creation-gift-kept{ font-size:13px; color:var(--text-secondary,#666); }
+
+/* ---------- the carrier (Social Sky R1.2) ----------
+   Only the Companion travels between worlds: a Show's confirmation
+   shows the child's own Companion setting off, and a Gift is revealed
+   by the Companion that carried it. */
+.creation-show-crossing{
+  display:flex; justify-content:center; margin:10px 0 4px;
+}
+.creation-gift-carrier{
+  display:flex; align-items:center; gap:10px;
+  margin:2px 0 8px;
+}
+.creation-gift-carrier-figure{
+  flex:0 0 auto;
+  width:52px; height:52px;
+  display:flex; align-items:center; justify-content:center;
+  border-radius:50%;
+  background:radial-gradient(circle,rgba(255,215,130,0.18) 0%,transparent 72%);
+}
+.creation-gift-carrier-figure img{
+  max-width:46px; max-height:46px;
+  filter:drop-shadow(0 0 6px rgba(255,215,130,0.35));
+}
+.creation-show-crossing .creation-gift-carrier-figure{
+  width:64px; height:64px;
+}
+.creation-show-crossing .creation-gift-carrier-figure img{
+  max-width:58px; max-height:58px;
+}
+.creation-gift-carrier-plain{ font-size:24px; color:#c9a44c; }
+.creation-gift-carrier-line{
+  font-size:12.5px; color:var(--text-secondary,#666);
+  line-height:1.4;
+}
