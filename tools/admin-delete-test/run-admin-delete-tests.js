@@ -135,9 +135,17 @@ const ADMIN = 'boss@vihu.test';
        && count(`select count(*) from public.creator_companion_memory where card_id='card_b'`) === 0
        && count(`select count(*) from public.creator_companion_memory where card_id='card_c'`) === 1,
        'A7  GARDEN, LETTERS AND MEMORIES — the card\'s own go; the sibling\'s and the unowned stay');
-    ck(count(`select count(*) from storage.objects where name like '%asset1' or name like '%asset2'`) === 0
-       && count(`select count(*) from storage.objects`) === 3,
-       'A8  THE STORAGE BEHIND ITS STORIES IS REMOVED — and nobody else\'s objects move');
+    // The platform forbids SQL deletes on storage tables (the fixture
+    // carries its guard), so the receipt NAMES the paths and the
+    // console removes them through the Storage API. A function that
+    // still deleted would abort on the trigger and fail A5 the way
+    // production failed.
+    const pathsB = (Array.isArray(r.storagePaths) ? r.storagePaths : []).slice().sort();
+    ck(pathsB.length === 2
+       && pathsB[0] === `creator/${B_UID}/pb1/asset1`
+       && pathsB[1] === `creator/${B_UID}/pb2/asset2`
+       && count(`select count(*) from storage.objects`) === 5,
+       'A8  THE STORAGE BEHIND ITS STORIES IS NAMED ON THE RECEIPT — exactly its own two paths, and no row was deleted by SQL', pathsB.join(','));
     ck(count(`select count(*) from public.creator_orbits`) === 0
        && count(`select count(*) from public.creator_shows`) === 0
        && count(`select count(*) from public.magic_card_recalls`) === 0,
@@ -151,15 +159,36 @@ const ADMIN = 'boss@vihu.test';
        'A10 THE LAST CARD ON A DEVICE — the receipt says so', JSON.stringify(r.deleted));
     ck(count(`select count(*) from public.creator_projects where id='porph'`) === 0
        && count(`select count(*) from public.creator_library where id='lorph'`) === 0
-       && count(`select count(*) from public.family_albums`) === 0
-       && count(`select count(*) from storage.objects where name like '%asset4'`) === 0,
+       && count(`select count(*) from public.family_albums`) === 0,
        'A10b and the session\'s unowned leftovers and family album are swept with it');
+    const pathsC = (Array.isArray(r.storagePaths) ? r.storagePaths : []).slice().sort();
+    ck(pathsC.length === 2
+       && pathsC[0] === `creator/${B_UID}/pc1/asset3`
+       && pathsC[1] === `creator/${B_UID}/porph/asset4`,
+       'A10c the last card\'s receipt names its own storage AND the unowned leftover\'s — never the other Creator\'s', pathsC.join(','));
     ck(count(`select count(*) from public.creator_projects where id='pa_recalled'`) === 1,
        'A11 A RECALLED CREATOR\'S COPY STILL SURVIVES EVEN THAT — a row stamped with another card is never touched');
     ck(count(`select count(*) from public.magic_card_identities`) === 1
        && count(`select count(*) from public.creator_projects where id='pa1'`) === 1
        && count(`select count(*) from storage.objects where name like '%asset5'`) === 1,
        'A12 THE OTHER CREATOR IS EXACTLY AS THEY WERE — card, story and storage');
+
+    // ---- the storage boundary itself -------------------------------
+    // The trigger the fixture carries must actually fire — a guard
+    // nobody has watched fail proves nothing about the function that
+    // is supposed to be stopped by it.
+    const guard = run(pg, ['-q', '-t', '-A', '-c',
+      `delete from storage.objects where name like '%asset5';`]);
+    ck(guard.code !== 0 && /Storage API/.test(guard.err),
+       'A13 THE FIXTURE CARRIES THE PLATFORM\'S OWN GUARD — a direct SQL delete is refused the way production refused it');
+    // And the door the console uses exists: admin-only read+delete
+    // policies on draft-assets, gated on is_platform_admin.
+    ck(count(`select count(*) from pg_policies
+                where schemaname='storage' and tablename='objects'
+                  and policyname in ('platform admins may read draft assets',
+                                     'platform admins may delete draft assets')
+                  and qual like '%is_platform_admin%' and qual like '%draft-assets%'`) === 2,
+       'A14 THE STORAGE API DOOR EXISTS — admin-only read and delete policies on the bucket, and nobody else\'s');
   } finally { stopPg(pg); }
   finish();
 })();

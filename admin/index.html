@@ -236,11 +236,32 @@ async function show() {
         window.alert('Not deleted — ' + ((out && out.reason) || 'the platform refused') + '.');
         return;
       }
+      // THE STORAGE IS REMOVED THROUGH THE STORAGE API, not by SQL —
+      // the platform refuses direct deletes on storage tables (and is
+      // right to: the API is what deletes the physical files). The
+      // function names the paths on its receipt; removing them here
+      // runs under the admin-only storage policies the migration
+      // creates. If any removal fails, the account is already gone —
+      // say how many files remain rather than pretending.
+      const paths = Array.isArray(out.storagePaths) ? out.storagePaths : [];
+      let storageNote = '';
+      if (paths.length) {
+        let removed = 0, storageErr = null;
+        for (let i = 0; i < paths.length && !storageErr; i += 100) {
+          const chunk = paths.slice(i, i + 100);
+          const { error: se } = await sb.storage.from('draft-assets').remove(chunk);
+          if (se) storageErr = se; else removed += chunk.length;
+        }
+        storageNote = storageErr
+          ? `\nStorage: ${removed} of ${paths.length} files removed — the rest are still there ` +
+            `(${storageErr.message}). The account itself is gone; the leftover files reference nothing.`
+          : `\nStorage: all ${paths.length} files removed.`;
+      }
       const d = out.deleted || {};
       window.alert(
         `Deleted ${out.creator} (${out.card}).\n` +
         `Stories: ${d.projects || 0} · garden: ${d.garden || 0} · letters: ${d.letters || 0}\n` +
-        `Memories: ${d.memories || 0} · storage objects: ${d.storageObjects || 0}` +
+        `Memories: ${d.memories || 0}` + storageNote +
         (out.lastCardOnDevice ? `\nThat was the last card on its device — its leftovers were swept too.` : ''));
       await show();
     });

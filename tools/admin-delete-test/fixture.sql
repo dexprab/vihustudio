@@ -152,3 +152,19 @@ create schema if not exists storage;
 create table if not exists storage.objects (
   id uuid primary key default gen_random_uuid(),
   bucket_id text not null, name text not null);
+
+-- THE LIVE PLATFORM'S OWN GUARD, reproduced: Supabase refuses direct
+-- SQL deletes on storage tables, and the first shipped delete function
+-- hit exactly this in production — the exception aborted the whole
+-- transaction. With this trigger in the fixture, a function that
+-- attempts SQL deletion cannot pass the suite: every delete check
+-- downstream of it would fail the way production did.
+create or replace function storage._protect_objects() returns trigger
+language plpgsql as $$
+begin
+  raise exception 'Direct deletion from storage tables is not allowed. Use the Storage API instead.';
+end $$;
+drop trigger if exists protect_objects on storage.objects;
+create trigger protect_objects
+  before delete on storage.objects
+  for each row execute function storage._protect_objects();

@@ -10761,3 +10761,30 @@ real PostgreSQL as real sessions — the by-card protection proved by
 reverting it to by-owner and watching four checks name the sibling,
 the recalled copy and the stranger's storage. Deploy: run
 migrations_admin_delete.sql after migrations_admin_console.sql.
+
+## Build 0729 — ADMIN-2b: the platform refused the storage delete, and it was right
+
+Reported by the product owner from the live console: pressing Delete…
+answered "Direct deletion from storage tables is not allowed. Use the
+Storage API instead." — Supabase protects storage.objects from direct
+SQL DML, the exception aborted the whole transaction, and (correctly)
+nothing partial was deleted. The platform is also right on the merits:
+a row deleted by SQL leaves the physical blob orphaned, while the
+Storage API deletes the file properly. So admin_delete_creator no
+longer deletes storage at all — it COLLECTS the paths behind the dying
+projects (a SELECT, which nothing forbids) and returns them on the
+receipt as storagePaths; the console then removes them through
+sb.storage.from('draft-assets').remove(), chunked, under two new
+admin-only storage policies (select + delete on draft-assets, gated on
+the same is_platform_admin() every admin function already stands
+behind — a child's session passes neither). A failed removal is
+reported honestly: the account is already gone, and the alert says how
+many files remain. The test fixture now carries the platform's own
+guard — a trigger refusing SQL deletes with the production message —
+so a function that ever again attempts SQL deletion cannot pass the
+suite; `tools/admin-delete-test/` grew to 20 (exact paths on both
+receipts, no SQL-side row deletion, the guard proved to fire, the
+policies proved to exist), and the fix was proved by reverting the
+SELECT back to DELETE and watching the run fail the way production
+did. Deploy: RE-RUN supabase/migrations_admin_delete.sql in the SQL
+Editor, then retry the delete from the console.

@@ -28,10 +28,18 @@
 --
 -- STORAGE. Assets live in the draft-assets bucket under
 -- <surface>/<owner>/<projectId>/<assetId> (js/assetStore.js), so the
--- objects belonging to the deleted projects are removable precisely.
--- Rows are deleted from storage.objects directly; note honestly that
--- the physical blobs behind them are then unreferenced and reclaimed
--- by Supabase's storage housekeeping rather than instantly erased.
+-- objects belonging to the deleted projects are NAMEABLE precisely.
+-- The platform PROTECTS storage.objects from direct SQL — a delete
+-- from inside this function was refused live with "Direct deletion
+-- from storage tables is not allowed. Use the Storage API instead",
+-- which aborted the whole transaction (correctly: nothing partial
+-- happened). And the platform is right on the merits too: a row
+-- deleted by SQL leaves the physical blob orphaned, while the
+-- Storage API deletes the file properly. So the function only
+-- COLLECTS the paths (a SELECT, which nothing forbids) and returns
+-- them on the receipt as storagePaths; the admin console then
+-- removes them through the Storage API under the admin-only storage
+-- policies this migration also creates.
 -- ===================================================================
 
 -- -------------------------------------------------------------------
@@ -89,8 +97,9 @@ grant execute on function public.admin_creators_roll() to authenticated;
 --   * removed: the identity row (cascading its orbits in both
 --     directions, its shows sent and received, its recalls and its
 --     family album link) · its projects and their cheers · its garden
---     drawings and kept letters · its companion memories · the
---     storage objects behind its projects
+--     drawings and kept letters · its companion memories — and the
+--     storage paths behind its projects are RETURNED for the console
+--     to remove through the Storage API (never deleted by SQL)
 --   * removed only when this was the session's LAST card: the
 --     session's unowned leftover records and its family_albums —
 --     with a sibling's card still standing, those stay
@@ -111,6 +120,7 @@ declare
   v_id public.magic_card_identities;
   v_last boolean;
   v_pids text[];
+  v_paths text[] := '{}';
   n_projects int := 0;
   n_cheers int := 0;
   n_library int := 0;
@@ -149,15 +159,21 @@ begin
           and coalesce(data->>'cardId', '') = '');
 
   -- Storage behind those projects: <surface>/<owner>/<projectId>/…
+  -- COLLECTED, never deleted — the platform refuses SQL deletes on
+  -- storage.objects ("Use the Storage API instead"), and the Storage
+  -- API is also what deletes the physical files properly. The paths
+  -- ride the receipt; the admin console removes them.
   if to_regclass('storage.objects') is not null
      and coalesce(array_length(v_pids, 1), 0) > 0 then
     execute
-      'delete from storage.objects o
+      'select coalesce(array_agg(o.name), ''{}'')
+         from storage.objects o
         where o.bucket_id = ''draft-assets''
           and exists (select 1 from unnest($1::text[]) pid
                        where o.name like ''%/'' || $2 || ''/'' || pid || ''/%'')'
+      into v_paths
       using v_pids, v_id.owner_id;
-    get diagnostics n_storage = row_count;
+    n_storage := coalesce(array_length(v_paths, 1), 0);
   end if;
 
   if to_regclass('public.story_cheers') is not null
@@ -216,9 +232,36 @@ begin
       'letters', n_hand,
       'memories', n_memory,
       'familyAlbums', n_albums,
-      'storageObjects', n_storage));
+      'storageObjects', n_storage),
+    'storagePaths', to_jsonb(coalesce(v_paths, '{}'::text[])));
 end;
 $$;
 
 revoke all on function public.admin_delete_creator(text, text) from public;
 grant execute on function public.admin_delete_creator(text, text) to authenticated;
+
+-- -------------------------------------------------------------------
+-- The Storage API path the console uses needs storage POLICIES: the
+-- Storage service applies RLS as the signed-in caller, and nothing so
+-- far lets anybody delete from draft-assets. These widen the bucket
+-- for PLATFORM ADMINISTRATORS ONLY — the same is_platform_admin()
+-- gate every admin function already stands behind — and for nobody
+-- else: a child's session passes neither. SELECT rides along because
+-- the Storage API reads what it removes on the way out.
+--
+-- Guarded, so the migration still applies on a project whose storage
+-- schema is absent (a bare test cluster), and re-runnable.
+-- -------------------------------------------------------------------
+do $$
+begin
+  if to_regclass('storage.objects') is not null then
+    execute 'drop policy if exists "platform admins may read draft assets" on storage.objects';
+    execute 'create policy "platform admins may read draft assets" on storage.objects
+               for select to authenticated
+               using (bucket_id = ''draft-assets'' and public.is_platform_admin())';
+    execute 'drop policy if exists "platform admins may delete draft assets" on storage.objects';
+    execute 'create policy "platform admins may delete draft assets" on storage.objects
+               for delete to authenticated
+               using (bucket_id = ''draft-assets'' and public.is_platform_admin())';
+  end if;
+end $$;
