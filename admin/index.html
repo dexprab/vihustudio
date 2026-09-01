@@ -46,6 +46,9 @@
   button { padding:.6rem 1.1rem; background:var(--gold); color:#1a1206; border:0;
            border-radius:6px; font-weight:700; font-size:.92rem; cursor:pointer; }
   button.ghost { background:transparent; color:var(--soft); border:1px solid var(--line); }
+  button.del { padding:.28rem .6rem; font-size:.78rem; font-weight:400; color:var(--warn);
+               border-color:rgba(226,145,122,.35); }
+  button.del:hover { background:rgba(226,145,122,.12); }
   .msg { margin-top:.9rem; font-size:.88rem; color:var(--warn); min-height:1.2em; }
 
   .counts { display:flex; flex-wrap:wrap; gap:1px; background:var(--line);
@@ -55,7 +58,7 @@
   .counts span { font-size:.76rem; letter-spacing:.08em; text-transform:uppercase; color:var(--faint); }
 
   .tablewrap { overflow-x:auto; border:1px solid var(--line); border-radius:8px; background:var(--panel); }
-  table { width:100%; min-width:60rem; border-collapse:collapse; font-size:.92rem; }
+  table { width:100%; min-width:68rem; border-collapse:collapse; font-size:.92rem; }
   th { text-align:left; padding:.6rem .8rem; font:400 .7rem/1.4 var(--mono);
        letter-spacing:.11em; text-transform:uppercase; color:var(--faint);
        background:#111827; border-bottom:1px solid var(--rule); position:sticky; top:0; }
@@ -130,9 +133,9 @@
     <div class="tablewrap">
       <table>
         <thead><tr>
-          <th>Creator</th><th>Card</th><th>Became a Creator</th><th>Last seen</th>
+          <th>Creator</th><th>@</th><th>Card</th><th>Became a Creator</th><th>Last seen</th>
           <th>Companion</th><th>Parent email</th>
-          <th class="num">Stories</th><th class="num">In the Ether</th>
+          <th class="num">Stories</th><th class="num">In the Ether</th><th></th>
         </tr></thead>
         <tbody id="rows"></tbody>
       </table>
@@ -189,6 +192,7 @@ async function show() {
     const shared = Number(r.cards_on_device) > 1;
     return `<tr>
       <td>${esc(r.creator)}</td>
+      <td class="dim">${r.username ? '@' + esc(r.username) : '—'}</td>
       <td class="dim">${esc(r.card || '—')}</td>
       <td>${when(r.became_creator)}</td>
       <td class="dim">${when(r.last_seen)}</td>
@@ -196,8 +200,51 @@ async function show() {
       <td class="dim">${r.parent_email ? esc(r.parent_email) : '<span class="flag">not protected</span>'}</td>
       <td class="num">${r.stories}${shared ? ' <span class="flag" title="shared browser — this is the device’s total">*</span>' : ''}</td>
       <td class="num">${r.shared_to_ether}</td>
+      <td><button class="ghost del" data-code="${esc(r.card || '')}"
+            data-creator="${esc(r.creator)}">Delete…</button></td>
     </tr>`;
   }).join('');
+
+  // DELETING AN ACCOUNT — the card, and everything it owns. Final in
+  // a way nothing else on this page is, so the card code must be
+  // typed back before anything happens; a click alone does nothing.
+  // Siblings on a shared machine are safe by construction: rows
+  // stamped with a different card are never touched, and owner-keyed
+  // leftovers go only with the session's last card (the function's
+  // own rules — see supabase/migrations_admin_delete.sql).
+  document.querySelectorAll('#rows .del').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const code = btn.dataset.code;
+      const who = btn.dataset.creator;
+      if (!code) return;
+      const typed = window.prompt(
+        `This permanently deletes ${who} (${code}) and everything stored for this card — ` +
+        `stories, garden drawings, letters, companion memories, gifts, sky relationships ` +
+        `and the storage behind them. It cannot be undone.\n\n` +
+        `Type the card code to confirm:`);
+      if (typed === null) return;
+      if (typed.trim() !== code) {
+        window.alert('Not deleted — the code typed did not match ' + code + '.');
+        return;
+      }
+      btn.disabled = true;
+      const { data: out, error } = await sb.rpc('admin_delete_creator',
+        { p_card_code: code, p_confirm: typed.trim() });
+      btn.disabled = false;
+      if (error) { window.alert(error.message); return; }
+      if (!out || out.ok !== true) {
+        window.alert('Not deleted — ' + ((out && out.reason) || 'the platform refused') + '.');
+        return;
+      }
+      const d = out.deleted || {};
+      window.alert(
+        `Deleted ${out.creator} (${out.card}).\n` +
+        `Stories: ${d.projects || 0} · garden: ${d.garden || 0} · letters: ${d.letters || 0}\n` +
+        `Memories: ${d.memories || 0} · storage objects: ${d.storageObjects || 0}` +
+        (out.lastCardOnDevice ? `\nThat was the last card on its device — its leftovers were swept too.` : ''));
+      await show();
+    });
+  });
   return true;
 }
 

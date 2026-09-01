@@ -10731,3 +10731,33 @@ the row; B8c drives the confirmation through the real dialog; B13/B13b
 drive the sky's 🎁 → gift → Keep path and read the carrier line and the
 keep words). Regressions: social-orbit 31 · social-ether-identity 20 ·
 creation-home 84 — green.
+
+## Sprint ADMIN 2 — @username on the roll, and account deletion (build 0728)
+
+The product owner's ask, verbatim: "in the admin panel add @username,
+last accessed and also provide delete option to remove an account and
+all storage used by it." Last-accessed was already on the roll (the
+Last seen column reads last_active_at); what shipped is the public
+name and the delete. `supabase/migrations_admin_delete.sql` recreates
+admin_creators_roll with `username` and adds
+`admin_delete_creator(card_code, confirm)` — SECURITY DEFINER,
+administrators only (is_platform_admin), and the card code must be
+TYPED BACK before anything happens. An account is the CARD (Decision
+11): deleted are the identity row (cascading orbits both directions,
+shows sent and received, recalls and the family-album link), its
+projects and the cheers on them, its garden drawings and kept letters
+(data->>'cardId'), its companion memories (card_id), and the
+draft-assets storage objects behind its projects
+(<surface>/<owner>/<project>/…). SIBLINGS ARE SACRED: rows stamped
+with a different card are never touched whoever's session they sit
+under — including a recalled Creator's copy living under the deleted
+child's owner session — and owner-keyed leftovers (unowned records,
+family_albums) go only with the session's LAST card. Optional tables
+are reached through to_regclass + EXECUTE so the function deploys on
+any migration state. The console (admin/index.html) gained the @
+column and a per-row Delete… with typed confirmation and a receipt.
+`tools/admin-delete-test/` (17) runs the real migrations against a
+real PostgreSQL as real sessions — the by-card protection proved by
+reverting it to by-owner and watching four checks name the sibling,
+the recalled copy and the stranger's storage. Deploy: run
+migrations_admin_delete.sql after migrations_admin_console.sql.
