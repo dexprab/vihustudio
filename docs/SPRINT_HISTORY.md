@@ -10788,3 +10788,36 @@ policies proved to exist), and the fix was proved by reverting the
 SELECT back to DELETE and watching the run fail the way production
 did. Deploy: RE-RUN supabase/migrations_admin_delete.sql in the SQL
 Editor, then retry the delete from the console.
+
+## Build 0730 — Test Accounts: a card at any point in the journey
+
+Asked for by the product owner: *"i want a utility through which i can
+create test accounts without going through entire process. i should be
+able to choose if i want to start at story rite 1,2,3 . which companion
+i want."* `tools/test-account/` (unlinked, noindex, robots-disallowed
+like every tools page) mints through the product's OWN doors, never a
+second identity system: `MagicCard.claim()` makes the card exactly as
+the Ceremony does (constellation, pattern, code, and the platform row
+when the platform is reachable — so a test account appears on the admin
+console and is deletable there), `MagicCard.setTaught()` writes the
+same capability record a walked rite writes, and the levels are read
+off `StudioRite.rites()` — one option per runnable rite plus
+"everything taught", derived, so reordering or adding a rite reshapes
+the utility with no edit (Decision 22's own rule; a copied list would
+rot on the first reorder). Story Rite 1 means a fresh Traveller: no
+card is minted, the active card and the device's rite records are
+cleared, and existing cards are NEVER deleted (deleting belongs to the
+admin console; a Traveller on a device holding cards meets the sky
+challenge and taps I Don't Have One Yet, exactly like a sibling). The
+Companion picker is the registry with each package's own hero portrait
+(the admin console's rule — never a guessed filename), and a cardless
+start disables it honestly: the Ceremony bonds a Companion after the
+first story. "Enter the Studio now" marks recognition (Decision 11's
+one-shot note, so the Gateway never asks the sky twice) and mints the
+entry pass (Decision 23). `tools/test-account-test/` (10) drives the
+real page in a real browser: choices match the registry, taught is
+exactly teaches ∪ reveals per level, nextOptIn() offers the right
+door at every level and none after "everything", the fresh Traveller
+keeps every existing card — and T7 proves the pass by landing in the
+Studio and STAYING, shown by reverting pass() and watching the gate
+bounce it to VihuPlanet.

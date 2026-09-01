@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>VihuPlanet · Test Accounts</title>
+<!-- TEST ACCOUNTS — a development utility, not part of the child
+     product. Asked for by the product owner: "i want a utility through
+     which i can create test accounts without going through entire
+     process. i should be able to choose if i want to start at story
+     rite 1,2,3 . which companion i want."
+
+     Nothing here is a second identity system. It calls the product's
+     OWN doors — MagicCard.claim() mints the card exactly as the
+     Creator Ceremony does (constellation, pattern, code, platform row
+     when the platform is reachable), MagicCard.setTaught() writes the
+     same capability record a walked rite writes, and the rite levels
+     are read from StudioRite.rites(), the registry itself — never a
+     hand-copied list, which Decision 22 forbids and which would rot on
+     the first reorder. A test account made here is a REAL account:
+     it appears on the admin console's roll and is deletable there.
+
+     Unlinked, noindex, and /tools/ is robots-disallowed (Decision 28).
+     It mints only what any child can mint by walking the rite on this
+     same device, so it needs no gate of its own. -->
+<style>
+  :root {
+    --bg:#0d1220; --panel:#151c2e; --line:#253048; --ink:#e7eaf3;
+    --soft:#a6adbf; --faint:#6e7893; --gold:#dfb169; --warn:#e2917a;
+    --ok:#8fce9a;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+         font:400 15px/1.6 -apple-system,"Segoe UI",Roboto,sans-serif; }
+  .wrap { max-width:52rem; margin:0 auto; padding:2.4rem 1.2rem 5rem; }
+  h1 { font:400 1.7rem/1.2 Georgia,serif; margin:0 0 .3rem; }
+  .sub { color:var(--faint); font-size:.9rem; margin:0 0 2rem; }
+  h2 { font:400 .72rem/1.4 var(--mono); letter-spacing:.13em;
+       text-transform:uppercase; color:var(--faint); margin:2.2rem 0 .8rem; }
+  .panel { background:var(--panel); border:1px solid var(--line);
+           border-radius:10px; padding:1.3rem 1.4rem; }
+  label.small { display:block; font-size:.78rem; letter-spacing:.09em;
+    text-transform:uppercase; color:var(--faint); margin:0 0 .4rem; }
+  input[type=text] { width:100%; max-width:22rem; padding:.6rem .7rem;
+    background:#0f1526; border:1px solid var(--line); border-radius:6px;
+    color:var(--ink); font-size:.95rem; }
+  button { padding:.6rem 1.1rem; background:var(--gold); color:#1a1206;
+    border:0; border-radius:6px; font-weight:700; font-size:.92rem; cursor:pointer; }
+  button.ghost { background:transparent; color:var(--soft);
+    border:1px solid var(--line); font-weight:400; }
+  button:disabled { opacity:.45; cursor:default; }
+
+  /* Companion picker — a row of faces, one chosen. */
+  .mates { display:flex; flex-wrap:wrap; gap:.7rem; margin:.2rem 0 1.2rem; }
+  .mate { width:7.2rem; background:#0f1526; border:1px solid var(--line);
+    border-radius:10px; padding:.7rem .5rem .6rem; text-align:center;
+    cursor:pointer; user-select:none; }
+  .mate img { width:4.2rem; height:4.2rem; object-fit:contain; display:block;
+    margin:0 auto .35rem; }
+  .mate b { display:block; font-weight:600; font-size:.92rem; }
+  .mate span { display:block; color:var(--faint); font-size:.72rem; }
+  .mate.on { border-color:var(--gold); box-shadow:0 0 0 1px var(--gold); }
+  .mates.off { opacity:.4; pointer-events:none; }
+
+  /* Starting point — one column of radio rows, built from the registry. */
+  .starts { display:grid; gap:.45rem; margin:.2rem 0 1.2rem; }
+  .start { display:flex; gap:.7rem; align-items:baseline; background:#0f1526;
+    border:1px solid var(--line); border-radius:8px; padding:.6rem .8rem;
+    cursor:pointer; }
+  .start input { margin-top:.2rem; }
+  .start b { font-weight:600; }
+  .start span { display:block; color:var(--faint); font-size:.8rem; }
+  .start.on { border-color:var(--gold); }
+
+  .made { margin-top:1.1rem; border-top:1px solid var(--line); padding-top:1rem; }
+  .made .code { font-family:var(--mono); color:var(--gold); }
+  .doors { display:flex; gap:.6rem; margin-top:.7rem; flex-wrap:wrap; }
+  .note { color:var(--faint); font-size:.82rem; max-width:42rem; }
+  .warnnote { color:var(--warn); font-size:.85rem; }
+
+  table { width:100%; border-collapse:collapse; font-size:.9rem; }
+  th { text-align:left; padding:.45rem .6rem; font:400 .68rem/1.4 var(--mono);
+    letter-spacing:.1em; text-transform:uppercase; color:var(--faint);
+    border-bottom:1px solid var(--line); }
+  td { padding:.5rem .6rem; border-bottom:1px solid var(--line); vertical-align:middle; }
+  tr:last-child td { border-bottom:0; }
+  td.dim { color:var(--faint); }
+  td.mono { font-family:var(--mono); font-size:.82rem; }
+  .active-mark { color:var(--ok); font-size:.8rem; }
+  .hidden { display:none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Test Accounts</h1>
+  <p class="sub">A development utility. It mints a real Magic Card through the product's own
+     <code>claim()</code>, stamps the capability record a walked rite would have written, and
+     bonds the Companion you choose — so you land exactly where a child at that point in the
+     journey would be. Test accounts show up on the admin console and can be deleted there.</p>
+
+  <h2>Make one</h2>
+  <div class="panel">
+    <label class="small" for="nick">Nickname</label>
+    <input type="text" id="nick" placeholder="Testy" autocomplete="off">
+
+    <label class="small" style="margin-top:1rem">Companion</label>
+    <div class="mates" id="mates"></div>
+    <p class="note hidden" id="matesOff">A fresh Traveller has no Companion yet — the Ceremony
+       bonds one after the first story, exactly as the product does it.</p>
+
+    <label class="small" style="margin-top:1rem">Where the account starts</label>
+    <div class="starts" id="starts"></div>
+
+    <button id="make">Create the account</button>
+    <p class="warnnote" id="err"></p>
+
+    <div class="made hidden" id="made"></div>
+  </div>
+
+  <h2>Cards on this device</h2>
+  <div class="panel">
+    <table>
+      <thead><tr><th>Creator</th><th>Card</th><th>Companion</th><th>Taught</th><th></th></tr></thead>
+      <tbody id="cards"></tbody>
+    </table>
+    <p class="note" style="margin-top:.8rem">Switching cards is what a sibling tapping their own
+       sky does; <em>No active card</em> makes this browser a Traveller again (existing cards stay —
+       a Traveller on a device that holds cards meets the sky challenge and taps
+       <em>I Don't Have One Yet</em>, exactly like a sibling on a shared machine). Deleting an
+       account belongs to the <a href="../../admin/" style="color:var(--soft)">admin console</a>.
+       For a completely blank device, use a private window.</p>
+    <div class="doors" style="margin-top:.4rem">
+      <button class="ghost" id="goStudio">Enter the Studio</button>
+      <button class="ghost" id="goPlanet">Go to VihuPlanet</button>
+    </div>
+  </div>
+</div>
+
+<!-- The product's own modules, from the product's own files — the same
+     precedent tools/voice-audition already set. themeRepositoryClient
+     resolves supabase-config.json against its OWN script src, so the
+     platform is reachable from here exactly as it is from the root. -->
+<script src="../../js/themeRepositoryClient.js"></script>
+<script src="../../js/magicCard.js"></script>
+<script src="../../js/creatorRecognition.js"></script>
+<script src="../../js/studioEntry.js"></script>
+<script src="../../js/studioRite.js"></script>
+<script>
+(function(){
+  'use strict';
+  var $=function(id){ return document.getElementById(id); };
+  var esc=function(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); };
+
+  var chosenMate=null;      // registry entry, or null
+  var chosenStart=null;     // one of the option objects below
+
+  // ----------------------------------------------------------------
+  // THE STARTING POINTS COME FROM THE REGISTRY, never a copied list.
+  // A rite is "walked" when everything it grants is on the card
+  // (StudioRite.nextOptIn's own rule), so "start at Story Rite N"
+  // means: the grants of every runnable rite BEFORE it are taught.
+  // Only runnable rites count — the same rule the door itself uses —
+  // so a paused rite (the World tools) neither appears as a start
+  // nor leaks its capabilities into one.
+  // ----------------------------------------------------------------
+  function grantOf(r){ return (r.teaches||[]).concat(r.reveals||[]); }
+  function startOptions(){
+    var runnable=StudioRite.rites().filter(function(r){ return r.runnable; });
+    var opts=[{key:'fresh', card:false, taught:null,
+      title:'Story Rite 1 — a fresh Traveller',
+      why:'No card. Walks the mandatory rite on the way into the Studio.'}];
+    var sofar=[];
+    for(var i=0;i<runnable.length;i++){
+      sofar=sofar.concat(grantOf(runnable[i]));
+      var next=runnable[i+1];
+      if(next){
+        opts.push({key:'before:'+next.id, card:true, taught:sofar.slice(),
+          title:'Story Rite '+(i+2)+' waiting — '+next.id,
+          why:'Has walked '+runnable.slice(0,i+1).map(function(r){ return r.id; }).join(', ')+
+              '. Studio Home offers the next door.'});
+      }else{
+        opts.push({key:'all', card:true, taught:sofar.slice(),
+          title:'Everything taught',
+          why:'Every runnable rite walked — the full Studio, no door waiting.'});
+      }
+    }
+    return opts;
+  }
+
+  function renderStarts(){
+    var opts=startOptions();
+    $('starts').innerHTML=opts.map(function(o,i){
+      return '<label class="start" data-i="'+i+'">'+
+        '<input type="radio" name="start" '+(i===1?'checked':'')+'>'+
+        '<span><b>'+esc(o.title)+'</b><span>'+esc(o.why)+'</span></span></label>';
+    }).join('');
+    chosenStart=opts[1]||opts[0];
+    Array.prototype.forEach.call(document.querySelectorAll('.start'),function(el){
+      el.addEventListener('click',function(){
+        Array.prototype.forEach.call(document.querySelectorAll('.start'),function(e2){
+          e2.classList.remove('on');
+          e2.querySelector('input').checked=false;
+        });
+        el.classList.add('on');
+        el.querySelector('input').checked=true;
+        chosenStart=opts[Number(el.dataset.i)];
+        var cardless=!chosenStart.card;
+        $('mates').classList.toggle('off',cardless);
+        $('matesOff').classList.toggle('hidden',!cardless);
+      });
+    });
+    var second=document.querySelector('.start[data-i="1"]')||document.querySelector('.start');
+    if(second) second.classList.add('on');
+  }
+
+  // ----------------------------------------------------------------
+  // Companions from the registry, portraits from each package's own
+  // companion.json (states.hero || states.idle) — the admin console's
+  // rule: never a guessed filename.
+  // ----------------------------------------------------------------
+  function renderMates(){
+    fetch('../../assets/registry.json').then(function(r){ return r.json(); })
+      .then(function(reg){
+        var pool=(reg.companions||[]).filter(function(c){ return c.role==='companion'; });
+        return Promise.all(pool.map(function(c){
+          return fetch('../../assets/'+c.path+'companion.json')
+            .then(function(r){ return r.ok?r.json():null; })
+            .then(function(pkg){
+              var f=pkg&&pkg.states&&(pkg.states.hero||pkg.states.idle);
+              return {c:c, img:f?('../../assets/'+c.path+f):null};
+            }).catch(function(){ return {c:c, img:null}; });
+        }));
+      })
+      .then(function(rows){
+        $('mates').innerHTML=rows.map(function(r,i){
+          return '<div class="mate" data-i="'+i+'">'+
+            (r.img?'<img src="'+esc(r.img)+'" alt="" onerror="this.remove()">':'')+
+            '<b>'+esc(r.c.name||r.c.id)+'</b><span>'+esc(r.c.species||'')+'</span></div>';
+        }).join('');
+        chosenMate=rows[0]?rows[0].c:null;
+        var tiles=document.querySelectorAll('.mate');
+        Array.prototype.forEach.call(tiles,function(el){
+          el.addEventListener('click',function(){
+            Array.prototype.forEach.call(tiles,function(e2){ e2.classList.remove('on'); });
+            el.classList.add('on');
+            chosenMate=rows[Number(el.dataset.i)].c;
+          });
+        });
+        if(tiles[0]) tiles[0].classList.add('on');
+      })
+      .catch(function(){ $('mates').innerHTML='<p class="warnnote">Could not read the Companion registry.</p>'; });
+  }
+
+  // ----------------------------------------------------------------
+  // MAKE. A card start is claim() + setTaught() — the product's own
+  // two writes, in the product's own order. A fresh-Traveller start
+  // creates nothing: it clears the active card and the device's own
+  // rite records (the flag and the Traveller taught fallback), which
+  // is the state Decision 19's reset produces on every VihuPlanet
+  // load anyway — done here so entering the Studio directly is
+  // equally fresh.
+  // ----------------------------------------------------------------
+  $('make').addEventListener('click',function(){
+    $('err').textContent='';
+    var made=$('made');
+    try{
+      if(!chosenStart){ $('err').textContent='Pick a starting point.'; return; }
+      if(!chosenStart.card){
+        MagicCard.setActive('');
+        try{ localStorage.removeItem(StudioRite.FLAG_KEY); }catch(e){}
+        try{ localStorage.removeItem(StudioRite.TAUGHT_KEY); }catch(e){}
+        made.classList.remove('hidden');
+        made.innerHTML='<p>This browser is a <b>Traveller</b> again. Enter the Studio (or go through '+
+          'VihuPlanet → ✨ Create Story) and Story Rite 1 runs.</p>'+doorsHtml(false);
+        wireDoors(made,null);
+        renderCards();
+        return;
+      }
+      if(!chosenMate){ $('err').textContent='Pick a Companion.'; return; }
+      var nick=($('nick').value||'').trim()||'Testy';
+      // The device's Traveller taught record would be swept onto the
+      // new card by claim(); setTaught() below overwrites it with
+      // exactly the chosen level, so the mint is deterministic
+      // whatever this device has been through.
+      var card=MagicCard.claim(nick,null,{
+        companionId:chosenMate.id,
+        companionName:chosenMate.name||chosenMate.id,
+        companionSpecies:chosenMate.species||''
+      });
+      MagicCard.setTaught(chosenStart.taught||[]);
+      var next=StudioRite.nextOptIn();
+      made.classList.remove('hidden');
+      made.innerHTML='<p><b>'+esc(nick)+'</b> is ready — card <span class="code">'+esc(card.code||card.id)+
+        '</span>, sky <b>'+esc(card.constellation)+'</b>, Companion <b>'+esc(chosenMate.name)+'</b>.<br>'+
+        '<span class="note">Taught: '+((chosenStart.taught||[]).join(', ')||'(nothing)')+
+        (next?(' · next door: '+esc(next)):' · no door waiting')+'</span></p>'+doorsHtml(true);
+      wireDoors(made,card.id);
+      renderCards();
+    }catch(e){
+      $('err').textContent='Could not make the account — '+(e&&e.message||e);
+    }
+  });
+
+  function doorsHtml(){
+    return '<div class="doors">'+
+      '<button class="enterStudio">Enter the Studio now</button>'+
+      '<button class="ghost enterPlanet">Go to VihuPlanet</button></div>';
+  }
+  // Entering the Studio the honest way: the one-shot entry pass
+  // (Decision 23 — without it studio.html sends you home), and, when
+  // a card is active, the recognised-on-arrival note (Decision 11 —
+  // so the Gateway takes the branch a successful signature takes and
+  // never asks the sky challenge twice).
+  function enterStudio(cardId){
+    try{ if(cardId) CreatorRecognition.markRecognised(cardId); }catch(e){}
+    try{ StudioEntry.pass(); }catch(e){}
+    window.location.href='../../studio.html';
+  }
+  function wireDoors(scope,cardId){
+    var s=scope.querySelector('.enterStudio');
+    var p=scope.querySelector('.enterPlanet');
+    if(s) s.addEventListener('click',function(){ enterStudio(cardId); });
+    if(p) p.addEventListener('click',function(){ window.location.href='../../index.html'; });
+  }
+
+  // ----------------------------------------------------------------
+  // The device's cards — never deleted here (the admin console owns
+  // deletion); switched exactly as recognition switches them.
+  // ----------------------------------------------------------------
+  function renderCards(){
+    var cards=MagicCard.list();
+    var activeId=MagicCard.getActiveId();
+    $('cards').innerHTML=(cards.length?cards.map(function(c){
+      var on=c.id===activeId;
+      return '<tr><td>'+esc(c.nickname||'(unnamed)')+
+        (on?' <span class="active-mark">● active</span>':'')+'</td>'+
+        '<td class="mono">'+esc(c.code||c.id)+'</td>'+
+        '<td class="dim">'+esc(c.companionName||c.companionId||'—')+'</td>'+
+        '<td class="dim">'+(Array.isArray(c.taught)?c.taught.length:'—')+'</td>'+
+        '<td>'+(on?'':'<button class="ghost use" data-id="'+esc(c.id)+'">Use</button>')+'</td></tr>';
+    }).join(''):'<tr><td class="dim" colspan="5">No cards on this device yet.</td></tr>')+
+    (activeId?'<tr><td class="dim" colspan="4">…or hold no card at all</td>'+
+      '<td><button class="ghost" id="noCard">No active card</button></td></tr>':'');
+    Array.prototype.forEach.call(document.querySelectorAll('#cards .use'),function(b){
+      b.addEventListener('click',function(){
+        MagicCard.setActive(b.dataset.id);
+        renderCards();
+      });
+    });
+    var none=$('noCard');
+    if(none) none.addEventListener('click',function(){
+      MagicCard.setActive('');
+      renderCards();
+    });
+  }
+
+  $('goStudio').addEventListener('click',function(){ enterStudio(MagicCard.getActiveId()); });
+  $('goPlanet').addEventListener('click',function(){ window.location.href='../../index.html'; });
+
+  renderStarts();
+  renderMates();
+  renderCards();
+})();
+</script>
+</body>
+</html>
