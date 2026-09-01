@@ -285,13 +285,15 @@ const CreatorOrbit=(function(){
     });
   }
 
-  // ---------- 🎨 make something for them ----------
-  // The first social act beyond Cheer, and it is a CREATION, never a
-  // message: the Ether writes a one-shot note, the child walks
-  // through the one Studio door, and the first NEW story made under
-  // it is dedicated — `forUsername` on the record, consumed by
-  // js/creatorProjectStore.js (intent crosses; state does not,
-  // Decision 23's own shape).
+  // ---------- 🎨 make something for them — RETIRED ENTRY ----------
+  // Social Sky R1 (§6 of the frozen canon) retired this direction:
+  // the correct flow is creation-first — an existing creation → SHOW
+  // → choose a Creator (js/creationShow.js). Nothing calls
+  // noteMakeFor any more, so no new dedication can start here; the
+  // plumbing stays because dedications already made are historical
+  // facts (`forUsername` on their records keeps rendering wherever
+  // those stories are met — every action is a unit), and the store's
+  // consumer keeps honouring a note that no longer gets written.
   const FOR_NOTE='vihu.makeFor.note';
   function noteMakeFor(username){
     const name=_norm(username);

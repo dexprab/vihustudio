@@ -1,0 +1,441 @@
+-- ===================================================================
+-- SPRINT SOCIAL SKY R1 — the Sky, Show, Gifts, and mutual visibility.
+--
+-- Builds ON TOP of migrations_social_identity.sql and
+-- migrations_social_orbit.sql (run those first). Nothing in either is
+-- replaced; creator_orbits, orbit_set and orbit_list are untouched.
+--
+-- WHAT CHANGES ABOUT "WHO ORBITS ME" — an amendment, on the product
+-- owner's frozen R1 canon. Decision 54 said the mutual bit was the
+-- ONLY fact ever revealed about the other direction. R1 freezes the
+-- new-star experience: when another Creator chooses me, a new star
+-- appears in MY OWN Sky, and its identity is discoverable there. So
+-- the OWNER of a card may now see who chose them — and nobody else
+-- may, there is still no count anywhere, no public list, and the
+-- other party is still never told what I know. creator_sky_list is
+-- owner-verified exactly like orbit_list, and it is the only reader.
+--
+-- SHOW / GIFTS — "I made this. I want you to see it."
+--   * A Show is a SNAPSHOT of the creation, copied at send time, so a
+--     later relationship change rewrites nothing (the historical
+--     rule: every action is a unit).
+--   * Eligibility is the sender's own choice: I can Show to a Creator
+--     I have CHOSEN (my own orbit row). Somebody merely choosing me
+--     grants them nothing and grants me nothing toward them.
+--   * The recipient reads their own gifts and nothing else. A sender
+--     can never ask whether a gift was seen or kept — that would be a
+--     read receipt, which is messaging furniture.
+--   * RLS is ON with NO policies: SECURITY DEFINER functions only
+--     (the story_cheers / creator_orbits discipline).
+--
+-- MUTUAL VISIBILITY — the one R1 capability beyond mutuality itself:
+-- a mutual Creator can see the other's work that has NOT been pushed
+-- to Ether. Checked LIVE at call time, so relationship state controls
+-- future access (ending the mutuality ends the visibility, while
+-- anything already Shown or Kept stays — units of the past).
+-- ===================================================================
+
+-- -------------------------------------------------------------------
+-- The Sky, as its owner may see it.
+--   sky      — the Creators I chose (my orbit), each with the ONE
+--              mutual fact and their companion (for the Sky's visual
+--              representation — Creators appear through Companions).
+--   choseMe  — Creators who chose me and whom I have not chosen:
+--              the new stars. Owner-only, never a count on any other
+--              surface, and the other party is never told I know.
+-- -------------------------------------------------------------------
+create or replace function public.creator_sky_list(p_identity_id text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_caller text := auth.uid()::text;
+  v_me public.magic_card_identities;
+  v_sky jsonb;
+  v_chose_me jsonb;
+begin
+  if v_caller is null or v_caller = '' then
+    return jsonb_build_object('ok', false, 'reason', 'not_authenticated');
+  end if;
+
+  select * into v_me from public.magic_card_identities where id = p_identity_id;
+  if v_me.id is null or v_me.owner_id is distinct from v_caller then
+    return jsonb_build_object('ok', false, 'reason', 'not_yours');
+  end if;
+
+  select coalesce(jsonb_agg(jsonb_build_object(
+           'username', i.username,
+           'companion', i.companion_id,
+           'circle', exists (
+             select 1 from public.creator_orbits back
+              where back.orbiter_id = o.orbited_id
+                and back.orbited_id = o.orbiter_id
+           )
+         ) order by o.created_at), '[]'::jsonb)
+    into v_sky
+    from public.creator_orbits o
+    join public.magic_card_identities i on i.id = o.orbited_id
+   where o.orbiter_id = v_me.id
+     and i.username is not null;
+
+  -- The new stars: choosers I have not chosen back. A chooser with no
+  -- public username cannot appear (there is no honest way to show
+  -- them), which also means only Creators discoverable through their
+  -- own public creations ever surface here.
+  select coalesce(jsonb_agg(jsonb_build_object(
+           'username', i.username,
+           'companion', i.companion_id,
+           'since', o.created_at
+         ) order by o.created_at desc), '[]'::jsonb)
+    into v_chose_me
+    from public.creator_orbits o
+    join public.magic_card_identities i on i.id = o.orbiter_id
+   where o.orbited_id = v_me.id
+     and i.username is not null
+     and not exists (
+       select 1 from public.creator_orbits fwd
+        where fwd.orbiter_id = v_me.id
+          and fwd.orbited_id = o.orbiter_id
+     );
+
+  return jsonb_build_object('ok', true, 'sky', v_sky, 'choseMe', v_chose_me);
+end;
+$$;
+
+grant execute on function public.creator_sky_list(text) to anon, authenticated;
+
+-- -------------------------------------------------------------------
+-- Shows — snapshots of creations, from one Creator to another.
+-- -------------------------------------------------------------------
+create table if not exists public.creator_shows (
+  id          text primary key
+              default ('show_' || replace(gen_random_uuid()::text, '-', '')),
+  from_id     text not null references public.magic_card_identities(id) on delete cascade,
+  to_id       text not null references public.magic_card_identities(id) on delete cascade,
+  kind        text not null,
+  name        text not null default '',
+  -- Where the original lived in the sender's world — so KEEP can put
+  -- the copy in the corresponding place ({store:'projects'} ·
+  -- {store:'garden', room:'drawings'} · {store:'letters', ch:'A'}).
+  place       jsonb not null default '{}'::jsonb,
+  -- The creation itself, copied at send time. A snapshot, so the gift
+  -- survives anything that later happens to the original or to the
+  -- relationship (every action is a unit).
+  payload     jsonb not null,
+  created_at  timestamptz not null default now(),
+  seen_at     timestamptz,
+  kept_at     timestamptz,
+  check (from_id <> to_id)
+);
+
+create index if not exists creator_shows_to_idx
+  on public.creator_shows (to_id, created_at desc);
+
+alter table public.creator_shows enable row level security;
+-- Deliberately NO policies: SECURITY DEFINER functions only.
+
+-- -------------------------------------------------------------------
+-- Show a creation to a Creator I have chosen.
+--   * caller must OWN the sending identity (sky-protection rule)
+--   * the recipient is named by public username
+--   * ELIGIBILITY IS MY OWN CHOICE: an orbit row from me to them must
+--     exist. "They chose me" alone grants no Show in either direction.
+--   * the payload is capped, and a sender is capped per day, so the
+--     gift store can never become anybody's free hosting
+--   * showing NEVER touches creator_projects, never publishes, and
+--     never changes creator_orbits — verified by the suite
+-- -------------------------------------------------------------------
+create or replace function public.creation_show_send(
+  p_identity_id text,
+  p_username    text,
+  p_kind        text,
+  p_name        text,
+  p_place       jsonb,
+  p_payload     jsonb
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_caller text := auth.uid()::text;
+  v_me public.magic_card_identities;
+  v_them public.magic_card_identities;
+  v_id text;
+  v_recent int;
+begin
+  if v_caller is null or v_caller = '' then
+    return jsonb_build_object('ok', false, 'reason', 'not_authenticated');
+  end if;
+
+  select * into v_me from public.magic_card_identities where id = p_identity_id;
+  if v_me.id is null or v_me.owner_id is distinct from v_caller then
+    return jsonb_build_object('ok', false, 'reason', 'not_yours');
+  end if;
+
+  select * into v_them from public.magic_card_identities
+   where lower(username) = lower(trim(coalesce(p_username, '')));
+  if v_them.id is null then
+    return jsonb_build_object('ok', false, 'reason', 'unknown');
+  end if;
+  if v_them.id = v_me.id then
+    return jsonb_build_object('ok', false, 'reason', 'own');
+  end if;
+
+  -- The sender must have CHOSEN the recipient. Being chosen BY them
+  -- is not enough (frozen §9), and the check is live: what the
+  -- relationship is NOW decides what may happen now.
+  if not exists (
+    select 1 from public.creator_orbits
+     where orbiter_id = v_me.id and orbited_id = v_them.id
+  ) then
+    return jsonb_build_object('ok', false, 'reason', 'not_chosen');
+  end if;
+
+  if p_kind is null or p_kind not in ('story', 'drawing', 'letter') then
+    return jsonb_build_object('ok', false, 'reason', 'unsupported');
+  end if;
+
+  if p_payload is null
+     or length(p_payload::text) > 4000000 then
+    return jsonb_build_object('ok', false, 'reason', 'too_big');
+  end if;
+
+  -- A quiet ceiling, not a quota anybody sees: forty shows a day is
+  -- far past any child's real use and stops a runaway client.
+  select count(*) into v_recent
+    from public.creator_shows
+   where from_id = v_me.id
+     and created_at > now() - interval '24 hours';
+  if v_recent >= 40 then
+    return jsonb_build_object('ok', false, 'reason', 'later');
+  end if;
+
+  insert into public.creator_shows (from_id, to_id, kind, name, place, payload)
+  values (v_me.id, v_them.id, p_kind,
+          left(coalesce(p_name, ''), 120),
+          coalesce(p_place, '{}'::jsonb),
+          p_payload)
+  returning id into v_id;
+
+  return jsonb_build_object('ok', true, 'id', v_id);
+end;
+$$;
+
+grant execute on function public.creation_show_send(text, text, text, text, jsonb, jsonb)
+  to anon, authenticated;
+
+-- -------------------------------------------------------------------
+-- My gifts — metadata only, newest first. The payload travels
+-- separately (creation_show_get) so the Sky's quiet 🎁 indicator does
+-- not pull every creation ever shown. Recipient-only: a sender can
+-- never list what they sent, and never learns seen/kept.
+-- -------------------------------------------------------------------
+create or replace function public.creation_show_list(p_identity_id text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_caller text := auth.uid()::text;
+  v_me public.magic_card_identities;
+  v_list jsonb;
+begin
+  if v_caller is null or v_caller = '' then
+    return jsonb_build_object('ok', false, 'reason', 'not_authenticated');
+  end if;
+
+  select * into v_me from public.magic_card_identities where id = p_identity_id;
+  if v_me.id is null or v_me.owner_id is distinct from v_caller then
+    return jsonb_build_object('ok', false, 'reason', 'not_yours');
+  end if;
+
+  select coalesce(jsonb_agg(jsonb_build_object(
+           'id', s.id,
+           'from', i.username,
+           'kind', s.kind,
+           'name', s.name,
+           'place', s.place,
+           'at', s.created_at,
+           'seen', s.seen_at is not null,
+           'kept', s.kept_at is not null
+         ) order by s.created_at desc), '[]'::jsonb)
+    into v_list
+    from (select * from public.creator_shows
+           where to_id = p_identity_id
+           order by created_at desc
+           limit 100) s
+    join public.magic_card_identities i on i.id = s.from_id;
+
+  return jsonb_build_object('ok', true, 'gifts', v_list);
+end;
+$$;
+
+grant execute on function public.creation_show_list(text) to anon, authenticated;
+
+-- -------------------------------------------------------------------
+-- One gift, with its creation. Recipient-only.
+-- -------------------------------------------------------------------
+create or replace function public.creation_show_get(p_identity_id text, p_id text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_caller text := auth.uid()::text;
+  v_me public.magic_card_identities;
+  v_show public.creator_shows;
+  v_from text;
+begin
+  if v_caller is null or v_caller = '' then
+    return jsonb_build_object('ok', false, 'reason', 'not_authenticated');
+  end if;
+
+  select * into v_me from public.magic_card_identities where id = p_identity_id;
+  if v_me.id is null or v_me.owner_id is distinct from v_caller then
+    return jsonb_build_object('ok', false, 'reason', 'not_yours');
+  end if;
+
+  select * into v_show from public.creator_shows
+   where id = p_id and to_id = v_me.id;
+  if v_show.id is null then
+    return jsonb_build_object('ok', false, 'reason', 'unknown');
+  end if;
+
+  select username into v_from from public.magic_card_identities where id = v_show.from_id;
+
+  return jsonb_build_object('ok', true, 'gift', jsonb_build_object(
+    'id', v_show.id,
+    'from', v_from,
+    'kind', v_show.kind,
+    'name', v_show.name,
+    'place', v_show.place,
+    'at', v_show.created_at,
+    'seen', v_show.seen_at is not null,
+    'kept', v_show.kept_at is not null,
+    'payload', v_show.payload));
+end;
+$$;
+
+grant execute on function public.creation_show_get(text, text) to anon, authenticated;
+
+-- -------------------------------------------------------------------
+-- Mark a gift seen or kept. Recipient-only, idempotent, and NO
+-- eligibility re-check on purpose: the Show already happened, and a
+-- relationship ending later does not rewrite it (the historical
+-- rule). The KEEP copy itself is made in the recipient's own stores
+-- by the client — this only records that they chose to keep it.
+-- -------------------------------------------------------------------
+create or replace function public.creation_show_mark(
+  p_identity_id text, p_id text, p_what text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_caller text := auth.uid()::text;
+  v_me public.magic_card_identities;
+  v_n int;
+begin
+  if v_caller is null or v_caller = '' then
+    return jsonb_build_object('ok', false, 'reason', 'not_authenticated');
+  end if;
+
+  select * into v_me from public.magic_card_identities where id = p_identity_id;
+  if v_me.id is null or v_me.owner_id is distinct from v_caller then
+    return jsonb_build_object('ok', false, 'reason', 'not_yours');
+  end if;
+
+  if p_what = 'seen' then
+    update public.creator_shows
+       set seen_at = coalesce(seen_at, now())
+     where id = p_id and to_id = v_me.id;
+  elsif p_what = 'kept' then
+    update public.creator_shows
+       set kept_at = coalesce(kept_at, now()),
+           seen_at = coalesce(seen_at, now())
+     where id = p_id and to_id = v_me.id;
+  else
+    return jsonb_build_object('ok', false, 'reason', 'unsupported');
+  end if;
+
+  get diagnostics v_n = row_count;
+  if v_n = 0 then
+    return jsonb_build_object('ok', false, 'reason', 'unknown');
+  end if;
+  return jsonb_build_object('ok', true);
+end;
+$$;
+
+grant execute on function public.creation_show_mark(text, text, text) to anon, authenticated;
+
+-- -------------------------------------------------------------------
+-- A mutual Creator's work that has NOT been pushed to Ether.
+--   * caller must OWN the asking identity
+--   * BOTH orbit rows must exist RIGHT NOW — mutuality is checked
+--     live, so ending it ends this visibility with it
+--   * eligible work = that Creator's own project records
+--     (data->>'cardId' names them) that carry no publishedAt and are
+--     not a held rite story — i.e. exactly what would stand in their
+--     own My Projects minus what is already in the Ether
+--   * an unknown username and a non-mutual Creator answer identically
+--     — this is never an oracle for anything
+-- -------------------------------------------------------------------
+create or replace function public.creator_mutual_projects(
+  p_identity_id text, p_username text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_caller text := auth.uid()::text;
+  v_me public.magic_card_identities;
+  v_them public.magic_card_identities;
+  v_list jsonb;
+begin
+  if v_caller is null or v_caller = '' then
+    return jsonb_build_object('ok', false, 'reason', 'not_authenticated');
+  end if;
+
+  select * into v_me from public.magic_card_identities where id = p_identity_id;
+  if v_me.id is null or v_me.owner_id is distinct from v_caller then
+    return jsonb_build_object('ok', false, 'reason', 'not_yours');
+  end if;
+
+  select * into v_them from public.magic_card_identities
+   where lower(username) = lower(trim(coalesce(p_username, '')));
+
+  if v_them.id is null
+     or not exists (
+       select 1 from public.creator_orbits
+        where orbiter_id = v_me.id and orbited_id = v_them.id)
+     or not exists (
+       select 1 from public.creator_orbits
+        where orbiter_id = v_them.id and orbited_id = v_me.id) then
+    return jsonb_build_object('ok', false, 'reason', 'not_mutual');
+  end if;
+
+  select coalesce(jsonb_agg(jsonb_build_object(
+           'id', p.id,
+           'record', p.data
+         ) order by p.updated_at desc), '[]'::jsonb)
+    into v_list
+    from (select * from public.creator_projects
+           where data->>'cardId' = v_them.id
+             and is_shared is not true
+             and data->>'riteInProgress' is null
+           order by updated_at desc
+           limit 40) p;
+
+  return jsonb_build_object('ok', true, 'projects', v_list);
+end;
+$$;
+
+grant execute on function public.creator_mutual_projects(text, text) to anon, authenticated;

@@ -34,12 +34,18 @@ const CreatorPresence=(function(){
 
   let _overlay=null,_body=null,_title=null,_sub=null;
   let _meet=null;
-  // SOCIAL 2 — configured once by the page that owns the Studio door
-  // (js/vihuplanetHome.js): how a make-for journey actually leaves
-  // for the Studio. This panel never navigates by itself.
-  let _makeFor=null,_openSocial=null;
+  // SOCIAL 2.1 — configured once by the page that owns the Studio
+  // door (js/vihuplanetHome.js): the quiet doorway to the child's own
+  // Sky at home. This panel never navigates by itself.
+  //
+  // The 🎨 Make-something-for-them entry that used to be configured
+  // here is RETIRED (Social Sky R1, §6 of the frozen canon): the
+  // correct direction is creation-first — an existing creation →
+  // Show → choose a Creator — and Show lives in the Studio beside the
+  // creations themselves. Dedications already made keep rendering
+  // wherever they are met; only the way to start a new one moved.
+  let _openSocial=null;
   function configure(opts){
-    if(opts&&typeof opts.makeFor==='function') _makeFor=opts.makeFor;
     if(opts&&typeof opts.openSocial==='function') _openSocial=opts.openSocial;
   }
 
@@ -140,12 +146,13 @@ const CreatorPresence=(function(){
     return true;
   }
 
-  // ---------- 🌌 Orbit · ✨ Circle · 🎨 make something -------------
-  // SOCIAL 2, and every rule is Decision 54's:
-  //  * Orbit is ONE tap and ONE-WAY — the other Creator is not told,
-  //    nothing asks them anything, no request exists.
-  //  * Circle is never a button: it appears only because both chose,
-  //    and it reads as a fact ("You're in each other's Circle"), not
+  // ---------- the choosing, in Sky language (Social Sky R1) --------
+  // Every rule is Decision 54's, with Decision 56's words on top —
+  // the child meets STAR · SKY, never orbit/circle/follow:
+  //  * Choosing is ONE tap and ONE-WAY — the other Creator is not
+  //    told, nothing asks them anything, no request exists.
+  //  * Mutuality is never a button: it appears only because both
+  //    chose, and it reads as a fact ("You chose each other"), not
   //    an achievement.
   //  * Leaving is as quiet as joining. No notification either way.
   //  * A Traveller holding no card sees none of this — a
@@ -166,26 +173,106 @@ const CreatorPresence=(function(){
       const inOrbit=CreatorOrbit.has(username);
       const circle=CreatorOrbit.circleWith(username);
       if(!inOrbit){
-        slot.appendChild(_button('🌌 Add to My Orbit','creator-presence-orbit-add',function(){
+        slot.appendChild(_button('⭐ Put them in my Sky','creator-presence-orbit-add',function(){
           CreatorOrbit.add(username).then(function(){ draw(); });
           draw(); // the choice lands instantly; mutuality refines it
         }));
         return;
       }
       slot.appendChild(_el('p','creator-presence-orbit-state',
-        circle?'✨ You’re in each other’s Circle':'In My Orbit ✓'));
-      if(_makeFor){
-        slot.appendChild(_button('🎨 Make something for them','creator-presence-makefor',function(){
-          close();
-          _makeFor(_normName(username));
-        }));
-      }
-      slot.appendChild(_button('Leave My Orbit','creator-presence-orbit-leave',function(){
+        circle?'✨ You chose each other':'In your Sky ✓'));
+      slot.appendChild(_button('Take out of my Sky','creator-presence-orbit-leave',function(){
         CreatorOrbit.remove(username).then(function(){ draw(); });
         draw();
       }));
     }
     draw();
+    _renderMutualShelf(username);
+  }
+
+  // ---------- ✨ what a mutual Creator may see (Social Sky R1) -----
+  // The one capability mutuality adds in R1: the other Creator's work
+  // that has NOT been pushed to Ether. Server-verified live (both
+  // choices must stand right now), so this section simply never
+  // renders for anybody else — absent, not locked. Opening one is a
+  // quiet peek at its baked pages where the story has them; a story
+  // still being made shows its cover and says so. Nothing here
+  // publishes anything or touches the other Creator's records.
+  function _renderMutualShelf(username){
+    if(typeof SocialSky==='undefined'||!SocialSky.mutualProjects) return;
+    if(typeof CreatorOrbit==='undefined'||!CreatorOrbit.circleWith(username)) return;
+    const slot=_el('div','creator-presence-mutual');
+    _body.appendChild(slot);
+    SocialSky.mutualProjects(username).then(function(list){
+      if(!slot.isConnected||!list.length) return;
+      slot.appendChild(_el('p','creator-presence-orbit-head','✨ Not in the Ether yet'));
+      slot.appendChild(_el('p','creator-presence-note',
+        'Because you chose each other, you can see what they are making.'));
+      list.slice(0,8).forEach(function(p){
+        const rec=p.record||{};
+        const row=_button('','creator-presence-row',function(){
+          _peek(rec);
+        });
+        if(rec.thumbnail){
+          const img=document.createElement('img');
+          img.className='creator-presence-cover';
+          img.alt='';
+          img.src=rec.thumbnail;
+          row.appendChild(img);
+        }else{
+          row.appendChild(_el('span','creator-presence-cover creator-presence-cover-empty','✦'));
+        }
+        row.appendChild(_el('span','creator-presence-name',rec.name||'A story'));
+        slot.appendChild(row);
+      });
+    }).catch(function(){});
+  }
+
+  // A small page-through of the baked reading images a record carries
+  // — never the Studio, never an editor, never the portal machinery
+  // (which belongs to Spirits actually in the universe).
+  function _peek(rec){
+    const pages=[];
+    try{
+      ((rec.data&&rec.data.pages)||[]).forEach(function(s){
+        if(s&&s.readImage) pages.push(s.readImage);
+      });
+    }catch(e){}
+    const overlay=_el('div','creator-presence-peek');
+    const panel=_el('div','creator-presence-peek-panel');
+    overlay.appendChild(panel);
+    function done(){ try{ overlay.remove(); }catch(e){} }
+    overlay.addEventListener('click',function(ev){ if(ev.target===overlay) done(); });
+    panel.appendChild(_el('h3','creator-presence-title',rec.name||'A story'));
+    if(pages.length){
+      let at=0;
+      const img=document.createElement('img');
+      img.className='creator-presence-peek-page';
+      img.alt='';
+      img.src=pages[0];
+      panel.appendChild(img);
+      if(pages.length>1){
+        const nav=_el('div','creator-presence-peek-nav');
+        nav.appendChild(_button('‹','creator-presence-peek-arrow',function(){
+          at=(at+pages.length-1)%pages.length; img.src=pages[at];
+        }));
+        nav.appendChild(_button('›','creator-presence-peek-arrow',function(){
+          at=(at+1)%pages.length; img.src=pages[at];
+        }));
+        panel.appendChild(nav);
+      }
+    }else{
+      if(rec.thumbnail){
+        const img=document.createElement('img');
+        img.className='creator-presence-peek-page';
+        img.alt='';
+        img.src=rec.thumbnail;
+        panel.appendChild(img);
+      }
+      panel.appendChild(_el('p','creator-presence-note','Still being made ✨'));
+    }
+    panel.appendChild(_button('Back','creator-presence-quiet',done));
+    document.body.appendChild(overlay);
   }
 
   function _normName(name){
@@ -259,16 +346,16 @@ const CreatorPresence=(function(){
       if(ev.key==='Enter'){ ev.preventDefault(); go.click(); }
     });
 
-    // 🌌 MY ORBIT — the Creators this child chose, one tap from their
+    // 🌌 MY SKY — the Creators this child chose, one tap from their
     // shelves. Their OWN list (never a directory of anybody else), so
     // it can stand here without contradicting "an empty field offers
-    // no directory". Absent rather than empty; a ✨ chip is a Circle.
-    // No count is shown and none may be added (Decision 54).
+    // no directory". Absent rather than empty; a ✨ chip is a mutual
+    // choice. No count is shown and none may be added (Decision 54).
     try{
       if(_myCard()&&typeof CreatorOrbit!=='undefined'){
         const orbit=CreatorOrbit.list();
         if(orbit.length){
-          _body.appendChild(_el('p','creator-presence-orbit-head','🌌 My Orbit'));
+          _body.appendChild(_el('p','creator-presence-orbit-head','🌌 My Sky'));
           const chips=_el('div','creator-presence-suggest');
           orbit.forEach(function(e){
             chips.appendChild(_button((e.circle?'✨ ':'')+_handle(e.username),

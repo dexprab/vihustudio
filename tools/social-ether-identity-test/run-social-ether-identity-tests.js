@@ -259,37 +259,54 @@ function ck(c, n, note) { (c ? ok : no)(n, note); }
   // ---------------------------------------------------------------
   await page.goto(BASE + '/studio.html?author=on');
   await page.waitForFunction(() => typeof CreatorSocial !== 'undefined' && typeof CreatorOrbit !== 'undefined', null, { timeout: 20000 });
+  // SOCIAL SKY R1 turned this section around: the personal social area
+  // is the SKY now (Companions in three layers), opened through the
+  // same seam every door already called — CreatorSocial.openSocialPanel.
+  // What these checks guarded survives unchanged: it opens from Studio
+  // Home, the chosen Creator is there, no statistics, and leaving ends
+  // a mutual pair silently.
   const panel = await page.evaluate(async (cards2) => {
     MagicCard.setActive(cards2.aCard);
     // the child's choices: stargirl in orbit, and mutual
     localStorage.setItem('vihu.orbit.' + cards2.aCard,
       JSON.stringify({ stargirl: { circle: true } }));
+    localStorage.removeItem('vihu.sky.' + cards2.aCard);
     CreatorSocial.openSocialPanel();
     await new Promise((r) => setTimeout(r, 600));
-    const p = document.querySelector('.creator-social-panel');
+    const p = document.querySelector('.social-sky-panel');
     return {
       text: p ? p.innerText : null,
-      chip: !!document.querySelector('.creator-social-circle-chip'),
-      leave: !!document.querySelector('.creator-social-leave'),
+      mutualBand: !!document.querySelector('.social-sky-band.is-mutual'),
+      star: !!document.querySelector('.social-sky-star'),
     };
   }, unnamed);
-  ck(!!panel.text && /✨ My Circle/.test(panel.text) && /🌌 My Orbit/.test(panel.text),
-     'D1  🌌 MY ORBIT and ✨ MY CIRCLE open from Studio Home — seeing and managing live here');
-  ck(panel.chip && /@stargirl/.test(panel.text) && /The Star Garden/.test(panel.text),
-     'D2  ENTRIES ARE CREATION-ORIENTED — @stargirl and what she makes, never statistics',
-     panel.text.replace(/\n/g, ' · '));
-  ck(!/\d/.test(panel.text.replace(/[🌌✨🎨]/g, '')),
-     'D3  NOT ONE NUMBER ON THE PANEL — no follower counts, no circle size');
+  ck(!!panel.text && /🌌 My Sky/.test(panel.text),
+     'D1  🌌 MY SKY opens from Studio Home — seeing and understanding live here');
+  ck(panel.star && panel.mutualBand && /@stargirl/.test(panel.text),
+     'D2  THE CHOSEN CREATOR STANDS IN THE SKY — @stargirl, in the we-chose-each-other layer',
+     (panel.text || '').replace(/\n/g, ' · '));
+  ck(!/\d/.test((panel.text || '').replace(/[🌌✨🎨🎁]/g, '')),
+     'D3  NOT ONE NUMBER IN THE SKY — no follower counts, no circle size');
   await page.screenshot({ path: path.join(SHOTS, 'D-panel.png') });
 
   const left = await page.evaluate(async () => {
-    document.querySelector('.creator-social-leave').click();
-    await new Promise((r) => setTimeout(r, 300));
-    const p = document.querySelector('.creator-social-panel');
-    return { text: p ? p.innerText : null, has: CreatorOrbit.has('stargirl') };
+    // Leaving lives on the Creator's own shelf ("Take out of my Sky"),
+    // not in the sky itself — the sky is for seeing, the shelf is where
+    // the choice was made. The removal still ends the mutual pair
+    // silently, and the sky simply no longer shows them.
+    const noLeaveInSky = !document.querySelector('.social-sky-panel button')
+      || !/take out|leave/i.test(document.querySelector('.social-sky-panel').innerText);
+    document.querySelector('.social-sky-quiet').click();
+    await CreatorOrbit.remove('stargirl');
+    CreatorSocial.openSocialPanel();
+    await new Promise((r) => setTimeout(r, 500));
+    const p = document.querySelector('.social-sky-panel');
+    const text = p ? p.innerText : null;
+    document.querySelector('.social-sky-quiet').click();
+    return { noLeaveInSky, text, has: CreatorOrbit.has('stargirl') };
   });
-  ck(left.has === false && !/Leave My Orbit/.test(left.text || '') && !/✨ My Circle/.test(left.text || ''),
-     'D4  LEAVE WORKS AND THE MUTUAL CIRCLE SIMPLY ENDS — silently, no drama, nobody told',
+  ck(left.has === false && left.noLeaveInSky && !/@stargirl/.test(left.text || ''),
+     'D4  LEAVING (from the shelf) ENDS THE MUTUAL PAIR SILENTLY — the sky simply no longer shows them',
      (left.text || '').replace(/\n/g, ' · '));
 
   // ---------------------------------------------------------------

@@ -2524,3 +2524,37 @@ html, body {
   cursor: pointer;
 }
 .creator-presence-social-door:hover { color: #f1ead0; }
+
+/* ================================================================
+   SOCIAL SKY R1 — the shelf's mutual section and its quiet peek
+   (Decision 56). "Because you chose each other, you can see what
+   they are making." Rendered only when the platform confirms the
+   mutuality live; absent for everybody else.
+   ================================================================ */
+.creator-presence-mutual{ margin-top:10px; }
+.creator-presence-peek{
+  position:fixed; inset:0; z-index:9600;
+  background:rgba(6,9,20,0.72);
+  display:flex; align-items:center; justify-content:center;
+}
+.creator-presence-peek-panel{
+  width:min(620px,calc(100% - 40px));
+  max-height:calc(100% - 40px);
+  overflow:auto;
+  border-radius:16px;
+  padding:16px 18px;
+  background:rgba(18,23,43,0.97);
+  border:1px solid rgba(241,234,208,0.2);
+  color:#f1ead0;
+  text-align:center;
+}
+.creator-presence-peek-page{
+  max-width:100%; max-height:380px;
+  border-radius:10px; margin-top:8px;
+}
+.creator-presence-peek-nav{ display:flex; justify-content:center; gap:12px; margin-top:8px; }
+.creator-presence-peek-arrow{
+  padding:2px 16px; border-radius:999px;
+  border:1px solid rgba(241,234,208,0.3);
+  background:transparent; color:#f1ead0; font-size:16px; cursor:pointer;
+}

@@ -6825,6 +6825,136 @@ no persistent social identity; Creator = persistent social identity.
   `js/travellerContext.js` · `js/creationFlow.js` ·
   `tools/social-ether-identity-test/run-social-ether-identity-tests.js`
 
+### 56. The Sky Is How a Child Sees Their Social World, and Show Is How a Creation Travels
+
+Locked by the product owner in the SOCIAL SKY R1 brief. It makes the
+existing social model visible and usable through the VihuPlanet world,
+and it deliberately builds ON the Social 1/2 architecture — username,
+Orbit, Circle, RLS and the SECURITY DEFINER discipline are all exactly
+where they were.
+
+- **THE SKY IS THE CHILD'S SOCIAL WORLD, AND IT IS MADE OF
+  COMPANIONS.** 🌌 My Sky (Studio Home, through the same
+  `CreatorSocial.openSocialPanel()` seam every door already called)
+  shows Creators through their Companion art — never username rows,
+  never a contact list. Three layers, always distinguishable and never
+  ranked on screen: **we chose each other** (nearest, warmest) · **I
+  chose them** · **they chose me** (further, fainter). An empty layer
+  draws no band, so there is no ladder to fill; an empty sky is a kind
+  sentence, never a goal.
+- **THE CHILD-FACING WORDS ARE SKY WORDS NOW.** The shelf says
+  **⭐ Put them in my Sky** · **In your Sky ✓** · **✨ You chose each
+  other** · a quiet **Take out of my Sky**. Orbit and Circle survive as
+  internal terminology only — the child meets STAR · SKY · SHOW ·
+  GIFT · KEEP · CREATION, and the suite scans the layer for
+  follower/friend/streak/rank vocabulary and digits.
+- **"WHO CHOSE ME" IS OWNER-ONLY NOW — an explicit amendment to
+  Decision 54.** That decision made the mutual bit the only reverse
+  fact; the R1 canon freezes the new-star experience, which requires
+  the owner to see who chose them. `creator_sky_list` is
+  owner-verified exactly like orbit_list and is the ONLY reader:
+  nobody else can ask, there is still no count anywhere, no public
+  list, and the other Creator is never told what I know. A chooser
+  with no public username never surfaces — there is no honest way to
+  show them.
+- **A NEW STAR IS A CREATIVE EVENT, NEVER A FOLLOWER NOTIFICATION.**
+  Studio Home says **"✨ New stars are interested in your creations"**
+  — no name at the door (the identity is discovered in the sky), never
+  "X followed you", never a count. The new star GLOWS in the sky until
+  the child has had an opportunity to see it (opening the sky is what
+  settles it); a new mutual pair glows its own distinct way and both
+  sides read **"✨ You and @name found each other"**. The glow settles;
+  the star stays. No permanent badge, no number, no pressure.
+- **MUTUALITY UNLOCKS EXACTLY ONE THING IN R1: seeing each other's
+  non-Ether work.** `creator_mutual_projects` checks BOTH directions
+  LIVE at call time, and returns only what would stand in the other's
+  own My Projects minus what is already in the Ether (never a shared
+  story, never a held rite story). The shelf shows it as **"✨ Not in
+  the Ether yet — because you chose each other"**, opened as a quiet
+  page-through of the record's baked reading images (a story with none
+  shows its cover and "Still being made ✨"). Ending the mutuality ends
+  the visibility with it. Nothing else is unlocked — no chat, no
+  shared feed, no collaboration; those are deferred by name.
+- **SHOW IS CREATION-FIRST, AND MAKE-FOR IS RETIRED.** The flow is the
+  canon's: an EXISTING creation → 🎁 Show → choose a Creator — never
+  "choose a creator, then make something for them". The shelf's 🎨
+  button, its one-shot note writing and the Studio Home banner are
+  gone; dedications already made are units of the past and keep
+  rendering wherever those stories are met (`forUsername` stays on the
+  records, the recipient line stays derived). IF I CREATED IT → I CAN
+  SHOW IT: stories (My Projects' 🎁 Show, beside ✨ Look and 🗑
+  Delete), garden drawings and kept letters (the Show dialog lists all
+  three; a letter's ink lives under `glyph`, read rather than assumed
+  — the suite caught the first draft offering no letters at all).
+- **A SHOW IS A SNAPSHOT, AND EVERY ACTION IS A UNIT.** The creation
+  is copied to `creator_shows` at send time, so nothing that later
+  happens to the original or the relationship rewrites it — proved:
+  the orbit edge is removed and the gift still lists, still opens,
+  can still be kept. Show transfers no ownership, publishes NOTHING
+  to the Ether, and changes no relationship state (counted: zero
+  orbit rows and zero project rows moved by a send). Eligibility is
+  the SENDER'S own choice — an orbit row from me to them must exist;
+  "they chose me" grants no Show in either direction (frozen §9).
+- **GIFTS ARE CREATIONS, NOT MESSAGES.** 🎁 Gifts on Studio Home
+  (label gains a quiet ✨ while something unseen waits — a mark, never
+  a number) lists what other Creators have shown this child: unseen →
+  viewed → kept. Recipient-only by construction: a sender can never
+  list what they sent and never learns seen/kept — a read receipt is
+  messaging furniture and none exists. No reply box, no thread, no
+  chain; the answer to a creation is another creation.
+- **KEEP IS A COPY, AT THE CORRESPONDING PLACE.** A kept story lands
+  in My Projects as a FRESH record — the keeper's own card, no
+  publishedAt whatever the original's state (a kept story is never
+  quietly in the Ether), no dedication. A drawing lands in My Garden;
+  a letter lands in its own slot — and NEVER over the child's own
+  letter (`have_own` refuses; their ink outranks anybody's gift). The
+  original remains the sender's, untouched.
+- **THE SKY CARRIES THE 🎁 INDICATOR.** A star whose Creator has
+  something unseen for this child wears a small 🎁 — "moonmaker has
+  something to show me", never an activity feed.
+- **GRAVITY CHANGES LIKELIHOOD, NEVER THE WORLD.** "Gravity determines
+  whose creations can find me. Freshness determines which creation
+  finds me first." Implemented at the FEED seam with zero runtime
+  edits, using the seam the runtime already exposes — a story arriving
+  WITH coordinates keeps them (`storyManager.seedPosition` only fires
+  for stories without) — which is Decision 9's own test passing again.
+  `EtherFeed._applyGravity` starts at most FOUR fresh, un-experienced
+  creations from the child's sky nearer the middle of the field, in
+  the frozen order (mutual > I-chose > they-chose > everyone else
+  untouched, newer first inside a tier). Everything stays in the
+  Ether, nothing is filtered, no separate feed exists, and no score is
+  visible anywhere.
+- **EXPERIENCED MEANS THE PORTAL OPENED.** `SocialSky.markExperienced`
+  is stamped per card at `openPortal()` — stepping into a story is the
+  one honest reading of "experienced". Experienced and Cheered
+  creations are never brought forward again: a Cheer means "I have
+  already acknowledged this", and the system moves the child toward
+  new things. My own stories need no gravity toward me.
+- **A TRAVELLER HAS NONE OF THIS, AND NOTHING IS FAKED.** No sky, no
+  gifts, no Show, no gravity, no experienced-stamp — every door
+  refuses without a card and writes no browser state pretending
+  otherwise. Their Ether keeps the id-seeded placement everybody
+  always had. Cheer stays card-agnostic exactly as Decision 20 locked
+  it.
+- **THE BAND'S OWN COST WAS MEASURED, AND IT PAID AN OLD DEBT.** Two
+  doors stacked full-width would have doubled the social band; they
+  share one row. And measuring found the Social 2.1 band had ALREADY
+  pushed Studio Home 54px past a 600px fold — creation-home's F13 had
+  not been run since — so the short-window trims reclaim both. 84/84
+  green again, overflow 0.
+- **DEFERRED BY NAME, so nobody invents them half-way:** the
+  Creativity Thread, chained exchanges, collaboration, richer Circle
+  functionality, messaging, public relationship counts, rankings, and
+  any automatic relationship change caused by Show or Keep.
+- Deploy: run `supabase/migrations_social_sky.sql` (after the identity
+  and orbit migrations), then `supabase/verify_social_sky.sql` —
+  one word per check.
+- `supabase/migrations_social_sky.sql` · `supabase/verify_social_sky.sql` ·
+  `js/socialSky.js` · `js/creationShow.js` · `js/creatorPresence.js` ·
+  `js/creatorSocial.js` · `js/creationFlow.js` · `js/etherFeed.js` ·
+  `js/vihuplanetHome.js` ·
+  `tools/social-sky-test/run-social-sky-tests.js`
+
 ## Roadmap
 
 1. Theme Designer Polish

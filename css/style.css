@@ -6991,6 +6991,27 @@ body.studio-rite-running .studio-door{ display:none !important; }
   .creation-flow-door-title{ margin-bottom:2px; }
   .creation-flow-door-line{ margin-bottom:9px; }
   .creation-flow-door-btn{ padding:8px 26px; }
+  /* The social band tightens with everything else — content stays,
+     breathing room goes (Decision 22: decoration first, content last).
+     Found while adding the second door (🎁 Gifts): the Social 2.1 band
+     had already pushed this screen 54px past a 600px fold and nothing
+     had measured it since — so the trims below reclaim the band's own
+     cost AND the debt it arrived with. */
+  .creation-flow-social{ margin-top:0; }
+  .creation-flow-socialdoor{ margin-top:2px; }
+  .creation-flow-subtitle{ margin-bottom:4px; }
+  .creation-flow-socialdoor-btn{
+    height:auto !important; padding:5px 10px; font-size:13px;
+    margin-bottom:2px !important;
+  }
+  .creation-flow-activity{ margin:2px 0; font-size:13px; }
+  .creation-flow-eyebrow{ margin-bottom:2px; }
+  .creation-flow-question{ margin-bottom:2px; }
+  .creation-flow-door{ margin-top:8px; padding:2px 22px 8px; }
+  .cf-door-svg{ width:50px; height:54px; }
+  .creation-flow-door-line{ margin-bottom:5px; }
+  .creation-flow-door-btn{ padding:6px 24px; }
+  .creation-flow-name-invite{ padding:7px 12px; }
 }
 
 /* ---------- My Projects — reach an existing project without going
@@ -13993,10 +14014,15 @@ body.studio-rite-running .companion-chat-open{ display:none !important; }
    SOCIAL 2.1 — Studio Home's personal social area: 🌌 My Orbit ·
    ✨ My Circle. Creation-oriented, no counts, Circle intimate.
    ================================================================ */
-.creation-flow-socialdoor{ margin:8px 0 0; }
+/* TWO doors share one row now (🌌 My Sky · 🎁 Gifts, Social Sky R1)
+   — stacked full-width they doubled the band's height and pushed the
+   Discover door below a 600px fold, the exact failure Decision 22's
+   short-window rule exists to prevent (caught by creation-home F13). */
+.creation-flow-socialdoor{ margin:8px 0 0; display:flex; gap:8px; }
 .creation-flow-socialdoor-btn{
   display:block;
-  width:100%;
+  flex:1;
+  min-width:0;
   padding:9px 14px;
   border-radius:12px;
   border:1px solid #eadfc4;
@@ -14135,3 +14161,226 @@ body.studio-rite-running .companion-chat-open{ display:none !important; }
   font-size:13px;
   cursor:pointer;
 }
+
+/* ================================================================
+   SOCIAL SKY R1 — the Sky, Show and Gifts (Decision 56).
+   Every button below re-declares its dimensions !important against
+   the blanket button:not(...){width:100%} rule — the recurring bug
+   class this stylesheet has already caught three times.
+   ================================================================ */
+
+/* The third nested project-card action, same quiet shape as Delete
+   and Look. */
+.creation-flow-project-show{
+  width:auto !important;
+  height:auto !important;
+  margin:0 6px 0 0 !important;
+  padding:4px 8px !important;
+  align-self:flex-end;
+  font-size:11px;
+  font-weight:600;
+  background:transparent;
+  color:var(--text-secondary);
+  border:1px solid var(--cf-line);
+  border-radius:8px;
+}
+.creation-flow-project-show:hover{
+  background:rgba(122,110,228,0.1);
+  color:#6f63d8;
+  border-color:rgba(122,110,228,0.3);
+  opacity:1;
+}
+
+/* ---------- 🌌 the Sky itself ---------- */
+.social-sky-overlay{
+  position:fixed; inset:0; z-index:2600;
+  background:rgba(10,13,26,0.55);
+  display:flex; align-items:center; justify-content:center;
+}
+.social-sky-panel{
+  width:min(680px,calc(100% - 48px));
+  max-height:min(640px,calc(100% - 48px));
+  overflow:auto;
+  border-radius:18px;
+  padding:18px 20px;
+  background:#141a2e;
+  border:1px solid rgba(241,234,208,0.18);
+  color:#f1ead0;
+  box-shadow:0 24px 60px rgba(0,0,0,0.45);
+}
+.social-sky-title{ margin:0 0 10px; font-size:18px; color:#f1ead0; }
+.social-sky-field{
+  position:relative;
+  border-radius:14px;
+  padding:18px 14px 10px;
+  background:
+    radial-gradient(circle at 22% 18%, rgba(255,255,255,0.06) 0 1.5px, transparent 2px),
+    radial-gradient(circle at 71% 32%, rgba(255,255,255,0.05) 0 1px, transparent 2px),
+    radial-gradient(circle at 48% 64%, rgba(255,255,255,0.05) 0 1px, transparent 2px),
+    linear-gradient(180deg,#0c1120 0%,#131a30 100%);
+  border:1px solid rgba(241,234,208,0.1);
+}
+.social-sky-band{ margin-bottom:14px; }
+.social-sky-caption{
+  display:block;
+  font-size:11px;
+  letter-spacing:0.4px;
+  color:rgba(241,234,208,0.55);
+  margin:0 0 4px 4px;
+}
+.social-sky-band.is-mutual .social-sky-caption{ color:rgba(255,220,140,0.85); }
+.social-sky-stars{ display:flex; flex-wrap:wrap; gap:14px; align-items:flex-start; }
+.social-sky-star{
+  width:auto !important; height:auto !important; margin:0 !important;
+  padding:6px 8px !important;
+  display:flex; flex-direction:column; align-items:center; gap:3px;
+  background:transparent; border:none; cursor:pointer;
+  color:rgba(241,234,208,0.85);
+}
+.social-sky-star:hover{ color:#fff; }
+.social-sky-figure{
+  position:relative;
+  width:56px; height:56px;
+  display:flex; align-items:center; justify-content:center;
+  border-radius:50%;
+  background:radial-gradient(circle,rgba(255,255,255,0.10) 0%,transparent 70%);
+}
+.social-sky-companion{
+  max-width:52px; max-height:52px;
+  filter:drop-shadow(0 0 6px rgba(255,255,255,0.25));
+}
+.social-sky-plain{ font-size:26px; color:#e8e2c8; }
+.social-sky-name{ font-size:11px; }
+/* The layers are told apart by presence, size and light — never a
+   label with a rank in it. */
+.social-sky-band.is-chose-me .social-sky-figure{ transform:scale(0.78); opacity:0.72; }
+.social-sky-band.is-chosen .social-sky-figure{ transform:scale(0.92); }
+.social-sky-band.is-mutual .social-sky-figure{
+  background:radial-gradient(circle,rgba(255,215,130,0.22) 0%,transparent 72%);
+}
+/* TEMPORARY glows — a new star, and the distinct mutual shimmer.
+   They settle once the sky has been seen; the star stays. */
+.social-sky-star.is-new .social-sky-figure{
+  animation:social-sky-new 1.6s ease-in-out infinite;
+}
+@keyframes social-sky-new{
+  0%,100%{ box-shadow:0 0 0 0 rgba(255,255,255,0.0); }
+  50%{ box-shadow:0 0 18px 4px rgba(255,255,255,0.35); }
+}
+.social-sky-band.is-mutual .social-sky-star.is-new .social-sky-figure{
+  animation:social-sky-mutual 2.1s ease-in-out infinite;
+}
+@keyframes social-sky-mutual{
+  0%,100%{ box-shadow:0 0 0 0 rgba(255,215,130,0.0); }
+  50%{ box-shadow:0 0 22px 6px rgba(255,215,130,0.45); }
+}
+@media (prefers-reduced-motion: reduce){
+  .social-sky-star.is-new .social-sky-figure{ animation:none; box-shadow:0 0 14px 3px rgba(255,255,255,0.3); }
+}
+.social-sky-gift{
+  position:absolute; right:-4px; top:-4px; font-size:14px;
+}
+.social-sky-me{
+  display:flex; flex-direction:column; align-items:center; gap:2px;
+  margin-top:8px; padding-top:10px;
+  border-top:1px dashed rgba(241,234,208,0.15);
+  color:rgba(241,234,208,0.75);
+}
+.social-sky-me .social-sky-name{ font-size:11px; }
+.social-sky-empty{
+  margin:14px 6px; font-size:13px; line-height:1.5;
+  color:rgba(241,234,208,0.7);
+}
+.social-sky-quiet{
+  width:auto !important; height:auto !important;
+  margin:12px 0 0 !important; padding:6px 16px !important;
+  border-radius:999px; border:1px solid rgba(241,234,208,0.3);
+  background:transparent; color:rgba(241,234,208,0.8);
+  font-size:13px; cursor:pointer;
+}
+.social-sky-quiet:hover{ color:#fff; border-color:rgba(241,234,208,0.55); }
+
+/* ---------- 🎁 Show & Gifts ---------- */
+.creation-show-overlay{
+  position:fixed; inset:0; z-index:2600;
+  background:rgba(10,13,26,0.5);
+  display:flex; align-items:center; justify-content:center;
+}
+.creation-show-panel{
+  width:min(560px,calc(100% - 48px));
+  max-height:min(620px,calc(100% - 48px));
+  overflow:auto;
+  border-radius:16px;
+  padding:18px 20px;
+  background:var(--panel-bg,#fff);
+  color:var(--text-primary,#222);
+  border:1px solid var(--cf-line,rgba(0,0,0,0.12));
+  box-shadow:0 20px 50px rgba(0,0,0,0.3);
+}
+.creation-show-title{ margin:0 0 4px; font-size:17px; }
+.creation-show-sub{ margin:0 0 10px; font-size:12.5px; color:var(--text-secondary,#666); }
+.creation-show-group{ margin:12px 0 6px; font-size:12px; letter-spacing:0.4px; color:var(--text-secondary,#666); }
+.creation-show-things{ display:flex; flex-wrap:wrap; gap:10px; }
+.creation-show-thing{
+  width:auto !important; height:auto !important; margin:0 !important;
+  padding:6px !important;
+  display:flex; flex-direction:column; align-items:center; gap:4px;
+  background:transparent; border:1px solid var(--cf-line,rgba(0,0,0,0.12));
+  border-radius:10px; cursor:pointer; max-width:110px;
+}
+.creation-show-thing img{ max-width:96px; max-height:72px; border-radius:6px; }
+.creation-show-thing-glyph{ font-size:26px; }
+.creation-show-thing-name{
+  font-size:11px; color:var(--text-primary,#222);
+  max-width:100px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.creation-show-who{ display:flex; flex-wrap:wrap; gap:8px; margin:8px 0; }
+.creation-show-who-btn{
+  width:auto !important; height:auto !important; margin:0 !important;
+  padding:7px 14px !important;
+  border-radius:999px; border:1.5px solid var(--gold,#d8a437);
+  background:transparent; color:var(--text-primary,#222);
+  font-size:13px; cursor:pointer;
+}
+.creation-show-who-btn:hover{ background:rgba(255,203,69,0.14); }
+.creation-show-note{ margin:10px 0 0; font-size:13px; line-height:1.5; color:var(--text-secondary,#666); }
+.creation-show-quiet{
+  width:auto !important; height:auto !important;
+  margin:12px 8px 0 0 !important; padding:6px 14px !important;
+  border-radius:999px; border:1px solid var(--cf-line,rgba(0,0,0,0.18));
+  background:transparent; color:var(--text-secondary,#555);
+  font-size:12.5px; cursor:pointer;
+}
+.creation-show-btns{ margin-top:12px; }
+.creation-gift-row{
+  width:100% !important; height:auto !important; margin:0 0 8px !important;
+  padding:9px 12px !important;
+  display:flex; flex-direction:column; align-items:flex-start; gap:2px;
+  text-align:left; background:transparent;
+  border:1px solid var(--cf-line,rgba(0,0,0,0.12)); border-radius:10px;
+  cursor:pointer;
+}
+.creation-gift-row.is-unseen{ border-color:var(--gold,#d8a437); }
+.creation-gift-name{ font-size:14px; font-weight:600; color:var(--text-primary,#222); }
+.creation-gift-from{ font-size:11.5px; color:var(--text-secondary,#666); }
+.creation-gift-stage{ position:relative; margin-top:8px; text-align:center; }
+.creation-gift-page{
+  max-width:100%; max-height:340px;
+  border-radius:8px; border:1px solid var(--cf-line,rgba(0,0,0,0.12));
+}
+.creation-gift-nav{ display:flex; justify-content:center; gap:10px; margin-top:6px; }
+.creation-gift-arrow{
+  width:auto !important; height:auto !important; margin:0 !important;
+  padding:2px 14px !important;
+  border-radius:999px; border:1px solid var(--cf-line,rgba(0,0,0,0.18));
+  background:transparent; font-size:16px; cursor:pointer;
+  color:var(--text-primary,#222);
+}
+.creation-gift-keep{
+  width:auto !important; height:auto !important; margin:0 !important;
+  padding:8px 18px !important;
+  border-radius:999px; border:1.5px solid var(--gold,#d8a437);
+  background:rgba(255,203,69,0.12); color:var(--text-primary,#222);
+  font-size:13.5px; font-weight:600; cursor:pointer;
+}
+.creation-gift-kept{ font-size:13px; color:var(--text-secondary,#666); }

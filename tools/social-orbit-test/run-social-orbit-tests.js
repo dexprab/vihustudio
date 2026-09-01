@@ -237,8 +237,11 @@ function sqlSection() {
     return { orbitBtn: !!document.querySelector('.creator-presence-orbit-add'),
              text: document.querySelector('.creator-presence-panel').innerText };
   }, null, { timeout: 30000 }).then((h) => h.jsonValue()).catch(() => null);
-  ck(!!shelf && shelf.orbitBtn && /Add to My Orbit/.test(shelf.text),
-     'B1  A CARD-HOLDER IS OFFERED 🌌 Add to My Orbit on the shelf', shelf && shelf.text.replace(/\n/g, ' · '));
+  // SOCIAL SKY R1 turned this check around: the child-facing words are
+  // sky words now (⭐ Put them in my Sky), never orbit — the internal
+  // model underneath is unchanged and section A still proves it.
+  ck(!!shelf && shelf.orbitBtn && /Put them in my Sky/.test(shelf.text),
+     'B1  A CARD-HOLDER IS OFFERED ⭐ Put them in my Sky on the shelf', shelf && shelf.text.replace(/\n/g, ' · '));
 
   const afterAdd = await page.evaluate(() => {
     document.querySelector('.creator-presence-orbit-add').click();
@@ -250,11 +253,13 @@ function sqlSection() {
       has: CreatorOrbit.has('stargirl'),
     };
   });
-  ck(afterAdd.state === 'In My Orbit ✓' && afterAdd.addGone && afterAdd.has,
-     'B2  ONE TAP AND THE RELATIONSHIP QUIETLY EXISTS — In My Orbit ✓, no request, no notification',
+  ck(afterAdd.state === 'In your Sky ✓' && afterAdd.addGone && afterAdd.has,
+     'B2  ONE TAP AND THE RELATIONSHIP QUIETLY EXISTS — In your Sky ✓, no request, no notification',
      JSON.stringify(afterAdd.state));
-  ck(afterAdd.leave && afterAdd.makeFor,
-     'B2b with a quiet Leave and 🎨 Make something for them beside it');
+  // Social Sky R1 §6 retired the make-for entry: Show starts from a
+  // creation in the Studio, so the shelf offers ONLY the quiet leave.
+  ck(afterAdd.leave && !afterAdd.makeFor,
+     'B2b with a quiet Leave — and the retired 🎨 make-for entry is GONE');
   await page.screenshot({ path: path.join(SHOTS, 'B2-orbit.png') });
 
   // ---- Circle appears only because both chose ----------------------
@@ -277,8 +282,8 @@ function sqlSection() {
       return { res: res, state: (document.querySelector('.creator-presence-orbit-state') || {}).textContent };
     });
   });
-  ck(circle.res.circle === true && circle.state === '✨ You’re in each other’s Circle',
-     'B3  MUTUAL CHOICE READS AS CIRCLE — a fact, never a button', circle.state);
+  ck(circle.res.circle === true && circle.state === '✨ You chose each other',
+     'B3  MUTUAL CHOICE READS AS A FACT — ✨ You chose each other, never a button', circle.state);
 
   const findPanel = await page.evaluate(() => {
     document.querySelector('.creator-presence-quiet').click();
@@ -312,31 +317,32 @@ function sqlSection() {
   await page.evaluate((id) => MagicCard.setActive(id), seeded.aCard);
 
   // ---------------------------------------------------------------
-  console.log('\nC. 🎨 MAKE SOMETHING FOR THEM — the whole journey');
+  console.log('\nC. 🎨 DEDICATIONS — retired entry, living history');
   // ---------------------------------------------------------------
-  const noted = await page.evaluate(() => {
+  // SOCIAL SKY R1 §6 retired "Make something for them": the correct
+  // direction is creation-first (an existing creation → Show → choose
+  // a Creator), proved end to end in tools/social-sky-test. What THIS
+  // section still owns is the historical rule — a dedication already
+  // made is a unit of the past: it keeps rendering wherever the story
+  // is met, and the recipient still hears about it. And no NEW story
+  // may be dedicated by accident, because nothing writes the note.
+  const noEntry = await page.evaluate(() => {
     CreatorPresence.open('stargirl', {});
-    document.querySelector('.creator-presence-makefor').click();
-    return { note: sessionStorage.getItem('vihu.makeFor.note'),
-             pass: !!sessionStorage.getItem('vihu.studioEntry.pass') || window.location.pathname };
-  }).catch(() => null);
-  // The press NAVIGATES through the one Studio door; by the time we
-  // can look, we may already be on studio.html. Either way the note
-  // must be down.
-  await page.waitForFunction(() => /studio\.html/.test(window.location.pathname), null, { timeout: 20000 }).catch(() => {});
-  const arrived = await page.evaluate(() => ({
-    where: window.location.pathname,
-    note: sessionStorage.getItem('vihu.makeFor.note'),
-  }));
-  ck(/studio\.html/.test(arrived.where) && arrived.note === 'stargirl',
-     'C1  THE PRESS LEAVES THROUGH THE ONE STUDIO DOOR, carrying a one-shot note — never a message',
-     JSON.stringify(arrived));
+    const gone = !document.querySelector('.creator-presence-makefor');
+    document.querySelector('.creator-presence-quiet').click();
+    return { gone: gone, note: sessionStorage.getItem('vihu.makeFor.note') };
+  });
+  ck(noEntry.gone && noEntry.note === null,
+     'C1  THE RETIRED ENTRY IS GONE AND NOTHING WRITES ITS NOTE — Show starts from a creation now',
+     JSON.stringify(noEntry));
 
-  await page.waitForFunction(() => typeof CreatorProjectStore !== 'undefined' &&
-    typeof CreatorOrbit !== 'undefined', null, { timeout: 20000 });
   const stamped = await page.evaluate(async () => {
+    // A dedication that ALREADY EXISTS (made before the entry retired)
+    // — seeded the way the store stamped it then — and a brand-new
+    // story beside it, which must NOT be dedicated.
     const first = CreatorProjectStore.newId();
-    CreatorProjectStore.upsert(first, { name: 'A Castle for the Star Garden' }, { version: 1, pages: [{ id: 'p1' }] });
+    CreatorProjectStore.upsert(first, { name: 'A Castle for the Star Garden', forUsername: 'stargirl' },
+      { version: 1, pages: [{ id: 'p1' }] });
     const second = CreatorProjectStore.newId();
     CreatorProjectStore.upsert(second, { name: 'Something Else' }, { version: 1, pages: [{ id: 'p1' }] });
     CreatorProjectStore.markPublished(first);
@@ -344,14 +350,11 @@ function sqlSection() {
     return {
       first: CreatorProjectStore.get(first).forUsername || null,
       second: CreatorProjectStore.get(second).forUsername || null,
-      noteAfter: sessionStorage.getItem('vihu.makeFor.note'),
       firstId: first,
     };
   });
-  ck(stamped.first === 'stargirl',
-     'C2  THE FIRST NEW STORY IS DEDICATED — forUsername on the record, like creatorName');
-  ck(stamped.second === null && stamped.noteAfter === null,
-     'C2b and the note is CONSUMED — one journey, one dedication, the second story is the child\'s alone');
+  ck(stamped.first === 'stargirl' && stamped.second === null,
+     'C2  A HISTORICAL DEDICATION STAYS ON ITS RECORD — and a new story is nobody\'s by default');
 
   // ---- the dedication where the story is met -----------------------
   await intoEther('/index.html?story=' + encodeURIComponent(stamped.firstId));
@@ -367,7 +370,7 @@ function sqlSection() {
     return false;
   }, null, { timeout: 45000, polling: 800 }).then((h) => h.jsonValue()).catch(() => null);
   ck(!!met && met.hidden === false && met.forLine === '🎨 For @stargirl',
-     'C3  THE PREVIEW SAYS WHO IT WAS MADE FOR — 🎨 For @stargirl', met && met.forLine);
+     'C3  THE PREVIEW STILL SAYS WHO IT WAS MADE FOR — 🎨 For @stargirl (units of the past)', met && met.forLine);
   await page.screenshot({ path: path.join(SHOTS, 'C3-dedication.png') });
 
   const readerLine = await page.evaluate(() => {
@@ -401,7 +404,7 @@ function sqlSection() {
     return res.lines;
   }, { bCard: seeded.bCard });
   ck(orbitNews.some((l) => /@moonmaker made something new$/.test(l)),
-     'C5  AN ORBITED CREATOR\'S NEW PUBLIC WORK IS ONE QUIET LINE — discovery, not a feed', JSON.stringify(orbitNews));
+     'C5  A CHOSEN CREATOR\'S NEW PUBLIC WORK IS ONE QUIET LINE — discovery, not a feed', JSON.stringify(orbitNews));
   ck(!orbitNews.some((l) => /\d/.test(l)),
      'C5b with no number in any line');
 

@@ -215,6 +215,17 @@ const CreatorSocial=(function(){
     const card=(typeof MagicCard!=='undefined'&&MagicCard.getActive)?MagicCard.getActive():null;
     if(!card||typeof CreatorOrbit==='undefined') return false;
 
+    // SOCIAL SKY R1 — the child's social world is a SKY now, not a
+    // list: Creators appear through their Companions, in three
+    // distinguishable layers, with the new-star and mutual glows.
+    // This function stays the one seam every door calls (the Studio
+    // Home row, the Ether's doorway note), so the presentation could
+    // change without a caller changing; the list below survives only
+    // as the fallback for a surface that did not load the Sky.
+    if(typeof SocialSky!=='undefined'&&SocialSky.open){
+      return SocialSky.open();
+    }
+
     const overlay=document.createElement('div');
     overlay.className='creator-social-overlay';
     const panel=document.createElement('div');

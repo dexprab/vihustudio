@@ -787,12 +787,76 @@ const EtherFeed = (function () {
   // `seed` versus `publish` is the distinction the runtime draws and it
   // matters here: Stories already in the Ether when a child opens it
   // did not arrive, they were already there, so they do not animate in.
+  // ---------- social gravity (SOCIAL SKY R1) ----------
+  // "Gravity determines whose creations can find me. Freshness
+  // determines which creation finds me first." The Sky changes the
+  // LIKELIHOOD that connected Creators' fresh, un-experienced
+  // creations cross the child's path — by starting a handful of them
+  // nearer the middle of the field, where the Traveller's gaze
+  // begins. Nothing else moves: the Ether stays ONE shared world,
+  // every story is still in it, nothing is filtered, and a Traveller
+  // holding no card gets exactly the id-seeded placement everybody
+  // always did. It uses the one seam the runtime already exposes — a
+  // story arriving WITH coordinates keeps them; storyManager's
+  // seedPosition only fires for stories without — so no file under
+  // vihuplanet/runtime/ changes, which is Decision 9's own test.
+  //
+  // The ordering is the frozen hierarchy: mutual (1) > I-chose-them
+  // (2) > they-chose-me (3) > everyone else (untouched), and inside a
+  // tier newer first. A story this card has already stepped into, or
+  // already Cheered, is never brought forward — Cheer means "I have
+  // acknowledged this", and the system moves the child toward new
+  // things. No number of any of this is visible anywhere.
+  function _hashStr(str) {
+    var h = 0; str = String(str || '');
+    for (var i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0;
+    return h;
+  }
+  function _applyGravity(universe, stories) {
+    try {
+      if (typeof SocialSky === 'undefined' || !SocialSky.tierOf) return;
+      if (typeof MagicCard === 'undefined' || !MagicCard.getActive || !MagicCard.getActive()) return;
+      var mine = null;
+      try { mine = MagicCard.getActive().username || null; } catch (e) {}
+      var ranked = [];
+      (stories || []).forEach(function (s) {
+        if (!s || typeof s.x === 'number') return;   // already placed (a birth)
+        var name = s.creatorUsername || (s.source && s.source.creatorUsername);
+        if (!name) return;
+        if (mine && String(name).toLowerCase() === String(mine).toLowerCase()) return; // my own work needs no gravity toward me
+        var tier = SocialSky.tierOf(name);
+        if (!tier) return;                           // normal shared-world discovery
+        var pid = s.source && s.source.projectId;
+        if (!pid) return;
+        try { if (SocialSky.experienced(pid)) return; } catch (e) {}
+        try { if (typeof Cheer !== 'undefined' && Cheer.mine && Cheer.mine(pid)) return; } catch (e) {}
+        ranked.push({ s: s, tier: tier, at: s.publishedAt || '' });
+      });
+      if (!ranked.length) return;
+      ranked.sort(function (a, b) {
+        if (a.tier !== b.tier) return a.tier - b.tier;
+        return a.at < b.at ? 1 : a.at > b.at ? -1 : 0;
+      });
+      var w = (universe.ether && universe.ether.width) || 1024;
+      var h = (universe.ether && universe.ether.height) || 640;
+      // A handful, never a takeover: the strongest, freshest few start
+      // near the centre; the rest of the sky keeps its own arrangement.
+      ranked.slice(0, 4).forEach(function (r, i) {
+        var ang = (_hashStr(r.s.id) % 1000) / 1000 * Math.PI * 2;
+        var ring = 0.10 + i * 0.06;
+        r.s.x = w * 0.5 + Math.cos(ang) * w * ring;
+        r.s.y = h * 0.5 + Math.sin(ang) * h * ring;
+      });
+    } catch (e) { /* gravity is a nicety; the shared world never breaks for it */ }
+  }
+
   // Only a Story published while somebody is watching is born.
   function attach(universe, opts) {
     if (!universe) return Promise.resolve([]);
     opts = opts || {};
 
     return load(opts).then(function (stories) {
+      _applyGravity(universe, stories);
       universe.seed(stories);
 
       // CATCHING UP WITH EVERYBODY ELSE'S STARLIGHT.

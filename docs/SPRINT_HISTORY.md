@@ -10646,3 +10646,39 @@ doorway "Open in your Studio" (one-shot note, consumed on arrival).
 tools/social-ether-identity-test (20) + social-orbit 32 +
 social-identity 98 + ether-share 21 + ether-encounter 94 — green.
 Canon: Decision 55.
+
+## Sprint SOCIAL SKY R1 — the Sky, Show, Gifts, and gravity (build 0725)
+
+The frozen R1 canon implemented on the Social 1/2 architecture, none of
+which was replaced. The child's social world is a SKY now (`js/socialSky.js`,
+behind the existing `CreatorSocial.openSocialPanel()` seam): Creators drawn
+through their Companions in three distinguishable layers — we chose each
+other · I chose them · they chose me — with temporary glows for a new star
+and a new mutual pair, settled by seeing the sky, never by a badge. "Who
+chose me" became owner-only visible (an explicit amendment to Decision 54,
+demanded by the frozen new-star experience): `creator_sky_list` is
+owner-verified and is the only reader; still no counts, no public lists, and
+the other side is never told. Show (`js/creationShow.js` + `creator_shows`,
+RLS on, no policies, four SECURITY DEFINER functions) replaced the retired
+make-for direction: creation-first, a snapshot at send time (historical rule
+proved — a Show survives the relationship ending), eligibility = the sender
+chose the recipient, recipient-only gifts with no read receipts, and Keep
+copying to the corresponding place (story → My Projects as a fresh private
+record, drawing → My Garden, letter → its own slot but never over the
+child's own ink). Mutuality's one R1 capability: `creator_mutual_projects`
+returns the other's non-Ether work, mutuality checked live in both
+directions. Ether gravity landed at the feed seam with zero runtime edits
+(a story arriving with coordinates keeps them): at most four fresh,
+un-experienced creations from the child's sky start nearer the field
+centre, mutual > chosen > chose-me, newer first, experienced/cheered never
+boosted, traveller untouched, nothing filtered. Two real catches: letters'
+ink lives under `glyph` (the first Show draft offered no letters — suite
+caught it), and the Social 2.1 social band had already pushed Studio Home
+54px past a 600px fold unmeasured — the two-door row and deeper
+short-window trims brought creation-home back to 84/84 with overflow 0.
+Suites: social-sky 59 (pg as real sessions + full browser journeys, key
+guards proved by reverting), social-orbit 31 (make-for checks turned round
+into historical-rule checks with reasons in place), social-ether-identity
+20 (panel checks became sky checks), social-identity 98, ether-share 21,
+ether-encounter 94, look-share 156. Deploy: `migrations_social_sky.sql`
+then `verify_social_sky.sql`. Decision 56.

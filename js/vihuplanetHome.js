@@ -2234,21 +2234,16 @@
       CreatorPresence.find({ meet: meetStory });
     });
 
-    // SOCIAL 2 — the shelf's 🎨 Make something for them leaves for
-    // the Studio through the ONE door (Decision 21), carrying a
-    // one-shot make-for note the store consumes on the first new
-    // story (intent crosses; state does not). And the card's orbit
-    // learns its platform copy once per visit — fire-and-forget, so
-    // a slow platform never delays anything a child is looking at.
+    // SOCIAL 2.1 / SOCIAL SKY R1 — the doorway from acting-in-context
+    // to seeing-and-understanding: Studio Home opens the child's Sky
+    // on arrival (one-shot note, consumed there). The shelf's old
+    // make-for entry is retired (§6 of the R1 canon): Show starts
+    // from a creation in the Studio, never from a Creator here.
+    // The card's own sky and choices learn their platform copies once
+    // per visit — fire-and-forget, so a slow platform never delays
+    // anything a child is looking at.
     if (typeof CreatorPresence !== 'undefined' && CreatorPresence.configure) {
       CreatorPresence.configure({
-        makeFor: function (name) {
-          try { if (typeof CreatorOrbit !== 'undefined') CreatorOrbit.noteMakeFor(name); } catch (e) {}
-          goStudio(JourneyResolver.recognised());
-        },
-        // SOCIAL 2.1 — the doorway from acting-in-context to
-        // seeing-and-managing: Studio Home opens the personal social
-        // area on arrival (one-shot note, consumed there).
         openSocial: function () {
           try { if (typeof CreatorOrbit !== 'undefined') CreatorOrbit.noteOpenSocial(); } catch (e) {}
           goStudio(JourneyResolver.recognised());
@@ -2256,6 +2251,7 @@
       });
     }
     try { if (typeof CreatorOrbit !== 'undefined') CreatorOrbit.refresh(); } catch (e) {}
+    try { if (typeof SocialSky !== 'undefined') SocialSky.refresh(); } catch (e) {}
 
     el.cheer.addEventListener('click', function () {
       if (!met) return;
@@ -2296,6 +2292,16 @@
     // paused, which is what makes coming back exact.
     function openPortal() {
       if (!met || !pages.length) return;
+      // SOCIAL SKY R1 — stepping into a story is what "experienced"
+      // means. Stamped per card, read by the feed's gravity so an
+      // already-experienced creation stops coming forward and the
+      // child is moved toward new things. Never shown, never a score;
+      // a Traveller holding no card stamps nothing.
+      try {
+        if (typeof SocialSky !== 'undefined' && SocialSky.markExperienced) {
+          SocialSky.markExperienced(projectIdOf(met));
+        }
+      } catch (e) {}
       var node = universe.layer.nodeFor(met.id);
       var origin = node ? node.el.getBoundingClientRect() : null;
       var host = universe.root.getBoundingClientRect();

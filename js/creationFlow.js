@@ -287,6 +287,29 @@ const CreationFlow=(function(){
       });
       card.appendChild(look);
     }
+    // SOCIAL SKY R1 — Show starts FROM the creation (the canon's
+    // order: the creation exists, then a Creator is chosen for it).
+    // Only for a card-holder with somebody in their sky to show to —
+    // absent otherwise, never locked.
+    if(typeof window.CreationShow!=='undefined'
+       &&typeof MagicCard!=='undefined'&&MagicCard.getActive&&MagicCard.getActive()
+       &&CreationShow.recipients().length){
+      const show=_el('button','creation-flow-project-show','🎁 Show');
+      show.type='button';
+      show.setAttribute('aria-label','Show this to a Creator');
+      show.addEventListener('click',function(e){
+        e.stopPropagation();
+        CreationShow.openShowDialog({
+          kind:'story', id:record.id, name:record.name||'A story',
+          image:record.thumbnail||null,
+          place:{store:'projects'},
+          payload:function(){
+            return {name:record.name||'A story',thumbnail:record.thumbnail||null,data:record.data};
+          }
+        });
+      });
+      card.appendChild(show);
+    }
     function open(){ _openProjectRecord(record); }
     card.addEventListener('click',open);
     card.addEventListener('keydown',function(e){
@@ -860,25 +883,9 @@ const CreationFlow=(function(){
     const slot=_el('div','creation-flow-social');
     content.appendChild(slot);
 
-    // SOCIAL 2 — a make-for journey says where it is going. The child
-    // pressed 🎨 Make something for them in the Ether; the first new
-    // story they start here is dedicated. "Not now" clears the intent
-    // and nothing else — no message was ever going to be sent.
-    try{
-      if(typeof CreatorOrbit!=='undefined'&&CreatorOrbit.pendingFor&&CreatorOrbit.pendingFor()){
-        const band=_el('div','creation-flow-makefor');
-        band.appendChild(_el('span','creation-flow-makefor-line',
-          '🎨 Making something for @'+CreatorOrbit.pendingFor()+' ✨'));
-        const drop=_el('button','creation-flow-makefor-quiet','not now');
-        drop.type='button';
-        drop.addEventListener('click',function(){
-          CreatorOrbit.clearMakeFor();
-          band.remove();
-        });
-        band.appendChild(drop);
-        slot.appendChild(band);
-      }
-    }catch(e){}
+    // (The SOCIAL 2 make-for banner that stood here is retired with
+    // its entry — Social Sky R1 §6: Show starts from a creation, so
+    // there is no longer an intent that arrives ahead of one.)
 
     try{
       CreatorSocial.activityLines().then(function(res){
@@ -892,25 +899,54 @@ const CreationFlow=(function(){
       }).catch(function(){});
     }catch(e){}
 
-    // SOCIAL 2.1 — Studio Home is the home of the child's social
-    // world: 🌌 My Orbit · ✨ My Circle, one quiet row for a Creator
-    // holding a card. Absent for a Traveller — a relationship needs
-    // somebody to belong to. And an Ether doorway note opens it on
-    // arrival ("Ether lets me act socially in context; Studio Home
-    // lets me understand and manage my social world").
+    // SOCIAL SKY R1 — Studio Home is the home of the child's social
+    // world, and that world is a SKY: 🌌 My Sky (the visualization,
+    // Companions in three layers) and 🎁 Gifts (things other Creators
+    // have shown them), one quiet row for a Creator holding a card.
+    // Absent for a Traveller — a relationship needs somebody to
+    // belong to. The Ether's doorway note still opens the Sky on
+    // arrival. The Gifts label gains a quiet ✨ when something unseen
+    // is waiting — a mark, never a number.
     try{
       if(typeof CreatorOrbit!=='undefined'&&typeof MagicCard!=='undefined'
          &&MagicCard.getActive&&MagicCard.getActive()
          &&typeof CreatorSocial!=='undefined'&&CreatorSocial.openSocialPanel){
         const socialRow=_el('div','creation-flow-socialdoor');
-        const openBtn=_el('button','creation-flow-socialdoor-btn','🌌 My Orbit · ✨ My Circle');
+        const openBtn=_el('button','creation-flow-socialdoor-btn','🌌 My Sky');
         openBtn.type='button';
         openBtn.addEventListener('click',function(){ CreatorSocial.openSocialPanel(); });
         socialRow.appendChild(openBtn);
+        if(typeof CreationShow!=='undefined'&&CreationShow.openGifts){
+          const giftsBtn=_el('button','creation-flow-socialdoor-btn','🎁 Gifts');
+          giftsBtn.type='button';
+          giftsBtn.addEventListener('click',function(){ CreationShow.openGifts(); });
+          socialRow.appendChild(giftsBtn);
+          CreationShow.refresh().then(function(){
+            if(giftsBtn.isConnected&&CreationShow.unseen().length){
+              giftsBtn.textContent='🎁 Gifts ✨';
+            }
+          }).catch(function(){});
+        }
         slot.appendChild(socialRow);
         if(CreatorOrbit.consumeOpenSocial&&CreatorOrbit.consumeOpenSocial()){
           window.setTimeout(function(){ CreatorSocial.openSocialPanel(); },250);
         }
+      }
+    }catch(e){}
+
+    // The Sky's creative events — "✨ New stars are interested in
+    // your creations" · "✨ You and @name found each other" — shown
+    // until the child has had an opportunity to SEE the sky itself
+    // (opening it is what settles the glow and quiets these). Never
+    // "X followed you", never a count.
+    try{
+      if(typeof SocialSky!=='undefined'&&SocialSky.refresh){
+        SocialSky.refresh().then(function(){
+          if(!slot.isConnected) return;
+          SocialSky.eventLines().slice(0,3).forEach(function(line){
+            slot.appendChild(_el('div','creation-flow-activity',line));
+          });
+        }).catch(function(){});
       }
     }catch(e){}
 
