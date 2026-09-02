@@ -504,6 +504,42 @@ function sqlSection() {
        /In your Sky|You chose each other/.test(foundNew.nowSays),
        'S4  FIND A CREATOR → their space → ⭐ ONE TAP puts them in the sky — the same one-way choice, no request, no approval', foundNew.name);
 
+    // ---- SK: the sky answers the choice immediately (R3.2) ---------
+    // Reported: "adding a creator from sky does not reflect in sky
+    // until refreshed" — layers() prefers the platform's CACHED copy
+    // of the sky, which only a round trip rewrote, and refresh() runs
+    // once per load. noteChoice() is the local echo: the tap lands
+    // NOW, the platform's copy replaces the guess when next heard.
+    // Proved against the seeded cache (it holds only stargirl), so on
+    // the old code ghostkid stays missing here.
+    const liveAdd = await page.evaluate(async () => {
+      Array.from(document.querySelectorAll('.social-sky-quiet'))
+        .find((b) => /Back to My Sky/.test(b.textContent)).click();
+      await new Promise((r) => setTimeout(r, 150));
+      return {
+        field: !!document.querySelector('.social-sky-field'),
+        star: Array.from(document.querySelectorAll('.social-sky-star .social-sky-name'))
+          .some((n) => n.textContent === '@ghostkid'),
+      };
+    });
+    ck(liveAdd.field && liveAdd.star,
+       'SK1 A CREATOR CHOSEN IN THE SKY IS IN THE SKY — the new star stands in the field the moment the child walks back, no page load in between');
+    const liveRemove = await page.evaluate(async () => {
+      Array.from(document.querySelectorAll('.social-sky-star'))
+        .find((s) => /@ghostkid/.test(s.textContent)).click();
+      await new Promise((r) => setTimeout(r, 150));
+      Array.from(document.querySelectorAll('.social-sky-quiet'))
+        .find((b) => /Take out of my Sky/.test(b.textContent)).click();
+      await new Promise((r) => setTimeout(r, 150));
+      Array.from(document.querySelectorAll('.social-sky-quiet'))
+        .find((b) => /Back to My Sky/.test(b.textContent)).click();
+      await new Promise((r) => setTimeout(r, 150));
+      return !Array.from(document.querySelectorAll('.social-sky-star .social-sky-name'))
+        .some((n) => n.textContent === '@ghostkid');
+    });
+    ck(liveRemove,
+       'SK2 and taking them out empties that place at once — the sky never argues with the child\'s own choice');
+
     // ---- S5: "show them something" pre-answers the chooser ---------
     const preset = await page.evaluate(async () => {
       document.querySelectorAll('.creation-show-overlay, .social-sky-overlay')
@@ -525,6 +561,58 @@ function sqlSection() {
     });
     ck(preset.note && /For @stargirl/.test(preset.forWho) && preset.noChooser,
        'S5  FROM A CREATOR\'S SPACE, SHOW SKIPS THE CHOOSER — the answer was already given; the child just picks the creation and writes the note');
+
+    // ---- PP: one overlay hosts the whole social world (R3.2) -------
+    // Reported: "we are having too many popups" — Show and Gifts each
+    // opened their own overlay over (or in place of) the Sky's.
+    // Launched from inside the Sky they are now VIEWS of the same
+    // panel, dressed in its night, and Back lands where the child was.
+    const hosted = await page.evaluate(async () => {
+      document.querySelectorAll('.social-sky-overlay, .creation-show-overlay')
+        .forEach((o) => o.remove());
+      SocialSky.open({ creator: 'stargirl' });
+      await new Promise((r) => setTimeout(r, 150));
+      document.querySelector('.social-sky-space-show').click();
+      await new Promise((r) => setTimeout(r, 150));
+      const out = {
+        overlays: document.querySelectorAll('.social-sky-overlay, .creation-show-overlay').length,
+        inSky: !!document.querySelector('.social-sky-overlay .creation-show-panel.is-hosted'),
+        picker: !!document.querySelector('.creation-show-thing'),
+      };
+      Array.from(document.querySelectorAll('.creation-show-quiet'))
+        .find((b) => /^Back$/.test(b.textContent)).click();
+      await new Promise((r) => setTimeout(r, 150));
+      out.backTo = !!document.querySelector('.social-sky-space');
+      return out;
+    });
+    ck(hosted.overlays === 1 && hosted.inSky && hosted.picker,
+       'PP1 SHOW FROM THE SKY IS A VIEW OF THE SKY — one overlay for the whole social world, never a popup over a popup',
+       'overlays=' + hosted.overlays);
+    ck(hosted.backTo,
+       'PP2 and Back lands exactly where the child was standing — the Creator\'s space, not the Studio underneath');
+    const giftHosted = await page.evaluate(async (s) => {
+      document.querySelectorAll('.social-sky-overlay, .creation-show-overlay')
+        .forEach((o) => o.remove());
+      localStorage.setItem('vihu.gifts.' + s.aCard, JSON.stringify(
+        [{ id: 'g1', from: 'stargirl', companion: 'quill', kind: 'drawing', name: 'A drawing', seen: false }]));
+      SocialSky.open();
+      await new Promise((r) => setTimeout(r, 250));
+      const badge = document.querySelector('.social-sky-gift');
+      if (!badge) return { badge: false };
+      badge.click();
+      await new Promise((r) => setTimeout(r, 250));
+      const out = {
+        badge: true,
+        overlays: document.querySelectorAll('.social-sky-overlay, .creation-show-overlay').length,
+        inSky: !!document.querySelector('.social-sky-overlay .creation-show-panel.is-hosted'),
+      };
+      document.querySelectorAll('.social-sky-overlay, .creation-show-overlay')
+        .forEach((o) => o.remove());
+      return out;
+    }, seeded);
+    ck(giftHosted.badge && giftHosted.overlays === 1 && giftHosted.inSky,
+       'PP3 A STAR\'S 🎁 OPENS THE GIFT INSIDE THE SKY TOO — the arrival plays in the same night, one popup from first tap to last',
+       JSON.stringify(giftHosted));
 
     // ---- J13: a Traveller has none of this -------------------------
     const trav = await page.evaluate(() => {

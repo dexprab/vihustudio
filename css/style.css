@@ -14235,6 +14235,48 @@ body.studio-rite-running .companion-chat-open{ display:none !important; }
   pointer-events:none;
   z-index:3;
 }
+/* R3.2 — A SKY, NOT A DIAGRAM. Two extra star layers twinkling at
+   their own slow pace, and a faint aurora resting low in the field.
+   Calm before spectacle (Decision 9): nothing flashes, nothing moves
+   fast, and reduced motion stills all of it. */
+.social-sky-field::before,
+.social-sky-field::after{
+  content:''; position:absolute; inset:0; pointer-events:none;
+}
+.social-sky-field::before{
+  background:
+    radial-gradient(circle at 7% 12%,  rgba(255,255,255,0.55) 0 0.7px, transparent 1.7px),
+    radial-gradient(circle at 31% 7%,  rgba(255,244,214,0.45) 0 0.6px, transparent 1.5px),
+    radial-gradient(circle at 46% 27%, rgba(255,255,255,0.40) 0 0.6px, transparent 1.5px),
+    radial-gradient(circle at 61% 15%, rgba(255,255,255,0.50) 0 0.7px, transparent 1.7px),
+    radial-gradient(circle at 78% 8%,  rgba(255,244,214,0.42) 0 0.6px, transparent 1.5px),
+    radial-gradient(circle at 92% 27%, rgba(255,255,255,0.45) 0 0.6px, transparent 1.5px),
+    radial-gradient(circle at 15% 44%, rgba(255,255,255,0.40) 0 0.6px, transparent 1.5px),
+    radial-gradient(circle at 88% 52%, rgba(255,244,214,0.40) 0 0.6px, transparent 1.5px),
+    radial-gradient(circle at 27% 68%, rgba(255,255,255,0.42) 0 0.6px, transparent 1.5px),
+    radial-gradient(circle at 70% 64%, rgba(255,255,255,0.38) 0 0.6px, transparent 1.4px),
+    radial-gradient(circle at 44% 88%, rgba(255,244,214,0.40) 0 0.6px, transparent 1.5px),
+    radial-gradient(circle at 83% 86%, rgba(255,255,255,0.44) 0 0.6px, transparent 1.5px);
+  opacity:0.35;
+  animation:social-sky-twinkle-a 9s ease-in-out infinite;
+}
+.social-sky-field::after{
+  background:
+    radial-gradient(circle at 22% 18%, rgba(255,255,255,0.40) 0 0.5px, transparent 1.3px),
+    radial-gradient(circle at 54% 6%,  rgba(255,255,255,0.36) 0 0.5px, transparent 1.3px),
+    radial-gradient(circle at 96% 14%, rgba(255,244,214,0.36) 0 0.5px, transparent 1.3px),
+    radial-gradient(circle at 5% 74%,  rgba(255,255,255,0.38) 0 0.5px, transparent 1.3px),
+    radial-gradient(circle at 36% 52%, rgba(255,255,255,0.32) 0 0.5px, transparent 1.2px),
+    radial-gradient(circle at 62% 78%, rgba(255,244,214,0.36) 0 0.5px, transparent 1.3px),
+    radial-gradient(circle at 94% 68%, rgba(255,255,255,0.34) 0 0.5px, transparent 1.2px),
+    radial-gradient(circle at 12% 92%, rgba(255,255,255,0.36) 0 0.5px, transparent 1.3px),
+    radial-gradient(ellipse at 26% 82%, rgba(120,96,200,0.10) 0%, transparent 52%),
+    radial-gradient(ellipse at 76% 20%, rgba(72,140,190,0.09) 0%, transparent 48%);
+  opacity:0.6;
+  animation:social-sky-twinkle-b 13s ease-in-out infinite;
+}
+@keyframes social-sky-twinkle-a{ 0%,100%{ opacity:0.22; } 50%{ opacity:0.55; } }
+@keyframes social-sky-twinkle-b{ 0%,100%{ opacity:0.6; } 50%{ opacity:0.3; } }
 .social-sky-lines{
   position:absolute; inset:0; width:100%; height:100%;
   pointer-events:none; z-index:1;
@@ -14244,7 +14286,11 @@ body.studio-rite-running .companion-chat-open{ display:none !important; }
   stroke-width:0.28;
   stroke-linecap:round;
   stroke-dasharray:1.1 1.5;
+  /* starlight travelling the constellation line, far too slowly to
+     be watched — only to be alive. */
+  animation:social-sky-line-drift 30s linear infinite;
 }
+@keyframes social-sky-line-drift{ to{ stroke-dashoffset:-26; } }
 /* One star = one Creator, standing where the relationship puts them.
    Positioned absolutely (inline left/top from the layout), centred on
    its own point. */
@@ -14263,13 +14309,23 @@ body.studio-rite-running .companion-chat-open{ display:none !important; }
   display:flex; align-items:center; justify-content:center;
   border-radius:50%;
   background:radial-gradient(circle,rgba(255,255,255,0.10) 0%,transparent 70%);
-  transition:transform 220ms ease;
+  /* R3.2 — each Companion floats gently at its own pace, the way
+     everything in the Ether already drifts. The float owns the
+     figure's transform, so the reach-for-it scale moved to the image
+     itself — the two never fight over one property. */
+  animation:social-sky-float 8s ease-in-out infinite;
 }
-.social-sky-star:hover .social-sky-figure,
-.social-sky-star:focus-visible .social-sky-figure{ transform:scale(1.08); }
+.social-sky-star:nth-child(2n) .social-sky-figure{ animation-duration:10.5s; animation-delay:-3.4s; }
+.social-sky-star:nth-child(3n) .social-sky-figure{ animation-duration:12.5s; animation-delay:-6.8s; }
+@keyframes social-sky-float{ 0%,100%{ transform:translateY(0); } 50%{ transform:translateY(-5px); } }
 .social-sky-companion{
   filter:drop-shadow(0 0 7px rgba(255,255,255,0.28));
+  transition:transform 220ms ease;
 }
+.social-sky-star:hover .social-sky-companion,
+.social-sky-star:focus-visible .social-sky-companion{ transform:scale(1.1); }
+.social-sky-star:hover .social-sky-plain,
+.social-sky-star:focus-visible .social-sky-plain{ transform:scale(1.1); }
 .social-sky-plain{ color:#e8e2c8; }
 /* The name is contextual, never the identity: small and dim until the
    child reaches for the star. */
@@ -14290,7 +14346,10 @@ body.studio-rite-running .companion-chat-open{ display:none !important; }
 }
 .social-sky-star.is-mutual .social-sky-companion{ max-width:60px; max-height:60px; }
 .social-sky-star.is-mutual .social-sky-plain{ font-size:30px; }
-.social-sky-star.is-chosen .social-sky-figure{ width:54px; height:54px; }
+.social-sky-star.is-chosen .social-sky-figure{
+  width:54px; height:54px;
+  background:radial-gradient(circle,rgba(255,235,180,0.16) 0%,transparent 72%);
+}
 .social-sky-star.is-chosen .social-sky-companion{ max-width:48px; max-height:48px; }
 .social-sky-star.is-chosen .social-sky-plain{ font-size:24px; }
 .social-sky-star.is-far{ opacity:0.68; }
@@ -14317,6 +14376,12 @@ body.studio-rite-running .companion-chat-open{ display:none !important; }
 @media (prefers-reduced-motion: reduce){
   .social-sky-star.is-new .social-sky-figure{ animation:none; box-shadow:0 0 14px 3px rgba(255,255,255,0.3); }
   .social-sky-star.is-mutual.is-new .social-sky-figure{ animation:none; box-shadow:0 0 16px 4px rgba(255,215,130,0.4); }
+  /* R3.2 — the sky stands still: no twinkle, no float, no breathing,
+     no travelling line. It is still a beautiful night; it just does
+     not move. */
+  .social-sky-field::before,.social-sky-field::after,
+  .social-sky-figure,.social-sky-me .social-sky-figure,
+  .social-sky-find-plus,.social-sky-lines line{ animation:none; }
 }
 /* "They have something to show me" — one small mark on the star, a
    real control of its own, never a badge with a number. */
@@ -14342,6 +14407,12 @@ body.studio-rite-running .companion-chat-open{ display:none !important; }
 .social-sky-me .social-sky-figure{
   width:96px; height:96px;
   background:radial-gradient(circle,rgba(255,224,150,0.20) 0%,rgba(255,224,150,0.06) 55%,transparent 75%);
+  /* the centre rests — its light breathes instead of floating */
+  animation:social-sky-me-breathe 6.5s ease-in-out infinite;
+}
+@keyframes social-sky-me-breathe{
+  0%,100%{ box-shadow:0 0 0 0 rgba(255,224,150,0); }
+  50%{ box-shadow:0 0 30px 8px rgba(255,224,150,0.13); }
 }
 .social-sky-me .social-sky-companion{ max-width:86px; max-height:86px;
   filter:drop-shadow(0 0 12px rgba(255,224,150,0.35)); }
@@ -14387,6 +14458,11 @@ body.studio-rite-running .companion-chat-open{ display:none !important; }
   background:radial-gradient(circle,rgba(255,215,130,0.14) 0%,transparent 72%);
   border:1px dashed rgba(255,215,130,0.4);
   transition:background .3s ease, border-color .3s ease;
+  animation:social-sky-find-breathe 5.5s ease-in-out infinite;
+}
+@keyframes social-sky-find-breathe{
+  0%,100%{ box-shadow:0 0 0 0 rgba(255,215,130,0); }
+  50%{ box-shadow:0 0 14px 3px rgba(255,215,130,0.16); }
 }
 .social-sky-find-star:hover .social-sky-find-plus{
   background:radial-gradient(circle,rgba(255,215,130,0.28) 0%,transparent 74%);
@@ -14513,6 +14589,54 @@ body.studio-rite-running .companion-chat-open{ display:none !important; }
      untouched. */
   text-align:center;
 }
+/* R3.2 — HOSTED IN THE SKY: launched from within the Sky overlay the
+   Show/Gift surface becomes a VIEW of that same panel rather than a
+   popup over a popup (one overlay hosts the whole social world), and
+   it dresses in the sky's own night so the child never leaves it. */
+.creation-show-panel.is-hosted{
+  flex:1; min-width:0; width:auto; height:100%; max-height:none;
+  box-sizing:border-box; overflow:auto;
+  border:0; border-radius:0; box-shadow:none;
+  padding:24px 26px 20px;
+  background:
+    radial-gradient(ellipse at 50% 42%, rgba(52,66,118,0.25) 0%, transparent 62%),
+    linear-gradient(180deg,#0a0e1c 0%,#121a32 58%,#0c1120 100%);
+  color:rgba(241,234,208,0.92);
+}
+.creation-show-panel.is-hosted .creation-show-title,
+.creation-show-panel.is-hosted .creation-gift-name,
+.creation-show-panel.is-hosted .show-journey-line{ color:#f5eeda; }
+.creation-show-panel.is-hosted .creation-show-sub,
+.creation-show-panel.is-hosted .creation-show-group,
+.creation-show-panel.is-hosted .creation-show-note,
+.creation-show-panel.is-hosted .creation-gift-from,
+.creation-show-panel.is-hosted .creation-gift-kept{ color:rgba(241,234,208,0.68); }
+.creation-show-panel.is-hosted .creation-show-thing,
+.creation-show-panel.is-hosted .creation-gift-row{
+  border-color:rgba(241,234,208,0.2);
+  background:rgba(12,17,32,0.5);
+}
+.creation-show-panel.is-hosted .creation-show-thing-name,
+.creation-show-panel.is-hosted .creation-show-who-btn,
+.creation-show-panel.is-hosted .creation-gift-row .creation-gift-name{ color:rgba(241,234,208,0.88); }
+.creation-show-panel.is-hosted .creation-gift-row.is-unseen{ border-color:rgba(255,215,130,0.55); }
+.creation-show-panel.is-hosted .creation-show-quiet,
+.creation-show-panel.is-hosted .creation-gift-arrow{
+  border-color:rgba(241,234,208,0.3);
+  background:rgba(12,17,32,0.5);
+  color:rgba(241,234,208,0.8);
+}
+.creation-show-panel.is-hosted .creation-gift-keep{
+  border-color:rgba(255,215,130,0.6);
+  background:rgba(255,215,130,0.12);
+  color:#f5eeda;
+}
+.creation-show-panel.is-hosted .creation-show-notefield{
+  border-color:rgba(241,234,208,0.3);
+  background:rgba(12,17,32,0.6);
+  color:#f5eeda;
+}
+.creation-show-panel.is-hosted .creation-gift-page{ border-color:rgba(241,234,208,0.25); }
 .creation-show-title{ margin:0 0 4px; font-size:17px; }
 .creation-show-sub{ margin:0 0 10px; font-size:12.5px; color:var(--text-secondary,#666); }
 .creation-show-group{ margin:12px 0 6px; font-size:12px; letter-spacing:0.4px; color:var(--text-secondary,#666); }
@@ -14546,7 +14670,13 @@ body.studio-rite-running .companion-chat-open{ display:none !important; }
   border-radius:999px; border:1px solid var(--cf-line,rgba(0,0,0,0.18));
   background:transparent; color:var(--text-secondary,#555);
   font-size:12.5px; cursor:pointer;
+  /* R3.2 — the base button{display:flex} makes every auto-width button
+     BLOCK-level, so the panel's text-align:center could never centre
+     one: it hugged the left however the panel was aligned. inline-flex
+     keeps the flex innards and lets the centring finally apply. */
+  display:inline-flex;
 }
+.creation-gift-keep{ display:inline-flex; }
 .creation-show-btns{
   margin-top:12px;
   display:flex; justify-content:center; align-items:center; gap:8px;

@@ -140,6 +140,42 @@ const SocialSky=(function(){
     _write(SEEN_KEY,card.id,seen);
   }
 
+  // R3.2 — THE SKY ANSWERS A CHOICE IMMEDIATELY. CreatorOrbit.add()
+  // lands in the ORBIT store, but layers() prefers the platform's
+  // CACHED copy of the sky (KEY) — which only a round trip rewrites,
+  // and refresh() runs once per load. So a Creator chosen from their
+  // own space stayed missing from the field until the next page load
+  // ("until refreshed"). The local echo is the orbit's own local-first
+  // discipline: the tap lands NOW, and the platform's copy replaces
+  // the guess when it is next heard (_refreshed is cleared so it will
+  // be). Mutuality is still only ever the platform's to say — except
+  // where its own cached copy already says they chose me, in which
+  // case my choice visibly completes the circle right here.
+  function noteChoice(username,companion,chosen){
+    const card=_card();
+    const name=_norm(username);
+    if(!card||!name) return;
+    const cached=_read(KEY,card.id);
+    if(Array.isArray(cached.sky)){
+      const kept=cached.sky.filter(function(e){
+        return e&&e.username&&_norm(e.username)!==name;
+      });
+      if(chosen){
+        const cm=(Array.isArray(cached.choseMe)?cached.choseMe:[]).find(function(e){
+          return e&&_norm(e.username)===name;
+        });
+        kept.push({
+          username:name,
+          companion:companion||(cm&&cm.companion)||null,
+          circle:!!cm
+        });
+      }
+      cached.sky=kept;
+      _write(KEY,card.id,cached);
+    }
+    _refreshed=false;
+  }
+
   // Creative events for Studio Home — never a follower notification,
   // never a name in the new-star line (the identity is discovered in
   // the sky, not announced at the door), never a count.
@@ -278,6 +314,11 @@ const SocialSky=(function(){
         ev.stopPropagation();
         try{
           if(typeof CreationShow!=='undefined'&&CreationShow.openGifts){
+            // R3.2 — hosted in the same overlay where one exists
+            // (openGift), so the gift is a view of the sky rather
+            // than a popup replacing it; the module fallback keeps
+            // the old overlay for a caller with no panel.
+            if(opts.openGift){ opts.openGift(entry.username); return; }
             if(opts.onGift) opts.onGift();
             CreationShow.openGifts({from:entry.username});
           }
@@ -388,14 +429,16 @@ const SocialSky=(function(){
         if(chosenNow){
           // The first social act beyond Cheer is a CREATION (Decision
           // 54) — offered here because this is where the child is
-          // already thinking about this Creator.
+          // already thinking about this Creator. Hosted IN the sky
+          // panel (R3.2): a view of the same overlay, never a second
+          // popup, and Back lands where the child was standing.
           try{
             if(typeof CreationShow!=='undefined'&&CreationShow.canShow&&CreationShow.canShow()){
               const showBtn=_el('button','social-sky-space-show','🎁 Show them something you made');
               showBtn.type='button';
               showBtn.addEventListener('click',function(){
-                done();
-                CreationShow.openShowDialog(null,{to:name});
+                CreationShow.openShowDialog(null,{to:name,
+                  host:{mount:panel,done:function(){ renderSpace(name,companion); }}});
               });
               rel.appendChild(showBtn);
             }
@@ -404,6 +447,7 @@ const SocialSky=(function(){
           out.type='button';
           out.addEventListener('click',function(){
             try{ CreatorOrbit.remove(name).then(drawRel); }catch(e){}
+            noteChoice(name,companion,false);
             drawRel();
           });
           rel.appendChild(out);
@@ -412,6 +456,9 @@ const SocialSky=(function(){
           add.type='button';
           add.addEventListener('click',function(){
             try{ CreatorOrbit.add(name).then(drawRel); }catch(e){}
+            // The field shows the new star the moment the child walks
+            // back to it — no page load in between (R3.2).
+            noteChoice(name,companion,true);
             drawRel();
           });
           rel.appendChild(add);
@@ -424,8 +471,10 @@ const SocialSky=(function(){
         const g=_el('button','social-sky-space-gift','🎁 They have something to show you');
         g.type='button';
         g.addEventListener('click',function(){
-          done();
-          try{ CreationShow.openGifts({from:name}); }catch(e){}
+          try{
+            CreationShow.openGifts({from:name,
+              host:{mount:panel,done:function(){ renderSpace(name,companion); }}});
+          }catch(e){}
         });
         space.appendChild(g);
       }
@@ -671,7 +720,9 @@ const SocialSky=(function(){
             cls:cls, x:p.x, y:p.y,
             glow:!!(glowMap&&glowMap[name]),
             gift:!!gifts[name],
-            onGift:done,
+            openGift:function(u){
+              CreationShow.openGifts({from:u,host:{mount:panel,done:render}});
+            },
             onOpen:function(u,c){ renderSpace(u,c); }
           }));
         });
@@ -743,6 +794,7 @@ const SocialSky=(function(){
     mutualProjects:mutualProjects,
     experienced:experienced,
     markExperienced:markExperienced,
+    noteChoice:noteChoice,
     configure:configure,
     open:open
   };

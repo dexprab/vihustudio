@@ -11083,3 +11083,38 @@ row centred as flex), while the gift LIST rows keep their own
 explicit `text-align:left` untouched. Verified by re-shooting the
 journey: the Creator space, the arrival card and the departure card
 all centred. show-journey 51 and social-sky 65 green.
+
+## Build 0740 — R3.2: the sky answers the choice, wears its stars, and stops stacking popups
+
+Three reports from the product owner, three causes. (1) "Adding a
+creator from sky does not reflect in sky until refreshed" — layers()
+prefers the platform's CACHED copy of the sky, which only a round
+trip rewrites, and refresh() runs once per load; CreatorOrbit.add()
+writes the orbit store the cache shadows. noteChoice() is the local
+echo (the orbit's own local-first discipline): the tap patches the
+cached sky NOW — completing a circle on the spot where the cache
+already says they chose me — and clears the refreshed latch so the
+platform's truth replaces the guess when next heard. SK1/SK2 walk it
+in the field and SK1 goes red with the echo reverted. (2) "The sky is
+very bland" — two extra star layers now twinkle at their own slow
+pace over the field, a faint aurora rests low in it, every Companion
+floats gently at its own rate (the float owns the figure's transform,
+so the reach-for-it scale moved to the image — the two never fight
+over one property), the centre breathes its warm light, chosen stars
+carry a warmer pool, starlight travels the constellation line too
+slowly to watch, and the ＋ find star breathes. Calm before spectacle:
+nothing flashes, and reduced motion stills all of it. (3) "We are
+having too many popups" — Show and Gifts each opened their own
+overlay over (or in place of) the Sky's. openShowDialog and openGifts
+now take a host: launched from inside the Sky they render as VIEWS of
+the same panel, dressed in its night (.is-hosted), and Back lands
+exactly where the child was standing — Creator space or field — so
+the whole social world is ONE popup from first tap to last. Every
+caller with no host keeps the overlay it always had. PP1–PP3 measure
+one overlay through Show and a star's 🎁 alike. And the probe found
+the deeper alignment truth under R3.1: the base button{display:flex}
+makes every auto-width button BLOCK-level, so text-align:center could
+never centre one — .creation-show-quiet and .creation-gift-keep are
+inline-flex now, which is why the quiet buttons finally sit where
+their panel's centring puts them. show-journey 56 and social-sky 65
+green; no server changes.

@@ -421,12 +421,29 @@ const CreationShow=(function(){
     const who=recipients();
     const preset=(opts&&opts.to)?_norm(opts.to):null;
 
-    const overlay=_el('div','creation-show-overlay');
-    const panel=_el('div','creation-show-panel');
-    overlay.appendChild(panel);
-    function done(){ try{ overlay.remove(); }catch(e){} }
-    overlay.addEventListener('click',function(ev){ if(ev.target===overlay) done(); });
-    document.body.appendChild(overlay);
+    // R3.2 — TOO MANY POPUPS: launched from inside another surface
+    // (the Sky), the dialog becomes a VIEW of that surface instead of
+    // a popup over a popup — one overlay hosts the whole social
+    // world. host.mount is the element to render into; host.done is
+    // where Back and Done land. Every caller with no host keeps the
+    // overlay it always had.
+    const host=(opts&&opts.host&&opts.host.mount)?opts.host:null;
+    let overlay=null,panel;
+    if(host){
+      panel=_el('div','creation-show-panel is-hosted');
+      while(host.mount.firstChild) host.mount.removeChild(host.mount.firstChild);
+      host.mount.appendChild(panel);
+    }else{
+      overlay=_el('div','creation-show-overlay');
+      panel=_el('div','creation-show-panel');
+      overlay.appendChild(panel);
+      overlay.addEventListener('click',function(ev){ if(ev.target===overlay) done(); });
+      document.body.appendChild(overlay);
+    }
+    function done(){
+      if(host){ try{ host.done(); }catch(e){} return; }
+      try{ overlay.remove(); }catch(e){}
+    }
 
     function renderPick(){
       while(panel.firstChild) panel.removeChild(panel.firstChild);
@@ -874,12 +891,25 @@ const CreationShow=(function(){
   function openGifts(opts){
     const card=_card();
     if(!card) return false;
-    const overlay=_el('div','creation-show-overlay');
-    const panel=_el('div','creation-show-panel');
-    overlay.appendChild(panel);
-    function done(){ try{ overlay.remove(); }catch(e){} }
-    overlay.addEventListener('click',function(ev){ if(ev.target===overlay) done(); });
-    document.body.appendChild(overlay);
+    // R3.2 — hosted the same way the Show dialog is (see there): a
+    // view of the Sky's own overlay, never a popup replacing it.
+    const host=(opts&&opts.host&&opts.host.mount)?opts.host:null;
+    let overlay=null,panel;
+    if(host){
+      panel=_el('div','creation-show-panel is-hosted');
+      while(host.mount.firstChild) host.mount.removeChild(host.mount.firstChild);
+      host.mount.appendChild(panel);
+    }else{
+      overlay=_el('div','creation-show-overlay');
+      panel=_el('div','creation-show-panel');
+      overlay.appendChild(panel);
+      overlay.addEventListener('click',function(ev){ if(ev.target===overlay) done(); });
+      document.body.appendChild(overlay);
+    }
+    function done(){
+      if(host){ try{ host.done(); }catch(e){} return; }
+      try{ overlay.remove(); }catch(e){}
+    }
     const fromWho=(opts&&opts.from)?_norm(opts.from):null;
 
     function renderList(){
@@ -902,7 +932,13 @@ const CreationShow=(function(){
       });
       const showBtn=_el('button','creation-show-quiet','🎁 Show something of mine');
       showBtn.type='button';
-      showBtn.addEventListener('click',function(){ done(); openShowDialog(null); });
+      showBtn.addEventListener('click',function(){
+        // Hosted, the Show dialog takes over the SAME view (one
+        // overlay for the whole social world); standalone it swaps
+        // overlays as before.
+        if(host){ openShowDialog(null,{host:host}); return; }
+        done(); openShowDialog(null);
+      });
       panel.appendChild(showBtn);
       const back=_el('button','creation-show-quiet','Back');
       back.type='button';
@@ -918,7 +954,7 @@ const CreationShow=(function(){
       if(theirs) _viewGift(panel,theirs,function(){},renderList);
     }
     refresh().then(function(changed){
-      if(changed&&overlay.isConnected&&!fromWho) renderList();
+      if(changed&&panel.isConnected&&!fromWho) renderList();
     });
     return true;
   }
