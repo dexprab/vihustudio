@@ -2558,3 +2558,21 @@ html, body {
   border:1px solid rgba(241,234,208,0.3);
   background:transparent; color:#f1ead0; font-size:16px; cursor:pointer;
 }
+
+/* R2.1 — a Creator found by exact @name before anything of theirs is
+   in the Ether: shown through their COMPANION, the being a child
+   would meet, never a profile card. */
+.creator-presence-compwrap{
+  display:flex; justify-content:center; margin:10px 0 4px;
+}
+.creator-presence-comp{
+  width:84px; height:84px;
+  display:flex; align-items:center; justify-content:center;
+  border-radius:50%;
+  background:radial-gradient(circle,rgba(255,215,130,0.16) 0%,transparent 72%);
+}
+.creator-presence-comp img{
+  max-width:76px; max-height:76px;
+  filter:drop-shadow(0 0 8px rgba(255,215,130,0.35));
+}
+.creator-presence-comp-plain{ font-size:30px; color:#c9a44c; }

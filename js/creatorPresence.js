@@ -105,6 +105,61 @@ const CreatorPresence=(function(){
     }catch(e){ return []; }
   }
 
+  // ---------- finding a Creator the Ether has not met ----------
+  // R2.1, decided by the product owner: a Creator is findable by
+  // their exact @name whether or not anything of theirs is in the
+  // Ether. The device is asked first (a card standing right here IS
+  // that Creator), then the platform's creator_find — an exact-match
+  // lookup that answers only public facts (@name and Companion), so
+  // there is still nothing to browse and nothing to enumerate.
+  // Bounded (Decision 49): a hung platform costs six quiet seconds,
+  // never a Find that spins forever.
+  function _findCreator(username){
+    const want=_normName(username);
+    if(!want) return Promise.resolve(null);
+    try{
+      if(typeof MagicCard!=='undefined'&&MagicCard.list){
+        const local=MagicCard.list().find(function(c){
+          return c&&c.username&&_normName(c.username)===want;
+        });
+        if(local) return Promise.resolve({
+          username:local.username, companion:local.companionId||null
+        });
+      }
+    }catch(e){}
+    const ask=new Promise(function(resolve){
+      try{
+        if(typeof ThemeRepositoryClient==='undefined') return resolve(null);
+        ThemeRepositoryClient.isConfigured().then(function(ok){
+          if(!ok) return resolve(null);
+          return ThemeRepositoryClient.getClient().then(function(client){
+            return client.rpc('creator_find',{p_username:want}).then(function(res){
+              const out=res&&res.data;
+              resolve((out&&out.ok)?{username:out.username,companion:out.companion||null}:null);
+            });
+          });
+        }).catch(function(){ resolve(null); });
+      }catch(e){ resolve(null); }
+    });
+    return Promise.race([ask,new Promise(function(r){ setTimeout(function(){ r(null); },6000); })]);
+  }
+  function _companionFig(companionId){
+    const fig=_el('span','creator-presence-comp');
+    if(companionId){
+      const img=document.createElement('img');
+      img.alt='';
+      img.src='assets/'+encodeURIComponent(companionId)+'/idle.png';
+      img.addEventListener('error',function(){
+        img.remove();
+        fig.appendChild(_el('span','creator-presence-comp-plain','✦'));
+      });
+      fig.appendChild(img);
+    }else{
+      fig.appendChild(_el('span','creator-presence-comp-plain','✦'));
+    }
+    return fig;
+  }
+
   // ---------- the Creator's shelf ----------
   function open(username,opts){
     _build();
@@ -115,11 +170,32 @@ const CreatorPresence=(function(){
     _clear();
 
     if(!creations.length){
+      // R2.1 — an empty shelf is no longer the end of the road: the
+      // Creator may simply not have shared anything yet. The device
+      // and the platform are asked whether the @name is real, and a
+      // known Creator is shown through their COMPANION, with the same
+      // ⭐ choose that a full shelf offers — so a child can put
+      // somebody in their Sky before their first shared story.
       _sub.textContent='';
-      _body.appendChild(_el('p','creator-presence-note',
-        'Nothing of theirs is drifting in the Ether just now.'));
-      _body.appendChild(_button('Back','creator-presence-quiet',close));
+      const note=_el('p','creator-presence-note','Looking across VihuPlanet…');
+      _body.appendChild(note);
+      const back=_button('Back','creator-presence-quiet',close);
+      _body.appendChild(back);
       _overlay.hidden=false;
+      const wantTitle=_title.textContent;
+      _findCreator(username).then(function(found){
+        if(_overlay.hidden||_title.textContent!==wantTitle) return;
+        if(!found){
+          note.textContent='Nothing of theirs is drifting in the Ether just now.';
+          return;
+        }
+        const figWrap=_el('div','creator-presence-compwrap');
+        figWrap.appendChild(_companionFig(found.companion));
+        _body.insertBefore(figWrap,note);
+        note.textContent='Nothing in the Ether yet — but they’re here, making.';
+        _renderRelationship(username);
+        _body.appendChild(back); // keep Back last
+      });
       return true;
     }
 
@@ -332,11 +408,18 @@ const CreatorPresence=(function(){
         : String(input.value||'').trim().replace(/^@+/,'').toLowerCase();
       if(!name){ note.textContent='Type a name first.'; return; }
       const creations=_list(name);
-      if(!creations.length){
-        note.textContent='No Creator by that name is in the Ether yet.';
-        return;
-      }
-      open(name,{meet:_meet});
+      if(creations.length){ open(name,{meet:_meet}); return; }
+      // R2.1 — nothing of theirs in the Ether does not mean they are
+      // not real: the exact name is looked up (device, then platform)
+      // and a known Creator's shelf opens, Companion and ⭐ and all. A
+      // name nobody holds stays here, gently, ready to retype.
+      note.textContent='Looking across VihuPlanet…';
+      go.disabled=true;
+      _findCreator(name).then(function(found){
+        go.disabled=false;
+        if(found){ note.textContent=''; open(name,{meet:_meet}); return; }
+        note.textContent='No Creator by that name is in VihuPlanet yet.';
+      });
     });
     btns.appendChild(go);
     btns.appendChild(_button('Back','creator-presence-quiet',close));

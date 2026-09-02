@@ -107,6 +107,24 @@ function sqlSection() {
       .find((l) => l.startsWith('{')) || '{}');
     ck(ref.ok === false && ref.reason === 'not_chosen',
        'P6  "THEY CHOSE ME" STILL CANNOT RECEIVE A SHOW — the note changed no permission');
+
+    // ---- R2.1: any Creator is findable by their EXACT @name --------
+    psql(pg, `insert into public.magic_card_identities(id,owner_id,nickname,constellation,pattern,username,companion_id)
+      values ('card_c','${B_UID}','Quiet','CYGNUS','[[5,6]]',null,'leafy');`);
+    const find = (name) => JSON.parse(lines(asSession(pg, A_UID,
+      `select public.creator_find('${name}');`)).find((l) => l.startsWith('{')) || '{}');
+    const f1 = find('StarGirl');
+    ck(f1.ok === true && f1.username === 'stargirl' && f1.companion === 'quill',
+       'P7  creator_find ANSWERS AN EXACT @NAME, case-insensitively — the name and the Companion, nothing else',
+       JSON.stringify(f1));
+    ck(Object.keys(f1).sort().join(',') === 'companion,ok,species,username',
+       'P7b and ONLY public facts leave — no nickname, no ids, no email, no session, no counts');
+    ck(find('nobodyatall').ok === false,
+       'P8  an unknown name answers ok:false and nothing more');
+    ck(find('stargirl%').ok === false && find('star').ok === false,
+       'P8b and there is NOTHING TO ENUMERATE — no prefix, no wildcard, exact or nothing');
+    ck(find('').ok === false,
+       'P8c an identity holding no username is unreachable — an empty ask matches nobody');
   } finally { stopPg(pg); }
 }
 

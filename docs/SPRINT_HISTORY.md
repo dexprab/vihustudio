@@ -10887,3 +10887,31 @@ static confirmation became the journey), social-orbit 31,
 social-ether-identity 20, creation-home 84, social-identity 98.
 Deploy: RE-RUN supabase/migrations_social_sky.sql (adds note +
 companion_name and the new send signature), then verify_social_sky.
+
+## Build 0733 — R2.1: any Creator is findable by their exact @name
+
+Reported by the product owner: *"@vihu01 is not searchable on ether
+why?"* — and then, told it was Social 1's creation-first rule,
+overruled it: *"i dont think there is any rule which says only
+creator who have shared on ether can only be searchable."* The
+asymmetry was real: @vihupapa stood on Spirits the Ether loads, so
+the feed-filter search saw them; @vihu01 (a fresh test account with
+nothing shared) stood on none and was invisible everywhere.
+`creator_find` is the answer: an exact-match SECURITY DEFINER lookup
+returning only public facts — the @name and the Companion — granted
+like every read function, with NOTHING to enumerate (no prefix, no
+wildcard, no listing; proved). The Find flow and the shelf now fall
+back to it (device cards first, platform second, bounded at six
+seconds per Decision 49) when the loaded feed holds nothing, and a
+found Creator is shown through their COMPANION with *"Nothing in the
+Ether yet — but they're here, making"* and the same ⭐ Put them in my
+Sky a full shelf offers — so choosing somebody no longer waits on
+their first share. Suggestions are unchanged and still come only from
+names already public on Spirits, and the unknown-name line moved from
+"in the Ether" to "in VihuPlanet", because absence from the Ether
+stopped meaning not being real. show-journey grew to 31 (exact match,
+public-facts-only shape, nothing enumerable), social-identity to 99
+(D7 turned around with its reason; D7b walks the found-but-unshared
+shelf); social-orbit 31, social-ether-identity 20, social-sky 65
+green. Deploy: RE-RUN supabase/migrations_social_sky.sql (it now
+carries creator_find beside the R2 note columns).

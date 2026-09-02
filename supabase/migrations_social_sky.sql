@@ -470,3 +470,38 @@ end;
 $$;
 
 grant execute on function public.creator_mutual_projects(text, text) to anon, authenticated;
+
+-- -------------------------------------------------------------------
+-- R2.1 — ANY CREATOR IS FINDABLE BY THEIR EXACT @NAME.
+-- Decided by the product owner ("i dont think there is any rule which
+-- says only creator who have shared on ether can only be searchable"),
+-- overturning Social 1's creation-first discoverability. What that
+-- rule actually protected is KEPT: this is an exact-match lookup, so
+-- there is still nothing to browse and nothing to enumerate — no
+-- prefix search, no listing, and the Find suggestions still come only
+-- from names already standing on public Spirits. What it answers is
+-- public by construction: the @name itself (globally unique, and its
+-- existence already answerable through the claim flow) and the
+-- Companion — the being a child would meet. No nickname, no ids, no
+-- session, no email, no counts.
+-- -------------------------------------------------------------------
+create or replace function public.creator_find(p_username text)
+returns jsonb
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce((
+    select jsonb_build_object('ok', true,
+             'username', i.username,
+             'companion', nullif(i.companion_id, ''),
+             'species', nullif(i.companion_species, ''))
+      from public.magic_card_identities i
+     where i.username is not null and i.username <> ''
+       and lower(i.username) = lower(trim(coalesce(p_username, '')))
+     limit 1),
+    jsonb_build_object('ok', false));
+$$;
+
+grant execute on function public.creator_find(text) to anon, authenticated;

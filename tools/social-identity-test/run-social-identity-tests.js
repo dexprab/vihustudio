@@ -673,13 +673,62 @@ function sqlSection() {
   }, null, { timeout: 10000 });
   await page.screenshot({ path: path.join(SHOTS, 'D-find.png') });
 
-  const unknown = await page.evaluate(() => {
+  // R2.1 turned this around: an unknown name is looked up beyond the
+  // feed first (device, then platform), and only THEN told gently —
+  // the wording moved from "in the Ether" to "in VihuPlanet", because
+  // being absent from the Ether stopped meaning not being real.
+  await page.evaluate(() => {
     document.querySelector('.creator-presence-input').value = 'nobodyatall';
     document.querySelector('.creator-presence-go').click();
-    return document.querySelector('.creator-presence-note').textContent;
   });
-  ck(unknown === 'No Creator by that name is in the Ether yet.',
-     'D7  an unknown name is told gently — never "not found", never an error', unknown);
+  await page.waitForFunction(() =>
+    /No Creator by that name is in VihuPlanet yet\./.test(
+      (document.querySelector('.creator-presence-note') || {}).textContent || ''),
+    null, { timeout: 10000 });
+  ck(true,
+     'D7  an unknown name is told gently — never "not found", never an error');
+
+  // R2.1 — A CREATOR WHO HAS SHARED NOTHING IS STILL FINDABLE BY
+  // THEIR EXACT @NAME (the product owner, overturning creation-first
+  // discoverability: "i dont think there is any rule which says only
+  // creator who have shared on ether can only be searchable"). The
+  // platform answers creator_find with public facts only, and the
+  // shelf shows them through their COMPANION with the same ⭐ a full
+  // shelf offers. Stubbed in place — const-binding rule.
+  const ghost = await page.evaluate(async () => {
+    ThemeRepositoryClient.isConfigured = () => Promise.resolve(true);
+    ThemeRepositoryClient.getClient = () => Promise.resolve({
+      rpc: (fn, args) => {
+        if (fn === 'creator_find' && args.p_username === 'ghost01') {
+          return Promise.resolve({ data: { ok: true, username: 'ghost01', companion: 'leafy' }, error: null });
+        }
+        return Promise.resolve({ data: { ok: false }, error: null });
+      },
+    });
+    document.querySelector('.creator-presence-input').value = 'ghost01';
+    document.querySelector('.creator-presence-go').click();
+    await new Promise((r) => setTimeout(r, 600));
+    return {
+      title: document.querySelector('.creator-presence-title').textContent,
+      fig: !!document.querySelector('.creator-presence-comp img'),
+      line: (document.querySelector('.creator-presence-note') || {}).textContent || '',
+      star: !!document.querySelector('.creator-presence-orbit-add'),
+      hasCard: !!(typeof MagicCard !== 'undefined' && MagicCard.getActive && MagicCard.getActive()),
+    };
+  });
+  ck(ghost.title === '@ghost01' && ghost.fig &&
+     /Nothing in the Ether yet — but they’re here, making\./.test(ghost.line) &&
+     ghost.star === ghost.hasCard,
+     'D7b A CREATOR WITH NOTHING SHARED IS FOUND BY EXACT NAME — shown through their Companion, ⭐ choosable, and only ever by exact match',
+     ghost.title + ' · ' + ghost.line);
+  // Back to Find for what follows.
+  await page.evaluate(() => {
+    document.querySelector('.creator-presence-quiet').click();
+    document.querySelector('[data-find]').click();
+  });
+  await page.waitForFunction(() =>
+    /Find a Creator/.test(document.querySelector('.creator-presence-title').textContent),
+    null, { timeout: 10000 });
 
   // ---- suggestions after a few characters (product owner's ask) ----
   const suggests = await page.evaluate(() => {

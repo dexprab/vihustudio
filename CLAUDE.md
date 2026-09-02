@@ -6506,15 +6506,24 @@ it → wants to see more from that creator. That loop, and nothing else.
   `_sweepCompanions()` shape: lazy, once, only onto records the active
   card provably owns, never rewriting one that already carries a name,
   and **never onto a private draft**.
-- **DISCOVERY HAS NO SERVER ENDPOINT, DELIBERATELY.** The Ether is
-  already Canon + everything anybody shared (Decision 15), and the
-  username travels ON the shared record — so the Creator's shelf and
-  🔎 Find a Creator are `EtherFeed.byUsername()` filtering the feed
-  the universe already loaded. Nothing new to rate-limit, nothing to
-  enumerate, no query that could reach an email, an account id, or
-  anybody who never shared. **A Creator with no public creation is
-  not discoverable anywhere** — creation-first identity enforced by
-  the architecture rather than by filtering.
+- ~~**DISCOVERY HAS NO SERVER ENDPOINT, DELIBERATELY.**~~ **Amended
+  by the product owner** (build 0733: *"i dont think there is any
+  rule which says only creator who have shared on ether can only be
+  searchable"* — after @vihu01, with nothing shared, answered to
+  nobody while @vihupapa did). The shelf and 🔎 Find still filter the
+  loaded feed FIRST, and the suggestions still come only from names
+  already standing on public Spirits — but an exact @name the feed
+  does not hold is now looked up: the device's own cards first, then
+  `creator_find` on the platform, an EXACT-MATCH function answering
+  only public facts (the @name and the Companion — no nickname, no
+  ids, no email, no counts). A found Creator's shelf opens showing
+  them through their Companion — *"Nothing in the Ether yet — but
+  they're here, making"* — with the same ⭐ a full shelf offers, so a
+  child can put somebody in their Sky before their first shared
+  story. **What the old rule actually protected is kept**: no prefix
+  search, no wildcard, no listing — the suite proves there is still
+  nothing to enumerate, and an unknown name is told gently ("No
+  Creator by that name is in VihuPlanet yet"), never blamed.
 - **The name rides the entity's `source`, and that was a measured
   bug.** `storyEntity.js` copies a fixed field list and dropped the
   top-level `creatorUsername` — the first suite run caught the
