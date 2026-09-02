@@ -10966,3 +10966,26 @@ recall_magic_card branch through MagicCard.recall(), adopting the
 identity (nickname, Companion, taught, @name) onto the device and
 straight into the Studio, since possession of the printed code is the
 key the product already honours. test-account suite grown to 16.
+
+## Build 0736 — RECOG-2: the refusal names itself, and the conflict sweep is platform-wide
+
+The @thegod screenshot settled which sentence the child was seeing:
+*"I can't see the whole sky from here right now"* — the UNREACHABLE
+outcome, meaning the platform never successfully judged the sky at
+all: either the recall call errored, or it answered a reason other
+than no_match (identity_conflict among them, which maps to this same
+sentence by design so a child is never blamed for our ambiguity). The
+client swallowed the real reason into that one kind line with no
+trace anywhere — the invite desk's own recorded defect, met again —
+so `cloudRecall` now says it in the console (`[recognition] platform
+recall did not recognise: <reason>`, and the outright-failure catch
+logs the error object), child-facing words untouched. And
+`diagnose_recognition.sql` gained the row the first version could not
+see: identity_conflict fires on the sky the child DREW, which need
+not be the sky their card STORES (a stale printed card is drawn
+faithfully and lands on somebody else's sky), so row 4 now lists
+EVERY duplicate-sky group on the platform, card codes and nicknames —
+if the drawn sky belongs to one of those groups, recall refuses it
+for everyone in it. Proved against the seeded PostgreSQL: the
+scrambled-set duplicate appears in both the per-card row and the
+platform-wide sweep. social-identity 101 green.

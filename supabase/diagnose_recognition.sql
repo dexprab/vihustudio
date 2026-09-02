@@ -82,6 +82,21 @@ select * from (
          coalesce((select string_agg(code || ' (' || coalesce(nullif(nickname,''),'?') || ')', ' · ')
                      from dupes), 'none')
   union all
+  -- identity_conflict fires on the sky the child DREW, which need not
+  -- be the sky this card STORES (a stale printed card is drawn
+  -- faithfully and lands on somebody else's sky). So every duplicate
+  -- group on the whole platform is listed — if the drawn sky belongs
+  -- to one of these groups, recall refuses it for everyone in it.
+  select 4, 'skies held by more than one Creator (platform-wide)',
+         coalesce((
+           select string_agg(grp, '  |  ')
+             from (select string_agg(code || ' (' || coalesce(nullif(nickname,''),'?') || ')',
+                          ' + ' order by claimed_at) as grp
+                     from public.magic_card_identities
+                    where pattern is not null
+                    group by public._card_platform_sort_pattern(pattern)
+                   having count(*) > 1) g), 'none anywhere')
+  union all
   select ord + 10, what, detail from grid
 ) v
 order by ord;

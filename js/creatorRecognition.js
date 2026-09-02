@@ -102,6 +102,18 @@ const CreatorRecognition = (function () {
         // asked, and answering it on the platform's behalf would tell a
         // real Creator their own stars are wrong.
         var reason = result && result.reason;
+        // A REFUSAL HAS A REASON, AND THE CONSOLE SAYS WHICH (the
+        // invite desk's own lesson, Decision 30). The child's words
+        // stay kind and unblaming; the console is for whoever is
+        // diagnosing — reported live as "not able to login even when
+        // magic card pattern is correct", where the one sentence on
+        // screen could not say whether the platform said no_match,
+        // refused the session, hit a conflict, or was never reached.
+        try {
+          console.warn('[recognition] platform recall did not recognise:',
+            reason || '(no reason — the call itself failed)',
+            result && result.error ? result.error : '');
+        } catch (e2) {}
         // AN AMBIGUOUS IDENTITY IS NOT AN INVITATION.
         //
         // The platform reports identity_conflict when more than one
@@ -113,7 +125,8 @@ const CreatorRecognition = (function () {
           return { outcome: UNREACHABLE, reason: reason };
         }
         return { outcome: reason === 'no_match' ? UNKNOWN : UNREACHABLE, reason: reason };
-      }).catch(function () {
+      }).catch(function (err) {
+        try { console.warn('[recognition] platform recall failed outright:', err); } catch (e2) {}
         return { outcome: UNREACHABLE };
       });
     } catch (e) {
