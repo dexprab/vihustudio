@@ -479,7 +479,38 @@ const SocialSky=(function(){
         space.appendChild(g);
       }
 
-      space.appendChild(_el('p','social-sky-space-head','✨ Their creations'));
+      // R3.8 — what I have shown them so far, so nobody reshares the
+      // same thing again and again (asked for by the product owner).
+      // The sender's own history; the kept mark is his amendment to
+      // the read-receipt line — SEEN is still never shown to anybody.
+      const theirHead=_el('p','social-sky-space-head','✨ Their creations');
+      try{
+        if(typeof CreationShow!=='undefined'&&CreationShow.sentTo){
+          CreationShow.sentTo(name).then(function(sent){
+            if(!overlay.isConnected||!space.isConnected||!sent||!sent.length) return;
+            const sec=_el('div','social-sky-sent');
+            sec.appendChild(_el('p','social-sky-space-head','🎁 You’ve shown them'));
+            const row=_el('div','social-sky-sent-row');
+            sent.slice(0,8).forEach(function(e2){
+              const it=_el('div','social-sky-sent-item');
+              if(e2.cover){
+                const img=document.createElement('img');
+                img.alt=''; img.src=e2.cover;
+                it.appendChild(img);
+              }else{
+                it.appendChild(_el('span','social-sky-sent-glyph',
+                  e2.kind==='story'?'📖':(e2.kind==='letter'?'✍️':'🎨')));
+              }
+              it.appendChild(_el('span','social-sky-sent-name',e2.name||'A creation'));
+              if(e2.kept) it.appendChild(_el('span','social-sky-sent-kept','Kept ✓'));
+              row.appendChild(it);
+            });
+            sec.appendChild(row);
+            if(theirHead.parentNode) space.insertBefore(sec,theirHead);
+          }).catch(function(){});
+        }
+      }catch(e){}
+      space.appendChild(theirHead);
       const grid=_el('div','social-sky-space-grid');
       space.appendChild(grid);
       const note=_el('p','social-sky-space-note','Looking…');

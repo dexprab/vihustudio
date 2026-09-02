@@ -128,6 +128,14 @@ begin
   insert into _verify_social_sky values
     (23, 'creator_sky_list accepts a proven recall (R3.7)', 'true',
         coalesce((v_mut ~* 'card_acted_for')::text,'false'));
+  -- R3.8 — the sender's own send history: exists, and reads kept_at
+  -- while NEVER touching seen_at (seen stays the recipient's own).
+  select pg_get_functiondef(p.oid) into v_mut
+    from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+   where n.nspname='public' and p.proname='creation_show_sent' and p.prokind='f';
+  insert into _verify_social_sky values
+    (24, 'creation_show_sent exists, kept travels, seen never does (R3.8)', 'true',
+        coalesce(((v_mut ~* 'kept_at') and not (v_mut ~* 'seen_at'))::text,'false'));
 end $$;
 
 select

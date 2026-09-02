@@ -681,3 +681,65 @@ end;
 $$;
 
 grant execute on function public.creator_orbit_list(text) to anon, authenticated;
+
+-- -------------------------------------------------------------------
+-- R3.8 — WHAT HAVE I SHOWN THEM SO FAR? Asked for by the product
+-- owner: "for people in my sky, i should be able to see what i have
+-- shown them so far, this will allow me not to reshare same thing
+-- again and again. you can show kept/not kept status also if needed."
+-- A sender's own send history is their own past — units of their own
+-- actions, not a window into the recipient. The owner's words AMEND
+-- the R1 canon's read-receipt line for KEPT alone: kept answers the
+-- exact question this exists for ("should I share it again?"), so it
+-- travels. SEEN stays the recipient's own forever — whether a gift
+-- has merely been looked at is never the sender's to know, and
+-- seen_at is deliberately not read here.
+-- -------------------------------------------------------------------
+create or replace function public.creation_show_sent(p_identity_id text, p_username text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_caller text := auth.uid()::text;
+  v_me public.magic_card_identities;
+  v_them public.magic_card_identities;
+  v_list jsonb;
+begin
+  if v_caller is null or v_caller = '' then
+    return jsonb_build_object('ok', false, 'reason', 'not_authenticated');
+  end if;
+
+  select * into v_me from public.magic_card_identities where id = p_identity_id;
+  if v_me.id is null or not public.card_acted_for(v_me.id) then
+    return jsonb_build_object('ok', false, 'reason', 'not_yours');
+  end if;
+
+  select * into v_them from public.magic_card_identities
+   where lower(username) = lower(trim(coalesce(p_username, '')));
+  if v_them.id is null then
+    return jsonb_build_object('ok', false, 'reason', 'unknown');
+  end if;
+
+  select coalesce(jsonb_agg(jsonb_build_object(
+           'id', s.id,
+           'kind', s.kind,
+           'name', s.name,
+           'at', s.created_at,
+           'kept', s.kept_at is not null,
+           -- the snapshot's own small image, so the list can show
+           -- what was shown without re-shipping story payloads
+           'cover', coalesce(s.payload->>'thumbnail', s.payload->>'png')
+         ) order by s.created_at desc), '[]'::jsonb)
+    into v_list
+    from (select * from public.creator_shows
+           where from_id = v_me.id and to_id = v_them.id
+           order by created_at desc
+           limit 60) s;
+
+  return jsonb_build_object('ok', true, 'sent', v_list);
+end;
+$$;
+
+grant execute on function public.creation_show_sent(text, text) to anon, authenticated;

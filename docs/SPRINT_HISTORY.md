@@ -11291,3 +11291,34 @@ fresh platform copy: the unheard choice is pushed, kept, and its
 circle lands; on the old replace semantics the same check reads the
 choice deleted. show-journey 67 · social-orbit 31 green. No further
 server changes — the 0745 migration already ran.
+
+## Build 0747 — R3.8: what have I shown them so far
+
+Asked for by the product owner: "for people in my sky, i should be
+able to see what i have shown them so far, this will allow me not to
+reshare same thing again and again. you can show kept/not kept status
+also if needed." A sender's own send history is their own past —
+units of their own actions, never a window into the recipient — and
+his words amend R1's read-receipt line for KEPT alone: kept answers
+the exact question this exists for ("should I share it again?"), so
+it travels; SEEN stays the recipient's own forever, and the new
+function deliberately never reads seen_at. Three surfaces, one
+history. `creation_show_sent(identity, username)` (card_acted_for,
+newest first, capped, with each snapshot's own small cover) is the
+durable copy; the client logs its own sends locally at send success
+(the local-first half — instant, and standing even where the platform
+has not answered) and merges the platform's copy over it, platform
+winning on kept. In a Creator's SPACE: "🎁 You've shown them" — small
+quiet rows with a warm tiny Kept ✓, above their creations, absent
+when nothing has travelled. In the PICKER with that Creator already
+chosen: things that already travelled wear "✓ shown" and a dashed
+border — marked, never disabled, resharing stays the child's call.
+And at the NOTE step, one gentle line — "You've shown them this one
+before ✨" — where the send is one press away. Proved both halves:
+Z1–Z3 in pg (the history reads with not one word about seen; a kept
+gift says so after the recipient keeps it; a stranger session is
+refused not_yours) and SD1/SD2 in the browser (the space section from
+the local log alone, the picker badge and the note reminder through
+the real dialog). show-journey 72 green. SERVER CHANGE: re-run
+supabase/migrations_social_sky.sql (adds creation_show_sent), then
+verify_social_sky.sql — check 24 should PASS.

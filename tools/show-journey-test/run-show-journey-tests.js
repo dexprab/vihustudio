@@ -206,6 +206,28 @@ function sqlSection() {
     ck(mySky.ok === true && (mySky.sky || []).some((e) => e.username === 'stargirl'),
        'Y4  and the recalled device reads its own sky from the platform too — both halves of the relationship real',
        JSON.stringify((mySky.sky || []).map((e) => e.username)));
+
+    // ---- Z: what have I shown them so far (R3.8) -------------------
+    // The sender's own send history — so nobody reshares the same
+    // thing again and again. KEPT travels (the owner's amendment: it
+    // answers "should I share it again?"); SEEN never does.
+    const sentList = () => JSON.parse(lines(asSession(pg, A_UID,
+      `select public.creation_show_sent('card_a','stargirl');`)).find((l) => l.startsWith('{')) || '{}');
+    let z = sentList();
+    ck(z.ok === true && Array.isArray(z.sent) && z.sent.length >= 3 &&
+       z.sent.every((e) => !('seen' in e) && !('seen_at' in e)) &&
+       z.sent.every((e) => e.kept === false),
+       'Z1  A SENDER READS THEIR OWN SEND HISTORY — name, kind, when, and NOT ONE WORD ABOUT SEEN',
+       'sent=' + (z.sent || []).length);
+    asSession(pg, B_UID, `select public.creation_show_mark('card_b','${showId}','kept');`);
+    z = sentList();
+    const keptRow = (z.sent || []).find((e) => e.id === showId);
+    ck(keptRow && keptRow.kept === true,
+       'Z2  A KEPT GIFT SAYS SO — the one status the owner chose to let travel, and the reshare question answered');
+    const stranger = JSON.parse(lines(asSession(pg, C_UID,
+      `select public.creation_show_sent('card_a','stargirl');`)).find((l) => l.startsWith('{')) || '{}');
+    ck(stranger.ok === false && stranger.reason === 'not_yours',
+       'Z3  and nobody else can read it — a send history is its sender\'s own past', JSON.stringify(stranger));
   } finally { stopPg(pg); }
 }
 
@@ -510,6 +532,17 @@ function sqlSection() {
        'S1  TAP A COMPANION, ENTER THAT CREATOR — their space opens in place, nothing navigates, no second sky', space.name);
     ck(space.mutual && space.showBtn,
        'S2  the space knows the relationship in the sky\'s own words — and offers the one social act: show them something you made');
+    // R3.8 — the space remembers what I have shown them (the J
+    // journey's own send is in the local log; the platform stub
+    // answers nothing, so this is the local-first half working).
+    await page.waitForSelector('.social-sky-sent-item', { timeout: 8000 });
+    const sd1 = await page.evaluate(() => ({
+      items: Array.from(document.querySelectorAll('.social-sky-sent-name')).map((n) => n.textContent),
+      seenWord: /\bseen\b/i.test((document.querySelector('.social-sky-sent') || {}).textContent || ''),
+    }));
+    ck(sd1.items.indexOf('The Moon Dragon') !== -1 && !sd1.seenWord,
+       'SD1 THE SPACE REMEMBERS WHAT I HAVE SHOWN THEM — my own send history, and never a word about seen',
+       sd1.items.join(','));
     await page.evaluate(() => {
       Array.from(document.querySelectorAll('.social-sky-quiet'))
         .find((b) => /Back to My Sky/.test(b.textContent)).click();
@@ -638,6 +671,27 @@ function sqlSection() {
        'overlays=' + hosted.overlays);
     ck(hosted.backTo,
        'PP2 and Back lands exactly where the child was standing — the Creator\'s space, not the Studio underneath');
+    // R3.8 — the picker marks what already travelled to this
+    // recipient, and the note step says so once. Marked, never
+    // disabled: resharing stays the child's call.
+    const sd2 = await page.evaluate(async () => {
+      document.querySelectorAll('.social-sky-overlay, .creation-show-overlay')
+        .forEach((o) => o.remove());
+      CreationShow.openShowDialog(null, { to: 'stargirl' });
+      await new Promise((r) => setTimeout(r, 350));
+      const badge = document.querySelector('.creation-show-thing.is-shown-before .creation-show-shown');
+      const badged = badge ? badge.textContent : null;
+      const disabled = badge ? badge.closest('.creation-show-thing').disabled : null;
+      (document.querySelector('.creation-show-thing.is-shown-before')
+        || document.querySelector('.creation-show-thing')).click();
+      await new Promise((r) => setTimeout(r, 350));
+      const remind = /shown them this one before/.test(document.body.textContent || '');
+      document.querySelectorAll('.creation-show-overlay').forEach((o) => o.remove());
+      return { badged, disabled, remind };
+    });
+    ck(sd2.badged === '✓ shown' && sd2.disabled === false && sd2.remind,
+       'SD2 THE PICKER MARKS WHAT ALREADY TRAVELLED — ✓ shown on the thing itself, a gentle line at the note, and nothing ever refused',
+       JSON.stringify(sd2));
     const giftHosted = await page.evaluate(async (s) => {
       document.querySelectorAll('.social-sky-overlay, .creation-show-overlay')
         .forEach((o) => o.remove());

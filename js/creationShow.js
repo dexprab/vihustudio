@@ -290,7 +290,18 @@ const CreationShow=(function(){
       p_payload:payload
     };
     function handle(out){
-      if(out&&out.ok) return {ok:true,id:out.id};
+      if(out&&out.ok){
+        // R3.8 — the sender's own send history, logged locally so
+        // "what have I shown them" answers instantly; the platform's
+        // creation_show_sent is the durable copy across devices.
+        try{
+          const log=_readSent(card.id);
+          log.unshift({id:out.id,to:name,kind:item.kind,name:item.name||'',
+            at:new Date().toISOString(),kept:false});
+          _writeSent(card.id,log.slice(0,100));
+        }catch(e){}
+        return {ok:true,id:out.id};
+      }
       if(out&&out.ok===false) return out;
       // No platform: a Show needs the other child's world to arrive
       // in, so this is one thing that cannot land locally.
@@ -307,6 +318,40 @@ const CreationShow=(function(){
       return _rpc('creation_show_send',base).then(handle)
         .catch(function(){ return {ok:false,reason:'later'}; });
     });
+  }
+
+  // ---------- what I have shown them (R3.8) ----------
+  // Asked for by the product owner: "for people in my sky, i should
+  // be able to see what i have shown them so far, this will allow me
+  // not to reshare same thing again and again." A sender's own send
+  // history is their own past — and his words amend the R1 canon's
+  // read-receipt line for KEPT alone: kept answers "should I share it
+  // again?", so it travels; SEEN stays the recipient's own forever.
+  const SENT_KEY='vihu.sent.';
+  function _readSent(cardId){
+    try{ return JSON.parse(localStorage.getItem(SENT_KEY+cardId)||'[]')||[]; }
+    catch(e){ return []; }
+  }
+  function _writeSent(cardId,list){
+    try{ localStorage.setItem(SENT_KEY+cardId,JSON.stringify(list)); }catch(e){}
+  }
+  function sentTo(username){
+    const card=_card();
+    const name=_norm(username);
+    if(!card||!name) return Promise.resolve([]);
+    const local=_readSent(card.id).filter(function(e){ return e&&e.to===name; });
+    return _rpc('creation_show_sent',{p_identity_id:card.id,p_username:name})
+      .then(function(out){
+        if(!out||!out.ok||!Array.isArray(out.sent)) return local;
+        // The platform is the durable copy (it holds every device's
+        // sends, and the honest kept marks); local rows it has not
+        // heard of yet ride along behind it.
+        const seen={};
+        const merged=[];
+        out.sent.forEach(function(e){ if(e&&e.id){ seen[e.id]=true; merged.push(e); } });
+        local.forEach(function(e){ if(e&&!seen[e.id]) merged.push(e); });
+        return merged;
+      }).catch(function(){ return local; });
   }
 
   // ---------- my gifts ----------
@@ -428,6 +473,11 @@ const CreationShow=(function(){
     // where Back and Done land. Every caller with no host keeps the
     // overlay it always had.
     const host=(opts&&opts.host&&opts.host.mount)?opts.host:null;
+    // R3.8 — with a recipient already known, what has been shown to
+    // them before is fetched once, so the picker can mark it and the
+    // note step can gently say so. Never a refusal: resharing stays
+    // allowed, the child just stops doing it by accident.
+    let _sentPromise=preset?sentTo(preset):null;
     let overlay=null,panel;
     if(host){
       panel=_el('div','creation-show-panel is-hosted');
@@ -460,6 +510,7 @@ const CreationShow=(function(){
         items.forEach(function(it){
           const b=_el('button','creation-show-thing');
           b.type='button';
+          b.dataset.kind=it.kind||'';
           if(it.image){
             const img=document.createElement('img');
             img.alt=''; img.src=it.image;
@@ -482,6 +533,25 @@ const CreationShow=(function(){
       group('My stories & cards',mine.stories);
       group('From my Garden',mine.drawings);
       group('My letters',mine.letters);
+      // R3.8 — things already shown to the preset recipient wear a
+      // quiet mark, so nobody reshares by accident. Marked, never
+      // disabled: showing something again is still the child's call.
+      if(_sentPromise){
+        _sentPromise.then(function(rows){
+          if(!panel.isConnected||!rows||!rows.length) return;
+          const key={};
+          rows.forEach(function(e2){
+            if(e2) key[(e2.kind||'')+' '+(e2.name||'')]=true;
+          });
+          Array.prototype.forEach.call(panel.querySelectorAll('.creation-show-thing'),function(b){
+            const nm=(b.querySelector('.creation-show-thing-name')||{}).textContent||'';
+            if(key[(b.dataset.kind||'')+' '+nm]&&!b.querySelector('.creation-show-shown')){
+              b.classList.add('is-shown-before');
+              b.appendChild(_el('span','creation-show-shown','✓ shown'));
+            }
+          });
+        }).catch(function(){});
+      }
       const back=_el('button','creation-show-quiet','Back');
       back.type='button';
       back.addEventListener('click',done);
@@ -544,6 +614,23 @@ const CreationShow=(function(){
       field.placeholder='Look what I made!';
       card2.appendChild(field);
       panel.appendChild(card2);
+      // R3.8 — a gentle reminder, never a refusal: if this exact
+      // creation has already travelled to them, say so once, here,
+      // where the send is one press away.
+      try{
+        const sp=_sentPromise||sentTo(e.username);
+        sp.then(function(rows){
+          if(!panel.isConnected||!rows) return;
+          const dup=rows.some(function(r){
+            return r&&r.kind===(item&&item.kind)&&(r.name||'')===((item&&item.name)||'');
+          });
+          if(dup&&card2.parentNode){
+            card2.parentNode.insertBefore(
+              _el('p','creation-show-note','You’ve shown them this one before ✨'),
+              card2.nextSibling);
+          }
+        }).catch(function(){});
+      }catch(e2){}
       const btns=_el('div','creation-show-btns');
       const go=_el('button','creation-gift-keep','✨ Show it');
       go.type='button';
@@ -981,6 +1068,7 @@ const CreationShow=(function(){
     unseen:unseen,
     unseenBySender:unseenBySender,
     keep:keep,
+    sentTo:sentTo,
     openShowDialog:openShowDialog,
     openGifts:openGifts
   };
