@@ -10938,3 +10938,31 @@ the floor, the alphabet wall, the underscore), social-identity 101
 social-ether-identity 20, social-sky 65 green. Deploy: RE-RUN
 supabase/migrations_social_sky.sql — the one re-run now carries the
 R2 note columns, creator_find and creator_suggest together.
+
+## Build 0735 — RECOG-1: why a correct sky can be refused, and the way back in
+
+Reported by the product owner: *"am not able to login into thegod
+account even when magic card pattern is correct. we need to fix this
+as its vihaan account."* The recognition code was traced end to end
+and is sound — both the board and the platform match a sky as a SET
+on the same 10×10 grid — which leaves exactly THREE data states that
+present identically to the child, and one of them is invisible by
+design: **identity_conflict** (two identities holding the same sky —
+a live risk since the test accounts) comes back as *"I can't see the
+whole sky from here right now"*, which reads as network trouble and
+never succeeds however correctly the child draws. The second is a
+**stale sky**: mint_magic_card's pattern_taken re-roll is ASYNC, so a
+card displayed or printed in the Ceremony before the reserve answered
+shows the pre-roll sky forever while the platform holds the re-rolled
+one. The third is a **null pattern** (a typed-code recall stores
+none). `supabase/diagnose_recognition.sql` tells them apart in one
+run: verdict first, then the facts, any duplicate holders by card
+code, and the stored sky drawn as a 10×10 chart to hold the physical
+card against — all four verdict branches proved against a real
+PostgreSQL with a deliberately order-scrambled duplicate. And the
+recovery door ships with it: `tools/test-account/` gains **Bring an
+account onto this device** — the platform's own typed-code
+recall_magic_card branch through MagicCard.recall(), adopting the
+identity (nickname, Companion, taught, @name) onto the device and
+straight into the Studio, since possession of the printed code is the
+key the product already honours. test-account suite grown to 16.

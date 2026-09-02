@@ -215,6 +215,49 @@ function ck(c, n, note) {
        'U4  WITH A PLATFORM THE @NAME IS CLAIMED FOR REAL — creator_username_claim, the product\'s own door, and it lands on the card',
        claimed.line.trim().slice(0, 40));
 
+    // ---- U5: recall by code — the recovery door --------------------
+    // The platform's own typed-code recall, stubbed in place: typing a
+    // printed card code adopts that identity onto this device and it
+    // becomes the active card — the way back in when a sky refuses to
+    // recognise (the @thegod report).
+    const recalled = await page.evaluate(async () => {
+      ThemeRepositoryClient.getClient = () => Promise.resolve({
+        rpc: (fn, args) => {
+          if (fn === 'recall_magic_card' && args.p_typed_code === 'MC-00106') {
+            return Promise.resolve({ data: { ok: true,
+              identity_id: 'card_thegod', nickname: 'the god',
+              constellation: 'LYRA', companion_id: 'nimbus',
+              companion_name: 'Nimbus', companion_species: 'Dream Sprite',
+              username: 'thegod', taught: ['emoji'] }, error: null });
+          }
+          return Promise.resolve({ data: { ok: false, reason: 'no_match' }, error: null });
+        },
+      });
+      ThemeRepositoryClient.getSession = () => Promise.resolve({});
+      document.getElementById('recallCode').value = 'MC-00106';
+      document.getElementById('recallGo').click();
+      await new Promise((r) => setTimeout(r, 400));
+      const card = MagicCard.getActive();
+      return {
+        id: card && card.id, nick: card && card.nickname,
+        companion: card && card.companionId, username: card && card.username,
+        listed: /the god/.test(document.getElementById('cards').textContent),
+        doors: !!document.querySelector('#made .enterStudio'),
+      };
+    });
+    ck(recalled.id === 'card_thegod' && recalled.nick === 'the god' &&
+       recalled.companion === 'nimbus' && recalled.username === 'thegod' &&
+       recalled.listed && recalled.doors,
+       'U5  RECALL BY CODE ADOPTS THE IDENTITY ONTO THIS DEVICE — nickname, Companion, @name and all, active and one press from the Studio');
+    const notFound = await page.evaluate(async () => {
+      document.getElementById('recallCode').value = 'MC-99999';
+      document.getElementById('recallGo').click();
+      await new Promise((r) => setTimeout(r, 300));
+      return (document.getElementById('recallNote') || {}).textContent || '';
+    });
+    ck(/knows no card with that code/.test(notFound),
+       'U5b and an unknown code is told plainly — nothing adopted');
+
     // ---- T7: the Studio door actually opens ------------------------
     // Switch back to a real account first, then press the panel's own
     // Enter the Studio. Landing on studio.html and STAYING there is

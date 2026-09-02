@@ -145,6 +145,22 @@
     <div class="made hidden" id="made"></div>
   </div>
 
+  <h2>Bring an account onto this device</h2>
+  <div class="panel">
+    <p class="note" style="margin:0 0 .7rem">Type the card code printed on a Magic Card
+       (e.g. <span style="font-family:var(--mono)">MC-00106</span>) and the platform's own
+       <code>recall_magic_card</code> adopts that identity here — no drawing needed. The
+       recovery door for a card whose sky won't recognise: possession of the code is the key,
+       exactly as the product's typed-code recall already works. A code-recalled card carries
+       no stored sky on this device until the platform's pattern branch is used.</p>
+    <div style="display:flex; gap:.6rem; align-items:center; flex-wrap:wrap">
+      <input type="text" id="recallCode" placeholder="MC-00106" autocomplete="off"
+             style="max-width:12rem; margin:0; font-family:var(--mono)">
+      <button class="ghost" id="recallGo">Bring it here</button>
+    </div>
+    <p class="warnnote" id="recallNote"></p>
+  </div>
+
   <h2>Cards on this device</h2>
   <div class="panel">
     <table>
@@ -503,6 +519,44 @@
   $('nick').addEventListener('input',function(){
     if(!unameDirty) $('uname').value=CreatorHandle.normalize($('nick').value);
     checkUname();
+  });
+
+  // RECALL BY CODE — the platform's own typed-code branch of
+  // recall_magic_card, through MagicCard.recall() exactly as the
+  // product calls it: the identity is adopted onto this device
+  // (nickname, companion, taught, username — everything the recall
+  // returns) and becomes the active card. This is the recovery door
+  // when a sky refuses to recognise: possession of the printed code
+  // is the key.
+  $('recallGo').addEventListener('click',function(){
+    var code=($('recallCode').value||'').trim();
+    var note=$('recallNote');
+    if(!code){ note.textContent='Type the card code first.'; return; }
+    note.textContent='Asking the platform…';
+    $('recallGo').disabled=true;
+    MagicCard.recall({typed:code}).then(function(res){
+      $('recallGo').disabled=false;
+      if(res&&res.ok&&res.card){
+        note.textContent='';
+        var made=$('made');
+        made.classList.remove('hidden');
+        made.innerHTML='<p><b>'+esc(res.card.nickname||'(unnamed)')+'</b> is on this device now'+
+          (res.card.username?' — <span class="atname">@'+esc(res.card.username)+'</span>':'')+
+          ' — and active.</p>'+doorsHtml(true);
+        wireDoors(made,res.card.id);
+        renderCards();
+        return;
+      }
+      var reason=(res&&res.reason)||'unreachable';
+      note.textContent=
+        reason==='no_match'?'The platform knows no card with that code.'
+        :reason==='not_authenticated'?'No session yet — reload the page once and try again.'
+        :reason==='identity_conflict'?'More than one card answers to that code — run supabase/diagnose_recognition.sql.'
+        :'The platform could not be reached. The code is fine — try again when online.';
+    });
+  });
+  $('recallCode').addEventListener('keydown',function(ev){
+    if(ev.key==='Enter'){ ev.preventDefault(); $('recallGo').click(); }
   });
 
   $('goStudio').addEventListener('click',function(){ enterStudio(MagicCard.getActiveId()); });
