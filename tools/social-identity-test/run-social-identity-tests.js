@@ -763,6 +763,57 @@ function sqlSection() {
   ck(viaSuggest.title === '@moonmaker' && viaSuggest.rows.length >= 1,
      'D8d TAPPING A SUGGESTION OPENS THAT SHELF', JSON.stringify(viaSuggest));
 
+  // R2.2 — the platform's own prefix answer MERGES into the chips
+  // (reported: "it still shows vihupapa only. to search vihu01 i have
+  // to type it full"). The feed's names render instantly; the
+  // platform's join them, deduped and sorted — so a Creator who never
+  // shared is offered while typing, exactly like one who did.
+  await page.evaluate(() => {
+    document.querySelector('.creator-presence-quiet').click();
+    document.querySelector('[data-find]').click();
+  });
+  await page.waitForFunction(() =>
+    /Find a Creator/.test(document.querySelector('.creator-presence-title').textContent),
+    null, { timeout: 10000 });
+  const merged = await page.evaluate(async () => {
+    ThemeRepositoryClient.isConfigured = () => Promise.resolve(true);
+    ThemeRepositoryClient.getClient = () => Promise.resolve({
+      rpc: (fn, args) => {
+        if (fn === 'creator_suggest' && args.p_prefix === 'vihu') {
+          return Promise.resolve({ data: { ok: true, names: ['vihu01', 'vihukid'] }, error: null });
+        }
+        if (fn === 'creator_find' && args.p_username === 'vihu01') {
+          return Promise.resolve({ data: { ok: true, username: 'vihu01', companion: 'leosaurus' }, error: null });
+        }
+        return Promise.resolve({ data: { ok: false }, error: null });
+      },
+    });
+    const input = document.querySelector('.creator-presence-input');
+    input.value = 'vihu';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    const instant = Array.from(document.querySelectorAll('.creator-presence-suggest-btn'))
+      .map((b) => b.textContent);
+    await new Promise((r) => setTimeout(r, 700)); // debounce + stubbed round trip
+    const after = Array.from(document.querySelectorAll('.creator-presence-suggest-btn'))
+      .map((b) => b.textContent);
+    const chip = Array.from(document.querySelectorAll('.creator-presence-suggest-btn'))
+      .find((b) => b.textContent === '@vihu01');
+    if (chip) chip.click();
+    await new Promise((r) => setTimeout(r, 600));
+    return {
+      instant, after,
+      title: document.querySelector('.creator-presence-title').textContent,
+      fig: !!document.querySelector('.creator-presence-comp img'),
+      line: (document.querySelector('.creator-presence-note') || {}).textContent || '',
+    };
+  });
+  ck(merged.after.join(',') === '@vihu01,@vihukid',
+     'D8g THREE LETTERS OF "VIHU" NOW OFFER THE WHOLE PLATFORM — merged, deduped, sorted; nothing waited on a full name',
+     merged.instant.join(',') + ' → ' + merged.after.join(','));
+  ck(merged.title === '@vihu01' && merged.fig &&
+     /they’re here, making/.test(merged.line),
+     'D8h and tapping the unshared Creator\'s chip opens their shelf — Companion, ⭐ and all', merged.title);
+
   // Back to Find for the exact-match checks below.
   await page.evaluate(() => {
     document.querySelector('.creator-presence-quiet').click();

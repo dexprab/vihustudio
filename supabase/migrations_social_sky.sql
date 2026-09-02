@@ -505,3 +505,42 @@ as $$
 $$;
 
 grant execute on function public.creator_find(text) to anon, authenticated;
+
+-- -------------------------------------------------------------------
+-- R2.2 — SUGGESTIONS REACH THE WHOLE PLATFORM. Reported by the
+-- product owner: "to search vihu01 i have to type it full and than
+-- click on find button" — typing "vihu" offered only the names
+-- already standing on loaded Spirits. creator_suggest answers a
+-- PREFIX of three or more characters with up to eight public @names,
+-- names alone. Still bounded on purpose: a shorter ask answers
+-- nothing (so an empty field still offers no directory), the prefix
+-- must be the username alphabet itself (which also makes LIKE
+-- injection impossible — no escaping to get wrong), and eight is a
+-- handful to tap, not a roster to scroll.
+-- -------------------------------------------------------------------
+create or replace function public.creator_suggest(p_prefix text)
+returns jsonb
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select case
+    when lower(trim(coalesce(p_prefix, ''))) !~ '^[a-z0-9_]{3,20}$'
+      then jsonb_build_object('ok', false)
+    else jsonb_build_object('ok', true, 'names', coalesce((
+      select jsonb_agg(t.u order by t.u)
+        from (select lower(i.username) as u
+                from public.magic_card_identities i
+               where i.username is not null and i.username <> ''
+                 -- '_' is a legal username character AND a LIKE
+                 -- wildcard: escaped, so my_name matches literally.
+                 and lower(i.username) like replace(lower(trim(p_prefix)), '_', '\_') || '%'
+               order by lower(i.username)
+               limit 8) t),
+      '[]'::jsonb))
+  end;
+$$;
+
+grant execute on function public.creator_suggest(text) to anon, authenticated;
+

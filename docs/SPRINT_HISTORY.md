@@ -10915,3 +10915,26 @@ public-facts-only shape, nothing enumerable), social-identity to 99
 shelf); social-orbit 31, social-ether-identity 20, social-sky 65
 green. Deploy: RE-RUN supabase/migrations_social_sky.sql (it now
 carries creator_find beside the R2 note columns).
+
+## Build 0734 — R2.2: the suggestions reach the whole platform
+
+Reported by the product owner trying R2.1: *"it still shows vihupapa
+only. to search vihu01 i have to type it full and than click on find
+button."* Correct — R2.1 taught the FIND BUTTON to ask the platform,
+and the chips that appear while typing still came only from the
+loaded feed. `creator_suggest` closes it: a prefix of three or more
+characters answers up to eight public @names, names alone, with the
+prefix constrained to the username alphabet (so LIKE injection is
+impossible and `_` is escaped as a letter of a name, proved by
+`my_` finding `my_name` and not `myxname`). The Find field's chips
+now render the feed's names instantly and merge the platform's in
+when they land — debounced to one request per pause, sequenced so a
+late answer to an old prefix can never paint over a newer one, and
+tapping an unshared Creator's chip opens the R2.1 shelf (Companion,
+⭐ and all). Under three characters the platform answers nothing —
+an empty field is still no directory. show-journey 35 (the prefix,
+the floor, the alphabet wall, the underscore), social-identity 101
+(D8g merged chips, D8h the tap-through), social-orbit 31,
+social-ether-identity 20, social-sky 65 green. Deploy: RE-RUN
+supabase/migrations_social_sky.sql — the one re-run now carries the
+R2 note columns, creator_find and creator_suggest together.

@@ -125,6 +125,27 @@ function sqlSection() {
        'P8b and there is NOTHING TO ENUMERATE — no prefix, no wildcard, exact or nothing');
     ck(find('').ok === false,
        'P8c an identity holding no username is unreachable — an empty ask matches nobody');
+
+    // ---- R2.2: suggestions reach the whole platform ----------------
+    psql(pg, `insert into public.magic_card_identities(id,owner_id,nickname,constellation,pattern,username,companion_id)
+      values ('card_v1','${A_UID}','V1','ORION','[[1,2]]','vihu01','leosaurus'),
+             ('card_v2','${A_UID}','V2','LYRA','[[3,4]]','vihupapa','quill'),
+             ('card_u1','${A_UID}','U1','CYGNUS','[[5,6]]','my_name','leafy'),
+             ('card_u2','${A_UID}','U2','ORION','[[7,8]]','myxname','nimbus');`);
+    const sug = (pre) => JSON.parse(lines(asSession(pg, A_UID,
+      `select public.creator_suggest('${pre}');`)).find((l) => l.startsWith('{')) || '{}');
+    const s1 = sug('vihu');
+    ck(s1.ok === true && JSON.stringify(s1.names) === '["vihu01","vihupapa"]',
+       'P9  A PREFIX OF THREE FINDS EVERY CREATOR IT NAMES — shared or not, vihu01 beside vihupapa',
+       JSON.stringify(s1.names));
+    ck(sug('vi').ok === false && sug('').ok === false,
+       'P9b under three characters the platform offers NOTHING — an empty field is still no directory');
+    ck(sug('vihu%').ok === false && sug('vihu*').ok === false,
+       'P9c a prefix outside the username alphabet answers nothing — no wildcard reaches the query');
+    const s2 = sug('my_');
+    ck(s2.ok === true && JSON.stringify(s2.names) === '["my_name"]',
+       'P9d an underscore is a LETTER of the name, never a wildcard — my_ finds my_name and not myxname',
+       JSON.stringify(s2.names));
   } finally { stopPg(pg); }
 }
 

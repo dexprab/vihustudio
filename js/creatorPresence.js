@@ -143,6 +143,29 @@ const CreatorPresence=(function(){
     });
     return Promise.race([ask,new Promise(function(r){ setTimeout(function(){ r(null); },6000); })]);
   }
+  // R2.2 — the platform's own prefix suggestions (creator_suggest):
+  // three or more characters, up to eight names, names alone. Same
+  // bound as _findCreator; a platform that is away simply adds
+  // nothing, and the feed's suggestions stand on their own.
+  function _suggestCreators(prefix){
+    const want=_normName(prefix);
+    if(want.length<3) return Promise.resolve([]);
+    const ask=new Promise(function(resolve){
+      try{
+        if(typeof ThemeRepositoryClient==='undefined') return resolve([]);
+        ThemeRepositoryClient.isConfigured().then(function(ok){
+          if(!ok) return resolve([]);
+          return ThemeRepositoryClient.getClient().then(function(client){
+            return client.rpc('creator_suggest',{p_prefix:want}).then(function(res){
+              const out=res&&res.data;
+              resolve((out&&out.ok&&Array.isArray(out.names))?out.names:[]);
+            });
+          });
+        }).catch(function(){ resolve([]); });
+      }catch(e){ resolve([]); }
+    });
+    return Promise.race([ask,new Promise(function(r){ setTimeout(function(){ r([]); },6000); })]);
+  }
   function _companionFig(companionId){
     const fig=_el('span','creator-presence-comp');
     if(companionId){
@@ -385,18 +408,47 @@ const CreatorPresence=(function(){
     // that Creator's shelf; typing on simply redraws.
     const suggest=_el('div','creator-presence-suggest');
     _body.appendChild(suggest);
-    function _redrawSuggestions(){
+    // R2.2 — the feed's names render INSTANTLY (they are already
+    // here), and the platform's prefix answer merges in when it lands
+    // — debounced so a child typing does not send a request per
+    // keystroke, and sequenced so a late answer to an old prefix can
+    // never paint over a newer one.
+    let _suggestSeq=0,_suggestTimer=null;
+    function _renderSuggestions(names){
       while(suggest.firstChild) suggest.removeChild(suggest.firstChild);
-      let names=[];
-      try{
-        names=(typeof EtherFeed!=='undefined'&&EtherFeed.suggestUsernames)
-          ? EtherFeed.suggestUsernames(input.value) : [];
-      }catch(e){}
       names.forEach(function(name){
         suggest.appendChild(_button(_handle(name),'creator-presence-suggest-btn',function(){
           open(name,{meet:_meet});
         }));
       });
+    }
+    function _redrawSuggestions(){
+      const seq=++_suggestSeq;
+      let names=[];
+      try{
+        names=(typeof EtherFeed!=='undefined'&&EtherFeed.suggestUsernames)
+          ? EtherFeed.suggestUsernames(input.value) : [];
+      }catch(e){}
+      names=names.map(function(n){ return String(n).toLowerCase(); });
+      _renderSuggestions(names);
+      const want=_normName(input.value);
+      if(want.length<3) return;
+      if(_suggestTimer) clearTimeout(_suggestTimer);
+      _suggestTimer=setTimeout(function(){
+        _suggestCreators(want).then(function(more){
+          if(seq!==_suggestSeq) return;
+          const seen={};
+          const merged=[];
+          names.concat(more).forEach(function(n){
+            const u=String(n||'').toLowerCase();
+            if(!u||seen[u]) return;
+            seen[u]=true;
+            merged.push(u);
+          });
+          merged.sort();
+          _renderSuggestions(merged.slice(0,8));
+        });
+      },250);
     }
     input.addEventListener('input',_redrawSuggestions);
 

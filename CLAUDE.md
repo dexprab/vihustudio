@@ -6520,9 +6520,16 @@ it → wants to see more from that creator. That loop, and nothing else.
   them through their Companion — *"Nothing in the Ether yet — but
   they're here, making"* — with the same ⭐ a full shelf offers, so a
   child can put somebody in their Sky before their first shared
-  story. **What the old rule actually protected is kept**: no prefix
-  search, no wildcard, no listing — the suite proves there is still
-  nothing to enumerate, and an unknown name is told gently ("No
+  story. **And the suggestions reach the whole platform too** (R2.2,
+  the same conversation: *"to search vihu01 i have to type it full and
+  than click on find button"*) — three typed characters ask
+  `creator_suggest`, a prefix lookup capped at eight names, names
+  alone, debounced and merged with the feed's own instant chips. What
+  bounds it: under three characters the platform answers NOTHING (an
+  empty field is still no directory), the prefix must be the username
+  alphabet itself (which also makes LIKE injection impossible — and
+  `_` is escaped, a letter of a name, never a wildcard), and there is
+  no listing call of any kind. An unknown name is told gently ("No
   Creator by that name is in VihuPlanet yet"), never blamed.
 - **The name rides the entity's `source`, and that was a measured
   bug.** `storyEntity.js` copies a fixed field list and dropped the
