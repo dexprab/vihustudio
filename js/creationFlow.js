@@ -1233,6 +1233,71 @@ const CreationFlow=(function(){
       section.appendChild(row);
       content.appendChild(section);
     }
+    _etherShelf();
+    _etherDoor();
+  }
+
+  // A deliberate exit surrenders the tab's inside authority (Decision
+  // 23, R3) — the same handover js/app.js's own Back to the Ether
+  // does — so the back button cannot sneak past the gate afterwards.
+  function _leaveForEther(url){
+    try{ sessionStorage.removeItem('vihu.studioEntry.inside'); }catch(e){}
+    window.location.href=url||'index.html';
+  }
+
+  // ---------- 🌌 Your stories in the Ether ----------
+  // Asked for by the product owner: "Studio home should also show what
+  // of my creations are in ether." The child's OWN shared stories —
+  // scoped to the active card exactly as My Projects is (Decision 19),
+  // never the whole shared feed — as small covers that open the
+  // story's own public deep link (Decision 9) out in the universe.
+  // Absent rather than empty, the shelf's own standing rule.
+  function _etherShelf(){
+    try{
+      const card=(typeof MagicCard!=='undefined'&&MagicCard.getActive)?MagicCard.getActive():null;
+      if(!card||typeof CreatorProjectStore==='undefined'||!CreatorProjectStore.listPublished) return;
+      const mine=CreatorProjectStore.listPublished().filter(function(r){
+        return r&&r.cardId===card.id;
+      });
+      if(!mine.length) return;
+      const section=_el('div','creation-flow-ether-shelf');
+      section.appendChild(_el('div','creation-flow-secondary-label','🌌 Your stories in the Ether'));
+      const row=_el('div','creation-flow-ether-row');
+      mine.slice(0,8).forEach(function(r){
+        const b=_el('button','creation-flow-ether-thing');
+        b.type='button';
+        const cover=r.thumbnail
+          ||(r.data&&Array.isArray(r.data.pages)&&r.data.pages[0]&&r.data.pages[0].readImage)
+          ||null;
+        if(cover){
+          const img=document.createElement('img');
+          img.alt=''; img.src=cover;
+          b.appendChild(img);
+        }else{
+          b.appendChild(_el('span','creation-flow-ether-glyph','✦'));
+        }
+        b.appendChild(_el('span','creation-flow-ether-name',r.name||'A story'));
+        b.addEventListener('click',function(){
+          _leaveForEther('index.html?story='+encodeURIComponent(r.id));
+        });
+        row.appendChild(b);
+      });
+      section.appendChild(row);
+      content.appendChild(section);
+    }catch(e){}
+  }
+
+  // ---------- 🌌 Back to the Ether ----------
+  // Asked for by the product owner: "studio home needs a way to go to
+  // ether." The editor has always had one (the header's own button);
+  // Studio Home had no way out at all except making something. One
+  // quiet line at the foot of the screen — it keeps the name Decision
+  // 23 gave it, and leaves through the same surrendering exit.
+  function _etherDoor(){
+    const b=_el('button','creation-flow-ether-door','🌌 Back to the Ether');
+    b.type='button';
+    b.addEventListener('click',function(){ _leaveForEther('index.html'); });
+    content.appendChild(b);
   }
 
   // ---------- Import Theme (Sprint 11.0 — moved onto Screen 2) ----------

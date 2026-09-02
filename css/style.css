@@ -14034,6 +14034,61 @@ body.studio-rite-running .companion-chat-open{ display:none !important; }
 }
 .creation-flow-socialdoor-btn:hover{ background:#faf3e2; }
 
+/* ================================================================
+   R3.4 — 🌌 Your stories in the Ether, and the way back to it.
+   The shelf shows the child's OWN shared stories as small covers
+   opening their public deep links; the door is one quiet line at
+   the foot of Studio Home. Both sit at the BOTTOM of the screen so
+   the Discover door never moves for them (Decision 22's fold rule).
+   ================================================================ */
+/* the docked 💬 companion pill stands at the foot of Studio Home —
+   the shelf clears it rather than hiding its last row underneath
+   (measured: a shelf story was unclickable under the pill) */
+.creation-flow-ether-shelf{ margin:18px 0 56px; text-align:center; }
+.creation-flow-ether-row{
+  display:flex; flex-wrap:wrap; gap:10px; justify-content:center;
+  margin-top:8px;
+}
+.creation-flow-ether-thing{
+  width:auto !important; height:auto !important;
+  margin:0 !important; padding:7px !important;
+  display:flex; flex-direction:column; align-items:center; gap:4px;
+  max-width:104px;
+  background:#fffdf6; border:1px solid #eadfc4; border-radius:10px;
+  cursor:pointer;
+}
+.creation-flow-ether-thing:hover{ border-color:#d8a437; }
+.creation-flow-ether-thing img{
+  max-width:88px; max-height:64px; border-radius:6px;
+}
+.creation-flow-ether-glyph{ font-size:22px; color:#c9a44c; }
+.creation-flow-ether-name{
+  font-family:Georgia,serif; font-size:11.5px; color:#6f6a60;
+  max-width:92px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+/* The door is a FIXED corner pill, deliberately outside the flow: it
+   costs the fold nothing (creation-home F13 caught the in-flow first
+   draft overflowing a 600px window by exactly its own height), it is
+   in the same place on every Studio Home state, and a way out is the
+   room's furniture rather than the screen's content. */
+.creation-flow-ether-door{
+  /* above the build-info strip in the same corner — measured overlap */
+  position:fixed; right:16px; bottom:40px; z-index:60;
+  display:inline-flex;
+  width:auto !important; height:auto !important;
+  margin:0 !important; padding:7px 16px !important;
+  border-radius:999px; border:1px solid #e0d6bd;
+  background:#fffdf6; color:#6f6a60;
+  box-shadow:0 4px 14px rgba(30,24,12,0.12);
+  font-family:Georgia,serif; font-size:12.5px; cursor:pointer;
+}
+.creation-flow-ether-door:hover{ background:#faf3e2; }
+@media (max-height:760px){
+  /* the shelf is lovely and duplicative (every story on it is also in
+     My Projects) — in a short window it yields before any control */
+  .creation-flow-ether-shelf{ display:none; }
+}
+
 .creator-social-overlay{
   position:fixed;
   inset:0;

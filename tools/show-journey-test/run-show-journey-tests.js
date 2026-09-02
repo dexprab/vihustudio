@@ -614,6 +614,43 @@ function sqlSection() {
        'PP3 A STAR\'S 🎁 OPENS THE GIFT INSIDE THE SKY TOO — the arrival plays in the same night, one popup from first tap to last',
        JSON.stringify(giftHosted));
 
+    // ---- K: keeping grows the garden too (R3.4) --------------------
+    // Asked for by the product owner: "showing and keeping should grow
+    // garden in editor." Show already grew the sender's; bringing a
+    // creation into your own world is a creative act of your own, so a
+    // Keep now grows the KEEPER's garden — the Garden's one typeless
+    // event, deduplicated by its recent-ids guard, persisted by
+    // LivingGarden's document-level listener wherever it fires so it
+    // is standing in the editor the next time it opens.
+    const keepGrow = await page.evaluate(async (s) => {
+      document.querySelectorAll('.social-sky-overlay, .creation-show-overlay')
+        .forEach((o) => o.remove());
+      window.__gift.seen = true; // an already-seen gift opens straight to Keep
+      // S4 swapped the rpc stub for a find-only one — restore the
+      // gift-aware answers this journey started with.
+      ThemeRepositoryClient.getClient = () => Promise.resolve({
+        rpc: (fn) => {
+          if (fn === 'creation_show_get') return Promise.resolve({ data: { ok: true, gift: window.__gift } });
+          return Promise.resolve({ data: { ok: false } });
+        },
+      });
+      localStorage.setItem('vihu.gifts.' + s.aCard, JSON.stringify(
+        [{ id: 'g1', from: 'stargirl', companion: 'quill', kind: 'drawing', name: 'A drawing', seen: true }]));
+      const before = window.__growth.length;
+      CreationShow.openGifts({ from: 'stargirl' });
+      await new Promise((r) => setTimeout(r, 500));
+      const keepBtn = document.querySelector('.creation-gift-keep');
+      if (!keepBtn) return { keepBtn: false };
+      keepBtn.click();
+      await new Promise((r) => setTimeout(r, 800));
+      const grew = window.__growth.slice(before).map((g) => g.id);
+      document.querySelectorAll('.creation-show-overlay').forEach((o) => o.remove());
+      return { keepBtn: true, grew };
+    }, seeded);
+    ck(keepGrow.keepBtn && keepGrow.grew.length === 1 && keepGrow.grew[0] === 'keep:g1',
+       'K1  KEEPING GROWS THE KEEPER\'S GARDEN — one keep, one growth, through the Garden\'s own typeless event',
+       JSON.stringify(keepGrow.grew));
+
     // ---- J13: a Traveller has none of this -------------------------
     const trav = await page.evaluate(() => {
       MagicCard.setActive('');
@@ -628,6 +665,58 @@ function sqlSection() {
 
     ck(pageErrors.length === 0, 'J14 zero page errors across the whole journey',
        pageErrors.slice(0, 2).join(' | ') || 'clean');
+
+    // ---- E: Studio Home reaches the Ether, and shows what lives there
+    // (R3.4, asked for by the product owner: "studio home needs a way
+    // to go to ether" · "studio home should also show what of my
+    // creations are in ether".) The door is a fixed corner pill so the
+    // fold never pays for it (creation-home F13 caught the in-flow
+    // draft); the shelf is the child's OWN shared stories, card-scoped
+    // like My Projects, opening their public deep links — and leaving
+    // through either surrenders the tab's inside authority.
+    await page.evaluate((s) => {
+      MagicCard.setActive(s.aCard);
+      CreatorProjectStore.markPublished(s.mine);
+      // Scene 3 asks a Returning Creator for their sky; the one-shot
+      // recognition note is what a child arriving from VihuPlanet
+      // carries (creation-home's own established boot pattern).
+      try { CreatorRecognition.markRecognised(s.aCard); } catch (e) {}
+    }, seeded);
+    await page.goto(BASE + '/studio.html?author=on');
+    await page.waitForFunction(() => typeof CreationFlow !== 'undefined', null, { timeout: 20000 });
+    // Tap through the Gateway cinematic the way a child skips it.
+    for (let i = 0; i < 14; i++) {
+      const doneGw = await page.evaluate(() => {
+        const gw = document.getElementById('gatewayOverlay');
+        if (!gw || gw.classList.contains('hidden') ||
+            getComputedStyle(gw).display === 'none') return true;
+        gw.click();
+        return false;
+      });
+      if (doneGw) break;
+      await page.waitForTimeout(700);
+    }
+    await page.waitForSelector('.creation-flow-ether-door', { timeout: 20000 });
+    await page.waitForSelector('.creation-flow-ether-thing', { timeout: 10000 });
+    const shelf = await page.evaluate(() => ({
+      door: (document.querySelector('.creation-flow-ether-door') || {}).textContent || '',
+      fixed: getComputedStyle(document.querySelector('.creation-flow-ether-door')).position === 'fixed',
+      things: Array.from(document.querySelectorAll('.creation-flow-ether-name')).map((n) => n.textContent),
+    }));
+    ck(/Back to the Ether/.test(shelf.door) && shelf.fixed,
+       'E1  STUDIO HOME HAS A WAY TO THE ETHER — one quiet corner pill, fixed outside the flow so the fold never pays for it');
+    ck(shelf.things.length === 1 && shelf.things[0] === 'The Moon Dragon',
+       'E2  AND SHOWS THE CHILD\'S OWN STORIES IN THE ETHER — scoped to their card, absent when nothing is shared',
+       shelf.things.join(','));
+    await page.click('.creation-flow-ether-thing');
+    await page.waitForFunction(() => /index\.html|^\/$/.test(location.pathname), null, { timeout: 8000 });
+    const left = await page.evaluate(() => ({
+      search: location.search,
+      inside: sessionStorage.getItem('vihu.studioEntry.inside'),
+    }));
+    ck(left.search.indexOf('story=' + seeded.mine) !== -1 && left.inside === null,
+       'E3  A SHELF STORY OPENS IN THE UNIVERSE — its public deep link, with the tab\'s inside authority surrendered on the way out',
+       left.search);
 
     // ---- G: the Studio survives a refresh --------------------------
     // R3, by the product owner's instruction (amending Decision 23's

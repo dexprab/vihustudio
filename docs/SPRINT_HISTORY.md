@@ -11146,3 +11146,38 @@ cancelled sequence stays dead, an uninterrupted one still chains, and
 the flight loop is untouched both ways. Proved by reverting — the
 broken build plays six lines at once, which is the report verbatim.
 creation-home 84 green as the boot smoke. No server changes.
+
+## Build 0742 — R3.4: Studio Home reaches the Ether, shows what lives there, and keeping grows the garden
+
+Three asks from the product owner. (1) "Studio home needs a way to go
+to ether" — the editor always had one (the header's own button);
+Studio Home had no way out except making something. 🌌 Back to the
+Ether is now a quiet FIXED corner pill on every Studio Home state —
+fixed deliberately, because the in-flow first draft overflowed a
+600px window by exactly its own height and creation-home's F13 caught
+it; a way out is the room's furniture, not the screen's content. It
+leaves through the surrendering exit (Decision 23 R3: the tab's
+inside authority is given back, so the back button cannot sneak past
+the gate), and it sits above the build-info strip it was measured
+overlapping. (2) "Studio home should also show what of my creations
+are in ether" — 🌌 Your stories in the Ether: the child's OWN shared
+stories, scoped to the active card exactly as My Projects is
+(Decision 19), as small covers opening each story's public deep link
+(Decision 9) out in the universe, with the same surrendering exit.
+Absent rather than empty; it yields under the 760px short-window rule
+(every story on it is also in My Projects); and it clears the docked
+💬 companion pill, which the first draft measured covering a shelf
+story completely. The Sky's own story links surrender the authority
+now too. (3) "Showing and keeping should grow garden in editor" —
+Show already grew the sender's garden, and LivingGarden's
+document-level listener persists a growth wherever it fires (the
+Garden loads on every Studio page), so it was already standing in the
+editor afterwards; what was missing was KEEP. Bringing somebody's
+creation into your own world is a creative act of your own, so a
+successful Keep now grows the keeper's garden through the Garden's
+one typeless event (Decision 27), deduplicated by the recent-ids
+guard — one keep, one growth, and the Garden still learns nothing
+about gifts. show-journey grew to 60 (K1 keep-growth measured through
+the real Keep button; E1–E3 walk Studio Home through the real
+Gateway boot to the door, the shelf and the surrendered exit);
+creation-home 84 green, fold intact. No server changes.

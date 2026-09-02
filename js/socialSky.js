@@ -508,7 +508,10 @@ const SocialSky=(function(){
             b.appendChild(_el('span','social-sky-space-thing-name',sr.title||'A story'));
             // Reading lives in the Ether — the story's own public deep
             // link (Decision 9), an intent the universe already honours.
+            // A deliberate exit surrenders the tab's inside authority
+            // (Decision 23, R3), the same as every Back to the Ether.
             b.addEventListener('click',function(){
+              try{ sessionStorage.removeItem('vihu.studioEntry.inside'); }catch(e){}
               window.location.href='index.html?story='+encodeURIComponent(sr.id);
             });
             grid.appendChild(b);

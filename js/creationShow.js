@@ -823,6 +823,19 @@ const CreationShow=(function(){
                 : (full.kind==='letter'
                     ? mine.name+' carried a copy to your letters.'
                     : mine.name+' carried a copy into your garden.');
+              // KEEPING GROWS THE GARDEN TOO — asked for by the product
+              // owner. Bringing somebody's creation into your world is
+              // a creative act of your own, and it grows YOUR garden
+              // the same way a Show grows the sender's: the Garden's
+              // one event, a capture id and no type (Decision 27), so
+              // the recent-ids guard makes one keep one growth and the
+              // Garden learns nothing about gifts. LivingGarden's
+              // listener persists it wherever it fires, so the growth
+              // is standing in the editor the next time it opens.
+              try{
+                document.dispatchEvent(new CustomEvent('vihu:creation-captured',
+                  {detail:{id:'keep:'+(full.id||('local-'+Date.now()))}}));
+              }catch(e2){}
               if(typeof rerenderList==='function') rerenderList();
             }else if(res&&res.reason==='have_own'){
               keepBtn.disabled=false;
