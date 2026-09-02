@@ -128,10 +128,10 @@ function sqlSection() {
 
     // ---- R2.2: suggestions reach the whole platform ----------------
     psql(pg, `insert into public.magic_card_identities(id,owner_id,nickname,constellation,pattern,username,companion_id)
-      values ('card_v1','${A_UID}','V1','ORION','[[1,2]]','vihu01','leosaurus'),
-             ('card_v2','${A_UID}','V2','LYRA','[[3,4]]','vihupapa','quill'),
-             ('card_u1','${A_UID}','U1','CYGNUS','[[5,6]]','my_name','leafy'),
-             ('card_u2','${A_UID}','U2','ORION','[[7,8]]','myxname','nimbus');`);
+      values ('card_v1','${A_UID}','V1','ORION','[[7,7]]','vihu01','leosaurus'),
+             ('card_v2','${A_UID}','V2','LYRA','[[8,8]]','vihupapa','quill'),
+             ('card_u1','${A_UID}','U1','CYGNUS','[[6,6]]','my_name','leafy'),
+             ('card_u2','${A_UID}','U2','ORION','[[9,9]]','myxname','nimbus');`);
     const sug = (pre) => JSON.parse(lines(asSession(pg, A_UID,
       `select public.creator_suggest('${pre}');`)).find((l) => l.startsWith('{')) || '{}');
     const s1 = sug('vihu');
@@ -146,6 +146,32 @@ function sqlSection() {
     ck(s2.ok === true && JSON.stringify(s2.names) === '["my_name"]',
        'P9d an underscore is a LETTER of the name, never a wildcard — my_ finds my_name and not myxname',
        JSON.stringify(s2.names));
+
+    // ---- RECOG-3: the live platform's own broken state, reproduced -
+    // The production incident: the taught column never existed (no
+    // migration ever created it), migrations_social_identity's recall
+    // redefinition read v_identity.taught anyway, and every drawn-star
+    // recognition failed at runtime with 42703 — reported as "am not
+    // able to login even when magic card pattern is correct". The
+    // migration now GUARANTEES every column its recall reads, so
+    // re-running it on a database missing the column heals it.
+    psql(pg, `alter table public.magic_card_identities drop column taught;`);
+    // stargirl's real one-cell sky: the broken state only throws when
+    // a sky actually MATCHES (that is the read of v_identity.taught).
+    const broken = asSession(pg, B_UID,
+      `select public.recall_magic_card('[[3,4]]'::jsonb, null);`);
+    ck(/has no field "taught"|no_match/.test(broken.err + broken.out) &&
+       !(broken.out || '').includes('"ok": true'),
+       'P10 WITH THE COLUMN MISSING, RECALL CANNOT SUCCEED — the exact 42703 the live platform threw',
+       (broken.err || broken.out || '').split('\n')[0].slice(0, 70));
+    const heal = loadFile(pg, path.join(ROOT, 'supabase', 'migrations_social_identity.sql'));
+    ck(!heal, 'P10b re-running migrations_social_identity HEALS it — the migration now guarantees every column its recall reads', heal ? heal.split('\n')[0] : 'clean');
+    // stargirl's real sky, drawn as a set in a different order.
+    const healed = JSON.parse(lines(asSession(pg, B_UID,
+      `select public.recall_magic_card('[[3,4]]'::jsonb, null);`)).find((l) => l.startsWith('{')) || '{}');
+    ck(healed.ok === true && healed.identity_id === 'card_b' && healed.taught === null,
+       'P10c and the drawn sky is recognised again — taught comes back null, which adopt() reads as grandfathered',
+       JSON.stringify({ ok: healed.ok, id: healed.identity_id }));
   } finally { stopPg(pg); }
 }
 

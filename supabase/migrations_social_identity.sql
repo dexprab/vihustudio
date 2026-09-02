@@ -35,6 +35,20 @@
 alter table public.magic_card_identities
   add column if not exists username text;
 
+-- EVERY COLUMN THE recall_magic_card() BODY BELOW READS IS GUARANTEED
+-- HERE, because this is the file that gets re-run — and the live
+-- platform proved what happens otherwise: it never ran
+-- migrations_taught.sql, this file's recall redefinition read
+-- v_identity.taught anyway, PL/pgSQL validated nothing at create
+-- time, and every drawn-star recognition failed at runtime with
+-- 42703 until the column existed. Guarded, so each is a no-op
+-- wherever the original migration did run.
+alter table public.magic_card_identities add column if not exists taught jsonb;
+alter table public.magic_card_identities add column if not exists parent_email text;
+alter table public.magic_card_identities add column if not exists companion_id text;
+alter table public.magic_card_identities add column if not exists companion_name text;
+alter table public.magic_card_identities add column if not exists companion_species text;
+
 -- Case-insensitive global uniqueness. Partial, so the many identities
 -- with no username yet do not collide on null.
 create unique index if not exists magic_card_identities_username_key

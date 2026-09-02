@@ -18,6 +18,14 @@
 -- a `create or replace` invites. If that migration is ever revised,
 -- this file has to be rebuilt on top of it again.
 
+-- THE COLUMN ITSELF. This file originally redefined the function
+-- below WITHOUT creating the column it reads — PL/pgSQL does not
+-- validate record fields at create time, so the broken state looked
+-- healthy until a Creator drew their stars on the live platform and
+-- every recall failed with 42703. A migration that reads a column
+-- guarantees the column.
+alter table public.magic_card_identities add column if not exists taught jsonb;
+
 create or replace function public.recall_magic_card(p_pattern jsonb default null, p_typed_code text default null)
 returns jsonb
 language plpgsql

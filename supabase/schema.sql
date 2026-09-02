@@ -676,6 +676,15 @@ alter table public.magic_card_identities add column if not exists companion_spec
 -- service role, which is what lets recovery work on a device that knows
 -- nothing at all.
 alter table public.magic_card_identities add column if not exists parent_email text;
+-- Decision 22 — the capabilities a Creator has been taught (a jsonb
+-- array of capability ids). THE COLUMN THAT WAS NEVER SHIPPED: for a
+-- year of builds no migration added it — migrations_taught.sql
+-- redefined recall_magic_card() to RETURN v_identity.taught without
+-- creating the column, PL/pgSQL validated nothing at create time, and
+-- every drawn-star recall on the live platform then failed at RUNTIME
+-- with 42703 `record "v_identity" has no field "taught"` — reported
+-- as "am not able to login even when magic card pattern is correct".
+alter table public.magic_card_identities add column if not exists taught jsonb;
 create index if not exists magic_card_identities_parent_email_idx
   on public.magic_card_identities (parent_email)
   where parent_email is not null;

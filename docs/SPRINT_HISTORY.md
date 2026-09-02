@@ -10989,3 +10989,32 @@ if the drawn sky belongs to one of those groups, recall refuses it
 for everyone in it. Proved against the seeded PostgreSQL: the
 scrambled-set duplicate appears in both the per-card row and the
 platform-wide sweep. social-identity 101 green.
+
+## Build 0737 — RECOG-3: the column that was never shipped
+
+The console line closed the case: `42703 — record "v_identity" has no
+field "taught"`. The `taught` column was NEVER CREATED BY ANY
+MIGRATION — migrations_taught.sql redefined recall_magic_card() to
+return `v_identity.taught` without an ALTER TABLE, schema.sql never
+carried the column either, and PL/pgSQL validates record fields only
+at RUNTIME — so every redefinition installed cleanly and the broken
+state looked healthy until a Creator drew their stars, exactly as
+supabase/what_is_missing.sql (built earlier, never run on the live
+project) predicted word for word. The blast radius was every
+drawn-star recognition on the live platform since
+migrations_social_identity ran; Vihaan's sky was never wrong (the
+diagnostic proved it unique, stored, and matching his drawing — the
+top star of both sits at row 0, column 4). THE FIX IS ONE LINE on the
+live project (`alter table public.magic_card_identities add column if
+not exists taught jsonb;`), and the trap is closed at every layer:
+schema.sql adds the column beside parent_email's own guarded-alter
+pattern; migrations_taught.sql now creates what it reads; and
+migrations_social_identity.sql — the file that actually gets re-run —
+guarantees EVERY column its recall body reads (taught, parent_email,
+companion_id/name/species), each a no-op where the original migration
+did run. Proved end to end in tools/show-journey-test (38): the
+column is dropped, the real recall throws the production 42703
+verbatim, the guarded migration heals it, and the same drawn sky is
+recognised again with taught returning null — which adopt() correctly
+reads as grandfathered. A migration that reads a column guarantees
+the column.
