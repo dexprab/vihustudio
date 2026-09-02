@@ -209,6 +209,36 @@
     }else if(onSettle){ onSettle(); }
   }
 
+  // ONE LUMO, ONE VOICE. Reported by the product owner on the stars
+  // screen: "if i choose my stars very quickly the lines spoken by
+  // lumo overlaps." Every line lives in its own cached Audio element,
+  // and play() never stopped the one already talking — so a fast child
+  // (or any two screens handing over quickly) had Lumo speaking over
+  // himself. js/studioRite.js already stopped its own previous line by
+  // hand, which is this rule existing in one caller; it belongs in the
+  // one module that owns the voice, so every screen gets it. Starting
+  // a new line now ends the previous one mid-sentence — the way a
+  // person changes what they are saying — and cancels any pending
+  // playSequence chain. A LOOPING clip is exempt both ways: it is
+  // staged ambience (the Gate's flight sound), deliberately concurrent
+  // with spoken lines and ended by its own choreography's stop().
+  let _current=null;
+  let _seqGen=0;
+  function _silence(){
+    _seqGen++;
+    const audio=_current;
+    _current=null;
+    if(!audio) return;
+    try{
+      if(audio.__vhSegGuard){
+        audio.removeEventListener('timeupdate',audio.__vhSegGuard);
+        audio.__vhSegGuard=null;
+      }
+      if(!audio.paused) audio.pause();
+      audio.currentTime=0;
+    }catch(e){}
+  }
+
   // "is the audio not in loop on second fly of lumo?" -- confirmed: it
   // wasn't. A single clip (~2.7s) played once while Segment 2's own
   // flight footage runs roughly 10s, so the audio ended and went silent
@@ -217,12 +247,15 @@
   // same one-shot behaviour by simply not passing it.
   function play(id,opts){
     try{
+      const loop=!!(opts&&opts.loop);
+      if(!loop) _silence();
       const audio=_audioFor(id);
       if(!audio) return;
       const entry=LINES[id];
       // An offset entry must never loop — looping would replay the whole
       // file, not the segment.
-      audio.loop=!!(opts&&opts.loop)&&!(entry&&entry.to);
+      audio.loop=loop&&!(entry&&entry.to);
+      if(!loop) _current=audio;
       _playWithRetry(audio,null,entry);
     }catch(e){}
   }
@@ -236,6 +269,7 @@
       audio.loop=false;
       audio.pause();
       audio.currentTime=0;
+      if(_current===audio) _current=null;
     }catch(e){}
   }
 
@@ -248,19 +282,28 @@
   function playSequence(ids){
     try{
       if(!ids) return;
+      // One voice: a sequence takes the floor exactly like a single
+      // line, and a LATER play()/playSequence() takes it back — the
+      // generation token kills this chain so a clip that ends after
+      // the hand-off cannot chain its successor over the new line.
+      _silence();
+      const my=_seqGen;
       const list=Array.isArray(ids)?ids:[ids];
       let i=0;
       function next(){
+        if(my!==_seqGen) return;
         if(i>=list.length) return;
         const audio=_audioFor(list[i]);
         i++;
         if(!audio){ next(); return; }
+        _current=audio;
         audio.removeEventListener('ended',next);
         audio.addEventListener('ended',next,{once:true});
         _playWithRetry(audio,function(){
           // A clip that never actually became playable (retry also
           // failed) won't fire 'ended' on its own -- move on rather than
           // silently stall the rest of the sequence forever.
+          if(my!==_seqGen) return;
           if(audio.paused && audio.currentTime===0){
             audio.removeEventListener('ended',next);
             next();

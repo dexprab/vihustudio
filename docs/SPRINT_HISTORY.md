@@ -11118,3 +11118,31 @@ never centre one — .creation-show-quiet and .creation-gift-keep are
 inline-flex now, which is why the quiet buttons finally sit where
 their panel's centring puts them. show-journey 56 and social-sky 65
 green; no server changes.
+
+## Build 0741 — one Lumo, one voice
+
+Reported by the product owner as urgent: "on stars screen where i
+choose stars if i choose my stars very quickly the lines spoken by
+lumo overlaps." The cause was in js/lumoVoice.js itself, not any one
+screen: every line lives in its own cached Audio element and play()
+never stopped the one already talking, so a fast child — or any two
+screens handing over quickly — had Lumo speaking over himself.
+js/studioRite.js had already stopped its own previous line by hand,
+which is this rule existing in one caller; it now lives in the one
+module that owns the voice, so every screen gets it. play() silences
+the current line before starting the new one (pausing it, resetting
+it, and dropping any segment guard), playSequence() takes the floor
+the same way and carries a generation token so a clip that ends after
+the hand-off cannot chain its successor over the new line, and stop()
+clears the slot. The one exemption is a LOOPING clip — the Gate's
+flight ambience is deliberately concurrent with spoken lines and is
+ended by its own choreography's explicit stop(). tools/lumo-voice-test
+(6) drives the real module in the real Studio with the Audio
+constructor stubbed BEFORE any script runs (app.js preloads the whole
+clip set at boot, so a stub installed after load misses every cached
+element — the first draft did exactly that): a new line silences the
+old, four lines fired in one breath leave exactly one voice, a
+cancelled sequence stays dead, an uninterrupted one still chains, and
+the flight loop is untouched both ways. Proved by reverting — the
+broken build plays six lines at once, which is the report verbatim.
+creation-home 84 green as the boot smoke. No server changes.
