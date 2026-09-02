@@ -11181,3 +11181,26 @@ about gifts. show-journey grew to 60 (K1 keep-growth measured through
 the real Keep button; E1–E3 walk Studio Home through the real
 Gateway boot to the door, the shelf and the surrendered exit);
 creation-home 84 green, fold intact. No server changes.
+
+## Build 0743 — R3.5: a creation opens where the child is standing
+
+Corrected by the product owner one build after 0742: "in sky clicking
+on any creation is still taking back to ether it should not. the
+creation should load on studio home itself." Both places a creation
+could be tapped from Studio Home navigated away — the Sky's Creator
+space grid to `index.html?story=` (R3's own design, "reading lives in
+the Ether") and the new Ether shelf to the same deep link (0742's E3
+asserted exactly that, and is turned around with the reason in
+place). A creation now opens RIGHT THERE: the Sky's grid uses the
+same quiet pager the mutual not-in-the-Ether shelf already reads
+with (renderPeek — same overlay, Back returns to the Creator's
+space), and the Studio Home shelf opens the same pager over the room
+in the Sky's own overlay vocabulary, so there is one way a story
+looks when it is being flipped through quietly. publicCreations()
+rows now carry their baked reading pages beside the cover to feed
+it. Nothing navigates, the Studio is never lost, and the Ether stays
+one press away at the corner door — the full reading portal, with
+its host and narration, still lives there for anyone who goes.
+show-journey 61 (E3 turned, SP1 added for the Sky's grid; the seed's
+IndexedDB hydration race also hardened with an on-load re-seed
+fallback after it flaked twice in three runs). No server changes.

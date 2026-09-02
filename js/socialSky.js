@@ -506,13 +506,16 @@ const SocialSky=(function(){
               b.appendChild(_el('span','social-sky-space-thing-glyph','✦'));
             }
             b.appendChild(_el('span','social-sky-space-thing-name',sr.title||'A story'));
-            // Reading lives in the Ether — the story's own public deep
-            // link (Decision 9), an intent the universe already honours.
-            // A deliberate exit surrenders the tab's inside authority
-            // (Decision 23, R3), the same as every Back to the Ether.
+            // R3.5 — corrected by the product owner: "clicking on any
+            // creation is still taking back to ether it should not.
+            // the creation should load on studio home itself." A tap
+            // opens the story RIGHT HERE, as the same quiet pager the
+            // mutual shelf already reads with — same overlay, Back to
+            // this Creator's space, no navigation and no lost Studio.
             b.addEventListener('click',function(){
-              try{ sessionStorage.removeItem('vihu.studioEntry.inside'); }catch(e){}
-              window.location.href='index.html?story='+encodeURIComponent(sr.id);
+              renderPeek(name,companion,
+                {name:sr.title||'A story',thumbnail:sr.cover||null},
+                Array.isArray(sr.pages)?sr.pages:[]);
             });
             grid.appendChild(b);
           });

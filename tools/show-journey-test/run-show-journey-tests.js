@@ -215,8 +215,9 @@ function sqlSection() {
       localStorage.setItem('vihu.sky.' + a.id, JSON.stringify({
         sky: [{ username: 'stargirl', companion: 'quill', circle: true }], choseMe: []
       }));
-      return { aCard: a.id, mine, px: px('#227722') };
+      return { aCard: a.id, mine, px: px('#227722'), thumb: px('#3355aa') };
     });
+    await page.waitForTimeout(1000); // let the IndexedDB write settle before navigating
     // Not reload(): ?author=on is read once and stripped, and the
     // seed's localStorage.clear() wiped the remembered flag — a plain
     // reload is bounced home by Decision 23's gate, correctly.
@@ -225,9 +226,22 @@ function sqlSection() {
       typeof CompanionName !== 'undefined', null, { timeout: 20000 });
     // The project store rehydrates from IndexedDB — the dialog opened
     // before that finishes would honestly say "nothing here yet".
-    await page.waitForFunction(() => {
-      try { return CreatorProjectStore.list().length > 0; } catch (e) { return false; }
-    }, null, { timeout: 15000 });
+    // Hydration can race a navigation that followed the write too
+    // closely (measured, intermittent); a re-seed on THIS load is the
+    // same story arriving late, not a different fixture.
+    try {
+      await page.waitForFunction(() => {
+        try { return CreatorProjectStore.list().length > 0; } catch (e) { return false; }
+      }, null, { timeout: 10000 });
+    } catch (e) {
+      await page.evaluate((s) => {
+        CreatorProjectStore.upsert(s.mine, { name: 'The Moon Dragon', thumbnail: s.thumb },
+          { version: 1, pages: [{ id: 'p1', readImage: s.thumb }] });
+      }, seeded);
+      await page.waitForFunction(() => {
+        try { return CreatorProjectStore.list().length > 0; } catch (e2) { return false; }
+      }, null, { timeout: 10000 });
+    }
 
     // The child renamed their Companion: Leo is Aslan to Vihaan.
     // Stubs mutate the modules IN PLACE (top-level consts — swapping
@@ -708,15 +722,37 @@ function sqlSection() {
     ck(shelf.things.length === 1 && shelf.things[0] === 'The Moon Dragon',
        'E2  AND SHOWS THE CHILD\'S OWN STORIES IN THE ETHER — scoped to their card, absent when nothing is shared',
        shelf.things.join(','));
+    // R3.5 — TURNED AROUND, corrected by the product owner: this used
+    // to assert the shelf story navigated to the Ether's deep link,
+    // and he asked for the opposite — "the creation should load on
+    // studio home itself." The Ether stays one press away at the
+    // corner door; a creation opens as a quiet pager right here.
     await page.click('.creation-flow-ether-thing');
-    await page.waitForFunction(() => /index\.html|^\/$/.test(location.pathname), null, { timeout: 8000 });
-    const left = await page.evaluate(() => ({
-      search: location.search,
-      inside: sessionStorage.getItem('vihu.studioEntry.inside'),
+    await page.waitForSelector('.social-sky-overlay .social-sky-peek img', { timeout: 8000 });
+    const peek = await page.evaluate(() => ({
+      url: location.pathname,
+      title: (document.querySelector('.social-sky-overlay .social-sky-space-name') || {}).textContent || '',
     }));
-    ck(left.search.indexOf('story=' + seeded.mine) !== -1 && left.inside === null,
-       'E3  A SHELF STORY OPENS IN THE UNIVERSE — its public deep link, with the tab\'s inside authority surrendered on the way out',
-       left.search);
+    ck(/studio\.html/.test(peek.url) && peek.title === 'The Moon Dragon',
+       'E3  A SHELF STORY OPENS ON STUDIO HOME ITSELF — a quiet pager over the room, nothing navigates, the Studio never lost',
+       peek.title);
+    // and the same correction in the Sky: a creation in a Creator's
+    // space reads right there, in the same overlay.
+    await page.evaluate(() => {
+      document.querySelectorAll('.social-sky-overlay').forEach((o) => o.remove());
+      SocialSky.open({ creator: 'moonmaker' });
+    });
+    await page.waitForSelector('.social-sky-space-thing', { timeout: 8000 });
+    await page.click('.social-sky-space-thing');
+    await page.waitForSelector('.social-sky-overlay .social-sky-peek img', { timeout: 8000 });
+    const skyPeek = await page.evaluate(() => ({
+      url: location.pathname,
+      title: (document.querySelector('.social-sky-space-name') || {}).textContent || '',
+      overlays: document.querySelectorAll('.social-sky-overlay').length,
+    }));
+    ck(/studio\.html/.test(skyPeek.url) && skyPeek.title === 'The Moon Dragon' && skyPeek.overlays === 1,
+       'SP1 A CREATION IN THE SKY OPENS RIGHT THERE TOO — the same overlay\'s own pager, never a trip back to the Ether',
+       skyPeek.title);
 
     // ---- G: the Studio survives a refresh --------------------------
     // R3, by the product owner's instruction (amending Decision 23's

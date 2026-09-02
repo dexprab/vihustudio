@@ -1277,14 +1277,66 @@ const CreationFlow=(function(){
           b.appendChild(_el('span','creation-flow-ether-glyph','✦'));
         }
         b.appendChild(_el('span','creation-flow-ether-name',r.name||'A story'));
-        b.addEventListener('click',function(){
-          _leaveForEther('index.html?story='+encodeURIComponent(r.id));
-        });
+        // R3.5 — corrected by the product owner: "the creation should
+        // load on studio home itself." A tap opens the story RIGHT
+        // HERE as a quiet pager over Studio Home — no navigation, the
+        // Studio never lost. The Ether stays one press away at the
+        // corner door.
+        b.addEventListener('click',function(){ _openStoryPeek(r); });
         row.appendChild(b);
       });
       section.appendChild(row);
       content.appendChild(section);
     }catch(e){}
+  }
+
+  // A story read in place, over Studio Home — the Sky's own peek
+  // vocabulary (same overlay classes, same pager), so there is one
+  // way a story looks when it is being flipped through quietly.
+  function _openStoryPeek(r){
+    const overlay=_el('div','social-sky-overlay');
+    const panel=_el('div','social-sky-panel');
+    overlay.appendChild(panel);
+    const space=_el('div','social-sky-space');
+    panel.appendChild(space);
+    function done(){ try{ overlay.remove(); }catch(e){} }
+    overlay.addEventListener('click',function(ev){ if(ev.target===overlay) done(); });
+    space.appendChild(_el('h3','social-sky-space-name',r.name||'A story'));
+    const pages=[];
+    try{
+      ((r.data&&r.data.pages)||[]).forEach(function(p){
+        if(p&&p.readImage) pages.push(p.readImage);
+      });
+    }catch(e){}
+    const stage=_el('div','social-sky-peek');
+    space.appendChild(stage);
+    if(pages.length){
+      let at=0;
+      const img=document.createElement('img');
+      img.alt=''; img.src=pages[0];
+      stage.appendChild(img);
+      if(pages.length>1){
+        const nav=_el('div','social-sky-peek-nav');
+        const prev=_el('button','social-sky-quiet','‹');
+        const next=_el('button','social-sky-quiet','›');
+        prev.type='button'; next.type='button';
+        prev.addEventListener('click',function(){ at=(at+pages.length-1)%pages.length; img.src=pages[at]; });
+        next.addEventListener('click',function(){ at=(at+1)%pages.length; img.src=pages[at]; });
+        nav.appendChild(prev); nav.appendChild(next);
+        stage.appendChild(nav);
+      }
+    }else if(r.thumbnail){
+      const img=document.createElement('img');
+      img.alt=''; img.src=r.thumbnail;
+      stage.appendChild(img);
+    }else{
+      space.appendChild(_el('p','social-sky-space-note','Still being made ✨'));
+    }
+    const back=_el('button','social-sky-quiet','← Back');
+    back.type='button';
+    back.addEventListener('click',done);
+    space.appendChild(back);
+    document.body.appendChild(overlay);
   }
 
   // ---------- 🌌 Back to the Ether ----------
