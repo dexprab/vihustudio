@@ -2186,11 +2186,24 @@ of discard and restore state also."*
 - **Author Mode is the one exemption** (Decision 13): a development
   configuration, so `studio.html?author=on` and a browser already carrying
   the flag still open the Studio directly.
-- **Stated cost, accepted, and it is what was asked for:** a refresh
-  mid-story goes home. Nothing is lost — the story is autosaved and the
-  session slot offers it back — and re-entry is two taps (Tap to Explore ·
-  ✨ Create Story). An unreadable browser opens the Studio rather than
-  stranding a child, the same call `DeviceGate` makes.
+- ~~**Stated cost, accepted:** a refresh mid-story goes home.~~
+  **Amended by the product owner** (R3, build 0738: *"Refreshing Studio
+  Home must keep them in Studio Home"* — a refresh dropping a child out
+  of the room they are standing in reads as the product losing them,
+  not as a boundary). The pass still authorises the ARRIVAL — a typed
+  `studio.html`, a bookmark, a fresh tab and a restored session all
+  still go home, exactly as before — but consuming it now also marks
+  THIS TAB as inside (`vihu.studioEntry.inside`, sessionStorage), and
+  the gate honours either. sessionStorage is the right scope because it
+  is the tab: a refresh keeps it, a new tab does not, so nothing this
+  widens is reachable from anywhere the pass would have refused.
+  **Back to the Ether surrenders it** — a deliberate exit gives the
+  authority back, so the back button cannot sneak past the gate on the
+  strength of a visit the child chose to end. VihuPlanet's own refresh
+  behaviour is untouched (a refresh there stays there, as it always
+  has), the `?born=`/`?story=`/`?creator=` one-shot intents are
+  untouched, and an unreadable browser still opens the Studio rather
+  than stranding a child — the same call `DeviceGate` makes.
 - Verified end to end at build 0563, zero page errors: a typed
   `studio.html` goes home · the real journey opens the Studio · a plain
   refresh goes home · the back button does not bounce back in · the Home
@@ -7055,6 +7068,59 @@ where they were.
   waiting on a view, a keep or any reaction. A social-validation
   reward loop is structurally impossible: the recipient's actions
   reach no code path that grows anything.
+- **A STAR OPENS THE CREATOR IT NAMES, NEVER THE SKY AGAIN** (R3,
+  build 0738). Reported in the R3 brief: tapping a Companion in the
+  Sky re-landed on the Sky — because `_goCreator` handed off to
+  `index.html?creator=`, a full navigation that dropped a child in
+  the Studio at VihuPlanet's threshold. Fixed at source, not with a
+  second route: the Sky overlay now hosts THREE views in one panel —
+  the sky field, a Creator's space, and Find — and a star tap
+  content-swaps to that Creator's space: their Companion large at the
+  top, their `@name`, the relationship as it stands (chosen · mutual ·
+  not yet), their public creations as covers (each opening through
+  the existing `?story=` door), the mutual not-in-the-Ether shelf
+  where the mutuality earns it, and **← Back to My Sky** returning to
+  the field. The `index.html?creator=` hand-off survives only as the
+  module-level fallback for a caller with no overlay — the sky itself
+  never uses it. The platform-refresh repaint re-renders ONLY while
+  the sky FIELD is showing, so a refresh can never repaint over the
+  space or Find mid-look.
+- **FIND A CREATOR IS PART OF THE SKY.** A soft `＋` star with the
+  label *Find a Creator* stands in the sky field itself — the same
+  visual language as the stars around it, never a toolbar button —
+  and opens the Find view in place: the `@` field, `creator_suggest`
+  chips after three characters, Find ✨ through `creator_find`, and a
+  found Creator opens as the same Creator space (with ⭐ Put them in
+  my Sky right there). No friend-request model arrived with it: it is
+  the existing username discovery, reached from where a child is
+  already looking at their sky.
+- **THE JOURNEY IS STAGED AS A SCENE, and the world rule is DRAWN.**
+  R2 shipped the portal technically working and visually flat; R3 is
+  the polish pass the brief named a signature mechanic. Departure:
+  the Companion walks in and APPROACHES the creation; a shimmer COPY
+  lifts into its arms while the ORIGINAL stays on screen, dimmed but
+  present — the "your creation stays right here with you" rule shown
+  rather than said; the space reacts (dim, sparks converging); the
+  portal FORMS (a young wobbling ring), opens, the Companion arcs
+  through carrying the copy, the portal blooms closed, and the
+  original's glow returns as the words confirm what the child just
+  watched. Arrival: the recipient's space reacts first, the portal
+  forms and opens, the carrier settles out of it with a bounce
+  holding a VEILED bundle, introduces itself, and only then the
+  reveal — the veil lifts away and the creation blooms in as the
+  event, never as a modal that was always there. The actions (Keep ·
+  Back) BREATHE IN after the reveal, never beside it. A gift already
+  seen skips the theatre (straight to what it brought), and reduced
+  motion gets the words and none of it — both were already the rule
+  and both survived the restaging. The Creator is never animated
+  entering a portal, on either side: only the Companion travels.
+- **THE RECIPIENT CHOOSER IS THE CHILD'S OWN SKY, and a preset skips
+  it.** "Who would you like to show?" renders as ✨ My Sky — a night
+  field of Companions, never a contact list — and the note is placed
+  ON A CARD beside the creation being sent, never styled as a chat
+  bubble. 🎁 Show from a Creator's own space presets that Creator:
+  the chooser is skipped and the note card comes up already
+  addressed, because the child has already chosen by standing there.
 - **DEFERRED BY NAME, so nobody invents them half-way:** the
   Creativity Thread, chained exchanges, collaboration, richer Circle
   functionality, messaging, public relationship counts, rankings, and

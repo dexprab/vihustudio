@@ -411,10 +411,15 @@ const CreationShow=(function(){
   // hand, or from Studio Home with none — then the child picks one of
   // their own creations first. Either way the order is the canon's:
   // the creation exists, then a Creator is chosen for it.
-  function openShowDialog(item){
+  // opts.to — a preset recipient (the Creator's space says "show THEM
+  // something"): the child still picks the creation, and the chooser
+  // is skipped because the answer is already given. Eligibility is
+  // unchanged — the server still checks the choice live.
+  function openShowDialog(item,opts){
     const card=_card();
     if(!card) return false;
     const who=recipients();
+    const preset=(opts&&opts.to)?_norm(opts.to):null;
 
     const overlay=_el('div','creation-show-overlay');
     const panel=_el('div','creation-show-panel');
@@ -446,7 +451,13 @@ const CreationShow=(function(){
             b.appendChild(_el('span','creation-show-thing-glyph','📖'));
           }
           b.appendChild(_el('span','creation-show-thing-name',it.name));
-          b.addEventListener('click',function(){ item=it; renderWho(); });
+          b.addEventListener('click',function(){
+            item=it;
+            if(preset){
+              renderNote({username:preset,
+                circle:!!(typeof CreatorOrbit!=='undefined'&&CreatorOrbit.circleWith&&CreatorOrbit.circleWith(preset))});
+            }else renderWho();
+          });
           row.appendChild(b);
         });
         panel.appendChild(row);
@@ -462,8 +473,11 @@ const CreationShow=(function(){
 
     function renderWho(){
       while(panel.firstChild) panel.removeChild(panel.firstChild);
-      panel.appendChild(_el('h3','creation-show-title','Show it to…'));
-      if(item&&item.name) panel.appendChild(_el('p','creation-show-sub',item.name));
+      // R3 — choosing a recipient is choosing someone FROM MY SKY, so
+      // the chooser looks like one: a small night field with the
+      // Companions standing in it, never a contact list.
+      panel.appendChild(_el('h3','creation-show-title','✨ My Sky ✨'));
+      panel.appendChild(_el('p','creation-show-sub','Who would you like to show?'));
       if(!who.length){
         panel.appendChild(_el('p','creation-show-note',
           'Nobody in your sky yet — when you meet a Creator in the Ether whose things you love, choose them first.'));
@@ -471,7 +485,7 @@ const CreationShow=(function(){
       // A Creator is shown primarily through their COMPANION — the
       // being that will actually meet yours — with the @name beside
       // it. No relationship words anywhere.
-      const row=_el('div','creation-show-who');
+      const row=_el('div','creation-show-who show-sky-choose');
       who.forEach(function(e){
         const b=_el('button','creation-show-who-btn');
         b.type='button';
@@ -494,12 +508,25 @@ const CreationShow=(function(){
       while(panel.firstChild) panel.removeChild(panel.firstChild);
       panel.appendChild(_el('h3','creation-show-title','Add a little note'));
       panel.appendChild(_el('p','creation-show-sub','For @'+e.username+' — or leave it empty.'));
+      // R3 — the note is something the Creator places BESIDE their
+      // creation, so the two share one card: the creation above, the
+      // child's words beneath it. Never a chat composer.
+      const card2=_el('div','show-note-card');
+      if(item&&item.image){
+        const img=document.createElement('img');
+        img.className='show-note-thumb';
+        img.alt=''; img.src=item.image;
+        card2.appendChild(img);
+      }else{
+        card2.appendChild(_el('span','show-note-thumb-glyph','📖'));
+      }
       const field=document.createElement('input');
       field.type='text';
       field.className='creation-show-notefield';
       field.maxLength=120;
       field.placeholder='Look what I made!';
-      panel.appendChild(field);
+      card2.appendChild(field);
+      panel.appendChild(card2);
       const btns=_el('div','creation-show-btns');
       const go=_el('button','creation-gift-keep','✨ Show it');
       go.type='button';
@@ -534,36 +561,57 @@ const CreationShow=(function(){
     // ONLY THE COMPANION crosses, carrying what it was given. Portal
     // opens in this world, the Companion walks it, the portal closes —
     // never a spinner, never a transition, never left standing.
+    // R3 — the departure is a little SCENE, not a diagram: the
+    // creation stands in this world; the Companion walks to it and
+    // visibly takes responsibility (a shimmer copy lifts into its
+    // arms — the ORIGINAL never moves, which is the world rule drawn
+    // rather than asserted); the space itself reacts, starlight
+    // gathers, the portal forms and opens, the Companion crosses
+    // carrying what it was given, and the portal closes behind it.
+    // Only then does the Garden answer.
     function _departure(e,it,showId){
       while(panel.firstChild) panel.removeChild(panel.firstChild);
       const mine=_myCompanion();
       panel.appendChild(_el('h3','creation-show-title','✨ '+mine.name+' is taking it'));
-      const stage=_el('div','show-journey-stage');
+      const stage=_el('div','show-journey-stage show-journey-depart');
+      // THE ORIGINAL — in this world from first frame to last.
+      const original=_el('div','show-journey-original');
+      if(it&&it.image){
+        const img=document.createElement('img');
+        img.alt=''; img.src=it.image;
+        original.appendChild(img);
+      }else{
+        original.appendChild(_el('span','show-journey-held-glyph','📖'));
+      }
+      // Gathering starlight — the space noticing what is about to
+      // happen. Decorative only.
+      const sparks=_el('div','show-journey-sparks');
+      sparks.setAttribute('aria-hidden','true');
+      for(let i=0;i<5;i++) sparks.appendChild(_el('span','show-journey-spark','✦'));
+      const portal=_el('div','show-portal');
+      // The traveller: the Companion, and — once it has picked it up —
+      // the carried shimmer of the creation, one figure from then on.
       const trav=_el('div','show-journey-traveller');
       trav.appendChild(_companionFig(mine.id,'show-journey-companion'));
-      // The creation stays WITH the Companion — held, never flying
-      // away on its own.
+      const carried=_el('div','show-journey-carried');
       if(it&&it.image){
-        const held=document.createElement('img');
-        held.className='show-journey-held';
-        held.alt=''; held.src=it.image;
-        trav.appendChild(held);
+        const img=document.createElement('img');
+        img.alt=''; img.src=it.image;
+        carried.appendChild(img);
       }else{
-        trav.appendChild(_el('span','show-journey-held-glyph','📖'));
+        carried.appendChild(_el('span','show-journey-held-glyph','📖'));
       }
-      const portal=_el('div','show-portal');
-      stage.appendChild(trav);
+      trav.appendChild(carried);
+      stage.appendChild(original);
+      stage.appendChild(sparks);
       stage.appendChild(portal);
+      stage.appendChild(trav);
       panel.appendChild(stage);
-      const line=_el('p','show-journey-line',
-        mine.name+' is taking this to @'+e.username+'.');
+      const line=_el('p','show-journey-line','');
       panel.appendChild(line);
-      // Spoken first person, in the Companion's own voice — no
-      // introduction on this side: the child already knows their own
-      // Companion.
-      _speak(mine.id,'I’m taking this to '+e.username+'.');
 
       function settle(){
+        stage.classList.add('is-after');
         line.textContent='Your creation stays right here with you.';
         // EVERY SUCCESSFUL SHOW GROWS THE SENDER'S GARDEN — after the
         // portal closes, so the causality reads "I shared something I
@@ -584,16 +632,41 @@ const CreationShow=(function(){
       if(_reduced()){
         // No portal theatre under reduced motion — the words carry the
         // same truth, and the garden still grows.
+        line.textContent=mine.name+' is taking this to @'+e.username+'.';
+        _speak(mine.id,'I’m taking this to '+e.username+'.');
         settle();
         return;
       }
-      setTimeout(function(){ portal.classList.add('is-open'); },1700);
-      setTimeout(function(){ stage.classList.add('is-crossing'); },2600);
-      setTimeout(function(){ portal.classList.remove('is-open'); portal.classList.add('is-closed'); },4200);
-      setTimeout(settle,4900);
+      // The scene, beat by beat.
+      requestAnimationFrame(function(){ stage.classList.add('is-approach'); });
+      setTimeout(function(){
+        // The pickup: the shimmer copy lifts into the Companion's
+        // arms; the original dims a breath while its light is away.
+        stage.classList.add('is-picked');
+        line.textContent=mine.name+' is taking this to @'+e.username+'.';
+        // Spoken first person, in the Companion's own voice — no
+        // introduction on this side: the child already knows their
+        // own Companion.
+        _speak(mine.id,'I’m taking this to '+e.username+'.');
+      },1300);
+      setTimeout(function(){ stage.classList.add('is-reacting'); },2600);
+      setTimeout(function(){ portal.classList.add('is-forming'); },3300);
+      setTimeout(function(){ portal.classList.add('is-open'); },3900);
+      setTimeout(function(){ stage.classList.add('is-crossing'); },4700);
+      setTimeout(function(){
+        portal.classList.remove('is-open');
+        portal.classList.add('is-closed');
+        stage.classList.remove('is-reacting');
+      },6300);
+      setTimeout(settle,7000);
     }
 
-    if(item) renderWho(); else renderPick();
+    if(item&&preset){
+      renderNote({username:preset,
+        circle:!!(typeof CreatorOrbit!=='undefined'&&CreatorOrbit.circleWith&&CreatorOrbit.circleWith(preset))});
+    }
+    else if(item) renderWho();
+    else renderPick();
     return true;
   }
 
@@ -612,8 +685,12 @@ const CreationShow=(function(){
     const wasUnseen=!gift.seen;
     panel.appendChild(_el('h3','creation-show-title',gift.name||'A gift'));
     const stageWrap=_el('div','show-journey-stage show-journey-arrival');
+    const sparksA=_el('div','show-journey-sparks');
+    sparksA.setAttribute('aria-hidden','true');
+    for(let i=0;i<5;i++) sparksA.appendChild(_el('span','show-journey-spark','✦'));
     const portal=_el('div','show-portal');
     const trav=_el('div','show-journey-traveller');
+    stageWrap.appendChild(sparksA);
     stageWrap.appendChild(portal);
     stageWrap.appendChild(trav);
     panel.appendChild(stageWrap);
@@ -642,6 +719,18 @@ const CreationShow=(function(){
 
       const carrierId=full.companion||_carrierOf(gift);
       trav.appendChild(_companionFig(carrierId,'show-journey-companion'));
+      // What it carried, still wrapped in its own light — the reveal
+      // is the payoff and comes AFTER the introduction, never before.
+      const payloadPeek=(full.payload&&(full.payload.png||full.payload.thumbnail))||null;
+      const bundle=_el('div','show-journey-carried is-veiled');
+      if(payloadPeek){
+        const img=document.createElement('img');
+        img.alt=''; img.src=payloadPeek;
+        bundle.appendChild(img);
+      }else{
+        bundle.appendChild(_el('span','show-journey-held-glyph','✨'));
+      }
+      trav.appendChild(bundle);
       const from=gift.from||full.from||'';
       const given=String(full.companionName||'').trim();
       const introShown='Hi! I’m '+(given?given+', ':'')+'@'+from+'’s Companion. @'+from+' wanted me to show you something.';
@@ -699,7 +788,10 @@ const CreationShow=(function(){
         stage.appendChild(img);
       }
 
-      const btns=_el('div','creation-show-btns');
+      }
+
+      function buildActions(){
+      const btns=_el('div','creation-show-btns show-breathe');
       if(!full.kept){
         const keepBtn=_el('button','creation-gift-keep','🌟 Keep it');
         keepBtn.type='button';
@@ -730,7 +822,7 @@ const CreationShow=(function(){
       }
       panel.appendChild(btns);
       if(typeof onBack==='function'){
-        const back=_el('button','creation-show-quiet','Back');
+        const back=_el('button','creation-show-quiet show-breathe','Back');
         back.type='button';
         back.addEventListener('click',onBack);
         panel.appendChild(back);
@@ -746,16 +838,33 @@ const CreationShow=(function(){
         stageWrap.classList.add('is-still');
         line.textContent=(given||('@'+from+'’s Companion'))+' carried this across to show you';
         buildContent();
+        buildActions();
         stage.classList.add('is-revealed');
+        panel.classList.add('is-settled');
         sayNote(false);
         return;
       }
-      requestAnimationFrame(function(){ portal.classList.add('is-open'); });
-      setTimeout(function(){ stageWrap.classList.add('is-arrived'); },900);
-      setTimeout(function(){ line.textContent=introShown; _speak(carrierId,introSpoken); },1900);
-      setTimeout(function(){ buildContent(); stage.classList.add('is-revealed'); },4300);
-      setTimeout(function(){ sayNote(true); },5100);
-      setTimeout(function(){ portal.classList.remove('is-open'); portal.classList.add('is-closed'); },6400);
+      // First viewing: the world notices, a doorway forms, somebody
+      // steps out of it, settles, says who they are — and only then
+      // is the creation revealed, the note said, the portal closed,
+      // and the quiet actions allowed to appear. Let it breathe.
+      requestAnimationFrame(function(){ stageWrap.classList.add('is-reacting'); });
+      setTimeout(function(){ portal.classList.add('is-forming'); },500);
+      setTimeout(function(){ portal.classList.add('is-open'); },1100);
+      setTimeout(function(){ stageWrap.classList.add('is-arrived'); },1700);
+      setTimeout(function(){ line.textContent=introShown; _speak(carrierId,introSpoken); },2800);
+      setTimeout(function(){
+        trav.classList.add('is-revealing');
+        buildContent();
+        stage.classList.add('is-revealed');
+      },5300);
+      setTimeout(function(){ sayNote(true); },6200);
+      setTimeout(function(){
+        portal.classList.remove('is-open');
+        portal.classList.add('is-closed');
+        stageWrap.classList.remove('is-reacting');
+      },7400);
+      setTimeout(function(){ buildActions(); panel.classList.add('is-settled'); },8100);
     });
   }
 

@@ -194,6 +194,7 @@ const CreatorOrbit=(function(){
           return r&&r.publishedAt;
         }).map(function(r){
           return { id:r.id, title:r.name||'A story',
+                   cover:r.thumbnail||null,
                    creatorUsername:r.creatorUsername||null,
                    forUsername:r.forUsername||null,
                    publishedAt:r.publishedAt||null,
@@ -214,6 +215,9 @@ const CreatorOrbit=(function(){
           const d=row&&row.data;
           if(!d) return null;
           return { id:d.id, title:d.name||'A story',
+                   cover:d.thumbnail
+                     ||(d.data&&d.data.pages&&d.data.pages[0]&&d.data.pages[0].readImage)
+                     ||null,
                    creatorUsername:d.creatorUsername||null,
                    forUsername:d.forUsername||null,
                    publishedAt:d.publishedAt||null,

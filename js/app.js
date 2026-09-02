@@ -427,6 +427,10 @@ let _homeReturnPending=false;
 const etherBtnEl=document.getElementById('etherBtn');
 if(etherBtnEl){
   etherBtnEl.addEventListener('click',function(){
+    // R3 — leaving on purpose surrenders the tab's in-Studio authority
+    // (the refresh-survival flag the entry gate honours). Without this,
+    // the back button after a deliberate exit would walk past the door.
+    try{ sessionStorage.removeItem('vihu.studioEntry.inside'); }catch(e){}
     function go(){ try{ window.location.href='index.html'; }catch(e){} }
     // Sprint 1J — the one deliberate exit from the Studio (Decision
     // 23), and therefore the one place a Companion can KNOW somebody is

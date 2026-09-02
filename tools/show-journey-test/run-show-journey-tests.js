@@ -286,15 +286,25 @@ function sqlSection() {
     await page.waitForFunction(() =>
       /Aslan is taking it/.test((document.querySelector('.creation-show-title') || {}).textContent || ''),
       null, { timeout: 6000 });
+    // R3 staged the departure as a scene: the line arrives at the
+    // PICKUP beat (~1.3s), when the shimmer copy lifts into the
+    // Companion's arms — and the ORIGINAL stands in the stage the
+    // whole time, which is the world rule drawn rather than asserted.
+    await page.waitForFunction(() =>
+      /Aslan is taking this to @stargirl\./.test(
+        (document.querySelector('.show-journey-line') || {}).textContent || ''),
+      null, { timeout: 5000 });
     const dep = await page.evaluate(() => ({
       line: (document.querySelector('.show-journey-line') || {}).textContent || '',
       portal: !!document.querySelector('.show-portal'),
-      held: !!document.querySelector('.show-journey-held'),
+      carried: !!document.querySelector('.show-journey-carried'),
+      original: !!document.querySelector('.show-journey-original'),
+      picked: !!document.querySelector('.show-journey-depart.is-picked'),
       growthNow: window.__growth.length,
       sent: window.__rpc.filter((c) => c.fn === 'creation_show_send')[0],
     }));
-    ck(/Aslan is taking this to @stargirl\./.test(dep.line) && dep.portal && dep.held,
-       'J3  THE COMPANION TAKES RESPONSIBILITY — named by its Creator, the creation held WITH it, a portal in the room', dep.line);
+    ck(dep.portal && dep.carried && dep.original && dep.picked,
+       'J3  THE COMPANION TAKES RESPONSIBILITY — it walks to the creation and a shimmer copy lifts into its arms, while the ORIGINAL stands in the world beside it', dep.line);
     ck(dep.sent && dep.sent.args.p_note === NOTE && dep.sent.args.p_companion_name === 'Aslan',
        'J4  THE NOTE TRAVELS VERBATIM AND THE GIVEN NAME TRAVELS WITH IT', JSON.stringify(dep.sent && dep.sent.args.p_note));
     ck(dep.growthNow === before,
@@ -316,6 +326,15 @@ function sqlSection() {
        'J6b and it depended on NOTHING the recipient did — no view, no keep, no reaction anywhere');
     ck(/stays right here with you/.test(after.line),
        'J7  THE ORIGINAL NEVER LEFT — said in as many words once the Companion has gone');
+    // The un-dim is a 1s transition — measured once it has finished,
+    // not mid-fade.
+    await page.waitForFunction(() => {
+      const o = document.querySelector('.show-journey-original');
+      return o && document.querySelector('.show-journey-depart.is-after') &&
+        Number(getComputedStyle(o).opacity) > 0.95;
+    }, null, { timeout: 4000 });
+    ck(true,
+       'J7b AND IT IS DRAWN STANDING THERE — dimmed a breath while its shimmer was away, whole again the moment the portal closed');
     ck(after.spokenFirst && after.spokenFirst.id === 'leosaurus' &&
        after.spokenFirst.text === 'I’m taking this to stargirl.',
        'J8  THE DEPARTURE LINE IS SPOKEN IN THE COMPANION’S OWN CANONICAL VOICE — Aslan on screen, leosaurus’ voice underneath, no introduction to its own Creator',
@@ -344,11 +363,12 @@ function sqlSection() {
     const intro = await page.evaluate(() => ({
       line: (document.querySelector('.show-journey-line') || {}).textContent || '',
       revealed: !!document.querySelector('.creation-gift-stage img'),
+      veiled: !!document.querySelector('.show-journey-carried.is-veiled'),
     }));
     ck(/Hi! I’m Inky, @stargirl’s Companion\. @stargirl wanted me to show you something\./.test(intro.line),
        'J9  THE CARRIER INTRODUCES ITSELF — this child may never have met it: given name, whose Companion, and why it came', intro.line);
-    ck(!intro.revealed,
-       'J9b and the creation is NOT yet revealed — the reveal is the payoff, after the introduction');
+    ck(!intro.revealed && intro.veiled,
+       'J9b and the creation is NOT yet revealed — carried veiled in its own light, the payoff after the introduction');
 
     await page.waitForFunction(() => document.querySelector('.creation-gift-stage.is-revealed img'), null, { timeout: 6000 });
     await page.waitForFunction(() =>
@@ -360,12 +380,20 @@ function sqlSection() {
       note: (document.querySelector('.creation-show-note') || {}).textContent || '',
       spoken: window.__spoken.map((s) => s.text),
       voices: window.__spoken.map((s) => s.id),
+      revealing: !!document.querySelector('.show-journey-traveller.is-revealing'),
+      keepYet: !!document.querySelector('.creation-gift-keep'),
     }));
     ck(rev.note === '@stargirl says: “Look what I made!”',
        'J10 THE CREATOR’S WORDS, QUOTED EXACTLY — never rewritten, never embellished', rev.note);
     ck(rev.spoken.some((t) => t === 'stargirl says: Look what I made!') &&
        rev.voices.every((v) => v === 'quill'),
        'J10b and spoken verbatim, in the CARRIER’S canonical voice');
+    ck(rev.revealing && !rev.keepYet,
+       'J10c THE ARRIVAL BREATHES — the bundle has given way to the creation, and no button has crowded in yet');
+    await page.waitForSelector('.creation-gift-keep.show-breathe, .creation-show-btns.show-breathe .creation-gift-keep',
+      { timeout: 5000 });
+    ck(true,
+       'J10d and only then do Keep and Back arrive, quietly');
 
     // ---- J11: an already-seen gift skips the theatre ---------------
     await page.evaluate(() => {
@@ -411,6 +439,93 @@ function sqlSection() {
        /CreationShow\.itemFor\('story',record\)/.test(srcCF),
        'J12b and the Garden’s two rooms and My Projects all reach it through CreationShow.itemFor — no surface builds its own');
 
+    // ---- S: the sky NAVIGATES — a star opens the CREATOR -----------
+    // R3, reported: "clicking a Creator in Sky opens Sky again" — the
+    // old handler navigated to index.html?creator=, which dumped the
+    // child at VihuPlanet's threshold. A star now opens that Creator's
+    // SPACE in the same overlay, and Back returns to the sky. No
+    // navigation, no second sky route.
+    await page.evaluate(() => { SocialSky.open(); });
+    await page.waitForSelector('.social-sky-field', { timeout: 6000 });
+    await page.click('.social-sky-star');
+    const space = await page.evaluate(() => ({
+      url: location.pathname,
+      space: !!document.querySelector('.social-sky-space'),
+      skyGone: !document.querySelector('.social-sky-field'),
+      name: (document.querySelector('.social-sky-space-name') || {}).textContent || '',
+      hero: !!document.querySelector('.social-sky-space-hero img'),
+      mutual: /You chose each other/.test((document.querySelector('.social-sky-space') || {}).textContent || ''),
+      showBtn: !!document.querySelector('.social-sky-space-show'),
+    }));
+    ck(/studio\.html/.test(space.url) && space.space && space.skyGone &&
+       space.name === '@stargirl' && space.hero,
+       'S1  TAP A COMPANION, ENTER THAT CREATOR — their space opens in place, nothing navigates, no second sky', space.name);
+    ck(space.mutual && space.showBtn,
+       'S2  the space knows the relationship in the sky\'s own words — and offers the one social act: show them something you made');
+    await page.evaluate(() => {
+      Array.from(document.querySelectorAll('.social-sky-quiet'))
+        .find((b) => /Back to My Sky/.test(b.textContent)).click();
+    });
+    const backSky = await page.evaluate(() => ({
+      field: !!document.querySelector('.social-sky-field'),
+      findStar: !!document.querySelector('.social-sky-find-star'),
+    }));
+    ck(backSky.field && backSky.findStar,
+       'S3  BACK RETURNS TO THE SKY — where ＋ Find a Creator now stands as a soft star in the field itself');
+
+    // ---- S4: discovery lives IN the sky ----------------------------
+    const foundNew = await page.evaluate(async (s) => {
+      ThemeRepositoryClient.isConfigured = () => Promise.resolve(true);
+      ThemeRepositoryClient.getClient = () => Promise.resolve({
+        rpc: (fn, args) => {
+          if (fn === 'creator_find' && args.p_username === 'ghostkid') {
+            return Promise.resolve({ data: { ok: true, username: 'ghostkid', companion: 'leafy' }, error: null });
+          }
+          return Promise.resolve({ data: { ok: false }, error: null });
+        },
+      });
+      document.querySelector('.social-sky-find-star').click();
+      await new Promise((r) => setTimeout(r, 100));
+      const input = document.querySelector('.social-sky-find-input');
+      input.value = 'ghostkid';
+      Array.from(document.querySelectorAll('.social-sky-space-add'))
+        .find((b) => /Find/.test(b.textContent)).click();
+      await new Promise((r) => setTimeout(r, 400));
+      const name = (document.querySelector('.social-sky-space-name') || {}).textContent || '';
+      const add = Array.from(document.querySelectorAll('.social-sky-space-add'))
+        .find((b) => /Put them in my Sky/.test(b.textContent));
+      if (add) add.click();
+      await new Promise((r) => setTimeout(r, 200));
+      const orbit = JSON.parse(localStorage.getItem('vihu.orbit.' + s.aCard) || '{}');
+      return { name, chosen: !!orbit.ghostkid,
+        nowSays: (document.querySelector('.social-sky-space') || {}).textContent || '' };
+    }, seeded);
+    ck(foundNew.name === '@ghostkid' && foundNew.chosen &&
+       /In your Sky|You chose each other/.test(foundNew.nowSays),
+       'S4  FIND A CREATOR → their space → ⭐ ONE TAP puts them in the sky — the same one-way choice, no request, no approval', foundNew.name);
+
+    // ---- S5: "show them something" pre-answers the chooser ---------
+    const preset = await page.evaluate(async () => {
+      document.querySelectorAll('.creation-show-overlay, .social-sky-overlay')
+        .forEach((o) => o.remove());
+      SocialSky.open({ creator: 'stargirl' });
+      await new Promise((r) => setTimeout(r, 150));
+      document.querySelector('.social-sky-space-show').click();
+      await new Promise((r) => setTimeout(r, 250));
+      const pick = document.querySelector('.creation-show-thing');
+      if (pick) pick.click();
+      await new Promise((r) => setTimeout(r, 250));
+      const out = {
+        note: !!document.querySelector('.creation-show-notefield'),
+        forWho: (document.querySelector('.creation-show-sub') || {}).textContent || '',
+        noChooser: !document.querySelector('.creation-show-who-btn'),
+      };
+      document.querySelector('.creation-show-overlay')?.remove();
+      return out;
+    });
+    ck(preset.note && /For @stargirl/.test(preset.forWho) && preset.noChooser,
+       'S5  FROM A CREATOR\'S SPACE, SHOW SKIPS THE CHOOSER — the answer was already given; the child just picks the creation and writes the note');
+
     // ---- J13: a Traveller has none of this -------------------------
     const trav = await page.evaluate(() => {
       MagicCard.setActive('');
@@ -425,6 +540,40 @@ function sqlSection() {
 
     ck(pageErrors.length === 0, 'J14 zero page errors across the whole journey',
        pageErrors.slice(0, 2).join(' | ') || 'clean');
+
+    // ---- G: the Studio survives a refresh --------------------------
+    // R3, by the product owner's instruction (amending Decision 23's
+    // "a refresh mid-story goes home"): a tab that entered through the
+    // door keeps its authority across a refresh; a new tab, a typed
+    // URL and a deliberate exit still meet the door. A fresh browser
+    // context, so no author-mode flag can quietly exempt everything.
+    const ctx = await browser.newContext();
+    const p2 = await ctx.newPage();
+    await p2.route('**/supabase-config.json', (route) => route.fulfill({ status: 404, body: '' }));
+    await p2.goto(BASE + '/studio.html', { waitUntil: 'commit' }).catch(() => {});
+    await p2.waitForTimeout(1500);
+    ck(/index\.html/.test(p2.url()),
+       'G1  A TYPED STUDIO URL WITH NO PASS STILL GOES HOME — the door is exactly as strict as it was', p2.url());
+    await p2.evaluate(() => { sessionStorage.setItem('vihu.studioEntry.pass', '1'); });
+    await p2.goto(BASE + '/studio.html', { waitUntil: 'commit' }).catch(() => {});
+    await p2.waitForTimeout(1500);
+    const entered = { url: p2.url(), inside: await p2.evaluate(() =>
+      sessionStorage.getItem('vihu.studioEntry.inside')).catch(() => null) };
+    ck(/studio\.html/.test(entered.url) && entered.inside === '1',
+       'G2  A PASS STILL AUTHORISES THE ARRIVAL — and now also marks this tab as legitimately inside');
+    await p2.reload({ waitUntil: 'commit' }).catch(() => {});
+    await p2.waitForTimeout(1500);
+    ck(/studio\.html/.test(p2.url()),
+       'G3  AND A REFRESH STAYS IN THE STUDIO — the destination survives, exactly what was asked for', p2.url());
+    await p2.evaluate(() => { sessionStorage.removeItem('vihu.studioEntry.inside'); });
+    await p2.goto(BASE + '/studio.html', { waitUntil: 'commit' }).catch(() => {});
+    await p2.waitForTimeout(1500);
+    ck(/index\.html/.test(p2.url()),
+       'G4  WITH THE AUTHORITY SURRENDERED (the deliberate exit clears it), the door is shut again — the back button cannot sneak past');
+    const exitSrc = fs.readFileSync(path.join(ROOT, 'js', 'app.js'), 'utf8');
+    ck(/etherBtnEl\.addEventListener[\s\S]{0,400}vihu\.studioEntry\.inside/.test(exitSrc),
+       'G5  and Back to the Ether is what surrenders it — leaving on purpose still lands on VihuPlanet, Decision 23\'s own rule');
+    await ctx.close();
   } finally {
     await browser.close();
     server.kill();

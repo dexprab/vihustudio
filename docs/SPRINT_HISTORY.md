@@ -11018,3 +11018,45 @@ verbatim, the guarded migration heals it, and the same drawn sky is
 recognised again with taught returning null — which adopt() correctly
 reads as grandfathered. A migration that reads a column guarantees
 the column.
+
+## Build 0738 — R3: Sky navigation, Show journey staged as a scene, the Studio survives a refresh
+
+Sky Navigation, Show Journey & Studio Home Polish, from the product
+owner's R3 brief. Four fixes, each at its own source. (1) Tapping a
+Companion in the Sky re-opened the Sky — `_goCreator` handed off to
+`index.html?creator=`, a full navigation out of the Studio. The Sky
+overlay now hosts three views in one panel (sky field · Creator space
+· Find): a star tap content-swaps to that Creator's space — Companion
+hero, @name, the live relationship, public creations as covers
+opening through the existing `?story=` door, the mutual shelf, ← Back
+to My Sky — and the platform-refresh repaint only re-renders while
+the FIELD is showing. (2) Find a Creator is part of the sky itself: a
+soft ＋ star opens the Find view in place, reusing creator_suggest /
+creator_find unchanged, and a found Creator opens as the same space
+with ⭐ right there. (3) The Show journey was restaged from
+technically-working to a scene: departure walks the Companion in, a
+shimmer COPY lifts into its arms while the ORIGINAL stays dimmed on
+screen (the world rule drawn, not said), the space reacts, the portal
+forms/opens, the Companion arcs through, the bloom closes it and the
+original's glow returns; arrival reacts first, the carrier settles
+out of the portal with a veiled bundle, introduces itself, then the
+staged reveal, then Keep/Back breathe in. The recipient chooser
+renders as ✨ My Sky (companions, never a contact list), the note is a
+card beside the creation, and 🎁 Show from a Creator's space presets
+them and skips the chooser. Already-seen and reduced-motion paths
+unchanged. (4) Refreshing Studio Home fell to the Ether: the one-shot
+pass is consumed on arrival, so a reload had nothing. Amending
+Decision 23 on the product owner's instruction, consuming the pass
+now also marks the TAB inside (`vihu.studioEntry.inside`,
+sessionStorage — a refresh keeps it, a new tab does not), the gate
+honours either, and Back to the Ether surrenders it so the back
+button cannot sneak past. Typed URLs, bookmarks, fresh tabs and every
+one-shot intent behave exactly as before. tools/show-journey-test
+grew to 51 (S1–S5 sky navigation walked in the overlay, G1–G5 the
+refresh gate in a fresh browser context — the main context's
+?author=on visit remembers author mode and exempts everything);
+social-sky's B8c turned to the staged carried/original shape with its
+reason in place. Regressions green: social-sky 65 · creation-home 84
+· social-identity 101 · test-account 16 · social-orbit 31 ·
+social-ether-identity 20. No server or migration changes — nothing to
+run on the live project.

@@ -14366,6 +14366,119 @@ body.studio-rite-running .companion-chat-open{ display:none !important; }
 }
 .social-sky-quiet:hover{ color:#fff; border-color:rgba(241,234,208,0.55); }
 
+/* ---------- the Creator's space & Find a Creator (R3) ----------
+   What a star opens: the child moves INTO that Creator's presence —
+   their Companion large, the relationship changeable in place, their
+   creations — same overlay, Back returns to the sky. And discovery
+   lives IN the sky: the ＋ is a soft star low in the field, part of
+   the world, never a settings button. */
+.social-sky-find-star{
+  position:absolute; left:50%; bottom:8%;
+  transform:translateX(-50%);
+  width:auto !important; height:auto !important;
+  margin:0 !important; padding:8px 14px !important;
+  display:flex; flex-direction:column; align-items:center; gap:2px;
+  background:transparent; border:0; cursor:pointer; z-index:3;
+}
+.social-sky-find-plus{
+  width:44px; height:44px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  font-size:22px; color:rgba(255,215,130,0.85);
+  background:radial-gradient(circle,rgba(255,215,130,0.14) 0%,transparent 72%);
+  border:1px dashed rgba(255,215,130,0.4);
+  transition:background .3s ease, border-color .3s ease;
+}
+.social-sky-find-star:hover .social-sky-find-plus{
+  background:radial-gradient(circle,rgba(255,215,130,0.28) 0%,transparent 74%);
+  border-color:rgba(255,215,130,0.7);
+}
+.social-sky-space{
+  position:relative; height:100%; overflow:auto;
+  display:flex; flex-direction:column; align-items:center;
+  padding:26px 22px 20px; box-sizing:border-box;
+  color:rgba(241,234,208,0.9);
+}
+.social-sky-space-hero{
+  width:120px; height:120px;
+  display:flex; align-items:center; justify-content:center;
+  border-radius:50%;
+  background:radial-gradient(circle,rgba(255,215,130,0.2) 0%,transparent 72%);
+}
+.social-sky-space-hero img{
+  max-width:108px; max-height:108px;
+  filter:drop-shadow(0 0 12px rgba(255,215,130,0.45));
+}
+.social-sky-space-name{
+  margin:6px 0 2px; font-size:19px; font-weight:600; color:#f5eeda;
+}
+.social-sky-space-rel{ display:flex; flex-direction:column; align-items:center; gap:8px; margin:4px 0 6px; }
+.social-sky-space-mutual{ margin:0; font-size:14px; color:#ffd782; }
+.social-sky-space-inline{ margin:0; font-size:13px; color:rgba(241,234,208,0.75); }
+.social-sky-space-add,.social-sky-space-show,.social-sky-space-gift{
+  width:auto !important; height:auto !important;
+  margin:0 !important; padding:8px 18px !important;
+  border-radius:999px; border:1.5px solid rgba(255,215,130,0.6);
+  background:rgba(255,215,130,0.12); color:#f5eeda;
+  font-size:13.5px; cursor:pointer;
+}
+.social-sky-space-add:hover,.social-sky-space-show:hover,.social-sky-space-gift:hover{
+  background:rgba(255,215,130,0.24);
+}
+.social-sky-space-gift{ margin-top:4px !important; }
+.social-sky-space .social-sky-quiet{ position:static; margin-top:auto !important; }
+.social-sky-space-head{
+  margin:14px 0 8px; font-size:12px; letter-spacing:.08em;
+  text-transform:uppercase; color:rgba(241,234,208,0.55);
+}
+.social-sky-space-grid{
+  display:flex; flex-wrap:wrap; gap:12px; justify-content:center;
+}
+.social-sky-space-thing{
+  width:auto !important; height:auto !important;
+  margin:0 !important; padding:8px !important;
+  display:flex; flex-direction:column; align-items:center; gap:5px;
+  max-width:120px; background:rgba(12,17,32,0.5);
+  border:1px solid rgba(241,234,208,0.18); border-radius:10px;
+  color:rgba(241,234,208,0.85); cursor:pointer;
+}
+.social-sky-space-thing:hover{ border-color:rgba(255,215,130,0.5); }
+.social-sky-space-thing img{
+  max-width:100px; max-height:74px; border-radius:6px;
+}
+.social-sky-space-thing-glyph{ font-size:26px; color:#c9a44c; }
+.social-sky-space-thing-name{
+  font-size:11.5px; max-width:104px;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.social-sky-space-note{
+  margin:8px 0 0; font-size:13px; line-height:1.5;
+  color:rgba(241,234,208,0.65); text-align:center;
+}
+.social-sky-peek{ margin-top:10px; text-align:center; }
+.social-sky-peek img{
+  max-width:100%; max-height:320px; border-radius:8px;
+  border:1px solid rgba(241,234,208,0.2);
+}
+.social-sky-peek-nav{ display:flex; justify-content:center; gap:10px; margin-top:8px; }
+.social-sky-peek-nav .social-sky-quiet{ position:static; }
+.social-sky-find-row{
+  display:flex; align-items:center; gap:6px; margin:10px 0 6px;
+}
+.social-sky-find-at{ font-size:18px; color:rgba(255,215,130,0.8); }
+.social-sky-find-input{
+  width:220px; padding:9px 12px;
+  border:1px solid rgba(241,234,208,0.3); border-radius:10px;
+  background:rgba(12,17,32,0.6); color:#f5eeda; font-size:15px;
+}
+.social-sky-find-sug{ display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin:6px 0; }
+.social-sky-find-chip{
+  width:auto !important; height:auto !important;
+  margin:0 !important; padding:5px 14px !important;
+  border-radius:999px; border:1px solid rgba(255,215,130,0.45);
+  background:transparent; color:#f5eeda; font-size:13px; cursor:pointer;
+}
+.social-sky-find-chip:hover{ background:rgba(255,215,130,0.16); }
+
 /* ---------- 🎁 Show & Gifts ---------- */
 .creation-show-overlay{
   position:fixed; inset:0; z-index:2600;
@@ -14485,13 +14598,15 @@ body.studio-rite-running .companion-chat-open{ display:none !important; }
   line-height:1.4;
 }
 
-/* ---------- the Portal Journey (Social Sky R2) ----------
+/* ---------- the Portal Journey (Social Sky R2, staged in R3) ----------
    The portal is not an animation added to Show — it is how Show works
-   in VihuPlanet: the Creator stays, the original stays, and ONLY THE
-   COMPANION crosses. Drawn in the universe's own language — a warm
-   gold ring around a disc of deep night — never a spinner, a wipe or
-   anything sci-fi. It opens, is crossed, and closes; nothing leaves a
-   permanent portal standing in anybody's world. */
+   in VihuPlanet: the Creator stays, the ORIGINAL stays (drawn standing
+   in the sender's world the whole way through), and ONLY THE COMPANION
+   crosses, carrying a shimmer of what it was given. The universe's own
+   language — a warm gold ring around a disc of deep night, starlight
+   gathering as the space notices — never a spinner, a wipe, a wormhole
+   or anything sci-fi. It forms, opens, is crossed, and closes; nothing
+   leaves a permanent portal standing in anybody's world. */
 .creation-show-who-btn{
   display:flex; flex-direction:column; align-items:center; gap:4px;
   min-width:86px;
@@ -14507,6 +14622,40 @@ body.studio-rite-running .companion-chat-open{ display:none !important; }
   filter:drop-shadow(0 0 6px rgba(255,215,130,0.3));
 }
 .creation-show-who-name{ font-size:12.5px; }
+/* R3 — the chooser IS a little sky: a night field the Companions
+   stand in, never a contact list. */
+.show-sky-choose{
+  justify-content:center; align-items:center;
+  gap:26px; padding:22px 16px; min-height:130px;
+  border-radius:16px;
+  background:
+    radial-gradient(1.2px 1.2px at 18% 30%, rgba(255,255,255,.5), transparent 60%),
+    radial-gradient(1px 1px at 66% 22%, rgba(255,255,255,.4), transparent 60%),
+    radial-gradient(1.2px 1.2px at 84% 64%, rgba(255,255,255,.45), transparent 60%),
+    radial-gradient(1px 1px at 36% 74%, rgba(255,255,255,.35), transparent 60%),
+    radial-gradient(circle at 50% 32%, #232d5c 0%, #141b3a 55%, #0a0f26 100%);
+}
+.show-sky-choose .creation-show-who-btn{ background:transparent; border:0; }
+.show-sky-choose .creation-show-who-name{ color:#e9e4ff; }
+.show-sky-choose .creation-show-who-btn:hover .creation-show-who-fig{
+  background:radial-gradient(circle,rgba(255,215,130,0.3) 0%,transparent 72%);
+}
+/* R3 — the note sits WITH the creation: one card, the creation above,
+   the child's words beneath. Never a chat composer. */
+.show-note-card{
+  display:flex; flex-direction:column; align-items:center; gap:12px;
+  margin:12px 0 2px; padding:18px 16px;
+  border-radius:16px; border:1px solid rgba(255,203,69,0.35);
+  background:radial-gradient(circle at 50% 0%,
+    rgba(255,215,130,0.08) 0%, transparent 70%);
+}
+.show-note-thumb{
+  max-width:120px; max-height:96px; border-radius:10px;
+  border:1px solid rgba(255,215,130,0.4);
+  box-shadow:0 4px 14px rgba(0,0,0,0.25), 0 0 18px rgba(255,215,130,0.18);
+}
+.show-note-thumb-glyph{ font-size:34px; }
+.show-note-card .creation-show-notefield{ margin:0; max-width:320px; text-align:center; }
 .creation-show-notefield{
   display:block; width:100%; box-sizing:border-box;
   margin:10px 0 2px; padding:9px 12px;
@@ -14514,90 +14663,236 @@ body.studio-rite-running .companion-chat-open{ display:none !important; }
   background:transparent; color:var(--text-primary,#222);
   font-size:14px;
 }
+
+/* ---- the stage: one little world ---- */
 .show-journey-stage{
-  position:relative; height:170px; margin:10px 0 2px;
-  display:flex; align-items:center; justify-content:space-between;
-  padding:0 12px; overflow:hidden;
+  position:relative; height:190px; margin:10px 0 2px;
+  border-radius:14px; overflow:hidden;
 }
+.show-journey-stage::before{
+  /* the space itself, and its reaction: the room darkens a breath
+     while a doorway between worlds is open in it */
+  content:''; position:absolute; inset:0; border-radius:14px;
+  background:radial-gradient(circle at 50% 45%,
+    rgba(20,27,58,0) 0%, rgba(10,15,38,0) 100%);
+  transition:background 1s ease; pointer-events:none;
+}
+.show-journey-stage.is-reacting::before{
+  background:radial-gradient(circle at 50% 45%,
+    rgba(20,27,58,0.28) 0%, rgba(10,15,38,0.45) 100%);
+}
+/* THE ORIGINAL — the world rule, drawn: it stands here from first
+   frame to last, dims a breath while its shimmer is away, and is
+   whole again the moment the portal closes. */
+.show-journey-original{
+  position:absolute; left:12%; top:50%; transform:translateY(-50%);
+  z-index:1; transition:opacity 1s ease, filter 1s ease;
+}
+.show-journey-original img{
+  width:58px; height:58px; object-fit:cover; border-radius:9px;
+  border:1px solid rgba(255,215,130,0.5);
+  box-shadow:0 3px 10px rgba(0,0,0,0.3), 0 0 14px rgba(255,215,130,0.22);
+}
+.show-journey-depart.is-picked .show-journey-original{ opacity:0.5; filter:saturate(0.7); }
+.show-journey-depart.is-after .show-journey-original{
+  opacity:1; filter:none;
+  animation:show-original-glow 1.4s ease;
+}
+@keyframes show-original-glow{
+  30%{ filter:drop-shadow(0 0 14px rgba(255,215,130,0.8)); }
+}
+/* gathering starlight — the space noticing */
+.show-journey-sparks{ position:absolute; inset:0; pointer-events:none; z-index:2; }
+.show-journey-spark{
+  position:absolute; font-size:10px; color:rgba(255,215,130,0.9); opacity:0;
+}
+.show-journey-spark:nth-child(1){ left:20%; top:18%; }
+.show-journey-spark:nth-child(2){ left:48%; top:12%; }
+.show-journey-spark:nth-child(3){ left:38%; top:78%; }
+.show-journey-spark:nth-child(4){ left:64%; top:74%; }
+.show-journey-spark:nth-child(5){ left:56%; top:30%; }
+.is-reacting .show-journey-spark{ animation:show-spark-gather 1.6s ease forwards; }
+.is-reacting .show-journey-spark:nth-child(2){ animation-delay:.15s; }
+.is-reacting .show-journey-spark:nth-child(3){ animation-delay:.3s; }
+.is-reacting .show-journey-spark:nth-child(4){ animation-delay:.45s; }
+.is-reacting .show-journey-spark:nth-child(5){ animation-delay:.6s; }
+@keyframes show-spark-gather{
+  20%{ opacity:1; }
+  100%{ opacity:0; transform:translate(var(--to-x,120px),var(--to-y,20px)) scale(.4); }
+}
+.show-journey-depart .show-journey-spark{ --to-x:140px; --to-y:14px; }
+.show-journey-arrival .show-journey-spark{ --to-x:-120px; --to-y:10px; }
+/* THE TRAVELLER — the Companion, and once it has picked it up, the
+   carried shimmer: one figure, moving as one. */
 .show-journey-traveller{
-  position:relative; z-index:2;
-  display:flex; flex-direction:column; align-items:center; gap:4px;
-  transition:transform 1.5s ease-in, opacity 1.1s ease-in;
+  position:absolute; top:50%; z-index:3;
+  display:flex; flex-direction:column; align-items:center;
 }
+.show-journey-depart .show-journey-traveller{
+  left:-18%; transform:translateY(-50%);
+  transition:left 1.3s ease-in-out;
+}
+.show-journey-depart.is-approach .show-journey-traveller{ left:22%; }
+.show-journey-depart.is-approach .show-journey-companion img{
+  animation:show-walk-bob 0.65s ease-in-out 2;
+}
+@keyframes show-walk-bob{ 50%{ transform:translateY(-4px) rotate(-2deg); } }
 .show-journey-companion{
-  width:88px; height:88px;
+  width:88px; height:88px; position:relative; z-index:2;
   display:flex; align-items:center; justify-content:center;
 }
 .show-journey-companion img{
   max-width:84px; max-height:84px;
   filter:drop-shadow(0 0 8px rgba(255,215,130,0.35));
 }
-/* The creation stays WITH the Companion — held, part of the same
-   travelling figure, never flying off on its own. */
-.show-journey-held{
-  width:52px; height:52px; object-fit:cover; border-radius:9px;
-  border:1px solid rgba(255,215,130,0.5);
-  box-shadow:0 3px 10px rgba(0,0,0,0.35);
+/* the carried shimmer — held at the Companion's front, visibly its
+   responsibility, never floating beside it */
+.show-journey-carried{
+  position:absolute; bottom:-6px; left:50%; z-index:3;
+  transform:translate(-50%,26px) scale(.35); opacity:0;
+  transition:transform .8s cubic-bezier(.2,.8,.3,1.15), opacity .6s ease;
+}
+.show-journey-carried img{
+  width:44px; height:44px; object-fit:cover; border-radius:8px;
+  border:1px solid rgba(255,215,130,0.65);
+  box-shadow:0 0 14px rgba(255,215,130,0.5);
+  opacity:0.95;
+}
+.show-journey-depart.is-picked .show-journey-carried{
+  transform:translate(-50%,0) scale(1) rotate(-5deg); opacity:1;
+}
+.show-journey-depart.is-picked .show-journey-traveller{
+  animation:show-carry-bob 1.8s ease-in-out infinite;
+}
+@keyframes show-carry-bob{ 50%{ margin-top:-3px; } }
+/* crossing: the whole figure — Companion and carried shimmer — arcs
+   into the disc, smaller and gone. The Creator's side of the room
+   never moves. */
+.show-journey-depart.is-crossing .show-journey-traveller{
+  animation:show-cross 1.55s ease-in forwards;
+}
+@keyframes show-cross{
+  40%{ left:56%; transform:translateY(-64%) scale(.8); opacity:1; }
+  100%{ left:72%; transform:translateY(-50%) scale(.22); opacity:0; }
 }
 .show-journey-held-glyph{ font-size:26px; }
+
+/* THE PORTAL — a temporary opening between worlds. It FORMS (an
+   unsteady young ring), OPENS (deep night inside, its own faint
+   stars), and CLOSES with one soft bloom. */
 .show-portal{
-  flex:0 0 auto; width:140px; height:140px; border-radius:50%;
-  position:relative; transform:scale(0); opacity:0;
-  transition:transform .7s cubic-bezier(.2,.9,.35,1.15), opacity .5s ease;
+  position:absolute; top:50%; width:140px; height:140px; border-radius:50%;
+  transform:translateY(-50%) scale(0); opacity:0; z-index:2;
+  transition:transform .8s cubic-bezier(.2,.9,.35,1.12), opacity .5s ease;
 }
-.show-portal.is-open{ transform:scale(1); opacity:1; }
-.show-portal.is-closed{ transform:scale(0); opacity:0; }
+.show-journey-depart .show-portal{ right:7%; }
+.show-journey-arrival .show-portal{ left:7%; }
+.show-portal.is-forming{
+  transform:translateY(-50%) scale(.3); opacity:.7;
+  animation:show-portal-young 0.9s ease-in-out infinite;
+}
+@keyframes show-portal-young{ 50%{ transform:translateY(-52%) scale(.36) rotate(3deg); } }
+.show-portal.is-open{
+  transform:translateY(-50%) scale(1); opacity:1; animation:none;
+}
+.show-portal.is-closed{
+  transform:translateY(-50%) scale(0); opacity:0;
+  transition:transform .6s ease-in, opacity .7s ease;
+  animation:show-portal-bloom .7s ease;
+}
+@keyframes show-portal-bloom{
+  20%{ box-shadow:0 0 60px 24px rgba(255,215,130,0.45); }
+  100%{ box-shadow:0 0 0 0 rgba(255,215,130,0); }
+}
 .show-portal::before{
   content:''; position:absolute; inset:0; border-radius:50%;
   background:conic-gradient(from 0deg,
-    rgba(255,203,69,0) 0%, rgba(255,203,69,0.85) 22%,
-    rgba(186,156,255,0.55) 52%, rgba(255,203,69,0.75) 78%,
+    rgba(255,203,69,0) 0%, rgba(255,203,69,0.9) 22%,
+    rgba(186,156,255,0.6) 52%, rgba(255,203,69,0.8) 78%,
     rgba(255,203,69,0) 100%);
   filter:blur(6px);
   animation:show-portal-swirl 3.4s linear infinite;
 }
 .show-portal::after{
-  content:''; position:absolute; inset:12px; border-radius:50%;
-  background:radial-gradient(circle at 42% 38%,
-    #2b3874 0%, #17204a 55%, #0a0f28 100%);
-  box-shadow:0 0 26px rgba(255,203,69,0.35),
-             inset 0 0 20px rgba(186,156,255,0.4);
+  content:''; position:absolute; inset:11px; border-radius:50%;
+  background:
+    radial-gradient(1.4px 1.4px at 30% 34%, rgba(255,255,255,.8), transparent 60%),
+    radial-gradient(1px 1px at 62% 22%, rgba(255,255,255,.6), transparent 60%),
+    radial-gradient(1.2px 1.2px at 72% 66%, rgba(255,255,255,.7), transparent 60%),
+    radial-gradient(1px 1px at 40% 72%, rgba(255,255,255,.5), transparent 60%),
+    radial-gradient(circle at 42% 38%,
+      #2b3874 0%, #17204a 55%, #0a0f28 100%);
+  box-shadow:0 0 26px rgba(255,203,69,0.4),
+             inset 0 0 22px rgba(186,156,255,0.45);
 }
 @keyframes show-portal-swirl{ to{ transform:rotate(360deg); } }
-/* Departure: the Companion (and what it carries) crosses INTO the
-   portal — toward it, smaller, gone. The Creator's side of the room
-   stays exactly where it was. */
-.show-journey-stage.is-crossing .show-journey-traveller{
-  transform:translateX(190px) scale(0.3); opacity:0;
-}
-/* Arrival: the mirror — the traveller starts inside the portal and
-   steps out of it into this world. */
+
+/* Arrival: the mirror — somebody steps OUT of the doorway into this
+   world, and settles with the small bounce of a landing. */
 .show-journey-arrival .show-journey-traveller{
-  transform:translateX(-150px) scale(0.3); opacity:0;
-  transition:transform 1.1s ease-out, opacity .8s ease-out;
+  left:16%; transform:translateY(-50%) scale(.25); opacity:0;
 }
 .show-journey-arrival.is-arrived .show-journey-traveller{
-  transform:none; opacity:1;
+  animation:show-arrive 1.3s cubic-bezier(.2,.8,.3,1.18) forwards;
+}
+@keyframes show-arrive{
+  0%{ left:16%; transform:translateY(-50%) scale(.25); opacity:0; }
+  70%{ left:52%; transform:translateY(-54%) scale(1.05); opacity:1; }
+  100%{ left:50%; transform:translateY(-50%) scale(1); opacity:1; }
+}
+/* what it carried, still wrapped in its own light until the reveal */
+.show-journey-carried.is-veiled{
+  transform:translate(-50%,0) scale(.9); opacity:1;
+}
+.show-journey-carried.is-veiled img{
+  filter:blur(3px) brightness(1.35);
+  animation:show-veil-pulse 2s ease-in-out infinite;
+}
+@keyframes show-veil-pulse{
+  50%{ box-shadow:0 0 22px rgba(255,215,130,0.8); }
+}
+/* the reveal: the bundle gives way — lifts, brightens, and the
+   creation itself takes the stage */
+.show-journey-traveller.is-revealing .show-journey-carried{
+  transform:translate(-50%,-34px) scale(1.25); opacity:0;
+  transition:transform .9s ease-out, opacity .9s ease-out;
 }
 /* A gift already seen skips the theatre: the carrier simply stands
    there, and no portal is drawn at all. */
 .show-journey-arrival.is-still{ height:auto; min-height:96px; }
-.show-journey-arrival.is-still .show-portal{ display:none; }
+.show-journey-arrival.is-still .show-portal,
+.show-journey-arrival.is-still .show-journey-sparks{ display:none; }
 .show-journey-arrival.is-still .show-journey-traveller{
-  transform:none; opacity:1; transition:none;
+  position:static; transform:none; opacity:1; transition:none; animation:none;
 }
+.show-journey-arrival.is-still .show-journey-carried{ display:none; }
 .show-journey-line{
   min-height:1.5em; margin:8px 0 0;
   font-size:13.5px; line-height:1.5; color:var(--text-primary,#222);
 }
-/* The reveal is the payoff of the journey: the creation fades in only
-   once the Companion has arrived and spoken, never before. A still
-   (already-seen) gift shows it at once. */
-.creation-gift-stage{ transition:opacity .8s ease; }
-.show-journey-arrival:not(.is-still)~.creation-gift-stage{ opacity:0; }
-.show-journey-arrival:not(.is-still)~.creation-gift-stage.is-revealed{ opacity:1; }
+/* The reveal is the payoff of the journey: the creation BLOOMS into
+   the stage once the Companion has arrived and spoken — never before,
+   and never as a plain modal appearing. */
+.creation-gift-stage{ transition:opacity .8s ease, transform .8s cubic-bezier(.2,.8,.3,1.1); }
+.show-journey-arrival:not(.is-still)~.creation-gift-stage{
+  opacity:0; transform:scale(.85);
+}
+.show-journey-arrival:not(.is-still)~.creation-gift-stage.is-revealed{
+  opacity:1; transform:none;
+  animation:show-reveal-bloom 1.2s ease;
+}
+@keyframes show-reveal-bloom{
+  35%{ filter:drop-shadow(0 0 22px rgba(255,215,130,0.55)); }
+}
 .creation-show-panel .creation-gift-stage:empty{ min-height:0; }
+/* the quiet actions arrive only after the moment has breathed */
+.show-breathe{ animation:show-breathe-in .8s ease both; }
+@keyframes show-breathe-in{ from{ opacity:0; transform:translateY(6px); } }
 @media (prefers-reduced-motion: reduce){
-  .show-portal::before{ animation:none; }
-  .show-journey-traveller,.show-portal,.creation-gift-stage{ transition:none; }
+  .show-portal::before,.show-journey-spark,
+  .show-journey-carried.is-veiled img,
+  .show-journey-depart.is-picked .show-journey-traveller{ animation:none; }
+  .show-journey-traveller,.show-portal,.creation-gift-stage,
+  .show-journey-carried,.show-journey-original{ transition:none; animation:none; }
+  .show-breathe{ animation:none; }
 }

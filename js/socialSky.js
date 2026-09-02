@@ -285,7 +285,13 @@ const SocialSky=(function(){
       });
       b.appendChild(g);
     }
-    function go(){ _goCreator(entry.username); }
+    // R3 — a star opens the CREATOR, never the map again. The sky's
+    // own render hands in onOpen (the in-overlay Creator space); the
+    // module-level fallback survives for any caller with no overlay.
+    function go(){
+      if(opts.onOpen){ opts.onOpen(entry.username,entry.companion||null); return; }
+      _goCreator(entry.username);
+    }
     b.addEventListener('click',go);
     b.addEventListener('keydown',function(ev){
       if(ev.key==='Enter'||ev.key===' '){ ev.preventDefault(); go(); }
@@ -323,7 +329,7 @@ const SocialSky=(function(){
     });
   }
 
-  function open(){
+  function open(opts){
     const card=_card();
     if(!card) return false;
 
@@ -338,6 +344,286 @@ const SocialSky=(function(){
         return (typeof CreationShow!=='undefined'&&CreationShow.unseenBySender)
           ? CreationShow.unseenBySender() : {};
       }catch(e){ return {}; }
+    }
+
+    // ----------------------------------------------------------------
+    // THE CREATOR'S SPACE (R3) — what a star opens. The sky is the map
+    // of who is connected; a Creator is somebody to EXPLORE, so
+    // tapping their Companion moves the child INTO their presence:
+    // their Companion large, the relationship (in the sky's own words,
+    // changeable right here), anything they have waiting to show, and
+    // their creations — public ones opening in the Ether where reading
+    // lives, and, for a mutual pair, the not-yet-shared shelf mutuality
+    // unlocks. Back returns to the sky: same overlay, no second route,
+    // no navigation that dumps a child at VihuPlanet's threshold (which
+    // is what the old index.html?creator= hand-off did from here).
+    // ----------------------------------------------------------------
+    function renderSpace(username,companionHint){
+      while(panel.firstChild) panel.removeChild(panel.firstChild);
+      const name=_norm(username);
+      const l=layers()||{mutual:[],chosen:[],choseMe:[]};
+      const known=[].concat(l.mutual,l.chosen,l.choseMe).find(function(e){
+        return e&&_norm(e.username)===name;
+      })||null;
+      const companion=(known&&known.companion)||companionHint||null;
+
+      const space=_el('div','social-sky-space');
+      panel.appendChild(space);
+      const hero=_el('div','social-sky-space-hero');
+      hero.appendChild(_figure(companion));
+      space.appendChild(hero);
+      space.appendChild(_el('h3','social-sky-space-name','@'+name));
+
+      const rel=_el('div','social-sky-space-rel');
+      space.appendChild(rel);
+      function drawRel(){
+        while(rel.firstChild) rel.removeChild(rel.firstChild);
+        const chosenNow=(typeof CreatorOrbit!=='undefined'&&CreatorOrbit.has)?CreatorOrbit.has(name):false;
+        const circleNow=(typeof CreatorOrbit!=='undefined'&&CreatorOrbit.circleWith)?CreatorOrbit.circleWith(name):false;
+        if(circleNow){
+          rel.appendChild(_el('p','social-sky-space-mutual','✨ You chose each other'));
+        }else if(chosenNow){
+          rel.appendChild(_el('p','social-sky-space-inline','In your Sky ✓'));
+        }
+        if(chosenNow){
+          // The first social act beyond Cheer is a CREATION (Decision
+          // 54) — offered here because this is where the child is
+          // already thinking about this Creator.
+          try{
+            if(typeof CreationShow!=='undefined'&&CreationShow.canShow&&CreationShow.canShow()){
+              const showBtn=_el('button','social-sky-space-show','🎁 Show them something you made');
+              showBtn.type='button';
+              showBtn.addEventListener('click',function(){
+                done();
+                CreationShow.openShowDialog(null,{to:name});
+              });
+              rel.appendChild(showBtn);
+            }
+          }catch(e){}
+          const out=_el('button','social-sky-quiet','Take out of my Sky');
+          out.type='button';
+          out.addEventListener('click',function(){
+            try{ CreatorOrbit.remove(name).then(drawRel); }catch(e){}
+            drawRel();
+          });
+          rel.appendChild(out);
+        }else{
+          const add=_el('button','social-sky-space-add','⭐ Put them in my Sky');
+          add.type='button';
+          add.addEventListener('click',function(){
+            try{ CreatorOrbit.add(name).then(drawRel); }catch(e){}
+            drawRel();
+          });
+          rel.appendChild(add);
+        }
+      }
+      drawRel();
+
+      const gifts=giftsFrom();
+      if(gifts[name]){
+        const g=_el('button','social-sky-space-gift','🎁 They have something to show you');
+        g.type='button';
+        g.addEventListener('click',function(){
+          done();
+          try{ CreationShow.openGifts({from:name}); }catch(e){}
+        });
+        space.appendChild(g);
+      }
+
+      space.appendChild(_el('p','social-sky-space-head','✨ Their creations'));
+      const grid=_el('div','social-sky-space-grid');
+      space.appendChild(grid);
+      const note=_el('p','social-sky-space-note','Looking…');
+      space.appendChild(note);
+      try{
+        CreatorOrbit.publicCreations().then(function(list){
+          if(!overlay.isConnected) return;
+          const mine=(list||[]).filter(function(sr){
+            return sr&&sr.creatorUsername&&_norm(sr.creatorUsername)===name;
+          });
+          if(!mine.length){
+            note.textContent='Nothing in the Ether yet — but they’re here, making.';
+            return;
+          }
+          note.textContent='';
+          mine.forEach(function(sr){
+            const b=_el('button','social-sky-space-thing');
+            b.type='button';
+            if(sr.cover){
+              const img=document.createElement('img');
+              img.alt=''; img.src=sr.cover;
+              b.appendChild(img);
+            }else{
+              b.appendChild(_el('span','social-sky-space-thing-glyph','✦'));
+            }
+            b.appendChild(_el('span','social-sky-space-thing-name',sr.title||'A story'));
+            // Reading lives in the Ether — the story's own public deep
+            // link (Decision 9), an intent the universe already honours.
+            b.addEventListener('click',function(){
+              window.location.href='index.html?story='+encodeURIComponent(sr.id);
+            });
+            grid.appendChild(b);
+          });
+        });
+      }catch(e){ note.textContent=''; }
+
+      // Mutuality's one unlock: the not-yet-shared shelf.
+      try{
+        if(typeof CreatorOrbit!=='undefined'&&CreatorOrbit.circleWith&&CreatorOrbit.circleWith(name)){
+          mutualProjects(name).then(function(rows){
+            if(!overlay.isConnected||!rows.length) return;
+            space.insertBefore(_el('p','social-sky-space-head','✨ Not in the Ether yet — because you chose each other'),back);
+            const mg=_el('div','social-sky-space-grid');
+            space.insertBefore(mg,back);
+            rows.forEach(function(row){
+              const rec=row&&row.record;
+              if(!rec) return;
+              const pages=[];
+              try{
+                ((rec.data&&rec.data.pages)||[]).forEach(function(pgn){
+                  if(pgn&&pgn.readImage) pages.push(pgn.readImage);
+                });
+              }catch(e){}
+              const b=_el('button','social-sky-space-thing');
+              b.type='button';
+              const cover=rec.thumbnail||pages[0]||null;
+              if(cover){
+                const img=document.createElement('img');
+                img.alt=''; img.src=cover;
+                b.appendChild(img);
+              }else{
+                b.appendChild(_el('span','social-sky-space-thing-glyph','✦'));
+              }
+              b.appendChild(_el('span','social-sky-space-thing-name',rec.name||'Still being made ✨'));
+              b.addEventListener('click',function(){ renderPeek(name,companion,rec,pages); });
+              mg.appendChild(b);
+            });
+          });
+        }
+      }catch(e){}
+
+      const back=_el('button','social-sky-quiet','← Back to My Sky');
+      back.type='button';
+      back.addEventListener('click',function(){ render(); });
+      space.appendChild(back);
+    }
+
+    // A mutual friend's unshared story, paged through quietly.
+    function renderPeek(username,companion,rec,pages){
+      while(panel.firstChild) panel.removeChild(panel.firstChild);
+      const space=_el('div','social-sky-space');
+      panel.appendChild(space);
+      space.appendChild(_el('h3','social-sky-space-name',rec.name||'Still being made ✨'));
+      const stage=_el('div','social-sky-peek');
+      space.appendChild(stage);
+      if(pages.length){
+        let at=0;
+        const img=document.createElement('img');
+        img.alt=''; img.src=pages[0];
+        stage.appendChild(img);
+        if(pages.length>1){
+          const nav=_el('div','social-sky-peek-nav');
+          const prev=_el('button','social-sky-quiet','‹');
+          const next=_el('button','social-sky-quiet','›');
+          prev.type='button'; next.type='button';
+          prev.addEventListener('click',function(){ at=(at+pages.length-1)%pages.length; img.src=pages[at]; });
+          next.addEventListener('click',function(){ at=(at+1)%pages.length; img.src=pages[at]; });
+          nav.appendChild(prev); nav.appendChild(next);
+          stage.appendChild(nav);
+        }
+      }else if(rec.thumbnail){
+        const img=document.createElement('img');
+        img.alt=''; img.src=rec.thumbnail;
+        stage.appendChild(img);
+        space.appendChild(_el('p','social-sky-space-note','Still being made ✨'));
+      }else{
+        space.appendChild(_el('p','social-sky-space-note','Still being made ✨'));
+      }
+      const back=_el('button','social-sky-quiet','← Back');
+      back.type='button';
+      back.addEventListener('click',function(){ renderSpace(username,companion); });
+      space.appendChild(back);
+    }
+
+    // ----------------------------------------------------------------
+    // FIND A CREATOR (R3) — discovery lives IN the sky, as part of the
+    // world: the same exact-name lookup and prefix suggestions the
+    // Ether's Find already uses (creator_find / creator_suggest —
+    // public facts only, nothing enumerable), introducing whoever is
+    // found through their Companion. Finding creates nothing;
+    // CHOOSING them on their space is the same one-way choice it has
+    // always been, and mutuality still needs the other child's own
+    // independent choice.
+    // ----------------------------------------------------------------
+    function renderFind(){
+      while(panel.firstChild) panel.removeChild(panel.firstChild);
+      const space=_el('div','social-sky-space');
+      panel.appendChild(space);
+      space.appendChild(_el('h3','social-sky-space-name','Find a Creator'));
+      space.appendChild(_el('p','social-sky-space-note','Type their @name.'));
+      const row=_el('div','social-sky-find-row');
+      const at=_el('span','social-sky-find-at','@');
+      const input=document.createElement('input');
+      input.className='social-sky-find-input';
+      input.type='text';
+      input.maxLength=24;
+      input.autocomplete='off';
+      input.spellcheck=false;
+      row.appendChild(at); row.appendChild(input);
+      space.appendChild(row);
+      const sug=_el('div','social-sky-find-sug');
+      space.appendChild(sug);
+      const note=_el('p','social-sky-space-note','');
+      let seq=0,timer=null;
+      function redraw(names){
+        while(sug.firstChild) sug.removeChild(sug.firstChild);
+        (names||[]).forEach(function(n2){
+          const b=_el('button','social-sky-find-chip','@'+n2);
+          b.type='button';
+          b.addEventListener('click',function(){ found(n2); });
+          sug.appendChild(b);
+        });
+      }
+      input.addEventListener('input',function(){
+        const mySeq=++seq;
+        const want=_norm(input.value);
+        note.textContent='';
+        if(want.length<3){ redraw([]); return; }
+        if(timer) clearTimeout(timer);
+        timer=setTimeout(function(){
+          _rpc('creator_suggest',{p_prefix:want}).then(function(out){
+            if(mySeq!==seq) return;
+            redraw((out&&out.ok&&Array.isArray(out.names))?out.names.slice(0,8):[]);
+          }).catch(function(){});
+        },250);
+      });
+      function found(n2){
+        note.textContent='Looking across VihuPlanet…';
+        _rpc('creator_find',{p_username:_norm(n2)}).then(function(out){
+          if(!overlay.isConnected) return;
+          if(out&&out.ok){ renderSpace(out.username,out.companion||null); return; }
+          note.textContent='No Creator by that name is in VihuPlanet yet.';
+        }).catch(function(){
+          note.textContent='I can’t see the whole sky from here right now.';
+        });
+      }
+      const go=_el('button','social-sky-space-add','Find ✨');
+      go.type='button';
+      go.addEventListener('click',function(){
+        const want=_norm(input.value);
+        if(!want){ note.textContent='Type a name first.'; return; }
+        found(want);
+      });
+      input.addEventListener('keydown',function(ev){
+        if(ev.key==='Enter'){ ev.preventDefault(); go.click(); }
+      });
+      space.appendChild(go);
+      space.appendChild(note);
+      const back=_el('button','social-sky-quiet','← Back to My Sky');
+      back.type='button';
+      back.addEventListener('click',function(){ render(); });
+      space.appendChild(back);
+      input.focus();
     }
 
     function render(){
@@ -385,7 +671,8 @@ const SocialSky=(function(){
             cls:cls, x:p.x, y:p.y,
             glow:!!(glowMap&&glowMap[name]),
             gift:!!gifts[name],
-            onGift:done
+            onGift:done,
+            onOpen:function(u,c){ renderSpace(u,c); }
           }));
         });
       }
@@ -407,13 +694,25 @@ const SocialSky=(function(){
           'Your sky is waiting. When you meet a Creator in the Ether whose things you love, choose them — and they appear here.'));
       }
 
+      // ＋ FIND A CREATOR — part of the sky itself, a soft star low in
+      // the field, never a settings button. Discovery belongs where
+      // the Creators already live.
+      const find=_el('button','social-sky-find-star');
+      find.type='button';
+      find.appendChild(_el('span','social-sky-find-plus','＋'));
+      find.appendChild(_el('span','social-sky-name','Find a Creator'));
+      find.addEventListener('click',function(){ renderFind(); });
+      field.appendChild(find);
+
       const back=_el('button','social-sky-quiet','Back');
       back.type='button';
       back.addEventListener('click',done);
       field.appendChild(back);
     }
 
-    render();
+    if(opts&&opts.creator){ renderSpace(_norm(opts.creator),opts.companion||null); }
+    else if(opts&&opts.find){ renderFind(); }
+    else render();
     document.body.appendChild(overlay);
 
     // The platform's copy (incoming stars and mutuality are only ever
@@ -424,7 +723,10 @@ const SocialSky=(function(){
         ? CreationShow.refresh() : Promise.resolve(false);
       return Promise.resolve(g);
     }).then(function(){
-      if(overlay.isConnected) render();
+      // Re-render only while the SKY view is up — a child already
+      // inside a Creator's space (or typing a name) is not repainted
+      // back to the map by a slow round trip.
+      if(overlay.isConnected&&panel.querySelector('.social-sky-field')) render();
       // Seen once shown: the glow settles after this look, the stars
       // stay. Marked AFTER the render that showed the glow.
       markSeen();

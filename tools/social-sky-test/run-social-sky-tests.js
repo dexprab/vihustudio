@@ -487,7 +487,10 @@ function sqlSection() {
       text: panel ? panel.innerText : '',
       figure: !!document.querySelector('.show-journey-traveller .creation-gift-carrier-figure, .show-journey-companion'),
       portal: !!document.querySelector('.show-portal'),
-      held: !!document.querySelector('.show-journey-held, .show-journey-held-glyph'),
+      // R3 staged the pickup: the carried shimmer travels while the
+      // ORIGINAL stands in the stage — both are the proof now.
+      held: !!(document.querySelector('.show-journey-carried') &&
+               document.querySelector('.show-journey-original')),
     };
     document.querySelector('.creation-show-overlay').remove();
     return out;
