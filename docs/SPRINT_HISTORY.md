@@ -11266,3 +11266,28 @@ supabase/migrations_social_sky.sql, then verify_social_sky.sql; on
 vihu01's device take vihupapa out of the sky and put them back once,
 so the platform finally hears the choice the local echo already
 shows. show-journey 66 green.
+
+## Build 0746 — R3.7b: nobody removes and re-adds anything by hand
+
+The product owner refused build 0745's third deploy step — take a
+Creator out of the sky and put them back so the platform finally
+hears the choice — and he was refusing more than an inconvenience:
+measured, CreatorOrbit.refresh() REPLACES the local store with the
+platform's copy, and before card_acted_for a recalled card's every
+orbit write was refused, so those choices lived ONLY locally. The
+moment the migration deployed, orbit_list started SUCCEEDING for
+recalled cards — and its emptier platform copy would have deleted
+every never-synced choice on the very next load. The remedy the
+owner rejected would have become mandatory by data loss. refresh()
+now RECONCILES: entries the platform holds refresh mutuality exactly
+as before (the platform stays the only authority on circles), and a
+local entry the platform lacks is the child's own choice made before
+the platform could hear it — kept, and pushed up automatically
+(creator_orbit_set), with the answered mutuality landing back in the
+local store and the cached sky patched through noteChoice. Every
+sky addition made until now heals itself on each Creator's next
+Studio or Ether visit, with nothing to redo. RC1 proves it against a
+fresh platform copy: the unheard choice is pushed, kept, and its
+circle lands; on the old replace semantics the same check reads the
+choice deleted. show-journey 67 · social-orbit 31 green. No further
+server changes — the 0745 migration already ran.

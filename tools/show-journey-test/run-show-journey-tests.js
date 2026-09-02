@@ -699,6 +699,44 @@ function sqlSection() {
        'K1  KEEPING GROWS THE KEEPER\'S GARDEN — one keep, one growth, through the Garden\'s own typeless event',
        JSON.stringify(keepGrow.grew));
 
+    // ---- RC: reconcile, never replace (R3.7b) ----------------------
+    // Until card_acted_for, a recalled card's orbit writes were all
+    // refused, so real choices lived ONLY in the local store — and
+    // refresh() used to replace that store with the platform's copy,
+    // which would have DELETED them the moment the server fix
+    // deployed. The owner refused the remove-and-re-add remedy, and
+    // rightly: a local-only choice is pushed UP on the next refresh,
+    // automatically, and nobody redoes anything by hand.
+    const heal = await page.evaluate(async (s) => {
+      window.__orbitSets = [];
+      ThemeRepositoryClient.isConfigured = () => Promise.resolve(true);
+      ThemeRepositoryClient.getClient = () => Promise.resolve({
+        rpc: (fn, args) => {
+          if (fn === 'creator_orbit_list') {
+            return Promise.resolve({ data: { ok: true, orbit: [{ username: 'ghostkid', circle: false }] }, error: null });
+          }
+          if (fn === 'creator_orbit_set') {
+            window.__orbitSets.push(args.p_username);
+            return Promise.resolve({ data: { ok: true, username: args.p_username, orbited: true, circle: true }, error: null });
+          }
+          return Promise.resolve({ data: { ok: false }, error: null });
+        },
+      });
+      // stargirl was chosen while the platform refused to listen;
+      // ghostkid the platform already knows.
+      localStorage.setItem('vihu.orbit.' + s.aCard, JSON.stringify({
+        stargirl: { circle: false }, ghostkid: {} }));
+      const r = await CreatorOrbit.refresh();
+      await new Promise((res) => setTimeout(res, 150));
+      const map = JSON.parse(localStorage.getItem('vihu.orbit.' + s.aCard) || '{}');
+      return { r, pushed: window.__orbitSets.slice().sort(),
+        kept: Object.keys(map).sort(), circle: !!(map.stargirl && map.stargirl.circle) };
+    }, seeded);
+    ck(heal.r === true && heal.pushed.join(',') === 'stargirl' &&
+       heal.kept.join(',') === 'ghostkid,stargirl' && heal.circle,
+       'RC1 A CHOICE THE PLATFORM NEVER HEARD IS PUSHED UP, NOT LOST — the fresh platform copy keeps it, the platform learns it, and its answered mutuality lands',
+       JSON.stringify(heal));
+
     // ---- J13: a Traveller has none of this -------------------------
     const trav = await page.evaluate(() => {
       MagicCard.setActive('');

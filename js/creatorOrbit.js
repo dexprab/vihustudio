@@ -146,9 +146,34 @@ const CreatorOrbit=(function(){
     return _rpc('creator_orbit_list',{p_identity_id:card.id}).then(function(out){
       if(!out||!out.ok||!Array.isArray(out.orbit)) return false;
       _refreshed=true;
+      const local=_read(card.id);
       const map={};
       out.orbit.forEach(function(e){
         if(e&&e.username) map[_norm(e.username)]={circle:!!e.circle};
+      });
+      // R3.7b — RECONCILE, NEVER REPLACE. Until card_acted_for, a
+      // recalled card's every orbit write was refused not_yours, so
+      // real choices lived only in this store — and replacing it with
+      // the platform's emptier copy would DELETE them the moment the
+      // fix deployed. A local choice the platform does not hold is
+      // the child's own, made before the platform could hear it: it
+      // is kept, and pushed up now, so nobody ever removes and
+      // re-adds anything by hand. The platform stays the only
+      // authority on MUTUALITY; this only refuses to lose a choice.
+      Object.keys(local).forEach(function(name){
+        if(map[name]) return;
+        map[name]=local[name]||{};
+        _rpc('creator_orbit_set',{p_identity_id:card.id,p_username:name,p_on:true})
+          .then(function(res){
+            if(!res||!res.ok) return;
+            const m=_read(card.id);
+            if(m[name]){ m[name]={circle:!!res.circle}; _write(card.id,m); }
+            try{
+              if(typeof SocialSky!=='undefined'&&SocialSky.noteChoice){
+                SocialSky.noteChoice(name,null,true);
+              }
+            }catch(e){}
+          }).catch(function(){});
       });
       _write(card.id,map);
       return true;
