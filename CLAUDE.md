@@ -6983,6 +6983,62 @@ where they were.
   pushed Studio Home 54px past a 600px fold — creation-home's F13 had
   not been run since — so the short-window trims reclaim both. 84/84
   green again, overflow 0.
+- **THE PORTAL IS HOW SHOW WORKS, NOT AN ANIMATION ADDED TO IT** (R2,
+  build 0732). The world rule made visible, on both sides. Departure:
+  the Companion takes the creation (held WITH it, never flying off on
+  its own), says *"I'm taking this to <them>"* — no introduction, the
+  child knows their own Companion — a portal opens in this world (a
+  warm gold ring around a disc of deep night, the universe's own
+  language, nothing sci-fi), the Companion crosses carrying it, the
+  portal closes, and the words say the original stayed. Arrival, on
+  the gift's FIRST viewing: a portal opens in the recipient's world,
+  the carrier steps out, INTRODUCES itself — this child may never have
+  met it — reveals the creation (the reveal is the payoff, after the
+  introduction, never before), says the note, and the portal closes.
+  A gift already seen opens straight to what it brought: a re-run
+  journey every time would turn the payoff into a toll. No portal is
+  ever left standing; reduced motion gets the words and none of the
+  theatre; every line is spoken through `VihuVoice` (the Companion's
+  own voice architecture — silence is a correct answer) and never
+  browser TTS directly.
+- **THE NOTE IS THE CREATOR'S OWN WORDS, VERBATIM — STRUCTURALLY.**
+  *Add a little note*, optional, before the send. Stored on the show
+  row exactly as typed (a 200-character cap is a technical trim,
+  never an edit), returned by GET alone — the note belongs to the
+  reveal, not the shelf — and spoken as *"<they> says: '…'"* with the
+  exact string. Nothing anywhere rewrites, embellishes or summarizes
+  it, and there is no path through which anything could.
+- **THE COMPANION'S GIVEN NAME TRAVELS ON THE SHOW.** A child-given
+  name has no column on the identity (Decision 47 — it is
+  relationship state), but a Creator choosing to Show is choosing to
+  introduce their Companion by the name they gave it — so it rides
+  the show row as a snapshot, exactly as `creatorName` rides a story.
+  Aslan on screen and in the other world's introduction; the
+  CANONICAL id underneath everywhere that matters — the voice a line
+  is spoken in is the companion id's own, never looked up by the
+  given name.
+- **ONE SHOW IMPLEMENTATION, EVERY DOOR** — `CreationShow.itemFor()`
+  is the single place that knows what a showable story, drawing or
+  letter looks like, and `canShow()` is the one eligibility answer
+  (a card, and somebody chosen). Studio Home, My Projects and now the
+  Garden's own object action cards (both rooms — a drawing's ⋯ card
+  and a kept letter's, beside Open and Fix it up: *🎁 Show to your
+  Sky*) all hand their record there; a surface that builds its own
+  item is the regression the suite scans for. The recipient chooser
+  shows a Creator primarily through their COMPANION, @name beside it,
+  and no relationship words anywhere.
+- **EVERY SUCCESSFUL SHOW GROWS THE SENDER'S GARDEN — after the
+  portal closes, and never because of anything the recipient does.**
+  One dispatch of the Garden's own event (`vihu:creation-captured`
+  with a capture id and deliberately no type — Decision 27), so the
+  Garden learns nothing about shows, the recent-ids guard makes one
+  show one growth, and there is no counter, no XP and nothing
+  numeric. The causality a child feels is *I shared something I made
+  → my garden became more alive* — measured in the suite: zero growth
+  at the button press, one after the portal closes, none of it
+  waiting on a view, a keep or any reaction. A social-validation
+  reward loop is structurally impossible: the recipient's actions
+  reach no code path that grows anything.
 - **DEFERRED BY NAME, so nobody invents them half-way:** the
   Creativity Thread, chained exchanges, collaboration, richer Circle
   functionality, messaging, public relationship counts, rankings, and

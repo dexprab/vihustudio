@@ -464,25 +464,38 @@ function sqlSection() {
   ck(showSent.results.every((r) => r.ok) && showSent.kinds.join(',') === 'story,drawing,letter',
      'B8  EVERY KIND SENDS — a snapshot each, with its place riding along', JSON.stringify(showSent.places));
 
-  // THE CORE WORLD RULE, said at the moment of sending: the creation
-  // stays in the child's world; the COMPANION is what crosses.
+  // THE CORE WORLD RULE, now walked as the PORTAL JOURNEY (R2): after
+  // the recipient comes the optional note, then the departure — the
+  // Companion takes the creation, a portal opens, it crosses, the
+  // portal closes, and the words say the original stayed. (This check
+  // used to assert the R1 static confirmation; the journey replaced
+  // it, and the deep proof lives in tools/show-journey-test.)
   const crossing = await page.evaluate(async () => {
     const m = CreationShow.myShowables();
     CreationShow.openShowDialog(m.stories[0]);
     await new Promise((r) => setTimeout(r, 200));
     document.querySelector('.creation-show-who-btn').click();
-    await new Promise((r) => setTimeout(r, 400));
+    await new Promise((r) => setTimeout(r, 200));
+    const noteField = document.querySelector('.creation-show-notefield');
+    const hadNote = !!noteField;
+    Array.from(document.querySelectorAll('.creation-show-btns button'))
+      .find((b) => /Show it/.test(b.textContent)).click();
+    await new Promise((r) => setTimeout(r, 500));
     const panel = document.querySelector('.creation-show-panel');
     const out = {
+      hadNote,
       text: panel ? panel.innerText : '',
-      figure: !!document.querySelector('.creation-show-crossing .creation-gift-carrier-figure'),
+      figure: !!document.querySelector('.show-journey-traveller .creation-gift-carrier-figure, .show-journey-companion'),
+      portal: !!document.querySelector('.show-portal'),
+      held: !!document.querySelector('.show-journey-held, .show-journey-held-glyph'),
     };
     document.querySelector('.creation-show-overlay').remove();
     return out;
   });
-  ck(/is carrying it/.test(crossing.text) && /stays right here/.test(crossing.text) && crossing.figure,
-     'B8c THE COMPANION IS THE CARRIER — the confirmation is a Companion setting off, and the creation stays home',
-     crossing.text.replace(/\n/g, ' · '));
+  ck(crossing.hadNote && /is taking it/.test(crossing.text) && crossing.figure &&
+     crossing.portal && crossing.held,
+     'B8c THE COMPANION IS THE CARRIER — a note is offered, then the Companion sets off through a portal with the creation held, and the original stays home',
+     crossing.text.replace(/\n/g, ' · ').slice(0, 80));
 
   const nothingMoved = await page.evaluate((s) => ({
     published: CreatorProjectStore.listPublished().length,
@@ -596,14 +609,20 @@ function sqlSection() {
       }
     });
     localStorage.setItem('vihu.gifts.' + s.bCard, JSON.stringify([g5]));
-    // The sky's 🎁 path: straight to that Creator's gift.
+    // The sky's 🎁 path: straight to that Creator's gift. R2 made the
+    // first viewing an ARRIVAL — portal, the carrier stepping out,
+    // introduction, then the reveal — so the Keep button exists only
+    // once the journey has revealed the creation; this waits it out.
+    // (The journey's own deep checks live in tools/show-journey-test.)
     CreationShow.openGifts({ from: 'moonmaker' });
-    await new Promise((r) => setTimeout(r, 600));
     const panel = document.querySelector('.creation-show-panel');
-    const carrier = panel ? panel.querySelector('.creation-gift-carrier') : null;
-    const carrierImg = carrier ? carrier.querySelector('img') : null;
-    const line = carrier ? carrier.innerText : '';
-    const keepBtn = panel ? panel.querySelector('.creation-gift-keep') : null;
+    let keepBtn = null;
+    for (let i = 0; i < 40 && !keepBtn; i++) {
+      await new Promise((r) => setTimeout(r, 250));
+      keepBtn = panel ? panel.querySelector('.creation-gift-keep') : null;
+    }
+    const trav = panel ? panel.querySelector('.show-journey-traveller img') : null;
+    const line = (panel && panel.querySelector('.show-journey-line') || {}).textContent || '';
     let keepNote = '';
     if (keepBtn) {
       keepBtn.click();
@@ -611,12 +630,12 @@ function sqlSection() {
       keepNote = (panel.querySelector('.creation-show-note') || {}).textContent || '';
     }
     document.querySelector('.creation-show-overlay').remove();
-    return { line, img: carrierImg ? carrierImg.getAttribute('src') : null, keepNote,
+    return { line, img: trav ? trav.getAttribute('src') : null, keepNote,
              haveQ: !!HandwritingStore.get('Q') };
   }, seeded);
-  ck(/Companion carried this across to show you/.test(revealed.line)
+  ck(/Hi! I’m @moonmaker’s Companion\. @moonmaker wanted me to show you something\./.test(revealed.line)
      && /leafy\/idle\.png/.test(revealed.img || ''),
-     'B13 A GIFT IS REVEALED BY THE COMPANION THAT CARRIED IT — @moonmaker\'s own, drawn beside what it brought',
+     'B13 A GIFT ARRIVES WITH THE COMPANION THAT CARRIED IT — @moonmaker\'s own steps out of the portal and introduces itself',
      revealed.line);
   ck(/carried a copy/.test(revealed.keepNote) && revealed.haveQ,
      'B13b AND KEEP IS MY OWN COMPANION BRINGING THE COPY IN — into its own slot, in those words',

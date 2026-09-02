@@ -59,7 +59,11 @@ begin
     (9, 'send requires the SENDER to have chosen the recipient', 'true',
         coalesce((v_send ~* 'orbiter_id = v_me\.id and orbited_id = v_them\.id')::text,'false')),
     (10, 'the payload is capped', 'true',
-        coalesce((v_send ~* 'too_big')::text,'false'));
+        coalesce((v_send ~* 'too_big')::text,'false')),
+    (22, 'R2: the Creator''s note travels on the show, verbatim', 'true',
+        coalesce((v_send ~* 'p_note')::text,'false')),
+    (23, 'R2: the Companion''s given name travels with it', 'true',
+        coalesce((v_send ~* 'p_companion_name')::text,'false'));
 
   select pg_get_functiondef(p.oid) into v_list
     from pg_proc p join pg_namespace n on n.oid=p.pronamespace
@@ -79,7 +83,9 @@ begin
    where n.nspname='public' and p.proname='creation_show_get' and p.prokind='f';
   insert into _verify_social_sky values
     (14, 'creation_show_get exists and is recipient-only', 'true',
-        coalesce((v_get ~* 'to_id = v_me\.id')::text,'false'));
+        coalesce((v_get ~* 'to_id = v_me\.id')::text,'false')),
+    (24, 'R2: the note is returned by GET (the reveal), and by get alone', 'true',
+        coalesce((v_get ~* 'v_show\.note')::text,'false'));
 
   select pg_get_functiondef(p.oid) into v_mark
     from pg_proc p join pg_namespace n on n.oid=p.pronamespace

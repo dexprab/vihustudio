@@ -130,6 +130,18 @@ create table if not exists public.creator_shows (
   check (from_id <> to_id)
 );
 
+-- R2 — THE COMPANION CARRIES WORDS AS WELL AS THE CREATION.
+-- `note` is the Creator's own optional message, stored VERBATIM (the
+-- Companion speaks the child's actual words — never rewritten,
+-- summarized or embellished by anything). `companion_name` is what
+-- the SENDER calls their Companion at send time — a child-given name
+-- has no column on the identity (Decision 47: it is relationship
+-- state), but the sender choosing to Show is the sender choosing to
+-- introduce their Companion by the name they gave it, so it travels
+-- as a snapshot ON THE SHOW, like creatorName travels with a story.
+alter table public.creator_shows add column if not exists note text not null default '';
+alter table public.creator_shows add column if not exists companion_name text not null default '';
+
 create index if not exists creator_shows_to_idx
   on public.creator_shows (to_id, created_at desc);
 
@@ -147,13 +159,17 @@ alter table public.creator_shows enable row level security;
 --   * showing NEVER touches creator_projects, never publishes, and
 --     never changes creator_orbits — verified by the suite
 -- -------------------------------------------------------------------
+drop function if exists public.creation_show_send(text, text, text, text, jsonb, jsonb);
+
 create or replace function public.creation_show_send(
   p_identity_id text,
   p_username    text,
   p_kind        text,
   p_name        text,
   p_place       jsonb,
-  p_payload     jsonb
+  p_payload     jsonb,
+  p_note        text default null,
+  p_companion_name text default null
 )
 returns jsonb
 language plpgsql
@@ -214,18 +230,23 @@ begin
     return jsonb_build_object('ok', false, 'reason', 'later');
   end if;
 
-  insert into public.creator_shows (from_id, to_id, kind, name, place, payload)
+  insert into public.creator_shows (from_id, to_id, kind, name, place, payload,
+                                    note, companion_name)
   values (v_me.id, v_them.id, p_kind,
           left(coalesce(p_name, ''), 120),
           coalesce(p_place, '{}'::jsonb),
-          p_payload)
+          p_payload,
+          -- The child's own words, verbatim. left() is a technical
+          -- cap on runaway input, never an edit.
+          left(trim(coalesce(p_note, '')), 200),
+          left(trim(coalesce(p_companion_name, '')), 40))
   returning id into v_id;
 
   return jsonb_build_object('ok', true, 'id', v_id);
 end;
 $$;
 
-grant execute on function public.creation_show_send(text, text, text, text, jsonb, jsonb)
+grant execute on function public.creation_show_send(text, text, text, text, jsonb, jsonb, text, text)
   to anon, authenticated;
 
 -- -------------------------------------------------------------------
@@ -263,6 +284,7 @@ begin
            'id', s.id,
            'from', i.username,
            'companion', i.companion_id,
+           'companionName', s.companion_name,
            'kind', s.kind,
            'name', s.name,
            'place', s.place,
@@ -319,6 +341,8 @@ begin
     'id', v_show.id,
     'from', v_from,
     'companion', (select companion_id from public.magic_card_identities where id = v_show.from_id),
+    'companionName', v_show.companion_name,
+    'note', v_show.note,
     'kind', v_show.kind,
     'name', v_show.name,
     'place', v_show.place,

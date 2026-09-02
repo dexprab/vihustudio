@@ -292,21 +292,16 @@ const CreationFlow=(function(){
     // Only for a card-holder with somebody in their sky to show to —
     // absent otherwise, never locked.
     if(typeof window.CreationShow!=='undefined'
-       &&typeof MagicCard!=='undefined'&&MagicCard.getActive&&MagicCard.getActive()
-       &&CreationShow.recipients().length){
+       &&CreationShow.canShow&&CreationShow.canShow()){
       const show=_el('button','creation-flow-project-show','🎁 Show');
       show.type='button';
       show.setAttribute('aria-label','Show this to a Creator');
       show.addEventListener('click',function(e){
         e.stopPropagation();
-        CreationShow.openShowDialog({
-          kind:'story', id:record.id, name:record.name||'A story',
-          image:record.thumbnail||null,
-          place:{store:'projects'},
-          payload:function(){
-            return {name:record.name||'A story',thumbnail:record.thumbnail||null,data:record.data};
-          }
-        });
+        // ONE item shape for every door — CreationShow.itemFor is the
+        // single place that knows what a showable story looks like
+        // (R2: this used to be an inline copy, the third of its kind).
+        CreationShow.openShowDialog(CreationShow.itemFor('story',record));
       });
       card.appendChild(show);
     }

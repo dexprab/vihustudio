@@ -10848,3 +10848,42 @@ to 14: the name follows the nickname, offline claims nothing and says
 so, both faces are painted with a print button, and a stubbed
 platform proves the claim is the real RPC with the identity id and
 the name — landing on the card, the face and the device list.
+
+## Build 0732 — Social Sky R2: the Portal Journey, the note, and the garden that grows
+
+The consolidated Sky/Show/Gifts sprint, on top of R1 (0725–0727),
+which already held the spatial Sky, Show/Gifts/Keep, gravity, the
+Traveller wall and the carrier model. What R2 adds is the experience
+and the words. **The portal is how Show works now, not an animation
+added to it**: the sender's Companion takes the creation (held WITH
+it), speaks its departure line in its own voice, a warm gold portal
+opens in the child's world, the Companion crosses, the portal closes —
+and only then does the sender's Garden grow, through the Garden's own
+`vihu:creation-captured` event with a show-scoped capture id: one
+show, one growth, never a number, and never dependent on anything the
+recipient does (measured: zero growth at the button press, one after
+close, no recipient code path grows anything). On the other side, a
+gift's FIRST viewing is an arrival — portal, the carrier stepping
+out, introducing itself, revealing the creation, and saying the
+Creator's optional note in the Creator's EXACT words (stored verbatim
+on the row, capped at 200 characters as a trim never an edit,
+returned by GET alone — the note belongs to the reveal, not the
+shelf). A seen gift opens straight to the content. The Companion's
+child-given name travels on the show as a snapshot (the creatorName
+pattern; Decision 47's no-column rule intact), so Aslan introduces
+itself as Aslan while every spoken line still uses the canonical
+companion id's voice. One implementation for every door —
+`CreationShow.itemFor()`/`canShow()` — now reachable from the
+Garden's own object action cards in both rooms (🎁 Show to your Sky,
+beside Open and Fix it up), My Projects and Studio Home; the
+recipient chooser shows Creators through their Companions.
+`tools/show-journey-test/` (26): the note travels verbatim through a
+real PostgreSQL (quotes, emoji, the 200 cap, the old-client default
+path, eligibility unchanged), and the whole journey is walked in a
+real browser on both sides — including the deliberate silence of the
+already-seen path and a Traveller refused at every door. Regressions
+green: social-sky 65 (B8c/B13 turned around with reasons — the R1
+static confirmation became the journey), social-orbit 31,
+social-ether-identity 20, creation-home 84, social-identity 98.
+Deploy: RE-RUN supabase/migrations_social_sky.sql (adds note +
+companion_name and the new send signature), then verify_social_sky.

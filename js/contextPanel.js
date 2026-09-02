@@ -2596,6 +2596,17 @@ const ContextPanel=(function(){
       opt('','\u270F\uFE0F Fix it up',function(){
         if(typeof BringItAliveStudio!=='undefined') BringItAliveStudio.open({record:item,onKept:function(){ _showLibraryPicker('drawings'); }});
       });
+      // SOCIAL SKY R2 — Show lives with the creation, on the object's
+      // own action card, exactly where Open and Fix already are. One
+      // shared implementation: the record goes to CreationShow.itemFor
+      // and the same journey every other door uses. Offered only when
+      // a Show is possible at all (a card, and somebody chosen) —
+      // absent otherwise, never locked.
+      if(typeof CreationShow!=='undefined'&&CreationShow.canShow&&CreationShow.canShow()){
+        opt('','\u{1F381} Show to your Sky',function(){
+          CreationShow.openShowDialog(CreationShow.itemFor('drawing',item));
+        });
+      }
       opt('','\u2715 Take out of My Garden',function(){
         if(!window.confirm('Take \u201C'+(item.name||'My Character')+'\u201D out of My Garden? Anything already on your pages stays right where it is.')) return;
         try{ if(typeof CreatorLibrary!=='undefined') CreatorLibrary.remove(item.id); }catch(e){}
@@ -2840,6 +2851,14 @@ const ContextPanel=(function(){
                 opt('','✏️ Fix it up',function(){
                   if(typeof HandwritingStudio!=='undefined') HandwritingStudio.open({ch:ch,edit:true,onKept:function(){ _showLibraryPicker('letters'); }});
                 });
+                // R2 — a kept letter is a creation like any other, so
+                // its action card offers the same Show every surface
+                // shares. Same guard, same door, same journey.
+                if(typeof CreationShow!=='undefined'&&CreationShow.canShow&&CreationShow.canShow()){
+                  opt('','🎁 Show to your Sky',function(){
+                    CreationShow.openShowDialog(CreationShow.itemFor('letter',rec));
+                  });
+                }
                 opt('','Never mind',function(){});
                 cell.appendChild(card);
                 const away=function(e2){
