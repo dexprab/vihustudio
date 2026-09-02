@@ -660,9 +660,34 @@ const CreatorProjectStore=(function(){
       .sort(function(a,b){ return new Date(b.publishedAt)-new Date(a.publishedAt); });
   }
 
+  // What a story can SHOW of itself, page by page — the reading image
+  // where the share ceremony baked one, else the page's own small
+  // thumbnail (the same fallback the Ether's portal has always used,
+  // js/etherFeed.js), across BOTH payload spellings a record may
+  // carry (`pages`, and the older `slides` publishStudio also reads).
+  // R3.6, after the product owner met "Still being made ✨" on lots of
+  // real shared stories: the quiet pagers read only pages[].readImage,
+  // so every story shared before reading images were baked — perfectly
+  // readable in the Ether through this exact fallback — peeked to
+  // nothing. One reader, used by every peek, so they cannot disagree
+  // with the portal about what a story can show.
+  function readingPagesOf(record){
+    const out=[];
+    try{
+      const d=record&&record.data;
+      const pages=(d&&(d.pages||d.slides))||[];
+      pages.forEach(function(p){
+        const img=p&&(p.readImage||p.thumbnail);
+        if(img) out.push(img);
+      });
+    }catch(e){}
+    return out;
+  }
+
   const api={
     STORAGE_KEY:STORAGE_KEY,
     newId:newId,
+    readingPagesOf:readingPagesOf,
     list:list,
     listAll:listAll,
     claimUnowned:claimUnowned,

@@ -14474,7 +14474,11 @@ body.studio-rite-running .companion-chat-open{ display:none !important; }
 .social-sky-me .social-sky-plain{ font-size:44px; }
 .social-sky-me .social-sky-name{ font-size:12px; opacity:0.7; }
 .social-sky-empty{
-  position:absolute; left:50%; bottom:15%;
+  position:absolute; left:50%;
+  /* clear of the ＋ Find a Creator star, which stands at bottom:8% of
+     the same centre line — the two used to draw through each other
+     (reported with a screenshot: "choose them ＋ and they appear") */
+  bottom:calc(8% + 96px);
   transform:translateX(-50%);
   width:min(440px,80%);
   margin:0; text-align:center;

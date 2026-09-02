@@ -1267,7 +1267,7 @@ const CreationFlow=(function(){
         const b=_el('button','creation-flow-ether-thing');
         b.type='button';
         const cover=r.thumbnail
-          ||(r.data&&Array.isArray(r.data.pages)&&r.data.pages[0]&&r.data.pages[0].readImage)
+          ||(CreatorProjectStore.readingPagesOf?CreatorProjectStore.readingPagesOf(r)[0]:null)
           ||null;
         if(cover){
           const img=document.createElement('img');
@@ -1302,12 +1302,11 @@ const CreationFlow=(function(){
     function done(){ try{ overlay.remove(); }catch(e){} }
     overlay.addEventListener('click',function(ev){ if(ev.target===overlay) done(); });
     space.appendChild(_el('h3','social-sky-space-name',r.name||'A story'));
-    const pages=[];
-    try{
-      ((r.data&&r.data.pages)||[]).forEach(function(p){
-        if(p&&p.readImage) pages.push(p.readImage);
-      });
-    }catch(e){}
+    // The portal's own fallback (R3.6): baked reading image, else the
+    // page's small thumbnail, either payload spelling — so a story
+    // shared before reading images still shows its pages here.
+    const pages=(typeof CreatorProjectStore!=='undefined'&&CreatorProjectStore.readingPagesOf)
+      ?CreatorProjectStore.readingPagesOf(r):[];
     const stage=_el('div','social-sky-peek');
     space.appendChild(stage);
     if(pages.length){

@@ -193,12 +193,11 @@ const CreatorOrbit=(function(){
         local=(CreatorProjectStore.listAll()||[]).filter(function(r){
           return r&&r.publishedAt;
         }).map(function(r){
-          const pages=[];
-          try{
-            ((r.data&&r.data.pages)||[]).forEach(function(p){
-              if(p&&p.readImage) pages.push(p.readImage);
-            });
-          }catch(e){}
+          // readingPagesOf carries the portal's own fallback (baked
+          // reading image, else the page's small thumbnail, either
+          // payload spelling) — R3.6, so a story shared before reading
+          // images still has something to peek.
+          const pages=CreatorProjectStore.readingPagesOf?CreatorProjectStore.readingPagesOf(r):[];
           return { id:r.id, title:r.name||'A story',
                    cover:r.thumbnail||pages[0]||null,
                    pages:pages,
@@ -221,12 +220,8 @@ const CreatorOrbit=(function(){
         return (rows||[]).map(function(row){
           const d=row&&row.data;
           if(!d) return null;
-          const pages=[];
-          try{
-            ((d.data&&d.data.pages)||[]).forEach(function(p){
-              if(p&&p.readImage) pages.push(p.readImage);
-            });
-          }catch(e){}
+          const pages=(typeof CreatorProjectStore!=='undefined'&&CreatorProjectStore.readingPagesOf)
+            ?CreatorProjectStore.readingPagesOf(d):[];
           return { id:d.id, title:d.name||'A story',
                    cover:d.thumbnail||pages[0]||null,
                    pages:pages,

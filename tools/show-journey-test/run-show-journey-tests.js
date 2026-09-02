@@ -691,6 +691,17 @@ function sqlSection() {
     await page.evaluate((s) => {
       MagicCard.setActive(s.aCard);
       CreatorProjectStore.markPublished(s.mine);
+      // THE REPORTED VINTAGE (R3.6, "am seeing this here in lot of
+      // stories"): a story shared before reading images were baked —
+      // its pages carry only their own small thumbnails, under the
+      // older `slides` spelling publishStudio also reads, and the
+      // record has no cover at all. Perfectly readable in the Ether
+      // (the portal falls back to page thumbnails); the peeks read
+      // only pages[].readImage and showed "Still being made ✨".
+      const old = CreatorProjectStore.newId();
+      CreatorProjectStore.upsert(old, { name: 'the falling star', thumbnail: null },
+        { version: 1, slides: [{ id: 's1', thumbnail: s.px }, { id: 's2', thumbnail: s.thumb }] });
+      CreatorProjectStore.markPublished(old);
       // Scene 3 asks a Returning Creator for their sky; the one-shot
       // recognition note is what a child arriving from VihuPlanet
       // carries (creation-home's own established boot pattern).
@@ -719,7 +730,8 @@ function sqlSection() {
     }));
     ck(/Back to the Ether/.test(shelf.door) && shelf.fixed,
        'E1  STUDIO HOME HAS A WAY TO THE ETHER — one quiet corner pill, fixed outside the flow so the fold never pays for it');
-    ck(shelf.things.length === 1 && shelf.things[0] === 'The Moon Dragon',
+    ck(shelf.things.length === 2 && shelf.things.indexOf('The Moon Dragon') !== -1 &&
+       shelf.things.indexOf('the falling star') !== -1,
        'E2  AND SHOWS THE CHILD\'S OWN STORIES IN THE ETHER — scoped to their card, absent when nothing is shared',
        shelf.things.join(','));
     // R3.5 — TURNED AROUND, corrected by the product owner: this used
@@ -727,7 +739,10 @@ function sqlSection() {
     // and he asked for the opposite — "the creation should load on
     // studio home itself." The Ether stays one press away at the
     // corner door; a creation opens as a quiet pager right here.
-    await page.click('.creation-flow-ether-thing');
+    await page.evaluate(() => {
+      Array.from(document.querySelectorAll('.creation-flow-ether-thing'))
+        .find((b) => /The Moon Dragon/.test(b.textContent)).click();
+    });
     await page.waitForSelector('.social-sky-overlay .social-sky-peek img', { timeout: 8000 });
     const peek = await page.evaluate(() => ({
       url: location.pathname,
@@ -736,6 +751,26 @@ function sqlSection() {
     ck(/studio\.html/.test(peek.url) && peek.title === 'The Moon Dragon',
        'E3  A SHELF STORY OPENS ON STUDIO HOME ITSELF — a quiet pager over the room, nothing navigates, the Studio never lost',
        peek.title);
+    // R3.6 — THE REPORT ITSELF: the vintage story must peek to its
+    // PAGES, not to "Still being made ✨". Proved against the exact
+    // record shape that failed (slides spelling, thumbnails only, no
+    // cover); reverting readingPagesOf turns this red.
+    await page.evaluate(() => {
+      document.querySelectorAll('.social-sky-overlay').forEach((o) => o.remove());
+      Array.from(document.querySelectorAll('.creation-flow-ether-thing'))
+        .find((b) => /the falling star/.test(b.textContent)).click();
+    });
+    await page.waitForSelector('.social-sky-overlay .social-sky-peek img', { timeout: 8000 });
+    const vintage = await page.evaluate(() => ({
+      title: (document.querySelector('.social-sky-overlay .social-sky-space-name') || {}).textContent || '',
+      img: !!document.querySelector('.social-sky-overlay .social-sky-peek img'),
+      nav: !!document.querySelector('.social-sky-overlay .social-sky-peek-nav'),
+      stillBeingMade: /Still being made/.test(
+        (document.querySelector('.social-sky-overlay') || {}).textContent || ''),
+    }));
+    ck(vintage.title === 'the falling star' && vintage.img && vintage.nav && !vintage.stillBeingMade,
+       'E4  A STORY SHARED BEFORE READING IMAGES STILL SHOWS ITS PAGES — the portal\'s own thumbnail fallback, both payload spellings, never "Still being made" for a finished story',
+       JSON.stringify(vintage));
     // and the same correction in the Sky: a creation in a Creator's
     // space reads right there, in the same overlay.
     await page.evaluate(() => {
@@ -743,7 +778,10 @@ function sqlSection() {
       SocialSky.open({ creator: 'moonmaker' });
     });
     await page.waitForSelector('.social-sky-space-thing', { timeout: 8000 });
-    await page.click('.social-sky-space-thing');
+    await page.evaluate(() => {
+      Array.from(document.querySelectorAll('.social-sky-space-thing'))
+        .find((b) => /The Moon Dragon/.test(b.textContent)).click();
+    });
     await page.waitForSelector('.social-sky-overlay .social-sky-peek img', { timeout: 8000 });
     const skyPeek = await page.evaluate(() => ({
       url: location.pathname,

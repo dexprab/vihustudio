@@ -763,13 +763,11 @@ const CreationShow=(function(){
       function buildContent(){
       if(full.kind==='story'){
         // The pages the story can show of itself: baked reading
-        // images where the sender's story had them, else its cover.
-        const pages=[];
-        try{
-          ((payload.data&&payload.data.pages)||[]).forEach(function(s){
-            if(s&&s.readImage) pages.push(s.readImage);
-          });
-        }catch(e){}
+        // images where the sender's story had them, else each page's
+        // own small thumbnail (the portal's fallback, R3.6), else its
+        // cover.
+        const pages=(typeof CreatorProjectStore!=='undefined'&&CreatorProjectStore.readingPagesOf)
+          ?CreatorProjectStore.readingPagesOf(payload):[];
         if(pages.length){
           let at=0;
           const img=document.createElement('img');

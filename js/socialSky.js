@@ -533,12 +533,12 @@ const SocialSky=(function(){
             rows.forEach(function(row){
               const rec=row&&row.record;
               if(!rec) return;
-              const pages=[];
-              try{
-                ((rec.data&&rec.data.pages)||[]).forEach(function(pgn){
-                  if(pgn&&pgn.readImage) pages.push(pgn.readImage);
-                });
-              }catch(e){}
+              // The portal's own fallback (R3.6): baked reading image,
+              // else the page's small thumbnail, either payload
+              // spelling — a draft's pages are exactly the ones with
+              // no reading images baked yet.
+              const pages=(typeof CreatorProjectStore!=='undefined'&&CreatorProjectStore.readingPagesOf)
+                ?CreatorProjectStore.readingPagesOf(rec):[];
               const b=_el('button','social-sky-space-thing');
               b.type='button';
               const cover=rec.thumbnail||pages[0]||null;

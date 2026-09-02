@@ -11204,3 +11204,31 @@ its host and narration, still lives there for anyone who goes.
 show-journey 61 (E3 turned, SP1 added for the Sky's grid; the seed's
 IndexedDB hydration race also hardened with an on-load re-seed
 fallback after it flaked twice in three runs). No server changes.
+
+## Build 0744 — R3.6: a finished story never says "Still being made"
+
+Reported by the product owner with a screenshot — "the falling star ·
+Still being made ✨", "am seeing this here in lot of stories". Two
+gaps together explain the lot. The Ether's reading portal has ALWAYS
+fallen back to each page's own small thumbnail when no baked reading
+image exists (js/etherFeed.js), and it reads both payload spellings
+(`pages`, and the older `slides` publishStudio also honours) — which
+is exactly why those same stories read perfectly in the universe.
+The new quiet pagers (the Sky's grids, the Studio Home shelf, the
+mutual peek, the gift view) read only `data.pages[].readImage`, so
+every story shared before reading images were baked at share time
+peeked to a title and "Still being made ✨" — a finished story wearing
+a draft's words. One reader now answers what a story can show of
+itself: `CreatorProjectStore.readingPagesOf(record)` — baked reading
+image, else the page's thumbnail, either spelling — and every peek
+feeds from it, so the peeks can never again disagree with the portal.
+"Still being made ✨" survives only where it is true: a draft with no
+pictures at all (the mutual shelf's genuine works-in-progress). E4
+seeds the reported vintage exactly (slides spelling, thumbnails only,
+no cover) and requires its PAGES back; proved by reverting the
+fallback — the run dies where the report was. And the second
+screenshot's own find: in an EMPTY sky, "Your sky is waiting…" and
+the ＋ Find a Creator star have drawn through each other since the
+star arrived — the message now stands clear of it (measured 22px at
+555px and 900px alike). show-journey 62 · social-sky 65 green. No
+server changes.
