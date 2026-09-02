@@ -10821,3 +10821,30 @@ door at every level and none after "everything", the fresh Traveller
 keeps every existing card — and T7 proves the pass by landing in the
 Studio and STAYING, shown by reverting pass() and watching the gate
 bounce it to VihuPlanet.
+
+## Build 0731 — Test Accounts: the card in hand, and a real @username
+
+Asked for by the product owner: *"the test account will need magic
+card also, a username also . it needs to be same as any normal
+accounts."* The utility already minted a real card row; now the
+account is indistinguishable from a normal one on both remaining
+counts. **The @username** is a field that follows the nickname
+normalized (the backfill's own rule — the child's word, never an
+invention) until the owner types their own, validated by
+CreatorHandle, and claimed through `MagicCard.claimUsername()` — the
+product's one write path, `creator_username_claim` on the platform,
+globally unique, same rules as any Creator's name. A failure is
+reported honestly and retriable in place: *taken* offers another try,
+and an unreachable platform claims nothing rather than faking a name
+locally — exactly what a normal account made offline gets. **The
+Magic Card itself** is drawn into the made panel by
+`MagicCardArt.drawFront/drawBack` — the same art the Ceremony shows —
+with both portraits resolved against the real root (the art module's
+own resolver fetches relative to the page, two folders up from here),
+redrawn when the @name lands so the face carries it (Decision S1.1),
+and printable through the art's own `printCard()` under the same
+print-sheet rules `css/style.css` gives the Ceremony. The suite grew
+to 14: the name follows the nickname, offline claims nothing and says
+so, both faces are painted with a print button, and a stubbed
+platform proves the claim is the real RPC with the identity id and
+the name — landing on the card, the face and the device list.

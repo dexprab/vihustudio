@@ -85,7 +85,9 @@ function ck(c, n, note) {
 
     // ---- T3: a "Story Rite 2 waiting" account ----------------------
     const made2 = await page.evaluate(() => {
-      document.getElementById('nick').value = 'RiteTwo';
+      const nickEl = document.getElementById('nick');
+      nickEl.value = 'RiteTwo';
+      nickEl.dispatchEvent(new Event('input'));
       const quill = Array.from(document.querySelectorAll('.mate'))
         .find((m) => m.querySelector('b').textContent === 'Quill');
       quill.click();
@@ -101,10 +103,32 @@ function ck(c, n, note) {
         want: grant(runnable[0]).slice().sort(),
         next: StudioRite.nextOptIn(), wantNext: runnable[1] ? runnable[1].id : null,
         shown: !document.getElementById('made').classList.contains('hidden'),
+        unameAuto: document.getElementById('uname').value,
       };
     });
     ck(made2.nick === 'RiteTwo' && made2.companion === 'quill' && made2.species === 'Ink Spirit',
        'T3  THE CARD IS MINTED WITH THE CHOSEN COMPANION — id and species from the registry');
+    ck(made2.unameAuto === 'ritetwo',
+       'U1  THE USERNAME FOLLOWS THE NICKNAME, normalized — the backfill\'s own rule', made2.unameAuto);
+    // Offline (the harness 404s the config) the claim degrades exactly
+    // as a normal account's does: reported honestly, nothing invented.
+    await page.waitForFunction(() =>
+      /platform could not be reached/.test(
+        (document.getElementById('unameLine') || {}).textContent || ''), null, { timeout: 8000 });
+    const offlineName = await page.evaluate(() =>
+      ({ username: (MagicCard.getActive() || {}).username || null,
+         faces: document.querySelectorAll('.cardfaces canvas').length,
+         painted: (() => {
+           const c = document.querySelector('.cardfaces canvas');
+           if (!c) return false;
+           const px = c.getContext('2d').getImageData(Math.floor(c.width / 2), Math.floor(c.height / 2), 1, 1).data;
+           return px[3] > 0;
+         })(),
+         print: !!document.querySelector('.made .printCard') }));
+    ck(offlineName.username === null,
+       'U2  WITH NO PLATFORM, NO NAME IS CLAIMED — said plainly, never faked locally');
+    ck(offlineName.faces === 2 && offlineName.painted && offlineName.print,
+       'U3  THE MAGIC CARD ITSELF IS ON SCREEN — both faces drawn by MagicCardArt, with a print button');
     ck(JSON.stringify(made2.taught) === JSON.stringify(made2.want) && made2.taught.length > 0,
        'T3b and taught is EXACTLY the mandatory rite\'s grant — teaches ∪ reveals, nothing else',
        made2.taught.join(','));
@@ -156,6 +180,40 @@ function ck(c, n, note) {
        fresh.flag === null && fresh.taughtKey === null,
        'T6  A FRESH TRAVELLER holds no card and no rite record — and the existing cards are NEVER deleted',
        fresh.cards + ' cards kept');
+
+    // ---- U4: with a platform, the claim is REAL --------------------
+    // The platform is stubbed the repo way — ThemeRepositoryClient is a
+    // top-level const, so its api object is mutated in place, never
+    // swapped on window. The rpc asked for must be the product's own
+    // creator_username_claim, with the identity id and the name.
+    const claimed = await page.evaluate(async () => {
+      const calls = [];
+      ThemeRepositoryClient.getClient = () => Promise.resolve({
+        rpc: (fn, args) => { calls.push({ fn, args });
+          return Promise.resolve({ data: { ok: true, username: args.p_username } }); },
+      });
+      ThemeRepositoryClient.getSession = () => Promise.resolve({});
+      const nickEl = document.getElementById('nick');
+      nickEl.value = 'Stubby';
+      nickEl.dispatchEvent(new Event('input'));
+      document.querySelector('.start[data-i="1"]').click();
+      document.getElementById('make').click();
+      await new Promise((r) => setTimeout(r, 400));
+      const card = MagicCard.getActive();
+      return {
+        calls,
+        cardId: card && card.id,
+        username: card && card.username,
+        line: (document.getElementById('unameLine') || {}).textContent || '',
+        row: /@stubby/.test(document.getElementById('cards').textContent),
+      };
+    });
+    ck(claimed.username === 'stubby' &&
+       claimed.calls.some((c) => c.fn === 'creator_username_claim' &&
+         c.args.p_username === 'stubby' && c.args.p_identity_id === claimed.cardId) &&
+       /@stubby/.test(claimed.line) && claimed.row,
+       'U4  WITH A PLATFORM THE @NAME IS CLAIMED FOR REAL — creator_username_claim, the product\'s own door, and it lands on the card',
+       claimed.line.trim().slice(0, 40));
 
     // ---- T7: the Studio door actually opens ------------------------
     // Switch back to a real account first, then press the panel's own
