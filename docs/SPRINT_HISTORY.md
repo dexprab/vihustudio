@@ -11232,3 +11232,37 @@ the ＋ Find a Creator star have drawn through each other since the
 star arrived — the message now stands clear of it (measured 22px at
 555px and 900px alike). show-journey 62 · social-sky 65 green. No
 server changes.
+
+## Build 0745 — R3.7: a card proven on this device may act as itself
+
+The product owner caught what I had described without seeing: in his
+own screenshots, vihupapa stood in vihu01's sky while vihu01 was
+nowhere in vihupapa's — and by the sky's rules the chooser must
+appear in the chosen one's choseMe layer. The cause is structural,
+not a lost row: every social function (creator_orbit_set, orbit_list,
+sky_list, the three show functions, mutual_projects) demanded
+`owner_id = auth.uid()` — the SESSION THAT CLAIMED the card. A
+Creator recognised on any other device — stars, camera, or code,
+which is Decision 11's whole point and the owner's normal
+multi-account testing — is a different session, so every orbit write
+answered not_yours, SILENTLY (the local-first echo still painted "In
+your Sky ✓" on the chooser's own screen), and the platform never
+learned the choice, so the other child's sky never could. The
+platform already had the evidence standard for exactly this:
+recall_magic_card records a magic_card_recalls row on every PROVEN
+recall, and every SELECT-widening trusts it (has_magic_recall_grant).
+`card_acted_for(card_id)` now applies the same proof to ACTING as a
+card, scoped to that exact card — the claiming session, or a session
+that proved this card on this device; a typed guess still cannot act.
+All six sky-migration functions consult it, and creator_orbit_set /
+creator_orbit_list are redefined in migrations_social_sky.sql so ONE
+re-run of that file carries the whole correction. Proved as real
+sessions in the pg harness (Y1–Y4): a session with no proof is still
+refused; a proven recall chooses stargirl as vihu01; stargirl's own
+sky_list finally holds vihu01 in choseMe — the report closed — and
+the recalled device reads its own sky back. verify_social_sky gains
+three one-word checks. SERVER CHANGE: re-run
+supabase/migrations_social_sky.sql, then verify_social_sky.sql; on
+vihu01's device take vihupapa out of the sky and put them back once,
+so the platform finally hears the choice the local echo already
+shows. show-journey 66 green.

@@ -44,6 +44,42 @@
 --              the new stars. Owner-only, never a count on any other
 --              surface, and the other party is never told I know.
 -- -------------------------------------------------------------------
+-- R3.7 — A CARD PROVEN ON THIS DEVICE MAY ACT AS ITSELF.
+-- Reported by the product owner: vihupapa stood in vihu01's sky, but
+-- vihu01 never appeared in vihupapa's — because every social function
+-- here demanded owner_id = auth.uid(), the SESSION THAT CLAIMED the
+-- card. A Creator recognised on any other device (stars, camera, or
+-- code — Decision 11's whole point) is a different session, so every
+-- orbit write answered not_yours, silently, while the local echo
+-- painted "In your Sky" on the chooser's own screen. The platform
+-- already has the evidence standard for exactly this: recall_magic_card
+-- records a magic_card_recalls row on every PROVEN recall, and every
+-- SELECT-widening trusts it (has_magic_recall_grant). Acting AS a card
+-- now accepts the same proof, scoped to THAT card: the claiming
+-- session, or a session that proved this exact card on this device.
+-- A typed guess proves nothing and still cannot act.
+-- -------------------------------------------------------------------
+create or replace function public.card_acted_for(p_card_id text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.magic_card_identities i
+     where i.id = p_card_id
+       and (i.owner_id = auth.uid()::text
+         or exists (
+              select 1 from public.magic_card_recalls r
+               where r.identity_id = i.id
+                 and r.recaller_id = auth.uid()::text))
+  );
+$$;
+
+grant execute on function public.card_acted_for(text) to anon, authenticated;
+
+-- -------------------------------------------------------------------
 create or replace function public.creator_sky_list(p_identity_id text)
 returns jsonb
 language plpgsql
@@ -61,7 +97,7 @@ begin
   end if;
 
   select * into v_me from public.magic_card_identities where id = p_identity_id;
-  if v_me.id is null or v_me.owner_id is distinct from v_caller then
+  if v_me.id is null or not public.card_acted_for(v_me.id) then
     return jsonb_build_object('ok', false, 'reason', 'not_yours');
   end if;
 
@@ -188,7 +224,7 @@ begin
   end if;
 
   select * into v_me from public.magic_card_identities where id = p_identity_id;
-  if v_me.id is null or v_me.owner_id is distinct from v_caller then
+  if v_me.id is null or not public.card_acted_for(v_me.id) then
     return jsonb_build_object('ok', false, 'reason', 'not_yours');
   end if;
 
@@ -271,7 +307,7 @@ begin
   end if;
 
   select * into v_me from public.magic_card_identities where id = p_identity_id;
-  if v_me.id is null or v_me.owner_id is distinct from v_caller then
+  if v_me.id is null or not public.card_acted_for(v_me.id) then
     return jsonb_build_object('ok', false, 'reason', 'not_yours');
   end if;
 
@@ -325,7 +361,7 @@ begin
   end if;
 
   select * into v_me from public.magic_card_identities where id = p_identity_id;
-  if v_me.id is null or v_me.owner_id is distinct from v_caller then
+  if v_me.id is null or not public.card_acted_for(v_me.id) then
     return jsonb_build_object('ok', false, 'reason', 'not_yours');
   end if;
 
@@ -379,7 +415,7 @@ begin
   end if;
 
   select * into v_me from public.magic_card_identities where id = p_identity_id;
-  if v_me.id is null or v_me.owner_id is distinct from v_caller then
+  if v_me.id is null or not public.card_acted_for(v_me.id) then
     return jsonb_build_object('ok', false, 'reason', 'not_yours');
   end if;
 
@@ -436,7 +472,7 @@ begin
   end if;
 
   select * into v_me from public.magic_card_identities where id = p_identity_id;
-  if v_me.id is null or v_me.owner_id is distinct from v_caller then
+  if v_me.id is null or not public.card_acted_for(v_me.id) then
     return jsonb_build_object('ok', false, 'reason', 'not_yours');
   end if;
 
@@ -544,3 +580,104 @@ $$;
 
 grant execute on function public.creator_suggest(text) to anon, authenticated;
 
+
+-- -------------------------------------------------------------------
+-- R3.7 — the ORBIT functions (migrations_social_orbit.sql) widened to
+-- the same standard, redefined here so ONE re-run of this file carries
+-- the whole correction. Bodies identical to the originals; only the
+-- acting-as-a-card check changed.
+-- -------------------------------------------------------------------
+create or replace function public.creator_orbit_set(p_identity_id text, p_username text, p_on boolean)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_caller text := auth.uid()::text;
+  v_me public.magic_card_identities;
+  v_them public.magic_card_identities;
+  v_circle boolean;
+begin
+  if v_caller is null or v_caller = '' then
+    return jsonb_build_object('ok', false, 'reason', 'not_authenticated');
+  end if;
+
+  select * into v_me from public.magic_card_identities where id = p_identity_id;
+  if v_me.id is null or not public.card_acted_for(v_me.id) then
+    return jsonb_build_object('ok', false, 'reason', 'not_yours');
+  end if;
+
+  select * into v_them from public.magic_card_identities
+   where lower(username) = lower(trim(coalesce(p_username, '')));
+  if v_them.id is null then
+    return jsonb_build_object('ok', false, 'reason', 'unknown');
+  end if;
+  if v_them.id = v_me.id then
+    return jsonb_build_object('ok', false, 'reason', 'own');
+  end if;
+
+  if p_on then
+    insert into public.creator_orbits(orbiter_id, orbited_id)
+    values (v_me.id, v_them.id)
+    on conflict do nothing;
+  else
+    delete from public.creator_orbits
+     where orbiter_id = v_me.id and orbited_id = v_them.id;
+  end if;
+
+  select exists (
+    select 1 from public.creator_orbits
+     where orbiter_id = v_them.id and orbited_id = v_me.id
+  ) into v_circle;
+
+  return jsonb_build_object('ok', true,
+    'username', v_them.username,
+    'orbited', p_on,
+    -- Circle needs BOTH rows: leaving my half leaves them merely
+    -- orbiting me, which they are never told about.
+    'circle', p_on and v_circle);
+end;
+$$;
+
+grant execute on function public.creator_orbit_set(text, text, boolean) to anon, authenticated;
+
+create or replace function public.creator_orbit_list(p_identity_id text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_caller text := auth.uid()::text;
+  v_me public.magic_card_identities;
+  v_list jsonb;
+begin
+  if v_caller is null or v_caller = '' then
+    return jsonb_build_object('ok', false, 'reason', 'not_authenticated');
+  end if;
+
+  select * into v_me from public.magic_card_identities where id = p_identity_id;
+  if v_me.id is null or not public.card_acted_for(v_me.id) then
+    return jsonb_build_object('ok', false, 'reason', 'not_yours');
+  end if;
+
+  select coalesce(jsonb_agg(jsonb_build_object(
+           'username', i.username,
+           'circle', exists (
+             select 1 from public.creator_orbits back
+              where back.orbiter_id = o.orbited_id
+                and back.orbited_id = o.orbiter_id
+           )
+         ) order by o.created_at), '[]'::jsonb)
+    into v_list
+    from public.creator_orbits o
+    join public.magic_card_identities i on i.id = o.orbited_id
+   where o.orbiter_id = v_me.id
+     and i.username is not null;
+
+  return jsonb_build_object('ok', true, 'orbit', v_list);
+end;
+$$;
+
+grant execute on function public.creator_orbit_list(text) to anon, authenticated;

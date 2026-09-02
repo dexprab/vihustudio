@@ -106,6 +106,28 @@ begin
         coalesce((v_mut ~* 'is_shared is not true')::text,'false')),
     (20, 'held rite stories are never returned', 'true',
         coalesce((v_mut ~* 'riteInProgress')::text,'false'));
+
+  -- R3.7 — a card proven on this device may act as itself: the helper
+  -- exists, and the social functions consult it instead of the strict
+  -- claiming-session check that silently refused every recalled card.
+  select pg_get_functiondef(p.oid) into v_mut
+    from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+   where n.nspname='public' and p.proname='card_acted_for' and p.prokind='f';
+  insert into _verify_social_sky values
+    (21, 'card_acted_for exists (claimed OR proven recall)', 'true',
+        coalesce((v_mut ~* 'magic_card_recalls')::text,'false'));
+  select pg_get_functiondef(p.oid) into v_mut
+    from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+   where n.nspname='public' and p.proname='creator_orbit_set' and p.prokind='f';
+  insert into _verify_social_sky values
+    (22, 'creator_orbit_set accepts a proven recall (R3.7)', 'true',
+        coalesce((v_mut ~* 'card_acted_for')::text,'false'));
+  select pg_get_functiondef(p.oid) into v_mut
+    from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+   where n.nspname='public' and p.proname='creator_sky_list' and p.prokind='f';
+  insert into _verify_social_sky values
+    (23, 'creator_sky_list accepts a proven recall (R3.7)', 'true',
+        coalesce((v_mut ~* 'card_acted_for')::text,'false'));
 end $$;
 
 select

@@ -172,6 +172,40 @@ function sqlSection() {
     ck(healed.ok === true && healed.identity_id === 'card_b' && healed.taught === null,
        'P10c and the drawn sky is recognised again — taught comes back null, which adopt() reads as grandfathered',
        JSON.stringify({ ok: healed.ok, id: healed.identity_id }));
+
+    // ---- R3.7: a card proven on this device may act as itself ------
+    // The report, verbatim: vihupapa stood in vihu01's sky, but vihu01
+    // never appeared in vihupapa's. Every social function demanded
+    // owner_id = auth.uid() — the session that CLAIMED the card — so a
+    // Creator recognised on any other device was refused not_yours on
+    // every orbit write, silently, while the local echo painted the
+    // choice on their own screen. card_acted_for() widens acting-as-a-
+    // card to the platform's own evidence standard: the claiming
+    // session, or a session holding a PROVEN recall of that exact card.
+    const C_UID = '33333333-3333-3333-3333-333333333333';
+    const orbitAs = (uid) => JSON.parse(lines(asSession(pg, uid,
+      `select public.creator_orbit_set('card_v1','stargirl',true);`)).find((l) => l.startsWith('{')) || '{}');
+    const guess = orbitAs(C_UID);
+    ck(guess.ok === false && guess.reason === 'not_yours',
+       'Y1  A SESSION WITH NO PROOF STILL CANNOT ACT AS A CARD — knowing an id is not holding the card', JSON.stringify(guess));
+    // The proven recall — the exact row recall_magic_card writes when
+    // a sky is drawn or a card is read on a new device.
+    psql(pg, `insert into public.magic_card_recalls(identity_id, recaller_id)
+      values ('card_v1','${C_UID}');`);
+    const proven = orbitAs(C_UID);
+    ck(proven.ok === true && proven.username === 'stargirl',
+       'Y2  A PROVEN RECALL ACTS AS THE CARD — vihu01 on a second device can finally choose somebody', JSON.stringify(proven));
+    const theirSky = JSON.parse(lines(asSession(pg, B_UID,
+      `select public.creator_sky_list('card_b');`)).find((l) => l.startsWith('{')) || '{}');
+    const chose = (theirSky.choseMe || []).map((e) => e.username);
+    ck(theirSky.ok === true && chose.indexOf('vihu01') !== -1,
+       'Y3  AND THE CHOSEN CREATOR FINALLY SEES THE NEW STAR — vihu01 stands in stargirl\'s own choseMe, the report closed',
+       chose.join(','));
+    const mySky = JSON.parse(lines(asSession(pg, C_UID,
+      `select public.creator_sky_list('card_v1');`)).find((l) => l.startsWith('{')) || '{}');
+    ck(mySky.ok === true && (mySky.sky || []).some((e) => e.username === 'stargirl'),
+       'Y4  and the recalled device reads its own sky from the platform too — both halves of the relationship real',
+       JSON.stringify((mySky.sky || []).map((e) => e.username)));
   } finally { stopPg(pg); }
 }
 
