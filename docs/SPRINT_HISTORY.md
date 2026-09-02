@@ -11060,3 +11060,26 @@ reason in place. Regressions green: social-sky 65 · creation-home 84
 · social-identity 101 · test-account 16 · social-orbit 31 ·
 social-ether-identity 20. No server or migration changes — nothing to
 run on the live project.
+
+## Build 0739 — R3.1: the dialogs stop hugging the left
+
+Reported by the product owner: "why all the buttons in sky and social
+dialogues are left aligned?" Two separate causes, neither chosen. The
+Sky's three swapped views (Creator space · peek · Find) all render as
+`.social-sky-space` inside `.social-sky-panel`, which is a flex ROW so
+the sky FIELD can take `flex:1` — and the swapped views never claimed
+the row's width, so each shrank to fit its own content and parked at
+the panel's LEFT edge; their own `align-items:center` then centred
+everything inside a narrow column nobody designed. `flex:1; min-width:0`
+gives the centring the whole panel to centre in. And the Show/Gift
+dialog (`.creation-show-panel`) is a plain block whose every button
+carries `width:auto !important` — the escape from the blanket
+`button{width:100%}` rule — which leaves shrink-to-fit boxes sitting at
+the left of a left-aligned block unless somebody says otherwise, and
+nobody ever had. The product's own ceremony dialogs (the celebration,
+the creator-social panel, the Ether share panel) all centre; this one
+now says so too (`text-align:center`, the picker row and the action
+row centred as flex), while the gift LIST rows keep their own
+explicit `text-align:left` untouched. Verified by re-shooting the
+journey: the Creator space, the arrival card and the departure card
+all centred. show-journey 51 and social-sky 65 green.

@@ -14397,6 +14397,14 @@ body.studio-rite-running .companion-chat-open{ display:none !important; }
   display:flex; flex-direction:column; align-items:center;
   padding:26px 22px 20px; box-sizing:border-box;
   color:rgba(241,234,208,0.9);
+  /* R3.1 — the panel is a flex ROW (so the sky FIELD can flex:1), and a
+     swapped-in view that does not claim the row's width shrinks to fit
+     its own content and parks at the panel's LEFT edge — its own
+     align-items:center then centres everything inside a narrow column
+     nobody chose. flex:1 makes the view the row's whole width, so the
+     centring finally has the panel to centre IN. */
+  flex:1; min-width:0;
+  text-align:center;
 }
 .social-sky-space-hero{
   width:120px; height:120px;
@@ -14495,11 +14503,20 @@ body.studio-rite-running .companion-chat-open{ display:none !important; }
   color:var(--text-primary,#222);
   border:1px solid var(--cf-line,rgba(0,0,0,0.12));
   box-shadow:0 20px 50px rgba(0,0,0,0.3);
+  /* R3.1 — this is a child-facing ceremony, and every button in it
+     carries width:auto (the blanket button{width:100%} escape), which
+     leaves a shrink-to-fit box sitting at the LEFT of a plain block
+     panel unless somebody says otherwise. The product's own dialogs
+     (the celebration, the creator-social panel, the Ether share panel)
+     all centre; this one simply never said so. Rows that must read
+     left (the gift list) set text-align:left themselves and are
+     untouched. */
+  text-align:center;
 }
 .creation-show-title{ margin:0 0 4px; font-size:17px; }
 .creation-show-sub{ margin:0 0 10px; font-size:12.5px; color:var(--text-secondary,#666); }
 .creation-show-group{ margin:12px 0 6px; font-size:12px; letter-spacing:0.4px; color:var(--text-secondary,#666); }
-.creation-show-things{ display:flex; flex-wrap:wrap; gap:10px; }
+.creation-show-things{ display:flex; flex-wrap:wrap; gap:10px; justify-content:center; }
 .creation-show-thing{
   width:auto !important; height:auto !important; margin:0 !important;
   padding:6px !important;
@@ -14525,12 +14542,15 @@ body.studio-rite-running .companion-chat-open{ display:none !important; }
 .creation-show-note{ margin:10px 0 0; font-size:13px; line-height:1.5; color:var(--text-secondary,#666); }
 .creation-show-quiet{
   width:auto !important; height:auto !important;
-  margin:12px 8px 0 0 !important; padding:6px 14px !important;
+  margin:12px 4px 0 !important; padding:6px 14px !important;
   border-radius:999px; border:1px solid var(--cf-line,rgba(0,0,0,0.18));
   background:transparent; color:var(--text-secondary,#555);
   font-size:12.5px; cursor:pointer;
 }
-.creation-show-btns{ margin-top:12px; }
+.creation-show-btns{
+  margin-top:12px;
+  display:flex; justify-content:center; align-items:center; gap:8px;
+}
 .creation-gift-row{
   width:100% !important; height:auto !important; margin:0 0 8px !important;
   padding:9px 12px !important;
