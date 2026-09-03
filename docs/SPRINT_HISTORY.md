@@ -11636,3 +11636,24 @@ in one sentence, with the function's verbatim reason on the generate
 row. Bounded at every step (Decision 49), so it always reaches a
 verdict; if the bytes come back it even plays them. Diagnostic only —
 no product file changed.
+
+## Build 0757 — R6.2: routed is not unanswered
+
+Reported by the owner on the gap desk's first live review: "whats up
+mate", answered warmly by Leo's model, sat in the log as
+model_capability. The browser's classifier had called it `unknown` —
+which for a model-listed Companion means only "routed to the model"
+(Step 3B), never "unanswered" — and the R6 hook logged on the intent
+without asking what came back. A server-answered turn is now judged by
+its REPLY: an adequate model answer records nothing, a model that
+itself hedges ("I don't know who Alpha is") is still caught by the
+hedge scan, and a LOCAL unknown stays a gap because there the honest
+shrug is the whole answer. The Ether had the same bug one layer
+deeper: reply() logged from the deterministic FALLBACK before ask()
+tried the model, recording a shrug the Traveller never saw — the hook
+moved to _finishTurn, on the answer actually met, with `remote`
+carried as fromServer and `certainty` now travelling on the return so
+a refusal still classifies as one. companion-gap 29 (G3c/G3d/G3e pin
+all three behaviours) · ether-encounter 94 · conversation 135 —
+green. Rows already logged by 0753 keep standing; mark the warm ones
+wont-fix on the desk.

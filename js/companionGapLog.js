@@ -74,7 +74,19 @@ const CompanionGapLog = (function () {
     if (!String(o.said || '').trim()) return false;
     if (o.reason === 'unavailable' || o.reason === 'technical') return true;
     if (o.certainty === 'refused' || o.certainty === 'private') return true;
-    if (o.intent === 'unknown' || o.intent === 'no-context') return true;
+    if (o.intent === 'no-context') return true;
+    // ---- `unknown` IS ONLY A GAP WHEN THE SHRUG IS THE ANSWER ----
+    //
+    // Reported by the product owner on the first live review: "whats up
+    // mate", answered warmly by Leo's model, sat in the log as a gap.
+    // The browser's classifier had called it `unknown` — which for a
+    // model-listed Companion means only "routed to the model" (Step 3B),
+    // not "unanswered". So a server-answered turn is judged by what CAME
+    // BACK: an adequate model reply records nothing, and a model that
+    // itself says "I don't know who Alpha is" is still caught by the
+    // hedge scan below. A LOCAL `unknown` stays a gap — there the honest
+    // shrug is the whole answer.
+    if (o.intent === 'unknown' && !o.fromServer) return true;
     return UNSURE_RE.test(String(o.reply || ''));
   }
 

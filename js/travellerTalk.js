@@ -134,11 +134,14 @@ const TravellerTalk = (function () {
             { intent: a.intent, certainty: a.certainty });
         }
       } catch (e) {}
-      // R6 — the Conversation Gap Log watches the Ether too, in the
-      // same words: an unknown, a refusal or a missing context here is
-      // a signal for review exactly as it is in the Studio.
-      _gap(said, a.reply, { intent: a.intent, certainty: a.certainty });
-      return { text: a.reply, intent: a.intent };
+      // R6.2 — THE GAP IS JUDGED ON WHAT THE TRAVELLER ACTUALLY MET,
+      // so it is considered in _finishTurn, after ask() has resolved —
+      // not here. This function's answer may be only the FALLBACK of a
+      // model-routed turn (Step 3C), and logging it from here recorded
+      // a shrug the Traveller never saw while the model was answering
+      // them warmly. `certainty` travels on the return so a refusal is
+      // still classified as one where the log does run.
+      return { text: a.reply, intent: a.intent, certainty: a.certainty };
     } catch (e) {
       return { text: '', intent: 'no-context' };
     }
@@ -908,6 +911,13 @@ const TravellerTalk = (function () {
   }
 
   function _finishTurn(turn, els, said, answer) {
+    // R6.2 — the Conversation Gap Log watches the Ether here, on the
+    // answer the Traveller ACTUALLY met: a model-routed turn carries
+    // `remote: true`, so an adequate model reply records nothing, while
+    // a local shrug, a refusal and a hedging model answer all still do
+    // (js/companionGapLog.js decides).
+    _gap(said, answer.text, { intent: answer.intent,
+      certainty: answer.certainty, fromServer: !!answer.remote });
     // Bounded, and kept only while the surface is open. Nothing here is
     // written anywhere, sent anywhere, or read by anything else.
     _turns.push({ said: said, answer: answer.text });

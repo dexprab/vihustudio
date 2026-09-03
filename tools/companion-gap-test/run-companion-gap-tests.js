@@ -184,6 +184,25 @@ section('G. THE CLASSIFIER, UNIT-PROVED  (the real js/companionGapLog.js)');
      'G3  AN ADEQUATE ANSWER LOGS NOTHING');
   ck(G.consider({ said: '', reply: '', intent: 'unknown' }) === null,
      'G3b AND DELIBERATE SILENCE (an empty turn) LOGS NOTHING');
+  // ---- R6.2: `unknown` + THE MODEL ANSWERED IS NOT A GAP -----------
+  //
+  // Reported by the owner on the first live review: "whats up mate",
+  // answered warmly by Leo's model, sat in the log as model_capability.
+  // For a model-listed Companion the browser's `unknown` means only
+  // "routed to the model" (Step 3B) — so a server-answered turn is
+  // judged by the reply. A model that itself hedges is still caught.
+  ck(G.consider({ said: 'whats up mate',
+       reply: "Oh, I'm here with my light on, ready to see what you make today.",
+       intent: 'unknown', fromServer: true }) === null,
+     'G3c A MODEL-ANSWERED "unknown" WITH A WARM REPLY LOGS NOTHING — routed is not unanswered');
+  const alpha = G.consider({ said: 'who is alpha',
+    reply: "I don't know who Alpha is. There isn't anything about Alpha here in VihuPlanet.",
+    intent: 'unknown', fromServer: true });
+  ck(!!alpha, 'G3d but a model that itself says it does not know is still a gap',
+     alpha && alpha.classification);
+  ck(G.consider({ said: 'whats up mate', reply: "I don't know that one. I'd only be guessing.",
+       intent: 'unknown' }) !== null,
+     'G3e and a LOCAL unknown stays a gap — there the shrug IS the answer');
 
   const refusal = G.consider({ said: 'what stars are on their card?',
     reply: "That's not something I ever say.", intent: 'stars', certainty: 'refused' });
