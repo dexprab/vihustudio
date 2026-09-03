@@ -11352,3 +11352,44 @@ deduplicated from R2's 21–24, OVERALL PASS proved on a scratch
 PostgreSQL. show-journey 72 · social-sky 65 green. Server unchanged
 beyond 0747's own pending step (re-run migrations_social_sky.sql +
 verify).
+
+## Build 0749 — R4: My Sky, from the owner's own mockup
+
+The product owner drew the screen ("my sky. ignore dog, cottage and
+green patch, gear icon and bell icon") and this build is that
+drawing, minus the parts he excluded and the two parts canon
+refuses. A SIDEBAR now holds the social world's doors — the child's
+own Companion and @name in a gold-ringed profile card, then 🌌 My
+Sky · ✦ What I've Shown · 🎁 Gifts · 🎨 My Creations · ＋ Find a
+Creator, with 🌌 Go to Ether pinned at the foot. Every door is a
+VIEW of the one overlay (the R3.2 rule): the views swap inside a new
+.social-sky-body beside the rail, so the sidebar never re-renders
+and hosted Show/Gift surfaces mount the body rather than the panel.
+Two doors are new rooms: ✦ What I've Shown gathers the R3.8 send
+history across the whole sky, grouped by Creator (kept travels, SEEN
+still never shown); 🎨 My Creations shows the child their own shelf
+with a 🌌 In the Ether mark on exactly the shared ones — a fact,
+never a count — each opening as the same in-place peek (renderPeek
+took an onBack for it). Go to Ether surrenders the tab's Studio
+authority on the way out, the same handover Back to the Ether makes
+(Decision 23). The sky itself became the mockup's constellation
+GRAPH: a golden dotted line joins EVERY Companion to the child's own
+(mutual brightest, chosen softer, chose-me faintest), each portrait
+rests in a tinted ring, the centre wears the gold ring, and each
+star carries its relationship MARK — 💛 we chose each other · ✦ I
+chose them · 🌿 they chose me — explained by the one LEGEND at the
+field's foot, worded in sky language (chose, never the mockup's
+"follow", which the suites scan for and canon forbids) and absent on
+an empty sky. The mockup's numeric Gifts badge was also refused: the
+door carries ✨, a mark and never a number. "Badge" itself was
+renamed to MARK in code so D2's notification-vocabulary guard stays
+at full strength, and creationShow.js's R3.8 dedupe separator — a
+raw NUL byte that made the file read as binary to grep and diff —
+became the escaped \u0000 it always meant. Checks turned with
+reasons in place: B3 (the legend is now the ONE place the states are
+worded), B3c (lines === stars, the mutual stroke distinct); new B3e
+(marks), B3f (sidebar doors, no digits), SD3, MC1/MC2, E5
+(surrendered exit proved on the landing side). social-sky 67 ·
+show-journey 76 · creation-home 84 · social-orbit 31 ·
+social-ether-identity 20 — all green. Server untouched; 0747's
+pending step stands (re-run migrations_social_sky.sql + verify).

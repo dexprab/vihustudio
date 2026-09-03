@@ -554,6 +554,72 @@ function sqlSection() {
     ck(backSky.field && backSky.findStar,
        'S3  BACK RETURNS TO THE SKY — where ＋ Find a Creator now stands as a soft star in the field itself');
 
+    // ---- R4: the sidebar's own rooms -------------------------------
+    // ✦ What I've Shown gathers the whole send history in one room,
+    // grouped by the Creator it was carried to — kept travels, SEEN
+    // still never does, on this surface like every other.
+    await page.evaluate(() => {
+      Array.from(document.querySelectorAll('.social-sky-nav-btn'))
+        .find((b) => /What I/.test(b.textContent)).click();
+    });
+    await page.waitForSelector('.social-sky-sent-item', { timeout: 8000 });
+    const shownRoom = await page.evaluate(() => ({
+      heads: Array.from(document.querySelectorAll('.social-sky-space-head')).map((h) => h.textContent),
+      items: Array.from(document.querySelectorAll('.social-sky-sent-name')).map((n) => n.textContent),
+      seenWord: /\bseen\b|\bviewed\b/i.test((document.querySelector('.social-sky-space') || {}).textContent || ''),
+      active: (document.querySelector('.social-sky-nav-btn.is-active') || {}).textContent || '',
+      sideStands: !!document.querySelector('.social-sky-side'),
+    }));
+    ck(shownRoom.heads.indexOf('@stargirl') !== -1
+       && shownRoom.items.indexOf('The Moon Dragon') !== -1
+       && !shownRoom.seenWord && /What I/.test(shownRoom.active) && shownRoom.sideStands,
+       'SD3 ✦ WHAT I’VE SHOWN IS A ROOM OF ITS OWN (R4) — the whole history grouped by Creator, kept travels, never a word about seen',
+       JSON.stringify({ heads: shownRoom.heads, items: shownRoom.items }));
+
+    // 🎨 My Creations — the child's own things seen from the social
+    // world, a 🌌 mark on exactly the ones already in the Ether (a
+    // fact, never a count), each opening as the same in-place peek.
+    await page.evaluate(() => {
+      Array.from(document.querySelectorAll('.social-sky-nav-btn'))
+        .find((b) => /My Creations/.test(b.textContent)).click();
+    });
+    await page.waitForSelector('.social-sky-space-thing', { timeout: 8000 });
+    const mineRoom = await page.evaluate(() => {
+      const rows = CreatorProjectStore.list() || [];
+      const shared = rows.filter((r) => r && (r.publishedAt || (r.data && r.data.publishedAt))).length;
+      return {
+        things: Array.from(document.querySelectorAll('.social-sky-space-thing'))
+          .map((b) => (b.querySelector('.social-sky-space-thing-name') || {}).textContent),
+        etherMarks: document.querySelectorAll('.social-sky-space-thing-ether').length,
+        shared,
+      };
+    });
+    ck(mineRoom.things.indexOf('The Moon Dragon') !== -1
+       && mineRoom.etherMarks === mineRoom.shared,
+       'MC1 🎨 MY CREATIONS SHOWS THE CHILD THEIR OWN SHELF (R4) — the 🌌 mark on exactly the shared ones, a fact and never a count',
+       JSON.stringify(mineRoom));
+    await page.evaluate(() => {
+      Array.from(document.querySelectorAll('.social-sky-space-thing'))
+        .find((b) => /The Moon Dragon/.test(b.textContent)).click();
+    });
+    await page.waitForSelector('.social-sky-peek img', { timeout: 8000 });
+    const minePeek = await page.evaluate(() => {
+      const t = (document.querySelector('.social-sky-space-name') || {}).textContent || '';
+      Array.from(document.querySelectorAll('.social-sky-quiet'))
+        .find((b) => /← Back$/.test(b.textContent.trim())).click();
+      return t;
+    });
+    await page.waitForSelector('.social-sky-space-thing', { timeout: 8000 });
+    ck(minePeek === 'The Moon Dragon',
+       'MC2 and a creation there opens as the quiet in-place peek — Back lands in My Creations, not the map');
+
+    // back to the sky field for the checks that follow
+    await page.evaluate(() => {
+      Array.from(document.querySelectorAll('.social-sky-nav-btn'))
+        .find((b) => /My Sky/.test(b.textContent)).click();
+    });
+    await page.waitForSelector('.social-sky-find-star', { timeout: 8000 });
+
     // ---- S4: discovery lives IN the sky ----------------------------
     const foundNew = await page.evaluate(async (s) => {
       ThemeRepositoryClient.isConfigured = () => Promise.resolve(true);
@@ -917,6 +983,23 @@ function sqlSection() {
     ck(/studio\.html/.test(skyPeek.url) && skyPeek.title === 'The Moon Dragon' && skyPeek.overlays === 1,
        'SP1 A CREATION IN THE SKY OPENS RIGHT THERE TOO — the same overlay\'s own pager, never a trip back to the Ether',
        skyPeek.title);
+
+    // R4 — the sidebar's 🌌 Go to Ether is a DELIBERATE exit, so it
+    // surrenders the tab's Studio authority on the way out (Decision
+    // 23) — the same handover Back to the Ether makes. Asserted on the
+    // landing side: the flag is gone once VihuPlanet has the child.
+    await page.evaluate(() => { sessionStorage.setItem('vihu.studioEntry.inside', '1'); });
+    await Promise.all([
+      page.waitForURL(/index\.html/, { timeout: 15000 }),
+      page.click('.social-sky-ether'),
+    ]);
+    const etherExit = await page.evaluate(() => ({
+      url: location.pathname,
+      inside: sessionStorage.getItem('vihu.studioEntry.inside'),
+    }));
+    ck(/index\.html/.test(etherExit.url) && etherExit.inside === null,
+       'E5  🌌 GO TO ETHER LEAVES ON PURPOSE (R4) — lands on VihuPlanet with the tab\'s Studio authority surrendered',
+       JSON.stringify(etherExit));
 
     // ---- G: the Studio survives a refresh --------------------------
     // R3, by the product owner's instruction (amending Decision 23's

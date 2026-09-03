@@ -302,7 +302,18 @@ const SocialSky=(function(){
     b.setAttribute('tabindex','0');
     b.style.left=opts.x.toFixed(2)+'%';
     b.style.top=opts.y.toFixed(2)+'%';
-    b.appendChild(_figure(entry.companion));
+    const fig=_figure(entry.companion);
+    // R4 — the relationship mark, from the owner's mockup: one small
+    // state mark on the figure's rim (💛 we chose each other · ✦ I
+    // chose them · 🌿 they chose me). It names a RELATIONSHIP the
+    // legend explains — never an achievement, never a count — and the
+    // spatial hierarchy still carries the same truth without it.
+    if(opts.mark){
+      const bd=_el('span','social-sky-mark',opts.mark);
+      bd.setAttribute('aria-hidden','true');
+      fig.appendChild(bd);
+    }
+    b.appendChild(fig);
     b.appendChild(_el('span','social-sky-name','@'+entry.username));
     if(opts.gift){
       // "Somebody has something to show me." Tapping the little gift
@@ -380,11 +391,131 @@ const SocialSky=(function(){
     function done(){ try{ overlay.remove(); }catch(e){} }
     overlay.addEventListener('click',function(ev){ if(ev.target===overlay) done(); });
 
+    // ----------------------------------------------------------------
+    // R4 — MY SKY IS A PLACE WITH ROOMS, AND THE SIDEBAR IS THE MAP OF
+    // THEM. Redesigned from the product owner's own mockup ("my sky.
+    // ignore dog, cottage and green patch, gear icon and bell icon"):
+    // a quiet rail on the left — the child's own Companion and @name,
+    // then the doors: My Sky · What I've Shown · Gifts · My Creations
+    // · Find a Creator · Go to Ether. The doors are VIEWS of this one
+    // panel (the R3.2 one-overlay rule) — the sidebar never re-renders,
+    // so no round trip can repaint it out from under a child. The Gifts
+    // door carries a MARK when something unseen waits — ✨, never a
+    // number (Decision 20's discipline holds here too; the mockup's
+    // numeric badge was deliberately not taken).
+    // ----------------------------------------------------------------
+    const side=_el('aside','social-sky-side');
+    const body=_el('div','social-sky-body');
+    panel.appendChild(side);
+    panel.appendChild(body);
+    function _clear(){ while(body.firstChild) body.removeChild(body.firstChild); }
+
+    const navBtns={};
+    function _setActive(id){
+      Object.keys(navBtns).forEach(function(k){
+        navBtns[k].classList.toggle('is-active',k===id);
+      });
+    }
+    let giftMark=null;
+    function _updateGiftMark(){
+      try{
+        const un=(typeof CreationShow!=='undefined'&&CreationShow.unseenBySender)
+          ? CreationShow.unseenBySender() : {};
+        const want=Object.keys(un).length>0;
+        if(want&&!giftMark&&navBtns.gifts){
+          giftMark=_el('span','social-sky-nav-mark','✨');
+          giftMark.setAttribute('aria-hidden','true');
+          navBtns.gifts.appendChild(giftMark);
+        }else if(!want&&giftMark){
+          giftMark.remove(); giftMark=null;
+        }
+      }catch(e){}
+    }
+    (function _buildSide(){
+      const prof=_el('div','social-sky-profile');
+      prof.appendChild(_figure(card.companionId||null));
+      prof.appendChild(_el('span','social-sky-profile-name',
+        card.username?('@'+card.username):(card.nickname||'you')));
+      side.appendChild(prof);
+      const nav=_el('nav','social-sky-nav');
+      side.appendChild(nav);
+      function navBtn(id,label,fn){
+        const b=_el('button','social-sky-nav-btn',label);
+        b.type='button';
+        b.addEventListener('click',fn);
+        nav.appendChild(b);
+        navBtns[id]=b;
+        return b;
+      }
+      navBtn('sky','🌌 My Sky',function(){ render(); });
+      navBtn('shown','✦ What I’ve Shown',function(){ renderShown(); });
+      navBtn('gifts','🎁 Gifts',function(){
+        _setActive('gifts');
+        try{
+          if(typeof CreationShow!=='undefined'&&CreationShow.openGifts){
+            CreationShow.openGifts({host:{mount:body,done:function(){ render(); }}});
+          }
+        }catch(e){}
+      });
+      navBtn('mine','🎨 My Creations',function(){ renderMine(); });
+      navBtn('find','＋ Find a Creator',function(){ renderFind(); });
+      _updateGiftMark();
+      // Leaving for the Ether is a DELIBERATE exit, so it surrenders
+      // the tab's Studio authority on the way out (Decision 23) — the
+      // same handover js/app.js's Back to the Ether and creationFlow's
+      // own door already make.
+      const eb=_el('button','social-sky-ether','🌌 Go to Ether');
+      eb.type='button';
+      eb.addEventListener('click',function(){
+        try{ sessionStorage.removeItem('vihu.studioEntry.inside'); }catch(e){}
+        window.location.href='index.html';
+      });
+      side.appendChild(eb);
+    })();
+
     function giftsFrom(){
       try{
         return (typeof CreationShow!=='undefined'&&CreationShow.unseenBySender)
           ? CreationShow.unseenBySender() : {};
       }catch(e){ return {}; }
+    }
+
+    // Shared by the space and the What I've Shown room — one drawing
+    // of "a thing I showed them" (cover or glyph, name, kept, when).
+    function _ago(iso){
+      try{
+        const d=new Date(iso);
+        if(isNaN(d.getTime())) return '';
+        const days=Math.floor((Date.now()-d.getTime())/86400000);
+        if(days<=0) return 'today';
+        if(days===1) return 'yesterday';
+        return days+' days ago';
+      }catch(e){ return ''; }
+    }
+    function _sentRow(e2){
+      const it=_el('div','social-sky-sent-item');
+      if(e2.cover){
+        const img=document.createElement('img');
+        img.alt=''; img.src=e2.cover;
+        it.appendChild(img);
+      }else{
+        it.appendChild(_el('span','social-sky-sent-glyph',
+          e2.kind==='story'?'📖':(e2.kind==='letter'?'✍️':'🎨')));
+      }
+      it.appendChild(_el('span','social-sky-sent-name',e2.name||'A creation'));
+      const meta=_el('span','social-sky-sent-meta');
+      if(e2.kept) meta.appendChild(_el('span','social-sky-sent-kept','Kept ✓'));
+      const when=_ago(e2.at);
+      if(when) meta.appendChild(_el('span','social-sky-sent-when',when));
+      it.appendChild(meta);
+      return it;
+    }
+    function _panelCard(cls,title){
+      const p2=_el('div','social-sky-card'+(cls?' '+cls:''));
+      p2.appendChild(_el('p','social-sky-space-head',title));
+      const body2=_el('div','social-sky-card-scroll');
+      p2.appendChild(body2);
+      return {card:p2,body:body2};
     }
 
     // ----------------------------------------------------------------
@@ -400,7 +531,8 @@ const SocialSky=(function(){
     // is what the old index.html?creator= hand-off did from here).
     // ----------------------------------------------------------------
     function renderSpace(username,companionHint){
-      while(panel.firstChild) panel.removeChild(panel.firstChild);
+      _clear();
+      _setActive(null);
       const name=_norm(username);
       const l=layers()||{mutual:[],chosen:[],choseMe:[]};
       const known=[].concat(l.mutual,l.chosen,l.choseMe).find(function(e){
@@ -409,7 +541,7 @@ const SocialSky=(function(){
       const companion=(known&&known.companion)||companionHint||null;
 
       const space=_el('div','social-sky-space');
-      panel.appendChild(space);
+      body.appendChild(space);
       const hero=_el('div','social-sky-space-hero');
       hero.appendChild(_figure(companion));
       space.appendChild(hero);
@@ -438,7 +570,7 @@ const SocialSky=(function(){
               showBtn.type='button';
               showBtn.addEventListener('click',function(){
                 CreationShow.openShowDialog(null,{to:name,
-                  host:{mount:panel,done:function(){ renderSpace(name,companion); }}});
+                  host:{mount:body,done:function(){ renderSpace(name,companion); }}});
               });
               rel.appendChild(showBtn);
             }
@@ -478,23 +610,6 @@ const SocialSky=(function(){
       // (the owner's amendment), seen never does.
       const cols=_el('div','social-sky-space-cols');
       space.appendChild(cols);
-      function panelCard(cls,title){
-        const p2=_el('div','social-sky-card'+(cls?' '+cls:''));
-        p2.appendChild(_el('p','social-sky-space-head',title));
-        const body=_el('div','social-sky-card-scroll');
-        p2.appendChild(body);
-        return {card:p2,body:body};
-      }
-      function _ago(iso){
-        try{
-          const d=new Date(iso);
-          if(isNaN(d.getTime())) return '';
-          const days=Math.floor((Date.now()-d.getTime())/86400000);
-          if(days<=0) return 'today';
-          if(days===1) return 'yesterday';
-          return days+' days ago';
-        }catch(e){ return ''; }
-      }
 
       // 🎁 what I have shown them (R3.8) — the sender's own history,
       // newest first, every row; the panel scrolls, so the whole of
@@ -505,32 +620,15 @@ const SocialSky=(function(){
         if(typeof CreationShow!=='undefined'&&CreationShow.sentTo){
           CreationShow.sentTo(name).then(function(sent){
             if(!overlay.isConnected||!space.isConnected||!sent||!sent.length) return;
-            const pc=panelCard('social-sky-sent','🎁 You’ve shown them');
-            sent.forEach(function(e2){
-              const it=_el('div','social-sky-sent-item');
-              if(e2.cover){
-                const img=document.createElement('img');
-                img.alt=''; img.src=e2.cover;
-                it.appendChild(img);
-              }else{
-                it.appendChild(_el('span','social-sky-sent-glyph',
-                  e2.kind==='story'?'📖':(e2.kind==='letter'?'✍️':'🎨')));
-              }
-              it.appendChild(_el('span','social-sky-sent-name',e2.name||'A creation'));
-              const meta=_el('span','social-sky-sent-meta');
-              if(e2.kept) meta.appendChild(_el('span','social-sky-sent-kept','Kept ✓'));
-              const when=_ago(e2.at);
-              if(when) meta.appendChild(_el('span','social-sky-sent-when',when));
-              it.appendChild(meta);
-              pc.body.appendChild(it);
-            });
+            const pc=_panelCard('social-sky-sent','🎁 You’ve shown them');
+            sent.forEach(function(e2){ pc.body.appendChild(_sentRow(e2)); });
             cols.insertBefore(pc.card,cols.firstChild);
           }).catch(function(){});
         }
       }catch(e){}
 
       // ✨ their creations — the Ether panel
-      const theirs=panelCard('','✨ Their creations');
+      const theirs=_panelCard('','✨ Their creations');
       cols.appendChild(theirs.card);
       const grid=_el('div','social-sky-space-grid');
       theirs.body.appendChild(grid);
@@ -544,7 +642,7 @@ const SocialSky=(function(){
         const fromThem=(typeof CreationShow!=='undefined'&&CreationShow.gifts)
           ?CreationShow.gifts().filter(function(g){ return g&&_norm(g.from)===name; }):[];
         if(fromThem.length){
-          const pg2=panelCard('social-sky-giftpanel','🎁 Gifts from them');
+          const pg2=_panelCard('social-sky-giftpanel','🎁 Gifts from them');
           fromThem.forEach(function(g){
             const b=_el('button','social-sky-space-gift');
             b.type='button';
@@ -555,7 +653,7 @@ const SocialSky=(function(){
             b.addEventListener('click',function(){
               try{
                 CreationShow.openGifts({from:name,
-                  host:{mount:panel,done:function(){ renderSpace(name,companion); }}});
+                  host:{mount:body,done:function(){ renderSpace(name,companion); }}});
               }catch(e2){}
             });
             pg2.body.appendChild(b);
@@ -592,9 +690,9 @@ const SocialSky=(function(){
             // mutual shelf already reads with — same overlay, Back to
             // this Creator's space, no navigation and no lost Studio.
             b.addEventListener('click',function(){
-              renderPeek(name,companion,
-                {name:sr.title||'A story',thumbnail:sr.cover||null},
-                Array.isArray(sr.pages)?sr.pages:[]);
+              renderPeek({name:sr.title||'A story',thumbnail:sr.cover||null},
+                Array.isArray(sr.pages)?sr.pages:[],
+                function(){ renderSpace(name,companion); });
             });
             grid.appendChild(b);
           });
@@ -607,7 +705,7 @@ const SocialSky=(function(){
         if(typeof CreatorOrbit!=='undefined'&&CreatorOrbit.circleWith&&CreatorOrbit.circleWith(name)){
           mutualProjects(name).then(function(rows){
             if(!overlay.isConnected||!space.isConnected||!rows.length) return;
-            const pm=panelCard('','✨ Not in the Ether yet — because you chose each other');
+            const pm=_panelCard('','✨ Not in the Ether yet — because you chose each other');
             const mg=_el('div','social-sky-space-grid');
             pm.body.appendChild(mg);
             cols.appendChild(pm.card);
@@ -631,7 +729,7 @@ const SocialSky=(function(){
                 b.appendChild(_el('span','social-sky-space-thing-glyph','✦'));
               }
               b.appendChild(_el('span','social-sky-space-thing-name',rec.name||'Still being made ✨'));
-              b.addEventListener('click',function(){ renderPeek(name,companion,rec,pages); });
+              b.addEventListener('click',function(){ renderPeek(rec,pages,function(){ renderSpace(name,companion); }); });
               mg.appendChild(b);
             });
           });
@@ -645,10 +743,10 @@ const SocialSky=(function(){
     }
 
     // A mutual friend's unshared story, paged through quietly.
-    function renderPeek(username,companion,rec,pages){
-      while(panel.firstChild) panel.removeChild(panel.firstChild);
+    function renderPeek(rec,pages,onBack){
+      _clear();
       const space=_el('div','social-sky-space');
-      panel.appendChild(space);
+      body.appendChild(space);
       space.appendChild(_el('h3','social-sky-space-name',rec.name||'Still being made ✨'));
       const stage=_el('div','social-sky-peek');
       space.appendChild(stage);
@@ -677,7 +775,7 @@ const SocialSky=(function(){
       }
       const back=_el('button','social-sky-quiet','← Back');
       back.type='button';
-      back.addEventListener('click',function(){ renderSpace(username,companion); });
+      back.addEventListener('click',function(){ onBack(); });
       space.appendChild(back);
     }
 
@@ -692,9 +790,10 @@ const SocialSky=(function(){
     // independent choice.
     // ----------------------------------------------------------------
     function renderFind(){
-      while(panel.firstChild) panel.removeChild(panel.firstChild);
+      _clear();
+      _setActive('find');
       const space=_el('div','social-sky-space');
-      panel.appendChild(space);
+      body.appendChild(space);
       space.appendChild(_el('h3','social-sky-space-name','Find a Creator'));
       space.appendChild(_el('p','social-sky-space-note','Type their @name.'));
       const row=_el('div','social-sky-find-row');
@@ -762,8 +861,118 @@ const SocialSky=(function(){
       input.focus();
     }
 
+    // ----------------------------------------------------------------
+    // ✦ WHAT I'VE SHOWN (R4) — the sender's whole history in one room,
+    // grouped by the Creator it was carried to: the R3.8 per-creator
+    // panels, gathered. Kept travels (the owner's amendment); SEEN is
+    // still never shown to anybody. Only people I chose can ever have
+    // been shown anything (send requires the choice), so the room asks
+    // about exactly those names.
+    // ----------------------------------------------------------------
+    function renderShown(){
+      _clear();
+      _setActive('shown');
+      const space=_el('div','social-sky-space');
+      body.appendChild(space);
+      space.appendChild(_el('h3','social-sky-space-name','✦ What I’ve Shown'));
+      const cols=_el('div','social-sky-space-cols');
+      space.appendChild(cols);
+      const note=_el('p','social-sky-space-note','Looking…');
+      space.appendChild(note);
+      const l=layers()||{mutual:[],chosen:[],choseMe:[]};
+      const names=[].concat(l.mutual,l.chosen)
+        .map(function(e){ return e&&_norm(e.username); })
+        .filter(function(n2,i,arr){ return n2&&arr.indexOf(n2)===i; })
+        .sort();
+      function nothing(){
+        note.textContent='When you show somebody something you made, it will be remembered here.';
+      }
+      if(!names.length||typeof CreationShow==='undefined'||!CreationShow.sentTo){
+        nothing();
+      }else{
+        Promise.all(names.map(function(n2){
+          return CreationShow.sentTo(n2).then(function(rows){
+            return {name:n2,rows:rows||[]};
+          }).catch(function(){ return {name:n2,rows:[]}; });
+        })).then(function(groups){
+          if(!overlay.isConnected||!space.isConnected) return;
+          note.textContent='';
+          let any=false;
+          groups.forEach(function(g){
+            if(!g.rows.length) return;
+            any=true;
+            const pc=_panelCard('social-sky-sent','@'+g.name);
+            g.rows.forEach(function(e2){ pc.body.appendChild(_sentRow(e2)); });
+            cols.appendChild(pc.card);
+          });
+          if(!any) nothing();
+        }).catch(function(){ if(space.isConnected) nothing(); });
+      }
+      const back=_el('button','social-sky-quiet','← Back to My Sky');
+      back.type='button';
+      back.addEventListener('click',function(){ render(); });
+      space.appendChild(back);
+    }
+
+    // ----------------------------------------------------------------
+    // 🎨 MY CREATIONS (R4) — the child's own things, seen from the
+    // social world: covers and names, a quiet 🌌 mark on the ones
+    // already living in the Ether (a fact about a story, never a
+    // count), each opening as the same in-place peek everything else
+    // reads with. Making and managing still belong to Studio Home and
+    // My Projects — this room is about knowing what you have to show.
+    // ----------------------------------------------------------------
+    function renderMine(){
+      _clear();
+      _setActive('mine');
+      const space=_el('div','social-sky-space');
+      body.appendChild(space);
+      space.appendChild(_el('h3','social-sky-space-name','🎨 My Creations'));
+      const grid=_el('div','social-sky-space-grid');
+      space.appendChild(grid);
+      const note=_el('p','social-sky-space-note','Looking…');
+      space.appendChild(note);
+      try{
+        if(typeof CreatorProjectStore==='undefined'||!CreatorProjectStore.list) throw new Error('no store');
+        // list() is synchronous (the store hydrates at boot) — the
+        // same read My Projects itself makes, card-scoped by it.
+        (function(rows){
+          const mine=(rows||[]).filter(Boolean);
+          if(!mine.length){
+            note.textContent='Nothing here yet — go make something ✨';
+            return;
+          }
+          note.textContent='';
+          mine.forEach(function(rec){
+            const pages=(CreatorProjectStore.readingPagesOf)
+              ? CreatorProjectStore.readingPagesOf(rec) : [];
+            const b=_el('button','social-sky-space-thing');
+            b.type='button';
+            const cover=rec.thumbnail||pages[0]||null;
+            if(cover){
+              const img=document.createElement('img');
+              img.alt=''; img.src=cover;
+              b.appendChild(img);
+            }else{
+              b.appendChild(_el('span','social-sky-space-thing-glyph','✦'));
+            }
+            b.appendChild(_el('span','social-sky-space-thing-name',rec.name||'Still being made ✨'));
+            const shared=!!(rec.publishedAt||(rec.data&&rec.data.publishedAt));
+            if(shared) b.appendChild(_el('span','social-sky-space-thing-ether','🌌 In the Ether'));
+            b.addEventListener('click',function(){ renderPeek(rec,pages,renderMine); });
+            grid.appendChild(b);
+          });
+        })(CreatorProjectStore.list());
+      }catch(e){ note.textContent='Nothing here yet — go make something ✨'; }
+      const back=_el('button','social-sky-quiet','← Back to My Sky');
+      back.type='button';
+      back.addEventListener('click',function(){ render(); });
+      space.appendChild(back);
+    }
+
     function render(){
-      while(panel.firstChild) panel.removeChild(panel.firstChild);
+      _clear();
+      _setActive('sky');
       const l=layers()||{mutual:[],chosen:[],choseMe:[]};
       const u=_unseen();
       const gifts=giftsFrom();
@@ -772,7 +981,7 @@ const SocialSky=(function(){
       u.mutuals.forEach(function(e){ newMutual[_norm(e.username)]=true; });
 
       const field=_el('div','social-sky-field');
-      panel.appendChild(field);
+      body.appendChild(field);
 
       // The title floats quietly in a corner OF the sky — the sky is
       // the screen, not a box the screen contains.
@@ -782,41 +991,50 @@ const SocialSky=(function(){
       const chosen=_placed(l.chosen,28,33,Math.PI/5);
       const far=_placed(l.choseMe,40,43,Math.PI/3);
 
-      // Constellation lines — the mutual pairs are DRAWN as connected
-      // to the child's own Companion, which is what "we chose each
-      // other" looks like without a word of it.
-      if(mutual.length){
+      // Constellation lines (R4, from the owner's mockup) — EVERY
+      // Companion in the sky is joined to the child's own by a golden
+      // dotted line: the sky is one constellation, not scattered
+      // portraits. The relationship still speaks through the line's
+      // own light — the mutual line brightest, a chosen line softer,
+      // a they-chose-me line faintest — never through a label on it.
+      if(mutual.length||chosen.length||far.length){
         const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
         svg.setAttribute('class','social-sky-lines');
         svg.setAttribute('viewBox','0 0 100 100');
         svg.setAttribute('preserveAspectRatio','none');
         svg.setAttribute('aria-hidden','true');
-        mutual.forEach(function(p){
-          const line=document.createElementNS('http://www.w3.org/2000/svg','line');
-          line.setAttribute('x1','50'); line.setAttribute('y1','50');
-          line.setAttribute('x2',p.x.toFixed(2)); line.setAttribute('y2',p.y.toFixed(2));
-          svg.appendChild(line);
-        });
+        function join(list,cls){
+          list.forEach(function(p){
+            const line=document.createElementNS('http://www.w3.org/2000/svg','line');
+            line.setAttribute('class',cls);
+            line.setAttribute('x1','50'); line.setAttribute('y1','50');
+            line.setAttribute('x2',p.x.toFixed(2)); line.setAttribute('y2',p.y.toFixed(2));
+            svg.appendChild(line);
+          });
+        }
+        join(far,'is-far');
+        join(chosen,'is-chosen');
+        join(mutual,'is-mutual');
         field.appendChild(svg);
       }
 
-      function put(list,cls,glowMap){
+      function put(list,cls,glowMap,mark){
         list.forEach(function(p){
           const name=_norm(p.entry.username);
           field.appendChild(_star(p.entry,{
-            cls:cls, x:p.x, y:p.y,
+            cls:cls, x:p.x, y:p.y, mark:mark,
             glow:!!(glowMap&&glowMap[name]),
             gift:!!gifts[name],
             openGift:function(u){
-              CreationShow.openGifts({from:u,host:{mount:panel,done:render}});
+              CreationShow.openGifts({from:u,host:{mount:body,done:render}});
             },
             onOpen:function(u,c){ renderSpace(u,c); }
           }));
         });
       }
-      put(far,'is-far',newStar);
-      put(chosen,'is-chosen',null);
-      put(mutual,'is-mutual',newMutual);
+      put(far,'is-far',newStar,'🌿');
+      put(chosen,'is-chosen',null,'✦');
+      put(mutual,'is-mutual',newMutual,'💛');
 
       // The child themselves — their Companion is the centre of their
       // own creative universe.
@@ -830,6 +1048,26 @@ const SocialSky=(function(){
       if(!l.mutual.length&&!l.chosen.length&&!l.choseMe.length){
         field.appendChild(_el('p','social-sky-empty',
           'Your sky is waiting. When you meet a Creator in the Ether whose things you love, choose them — and they appear here.'));
+      }
+
+      // THE LEGEND (R4, from the owner's mockup) — the one place the
+      // three states are put into words, and the words are the sky's
+      // own: chose, never follow. It appears only once there is a
+      // star to read it against — an empty sky keeps its one kind
+      // sentence and no key to a map with nothing on it.
+      if(l.mutual.length||l.chosen.length||l.choseMe.length){
+        const legend=_el('div','social-sky-legend');
+        [['is-chosen','✦','I chose them'],
+         ['is-mutual','💛','You chose each other'],
+         ['is-far','🌿','They chose me']].forEach(function(row){
+          const it=_el('span','social-sky-legend-item');
+          const g=_el('span','social-sky-legend-glyph '+row[0],row[1]);
+          g.setAttribute('aria-hidden','true');
+          it.appendChild(g);
+          it.appendChild(_el('span','social-sky-legend-text',row[2]));
+          legend.appendChild(it);
+        });
+        field.appendChild(legend);
       }
 
       // ＋ FIND A CREATOR — part of the sky itself, a soft star low in
@@ -865,6 +1103,7 @@ const SocialSky=(function(){
       // inside a Creator's space (or typing a name) is not repainted
       // back to the map by a slow round trip.
       if(overlay.isConnected&&panel.querySelector('.social-sky-field')) render();
+      _updateGiftMark();
       // Seen once shown: the glow settles after this look, the stars
       // stay. Marked AFTER the render that showed the glow.
       markSeen();

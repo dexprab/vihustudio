@@ -14259,7 +14259,9 @@ body.studio-rite-running .companion-chat-open{ display:none !important; }
   display:flex; align-items:center; justify-content:center;
 }
 .social-sky-panel{
-  width:min(1120px,calc(100% - 56px));
+  /* R4 — widened for the sidebar, so the sky FIELD keeps the room to
+     breathe it always had (>=900px at the suite's own 1440 viewport). */
+  width:min(1240px,calc(100% - 48px));
   height:min(720px,calc(100% - 56px));
   border-radius:22px;
   overflow:hidden;
@@ -14268,6 +14270,67 @@ body.studio-rite-running .companion-chat-open{ display:none !important; }
   box-shadow:0 30px 80px rgba(0,0,0,0.5);
   display:flex;
 }
+/* R4 — THE SIDEBAR, from the product owner's own mockup: a quiet rail
+   holding the child's own Companion and the doors of the social world
+   — My Sky · What I've Shown · Gifts · My Creations · Find a Creator ·
+   Go to Ether. It never re-renders (the views swap inside
+   .social-sky-body beside it), so no round trip can repaint it out
+   from under a child mid-look. */
+.social-sky-side{
+  flex:0 0 200px; box-sizing:border-box;
+  display:flex; flex-direction:column; gap:4px;
+  padding:16px 14px 14px;
+  background:linear-gradient(180deg,#090c16 0%,#0e1424 100%);
+  border-right:1px solid rgba(241,234,208,0.12);
+}
+.social-sky-body{
+  flex:1; min-width:0; display:flex; position:relative;
+}
+.social-sky-profile{
+  display:flex; flex-direction:column; align-items:center; gap:4px;
+  padding:8px 6px 14px; margin-bottom:8px;
+  border-bottom:1px solid rgba(241,234,208,0.1);
+  color:rgba(241,234,208,0.9);
+}
+.social-sky-profile .social-sky-figure{
+  width:74px; height:74px;
+  background:radial-gradient(circle,rgba(255,224,150,0.18) 0%,transparent 72%);
+  border:2px solid rgba(255,215,130,0.4);
+}
+.social-sky-profile .social-sky-companion{ max-width:62px; max-height:62px; }
+.social-sky-profile .social-sky-plain{ font-size:32px; }
+.social-sky-profile-name{ font-size:13px; color:#ffd782; }
+.social-sky-nav{ display:flex; flex-direction:column; gap:3px; }
+.social-sky-nav-btn{
+  width:100%; height:auto !important; margin:0 !important;
+  padding:9px 11px !important;
+  border-radius:10px; border:1px solid transparent;
+  background:transparent; color:rgba(241,234,208,0.72);
+  font-size:13px; text-align:left; cursor:pointer;
+  display:flex; align-items:center; gap:8px;
+  transition:background .2s ease, color .2s ease;
+}
+.social-sky-nav-btn:hover{ color:#fff; background:rgba(255,255,255,0.05); }
+.social-sky-nav-btn.is-active{
+  color:#ffd782;
+  background:rgba(255,215,130,0.10);
+  border-color:rgba(255,215,130,0.25);
+}
+/* the Gifts door's quiet mark — something unseen waits. A mark, never
+   a number (the mockup's numeric badge was deliberately not taken). */
+.social-sky-nav-mark{
+  margin-left:auto; font-size:12px;
+  filter:drop-shadow(0 0 4px rgba(255,215,130,0.6));
+}
+.social-sky-ether{
+  margin-top:auto !important; width:100%; height:auto !important;
+  padding:9px 12px !important; border-radius:999px;
+  border:1px solid rgba(255,215,130,0.35);
+  background:rgba(255,215,130,0.08); color:#ffd782;
+  font-size:13px; cursor:pointer;
+  transition:background .2s ease;
+}
+.social-sky-ether:hover{ background:rgba(255,215,130,0.16); }
 .social-sky-field{
   position:relative;
   flex:1;
@@ -14345,6 +14408,10 @@ body.studio-rite-running .companion-chat-open{ display:none !important; }
      be watched — only to be alive. */
   animation:social-sky-line-drift 30s linear infinite;
 }
+/* R4 — every Companion is joined to the centre now; the relationship
+   speaks through the line's own light, never a label on it. */
+.social-sky-lines line.is-chosen{ stroke:rgba(255,215,130,0.16); }
+.social-sky-lines line.is-far{ stroke:rgba(255,215,130,0.09); stroke-width:0.22; }
 @keyframes social-sky-line-drift{ to{ stroke-dashoffset:-26; } }
 /* One star = one Creator, standing where the relationship puts them.
    Positioned absolutely (inline left/top from the layout), centred on
@@ -14395,20 +14462,28 @@ body.studio-rite-running .companion-chat-open{ display:none !important; }
 /* THE SPATIAL HIERARCHY — closeness, scale and light, never a label:
    mutual nearest and warmest · chosen at mid distance · they-chose-me
    far and faint. */
+/* R4 — each portrait rests in a soft ring (the mockup's own framing),
+   its tint matching the badge and the legend: gold for a mutual pair,
+   a cool violet for a chosen Creator, a leaf-green for a chooser. */
 .social-sky-star.is-mutual .social-sky-figure{
   width:66px; height:66px;
+  border:1.5px solid rgba(255,215,130,0.45);
   background:radial-gradient(circle,rgba(255,215,130,0.24) 0%,transparent 72%);
 }
 .social-sky-star.is-mutual .social-sky-companion{ max-width:60px; max-height:60px; }
 .social-sky-star.is-mutual .social-sky-plain{ font-size:30px; }
 .social-sky-star.is-chosen .social-sky-figure{
   width:54px; height:54px;
+  border:1.5px solid rgba(200,170,255,0.32);
   background:radial-gradient(circle,rgba(255,235,180,0.16) 0%,transparent 72%);
 }
 .social-sky-star.is-chosen .social-sky-companion{ max-width:48px; max-height:48px; }
 .social-sky-star.is-chosen .social-sky-plain{ font-size:24px; }
 .social-sky-star.is-far{ opacity:0.68; }
-.social-sky-star.is-far .social-sky-figure{ width:42px; height:42px; }
+.social-sky-star.is-far .social-sky-figure{
+  width:42px; height:42px;
+  border:1.5px solid rgba(150,215,170,0.28);
+}
 .social-sky-star.is-far .social-sky-companion{ max-width:36px; max-height:36px; }
 .social-sky-star.is-far .social-sky-plain{ font-size:19px; }
 .social-sky-star.is-far:hover,.social-sky-star.is-far:focus-visible{ opacity:1; }
@@ -14438,6 +14513,33 @@ body.studio-rite-running .companion-chat-open{ display:none !important; }
   .social-sky-figure,.social-sky-me .social-sky-figure,
   .social-sky-find-plus,.social-sky-lines line{ animation:none; }
 }
+/* R4 — the relationship mark on the figure's rim: a state mark the
+   legend explains (💛 · ✦ · 🌿), never an achievement and never a
+   number. The ✦ and 🌿 take the legend's own tints. */
+.social-sky-mark{
+  position:absolute; right:-5px; bottom:-3px;
+  font-size:13px; line-height:1;
+  filter:drop-shadow(0 0 3px rgba(10,13,26,0.9));
+  pointer-events:none;
+}
+.social-sky-star.is-chosen .social-sky-mark{ color:#c9a8ff; }
+.social-sky-star.is-far .social-sky-mark{ color:#9fd7aa; font-size:11px; }
+/* R4 — the legend: the three states in the sky's own words, one quiet
+   row at the foot of the field. Present only when a star is. */
+.social-sky-legend{
+  position:absolute; left:50%; bottom:10px;
+  transform:translateX(-50%);
+  display:flex; gap:18px; white-space:nowrap;
+  z-index:3; pointer-events:none;
+}
+.social-sky-legend-item{
+  display:flex; align-items:center; gap:6px;
+  font-size:11px; color:rgba(241,234,208,0.62);
+}
+.social-sky-legend-glyph{ font-size:11px; }
+.social-sky-legend-glyph.is-chosen{ color:#c9a8ff; }
+.social-sky-legend-glyph.is-far{ color:#9fd7aa; }
+
 /* "They have something to show me" — one small mark on the star, a
    real control of its own, never a badge with a number. */
 .social-sky-gift{
@@ -14461,6 +14563,9 @@ body.studio-rite-running .companion-chat-open{ display:none !important; }
 }
 .social-sky-me .social-sky-figure{
   width:96px; height:96px;
+  /* R4 — the gold ring around the child's own Companion, from the
+     owner's mockup: the centre is HELD, not merely lit. */
+  border:2px solid rgba(255,215,130,0.5);
   background:radial-gradient(circle,rgba(255,224,150,0.20) 0%,rgba(255,224,150,0.06) 55%,transparent 75%);
   /* the centre rests — its light breathes instead of floating */
   animation:social-sky-me-breathe 6.5s ease-in-out infinite;

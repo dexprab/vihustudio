@@ -541,11 +541,11 @@ const CreationShow=(function(){
           if(!panel.isConnected||!rows||!rows.length) return;
           const key={};
           rows.forEach(function(e2){
-            if(e2) key[(e2.kind||'')+' '+(e2.name||'')]=true;
+            if(e2) key[(e2.kind||'')+'\u0000'+(e2.name||'')]=true;
           });
           Array.prototype.forEach.call(panel.querySelectorAll('.creation-show-thing'),function(b){
             const nm=(b.querySelector('.creation-show-thing-name')||{}).textContent||'';
-            if(key[(b.dataset.kind||'')+' '+nm]&&!b.querySelector('.creation-show-shown')){
+            if(key[(b.dataset.kind||'')+'\u0000'+nm]&&!b.querySelector('.creation-show-shown')){
               b.classList.add('is-shown-before');
               b.appendChild(_el('span','creation-show-shown','✓ shown'));
             }

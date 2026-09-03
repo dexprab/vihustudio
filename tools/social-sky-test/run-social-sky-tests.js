@@ -382,6 +382,7 @@ function sqlSection() {
       });
       const me = document.querySelector('.social-sky-me');
       const meR = me ? me.getBoundingClientRect() : null;
+      const legend = document.querySelectorAll('.social-sky-legend');
       resolve({
         open: !!panel,
         fieldW: fr ? Math.round(fr.width) : 0,
@@ -389,24 +390,78 @@ function sqlSection() {
         meCentered: meR ? Math.round(Math.hypot(meR.left + meR.width / 2 - cx,
                                                 meR.top + meR.height / 2 - cy)) : null,
         lines: document.querySelectorAll('.social-sky-lines line').length,
+        lineClasses: Array.from(document.querySelectorAll('.social-sky-lines line'))
+          .map((ln) => ln.getAttribute('class') || ''),
         bands: document.querySelectorAll('.social-sky-band').length,
+        legends: legend.length,
+        legendText: legend.length ? legend[0].innerText : '',
+        marks: Array.from(document.querySelectorAll('.social-sky-star .social-sky-mark'))
+          .map((m) => (m.closest('.social-sky-star').className.match(/is-(mutual|chosen|far)/) || [,''])[1]
+                      + ':' + m.textContent),
+        side: {
+          present: !!document.querySelector('.social-sky-side'),
+          profile: (document.querySelector('.social-sky-profile') || { innerText: '' }).innerText,
+          profileCompanion: (document.querySelector('.social-sky-profile .social-sky-companion') || {})
+            .getAttribute ? (document.querySelector('.social-sky-profile .social-sky-companion') || { getAttribute: () => null }).getAttribute('src') : null,
+          doors: Array.from(document.querySelectorAll('.social-sky-nav-btn')).map((b) => b.innerText),
+          ether: (document.querySelector('.social-sky-ether') || { innerText: '' }).innerText,
+          active: (document.querySelector('.social-sky-nav-btn.is-active') || { innerText: '' }).innerText,
+        },
         text: panel ? panel.innerText : '',
       });
     }, 700));
   });
   const mStar = (sky.stars || []).find((s) => /is-mutual/.test(s.cls));
   const fStar = (sky.stars || []).find((s) => /is-far/.test(s.cls));
+  // R4 — TURNED AROUND, with the reason in place: this check used to
+  // forbid the state phrases appearing anywhere ("no graph labels"),
+  // which was right while the sky had no legend. The product owner's
+  // R4 mockup adds one, so the property is now: the states are still
+  // PLACES first (no band sections), and the words appear exactly
+  // once, in ONE legend, in the sky's own language — chose, never
+  // follow.
   ck(sky.open && !!mStar && !!fStar && sky.bands === 0
-     && !/They chose me|I chose them|We chose each other/.test(sky.text),
-     'B3  THE SKY IS SPATIAL — no list sections, no graph labels, the states are places',
-     JSON.stringify({ bands: sky.bands, stars: sky.stars.length }));
+     && sky.legends === 1
+     && /I chose them/.test(sky.legendText)
+     && /You chose each other/.test(sky.legendText)
+     && /They chose me/.test(sky.legendText)
+     && !/follow/i.test(sky.legendText),
+     'B3  THE SKY IS SPATIAL — no list sections; the one legend (R4) words the states in sky language',
+     JSON.stringify({ bands: sky.bands, stars: sky.stars.length, legend: sky.legendText.replace(/\n/g, ' · ') }));
   ck(sky.meCentered !== null && sky.meCentered < 40 && mStar.dist < fStar.dist,
      'B3b MY COMPANION IS THE CENTRE, the mutual star nearest, the new chooser furthest',
      JSON.stringify({ me: sky.meCentered, mutual: mStar.dist, far: fStar.dist }));
-  ck(sky.lines === 1,
-     'B3c a faint constellation line joins the mutual pair — "we chose each other", drawn, not said');
+  // R4 — TURNED AROUND: the constellation now joins EVERY Companion to
+  // the child's own (the owner's mockup), the relationship spoken by
+  // the line's own light — the mutual line keeps its distinct stroke.
+  ck(sky.lines === sky.stars.length && sky.lines >= 2
+     && sky.lineClasses.filter((c) => c === 'is-mutual').length === 1
+     && sky.lineClasses.filter((c) => c === 'is-far').length === 1,
+     'B3c a golden line joins EVERY Companion to the centre — the mutual line its own brighter stroke (R4)',
+     JSON.stringify({ lines: sky.lines, classes: sky.lineClasses }));
   ck(sky.fieldW >= 900,
      'B3d and the sky has room to breathe — a spacious canvas, not a small modal', sky.fieldW + 'px wide');
+  // R4 — the relationship mark on each star matches its tier, and it is
+  // a STATE mark the legend explains — never a number.
+  ck(sky.marks.length === sky.stars.length
+     && sky.marks.indexOf('mutual:💛') >= 0 && sky.marks.indexOf('far:🌿') >= 0
+     && sky.marks.every((m) => !/\d/.test(m.split(':')[1] || '')),
+     'B3e EVERY STAR WEARS ITS STATE MARK — 💛 mutual · 🌿 chose-me here — and no mark is a number (R4)',
+     JSON.stringify(sky.marks));
+  // R4 — the sidebar from the owner's mockup: the child's own Companion
+  // and @name at the top, then the doors of the social world. The
+  // Gifts door may carry only a MARK; the mockup's numeric badge was
+  // deliberately not taken (Decision 20's discipline).
+  const doors = (sky.side.doors || []).join(' · ');
+  ck(sky.side.present
+     && /My Sky/.test(doors) && /What I’ve Shown|What I've Shown/.test(doors)
+     && /Gifts/.test(doors) && /My Creations/.test(doors) && /Find a Creator/.test(doors)
+     && /Go to Ether/.test(sky.side.ether)
+     && /My Sky/.test(sky.side.active)
+     && !/\d/.test(doors)
+     && /@/.test(sky.side.profile),
+     'B3f THE SIDEBAR HOLDS THE DOORS — My Sky · What I’ve Shown · Gifts · My Creations · Find a Creator · Go to Ether, no number on any of them (R4)',
+     JSON.stringify({ doors, ether: sky.side.ether, active: sky.side.active, profile: sky.side.profile.replace(/\n/g, ' ') }));
   ck(!!mStar && /quill\/idle\.png/.test(mStar.companion || '')
      && mStar.name === '@stargirl',
      'B4  A CREATOR APPEARS THROUGH THEIR COMPANION — Quill stands for @stargirl, the name a small label',
