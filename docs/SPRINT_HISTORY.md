@@ -11617,3 +11617,22 @@ sentences, not one. tools/gap-desk-test (11) drives the real page with
 a stubbed client and asserts traffic — the resolve button's rpc
 carries THAT row's id — and sentences, not source. Nothing to deploy:
 the page ships with the site and both functions are already live.
+
+## Build 0756 — the voice chain gets its own verifier
+
+Reported by the owner: Leo (named aslan) answered in text and did not
+speak. Exactly the state R5 made VISIBLE — with a configured
+ElevenLabs voice, a failing voice round trip is now an honest quiet
+failure instead of being masked by the browser's robot voice — and
+the child-facing symptom is deliberately just silence (Decision 25),
+so nothing on screen can say which link broke.
+supabase/verify_voice_speak.js can: pasted into the Studio console it
+walks the exact chain a reply's voice takes — the mute setting, the
+Companion's voiceId in the registry, config + session, voice-speak's
+GET (deployed? ELEVENLABS_API_KEY configured?), then ONE real
+ephemeral generate built by VihuVoice.resolve (the product's own
+request, not an approximation) — and names the first link that fails,
+in one sentence, with the function's verbatim reason on the generate
+row. Bounded at every step (Decision 49), so it always reaches a
+verdict; if the bytes come back it even plays them. Diagnostic only —
+no product file changed.
