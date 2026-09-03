@@ -14597,28 +14597,58 @@ body.studio-rite-running .companion-chat-open{ display:none !important; }
   margin:8px 0 0; font-size:13px; line-height:1.5;
   color:rgba(241,234,208,0.65); text-align:center;
 }
-/* R3.8 — what I have shown them so far: small quiet rows, the kept
-   mark warm and tiny, never a count and never a "seen". */
-.social-sky-sent{ margin:2px 0 0; text-align:center; }
-.social-sky-sent-row{
-  display:flex; flex-wrap:wrap; gap:8px; justify-content:center;
-  margin-top:6px;
+/* R3.9 — THE SPACE IS A SMALL NIGHT DASHBOARD (redesigned on the
+   product owner's instruction so it can GROW): panels side by side,
+   each scrolling inside itself, so a hundred shows and a shelf full
+   of creations cost the screen nothing and Back never leaves the
+   fold. The kept mark stays warm and tiny; never a count, never a
+   "seen", never a "viewed". */
+.social-sky-space-cols{
+  display:flex; flex-wrap:wrap; gap:14px; justify-content:center;
+  align-items:flex-start;
+  width:100%; max-width:980px; margin:10px 0 4px;
 }
-.social-sky-sent-item{
-  display:flex; align-items:center; gap:6px;
-  padding:4px 10px 4px 4px;
-  background:rgba(12,17,32,0.5);
-  border:1px solid rgba(241,234,208,0.16); border-radius:999px;
-  color:rgba(241,234,208,0.8); font-size:11.5px;
+.social-sky-card{
+  flex:1 1 340px; min-width:0; max-width:460px;
+  padding:12px 14px 14px; box-sizing:border-box;
+  background:rgba(12,17,32,0.45);
+  border:1px solid rgba(241,234,208,0.14); border-radius:14px;
+  text-align:center;
 }
+.social-sky-card .social-sky-space-head{ margin:0 0 8px; }
+.social-sky-card-scroll{
+  max-height:250px; overflow-y:auto; overflow-x:hidden;
+  display:flex; flex-direction:column; gap:6px; align-items:stretch;
+}
+.social-sky-card-scroll .social-sky-space-grid{
+  align-content:flex-start;
+}
+.social-sky-sent-item,
+.social-sky-space-gift{
+  display:flex; align-items:center; gap:8px;
+  width:100% !important; height:auto !important;
+  margin:0 !important; padding:5px 10px 5px 6px !important;
+  box-sizing:border-box;
+  background:rgba(10,14,28,0.55);
+  border:1px solid rgba(241,234,208,0.14); border-radius:10px;
+  color:rgba(241,234,208,0.85); font-size:12px;
+  text-align:left; cursor:default;
+}
+.social-sky-space-gift{ cursor:pointer; }
+.social-sky-space-gift:hover{ border-color:rgba(255,215,130,0.5); }
 .social-sky-sent-item img{
-  width:26px; height:26px; object-fit:cover; border-radius:50%;
+  width:30px; height:30px; object-fit:cover; border-radius:6px; flex:0 0 auto;
 }
-.social-sky-sent-glyph{ font-size:15px; }
+.social-sky-sent-glyph{ font-size:16px; flex:0 0 auto; }
 .social-sky-sent-name{
-  max-width:110px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  flex:1 1 auto; min-width:0;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.social-sky-sent-meta{
+  flex:0 0 auto; display:flex; align-items:center; gap:8px;
 }
 .social-sky-sent-kept{ color:#ffd782; font-size:10.5px; }
+.social-sky-sent-when{ color:rgba(241,234,208,0.45); font-size:10.5px; }
 /* the picker's own quiet mark — marked, never disabled */
 .creation-show-thing.is-shown-before{ border-style:dashed; }
 .creation-show-shown{

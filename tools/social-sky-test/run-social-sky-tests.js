@@ -226,8 +226,13 @@ function sqlSection() {
         join pg_namespace n on n.oid = p.pronamespace
        where n.nspname='public' and p.prokind = 'f'
          and pg_get_functiondef(p.oid) ~* 'creator_shows';`);
-    ck(fns.split(',').sort().join(',') === 'creation_show_get,creation_show_list,creation_show_mark,creation_show_send',
-       'A12b and exactly FOUR functions touch the table', fns);
+    // R3.8 widened four to FIVE: creation_show_sent is the sender's
+    // own send history ("what have I shown them so far", the product
+    // owner's ask) — still SECURITY DEFINER-only, still no policies,
+    // and it reads kept_at while never touching seen_at.
+    ck(fns.split(',').sort().join(',') ===
+       'creation_show_get,creation_show_list,creation_show_mark,creation_show_send,creation_show_sent',
+       'A12b and exactly FIVE functions touch the table — the fifth is the sender\'s own history, added by name', fns);
 
     const verdict = psqlOut(pg, path.join(ROOT, 'supabase', 'verify_social_sky.sql'));
     ck(/PASS/.test(verdict) && !/FAIL/.test(verdict),

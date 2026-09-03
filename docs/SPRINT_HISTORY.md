@@ -11322,3 +11322,33 @@ the local log alone, the picker badge and the note reminder through
 the real dialog). show-journey 72 green. SERVER CHANGE: re-run
 supabase/migrations_social_sky.sql (adds creation_show_sent), then
 verify_social_sky.sql — check 24 should PASS.
+
+## Build 0748 — R3.9: a Creator's space that grows
+
+Redesigned on the product owner's instruction ("redesign this screen
+so that it can grow when show and creations increase"), toward his
+reference picture. The space is a small night dashboard now: under
+the Companion hero, the @name and the two actions, PANELS stand side
+by side — 🎁 You've shown them (the R3.8 history as full rows, newest
+first, with the warm Kept ✓ and a quiet relative time), ✨ Their
+creations, 🎁 Gifts from them (the old single shortcut button grown
+into a panel listing everything their Companion has carried here,
+each row opening the hosted gift view), and the mutual not-in-the-
+Ether shelf as its own panel when the circle earns it. Each panel
+scrolls INSIDE itself, so a hundred shows and a shelf full of
+creations cost the screen nothing and Back never leaves the fold;
+every panel is absent rather than empty. Deliberately NOT the
+reference's "Viewed" chips — kept travels (the owner's amendment),
+seen never does. One real bug found by the suite, sixth in the
+name-collision family: the new card class was named
+social-sky-panel, which is the OVERLAY'S OWN panel class — the whole
+sky shrank to 430px wide and social-sky's B3d (the "room to breathe"
+guard) caught it; renamed social-sky-card. A12b turned with its
+reason in place (five functions touch creator_shows now — the fifth
+is the sender's own history, added by name), and verify_social_sky's
+rows 04/08/12 were stale since R3.7 (still asserting the strict
+owner check card_acted_for replaced) — corrected, ordinals 25–28
+deduplicated from R2's 21–24, OVERALL PASS proved on a scratch
+PostgreSQL. show-journey 72 · social-sky 65 green. Server unchanged
+beyond 0747's own pending step (re-run migrations_social_sky.sql +
+verify).

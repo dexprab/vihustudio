@@ -466,32 +466,47 @@ const SocialSky=(function(){
       }
       drawRel();
 
-      const gifts=giftsFrom();
-      if(gifts[name]){
-        const g=_el('button','social-sky-space-gift','🎁 They have something to show you');
-        g.type='button';
-        g.addEventListener('click',function(){
-          try{
-            CreationShow.openGifts({from:name,
-              host:{mount:panel,done:function(){ renderSpace(name,companion); }}});
-          }catch(e){}
-        });
-        space.appendChild(g);
+      // R3.9 — A SPACE THAT GROWS. Redesigned on the product owner's
+      // instruction ("redesign this screen so that it can grow when
+      // show and creations increase"), toward his reference picture:
+      // the space is a small night dashboard of PANELS — what I've
+      // shown them · their creations · gifts from them · the mutual
+      // shelf — each a card that scrolls INSIDE itself, so a hundred
+      // shows cost the screen nothing and nothing ever pushes Back
+      // off the bottom. Absent rather than empty, every panel. And
+      // deliberately NOT the reference's "Viewed" chips: kept travels
+      // (the owner's amendment), seen never does.
+      const cols=_el('div','social-sky-space-cols');
+      space.appendChild(cols);
+      function panelCard(cls,title){
+        const p2=_el('div','social-sky-card'+(cls?' '+cls:''));
+        p2.appendChild(_el('p','social-sky-space-head',title));
+        const body=_el('div','social-sky-card-scroll');
+        p2.appendChild(body);
+        return {card:p2,body:body};
+      }
+      function _ago(iso){
+        try{
+          const d=new Date(iso);
+          if(isNaN(d.getTime())) return '';
+          const days=Math.floor((Date.now()-d.getTime())/86400000);
+          if(days<=0) return 'today';
+          if(days===1) return 'yesterday';
+          return days+' days ago';
+        }catch(e){ return ''; }
       }
 
-      // R3.8 — what I have shown them so far, so nobody reshares the
-      // same thing again and again (asked for by the product owner).
-      // The sender's own history; the kept mark is his amendment to
-      // the read-receipt line — SEEN is still never shown to anybody.
-      const theirHead=_el('p','social-sky-space-head','✨ Their creations');
+      // 🎁 what I have shown them (R3.8) — the sender's own history,
+      // newest first, every row; the panel scrolls, so the whole of
+      // it stands here however long it grows. The kept mark is the
+      // owner's amendment to the read-receipt line — SEEN is still
+      // never shown to anybody.
       try{
         if(typeof CreationShow!=='undefined'&&CreationShow.sentTo){
           CreationShow.sentTo(name).then(function(sent){
             if(!overlay.isConnected||!space.isConnected||!sent||!sent.length) return;
-            const sec=_el('div','social-sky-sent');
-            sec.appendChild(_el('p','social-sky-space-head','🎁 You’ve shown them'));
-            const row=_el('div','social-sky-sent-row');
-            sent.slice(0,8).forEach(function(e2){
+            const pc=panelCard('social-sky-sent','🎁 You’ve shown them');
+            sent.forEach(function(e2){
               const it=_el('div','social-sky-sent-item');
               if(e2.cover){
                 const img=document.createElement('img');
@@ -502,19 +517,52 @@ const SocialSky=(function(){
                   e2.kind==='story'?'📖':(e2.kind==='letter'?'✍️':'🎨')));
               }
               it.appendChild(_el('span','social-sky-sent-name',e2.name||'A creation'));
-              if(e2.kept) it.appendChild(_el('span','social-sky-sent-kept','Kept ✓'));
-              row.appendChild(it);
+              const meta=_el('span','social-sky-sent-meta');
+              if(e2.kept) meta.appendChild(_el('span','social-sky-sent-kept','Kept ✓'));
+              const when=_ago(e2.at);
+              if(when) meta.appendChild(_el('span','social-sky-sent-when',when));
+              it.appendChild(meta);
+              pc.body.appendChild(it);
             });
-            sec.appendChild(row);
-            if(theirHead.parentNode) space.insertBefore(sec,theirHead);
+            cols.insertBefore(pc.card,cols.firstChild);
           }).catch(function(){});
         }
       }catch(e){}
-      space.appendChild(theirHead);
+
+      // ✨ their creations — the Ether panel
+      const theirs=panelCard('','✨ Their creations');
+      cols.appendChild(theirs.card);
       const grid=_el('div','social-sky-space-grid');
-      space.appendChild(grid);
+      theirs.body.appendChild(grid);
       const note=_el('p','social-sky-space-note','Looking…');
-      space.appendChild(note);
+      theirs.body.appendChild(note);
+
+      // 🎁 gifts from them — everything their Companion has carried
+      // here, each row opening the hosted gift view in this same
+      // overlay. The old single shortcut button grew into this panel.
+      try{
+        const fromThem=(typeof CreationShow!=='undefined'&&CreationShow.gifts)
+          ?CreationShow.gifts().filter(function(g){ return g&&_norm(g.from)===name; }):[];
+        if(fromThem.length){
+          const pg2=panelCard('social-sky-giftpanel','🎁 Gifts from them');
+          fromThem.forEach(function(g){
+            const b=_el('button','social-sky-space-gift');
+            b.type='button';
+            b.appendChild(_el('span','social-sky-sent-glyph',
+              g.kind==='story'?'📖':(g.kind==='letter'?'✍️':'🎨')));
+            b.appendChild(_el('span','social-sky-sent-name',(g.seen?'':'✨ ')+(g.name||'A gift')));
+            if(g.kept) b.appendChild(_el('span','social-sky-sent-kept','Kept ✓'));
+            b.addEventListener('click',function(){
+              try{
+                CreationShow.openGifts({from:name,
+                  host:{mount:panel,done:function(){ renderSpace(name,companion); }}});
+              }catch(e2){}
+            });
+            pg2.body.appendChild(b);
+          });
+          cols.appendChild(pg2.card);
+        }
+      }catch(e){}
       try{
         CreatorOrbit.publicCreations().then(function(list){
           if(!overlay.isConnected) return;
@@ -553,14 +601,16 @@ const SocialSky=(function(){
         });
       }catch(e){ note.textContent=''; }
 
-      // Mutuality's one unlock: the not-yet-shared shelf.
+      // Mutuality's one unlock: the not-yet-shared shelf — its own
+      // panel in the same dashboard (R3.9).
       try{
         if(typeof CreatorOrbit!=='undefined'&&CreatorOrbit.circleWith&&CreatorOrbit.circleWith(name)){
           mutualProjects(name).then(function(rows){
-            if(!overlay.isConnected||!rows.length) return;
-            space.insertBefore(_el('p','social-sky-space-head','✨ Not in the Ether yet — because you chose each other'),back);
+            if(!overlay.isConnected||!space.isConnected||!rows.length) return;
+            const pm=panelCard('','✨ Not in the Ether yet — because you chose each other');
             const mg=_el('div','social-sky-space-grid');
-            space.insertBefore(mg,back);
+            pm.body.appendChild(mg);
+            cols.appendChild(pm.card);
             rows.forEach(function(row){
               const rec=row&&row.record;
               if(!rec) return;

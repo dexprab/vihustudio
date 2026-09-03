@@ -42,8 +42,8 @@ begin
    where n.nspname='public' and p.proname='creator_sky_list' and p.prokind='f';
   insert into _verify_social_sky values
     (3, 'creator_sky_list exists', 'true', (v_sky is not null)::text),
-    (4, 'sky list is owner-verified', 'true',
-        coalesce((v_sky ~* 'owner_id is distinct from v_caller')::text,'false')),
+    (4, 'sky list is verified via card_acted_for (R3.7)', 'true',
+        coalesce((v_sky ~* 'card_acted_for')::text,'false')),
     (5, 'new stars are choosers I have NOT chosen back', 'true',
         coalesce((v_sky ~* 'not exists')::text,'false')),
     (6, 'a chooser with no public username never surfaces', 'true',
@@ -54,8 +54,8 @@ begin
    where n.nspname='public' and p.proname='creation_show_send' and p.prokind='f';
   insert into _verify_social_sky values
     (7, 'creation_show_send exists', 'true', (v_send is not null)::text),
-    (8, 'send is owner-verified', 'true',
-        coalesce((v_send ~* 'owner_id is distinct from v_caller')::text,'false')),
+    (8, 'send is verified via card_acted_for (R3.7)', 'true',
+        coalesce((v_send ~* 'card_acted_for')::text,'false')),
     (9, 'send requires the SENDER to have chosen the recipient', 'true',
         coalesce((v_send ~* 'orbiter_id = v_me\.id and orbited_id = v_them\.id')::text,'false')),
     (10, 'the payload is capped', 'true',
@@ -71,8 +71,8 @@ begin
   insert into _verify_social_sky values
     (11, 'creation_show_list exists (recipient-only, metadata only)', 'true',
         (v_list is not null)::text),
-    (12, 'gifts list is owner-verified', 'true',
-        coalesce((v_list ~* 'owner_id is distinct from v_caller')::text,'false')),
+    (12, 'gifts list is verified via card_acted_for (R3.7)', 'true',
+        coalesce((v_list ~* 'card_acted_for')::text,'false')),
     (13, 'a sender can never list what they sent', 'true',
         coalesce((v_list ~* 'to_id = p_identity_id')::text,'false')),
     (21, 'gift rows carry the CARRIER — the sender''s Companion', 'true',
@@ -114,19 +114,19 @@ begin
     from pg_proc p join pg_namespace n on n.oid=p.pronamespace
    where n.nspname='public' and p.proname='card_acted_for' and p.prokind='f';
   insert into _verify_social_sky values
-    (21, 'card_acted_for exists (claimed OR proven recall)', 'true',
+    (25, 'card_acted_for exists (claimed OR proven recall)', 'true',
         coalesce((v_mut ~* 'magic_card_recalls')::text,'false'));
   select pg_get_functiondef(p.oid) into v_mut
     from pg_proc p join pg_namespace n on n.oid=p.pronamespace
    where n.nspname='public' and p.proname='creator_orbit_set' and p.prokind='f';
   insert into _verify_social_sky values
-    (22, 'creator_orbit_set accepts a proven recall (R3.7)', 'true',
+    (26, 'creator_orbit_set accepts a proven recall (R3.7)', 'true',
         coalesce((v_mut ~* 'card_acted_for')::text,'false'));
   select pg_get_functiondef(p.oid) into v_mut
     from pg_proc p join pg_namespace n on n.oid=p.pronamespace
    where n.nspname='public' and p.proname='creator_sky_list' and p.prokind='f';
   insert into _verify_social_sky values
-    (23, 'creator_sky_list accepts a proven recall (R3.7)', 'true',
+    (27, 'creator_sky_list accepts a proven recall (R3.7)', 'true',
         coalesce((v_mut ~* 'card_acted_for')::text,'false'));
   -- R3.8 — the sender's own send history: exists, and reads kept_at
   -- while NEVER touching seen_at (seen stays the recipient's own).
@@ -134,7 +134,7 @@ begin
     from pg_proc p join pg_namespace n on n.oid=p.pronamespace
    where n.nspname='public' and p.proname='creation_show_sent' and p.prokind='f';
   insert into _verify_social_sky values
-    (24, 'creation_show_sent exists, kept travels, seen never does (R3.8)', 'true',
+    (28, 'creation_show_sent exists, kept travels, seen never does (R3.8)', 'true',
         coalesce(((v_mut ~* 'kept_at') and not (v_mut ~* 'seen_at'))::text,'false'));
 end $$;
 
