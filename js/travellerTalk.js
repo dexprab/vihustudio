@@ -864,7 +864,17 @@ const TravellerTalk = (function () {
               sounding = CompanionSpeak.isSpeaking();
             }
           } catch (e) {}
-          if (!sounding) _aloudStop();
+          // R5.2 — AND A VOICE STILL BEING FETCHED IS STILL BEING MADE
+          // (js/companionChat.js has the account: a long reply's slow
+          // generation outlived the voice bell and this branch cancelled
+          // it, silently). The surface is already free here; a pending
+          // preparation is left to finish and join late.
+          let pending = false;
+          try {
+            pending = !!(typeof CompanionSpeak !== 'undefined'
+              && CompanionSpeak.isPreparing && CompanionSpeak.isPreparing());
+          } catch (e) {}
+          if (!sounding && !pending) _aloudStop();
           _busy = false;
           if (!sounding) _phase('ready');
           return;
