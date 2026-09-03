@@ -335,6 +335,25 @@
       // nothing in vihuplanet/runtime/ is touched, which is Decision 9's
       // whole test for a system plugging in rather than modifying.
       enterTheEther();
+
+      // THE ETHER'S OWN LIFE WAKES WITH THE CHILD, not with the page.
+      //
+      // The creature layer (js/etherLife.js) times its first crossing
+      // from when somebody is actually looking, so it mounts here —
+      // behind the threshold veil an early whale would spend itself on
+      // nobody. The discovery composer (js/etherDiscovery.js) is what
+      // answers when a noticed creature needs somewhere to lead.
+      // Both plug in through seams the universe already exposes, and
+      // both are absent-not-broken if their scripts never loaded.
+      try {
+        if (window.EtherLife && !window.vihuEtherLife) {
+          var life = EtherLife.mount(universe);
+          if (life && window.EtherDiscovery) {
+            window.vihuEtherDiscovery = EtherDiscovery.attach(universe, life);
+          }
+          window.vihuEtherLife = life;
+        }
+      } catch (e) {}
       if (actionsEl) {
         actionsEl.hidden = false;
         // Two frames so the browser has laid them out before they

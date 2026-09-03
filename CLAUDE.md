@@ -7224,6 +7224,133 @@ has.
   `supabase/functions/companion-chat/index.ts` ·
   `tools/companion-gap-test/run-companion-gap-tests.js`
 
+### 58. The Ether Is Alive Before a Traveller Knows What It Is For, and Discovery Is Staged
+
+Locked in the Ether Traveller Experience sprint (the First 20 Seconds
+brief). The Ether is not a Story browser — Stories are things that
+live INSIDE it — and a fresh Traveller must learn through experience,
+never through instruction, that it can be explored and that exploring
+leads somewhere.
+
+- **THE 20-SECOND RULE IS A BEHAVIOURAL TARGET, NEVER A TIMER.**
+  Nothing is delayed to fill it and nothing fake is played to hide
+  latency: no loading theatre, no countdown, no "Ether is waking".
+  The universe is live the moment the threshold is crossed, exactly as
+  before; what changed is that something now happens IN it soon
+  enough. Measured beats on a fresh arrival: the arrival turn is
+  already moving by five seconds (Decision 10, unchanged), and the
+  first creature crosses at ~6.5–10 seconds.
+- **THE ETHER HAS LIFE OF ITS OWN, APART FROM ANY STORY**
+  (`js/etherLife.js`). Constellation beings — stars in the palette's
+  paper-cream joined by faint lines, breathing, undulating — cross the
+  sky: a whale, a jellyfish of light, a swift starbird. Procedural, in
+  the Ether's own palette, no images and no library — Decision 9's
+  "alive through behaviour, not illustration" applies to a whale
+  exactly as to the mist. **The registry is DATA, never a branch**: a
+  new being is a new entry (skeleton points, links, temperament, and a
+  response kind — guide · pulse · glint), not a rewrite.
+- **RARITY IS THE DESIGN.** One early crossing for a fresh Traveller —
+  the hook inside the window — then minutes of nothing (95–220s). A
+  creature always on screen is wallpaper; one occasionally there is a
+  question. The objective is "did I just see that?", never clutter.
+- **IT PLUGS IN; THE RUNTIME NEVER LEARNED CREATURES EXIST.**
+  Everything rides seams the universe already exposes — `camera.
+  offsetFor()`, `ether`, `traveller`, `focus.isOpen()`, `on()`,
+  `isRunning()` — on one pointer-inert canvas inserted beneath the
+  story plane, so a whale passes BEHIND the Stories with the near dust
+  still in front. physics.js, storyManager.js, etherRenderer.js,
+  universe.js and ambientSystem.js contain no reference to any of it,
+  and suite check S1 fails the day one does. The layer freezes when
+  the universe's clock stops (the portal) and slows with it when a
+  Spirit is met.
+- **A CREATURE IS NOTICED THE WAY A SPIRIT IS.** Nearness is distance
+  from the centre of the screen — the Traveller IS the centre — and
+  notice LAGS nearness, so being noticed happens to the creature a
+  moment after the child turns toward it. Touching it notices it too.
+  Both paths are walked by the suite.
+- **CREATURES GUIDE DISCOVERY; THEY ARE NOT A GAME SYSTEM.** The
+  whale, noticed, slows, arcs gently away, and breathes out a trail of
+  guide-motes whose brightness pulses TOWARD the target — the
+  wordless "which way". WHAT it leads to is never the creature layer's
+  decision: `js/etherDiscovery.js` composes it.
+- **DISCOVERY COMPOSITION: ONE THING AT A TIME.** Available content +
+  environment + creature encounters + recent-discovery state → one
+  staged discovery, with rest (40s) after each one found. A far,
+  unmet Story is preferred (a Story already in front of the child is
+  not a discovery), fresher first, never one already led to this
+  visit; when no Story is eligible the trail leads to a **wonder** —
+  a small being of stars that blooms where the trail ends, shines a
+  few seconds, and goes. **Discovery therefore never depends on
+  Stories being present.** Canon Stories ship with the application, so
+  only a harness can make "no Stories" true in a browser — the
+  composer is unit-run against an empty universe to prove the
+  fallback.
+- **THE ACTIVITY FRAMEWORK IS A REGISTRY** (`ACTIVITIES` in
+  `js/etherDiscovery.js`): a creature, a kind of guidance, what it may
+  lead to. `follow-the-whale` is the first row and the one built
+  end-to-end; a story hunt or a star trail later is a new row plus its
+  guidance, never an edit to the composition. Every activity serves
+  the product's own loop — explore → discover → a creation → "someone
+  made this" → "I could make something too" — and **no XP, points,
+  scores, streaks, leaderboards, badges, rewards or progression of any
+  kind**, enforced by a suite scan of the layer with comments
+  stripped.
+- **NOTHING IS STORED.** A Traveller is stateless (Decision 19): which
+  creatures passed and what was discovered die with the page. The
+  suite fails on any storage API in the layer.
+- **THE MOUSE CAN NOW GRAB THE SKY** (`vihuplanet/runtime/core/
+  traveller.js` — the Traveller's own file, which owns "what the
+  Traveller can do: look"; the files Decision 9 protects are
+  untouched). Press the sky and pull it, one-to-one, exactly as a
+  finger always has; edge-steering stands down while dragging so the
+  two never fight over yaw. **A drag is never mistaken for a tap**: a
+  real drag eats the click that follows it, so a drag ending on the
+  sky cannot close the Spirit a child is looking at — while a plain
+  tap on the sky still does (that gesture is Decision 9's own).
+- **A CHECK THAT POLLS `isOpen()` AFTER A DRAG MEASURES THE ANIMATION,
+  NOT THE DRAG.** `focus.isOpen()` stays true through the whole return
+  animation, so the first version of that check passed against the
+  broken build. The shipped check counts `focus:closing` events —
+  proved by reverting the suppression and watching it go red.
+- **THE COMPANION DOES NOT EXIST IN THE ETHER BEFORE A STORY IS
+  OPENED.** Unchanged, and now asserted on the fresh-Traveller walk:
+  no host, no widget, no conversation surface anywhere in the Ether
+  until a Story opens. The Companion is the reward of stepping in,
+  never scenery — and a being of the Ether is never anyone's
+  Companion, which the canon now says in as many words.
+- **REDUCED MOTION MOUNTS THE LAYER INERT.** A creature crossing the
+  sky is exactly the unrequested motion the setting silences — the
+  same call the Ambient System makes for shooting stars. No canvas,
+  no encounters, `summon()` refuses; the API stays whole so no caller
+  branches.
+- **KNOWLEDGE SYNC (Decision 57).** Canon section 23, *The Living
+  Ether*: the Ether can be looked around, teaches by doing, has rare
+  gentle beings of its own that never speak and are never anyone's
+  Companion, a noticed being may answer with a trail, a discovery is
+  an invitation with nothing counted or kept, and every discovery
+  leads back toward making. Studio Knowledge and Live Context are
+  untouched — nothing here is a Studio control or a session fact. The
+  gap log is untouched and still wired (suite-checked).
+- **TWO CANON WORDS MOVED, AND THE CHECKS WERE RIGHT.** The first
+  wording said a Companion is "bonded" to a Creator and the beings are
+  "drawn in starlight" — both are the context suite's needles for
+  fixture MEMORY content leaking into a Traveller context, and both
+  went red on product prose. 19th and 20th entries in this
+  repository's word-inside-its-own-vocabulary family; the spellings
+  moved, the checks did not, and `sync-shared.js` regenerated the
+  function's canon copy.
+- Out of scope and not implemented: creature encounters as a reward
+  system, creature dialogue, a Companion in the Ether, per-Traveller
+  encounter history, more activity rows (story hunt, star trail,
+  missing character — the registry is where they land), and bringing
+  non-Story creations into the Ether feed (a composer target already
+  carries `kind`, which is the seam for it; Show snapshots are private
+  gifts and stay out — Decision 56).
+- `js/etherLife.js` · `js/etherDiscovery.js` ·
+  `vihuplanet/runtime/core/traveller.js` ·
+  `assets/canon/vihuplanet.canon.json` ·
+  `tools/ether-life-test/run-ether-life-tests.js`
+
 ## Roadmap
 
 1. Theme Designer Polish

@@ -60,12 +60,12 @@
 }
 </script>
 
-<link rel="icon" type="image/png" href="assets/brand/favicon.png?v=0757">
-<link rel="apple-touch-icon" href="assets/brand/apple-touch-icon.png?v=0757">
+<link rel="icon" type="image/png" href="assets/brand/favicon.png?v=0758">
+<link rel="apple-touch-icon" href="assets/brand/apple-touch-icon.png?v=0758">
 
-<link rel="stylesheet" href="vihuplanet/assets/fonts/fonts.css?v=0757">
-<link rel="stylesheet" href="vihuplanet/runtime/css/runtime.css?v=0757">
-<link rel="stylesheet" href="css/vihuplanet-home.css?v=0757">
+<link rel="stylesheet" href="vihuplanet/assets/fonts/fonts.css?v=0758">
+<link rel="stylesheet" href="vihuplanet/runtime/css/runtime.css?v=0758">
+<link rel="stylesheet" href="css/vihuplanet-home.css?v=0758">
 </head>
 <body>
 
@@ -400,18 +400,18 @@
      It is standalone, loads the Supabase client lazily from a CDN only
      if it is ever used, and treats a missing supabase-config.json as a
      normal unconfigured state rather than an error. -->
-<script src="js/themeRepositoryClient.js?v=0757"></script>
+<script src="js/themeRepositoryClient.js?v=0758"></script>
 <!-- Somebody was invited. This notices how far the invitation got
      (js/invite.js) — it reads ?invite= off the address, keeps it, strips
      it, and records the journey. It asks nothing of a child and grants
      nothing. -->
-<script src="js/invite.js?v=0757"></script>
-<script src="js/creatorProjectCache.js?v=0757"></script>
+<script src="js/invite.js?v=0758"></script>
+<script src="js/creatorProjectCache.js?v=0758"></script>
 <!-- The Companion that travels WITH a Story. Loaded before the project
      store, which stamps one onto every record it writes. -->
-<script src="js/companionRecord.js?v=0757"></script>
-<script src="js/creatorProjectStore.js?v=0757"></script>
-<script src="js/creatorProjectSync.js?v=0757"></script>
+<script src="js/companionRecord.js?v=0758"></script>
+<script src="js/creatorProjectStore.js?v=0758"></script>
+<script src="js/creatorProjectSync.js?v=0758"></script>
 <!-- WHERE A PAGE'S VOICE ACTUALLY LIVES.
      A Story's narration is not inside the Story: the record carries a
      `vihu-asset:` reference and the recording itself sits in IndexedDB
@@ -420,53 +420,53 @@
      own narration code fell through to handing `new Audio()` the raw
      reference, which is not a URL. It failed silently, which is why a
      shared Story with a voice read in perfect silence. -->
-<script src="js/assetStore.js?v=0757"></script>
-<script src="js/magicCard.js?v=0757"></script>
+<script src="js/assetStore.js?v=0758"></script>
+<script src="js/magicCard.js?v=0758"></script>
 <!-- Cheer — a little starlight given to a story, and the growth it
      earns. Loaded before etherFeed, which asks it what each Story has
      already been given so a grown Spirit is grown the moment it is
      born rather than a frame later. -->
-<script src="js/deviceGate.js?v=0757"></script>
-<script src="js/cheer.js?v=0757"></script>
+<script src="js/deviceGate.js?v=0758"></script>
+<script src="js/cheer.js?v=0758"></script>
 <!-- How VihuPlanet recognises a Creator: the sky they draw, and the
      one place that asks whether it is theirs. -->
-<script src="js/constellationBoard.js?v=0757"></script>
-<script src="js/creatorRecognition.js?v=0757"></script>
+<script src="js/constellationBoard.js?v=0758"></script>
+<script src="js/creatorRecognition.js?v=0758"></script>
 <!-- "Show me your Magic Card." A child raised their card to the camera
      without being asked to, so the camera now looks for it. The card
      art is what it reads (it shares that module's grid geometry), and
      the sky it finds goes to creatorRecognition above — no second
      identity system. -->
-<script src="js/magicCardArt.js?v=0757"></script>
+<script src="js/magicCardArt.js?v=0758"></script>
 <!-- OpenCV.js, fetched only when the camera is opened. See
      js/openCv.js for why it comes from a CDN and how it fails. -->
-<script src="js/openCv.js?v=0757"></script>
-<script src="js/magicCardVision.js?v=0757"></script>
-<script src="js/skyProtection.js?v=0757"></script>
+<script src="js/openCv.js?v=0758"></script>
+<script src="js/magicCardVision.js?v=0758"></script>
+<script src="js/skyProtection.js?v=0758"></script>
 <!-- The Ether's ambience. Self-contained — no other module needed —
      and it resolves its own asset paths from this script's location,
      so it works from the root exactly as it does from the Studio. -->
-<script src="js/audioManager.js?v=0757"></script>
-<script src="js/ambienceToggle.js?v=0757"></script>
+<script src="js/audioManager.js?v=0758"></script>
+<script src="js/ambienceToggle.js?v=0758"></script>
 <!-- The Canon Repository: the official stories of VihuPlanet, shipped
      with the application. They join the Ether on the same terms as
      everything else and carry no creator, because they are owned by
      nobody. -->
-<script src="js/canonRepository.js?v=0757"></script>
-<script src="js/etherFeed.js?v=0757"></script>
+<script src="js/canonRepository.js?v=0758"></script>
+<script src="js/etherFeed.js?v=0758"></script>
 <!-- Sprint 1.2 — sharing a story met in the Ether: the letter goes
      through the existing creation-share client, the prints through
      the SAME composers the Studio hub and the landing use. All
      guard-safe outside the Studio. -->
-<script src="js/creationShare.js?v=0757"></script>
-<script src="js/creationShareClient.js?v=0757"></script>
-<script src="js/storyCardComposer.js?v=0757"></script>
-<script src="js/foldableComposer.js?v=0757"></script>
-<script src="js/etherShare.js?v=0757"></script>
+<script src="js/creationShare.js?v=0758"></script>
+<script src="js/creationShareClient.js?v=0758"></script>
+<script src="js/storyCardComposer.js?v=0758"></script>
+<script src="js/foldableComposer.js?v=0758"></script>
+<script src="js/etherShare.js?v=0758"></script>
 <!-- SOCIAL 1 — creator identity & discovery: the public name's rules,
      and the shelf a name opens onto. -->
-<script src="js/creatorHandle.js?v=0757"></script>
-<script src="js/creatorPresence.js?v=0757"></script><script src="js/creatorOrbit.js?v=0757"></script><script src="js/socialSky.js?v=0757"></script>
+<script src="js/creatorHandle.js?v=0758"></script>
+<script src="js/creatorPresence.js?v=0758"></script><script src="js/creatorOrbit.js?v=0758"></script><script src="js/socialSky.js?v=0758"></script>
 <!-- ---------- the Story's host ----------
      The Companion runtime itself, unchanged and untouched: this page
      uses it for exactly two things — its registry (who exists, and
@@ -474,57 +474,66 @@
      second companion system, and no widget is ever mounted here; the
      Studio's draggable, clickable, speech-bubbled widget is right in
      the Studio and wrong over a story somebody is reading. -->
-<script src="js/companionEngine.js?v=0757"></script>
+<script src="js/companionEngine.js?v=0758"></script>
 <!-- The World Host speaks through this (Decision 26). It was loaded
      in the Studio only, so on VihuPlanet EtherHost hit its own
      `typeof VihuVoice === 'undefined'` guard and fell silent — the
      handled state, reached for entirely the wrong reason. -->
-<script src="js/vihuVoice.js?v=0757"></script>
-<script src="js/storyHost.js?v=0757"></script>
-<script src="js/companionLines.js?v=0757"></script>
-<script src="js/companionPerception.js?v=0757"></script><script src="js/companionLive.js?v=0757"></script><script src="js/companionMind.js?v=0757"></script><script src="js/companionConversation.js?v=0757"></script>
+<script src="js/vihuVoice.js?v=0758"></script>
+<script src="js/storyHost.js?v=0758"></script>
+<script src="js/companionLines.js?v=0758"></script>
+<script src="js/companionPerception.js?v=0758"></script><script src="js/companionLive.js?v=0758"></script><script src="js/companionMind.js?v=0758"></script><script src="js/companionConversation.js?v=0758"></script>
 <!-- HEARD AND SPOKEN TO IN THE ETHER TOO — Sprint 1N.5. Voice in and
      voice out are surface-independent, and these two were simply never
      loaded here: js/travellerTalk.js hides both controls when the
      modules are absent, so the encounter had a field and a Say it and
      nothing else. Same modules the Studio uses, no second copy. -->
-<script src="js/companionListen.js?v=0757"></script><script src="js/companionTurn.js?v=0757"></script><script src="js/companionSpeak.js?v=0757"></script>
-<script src="js/travellerContext.js?v=0757"></script>
-<script src="js/companionGapLog.js?v=0757"></script><script src="js/travellerTalk.js?v=0757"></script>
-<script src="js/etherHost.js?v=0757"></script>
-<script src="js/journeyResolver.js?v=0757"></script>
+<script src="js/companionListen.js?v=0758"></script><script src="js/companionTurn.js?v=0758"></script><script src="js/companionSpeak.js?v=0758"></script>
+<script src="js/travellerContext.js?v=0758"></script>
+<script src="js/companionGapLog.js?v=0758"></script><script src="js/travellerTalk.js?v=0758"></script>
+<script src="js/etherHost.js?v=0758"></script>
+<script src="js/journeyResolver.js?v=0758"></script>
 
 <!-- ---------- the VihuPlanet Runtime ---------- -->
-<script src="vihuplanet/artDirection/illustrationRules.js?v=0757"></script>
+<script src="vihuplanet/artDirection/illustrationRules.js?v=0758"></script>
 
-<script src="vihuplanet/runtime/core/namespace.js?v=0757"></script>
-<script src="vihuplanet/runtime/core/rng.js?v=0757"></script>
-<script src="vihuplanet/runtime/core/signal.js?v=0757"></script>
-<script src="vihuplanet/runtime/core/clock.js?v=0757"></script>
-<script src="vihuplanet/runtime/core/camera.js?v=0757"></script>
-<script src="vihuplanet/runtime/core/traveller.js?v=0757"></script>
+<script src="vihuplanet/runtime/core/namespace.js?v=0758"></script>
+<script src="vihuplanet/runtime/core/rng.js?v=0758"></script>
+<script src="vihuplanet/runtime/core/signal.js?v=0758"></script>
+<script src="vihuplanet/runtime/core/clock.js?v=0758"></script>
+<script src="vihuplanet/runtime/core/camera.js?v=0758"></script>
+<script src="vihuplanet/runtime/core/traveller.js?v=0758"></script>
 
-<script src="vihuplanet/runtime/stories/storyEntity.js?v=0757"></script>
-<script src="vihuplanet/runtime/stories/storyManager.js?v=0757"></script>
-<script src="vihuplanet/runtime/stories/storyLayer.js?v=0757"></script>
-<script src="vihuplanet/runtime/stories/storySpirit.js?v=0757"></script>
+<script src="vihuplanet/runtime/stories/storyEntity.js?v=0758"></script>
+<script src="vihuplanet/runtime/stories/storyManager.js?v=0758"></script>
+<script src="vihuplanet/runtime/stories/storyLayer.js?v=0758"></script>
+<script src="vihuplanet/runtime/stories/storySpirit.js?v=0758"></script>
 
-<script src="vihuplanet/runtime/physics/spatialGrid.js?v=0757"></script>
-<script src="vihuplanet/runtime/physics/physics.js?v=0757"></script>
+<script src="vihuplanet/runtime/physics/spatialGrid.js?v=0758"></script>
+<script src="vihuplanet/runtime/physics/physics.js?v=0758"></script>
 
-<script src="vihuplanet/runtime/ether/ether.js?v=0757"></script>
-<script src="vihuplanet/runtime/ether/currents.js?v=0757"></script>
-<script src="vihuplanet/runtime/ether/aurora.js?v=0757"></script>
-<script src="vihuplanet/runtime/ether/etherRenderer.js?v=0757"></script>
+<script src="vihuplanet/runtime/ether/ether.js?v=0758"></script>
+<script src="vihuplanet/runtime/ether/currents.js?v=0758"></script>
+<script src="vihuplanet/runtime/ether/aurora.js?v=0758"></script>
+<script src="vihuplanet/runtime/ether/etherRenderer.js?v=0758"></script>
 
-<script src="vihuplanet/runtime/ambient/ambientSystem.js?v=0757"></script>
-<script src="vihuplanet/runtime/focus/focusSystem.js?v=0757"></script>
-<script src="vihuplanet/runtime/birth/storyBirth.js?v=0757"></script>
-<script src="vihuplanet/runtime/worlds/worldEngine.js?v=0757"></script>
+<script src="vihuplanet/runtime/ambient/ambientSystem.js?v=0758"></script>
+<script src="vihuplanet/runtime/focus/focusSystem.js?v=0758"></script>
+<script src="vihuplanet/runtime/birth/storyBirth.js?v=0758"></script>
+<script src="vihuplanet/runtime/worlds/worldEngine.js?v=0758"></script>
 
-<script src="vihuplanet/runtime/core/universe.js?v=0757"></script>
+<script src="vihuplanet/runtime/core/universe.js?v=0758"></script>
 
-<script src="js/studioEntry.js?v=0757"></script>
+<!-- The Ether's own life: mythical beings that pass through the
+     universe and sometimes answer being noticed, and the composer that
+     decides where a noticed one leads. They plug into the running
+     universe through its exposed seams — no runtime file knows they
+     exist. Mounted by vihuplanetHome.js when the threshold is
+     crossed. -->
+<script src="js/etherLife.js?v=0758"></script>
+<script src="js/etherDiscovery.js?v=0758"></script>
+
+<script src="js/studioEntry.js?v=0758"></script>
 <!-- A Traveller is stateless. VihuPlanet is the one entrance and is
      never resumed (Decisions 10 and 23), so arriving here IS the
      product's own definition of a fresh start: anything on this device
@@ -538,15 +547,15 @@
      the way in. VihuPlanet's load is the boundary (Decision 19), so the
      sweep has to be able to reach every store — including one that, by
      construction, should never have anything in it. -->
-<script src="js/companionMemoryRank.js?v=0757"></script>
-<script src="js/companionMemory.js?v=0757"></script>
-<script src="js/travellerReset.js?v=0757"></script>
+<script src="js/companionMemoryRank.js?v=0758"></script>
+<script src="js/companionMemory.js?v=0758"></script>
+<script src="js/travellerReset.js?v=0758"></script>
 <script>
   try { TravellerReset.run({ preserveSession: false }); } catch (e) {}
 </script>
-<script src="js/vihuplanetHome.js?v=0757"></script>
+<script src="js/vihuplanetHome.js?v=0758"></script>
 <!-- Which build is on screen. Reads its own ?v= stamp, so it cannot
      disagree with the files the browser actually fetched. -->
-<script src="js/buildStamp.js?v=0757"></script>
+<script src="js/buildStamp.js?v=0758"></script>
 </body>
 </html>

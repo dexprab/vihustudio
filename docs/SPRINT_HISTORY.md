@@ -11657,3 +11657,51 @@ a refusal still classifies as one. companion-gap 29 (G3c/G3d/G3e pin
 all three behaviours) · ether-encounter 94 · conversation 135 —
 green. Rows already logged by 0753 keep standing; mark the warm ones
 wont-fix on the desk.
+
+## Build 0758 — Ether Traveller Experience: the first 20 seconds
+
+The Ether stops being a place a fresh Traveller can enter and not know
+what to do with. Two new page-level modules plug into the running
+universe through seams it already exposes — Decision 9's own test, and
+suite check S1 guards it: physics.js, storyManager.js,
+etherRenderer.js, universe.js and ambientSystem.js contain no word of
+any of this. `js/etherLife.js` is the Ether's own life: constellation
+beings (whale · jellyfish · starbird, a data registry, never a branch)
+drawn procedurally in the palette's paper-cream on one pointer-inert
+canvas beneath the story plane. The first crossing is always the whale
+and arrives ~6.5–10s after the threshold (measured 8.0s in the suite)
+— inside the 20-second window, never instantly, never padded; later
+crossings are minutes apart because rarity is what keeps a creature an
+event. A creature has the Spirits' own nearness (prox = distance from
+the centre, notice LAGS it) and answers being noticed — by turning
+toward it or touching it — with the one interaction built end-to-end:
+the whale slows, arcs away, and breathes out a trail of guide-motes.
+WHERE the trail leads is `js/etherDiscovery.js`'s: one discovery at a
+time, a far unmet Story preferred (fresh first, never one already led
+to this visit), and a wonder of the sky's own when no Story is
+eligible — so discovery never depends on Stories, proved with the
+composer run against an empty universe (Canon Stories ship, so only a
+harness can make that true in a browser). The activity framework is a
+registry (`follow-the-whale` its first row); nothing is scored,
+stored, counted or kept — a Traveller is stateless and the suite scans
+the layer, comments stripped, for gamification vocabulary and storage
+APIs. The Traveller gains MOUSE DRAG (traveller.js — its own file, not
+a protected one): grab the sky and pull it, edge-steer suspended while
+dragging, and a real drag eats the click that follows so a drag ending
+on the sky never closes an open Spirit — proved by reverting, after
+the first isOpen()-based check passed against the broken build because
+isOpen() stays true through the whole return animation; the shipped
+check counts `focus:closing`. Reduced motion mounts the layer inert
+(no canvas, summon refuses). The Companion stays absent from the Ether
+until a Story opens — asserted, not assumed. Canon gains section 23,
+The Living Ether; its first wording tripped the context suite's
+Traveller-memory needles on 'bonded' and 'starlight' — the checks were
+right, the spellings moved (19th and 20th entries in the
+word-in-its-own-vocabulary family) — and sync-shared regenerated the
+function copy. tools/ether-life-test (46: statics, composer units, the
+real first-20-seconds walk with A3 at 8.0s and A4 measured on canvas
+pixels, follow-by-turning to a real Canon Story, follow-by-touch to a
+wonder bloom, navigation, reduced motion) · regressions green:
+ether-encounter 94 · companion-context 90 · companion-canon 94 ·
+companion-chat 256 · companion-gap 29 · ether-share 21 ·
+social-ether-identity 20 · ether-voice 8.

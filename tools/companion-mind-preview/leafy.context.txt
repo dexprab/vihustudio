@@ -35,7 +35,7 @@ WHAT LEAVES VIHUPLANET
 ------------------------------------------------------------------------
   members       : authority, canon, contextVersion, conversation, memories, mode, personality, storyContext
   authority     : canon > personality > memories > storyContext > conversation
-  canon         : 22 sections
+  canon         : 23 sections
   personality   : Leafy
   memories      : 3 of at most 6
   story         : The Lantern in the Woods  (page 3 of 7 only)
@@ -111,7 +111,7 @@ WHAT LEAVES VIHUPLANET
 ------------------------------------------------------------------------
   members       : authority, canon, contextVersion, conversation, mode, personality, storyContext
   authority     : canon > personality > memories > storyContext > conversation
-  canon         : 22 sections
+  canon         : 23 sections
   personality   : Leafy
   memories      : 0 of at most 6
   story         : The Lantern in the Woods  (page 3 of 7 only)

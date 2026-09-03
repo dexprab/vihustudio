@@ -1,0 +1,668 @@
+/* SPRINT — ETHER TRAVELLER EXPERIENCE: THE FIRST 20 SECONDS.
+ *
+ * A fresh Traveller must never enter a directionless Ether. This suite
+ * walks that Traveller's real first minute: land on VihuPlanet, cross
+ * the one threshold, and measure the beats the sprint names — is there
+ * something to notice, does the universe teach that it can be
+ * explored, is something worth investigating encountered, does it lead
+ * anywhere. Then it drives the one interaction pattern built
+ * end-to-end (Follow the Whale) both ways a child can have it: by
+ * turning toward the whale, and by touching it.
+ *
+ * The adversarial half is what must NOT be true: no Companion in the
+ * Ether before a Story is opened, no creature knowledge in the runtime
+ * files Decision 9 protects, no gamification vocabulary anywhere in
+ * the layer, nothing stored about a Traveller, and a reduced-motion
+ * universe left completely still.
+ *
+ * Run:
+ *   node tools/bring-it-alive/test/serve.js 8792 &
+ *   NODE_PATH=/opt/node22/lib/node_modules \
+ *     node tools/ether-life-test/run-ether-life-tests.js
+ */
+'use strict';
+const path = require('path');
+const fs = require('fs');
+const { chromium } = require('playwright');
+
+const ROOT = path.resolve(__dirname, '..', '..');
+const PORT = Number(process.env.ETHER_PORT || 8792);
+const BASE = 'http://127.0.0.1:' + PORT;
+const SHOTS = path.join(__dirname, 'shots');
+let passed = 0, failed = 0;
+const failures = [];
+function ok(n, note) { passed++; console.log('  ok   ' + n + (note ? '  (' + note + ')' : '')); }
+function fail(n, note) { failed++; failures.push(n + (note ? '  (' + note + ')' : '')); console.log('  FAIL ' + n + (note ? '  (' + note + ')' : '')); }
+function ck(c, n, note) { (c ? ok : fail)(n, note); }
+
+// Strip comments before scanning source for vocabulary — a word inside
+// its own rationale has tripped this repository's checks many times.
+function stripComments(src) {
+  return src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+}
+
+(async () => {
+  fs.mkdirSync(SHOTS, { recursive: true });
+
+  // =================================================================
+  // S. STATICS — the boundaries hold before a browser ever opens.
+  // =================================================================
+  console.log('\nS. STATICS');
+  const lifeSrc = fs.readFileSync(path.join(ROOT, 'js/etherLife.js'), 'utf8');
+  const discSrc = fs.readFileSync(path.join(ROOT, 'js/etherDiscovery.js'), 'utf8');
+  const lifeCode = stripComments(lifeSrc);
+  const discCode = stripComments(discSrc);
+
+  // S1 — Decision 9's own test: the protected runtime files know
+  // nothing about creatures, and neither does the composition root.
+  const protectedFiles = [
+    'vihuplanet/runtime/physics/physics.js',
+    'vihuplanet/runtime/stories/storyManager.js',
+    'vihuplanet/runtime/ether/etherRenderer.js',
+    'vihuplanet/runtime/core/universe.js',
+    'vihuplanet/runtime/ambient/ambientSystem.js'
+  ];
+  {
+    const dirty = protectedFiles.filter((f) => {
+      const s = fs.readFileSync(path.join(ROOT, f), 'utf8').toLowerCase();
+      return /\bcreature\b|etherlife|etherdiscovery/.test(s);
+    });
+    ck(dirty.length === 0, 'S1  the runtime never learned creatures exist',
+       dirty.length ? dirty.join(', ') : protectedFiles.length + ' files clean');
+  }
+
+  // S2 — no gamification vocabulary in the layer. `points` is excused
+  // by name: a constellation skeleton has points the way a polygon
+  // does, and the concept this scan guards is a score.
+  {
+    const banned = /\b(score|scores|scored|streak|leaderboard|badge|reward|rewards|xp|rank|ranking|achievement|combo|currency|unlock)\b/i;
+    const hitL = lifeCode.match(banned);
+    const hitD = discCode.match(banned);
+    ck(!hitL && !hitD, 'S2  no gamification vocabulary in the layer',
+       (hitL && hitL[0]) || (hitD && hitD[0]) || '15 terms checked, comments stripped');
+  }
+
+  // S3 — a Traveller is stateless (Decision 19): the layer can store
+  // nothing, anywhere.
+  {
+    const storage = /(localStorage|sessionStorage|indexedDB|document\.cookie)/;
+    ck(!storage.test(lifeCode) && !storage.test(discCode),
+       'S3  nothing is stored — a Traveller arrives new every time');
+  }
+
+  // S4 — the layer writes nothing onto the Story entities it reads.
+  // The one honest static form: it never assigns through the entity
+  // reference it holds (`best` / `entity` / `target.entity`).
+  {
+    const writes = /\b(best|entity)\s*\.\s*\w+\s*=/.test(discCode) ||
+                   /\btarget\.entity\s*\.\s*\w+\s*=/.test(lifeCode);
+    ck(!writes, 'S4  Story entities are read the way a renderer reads them — never written');
+  }
+
+  // S5 — the canon carries the Living Ether, in worldview words.
+  {
+    const canon = JSON.parse(fs.readFileSync(
+      path.join(ROOT, 'assets/canon/vihuplanet.canon.json'), 'utf8'));
+    const sec = canon.sections.find((s) => s.key === 'the-living-ether');
+    ck(!!sec, 'S5  the canon knows the Ether is alive', sec && sec.title);
+    const text = JSON.stringify(sec || {});
+    ck(!!sec && /never speak/.test(text) && /Companion/.test(text),
+       'S5b and it says the beings are never anyone\'s Companion');
+  }
+
+  // S6 — the gap log is still wired: the sprint that added it is not
+  // undone by this one.
+  {
+    const idx = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+    const talk = fs.readFileSync(path.join(ROOT, 'js/travellerTalk.js'), 'utf8');
+    ck(idx.indexOf('js/companionGapLog.js') !== -1 &&
+       /CompanionGapLog\.consider/.test(talk),
+       'S6  conversation gap logging remains operational');
+  }
+
+  // =================================================================
+  // U. THE COMPOSER, ALONE — composition rules that need no browser.
+  // The real module runs against a hand-held universe, which is the
+  // only way to make "the Ether holds no eligible Story" true while
+  // Canon Stories ship with the application.
+  // =================================================================
+  console.log('\nU. DISCOVERY COMPOSITION');
+  {
+    const g = {};
+    new Function('window', discSrc + '\n')(g); // attaches EtherDiscovery to `window`
+    const ED = g.EtherDiscovery;
+    ck(!!ED && typeof ED.attach === 'function', 'U1  the composer loads on its own');
+
+    function fakeUniverse(entities) {
+      return {
+        stories: { all: () => entities },
+        ether: { viewWidth: 1440, viewHeight: 900, width: 4000, height: 2500,
+                 depth: { stories: 1 } },
+        camera: { offsetFor: () => ({ x: 0, y: 0 }) }
+      };
+    }
+    function fakeLife() {
+      const l = { handlers: {}, composer: null };
+      l.quiet = false;
+      l.setComposer = (fn) => { l.composer = fn; };
+      l.on = (e, fn) => { (l.handlers[e] = l.handlers[e] || []).push(fn); };
+      l.emitBack = (e, p) => (l.handlers[e] || []).forEach((fn) => fn(p));
+      return l;
+    }
+
+    // U2 — no Stories at all: the trail still leads somewhere. The
+    // wonder is far enough from the centre that following it turns
+    // the universe.
+    {
+      const life = fakeLife();
+      ED.attach(fakeUniverse([]), life);
+      const t = life.composer({ creature: 'whale' });
+      ck(!!t && t.kind === 'wonder', 'U2  no eligible Story still composes a discovery',
+         t && t.kind);
+      const dx = t ? t.x - 720 : 0, dy = t ? t.y - 450 : 0;
+      ck(!!t && Math.sqrt(dx * dx + dy * dy) > 500,
+         'U2b and it is far enough to require a real turn',
+         t && Math.round(Math.sqrt(dx * dx + dy * dy)) + 'px');
+    }
+
+    // U3 — a far, unmet Story outranks the wonder; a Story already in
+    // front of the child is not a discovery.
+    {
+      const near = { id: 'story-near', prox: 0.9, focusT: 0, position: { x: 700, y: 440 } };
+      const farS = { id: 'story-far', prox: 0.02, focusT: 0, position: { x: 3000, y: 2000 } };
+      const life = fakeLife();
+      ED.attach(fakeUniverse([near, farS]), life);
+      const t = life.composer({ creature: 'whale' });
+      ck(!!t && t.kind === 'story' && t.id === 'story-far',
+         'U3  the discovery is the Story nobody has looked at', t && t.id);
+    }
+
+    // U4 — one discovery at a time: while an activity is live, the
+    // composer declines. Staged, never dumped.
+    {
+      const farS = { id: 's1', prox: 0, focusT: 0, position: { x: 3000, y: 2000 } };
+      const farS2 = { id: 's2', prox: 0, focusT: 0, position: { x: 100, y: 100 } };
+      const life = fakeLife();
+      const c = ED.attach(fakeUniverse([farS, farS2]), life);
+      const first = life.composer({ creature: 'whale' });
+      const second = life.composer({ creature: 'whale' });
+      ck(!!first && second === null, 'U4  one discovery at a time — curiosity is staged');
+      ck(c.current() && c.current().id === 'follow-the-whale',
+         'U4b and the activity underway is the registered one', c.current() && c.current().id);
+      // The trail found → the activity resolves, and rest follows.
+      life.emitBack('trail:found', {});
+      ck(c.current() === null, 'U4c finding it ends the activity');
+      const third = life.composer({ creature: 'whale' });
+      ck(third === null, 'U4d and the sky rests before offering the next one');
+    }
+
+    // U5 — a Story led to once is not led to again this visit.
+    {
+      const s1 = { id: 'only', prox: 0, focusT: 0, position: { x: 3000, y: 2000 } };
+      const life = fakeLife();
+      ED.attach(fakeUniverse([s1]), life);
+      const t1 = life.composer({ creature: 'whale' });
+      life.emitBack('trail:faded', {});   // withdrew, nothing found
+      const t2 = life.composer({ creature: 'whale' });
+      ck(!!t1 && t1.id === 'only' && !!t2 && t2.kind === 'wonder',
+         'U5  the same Story is not offered twice in one visit',
+         t2 && t2.kind);
+    }
+
+    // U6 — an unknown creature composes nothing: activities are a
+    // registry, never a default.
+    {
+      const life = fakeLife();
+      ED.attach(fakeUniverse([]), life);
+      ck(life.composer({ creature: 'starbird' }) === null,
+         'U6  a creature with no activity gets no trail');
+    }
+  }
+
+  // =================================================================
+  // Browser sections.
+  // =================================================================
+  const browser = await chromium.launch({
+    executablePath: process.env.CHROMIUM_PATH || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome'
+  });
+
+  async function freshPage(ctxOpts) {
+    const context = await browser.newContext(Object.assign(
+      { viewport: { width: 1440, height: 900 } }, ctxOpts || {}));
+    const page = await context.newPage();
+    page.errors = [];
+    page.on('pageerror', (e) => page.errors.push(String(e)));
+    return { context, page };
+  }
+
+  async function crossThreshold(page) {
+    await page.waitForFunction(() => typeof EtherFeed !== 'undefined', null, { timeout: 20000 });
+    for (let i = 0; i < 14; i++) {
+      const crossed = await page.evaluate(() => {
+        const b = document.querySelector('[data-begin]');
+        if (b && b.getBoundingClientRect().width > 0) { b.click(); return false; }
+        return true;
+      });
+      if (crossed) break;
+      await page.waitForTimeout(500);
+    }
+  }
+
+  // Turn the universe so a point at `parallax` lands at the centre —
+  // the test's arm doing what a child's hand does, through the same
+  // camera the child turns.
+  async function centreOn(page, getScreen, parallax) {
+    for (let i = 0; i < 10; i++) {
+      const done = await page.evaluate(([fnSrc, p]) => {
+        const u = window.vihuPlanetUniverse;
+        const s = (new Function('return (' + fnSrc + ')')())();
+        if (!s) return 'gone';
+        const e = u.ether;
+        const dx = s.x - e.viewWidth * 0.5;
+        const dy = s.y - e.viewHeight * 0.5;
+        if (Math.sqrt(dx * dx + dy * dy) < 60) return true;
+        const st = u.viewpoint();
+        u.restoreViewpoint({
+          yaw: st.yaw + (dx * Math.PI * 2) / (e.width * p),
+          pitch: st.pitch + (dy * Math.PI * 2) / (e.height * p)
+        });
+        return false;
+      }, [getScreen.toString(), parallax]);
+      if (done === true || done === 'gone') return done;
+      await page.waitForTimeout(300);
+    }
+    return false;
+  }
+
+  // =================================================================
+  // A. A FRESH TRAVELLER'S FIRST TWENTY SECONDS — real time, no test
+  // clock. The 20-second rule is a behavioural target; this section
+  // measures the beats on the product's own schedule.
+  // =================================================================
+  console.log('\nA. THE FIRST TWENTY SECONDS');
+  {
+    const { context, page } = await freshPage();
+    await page.goto(BASE + '/index.html');
+    const t0 = Date.now();
+    await crossThreshold(page);
+
+    await page.waitForFunction(() => !!window.vihuEtherLife, null, { timeout: 8000 })
+      .catch(() => {});
+    const mounted = await page.evaluate(() => ({
+      life: !!window.vihuEtherLife,
+      quiet: window.vihuEtherLife && window.vihuEtherLife.quiet,
+      canvas: !!document.querySelector('.vp-ether-life'),
+      pe: (document.querySelector('.vp-ether-life') || {}).style
+          ? document.querySelector('.vp-ether-life').style.pointerEvents : '',
+      belowStories: (() => {
+        const c = document.querySelector('.vp-ether-life');
+        const s = document.querySelector('.vp-story-layer');
+        if (!c || !s) return false;
+        return !!(c.compareDocumentPosition(s) & Node.DOCUMENT_POSITION_FOLLOWING);
+      })(),
+      discovery: !!window.vihuEtherDiscovery
+    }));
+    ck(mounted.life && !mounted.quiet, 'A1  the Ether\'s life wakes with the child');
+    ck(mounted.canvas && mounted.pe === 'none' && mounted.belowStories,
+       'A1b on its own canvas, beneath the Stories, untouchable',
+       'pointer-events: ' + mounted.pe);
+    ck(mounted.discovery, 'A1c and the discovery composer is listening');
+
+    // ~5 seconds: has something already happened? The arrival turn is
+    // the universe demonstrating itself.
+    await page.waitForTimeout(Math.max(0, 4500 - (Date.now() - t0)));
+    const turned = await page.evaluate(() =>
+      Math.abs(window.vihuPlanetUniverse.camera.yaw()) > 0.05);
+    ck(turned, 'A2  by five seconds the universe has already moved (the arrival turn)');
+
+    // Inside the 20-second window: a creature crosses. The first is
+    // always the whale — the one that can lead somewhere.
+    let arrival = null;
+    await page.waitForFunction(() => {
+      const a = window.vihuEtherLife.active();
+      return !!a;
+    }, null, { timeout: 16000 }).then(async () => {
+      arrival = await page.evaluate(() => window.vihuEtherLife.active());
+    }).catch(() => {});
+    const seconds = ((Date.now() - t0) / 1000).toFixed(1);
+    ck(!!arrival && arrival.id === 'whale',
+       'A3  something worth investigating arrives inside the window',
+       arrival ? arrival.id + ' at ' + seconds + 's' : 'nothing by ' + seconds + 's');
+
+    // And it is genuinely drawn — light on the canvas where the layer
+    // says the creature is, not a data structure claiming to glow. A
+    // beat first: it enters nose-first, and the sample is around its
+    // centre.
+    await page.waitForTimeout(2500);
+    const drawn = await page.evaluate(() => {
+      const a = window.vihuEtherLife.active();
+      if (!a) return { visible: false };
+      const c = document.querySelector('.vp-ether-life');
+      const ctx = c.getContext('2d');
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const x = Math.max(0, Math.min(c.width - 200, Math.round(a.screen.x * dpr) - 100));
+      const y = Math.max(0, Math.min(c.height - 200, Math.round(a.screen.y * dpr) - 100));
+      const d = ctx.getImageData(x, y, 200, 200).data;
+      let lit = 0;
+      for (let i = 3; i < d.length; i += 4) if (d[i] > 8) lit++;
+      return { visible: lit > 40, lit: lit, screen: a.screen };
+    });
+    ck(drawn.visible, 'A4  and it is really there — measured on the canvas, not asserted',
+       drawn.lit + ' lit px around ' + (drawn.screen ? Math.round(drawn.screen.x) + ',' + Math.round(drawn.screen.y) : '?'));
+
+    // The Companion does not exist in the Ether before a Story is
+    // opened. It is the reward of stepping in, never scenery.
+    const noCompanion = await page.evaluate(() => {
+      const host = document.querySelector('[data-portal-host]');
+      return {
+        hostHere: !!(host && host.classList.contains('is-here')),
+        widget: !!document.querySelector('.companion-widget, #companionWidget'),
+        talk: !!document.querySelector('[data-traveller-talk-open]:not([hidden])')
+      };
+    });
+    ck(!noCompanion.hostHere && !noCompanion.widget,
+       'A5  no Companion anywhere in the Ether before a Story opens');
+
+    await page.screenshot({ path: path.join(SHOTS, 'a-first-20s.png') });
+    ck(page.errors.length === 0, 'A6  zero page errors', page.errors[0]);
+    await context.close();
+  }
+
+  // =================================================================
+  // B. FOLLOW THE WHALE, BY TURNING — the interaction end-to-end. The
+  // whale is summoned through its own public seam (the composer and a
+  // future activity use the same call), then noticed the way a child
+  // notices it: by turning the universe toward it.
+  // =================================================================
+  console.log('\nB. FOLLOW THE WHALE — NOTICED BY TURNING');
+  {
+    const { context, page } = await freshPage();
+    await page.goto(BASE + '/index.html');
+    await crossThreshold(page);
+    await page.waitForFunction(() => !!window.vihuEtherLife, null, { timeout: 8000 });
+    // Spirits need to exist for the trail to have a Story to lead to;
+    // Canon Stories ship with the application (Decision 13), so a
+    // fresh universe already holds some.
+    await page.waitForFunction(() =>
+      window.vihuPlanetUniverse.stories.count() > 0, null, { timeout: 20000 })
+      .catch(() => {});
+    const storyCount = await page.evaluate(() => window.vihuPlanetUniverse.stories.count());
+
+    await page.evaluate(() => {
+      window.__lifeEvents = [];
+      ['creature:arrived', 'creature:noticed', 'creature:responded',
+       'trail:begun', 'trail:found', 'trail:faded'].forEach((e) =>
+        window.vihuEtherLife.on(e, (p) => window.__lifeEvents.push([e, p])));
+      window.vihuEtherLife.summon('whale');
+    });
+
+    const centred = await centreOn(page,
+      () => { const a = window.vihuEtherLife.active(); return a && a.screen; }, 0.82);
+    ck(centred === true, 'B1  the universe can be turned until the whale is met');
+
+    await page.waitForFunction(() =>
+      window.__lifeEvents.some((e) => e[0] === 'creature:responded'),
+      null, { timeout: 8000 }).catch(() => {});
+    const events = await page.evaluate(() => window.__lifeEvents.map((e) => e[0]));
+    ck(events.indexOf('creature:noticed') !== -1,
+       'B2  turning toward it is what notices it — no click, no key');
+    ck(events.indexOf('creature:responded') !== -1,
+       'B2b and being noticed is answered');
+
+    const trail = await page.evaluate(() => window.vihuEtherLife.trail());
+    if (storyCount > 0) {
+      ck(!!trail && trail.target.kind === 'story',
+         'B3  the whale\'s breath leads to a Story', trail && trail.target.id);
+      ck(!!trail && trail.motes >= 7, 'B3b a real trail, not a hint',
+         trail && trail.motes + ' motes');
+      const activity = await page.evaluate(() =>
+        window.vihuEtherDiscovery.current());
+      ck(!!activity && activity.id === 'follow-the-whale',
+         'B4  the activity framework carries it', activity && activity.id);
+
+      // FOLLOW IT: turn until the Story it names is in front of us.
+      const followed = await centreOn(page, () => {
+        const t = window.vihuEtherLife.trail();
+        if (!t) return null;
+        const u = window.vihuPlanetUniverse;
+        const e = u.stories.all().find((s) => s.id === t.target.id);
+        return e ? { x: e.screenX, y: e.screenY } : null;
+      }, 1.0);
+
+      await page.waitForFunction(() =>
+        window.__lifeEvents.some((e) => e[0] === 'trail:found'),
+        null, { timeout: 10000 }).catch(() => {});
+      const found = await page.evaluate(() => ({
+        found: window.__lifeEvents.some((e) => e[0] === 'trail:found'),
+        activity: window.vihuEtherDiscovery.current()
+      }));
+      ck(found.found, 'B5  following the trail finds the Story', 'followed=' + followed);
+      ck(found.activity === null, 'B5b and the discovery completes — one at a time');
+    } else {
+      fail('B3  the whale\'s breath leads to a Story', 'no Spirits in the universe to lead to');
+    }
+
+    await page.screenshot({ path: path.join(SHOTS, 'b-followed.png') });
+    ck(page.errors.length === 0, 'B6  zero page errors', page.errors[0]);
+    await context.close();
+  }
+
+  // =================================================================
+  // C. THE WHALE, TOUCHED — the other way a child notices it — and the
+  // WONDER: what a trail leads to when no Story is eligible. The
+  // composer seam is overridden through its own public surface, which
+  // is exactly what a future activity would do.
+  // =================================================================
+  console.log('\nC. TOUCHED, AND LED TO A WONDER');
+  {
+    const { context, page } = await freshPage();
+    await page.goto(BASE + '/index.html');
+    await crossThreshold(page);
+    await page.waitForFunction(() => !!window.vihuEtherLife, null, { timeout: 8000 });
+
+    await page.evaluate(() => {
+      window.__lifeEvents = [];
+      ['creature:noticed', 'creature:responded', 'trail:begun', 'trail:found']
+        .forEach((e) => window.vihuEtherLife.on(e, (p) => window.__lifeEvents.push([e, p])));
+      // A wonder, a good turn away from wherever the child is looking.
+      window.vihuEtherLife.setComposer(() => {
+        const u = window.vihuPlanetUniverse;
+        const cam = u.camera.offsetFor(u.ether.depth.stories);
+        return {
+          kind: 'wonder', id: null,
+          x: u.ether.viewWidth * 0.5 - cam.x + 900,
+          y: u.ether.viewHeight * 0.5 - cam.y + 260
+        };
+      });
+      window.vihuEtherLife.summon('whale');
+    });
+
+    // Wait for it to swim into reach of a finger, then touch it.
+    await page.waitForFunction(() => {
+      const a = window.vihuEtherLife.active();
+      return a && a.screen.x > 120 && a.screen.x < 1320 &&
+             a.screen.y > 80 && a.screen.y < 820;
+    }, null, { timeout: 20000 });
+    const spot = await page.evaluate(() => window.vihuEtherLife.active().screen);
+    await page.mouse.click(spot.x, spot.y);
+
+    await page.waitForFunction(() =>
+      window.__lifeEvents.some((e) => e[0] === 'trail:begun'),
+      null, { timeout: 6000 }).catch(() => {});
+    const touched = await page.evaluate(() => ({
+      noticed: window.__lifeEvents.some((e) => e[0] === 'creature:noticed'),
+      trail: window.vihuEtherLife.trail()
+    }));
+    ck(touched.noticed, 'C1  touching the whale notices it too');
+    ck(!!touched.trail && touched.trail.target.kind === 'wonder',
+       'C2  with no Story to lead to, the trail leads to a wonder');
+
+    // Follow to the wonder and watch the sky answer.
+    await centreOn(page, () => {
+      const t = window.vihuEtherLife.trail();
+      if (!t) return null;
+      const u = window.vihuPlanetUniverse;
+      const cam = u.camera.offsetFor(u.ether.depth.stories);
+      const wrap = (v, span, c) => v - Math.round((v - c) / span) * span;
+      return {
+        x: wrap(t.target.x + cam.x, u.ether.width, u.ether.viewWidth * 0.5),
+        y: wrap(t.target.y + cam.y, u.ether.height, u.ether.viewHeight * 0.5)
+      };
+    }, 1.0);
+    await page.waitForFunction(() =>
+      window.__lifeEvents.some((e) => e[0] === 'trail:found'),
+      null, { timeout: 10000 }).catch(() => {});
+    const found = await page.evaluate(() =>
+      window.__lifeEvents.some((e) => e[0] === 'trail:found'));
+    ck(found, 'C3  following it finds the wonder — discovery without a single Story');
+
+    // The bloom is drawn at the wonder's place: light where there was
+    // nothing, and nothing to collect.
+    await page.waitForTimeout(1600);
+    const bloom = await page.evaluate(() => {
+      const t = window.vihuEtherLife.trail();
+      if (!t) return { lit: -1 };
+      const u = window.vihuPlanetUniverse;
+      const cam = u.camera.offsetFor(u.ether.depth.stories);
+      const wrap = (v, span, c) => v - Math.round((v - c) / span) * span;
+      const x = wrap(t.target.x + cam.x, u.ether.width, u.ether.viewWidth * 0.5);
+      const y = wrap(t.target.y + cam.y, u.ether.height, u.ether.viewHeight * 0.5);
+      const c = document.querySelector('.vp-ether-life');
+      const ctx = c.getContext('2d');
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const px = Math.max(0, Math.min(c.width - 160, Math.round(x * dpr) - 80));
+      const py = Math.max(0, Math.min(c.height - 160, Math.round(y * dpr) - 80));
+      const d = ctx.getImageData(px, py, 160, 160).data;
+      let lit = 0;
+      for (let i = 3; i < d.length; i += 4) if (d[i] > 8) lit++;
+      return { lit };
+    });
+    ck(bloom.lit > 20, 'C4  and the sky visibly answers — a small being of stars blooms',
+       bloom.lit + ' lit px');
+
+    await page.screenshot({ path: path.join(SHOTS, 'c-wonder.png') });
+    ck(page.errors.length === 0, 'C5  zero page errors', page.errors[0]);
+    await context.close();
+  }
+
+  // =================================================================
+  // D. NAVIGATION — the keyboard has always worked; the mouse can now
+  // also GRAB the sky. And a drag is never mistaken for a tap.
+  // =================================================================
+  console.log('\nD. NAVIGATION');
+  {
+    const { context, page } = await freshPage();
+    await page.goto(BASE + '/index.html');
+    await crossThreshold(page);
+    await page.waitForFunction(() => !!window.vihuPlanetUniverse, null, { timeout: 8000 });
+    // Let the arrival turn finish so it cannot be mistaken for input.
+    await page.waitForTimeout(7000);
+
+    const yaw0 = await page.evaluate(() => window.vihuPlanetUniverse.viewpoint().yaw);
+    await page.keyboard.down('ArrowRight');
+    await page.waitForTimeout(600);
+    await page.keyboard.up('ArrowRight');
+    const yaw1 = await page.evaluate(() => window.vihuPlanetUniverse.viewpoint().yaw);
+    ck(Math.abs(yaw1 - yaw0) > 0.1, 'D1  arrow keys turn the universe',
+       (yaw1 - yaw0).toFixed(3) + ' rad');
+
+    // The mouse drag: press the SKY — a spot where the topmost thing
+    // really is the universe, not a Spirit or a control — pull, let go.
+    async function skySpot() {
+      return page.evaluate(() => {
+        const cands = [[220, 220], [1220, 220], [220, 680], [1220, 680], [720, 430]];
+        for (const c of cands) {
+          const el = document.elementFromPoint(c[0], c[1]);
+          // The topmost sky element is the universe root itself (its
+          // canvases decline the pointer); either counts as sky.
+          if (el && (el.tagName === 'CANVAS' ||
+              (el.className || '').indexOf('vp-universe') !== -1)) {
+            return { x: c[0], y: c[1] };
+          }
+        }
+        return { x: 220, y: 220 };
+      });
+    }
+    const s1 = await skySpot();
+    await page.mouse.move(s1.x, s1.y);
+    await page.mouse.down();
+    for (let i = 1; i <= 10; i++) await page.mouse.move(s1.x - i * 22, s1.y);
+    await page.mouse.up();
+    await page.waitForTimeout(200);
+    const yaw2 = await page.evaluate(() => window.vihuPlanetUniverse.viewpoint().yaw);
+    ck(Math.abs(yaw2 - yaw1) > 0.1, 'D2  dragging with the mouse pulls the sky',
+       (yaw2 - yaw1).toFixed(3) + ' rad');
+
+    // A drag must never be read as a tap. Open a Spirit, drag the sky,
+    // and the Spirit stays open; a plain tap on the sky closes it —
+    // the distinction is the whole safety of the gesture.
+    await page.waitForFunction(() =>
+      window.vihuPlanetUniverse.stories.count() > 0, null, { timeout: 20000 })
+      .catch(() => {});
+    const hasStories = await page.evaluate(() => window.vihuPlanetUniverse.stories.count() > 0);
+    if (hasStories) {
+      await page.evaluate(() => {
+        const u = window.vihuPlanetUniverse;
+        // `focus:closing` is the honest signal: isOpen() stays true
+        // through the whole return animation, so polling it after a
+        // drag can only measure the animation's timing, not whether
+        // the drag closed anything. Measured: with the suppression
+        // reverted the isOpen() version still passed.
+        window.__closings = 0;
+        u.on('focus:closing', () => { window.__closings++; });
+        u.focus.open(u.stories.all()[0].id);
+      });
+      await page.waitForTimeout(1200);
+      const s2 = await skySpot();
+      await page.mouse.move(s2.x, s2.y);
+      await page.mouse.down();
+      for (let i = 1; i <= 8; i++) await page.mouse.move(s2.x + i * 20, s2.y);
+      await page.mouse.up();
+      await page.waitForTimeout(400);
+      const afterDrag = await page.evaluate(() => window.__closings);
+      ck(afterDrag === 0, 'D3  a drag that ends on the sky never closes what a child is looking at',
+         afterDrag + ' focus:closing');
+      await page.mouse.click(s2.x, s2.y);
+      await page.waitForTimeout(400);
+      const afterTap = await page.evaluate(() => window.__closings);
+      ck(afterTap > 0, 'D3b while a plain tap on the sky still does',
+         afterTap + ' focus:closing');
+    } else {
+      fail('D3  drag/tap distinction', 'no Spirits to test against');
+    }
+
+    ck(page.errors.length === 0, 'D4  zero page errors', page.errors[0]);
+    await context.close();
+  }
+
+  // =================================================================
+  // E. REDUCED MOTION — a creature crossing the sky is unrequested
+  // motion, so none ever crosses it. The same answer the Ambient
+  // System gives for shooting stars.
+  // =================================================================
+  console.log('\nE. REDUCED MOTION');
+  {
+    const { context, page } = await freshPage({ reducedMotion: 'reduce' });
+    await page.goto(BASE + '/index.html');
+    await crossThreshold(page);
+    await page.waitForFunction(() => !!window.vihuEtherLife, null, { timeout: 8000 })
+      .catch(() => {});
+    const quiet = await page.evaluate(() => ({
+      life: !!window.vihuEtherLife,
+      quiet: window.vihuEtherLife && window.vihuEtherLife.quiet,
+      canvas: !!document.querySelector('.vp-ether-life'),
+      summoned: window.vihuEtherLife ? window.vihuEtherLife.summon('whale') : 'absent'
+    }));
+    ck(quiet.life && quiet.quiet === true && !quiet.canvas && quiet.summoned === null,
+       'E1  under reduced motion the layer mounts inert — no canvas, no creatures, ever');
+    ck(page.errors.length === 0, 'E2  zero page errors', page.errors[0]);
+    await context.close();
+  }
+
+  await browser.close();
+
+  console.log('\n' + (failed ? 'FAILED' : 'PASSED') + ' — ' +
+    passed + ' passed, ' + failed + ' failed');
+  if (failures.length) failures.forEach((f) => console.log('  · ' + f));
+  process.exit(failed ? 1 : 0);
+})().catch((e) => { console.error(e); process.exit(1); });

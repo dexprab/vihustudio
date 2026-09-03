@@ -8,6 +8,8 @@
 //
 //   Mouse   · moving toward the edges of the screen turns the universe
 //             in that direction. The nearer the edge, the faster.
+//             Dragging the sky turns it directly, exactly as a finger
+//             does — grab the night and pull it past.
 //   Keyboard· the arrow keys turn it.
 //   Touch   · dragging turns it directly, one finger, one to one.
 //
@@ -158,7 +160,93 @@
     }
     function onTouchEnd() { drag = null; }
 
+    // ---------- dragging with a mouse ----------
+    //
+    // The same gesture the touch path has always had, for a hand
+    // holding a mouse: press on the sky and pull it. Edge-steering
+    // stays — it is how the universe is turned without committing a
+    // hand — but a drag is the direct, discoverable form of the same
+    // sentence, and a child who tries to grab the night should find
+    // that it comes.
+    //
+    // Three rules keep it from breaking what already works:
+    //   · it starts only on the sky, never on a Story, a button or a
+    //     field — a press on something is that something's;
+    //   · edge-steering is suspended WHILE dragging, or the two would
+    //     both feed yaw and the universe would fight the hand;
+    //   · a real drag eats the click that follows it. Without that, a
+    //     drag that happens to end over a Spirit would open it — the
+    //     exact accidental steering the dead zone exists to prevent,
+    //     in the other direction.
+    //
+    // pointerType 'touch' is left to the touch handlers above: modern
+    // browsers fire pointer events for fingers too, and two paths
+    // turning the camera for one finger would double every drag.
+    var mouseDrag = null;
+    var swallowClickUntil = 0;
+    var DRAG_STARTS_AT = 6;   // px of travel before a press is a drag
+
+    // The press is TRACKED even while turning is suspended (a Spirit
+    // being met disables the traveller). The camera never moves then —
+    // update() and the move handler both honour `enabled` — but the
+    // gesture still has to be recognised as a drag, or the click the
+    // browser fires at its end would land on the sky and close the
+    // very story the child is looking at. A drag is not a tap, whether
+    // or not the universe was free to follow it.
+    function onPointerDown(ev) {
+      if (ev.pointerType === 'touch') return;
+      if (ev.button !== 0) return;
+      var t = ev.target;
+      if (t && t.closest &&
+          t.closest('.vp-story, button, a, ' + TYPING)) return;
+      mouseDrag = { x: ev.clientX, y: ev.clientY, moved: 0, id: ev.pointerId };
+      // Capture, so a drag that leaves the window keeps its grip and
+      // its release is never missed.
+      try { root.setPointerCapture(ev.pointerId); } catch (e) {}
+    }
+
+    function onPointerDragMove(ev) {
+      if (!mouseDrag || ev.pointerId !== mouseDrag.id) return;
+      var dx = ev.clientX - mouseDrag.x;
+      var dy = ev.clientY - mouseDrag.y;
+      mouseDrag.x = ev.clientX;
+      mouseDrag.y = ev.clientY;
+      mouseDrag.moved += Math.abs(dx) + Math.abs(dy);
+      if (mouseDrag.moved <= DRAG_STARTS_AT) return;
+      if (!enabled) return;   // recognised as a drag, but the universe holds still
+      // Dragging right pulls the universe right — the sky moves with
+      // the hand, not against it. Same maths as the touch path.
+      camera.look(-(dx / Math.max(1, ether.viewWidth)) * Math.PI * 2 * 0.5,
+                  -(dy / Math.max(1, ether.viewHeight)) * Math.PI * 2 * 0.5);
+      still = 0;
+    }
+
+    function onPointerUp(ev) {
+      if (!mouseDrag || ev.pointerId !== mouseDrag.id) return;
+      if (mouseDrag.moved > DRAG_STARTS_AT) {
+        // Time-bounded rather than a bare flag: if the browser never
+        // delivers the click (released off-window), a stale flag must
+        // not eat the NEXT tap on a Story.
+        swallowClickUntil = Date.now() + 300;
+      }
+      try { root.releasePointerCapture(ev.pointerId); } catch (e) {}
+      mouseDrag = null;
+    }
+
+    function onClickCapture(ev) {
+      if (Date.now() < swallowClickUntil) {
+        swallowClickUntil = 0;
+        ev.stopPropagation();
+        ev.preventDefault();
+      }
+    }
+
     root.addEventListener('pointermove', onPointerMove);
+    root.addEventListener('pointerdown', onPointerDown);
+    root.addEventListener('pointermove', onPointerDragMove);
+    root.addEventListener('pointerup', onPointerUp);
+    root.addEventListener('pointercancel', onPointerUp);
+    root.addEventListener('click', onClickCapture, true);
     root.addEventListener('pointerleave', onPointerLeave);
     root.addEventListener('touchstart', onTouchStart, { passive: true });
     root.addEventListener('touchmove', onTouchMove, { passive: false });
@@ -180,7 +268,11 @@
 
       var yaw = 0, pitch = 0;
 
-      if (pointer.inside) {
+      // A hand that is dragging the sky is already steering it; the
+      // edge zones stand down until it lets go.
+      var dragging = mouseDrag && mouseDrag.moved > DRAG_STARTS_AT;
+
+      if (pointer.inside && !dragging) {
         yaw += steer(pointer.x) * EDGE_YAW;
         pitch += steer(pointer.y) * EDGE_PITCH;
       }
@@ -206,6 +298,11 @@
       isEnabled: function () { return enabled; },
       destroy: function () {
         root.removeEventListener('pointermove', onPointerMove);
+        root.removeEventListener('pointerdown', onPointerDown);
+        root.removeEventListener('pointermove', onPointerDragMove);
+        root.removeEventListener('pointerup', onPointerUp);
+        root.removeEventListener('pointercancel', onPointerUp);
+        root.removeEventListener('click', onClickCapture, true);
         root.removeEventListener('pointerleave', onPointerLeave);
         root.removeEventListener('touchstart', onTouchStart);
         root.removeEventListener('touchmove', onTouchMove);

@@ -2472,6 +2472,19 @@ const VIHUPLANET_CANON = {
         "The making itself can be watched again: the way a creation came to be, played as its own small film.",
         "None of this moves the creation out of VihuPlanet. What leaves is a window onto it; the creation stays its maker's, where it was made."
       ]
+    },
+    {
+      "key": "the-living-ether",
+      "title": "The Living Ether",
+      "truths": [
+        "The Ether can be looked around. The Traveller stands at the centre of it and never moves; the whole universe turns around them, and turning far enough comes back to where it began.",
+        "Nothing in the Ether explains itself. The universe teaches by doing: something moves, something waits a little out of view, and looking toward it is how it is found.",
+        "The Ether has life of its own, apart from any Story. Vast, gentle beings made of stars sometimes pass through it — a whale, a drifting jelly of light, a swift bird of stars. They belong to the Ether and to nobody; they are rare on purpose, and a visit when one passes is a lucky one.",
+        "The beings of the Ether never speak, never teach, and are never anyone's Companion. A Companion belongs with its own Creator; a being of the Ether is simply part of the sky.",
+        "A being that is noticed may answer. The whale, noticed, breathes out a trail of small lights that leads toward something worth finding — a Story drifting where nobody has looked, or a small wonder of the sky's own. Following is just looking along the trail; nothing has to be caught.",
+        "A discovery in the Ether is an invitation, never a task. Nothing is scored, counted, collected or owed; what a Traveller found this visit is not remembered against the next one.",
+        "Every discovery leads back toward making. What the Ether shows a Traveller is that someone made these things — and the thought it hopes to leave is 'I could make something too.'"
+      ]
     }
   ]
 };
