@@ -1206,9 +1206,27 @@ const CompanionChat = (function () {
             sounding = CompanionSpeak.isSpeaking();
           }
         } catch (e) {}
+        // R5.2 — AND A VOICE STILL BEING FETCHED IS STILL BEING MADE.
+        // Reported by the owner: the first (short) reply spoke and the
+        // second (a long paragraph, slow to generate) went silent, with
+        // no console note. Measured: the voice bell rang at 6s with the
+        // audio still in flight — not yet SOUNDING — so this branch
+        // cancelled the preparation, and the bytes arrived to a moved
+        // token and were dropped, deliberately and silently. The bell's
+        // whole job is already done here (the words are up, the field is
+        // back), so cancelling the fetch buys the child nothing and
+        // costs them the voice — _sayLate exists precisely so a late
+        // voice joins. 'preparing' is a reliable signal: stop() and
+        // every resolution path reset it, so it is true only while a
+        // bounded fetch is genuinely in flight.
+        let pending = false;
+        try {
+          pending = !!(typeof CompanionSpeak !== 'undefined'
+            && CompanionSpeak.isPreparing && CompanionSpeak.isPreparing());
+        } catch (e) {}
         _busy = false;
         if (!sounding) {
-          _aloudStop();
+          if (!pending) _aloudStop();
           _phase('ready');
           _pose('conversation-answered');
         }

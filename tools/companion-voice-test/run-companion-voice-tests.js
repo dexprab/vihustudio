@@ -139,14 +139,17 @@ async function browserRun() {
   // the retry and the persistent-failure cases are both drivable;
   // `voiceMs` sets the line's real length; `voiceCount` is the truth
   // about how many requests a turn cost.
-  const voice = { fails: 0, ms: 450, count: 0 };
-  await page.route('**/functions/v1/voice-speak', (r) => {
+  const voice = { fails: 0, ms: 450, count: 0, delay: 0 };
+  await page.route('**/functions/v1/voice-speak', async (r) => {
     voice.count++;
     if (voice.fails > 0) {
       voice.fails--;
       r.fulfill({ status: 500, contentType: 'application/json', body: '{"ok":false}' });
       return;
     }
+    // `delay` is the provider taking its time — the V7 window, where a
+    // generation outlives the voice bell but not the fetch bound.
+    if (voice.delay) await new Promise((res) => setTimeout(res, voice.delay));
     r.fulfill({ status: 200, contentType: 'audio/wav', body: wav(voice.ms) });
   });
 
@@ -397,7 +400,33 @@ async function browserRun() {
      'V6  THE ANSWER PLAYED THROUGH the Director\'s own line landing mid-sentence — bubbles show, the channel holds',
      JSON.stringify(ambient));
 
-  ck(pageErrors.length === 0, 'V7  zero page errors across the whole run',
+  // =================================================================
+  section('V7. A GENERATION SLOWER THAN THE VOICE BELL IS STILL HEARD (R5.2)');
+  // =================================================================
+  // The owner's own case: the first (short) reply spoke and the second
+  // (a long paragraph, slow on the provider) went silent with no
+  // console note. The voice bell rang at VOICE_PREPARE_MS with the
+  // audio still IN FLIGHT — not yet sounding — and the give-up branch
+  // cancelled the pending preparation, so the bytes arrived to a moved
+  // token and were dropped. Every earlier V-check answered the voice
+  // route instantly, which is why thirteen greens never met this
+  // window. The route now takes its time on purpose: longer than the
+  // bell (6000), shorter than the fetch bound (15000). The words must
+  // still go up on the hold, the field must come back, and the voice
+  // must JOIN LATE and play through — _sayLate is the mechanism.
+  // Proved by reverting the isPreparing guard in the give-up branch:
+  // sounded comes back false.
+  voice.delay = 7200;
+  const late = await spokenTurn('who are you?', 16000);
+  voice.delay = 0;
+  ck(late.sounded && late.playedMs >= 300 && late.said.length > 0,
+     'V7  the words came on the hold, and the voice joined late and was heard',
+     JSON.stringify({ sounded: late.sounded, playedMs: late.playedMs }));
+  ck(late.requests === 1 && late.tts === 0,
+     'V7b one request, the Companion\'s own voice, and never a browser-TTS stand-in',
+     late.requests + ' request(s), ' + late.tts + ' tts');
+
+  ck(pageErrors.length === 0, 'V8  zero page errors across the whole run',
      pageErrors.slice(0, 3).join(' | ') || 'clean');
 
   await browser.close();

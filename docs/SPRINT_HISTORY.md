@@ -11658,7 +11658,34 @@ all three behaviours) · ether-encounter 94 · conversation 135 —
 green. Rows already logged by 0753 keep standing; mark the warm ones
 wont-fix on the desk.
 
-## Build 0758 — Ether Traveller Experience: the first 20 seconds
+## Build 0758 — R5.2: a voice still being fetched is still being made
+
+Reported by the owner with the decisive detail: the FIRST (short)
+reply spoke and the SECOND (a long paragraph) went silent, with the
+mute confirmed 'on' and not one [VihuVoice] line in the console —
+which mattered, because every real failure on that path prints one.
+The one noteless path was the cut itself: the words go up on the hold
+at 2.5s, the voice bell rings at VOICE_PREPARE_MS (6s), and a long
+line on eleven_v3 is still IN FLIGHT then — not yet sounding — so
+R5's "only a voice that is not actually sounding is stopped" branch
+cancelled the pending preparation, and the bytes arrived to a moved
+token and were dropped, deliberately and silently. Short replies
+generate under 6s and spoke; long ones died at the bell, every time.
+The R5 rule's word "sounding" was too narrow: a voice being FETCHED
+is also genuinely being made, the bell's whole job (words up, field
+back) is already done at that moment, and _sayLate exists precisely
+so a late voice joins. Both give-up branches (Studio and Ether) now
+leave a PENDING preparation alone — CompanionSpeak.isPreparing() is a
+reliable signal, since stop() and every resolution path reset it —
+and stop only what is neither sounding nor pending. V7/V7b join the
+voice suite with the route taking 7.2s on purpose (every earlier
+check answered instantly, which is why thirteen greens never met this
+window): words on the hold, one request, no browser TTS, and the
+voice joins late and plays through. Proved by reverting the guard —
+sounded:false, the owner's exact silence. companion-voice 15 ·
+rhythm 68 · conversation 135 · chat 256 · ether-encounter 94 — green.
+
+## Build 0759 — Ether Traveller Experience: the first 20 seconds
 
 The Ether stops being a place a fresh Traveller can enter and not know
 what to do with. Two new page-level modules plug into the running
@@ -11705,3 +11732,4 @@ wonder bloom, navigation, reduced motion) · regressions green:
 ether-encounter 94 · companion-context 90 · companion-canon 94 ·
 companion-chat 256 · companion-gap 29 · ether-share 21 ·
 social-ether-identity 20 · ether-voice 8.
+
