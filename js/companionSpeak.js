@@ -97,6 +97,48 @@ const CompanionSpeak = (function () {
     try { return window.speechSynthesis.getVoices() || []; } catch (e) { return []; }
   }
 
+  // R5 — the platform path's two known mid-sentence killers, guarded
+  // where that path is still reachable (a Companion with NO configured
+  // voice): Chrome garbage-collects an unreferenced utterance, which
+  // silences it and swallows its events, so the current one is HELD
+  // here; and Chrome stops long utterances after ~15 seconds unless
+  // resume() is nudged, so a slow tick nudges it while speech runs.
+  // resume() on speech that is not paused is a no-op.
+  let _utter = null;
+  let _tick = null;
+  function _tickStart() {
+    _tickStop();
+    _tick = setInterval(function () {
+      try { window.speechSynthesis.resume(); } catch (e) {}
+    }, 4000);
+  }
+  function _tickStop() {
+    if (_tick) { clearInterval(_tick); _tick = null; }
+  }
+
+  // R5 — A TRANSIENT FAILURE MUST NOT CHANGE WHO IS SPEAKING. Where
+  // this Companion HAS a configured voice, the browser's own voice is
+  // never used in its place: a different voice mid-conversation is a
+  // broken character, not a fallback — and the platform voice brings
+  // its own mid-sentence cuts with it. The explicit quiet failure
+  // (words on screen, no sound, the normal voice-failed handling) is
+  // the honest outcome, and the caller's own retry path covers the
+  // next turn. The platform fallback survives ONLY for a Companion
+  // with no configured voice at all — the case it has served since
+  // 1N.3 (Decision 48). canSpeak() reads the local registry, so this
+  // answers CONFIGURATION, not the network's mood.
+  function _mayFallBack(companionId) {
+    try {
+      if (!companionId || typeof VihuVoice === 'undefined' || !VihuVoice.canSpeak) {
+        return Promise.resolve(true);
+      }
+      return VihuVoice.canSpeak(companionId).then(
+        function (has) { return !has; },
+        function () { return true; }
+      );
+    } catch (e) { return Promise.resolve(true); }
+  }
+
   function _voicesReady() {
     return new Promise(function (resolve) {
       if (_voices().length) { resolve(true); return; }
@@ -138,11 +180,25 @@ const CompanionSpeak = (function () {
           if (pick) { u.voice = pick; u.lang = pick.lang || 'en-US'; }
         } catch (e) {}
         u.onstart = function () {
+          _tickStart();
           if (mine === _token && typeof onStart === 'function') { try { onStart(); } catch (e) {} }
           done(true);
         };
-        u.onerror = function () { if (mine === _token) _set('idle'); done(false); };
-        u.onend = function () { if (mine === _token) _set('idle'); done(true); };
+        u.onerror = function () {
+          _tickStop();
+          if (_utter === u) _utter = null;
+          if (mine === _token) _set('idle');
+          done(false);
+        };
+        u.onend = function () {
+          _tickStop();
+          if (_utter === u) _utter = null;
+          if (mine === _token) _set('idle');
+          done(true);
+        };
+        // Held for the life of the speech — an unreferenced utterance
+        // is one Chrome may collect mid-sentence (R5).
+        _utter = u;
         try { window.speechSynthesis.speak(u); } catch (e) { done(false); return; }
         // IT NEVER STARTED. Not an error a child meets — the answer is
         // on screen and always was — but never reported as success.
@@ -250,25 +306,61 @@ const CompanionSpeak = (function () {
     };
 
     if (own && typeof own.then === 'function') {
-      const bounded = Promise.race([
-        own,
-        new Promise(function (resolve) { setTimeout(function () { resolve(false); }, OWN_VOICE_WAIT_MS); })
-      ]);
-      return bounded.then(function (got) {
+      const bound = function (p) {
+        return Promise.race([
+          p,
+          new Promise(function (resolve) { setTimeout(function () { resolve(false); }, OWN_VOICE_WAIT_MS); })
+        ]);
+      };
+      const playFn = function () {
+        _set('speaking');
+        tell(h.onSpeaking);
+        return VihuVoice.speak(req).then(function (spoke) {
+          if (mine !== _token) return false;
+          // The sound has ENDED (speak resolves at the audio's own
+          // end), so the state returns to idle on success too — left
+          // at 'speaking' it would tell every R5 guard a finished
+          // answer was still being made.
+          _set('idle');
+          return !!spoke;
+        }, function () { if (mine === _token) _set('idle'); return false; });
+      };
+      // R5 — the honest exits, in order: the Companion's own voice; the
+      // SAME voice once more (a transient provider hiccup is the
+      // ordinary failure, and _generate keeps no negative cache, so a
+      // retry is a genuine second attempt); and only where NO voice is
+      // configured for this Companion, the platform fallback. A
+      // configured voice that stays unreachable resolves null — the
+      // explicit quiet failure, never a different voice.
+      const noSwap = function () {
+        return _mayFallBack(companionId).then(function (may) {
+          if (mine !== _token) return null;
+          if (!may) { _set('idle'); return null; }
+          return platform().then(function (p) {
+            // A null here is final — nothing will ever call play, so
+            // the state must not be left at 'preparing' for a guard to
+            // trip over later.
+            if (mine === _token && !p) _set('idle');
+            return p;
+          });
+        });
+      };
+      return bound(own).then(function (got) {
         if (mine !== _token) return null;
-        if (!got) return platform();
-        return function () {
-          _set('speaking');
-          tell(h.onSpeaking);
-          return VihuVoice.speak(req).then(function (spoke) {
-            if (mine !== _token) return false;
-            if (!spoke) _set('idle');
-            return !!spoke;
-          }, function () { if (mine === _token) _set('idle'); return false; });
-        };
+        if (got) return playFn;
+        let again = null;
+        try { again = VihuVoice.prepare(req); } catch (e) { again = null; }
+        if (!again || typeof again.then !== 'function') return noSwap();
+        return bound(again).then(function (got2) {
+          if (mine !== _token) return null;
+          return got2 ? playFn : noSwap();
+        }, function () {
+          if (mine !== _token) return null;
+          return noSwap();
+        });
       }, function () {
         if (mine !== _token) return null;
-        return platform();
+        return noSwap();
       });
     }
     return platform().then(function (p) {
@@ -345,20 +437,51 @@ const CompanionSpeak = (function () {
     };
 
     if (viaVoice && typeof viaVoice.then === 'function') {
-      const bounded = Promise.race([
-        viaVoice,
-        new Promise(function (resolve) { setTimeout(function () { resolve(false); }, OWN_VOICE_WAIT_MS); })
-      ]);
-      return bounded.then(function (spoke) {
+      const bound = function (p) {
+        return Promise.race([
+          p,
+          new Promise(function (resolve) { setTimeout(function () { resolve(false); }, OWN_VOICE_WAIT_MS); })
+        ]);
+      };
+      // R5 — the same honest exits ready() takes: the Companion's own
+      // voice, the SAME voice once more, and the platform fallback only
+      // where no voice is configured at all. A configured voice that
+      // stays unreachable ends quiet — never a different voice.
+      const ownOnce = function () {
+        try {
+          if (!VihuVoice.prepare) return VihuVoice.speak({ characterId: companionId, text: words });
+          return VihuVoice.prepare({ characterId: companionId, text: words })
+            .then(function (ok) {
+              if (mine !== _token) return false;
+              if (!ok) return false;
+              _set('speaking');
+              tell(h.onSpeaking);
+              return VihuVoice.speak({ characterId: companionId, text: words });
+            });
+        } catch (e) { return Promise.resolve(false); }
+      };
+      const noSwap = function () {
+        return _mayFallBack(companionId).then(function (may) {
+          if (mine !== _token) return false;
+          if (may) return fallback();
+          _set('idle');
+          return false;
+        });
+      };
+      return bound(viaVoice).then(function (spoke) {
         if (mine !== _token) return false;
-        if (spoke) { return true; }
-        // The Companion has no voice configured, or no session to fetch
-        // one with. The browser's own is the fallback rather than
-        // nothing at all.
-        return fallback();
+        if (spoke) { _set('idle'); return true; }
+        return bound(ownOnce()).then(function (spoke2) {
+          if (mine !== _token) return false;
+          if (spoke2) { _set('idle'); return true; }
+          return noSwap();
+        }, function () {
+          if (mine !== _token) return false;
+          return noSwap();
+        });
       }).catch(function () {
         if (mine !== _token) return false;
-        return fallback();
+        return noSwap();
       });
     }
     return fallback();
@@ -372,6 +495,8 @@ const CompanionSpeak = (function () {
    */
   function stop() {
     _token++;
+    _tickStop();
+    _utter = null;
     try { if (typeof VihuVoice !== 'undefined' && VihuVoice.stop) VihuVoice.stop(); } catch (e) {}
     // ONLY CANCEL SOMETHING THAT IS HAPPENING. Cancelling an empty queue
     // and then speaking is a long-standing Chrome quirk that leaves the

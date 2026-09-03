@@ -806,6 +806,18 @@
     _lastRecorded = null;
   }
 
+  /**
+   * Is a sound ACTUALLY being made right now? R5 — the guards that
+   * keep a bell, a re-render or an ambient line from cutting a voice
+   * mid-sentence need the ground truth, not a state flag that could
+   * drift from it: the element itself, playing and not yet ended.
+   */
+  function isPlaying() {
+    try {
+      return !!(_current && !_current.paused && !_current.ended);
+    } catch (e) { return false; }
+  }
+
   var _lastRecorded = null;
 
   function _play(src) {
@@ -963,6 +975,7 @@
     speak: speak,
     prepare: prepare,
     stop: stop,
+    isPlaying: isPlaying,
     canSpeak: canSpeak,
     voiceOf: voiceOf,
     emotions: emotions,

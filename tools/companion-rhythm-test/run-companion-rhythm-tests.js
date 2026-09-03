@@ -339,7 +339,10 @@ const noComments = turnSrc.replace(/\/\*[\s\S]*?\*\//g, '')
     // whichever one this stub happened to land on. The first version of
     // this sat exactly ON the threshold and raced it.
     VihuVoice.prepare = function () { return new Promise((r) => setTimeout(() => r(true), 1200)); };
-    VihuVoice.speak = function () { return new Promise((r) => setTimeout(() => r(true), 2500)); };
+    // 4000ms, so the third photograph (nominal 4600ms, plus two
+    // screenshots' real overhead) lands INSIDE the speaking window
+    // rather than on its end boundary — traced riding the edge.
+    VihuVoice.speak = function () { return new Promise((r) => setTimeout(() => r(true), 4000)); };
     window.__rf4 = window.fetch;
     window.fetch = function (u) {
       if (String(u).indexOf('companion-chat') !== -1) {
@@ -372,7 +375,7 @@ const noComments = turnSrc.replace(/\/\*[\s\S]*?\*\//g, '')
     window.fetch = window.__rf4;
     CompanionChat.setVoiceOn(false);
   });
-  await page.waitForTimeout(2600);
+  await page.waitForTimeout(4100);
   const shotReady = await grab('5-ready', 200);
   ck(shotThinking.state === 'thinking' && shotPreparing.state === 'voice-preparing' &&
      shotSpeaking.state === 'speaking' && shotReady.state === 'ready',

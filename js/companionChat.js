@@ -931,6 +931,20 @@ const CompanionChat = (function () {
     // R2 — ONE PRESS, ONE TURN. A second press while the first is in
     // flight is not a second question.
     if (_busy) return;
+    // R5 — AND A VOICE STILL SPEAKING IS STILL THE TURN. The field is
+    // locked while the Companion is processing or speaking, so a new
+    // send can never cut the current answer off mid-sentence and
+    // replace it. This also covers the one window _busy cannot see: a
+    // voice that joined late, after the hold rang and the field was
+    // released. GROUND TRUTH, not the state flag: isSpeaking means a
+    // sound is actually being made — a stale 'preparing' from a
+    // dropped turn must never lock the child out (measured: an
+    // isBusy() guard here deadlocked the field for the session).
+    try {
+      if (typeof CompanionSpeak !== 'undefined' && CompanionSpeak.isSpeaking && CompanionSpeak.isSpeaking()) return;
+      if (typeof VihuVoice !== 'undefined' && VihuVoice.isPlaying && VihuVoice.isPlaying()
+          && _els && _els.speak && _els.speak.getAttribute('data-speaking') === 'yes') return;
+    } catch (e) {}
     const els = _build();
     const said = els.input.value.trim();
     if (!said) return;
@@ -1064,7 +1078,13 @@ const CompanionChat = (function () {
 
   /** The words go up, and their sound starts in the same task. */
   function _reveal(turn, els, words, play, stillComing) {
-    _busy = false;
+    // R5 — INPUT STAYS LOCKED WHILE THE COMPANION IS SPEAKING. The
+    // field used to come back the moment the words went up, so a send
+    // mid-sentence cut the voice and replaced the answer — the exact
+    // "stops speaking unexpectedly" a child met. With a voice coming,
+    // the lock holds until play() settles; without one, the turn is
+    // the child's again right here.
+    if (!play) _busy = false;
     _pendingReveal = null;
     els.said.textContent = words;
     turn.shown();
@@ -1112,6 +1132,7 @@ const CompanionChat = (function () {
     _pose('conversation-speaking');
     if (_els && _els.speak) _els.speak.setAttribute('data-speaking', 'yes');
     play().then(function (spoke) {
+      _busy = false;
       if (_els && _els.speak) _els.speak.removeAttribute('data-speaking');
       _lastSpoke = !!spoke;
       if (turn !== _turn) return;
@@ -1168,9 +1189,26 @@ const CompanionChat = (function () {
         // hold's own bell rings first in every ordinary case; this is
         // the floor under it.
         if (_pendingReveal) { const r = _pendingReveal; _pendingReveal = null; try { r(); } catch (e) {} }
-        _aloudStop();
-        _phase('ready');
-        _pose('conversation-answered');
+        // R5 — A BELL NEVER CUTS A VOICE THAT IS GENUINELY BEING MADE.
+        // The ceilings exist to unstick the SURFACE — a play() that
+        // never started, a state that never settled — and the audio
+        // has its own natural end: play() resolves on 'ended' and
+        // finishes the turn itself. Stopping here was the mid-sentence
+        // cut. So the bell gives the field back and leaves the sound
+        // alone; only a voice that is NOT actually sounding is stopped.
+        let sounding = false;
+        try {
+          sounding = !!(typeof VihuVoice !== 'undefined' && VihuVoice.isPlaying && VihuVoice.isPlaying());
+          if (!sounding && typeof CompanionSpeak !== 'undefined' && CompanionSpeak.isSpeaking) {
+            sounding = CompanionSpeak.isSpeaking();
+          }
+        } catch (e) {}
+        _busy = false;
+        if (!sounding) {
+          _aloudStop();
+          _phase('ready');
+          _pose('conversation-answered');
+        }
       }
     });
   }

@@ -323,11 +323,26 @@ function LOOK() {
   // =================================================================
   console.log('\nTEST D — a refresh');
   // =================================================================
+  // R3 (build 0738) TURNED THIS AROUND, with the reason in place: the
+  // product owner amended Decision 23 — a refresh now KEEPS the child
+  // in the Studio (the tab's inside flag admits it), so "a refresh
+  // leaves entirely" stopped being true. The property this check
+  // protected survives by a different mechanism and is asserted
+  // directly: the arrival token lives in sessionStorage, a refresh
+  // keeps it, and the entry moment for a token already greeted is
+  // silent — the same visit is never re-greeted.
   await page.goto(BASE + '/studio.html');
+  await page.waitForFunction(() => typeof CompanionMoments !== 'undefined', null, { timeout: 20000 });
   await page.waitForTimeout(1400);
-  const afterRefresh = await page.evaluate(() => location.pathname);
-  ck(/index\.html$|\/$/.test(afterRefresh),
-     'D1  a refresh leaves the Studio entirely, so it cannot re-greet', afterRefresh);
+  const afterRefresh = await page.evaluate(() => ({
+    path: location.pathname,
+    decision: CompanionMoments.decide('entry'),
+  }));
+  ck(/studio\.html$/.test(afterRefresh.path)
+     && afterRefresh.decision.speak === false
+     && afterRefresh.decision.reason === 'already-acknowledged',
+     'D1  A REFRESH STAYS IN THE STUDIO (Decision 23, amended) AND IS NOT RE-GREETED — same tab, same arrival, silent',
+     JSON.stringify({ path: afterRefresh.path, reason: afterRefresh.decision.reason }));
 
   // A self-reload — the Home button — is the same arrival and is silent.
   await arrive(bonded, 'leafy');

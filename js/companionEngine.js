@@ -535,7 +535,20 @@
       // it for the rare line whose words carry a different feeling from
       // the pose.
       const mood=(opts&&opts.emotion)||this._state;
-      const voice=(!(opts&&opts.silent)) && who && window.VihuVoice && window.VihuVoice.prepare;
+      // R5 — AN AMBIENT LINE NEVER TALKS OVER A CONVERSATION. VihuVoice
+      // keeps one channel and a new line stops whatever holds it — right
+      // between two bubble lines, and exactly wrong while the Companion
+      // is answering a child out loud: a scripted remark would cut the
+      // answer mid-sentence. While the conversation's own voice is busy,
+      // a bubble line shows its words and says nothing.
+      let convBusy=false;
+      try{
+        // isSpeaking, not isBusy: only an answer actually SOUNDING
+        // holds the channel — a stale 'preparing' from a dropped turn
+        // must not silence the bubble voice for the session.
+        convBusy=!!(window.CompanionSpeak&&window.CompanionSpeak.isSpeaking&&window.CompanionSpeak.isSpeaking());
+      }catch(e){}
+      const voice=(!(opts&&opts.silent)) && !convBusy && who && window.VihuVoice && window.VihuVoice.prepare;
 
       // Nothing is ever going to be spoken — a silent line, no package,
       // no voice module. There is nothing to wait for, so the words go

@@ -782,7 +782,10 @@ const TravellerTalk = (function () {
   }
 
   function _reveal(turn, els, words, play, stillComing) {
-    _busy = false;
+    // R5 — INPUT STAYS LOCKED WHILE THE COMPANION IS SPEAKING, the
+    // same rule as the Studio surface: a send mid-sentence must never
+    // cut the voice and replace the answer.
+    if (!play) _busy = false;
     _pendingReveal = null;
     els.said.textContent = words;
     if (turn) turn.shown();
@@ -795,6 +798,7 @@ const TravellerTalk = (function () {
     }
     if (_els && _els.speak) _els.speak.setAttribute('data-speaking', 'yes');
     play().then(function () {
+      _busy = false;
       if (_els && _els.speak) _els.speak.removeAttribute('data-speaking');
       if (turn === _turn) { turn.done(); _phase('ready'); }
     });
@@ -831,7 +835,21 @@ const TravellerTalk = (function () {
         // every ordinary case; this is the floor under it.
         if (kind !== 'answer') {
           if (_pendingReveal) { const r = _pendingReveal; _pendingReveal = null; try { r(); } catch (e) {} }
-          _aloudStop();
+          // R5 — A BELL NEVER CUTS A VOICE THAT IS GENUINELY BEING
+          // MADE: the ceilings unstick the surface, and the audio has
+          // its own natural end — play() resolves on 'ended' and
+          // finishes the turn itself.
+          let sounding = false;
+          try {
+            sounding = !!(typeof VihuVoice !== 'undefined' && VihuVoice.isPlaying && VihuVoice.isPlaying());
+            if (!sounding && typeof CompanionSpeak !== 'undefined' && CompanionSpeak.isSpeaking) {
+              sounding = CompanionSpeak.isSpeaking();
+            }
+          } catch (e) {}
+          if (!sounding) _aloudStop();
+          _busy = false;
+          if (!sounding) _phase('ready');
+          return;
         }
         _busy = false;
         _phase('ready');
@@ -844,6 +862,13 @@ const TravellerTalk = (function () {
     if (!els || !_ctx) return;
     // ONE PRESS, ONE TURN.
     if (_busy) return;
+    // R5 — and a voice still speaking is still the turn (the window
+    // _busy cannot see: a voice that joined after the hold rang).
+    // Ground truth only — a stale 'preparing' from a dropped turn must
+    // never lock the field.
+    try {
+      if (typeof CompanionSpeak !== 'undefined' && CompanionSpeak.isSpeaking && CompanionSpeak.isSpeaking()) return;
+    } catch (e) {}
     const said = els.input.value.trim();
     if (!said) return;
     els.input.value = '';

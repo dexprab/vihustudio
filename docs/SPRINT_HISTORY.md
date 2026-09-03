@@ -11446,3 +11446,75 @@ to grep and diff — became the escaped form it always meant. social-sky
 68 · show-journey 76 · creation-home 84 · social-orbit 31 ·
 social-ether-identity 20 — all green. Server untouched; 0747's
 pending step stands (re-run migrations_social_sky.sql + verify).
+
+## Build 0751 — R5: the Companion's voice never stops unexpectedly
+
+Reported by the product owner as the one CRITICAL item in the
+consolidation brief: "during conversation, the Companion sometimes
+stops speaking unexpectedly or becomes silent mid-response." Traced to
+FIVE separate defects in the voice lifecycle, each matching one of his
+listed symptoms, each fixed at the mechanism and each proved by
+reverting. FIRST, the field unlocked the moment the words went up, so
+a send mid-sentence cut the playing voice and replaced the answer —
+"replaced by the next response", verbatim. Input is now locked while
+the Companion is processing OR speaking (his stated requirement, which
+amends Decision 50's early release): the reveal keeps the lock when a
+voice is coming and releases it when play() settles, and the send
+guard also reads GROUND TRUTH — VihuVoice.isPlaying(), the element
+itself — for the one window the flag cannot see, a voice that joined
+late. (The first draft guarded on isBusy() and deadlocked the field
+for the session on a stale 'preparing' from a dropped turn — a guard
+that reads a flag a dropped turn never clears; caught by the rhythm
+suite going red.) SECOND, the turn machine's bells called
+CompanionSpeak.stop(), so the 30-second speaking ceiling cut genuinely
+playing audio — "plays only the first part". A bell now frees the
+SURFACE and never the ears: audio that is actually sounding plays to
+its own natural end, and play()'s own resolution finishes the turn.
+THIRD, voiceReady() never cleared the six-second prepare bell, which
+could ring during the reveal beat and kill a voice a frame from
+playing — cleared now, unit-proved both ways. FOURTH, one transient
+ElevenLabs failure handed the line to the BROWSER voice — a different
+voice mid-conversation is a broken character, and Chrome cuts long
+platform utterances at ~15s anyway. The Companion's own voice now gets
+ONE genuine retry (no negative cache below, so it is a real second
+attempt), and where a voice IS configured the platform voice is never
+used in its place: the explicit quiet failure — words on screen, no
+sound, field returned — is the honest outcome. The platform fallback
+survives only for a Companion with NO configured voice (Decision 48's
+own case), and where it does run it is hardened against its two known
+mid-sentence killers (the GC'd utterance, the 15-second stall).
+FIFTH, an ambient Director line grabbed VihuVoice's one channel and
+_stopCurrent() cut the answer mid-sentence — an ambient bubble now
+shows its words and takes no voice while the conversation's answer is
+sounding. A sixth fix fell out of the fourth: the own-voice path never
+returned CompanionSpeak's state to idle after a SUCCESSFUL line —
+invisible while nothing read the state, fatal once the guards did.
+The Ether's travellerTalk got every fix the Studio surface got — one
+machine, both surfaces. THE ACCEPTANCE TEST IS A SUITE, with real
+audio: tools/companion-voice-test drives the real chat surface, the
+real turn machine and the real CompanionSpeak/VihuVoice stack against
+real WAV bytes served where the voice function stands, in a browser
+that actually plays them. Twenty-four consecutive exchanges across
+Leafy, Leo, Quill and Nimbus: every one audibly started AND played to
+its own end, the words never changed while their voice played, ONE
+voice request per turn, ZERO browser TTS. Then the failure modes,
+each proved by reverting its fix: the mid-speech send (cut+replaced on
+the old code, refused on this one), the bell (playedMs 81 on the old
+code — the cut, measured — full length on this one, a check
+strengthened after "ended" alone could not tell a cut from a finish),
+the one-500 retry heard in the same voice, the persistent failure
+ending explicit-quiet with the next turn speaking again, and the
+Director's own unconditional line landing mid-sentence with the
+answer playing through. companion-presence's D1 was stale since R3
+(it asserted a refresh leaves the Studio, which Decision 23's
+amendment ended) and was turned around with its reason in place: a
+refresh stays AND is not re-greeted — the arrival token survives in
+sessionStorage and the entry moment answers already-acknowledged.
+companion-voice 13 · companion-rhythm 68 (C7's photograph timing was
+riding the speak stub's end boundary — traced, the lifecycle was
+textbook; the fixture's speaking window widened) · companion-
+conversation 135 · companion-presence 90 · companion-parity 84 ·
+companion-knowledge 99 · ether-encounter 94 — all green. The rest of
+the consolidation brief (one My Sky flow, universal Back, three
+circles, star trails, Show/Gifts model, garden growth, guardrails) is
+build 0750, already shipped and suite-enforced.

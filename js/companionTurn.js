@@ -279,6 +279,13 @@ const CompanionTurn = (function () {
         if (!alive) return;
         mark('voiceReady');
         clear('hold');
+        // R5 — THE PREPARE BELL'S JOB IS DONE. The audio is in hand;
+        // leaving this timer running meant it could ring during the
+        // reveal beat — between ready and the first actual sound — and
+        // the surface's give-up handler would stop a voice that was a
+        // frame away from playing. Measured as one of the ways a
+        // Companion "stopped speaking unexpectedly".
+        clear('voice');
       },
 
       /** A sound is actually being made. */
