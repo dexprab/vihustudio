@@ -407,14 +407,25 @@ function sqlSection() {
                                                 meR.top + meR.height / 2 - cy)) : null,
         lines: document.querySelectorAll('.social-sky-lines line').length,
         strokes: document.querySelectorAll('.social-sky-lines ellipse').length,
-        trails: Array.from(document.querySelectorAll('.social-sky-lines g'))
+        trails: Array.from(document.querySelectorAll('.social-sky-lines g.is-chosen, .social-sky-lines g.is-far'))
           .map((g) => {
             const dots = Array.from(g.querySelectorAll('circle'));
             const mean = dots.reduce((a, c) => a + Math.hypot(
               Number(c.getAttribute('cx')) - 50, Number(c.getAttribute('cy')) - 50), 0)
               / Math.max(dots.length, 1);
             return { cls: g.getAttribute('class') || '', dots: dots.length,
-                     mean: Math.round(mean) };
+                     mean: Math.round(mean),
+                     stroked: dots.some((c) => c.getAttribute('stroke')) ||
+                              !!g.querySelector('path,line,ellipse,polyline') };
+          }),
+        bonds: Array.from(document.querySelectorAll('.social-sky-lines g.social-sky-bond'))
+          .map((g) => {
+            const path = g.querySelector('path');
+            const d = path ? (path.getAttribute('d') || '') : '';
+            const cs = getComputedStyle(path);
+            return { curved: /Q|C/.test(d), accents: g.querySelectorAll('circle').length,
+                     dash: cs.strokeDasharray && cs.strokeDasharray !== 'none'
+                       ? cs.strokeDasharray : 'none' };
           }),
         bands: document.querySelectorAll('.social-sky-band').length,
         legends: legend.length,
@@ -458,20 +469,21 @@ function sqlSection() {
   ck(sky.meCentered !== null && sky.meCentered < 40 && mStar.dist < fStar.dist,
      'B3b MY COMPANION IS THE CENTRE, the mutual star nearest, the new chooser furthest',
      JSON.stringify({ me: sky.meCentered, mutual: mStar.dist, far: fStar.dist }));
-  // R4.1/R4.2 — TURNED AGAIN, on the owner's corrections ("do not
-  // draw arbitrary network-style connecting lines" · "think
-  // ✦ · ✦ · ✦, not ─────"): the connection structure IS the
-  // three-circle model, and each POPULATED zone's orbit is a STRING
-  // OF STARS — a trail of many small dots around its own circle, no
-  // point-to-point line, no stroked ring, and no trail for an empty
-  // zone. The inner trail circles closer than the outer.
-  const trMutual = (sky.trails || []).find((t) => t.cls === 'is-mutual');
+  // R5.1 — TURNED A THIRD TIME, on the owner's trail-hierarchy rule:
+  // ONLY the innermost mutual circle may carry a true connecting
+  // line. Each 💛 mutual Companion gets ONE soft CONTINUOUS curved
+  // bond (with a few star accents resting on it, never dashed); the
+  // ⭐ middle and 🌿 outer zones are star-strings ONLY — no line, no
+  // stroke, nothing drawn under the dots. "Line = strongest mutual
+  // bond; stars = one-way gravitational presence."
   const trFar = (sky.trails || []).find((t) => t.cls === 'is-far');
-  ck(sky.lines === 0 && sky.strokes === 0 && sky.trails.length === 2
-     && !!trMutual && !!trFar && trMutual.dots >= 20 && trFar.dots >= 20
-     && trMutual.mean < trFar.mean,
-     'B3c THE ORBITS ARE STRINGS OF STARS (R4.2) — a trail per populated zone, no lines, no strokes, none for an empty zone',
-     JSON.stringify({ lines: sky.lines, strokes: sky.strokes, trails: sky.trails }));
+  ck(sky.lines === 0 && sky.strokes === 0
+     && sky.trails.length === 1 && !!trFar && trFar.dots >= 20 && !trFar.stroked
+     && (sky.bonds || []).length === 1
+     && sky.bonds[0].curved && sky.bonds[0].dash === 'none'
+     && sky.bonds[0].accents >= 2,
+     'B3c ONLY THE MUTUAL BOND IS A LINE (R5.1) — one continuous curve with star accents; the outer zone is a star-string with no stroke at all',
+     JSON.stringify({ lines: sky.lines, strokes: sky.strokes, trails: sky.trails, bonds: sky.bonds }));
   ck(sky.fieldW >= 900,
      'B3d and the sky has room to breathe — a spacious canvas, not a small modal', sky.fieldW + 'px wide');
   // R4 — the relationship mark on each star matches its tier, and it is
@@ -565,7 +577,8 @@ function sqlSection() {
       });
       const out = {
         n: stars.length,
-        orbits: document.querySelectorAll('.social-sky-lines g').length,
+        orbits: document.querySelectorAll('.social-sky-lines g.is-chosen, .social-sky-lines g.is-far').length,
+        bonds: document.querySelectorAll('.social-sky-lines g.social-sky-bond').length,
         bands: document.querySelectorAll('.social-sky-band').length,
         avgM: Math.round(avg(by('mutual'))), avgC: Math.round(avg(by('chosen'))),
         avgF: Math.round(avg(by('far'))),
@@ -577,10 +590,11 @@ function sqlSection() {
       resolve(out);
     }, 450));
   });
-  ck(crowded.n === 16 && crowded.orbits === 3 && crowded.bands === 0
+  ck(crowded.n === 16 && crowded.orbits === 2 && crowded.bonds === 4
+     && crowded.bands === 0
      && crowded.avgM < crowded.avgC && crowded.avgC < crowded.avgF
      && crowded.spreadC.l > 30 && crowded.spreadC.t > 30,
-     'B3g SIXTEEN CREATORS STILL LIVE IN THREE CIRCLES (R4.1) — zone order holds, all three orbits draw, and a crowded zone spreads around its circle instead of becoming a list',
+     'B3g SIXTEEN CREATORS STILL LIVE IN THREE CIRCLES (R5.1) — zone order holds, four mutual bonds and two star-strings, and a crowded zone spreads instead of becoming a list',
      JSON.stringify(crowded));
 
   // ---- Show, from every creation type ------------------------------

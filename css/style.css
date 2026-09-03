@@ -14435,11 +14435,14 @@ body.studio-rite-running .companion-chat-open{ display:none !important; }
      be watched — only to be alive. */
   animation:social-sky-line-drift 30s linear infinite;
 }
-/* R4.2 — THE THREE ORBITS AS STRINGS OF STARS (✦ · ✦ · ✦, never a
-   drawn line): each populated zone lays a trail of tiny stars along
-   its circle, tinted like its own mark — gold inner, violet middle,
-   leaf-green outer — the inner trail brightest, so the trail itself
-   carries relationship strength. The dots breathe at three slow
+/* R5.1 — THE TRAIL HIERARCHY (the owner's correction): only the
+   innermost 💛 mutual circle may carry a true connecting line — one
+   soft CONTINUOUS curved bond per mutual Companion, never dashed and
+   never a network connector, with small star accents at rest on it.
+   The ⭐ middle and 🌿 outer zones are strings of individual stars
+   (✦ · ✦ · ✦) and NOTHING else — no line, no stroke, no dotted
+   border standing in for one. Line = strongest mutual bond; stars =
+   one-way gravitational presence. The dots breathe at three slow
    paces, so the strings shimmer instead of sitting still. */
 .social-sky-lines circle{
   animation:social-sky-trail 6s ease-in-out infinite;
@@ -14447,9 +14450,19 @@ body.studio-rite-running .companion-chat-open{ display:none !important; }
 .social-sky-lines circle:nth-child(2n){ animation-duration:8.5s; animation-delay:-2.7s; }
 .social-sky-lines circle:nth-child(3n){ animation-duration:11s; animation-delay:-5.3s; }
 @keyframes social-sky-trail{ 0%,100%{ opacity:0.55; } 50%{ opacity:1; } }
-.social-sky-lines g.is-mutual circle{ fill:rgba(255,215,130,0.75); }
 .social-sky-lines g.is-chosen circle{ fill:rgba(200,170,255,0.55); }
 .social-sky-lines g.is-far circle{ fill:rgba(150,215,170,0.42); }
+.social-sky-lines g.social-sky-bond path{
+  fill:none;
+  stroke:rgba(255,215,130,0.34);
+  stroke-width:0.42;
+  stroke-linecap:round;
+  animation:social-sky-bond-breathe 9s ease-in-out infinite;
+}
+@keyframes social-sky-bond-breathe{
+  0%,100%{ stroke-opacity:0.75; } 50%{ stroke-opacity:1; }
+}
+.social-sky-lines g.social-sky-bond circle{ fill:rgba(255,224,150,0.85); }
 /* One star = one Creator, standing where the relationship puts them.
    Positioned absolutely (inline left/top from the layout), centred on
    its own point. */
@@ -14548,7 +14561,7 @@ body.studio-rite-running .companion-chat-open{ display:none !important; }
      not move. */
   .social-sky-field::before,.social-sky-field::after,
   .social-sky-figure,.social-sky-me .social-sky-figure,
-  .social-sky-find-plus,.social-sky-lines circle{ animation:none; }
+  .social-sky-find-plus,.social-sky-lines circle,.social-sky-lines path{ animation:none; }
 }
 /* R4 — the relationship mark on the figure's rim: a state mark the
    legend explains (💛 · ✦ · 🌿), never an achievement and never a

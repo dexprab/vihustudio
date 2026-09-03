@@ -11518,3 +11518,23 @@ companion-knowledge 99 · ether-encounter 94 — all green. The rest of
 the consolidation brief (one My Sky flow, universal Back, three
 circles, star trails, Show/Gifts model, garden growth, guardrails) is
 build 0750, already shipped and suite-enforced.
+
+## Build 0752 — R5.1: only the mutual bond is a line
+
+The owner's trail-hierarchy correction, applied exactly: "the
+innermost 💛 mutual circle is the ONLY circle allowed to have a
+continuous connecting line." Each mutual Companion is now joined to
+the child's own by ONE soft CONTINUOUS curved bond — a quadratic
+curve bowed a little to one side (per-name deterministic, so the same
+pair always bows the same way), never dashed, never a network
+connector — with three small star accents resting on the curve and a
+slow breathing glow. The ⭐ middle and 🌿 outer zones carry NO line of
+any kind: they are strings of individual stars around their own
+circle (✦ · ✦ · ✦) and nothing else — no stroke, no dotted border
+standing in for one. Line = strongest mutual bond; stars = one-way
+gravitational presence. B3c turned a third time with its reason in
+place (one continuous curve per mutual, dash 'none' measured off the
+computed style, the outer string proved stroke-free) and B3g now
+counts four bonds and two star-strings on the sixteen-creator sky.
+social-sky 68 · show-journey 76 — green. Client-only; the next Pages
+deploy carries it.

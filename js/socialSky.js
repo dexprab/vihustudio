@@ -999,19 +999,18 @@ const SocialSky=(function(){
       const chosen=_placed(l.chosen,ZONES.chosen,-3);
       const far=_placed(l.choseMe,ZONES.far,-3);
 
-      // THE ORBITS, AS STRINGS OF STARS (R4.1 drew them, R4.2 gave
-      // them their voice — the owner's rule: "connection lines must
-      // follow the three-circle/orbit structure", and "think
-      // ✦ · ✦ · ✦, not ─────"). Each POPULATED zone lays a trail of
-      // tiny stars along its own circle, from the same ZONES the
-      // placement reads, wobbling gently off the true ellipse so the
-      // trail curves organically instead of tracing a diagram. The
-      // tint is the zone's own mark — gold inner, violet middle,
-      // leaf-green outer — and the inner trail is the densest and
-      // brightest, so the trail itself carries relationship
-      // strength. Deterministic (no Math.random): the same sky
-      // shimmers the same way every visit. An empty zone lays no
-      // trail: no ladder on screen to fill.
+      // THE TRAIL HIERARCHY (R5.1, corrected by the product owner):
+      // ONLY THE INNERMOST MUTUAL CIRCLE EARNS A TRUE CONNECTING LINE.
+      // "Line = strongest mutual bond; stars = one-way gravitational
+      // presence." So each 💛 mutual Companion is joined to the child's
+      // own by ONE soft CONTINUOUS curved line — organic, bowed, never
+      // dashed, never a network connector — with a few subtle star
+      // accents resting on the curve. The ⭐ middle and 🌿 outer zones
+      // NEVER carry a line of any kind: they are strings of individual
+      // stars around their own circle (✦ · ✦ · ✦), wobbling gently off
+      // the true ellipse, and nothing else. Deterministic throughout
+      // (no Math.random): the same sky draws the same way every visit.
+      // An empty zone draws nothing: no ladder on screen to fill.
       if(mutual.length||chosen.length||far.length){
         const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
         svg.setAttribute('class','social-sky-lines');
@@ -1032,9 +1031,36 @@ const SocialSky=(function(){
           }
           svg.appendChild(g);
         }
+        // The mutual bond: a quadratic curve from the centre to the
+        // Companion, bowed a little to one side (per-name, so the same
+        // pair always bows the same way), carrying three small star
+        // accents at rest on it.
+        function bond(p){
+          const g=document.createElementNS('http://www.w3.org/2000/svg','g');
+          g.setAttribute('class','social-sky-bond');
+          const dx=p.x-50, dy=p.y-50;
+          const len=Math.max(Math.hypot(dx,dy),0.001);
+          const bow=_jitter(_norm(p.entry.username)+'bow',7);
+          const cx=50+dx*0.5-(dy/len)*bow;
+          const cy=50+dy*0.5+(dx/len)*bow;
+          const path=document.createElementNS('http://www.w3.org/2000/svg','path');
+          path.setAttribute('d','M 50 50 Q '+cx.toFixed(2)+' '+cy.toFixed(2)+
+            ' '+p.x.toFixed(2)+' '+p.y.toFixed(2));
+          g.appendChild(path);
+          [0.3,0.55,0.8].forEach(function(t){
+            const mt=1-t;
+            const ax=mt*mt*50+2*mt*t*cx+t*t*p.x;
+            const ay=mt*mt*50+2*mt*t*cy+t*t*p.y;
+            const c=document.createElementNS('http://www.w3.org/2000/svg','circle');
+            c.setAttribute('cx',ax.toFixed(2)); c.setAttribute('cy',ay.toFixed(2));
+            c.setAttribute('r','0.28');
+            g.appendChild(c);
+          });
+          svg.appendChild(g);
+        }
         if(far.length) trail(ZONES.far,'is-far',44);
         if(chosen.length) trail(ZONES.chosen,'is-chosen',36);
-        if(mutual.length) trail(ZONES.mutual,'is-mutual',30);
+        mutual.forEach(bond);
         field.appendChild(svg);
       }
 
