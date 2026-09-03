@@ -7339,10 +7339,65 @@ leads somewhere.
   repository's word-inside-its-own-vocabulary family; the spellings
   moved, the checks did not, and `sync-shared.js` regenerated the
   function's canon copy.
+- **THE CREATURES ARE AN INTERACTION LAYER, NOT DECORATIONS — AND NOT
+  RESKINS OF EACH OTHER** (V2, build 0760). Three response kinds, one
+  verb each: the whale POINTS (stays on its way, breathes a trail of
+  motes toward the target), the starbird CARRIES (flies to the
+  discovery itself, shedding a feather trail at the places it actually
+  flew through — its trail is its flight, and `star-trail` is the
+  activity registry's second row), and the jellyfish REVEALS (one wide
+  slow ring that sweeps the whole visible sky, and the dim Spirits it
+  washes over glow for a moment — light showing where things rest,
+  leading to none of them, every halo drawn on the layer's own canvas
+  with nothing written to any entity). A future creature adds a
+  response kind, never a branch.
+- **NEARNESS ALONE IS NOT NOTICING.** A creature crossing the sky
+  passes through the middle of the screen on its own, so prox rises
+  for an idle Traveller who never did anything — and a whale that
+  answers nobody with a trail has broken the whole grammar (Traveller
+  approaches → creature notices → creature responds). Being noticed
+  now requires the Traveller to have TURNED recently (the traveller's
+  own stillness accounting, which the arrival turn and the glance
+  deliberately do not reset); a touch is always an act. Suite-proved:
+  the whale swims through the centre of an untouched screen and no
+  trail appears.
+- **THE BECKON: THE ENVIRONMENT'S OWN "THERE IS MORE THIS WAY".** For
+  a Traveller who has been still ~16 seconds, a soft light appears
+  half-off the edge of the view — aimed at a REAL far Spirit whenever
+  composition's scout knows of one, at plain sky only when the
+  universe is genuinely empty — breathes for seven seconds, drifts a
+  little further out, and goes. At most twice, and like the glance it
+  stops FOREVER the moment the Traveller turns the universe
+  themselves: the question it exists to ask has been answered. Never
+  while a trail is guiding or a Spirit is open.
+- **THE WONDERS ARE A FAMILY.** The bloom at a trail's end draws one
+  of a small registry of star figures (bird · skyfish · starflower),
+  so two wonders in one visit are not the same wonder — variety in the
+  FORM, never more objects.
+- **THE JELLYFISH'S REACH WAS MEASURED WRONG AND FIXED BY A FAILING
+  CHECK.** At 0.85 short edges (765px) the ring could never reach a
+  Spirit across the view — a reveal that cannot do its one job — and
+  tied linearly to the pulse's run-down, the wash was near-invisible
+  exactly where it matters most. It sweeps 0.78 of the view diagonal
+  now, holding its brightness to the far side. The measuring check
+  itself was caught twice first: a sparse universe reveals covers
+  further out (storySpirit's own FAR_SPARSE), so with two Canon
+  Stories nothing in view is dim and there is nothing to wash —
+  correct behaviour that reads as a failure — and the ring STROKE
+  passing the sample box lit 228 pixels that the first threshold
+  mistook for the halo (the real halo is thousands).
+- **V2's suite grew to 66** (star-trail end-to-end, illumination
+  staged and measured in a deliberately densified universe, the
+  beckon's arrival/aim/stop-forever, the notice grammar), with H1, H4
+  and G2 each proved by reverting. The canon gained two truths in
+  section 23 — each being answers in its own way; the way deeper is
+  always a Story, and only inside one is a Traveller welcomed by who
+  lives there.
 - Out of scope and not implemented: creature encounters as a reward
   system, creature dialogue, a Companion in the Ether, per-Traveller
-  encounter history, more activity rows (story hunt, star trail,
-  missing character — the registry is where they land), and bringing
+  encounter history, more activity rows (story hunt, missing
+  character, what-doesn't-belong — the registry is where they land;
+  star-trail is now its second real row), and bringing
   non-Story creations into the Ether feed (a composer target already
   carries `kind`, which is the seam for it; Show snapshots are private
   gifts and stay out — Decision 56).

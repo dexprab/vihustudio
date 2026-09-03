@@ -53,6 +53,17 @@
       guidance: 'trail',
       // What the trail may point at, in order of preference.
       leadsTo: ['story', 'wonder']
+    },
+    {
+      // The Star Trail. Not a reskin of the whale: the whale stays
+      // where it is and points, the starbird flies to the discovery
+      // itself and the trail is the flight it actually flew. Same
+      // composition, different guidance — which is the whole point of
+      // guidance being a field.
+      id: 'star-trail',
+      creature: 'starbird',
+      guidance: 'feathers',
+      leadsTo: ['story', 'wonder']
     }
   ];
 
@@ -170,6 +181,28 @@
     }
 
     life.setComposer(compose);
+
+    // The scout: "is there something far away worth looking toward?"
+    // It feeds the beckon — the soft edge-light the sky offers a
+    // Traveller who has been still — so that light points at a REAL
+    // Spirit nobody has looked at whenever one exists, and only at
+    // plain sky when the universe is genuinely empty. A pointer to the
+    // world, never an effect. It chooses nothing and begins nothing:
+    // the answer is a place, not a discovery.
+    if (life.setScout) {
+      life.setScout(function () {
+        var entities = [];
+        try { entities = universe.stories.all() || []; } catch (e) { return null; }
+        var far = null, farthest = 1;
+        for (var i = 0; i < entities.length; i++) {
+          var e = entities[i];
+          if (!e || e.focusT > 0) continue;
+          var prox = e.prox || 0;
+          if (prox < farthest && prox < 0.15) { farthest = prox; far = e; }
+        }
+        return far ? { x: far.position.x, y: far.position.y } : null;
+      });
+    }
 
     life.on('trail:found', function () {
       if (!activityLive) return;

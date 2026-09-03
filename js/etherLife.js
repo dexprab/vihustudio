@@ -69,12 +69,22 @@
   // temperament: how big, how deep, how fast, how rare, and what it
   // does when a Traveller notices it.
   //
-  //   response: 'guide'  it asks the composer for a target and breathes
-  //                      out a trail of motes that lead there (whale)
-  //             'pulse'  it answers with light — a soft ring, a swell —
-  //                      and moves on (jellyfish)
-  //             'glint'  it is only ever almost-seen: fast, faint, a
-  //                      brief sparkle behind it (starbird)
+  //   response: 'guide'    it asks the composer for a target and
+  //                        breathes out a trail of motes that lead
+  //                        there, staying where it is (whale)
+  //             'pulse'    it answers with light — one wide slow ring
+  //                        that briefly ILLUMINATES the dim Spirits it
+  //                        washes over, showing a Traveller where
+  //                        things rest without leading them anywhere
+  //                        (jellyfish)
+  //             'feathers' it flies TO the discovery itself, shedding
+  //                        a trail of feather-glints behind it as it
+  //                        goes — the trail is its flight, not its
+  //                        breath (starbird)
+  //
+  //   A response is a distinct behaviour, never a reskin: the whale
+  //   points, the starbird carries, the jellyfish reveals. A future
+  //   creature adds a response kind of its own here and in respond().
   // ---------------------------------------------------------------
   var CREATURES = {
     whale: {
@@ -119,7 +129,12 @@
       speed: 150,
       alpha: 0.55,
       wave: { amp: 26, freq: 1.4 },
-      response: 'glint',
+      response: 'feathers',
+      // Fast enough that sustained nearness is hard to hold on it — a
+      // swift needs a swift notice, or only a click could ever catch
+      // one.
+      notice: { hold: 0.15 },
+      shimmer: true,        // sparks shed behind it even unnoticed
       points: [
         [ 1.00, 0.00], [ 0.45, -0.10], [-0.15, -0.42], [-0.75, -0.60],
         [-0.15,  0.10], [-0.85,  0.28], [-1.00, 0.02]
@@ -128,6 +143,35 @@
       eye: 0
     }
   };
+
+  // ---------------------------------------------------------------
+  // The wonders. When a trail ends at no Story, the sky itself
+  // answers: a small figure of stars blooms where the trail ends,
+  // shines a few seconds, and goes. A small seeded family rather than
+  // one fixed figure, so two wonders in one visit are not the same
+  // wonder — variety in the FORM, never more objects (the Garden's own
+  // rule). Figures only: points and links, drawn exactly as a
+  // creature's skeleton is.
+  // ---------------------------------------------------------------
+  var WONDERS = [
+    { id: 'bird', points: CREATURES.starbird.points, links: CREATURES.starbird.links },
+    {
+      id: 'skyfish',
+      points: [
+        [ 1.00,  0.00], [ 0.40, -0.34], [-0.30, -0.30], [-0.72,  0.00],
+        [-0.30,  0.30], [ 0.40,  0.34], [-1.00, -0.30], [-1.00,  0.30]
+      ],
+      links: [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 0], [3, 6], [3, 7]]
+    },
+    {
+      id: 'starflower',
+      points: [
+        [ 0.00,  1.00], [ 0.00,  0.20], [ 0.00, -0.62], [-0.56, -0.14],
+        [ 0.56, -0.14], [-0.36, -0.52], [ 0.36, -0.52]
+      ],
+      links: [[0, 1], [1, 2], [1, 3], [1, 4], [1, 5], [1, 6]]
+    }
+  ];
 
   // ---------------------------------------------------------------
   // Scheduling. The first crossing arrives while a fresh Traveller is
@@ -142,7 +186,20 @@
     between: [95, 220],
     trailLife: 50,          // s a trail waits before giving up, gently
     noticeHold: 0.45,       // s of sustained nearness before it counts
-    respondDelay: 0.5       // being noticed is felt a beat later
+    respondDelay: 0.5,      // being noticed is felt a beat later
+
+    // The beckon: a soft light half-off the edge of the view, for a
+    // Traveller who has been still a while — the environment saying
+    // "there is more this way" without one word. It waits longer than
+    // the glance (Decision 10's camera lean at ~11s), so the two
+    // arrive as different sentences rather than a chorus; it gives up
+    // after two; and it stops FOREVER the moment the Traveller turns
+    // the universe themselves, because the question it exists to ask
+    // has been answered.
+    beckonAfter: 16,        // s of stillness before the first one
+    beckonSpacing: 22,      // and further stillness between them
+    beckonLife: 7,          // s each one breathes before withdrawing
+    beckons: 2              // then the sky stops suggesting
   };
 
   // Later crossings are usually the whale again, sometimes not.
@@ -217,8 +274,10 @@
         creatures: function () { return Object.keys(CREATURES); },
         active: function () { return null; },
         trail: function () { return null; },
+        beckon: function () { return null; },
         summon: function () { return null; },
         setComposer: function () {},
+        setScout: function () {},
         on: on, off: off,
         times: times,
         destroy: function () {}
@@ -255,8 +314,14 @@
 
     // ---------- state ----------
     var composer = opts.composer || null;
+    var scout = opts.scout || null;   // "is there something far worth
+                                      // looking toward?" — composition's
     var enc = null;          // the current encounter, or null
     var trail = null;        // the current guide trail, or null
+    var beck = null;         // the current beckon, or null
+    var becksGiven = 0;
+    var becksStopped = false;
+    var prevStill = 0;
     var nextAt = rand(times.firstArrival[0], times.firstArrival[1]);
     var hadFirst = false;
     var elapsed = 0;
@@ -270,6 +335,17 @@
     function nearestCopy(v, span, centre) {
       if (!(span > 0)) return v;
       return v - Math.round((v - centre) / span) * span;
+    }
+
+    // Seconds since the Traveller last turned the universe THEMSELVES
+    // — the traveller's own accounting, which the arrival turn and the
+    // glance deliberately do not reset (they move the camera, not the
+    // child's hand).
+    function stillNow() {
+      try {
+        return (universe.traveller && universe.traveller.stillSeconds)
+          ? universe.traveller.stillSeconds() : 0;
+      } catch (e) { return 0; }
     }
 
     function pickLater() {
@@ -314,6 +390,7 @@
         responded: false,
         respondIn: -1,
         pulse: 0,             // jellyfish's answer
+        guiding: null,        // starbird's flight to a discovery
         born: time,
         screen: { x: 0, y: 0 },
         alive: true
@@ -335,16 +412,59 @@
       enc.swell = 1;
 
       if (enc.def.response === 'guide') {
-        // It arcs a little away from the Traveller — noticed, not
-        // caught — and breathes out the trail.
+        // The whale points. It arcs a little away from the Traveller —
+        // noticed, not caught — and breathes out the trail, staying on
+        // its own way.
         enc.veer = (enc.screen.y < ether.viewHeight * 0.5 ? -1 : 1) * 46;
         enc.speedScale = 0.45;
         beginTrail();
       } else if (enc.def.response === 'pulse') {
+        // The jellyfish reveals. One wide slow ring, and the dim
+        // Spirits it washes over glow for a moment — light showing
+        // where things rest, not a path to any one of them.
         enc.pulse = 1;
+      } else if (enc.def.response === 'feathers') {
+        // The starbird carries. It turns and flies TO the discovery
+        // itself, shedding feather-glints behind it as it goes: the
+        // trail IS its flight. What it flies to is still the
+        // composer's to say, exactly as the whale's breath is.
+        beginFlight();
       }
-      // 'glint' creatures respond by having already gone.
       emit('creature:responded', { id: enc.id, response: enc.def.response });
+    }
+
+    // ---------- the starbird's flight ----------
+    //
+    // Distinct from the whale on purpose: the whale stays and points,
+    // the starbird goes and shows. Its trail starts EMPTY and is shed
+    // feather by feather at the places the bird actually flew through,
+    // so following it is retracing a real flight rather than reading a
+    // drawn line.
+    function beginFlight() {
+      if (trail || !composer) return;
+      var target = null;
+      try { target = composer({ creature: enc.id }); } catch (e) {}
+      if (!target) return;
+      enc.guiding = { target: target, lastShed: 0, shedEvery: 0.5 };
+      var camS = camera.offsetFor(ether.depth.stories, camStory);
+      trail = {
+        // The first feather falls where the flight begins — a trail
+        // has a start, and a short flight still leaves one.
+        motes: [{
+          x: enc.screen.x - camS.x,
+          y: enc.screen.y - camS.y,
+          delay: 0,
+          tw: Math.random() * Math.PI * 2
+        }],
+        target: target,
+        from: { x: enc.screen.x, y: enc.screen.y },
+        born: time,
+        state: 'guiding',
+        foundAt: 0,
+        bloom: null,
+        shed: true
+      };
+      emit('trail:begun', { target: { kind: target.kind, id: target.id || null } });
     }
 
     // ---------- the guide trail ----------
@@ -429,9 +549,14 @@
           trail.foundAt = time;
           // A wonder blooms; a Story needs nothing added to it — its
           // own light and cover are the discovery, and the trail
-          // simply arrives and settles.
+          // simply arrives and settles. Which figure blooms is this
+          // moment's own — one visitor's wonder has no business being
+          // reproducible (the arrival turn's reasoning, Decision 10).
           if (trail.target.kind === 'wonder') {
-            trail.bloom = { born: time };
+            trail.bloom = {
+              born: time,
+              fig: WONDERS[Math.floor(Math.random() * WONDERS.length)]
+            };
           }
           emit('trail:found', {
             target: { kind: trail.target.kind, id: trail.target.id || null }
@@ -483,21 +608,138 @@
         hadFirst = true;
       }
 
+      updateBeckon(dt, open);
       if (enc) updateEncounter(dt);
       updateTrail(dt);
       draw();
     }
 
+    // ---------- the beckon ----------
+    //
+    // The environment's own "there is more this way": a soft light
+    // half-off the edge of the view, breathing, for a Traveller who
+    // has been still a while. Aimed at something REAL when composition
+    // knows of one — a far Spirit nobody has looked at — so it is a
+    // pointer to the world, not an effect; a random edge only when the
+    // sky is genuinely empty. Anchored in field coordinates, so
+    // turning toward it brings it in, which is the whole lesson.
+    //
+    // Like the glance (Decision 10), it stops forever the moment the
+    // Traveller turns the universe themselves: the question — can this
+    // place be explored? — has been answered, and a place that keeps
+    // asking is a place that is nagging.
+    function updateBeckon(dt, open) {
+      var still = stillNow();
+
+      if (still < prevStill - 0.4) {
+        // They turned it. That is the whole answer — never ask again.
+        becksStopped = true;
+        beck = null;
+      }
+      prevStill = still;
+
+      if (beck) {
+        beck.age += dt;
+        // It drifts a little further out as it breathes — something
+        // half-seen LEAVING the view is what says "beyond here".
+        beck.x += beck.driftX * dt;
+        beck.y += beck.driftY * dt;
+        if (beck.age > times.beckonLife) beck = null;
+        return;
+      }
+
+      if (becksStopped || becksGiven >= times.beckons) return;
+      if (trail || open) return;   // never while something is already speaking
+      if (still < times.beckonAfter + becksGiven * times.beckonSpacing) return;
+
+      // Where. A far Spirit's direction when the scout knows one;
+      // otherwise any edge, because "more sky" is also true.
+      var cam = camera.offsetFor(ether.depth.stories, camStory);
+      var cx = ether.viewWidth * 0.5, cy = ether.viewHeight * 0.5;
+      var angle = null;
+      var aimed = null;
+      if (scout) {
+        try { aimed = scout(); } catch (e) {}
+      }
+      if (aimed) {
+        var asx = nearestCopy(aimed.x + cam.x, ether.width, cx);
+        var asy = nearestCopy(aimed.y + cam.y, ether.height, cy);
+        angle = Math.atan2(asy - cy, asx - cx);
+      } else {
+        angle = Math.random() * Math.PI * 2;
+      }
+      // The point where a ray at `angle` from the centre meets the
+      // view's edge — the beckon sits ON that edge, half of it beyond.
+      var dx = Math.cos(angle), dy = Math.sin(angle);
+      var tEdge = Math.min(
+        Math.abs(dx) > 1e-4 ? (dx > 0 ? (ether.viewWidth - cx) / dx : -cx / dx) : 1e9,
+        Math.abs(dy) > 1e-4 ? (dy > 0 ? (ether.viewHeight - cy) / dy : -cy / dy) : 1e9
+      );
+      var ex = cx + dx * tEdge, ey = cy + dy * tEdge;
+      beck = {
+        // Field-anchored, drifting a little further out over its life.
+        x: ex - cam.x, y: ey - cam.y,
+        driftX: dx * 2.2, driftY: dy * 2.2,
+        age: 0,
+        aimed: !!aimed
+      };
+      becksGiven++;
+      emit('beckon', { aimed: beck.aimed });
+    }
+
     function updateEncounter(dt) {
       var def = enc.def;
-      enc.pos.x += def.speed * enc.speedScale * enc.dir * dt;
-      // The veer eases in once noticed and dies away on its own — an
-      // arc, not a new heading; the wave is its ordinary swimming.
-      if (enc.veer) {
-        enc.baseY += enc.veer * dt * 0.4;
-        enc.veer *= Math.max(0, 1 - dt * 0.5);
+
+      if (enc.guiding) {
+        // The starbird flying to its discovery. Steered in SCREEN
+        // space toward the target's screen position — the same wrap
+        // and the same camera every layer reads — and moving its own
+        // field position by the result, so a child who turns away
+        // mid-flight leaves a bird still flying where it really is.
+        var camS = camera.offsetFor(ether.depth.stories, camStory);
+        var tg = enc.guiding.target;
+        var tsx = nearestCopy(tg.x + camS.x, ether.width, ether.viewWidth * 0.5);
+        var tsy = nearestCopy(tg.y + camS.y, ether.height, ether.viewHeight * 0.5);
+        var gdx = tsx - enc.screen.x, gdy = tsy - enc.screen.y;
+        var gdist = Math.sqrt(gdx * gdx + gdy * gdy) || 1;
+        if (gdist < 130) {
+          // Delivered. A small flare, and the bird flies on the way it
+          // was going — the discovery is the trail's to hold now.
+          enc.swell = 1;
+          enc.guiding = null;
+          enc.baseY = enc.pos.y;
+          emit('creature:delivered', { id: enc.id });
+        } else {
+          enc.pos.x += (gdx / gdist) * def.speed * dt;
+          enc.pos.y += (gdy / gdist) * def.speed * dt;
+          enc.baseY = enc.pos.y;
+          if (Math.abs(gdx) > 4) enc.dir = gdx >= 0 ? 1 : -1;
+          // Shed a feather at the place it actually is.
+          enc.guiding.lastShed += dt;
+          if (trail && trail.shed && trail.state === 'guiding' &&
+              enc.guiding.lastShed >= enc.guiding.shedEvery &&
+              trail.motes.length < 18) {
+            enc.guiding.lastShed = 0;
+            trail.motes.push({
+              x: enc.screen.x - camS.x,
+              y: enc.screen.y - camS.y,
+              // Its own shed moment, so each feather fades up where and
+              // WHEN the bird actually passed.
+              delay: time - trail.born,
+              tw: Math.random() * Math.PI * 2
+            });
+          }
+        }
+      } else {
+        enc.pos.x += def.speed * enc.speedScale * enc.dir * dt;
+        // The veer eases in once noticed and dies away on its own — an
+        // arc, not a new heading; the wave is its ordinary swimming.
+        if (enc.veer) {
+          enc.baseY += enc.veer * dt * 0.4;
+          enc.veer *= Math.max(0, 1 - dt * 0.5);
+        }
+        enc.pos.y = enc.baseY + Math.sin(time * def.wave.freq) * def.wave.amp * 0.4;
       }
-      enc.pos.y = enc.baseY + Math.sin(time * def.wave.freq) * def.wave.amp * 0.4;
 
       var cam = camera.offsetFor(def.parallax, camScratch);
       enc.screen.x = nearestCopy(enc.pos.x + cam.x, ether.width, ether.viewWidth * 0.5);
@@ -517,10 +759,22 @@
       // a Spirit. A readout of the pointer would be a cursor effect.
       enc.noticed += (enc.prox - enc.noticed) * (1 - Math.exp(-2.1 * dt));
 
-      if (!enc.responded && enc.respondIn < 0 && def.response !== 'glint') {
-        if (enc.noticed > 0.5) {
+      if (!enc.responded && enc.respondIn < 0) {
+        // A swift needs a swift notice: each creature may carry its
+        // own hold, or take the layer's.
+        //
+        // AND NEARNESS ALONE IS NOT NOTICING. A creature crossing the
+        // sky passes through the middle of the screen on its own, so
+        // prox rises for an idle Traveller who never did anything —
+        // and a whale that answers nobody with a trail has broken the
+        // whole grammar (Traveller approaches → creature notices).
+        // Being noticed therefore requires the Traveller to have
+        // TURNED recently; a touch is always an act and comes through
+        // notice() directly.
+        var hold = (def.notice && def.notice.hold) || times.noticeHold;
+        if (enc.noticed > 0.5 && stillNow() < 3) {
           enc.noticedFor += dt;
-          if (enc.noticedFor >= times.noticeHold) notice();
+          if (enc.noticedFor >= hold) notice();
         } else {
           enc.noticedFor = 0;
         }
@@ -531,16 +785,25 @@
       }
 
       if (enc.swell > 0) enc.swell = Math.max(0, enc.swell - dt * 0.35);
-      if (enc.pulse > 0) enc.pulse = Math.max(0, enc.pulse - dt * 0.45);
-      if (enc.responded) enc.speedScale += (1 - enc.speedScale) * dt * 0.4;
+      // The jellyfish's ring runs down slowly — it has a whole sky to
+      // wash over, and a reveal that is over in a blink reveals
+      // nothing.
+      if (enc.pulse > 0) enc.pulse = Math.max(0, enc.pulse - dt * 0.22);
+      if (enc.responded && !enc.guiding) {
+        enc.speedScale += (1 - enc.speedScale) * dt * 0.4;
+      }
 
-      // Gone once past the far side of the view, with room to spare.
-      var beyond = def.span * 0.8;
-      if ((enc.dir > 0 && enc.screen.x > ether.viewWidth + beyond) ||
-          (enc.dir < 0 && enc.screen.x < -beyond)) {
-        emit('creature:gone', { id: enc.id });
-        enc = null;
-        nextAt = elapsed + rand(times.between[0], times.between[1]);
+      // Gone once past the far side of the view, with room to spare —
+      // but never mid-flight: a bird carrying a Traveller somewhere may
+      // legitimately cross the edge on the way there.
+      if (!enc.guiding) {
+        var beyond = def.span * 0.8;
+        if ((enc.dir > 0 && enc.screen.x > ether.viewWidth + beyond) ||
+            (enc.dir < 0 && enc.screen.x < -beyond)) {
+          emit('creature:gone', { id: enc.id });
+          enc = null;
+          nextAt = elapsed + rand(times.between[0], times.between[1]);
+        }
       }
     }
 
@@ -563,13 +826,36 @@
       var w = canvas.width, h = canvas.height;
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, w, h);
-      if (!enc && !trail) return;
+      if (!enc && !trail && !beck) return;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
       var breath = (ether.ambient && ether.ambient.breath) || 1;
 
+      if (beck) drawBeckon(breath);
       if (trail) drawTrail(breath);
       if (enc) drawCreature(breath);
+    }
+
+    // The beckon: one soft light sitting on the edge of the view, half
+    // of it already beyond — breathing, drifting a little further out,
+    // and gone. Nothing about it is a control; it is the sky having
+    // something a little way over there.
+    function drawBeckon(breath) {
+      var cam = camera.offsetFor(ether.depth.stories, camStory);
+      var cx = ether.viewWidth * 0.5, cy = ether.viewHeight * 0.5;
+      var sx = nearestCopy(beck.x + cam.x, ether.width, cx);
+      var sy = nearestCopy(beck.y + cam.y, ether.height, cy);
+      var up = Util.smooth(Util.clamp(beck.age / 1.6, 0, 1));
+      var down = Util.smooth(Util.clamp(
+        (beck.age - (times.beckonLife - 1.8)) / 1.8, 0, 1));
+      var slow = 0.65 + 0.35 * Math.sin(time * 0.9);
+      var a = up * (1 - down) * slow * breath;
+      if (a <= 0) return;
+      ctx.globalAlpha = a * 0.5;
+      ctx.drawImage(glowSprite, sx - 64, sy - 64, 128, 128);
+      ctx.globalAlpha = a * 0.85;
+      ctx.drawImage(starSprite, sx - 14, sy - 14, 28, 28);
+      ctx.globalAlpha = 1;
     }
 
     function drawCreature(breath) {
@@ -620,19 +906,52 @@
       var hr = half * 0.5;
       ctx.drawImage(glowSprite, sx - hr, sy - hr, hr * 2, hr * 2);
 
-      // The jellyfish's answer: one slow ring of light.
-      if (enc.pulse > 0) {
-        var pr = (1 - enc.pulse) * def.span * 1.1 + 20;
+      // The jellyfish's answer: one wide slow ring of light, and the
+      // dim Spirits it washes over glow for a moment. Illumination,
+      // not a path: it shows a Traveller where things rest and leads
+      // them to none of them — every halo is drawn HERE, on this
+      // layer's own canvas, and nothing on any entity is written.
+      if (enc.pulse > 0 && def.response === 'pulse') {
+        // The ring sweeps the WHOLE visible sky — a reveal that cannot
+        // reach a Spirit across the view cannot do its one job, and
+        // measured, a Spirit 1150px from the jellyfish was never
+        // washed at a reach of 0.85 short edges (765px).
+        var reach = Math.sqrt(ether.viewWidth * ether.viewWidth +
+                              ether.viewHeight * ether.viewHeight) * 0.78;
+        var pr = (1 - enc.pulse) * reach + 24;
         ctx.globalAlpha = enc.pulse * 0.5 * breath;
         ctx.strokeStyle = rgba(glowRgb, 0.8);
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.arc(sx, sy, pr, 0, Math.PI * 2);
         ctx.stroke();
+
+        var band = 110;
+        var entities = [];
+        try { entities = universe.stories.all() || []; } catch (e) {}
+        for (var s = 0; s < entities.length; s++) {
+          var ent = entities[s];
+          // Only what was difficult to see: a Spirit already resolved
+          // in front of the child needs no lamp.
+          if (!ent || (ent.prox || 0) > 0.5 || typeof ent.screenX !== 'number') continue;
+          var edx = ent.screenX - sx, edy = ent.screenY - sy;
+          var ed = Math.sqrt(edx * edx + edy * edy);
+          var wash = Math.max(0, 1 - Math.abs(ed - pr) / band);
+          if (wash <= 0) continue;
+          // The reveal keeps its brightness to the far side of the
+          // view — tied linearly to the run-down, the wash was
+          // near-invisible exactly where it matters most, on the
+          // Spirits furthest from the light.
+          var envl = Util.clamp(enc.pulse * 3, 0, 1);
+          ctx.globalAlpha = wash * envl * 0.6 * breath;
+          ctx.drawImage(glowSprite, ent.screenX - 46, ent.screenY - 46, 92, 92);
+          ctx.globalAlpha = wash * envl * 0.8 * breath;
+          ctx.drawImage(starSprite, ent.screenX - 10, ent.screenY - 10, 20, 20);
+        }
       }
 
       // The starbird's glints: brief sparks shed behind it.
-      if (def.response === 'glint') {
+      if (def.shimmer) {
         for (i = 1; i <= 4; i++) {
           var gx = sx - enc.dir * (half * 0.5 + i * 34);
           var gy = sy + Math.sin(time * 3 + i) * 10;
@@ -683,7 +1002,7 @@
           var t2 = trail.target;
           var bx = nearestCopy(t2.x + cam.x, ether.width, cx);
           var by = nearestCopy(t2.y + cam.y, ether.height, cy);
-          var fig = CREATURES.starbird;
+          var fig = trail.bloom.fig || WONDERS[0];
           var bh = 60;
           ctx.strokeStyle = rgba(starRgb, 0.4 * ba);
           ctx.lineWidth = 1;
@@ -722,7 +1041,24 @@
           prox: enc.prox,
           noticed: enc.noticed,
           responded: enc.responded,
-          response: enc.def.response
+          response: enc.def.response,
+          guiding: !!enc.guiding,
+          pulse: enc.pulse
+        };
+      },
+      beckon: function () {
+        return {
+          active: !!beck,
+          aimed: beck ? beck.aimed : false,
+          screen: beck ? (function () {
+            var cam = camera.offsetFor(ether.depth.stories, camStory);
+            return {
+              x: nearestCopy(beck.x + cam.x, ether.width, ether.viewWidth * 0.5),
+              y: nearestCopy(beck.y + cam.y, ether.height, ether.viewHeight * 0.5)
+            };
+          })() : null,
+          given: becksGiven,
+          stopped: becksStopped
         };
       },
       trail: function () {
@@ -736,6 +1072,7 @@
       },
       summon: summon,
       setComposer: function (fn) { composer = fn; },
+      setScout: function (fn) { scout = fn; },
       on: on, off: off,
       times: times,
       destroy: function () {
@@ -749,6 +1086,7 @@
 
   global.EtherLife = {
     CREATURES: CREATURES,
+    WONDERS: WONDERS,
     TIMES: TIMES,
     mount: mount
   };

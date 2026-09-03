@@ -11733,3 +11733,38 @@ ether-encounter 94 · companion-context 90 · companion-canon 94 ·
 companion-chat 256 · companion-gap 29 · ether-share 21 ·
 social-ether-identity 20 · ether-voice 8.
 
+
+## Build 0760 — Ether Traveller Experience V2: the living world completed
+
+V1's one scripted path becomes a composed world. The creatures are an
+interaction layer with a verb each, never reskins: the whale POINTS
+(unchanged), the starbird CARRIES — noticed, it flies to the discovery
+itself, shedding a feather trail at the places it actually flew
+through, `star-trail` joining the activity registry as its second real
+row — and the jellyfish REVEALS: one wide slow ring sweeping 0.78 of
+the view diagonal, briefly lighting the dim Spirits it washes over,
+leading to none of them, every halo drawn on the layer's own canvas.
+NEARNESS ALONE IS NOT NOTICING any more: a creature crossing the
+middle of an untouched screen raised prox for a Traveller who never
+acted, and answered nobody with a trail — being noticed now requires
+the Traveller to have turned recently (their own stillness
+accounting, which the arrival turn and the glance deliberately never
+reset); a touch is always an act. An idle screen instead gets the
+BECKON — the environment's own "there is more this way": a soft light
+half-off the view edge after ~16s of stillness, aimed at a real far
+Spirit whenever the composition's new scout seam knows one, twice at
+most, stopped forever by the child's first turn (the glance's own
+rule). Wonders became a family of figures (bird · skyfish ·
+starflower). Three measurement lessons paid for: a SPARSE universe
+reveals covers further out (FAR_SPARSE), so with two Canon Stories
+nothing in view is dim and a correct jellyfish reads as broken — the
+suite densifies through the universe's own public seed(); the ring
+STROKE lit 228 px that the first threshold mistook for a halo (the
+real halo is thousands); and the ring's old reach (0.85 short edges)
+could never touch a Spirit across the view — a product fix found by a
+failing check. Canon section 23 gained two truths (each being answers
+in its own way; the way deeper is always a Story). ether-life 66
+(H1/H4/G2 proved by reverting, V1's proofs standing) · regressions:
+ether-encounter 94 · ether-share 21 · social-ether-identity 20 ·
+companion-gap 29 · companion-chat 256 · companion-canon 94 ·
+companion-context 90 — green.
