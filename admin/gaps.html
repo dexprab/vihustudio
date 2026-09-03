@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VihuPlanet · Conversation Gaps</title>
+<!-- THE GAP REVIEW DESK (Sprint R6.1).
+     The reading half of Decision 57's learning loop:
+       ask -> respond -> inadequate -> Gap Log -> REVIEW RECURRING GAPS
+       -> improve the knowledge -> better Companion.
+
+     THIS IS NOT PART OF THE CHILD PRODUCT — same rule as the rest of
+     admin/: no child reaches it, nothing links to it, and the anon key
+     below grants nothing on its own. Every row comes from
+     gap_log_review(), which checks the caller's own verified email
+     against platform_admins and refuses everybody else; gap_log_resolve()
+     is behind the same gate (supabase/migrations_gap_log.sql).
+
+     A ROW IS A CHILD'S SENTENCE, so it is data and never markup — every
+     string is escaped before it touches the page, and nothing a row says
+     is ever executed, followed, or read as an instruction.
+
+     A REFUSAL HAS A REASON AND THE PAGE SAYS WHICH (the invite desk's
+     own build-0676 lesson): "not an administrator" (the function's
+     not_yours), "not signed in", "the migration is not run yet" and a
+     platform that is away are four different sentences, not one. -->
+<style>
+  :root {
+    --bg:#0d1220; --panel:#151c2e; --line:#253048; --rule:#2e3a56;
+    --ink:#e7eaf3; --soft:#a6adbf; --faint:#6e7893; --gold:#dfb169; --warn:#e2917a;
+    --ok:#7dc9a2;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+         font:400 15px/1.6 -apple-system,"Segoe UI",Roboto,sans-serif; }
+  .wrap { max-width:78rem; margin:0 auto; padding:2.4rem 1.2rem 5rem; }
+  h1 { font:400 1.7rem/1.2 Georgia,serif; margin:0 0 .3rem; letter-spacing:-.01em; }
+  .sub { color:var(--faint); font-size:.9rem; margin:0 0 2rem; }
+
+  .gate { max-width:24rem; background:var(--panel); border:1px solid var(--line);
+          border-radius:10px; padding:1.5rem; }
+  label { display:block; font-size:.78rem; letter-spacing:.09em; text-transform:uppercase;
+          color:var(--faint); margin-bottom:.4rem; }
+  input { width:100%; padding:.62rem .7rem; margin-bottom:.9rem; background:#0f1526;
+          border:1px solid var(--line); border-radius:6px; color:var(--ink); font-size:.95rem; }
+  button { padding:.6rem 1.1rem; background:var(--gold); color:#1a1206; border:0;
+           border-radius:6px; font-weight:700; font-size:.92rem; cursor:pointer; }
+  button.ghost { background:transparent; color:var(--soft); border:1px solid var(--line);
+                 font-weight:400; }
+  button.mini { padding:.24rem .55rem; font-size:.76rem; }
+  button.mini.done { color:var(--ok); border-color:rgba(125,201,162,.35); }
+  button.mini.done:hover { background:rgba(125,201,162,.1); }
+  button:disabled { opacity:.5; cursor:default; }
+  .msg { margin-top:.9rem; font-size:.88rem; color:var(--warn); min-height:1.2em; }
+
+  .counts { display:flex; flex-wrap:wrap; gap:1px; background:var(--line);
+            border:1px solid var(--line); border-radius:8px; overflow:hidden; margin-bottom:1.4rem; }
+  .counts div { flex:1 1 9rem; background:var(--panel); padding:.9rem 1.1rem; }
+  .counts b { display:block; font:400 1.5rem/1.1 Georgia,serif; color:var(--gold); }
+  .counts span { font-size:.76rem; letter-spacing:.08em; text-transform:uppercase; color:var(--faint); }
+
+  .filters { display:flex; flex-wrap:wrap; gap:.45rem; align-items:center; margin:0 0 .9rem; }
+  .filters .lbl { font:400 .7rem/1.4 var(--mono); letter-spacing:.11em;
+                  text-transform:uppercase; color:var(--faint); margin-right:.2rem; }
+  .chip { padding:.28rem .7rem; border-radius:999px; border:1px solid var(--line);
+          background:transparent; color:var(--soft); font-size:.8rem; font-weight:400; cursor:pointer; }
+  .chip.on { border-color:var(--gold); color:var(--gold); background:rgba(223,177,105,.08); }
+  .chip .n { color:var(--faint); font-family:var(--mono); font-size:.72rem; margin-left:.3rem; }
+  .chip.on .n { color:var(--gold); }
+  .spacer { flex:1; }
+
+  .tablewrap { overflow-x:auto; border:1px solid var(--line); border-radius:8px; background:var(--panel); }
+  table { width:100%; min-width:64rem; border-collapse:collapse; font-size:.9rem; }
+  th { text-align:left; padding:.6rem .8rem; font:400 .7rem/1.4 var(--mono);
+       letter-spacing:.11em; text-transform:uppercase; color:var(--faint);
+       background:#111827; border-bottom:1px solid var(--rule); position:sticky; top:0; }
+  td { padding:.6rem .8rem; border-bottom:1px solid var(--line); vertical-align:top; }
+  tr:last-child td { border-bottom:0; }
+  td.dim { color:var(--faint); font-size:.84rem; white-space:nowrap; }
+  td.talk { max-width:26rem; }
+  .said { font-weight:600; }
+  .reply { color:var(--soft); font-size:.88rem; margin-top:.15rem; }
+  .reply.silent { color:var(--faint); font-style:italic; }
+  details { margin-top:.3rem; }
+  summary { cursor:pointer; color:var(--faint); font-size:.78rem; }
+  .turns { margin:.4rem 0 0; padding:0; list-style:none; font-size:.82rem; color:var(--soft); }
+  .turns li { margin:.1rem 0; }
+  .turns .who { color:var(--faint); font-family:var(--mono); font-size:.72rem; margin-right:.35rem; }
+  .cls { display:inline-block; padding:.14rem .55rem; border-radius:999px; font-size:.74rem;
+         border:1px solid var(--line); color:var(--soft); white-space:nowrap; }
+  .cls.k-vihuplanet_knowledge_missing,
+  .cls.k-studio_knowledge_missing { border-color:rgba(223,177,105,.5); color:var(--gold); }
+  .cls.k-technical_failure { border-color:rgba(226,145,122,.5); color:var(--warn); }
+  .cls.k-safety_restriction { border-color:rgba(125,201,162,.4); color:var(--ok); }
+  .res { font-size:.78rem; color:var(--faint); white-space:nowrap; }
+  .res.open { color:var(--warn); }
+  .res.by-design { color:var(--ok); }
+  .acts { display:flex; gap:.3rem; flex-wrap:wrap; }
+  .hidden { display:none; }
+  .empty { padding:1.4rem; color:var(--faint); }
+  footer { margin-top:2rem; color:var(--faint); font-size:.82rem; }
+  p.foot { color:var(--faint); font-size:.82rem; margin:.7rem 0 0; max-width:46rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Conversation Gaps</h1>
+  <p class="sub">Where a Companion could not adequately answer — the review half of the learning loop.</p>
+
+  <div class="gate" id="gate">
+    <label for="em">Email</label>
+    <input id="em" type="email" autocomplete="username">
+    <label for="pw">Password</label>
+    <input id="pw" type="password" autocomplete="current-password">
+    <button id="go">Sign in</button>
+    <p class="msg" id="msg"></p>
+  </div>
+
+  <div id="desk" class="hidden">
+    <div class="counts" id="counts"></div>
+
+    <div class="filters" id="statusRow">
+      <span class="lbl">Status</span>
+      <!-- Buttons are built by render(); 'open' is the working set. -->
+    </div>
+    <div class="filters" id="classRow"></div>
+
+    <div class="tablewrap">
+      <table>
+        <thead><tr>
+          <th>When</th><th>Where</th><th>Companion</th>
+          <th>What was asked · what was answered</th>
+          <th>Why it fell short</th><th>Status</th><th></th>
+        </tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+      <div class="empty hidden" id="empty"></div>
+    </div>
+
+    <footer>
+      <p><button class="ghost" id="reload">Refresh</button>
+         <button class="ghost" id="out">Sign out</button></p>
+      <p class="foot">A <b>safety restriction</b> arrives already marked <i>by design</i> — a boundary
+         holding is the product working; it is listed so the review can see how often children run
+         into it, never as a defect. A recurring <b>knowledge missing</b> classification is a
+         candidate for a canon, Studio-knowledge or live-context update (Decision 57); mark a gap
+         <i>addressed</i> once that update ships. Rows hold no card id, no nickname and no username.</p>
+    </footer>
+  </div>
+</div>
+
+<script type="module">
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+const cfg = await fetch('../supabase-config.json').then(r => r.json());
+const sb = createClient(cfg.url, cfg.anonKey);
+
+const $ = (id) => document.getElementById(id);
+const say = (t) => { $('msg').textContent = t || ''; };
+
+// The nine classifications, worded for a person reading a list — the
+// stored keys are the contract (migrations_gap_log.sql) and are shown
+// in the chip so the two can be matched to the code.
+const CLASSES = {
+  vihuplanet_knowledge_missing: 'VihuPlanet knowledge missing',
+  studio_knowledge_missing: 'Studio knowledge missing',
+  live_context_missing: 'live context missing',
+  story_context_missing: 'story context missing',
+  ambiguity_or_misunderstanding: 'ambiguity / misunderstanding',
+  model_capability: 'model capability',
+  safety_restriction: 'safety restriction',
+  technical_failure: 'technical failure',
+  other: 'other',
+};
+const STATUSES = ['open', 'reviewed', 'addressed', 'by-design', 'wont-fix', 'all'];
+
+let gaps = [];              // what the last load returned
+let statusFilter = 'open';  // server-side (gap_log_review's own filter)
+let classFilter = null;     // client-side, over the loaded set
+
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"]/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+}
+function when(ts) {
+  if (!ts) return '—';
+  const d = new Date(ts);
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+    + ' ' + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+}
+
+async function load() {
+  // 'all' means no server filter; anything else is passed through to
+  // gap_log_review, which is where the status filter actually lives.
+  const { data, error } = await sb.rpc('gap_log_review',
+    { p_limit: 500, p_status: statusFilter === 'all' ? null : statusFilter });
+  if (error) {
+    // Four different problems, four different sentences — never one
+    // catch-all (the invite desk's build-0676 lesson).
+    if (/gap_log_review/.test(error.message) && /function|schema/i.test(error.message)) {
+      say('The gap log is not on the platform yet — run supabase/migrations_gap_log.sql, then refresh.');
+    } else {
+      say('The platform did not answer: ' + error.message);
+    }
+    return false;
+  }
+  if (!data || data.ok !== true) {
+    say(data && data.reason === 'not_yours'
+      ? 'Signed in, but this account is not an administrator.'
+      : 'The platform refused: ' + ((data && data.reason) || 'no answer') + '.');
+    return false;
+  }
+  say('');
+  gaps = Array.isArray(data.gaps) ? data.gaps : [];
+  $('gate').classList.add('hidden');
+  $('desk').classList.remove('hidden');
+  render();
+  return true;
+}
+
+function render() {
+  // ---- counts ---------------------------------------------------
+  const byClass = new Map();
+  gaps.forEach(g => byClass.set(g.classification,
+    (byClass.get(g.classification) || 0) + 1));
+  const top = [...byClass.entries()].sort((a, b) => b[1] - a[1])[0];
+  $('counts').innerHTML =
+    [[gaps.length, statusFilter === 'all' ? 'gaps (all statuses)' : statusFilter + ' gaps'],
+     [byClass.size, 'kinds of gap'],
+     [top ? top[1] : 0, top ? 'most: ' + (CLASSES[top[0]] || top[0]) : 'most common kind']]
+    .map(([n, l]) => `<div><b>${esc(n)}</b><span>${esc(l)}</span></div>`).join('');
+
+  // ---- status filter (server-side) ------------------------------
+  $('statusRow').innerHTML = '<span class="lbl">Status</span>' +
+    STATUSES.map(s =>
+      `<button class="chip${s === statusFilter ? ' on' : ''}" data-status="${s}">${s}</button>`
+    ).join('');
+  $('statusRow').querySelectorAll('.chip').forEach(b =>
+    b.addEventListener('click', async () => {
+      statusFilter = b.dataset.status; classFilter = null; await load();
+    }));
+
+  // ---- classification filter (client-side, over the loaded set) --
+  const chips = [...byClass.entries()].sort((a, b) => b[1] - a[1]);
+  $('classRow').innerHTML = chips.length < 2 ? '' :
+    '<span class="lbl">Kind</span>' +
+    `<button class="chip${classFilter === null ? ' on' : ''}" data-cls="">every kind</button>` +
+    chips.map(([k, n]) =>
+      `<button class="chip${classFilter === k ? ' on' : ''}" data-cls="${esc(k)}">` +
+      `${esc(CLASSES[k] || k)}<span class="n">${n}</span></button>`).join('');
+  $('classRow').querySelectorAll('.chip').forEach(b =>
+    b.addEventListener('click', () => {
+      classFilter = b.dataset.cls || null; render();
+    }));
+
+  // ---- rows -----------------------------------------------------
+  const shown = classFilter ? gaps.filter(g => g.classification === classFilter) : gaps;
+  $('empty').classList.toggle('hidden', shown.length > 0);
+  $('empty').textContent = gaps.length === 0
+    ? (statusFilter === 'open'
+        ? 'No open gaps — every conversation lately had an adequate answer.'
+        : 'Nothing with this status.')
+    : 'Nothing of this kind with this status.';
+
+  $('rows').innerHTML = shown.map(g => {
+    const turns = Array.isArray(g.context) ? g.context : [];
+    const context = turns.length ? `
+      <details><summary>the turns around it (${turns.length})</summary>
+        <ul class="turns">${turns.map(t =>
+          `<li><span class="who">${esc(t.s || '?')}</span>${esc(t.t || '')}</li>`).join('')}
+        </ul></details>` : '';
+    const acts = g.resolution === 'open'
+      ? ['reviewed', 'addressed', 'wont-fix'].map(s =>
+          `<button class="ghost mini done" data-id="${esc(g.id)}" data-to="${s}">${s}</button>`).join('')
+      : `<button class="ghost mini" data-id="${esc(g.id)}" data-to="open">reopen</button>`;
+    return `<tr>
+      <td class="dim">${esc(when(g.at))}</td>
+      <td class="dim">${esc(g.surface || '—')}${g.screen ? ' · ' + esc(g.screen) : ''}</td>
+      <td class="dim">${esc(g.companion || '—')}</td>
+      <td class="talk"><div class="said">${esc(g.said || '')}</div>
+        <div class="reply${g.reply ? '' : ' silent'}">${g.reply ? esc(g.reply) : 'said nothing'}</div>
+        ${context}</td>
+      <td><span class="cls k-${esc(g.classification)}">${esc(CLASSES[g.classification] || g.classification)}</span></td>
+      <td><span class="res ${esc(g.resolution)}">${esc(g.resolution)}</span></td>
+      <td><div class="acts">${acts}</div></td>
+    </tr>`;
+  }).join('');
+
+  $('rows').querySelectorAll('button[data-to]').forEach(btn =>
+    btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      const { data, error } = await sb.rpc('gap_log_resolve',
+        { p_id: Number(btn.dataset.id), p_status: btn.dataset.to });
+      btn.disabled = false;
+      if (error) { say('The platform did not answer: ' + error.message); return; }
+      if (!data || data.ok !== true) {
+        say(data && data.reason === 'not_yours'
+          ? 'Signed in, but this account is not an administrator.'
+          : 'Not changed: ' + ((data && data.reason) || 'the platform refused') + '.');
+        return;
+      }
+      await load();
+    }));
+}
+
+$('go').addEventListener('click', async () => {
+  say('…');
+  const { error } = await sb.auth.signInWithPassword({
+    email: $('em').value.trim(), password: $('pw').value,
+  });
+  if (error) { say(error.message); return; }
+  say('');
+  await load();
+});
+$('reload').addEventListener('click', load);
+$('out').addEventListener('click', async () => { await sb.auth.signOut(); location.reload(); });
+
+// Already signed in from a previous visit.
+const { data: { session } } = await sb.auth.getSession();
+if (session) await load();
+</script>
+</body>
+</html>

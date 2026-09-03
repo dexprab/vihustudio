@@ -11594,3 +11594,26 @@ wording is still proved through the real handler by companion-mind
 K4b/K4c, whose no-model configuration is its own. companion-mind 172
 green. No client file changed; nothing to redeploy — re-paste the
 verifier from this checkout.
+
+## Build 0755 — R6.1: the gap review desk
+
+The reading half of Decision 57's learning loop, asked for by the
+owner: admin/gaps.html, in the admin console's own idiom (the sign-in
+gate, the anon key that grants nothing, every row from the admin-only
+SECURITY DEFINER doors). It lists what gap_log_review returns —
+question and answer together, the surrounding turns one click away,
+the surface and screen, the classification worded for a person — with
+the status filter server-side (OPEN is the working set) and a
+kind-of-gap chip row computed over the loaded set, which is "review
+recurring gaps" as a screen. One-click gap_log_resolve per row
+(reviewed · addressed · wont-fix, and reopen); a safety restriction
+shows as by-design with reopen as its only action, because a boundary
+holding is the product working. A child's sentence is DATA: everything
+escaped, proved by a row carrying live markup that renders as text and
+executes nothing. The refusals say WHICH problem (the invite desk's
+build-0676 lesson): not-an-administrator, not-signed-in, the migration
+not yet run (named by file), and a platform that is away are four
+sentences, not one. tools/gap-desk-test (11) drives the real page with
+a stubbed client and asserts traffic — the resolve button's rpc
+carries THAT row's id — and sentences, not source. Nothing to deploy:
+the page ships with the site and both functions are already live.
