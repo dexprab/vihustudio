@@ -11569,3 +11569,28 @@ context 90 · canon 94 · guide 53 · edge-auth 129 · conversation 135 ·
 dialogue 56 · mind 172 · parity 84 · knowledge 99 · presence 90 ·
 ether-encounter 94 — green. Deploy: run migrations_gap_log.sql (after
 migrations_admin_console.sql), redeploy companion-chat.
+
+## Build 0754 — the deployment verifier stopped judging the owner's configuration
+
+The owner ran verify_companion_chat_deployed.js against the freshly
+deployed R6 function and it called a healthy deployment red. Three
+stale expectations, each turned with its reason in place: it REQUIRED
+productionEnabled === false — right when Decision 34 shipped both
+gates closed, stale since the owner deliberately opened them at Step
+3A.1 — and the same for synthetic; and its two 1N.5 wording checks
+pinned the deterministic Mind's exact sentences, which cannot be a
+verdict on a server where the active card's Companion is on
+COMPANION_MODEL_COMPANIONS (now all four): the MODEL takes those
+turns and answers in its own words — measured live, the creative line
+came back as a paraphrase and the judgement one as a chosen silence,
+and neither is a fault (in the product a child sends neither
+sentence: both intents are browser-local in LOCAL_INTENTS). The
+verdict is now what a deployment can get WRONG — unreachable, Mind
+off, wrong build, the pages fix missing — with the gates and the
+model list reported as configuration; the build string carries the
+verdict, as Decision 51 already made it (bumped every deploy since
+3D, K4d keeping verifier and function in step). The deterministic
+wording is still proved through the real handler by companion-mind
+K4b/K4c, whose no-model configuration is its own. companion-mind 172
+green. No client file changed; nothing to redeploy — re-paste the
+verifier from this checkout.

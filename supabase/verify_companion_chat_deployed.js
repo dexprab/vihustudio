@@ -143,21 +143,34 @@ const EXPECTED_BUILD = 'R6';
         : '[verify] the probe answered ' + got.status + ' — see the body above.');
       return;
     }
+    // ---- THE GATES ARE CONFIGURATION NOW, NOT A VERDICT (R6) ----
+    //
+    // This used to REQUIRE productionEnabled === false — right when both
+    // gates shipped closed (Decision 34), and stale the day the product
+    // owner deliberately opened them (Step 3A.1: the first real model
+    // call). Which way a gate points is the owner's configuration and
+    // both states are legitimate, so the verifier REPORTS them and no
+    // longer fails on either. What it still fails on is what a
+    // deployment can get wrong: unreachable, the Mind off, or the wrong
+    // build.
     const flags = {
       reachable: true,
       mindEnabled: p.mindEnabled === true,            // must be TRUE
-      productionClosed: p.productionEnabled === false, // must be FALSE
-      syntheticClosed: p.syntheticEnabled === false,   // must be FALSE
+      productionEnabled: p.productionEnabled === true, // configuration — reported, not judged
+      syntheticEnabled: p.syntheticEnabled === true,   // configuration — reported, not judged
+      modelCompanions: JSON.stringify(p.modelCompanions || []),
       build: p.build || '(none)',
     };
 
     // =========================================================
-    // C. IS IT THIS BUILD? — the build string cannot say, so ask it
-    //    to BEHAVE. `BUILD` has read '1N' since the first deployment,
-    //    through the `pages` fix and through 1N.5, so a stale server
-    //    and a fresh one say the same word. Both expectations below are
-    //    proved through the real handler by tools/companion-mind-test
-    //    (K4b, K4c) rather than asserted here.
+    // C. HOW DOES IT ANSWER? — informational since R6. The build
+    //    string is meaningful now (bumped on every deploy since 3D,
+    //    kept in step by K4d), so IT decides the verdict; these two
+    //    sentences are printed so a person can read how the live
+    //    server actually answers them. The deterministic wording is
+    //    still proved through the real handler by
+    //    tools/companion-mind-test (K4b, K4c) — with no model listed,
+    //    which is that suite's configuration and not the live server's.
     // =========================================================
     const card = (typeof MagicCard !== 'undefined' && MagicCard.getActive)
       ? ((MagicCard.getActive() || {}).id || null) : null;
@@ -171,14 +184,29 @@ const EXPECTED_BUILD = 'R6';
       try { return (JSON.parse(r.body) || {}).reply || ''; } catch (e) { return ''; }
     };
 
-    log('C1 two sentences whose answer changed in 1N.5…');
+    // ---- THE 1N.5 WORDING CHECKS ARE INFORMATION NOW (R6) --------
+    //
+    // They pinned the deterministic Mind's exact sentences, which was
+    // right while the deterministic Mind was the only thing that could
+    // answer. On a server whose active card's Companion is on
+    // COMPANION_MODEL_COMPANIONS, the MODEL takes these turns and
+    // answers in its own words — a paraphrase, or a chosen silence,
+    // both of which the canon allows — so a fixed regexp cannot be a
+    // deployment verdict any more. Measured on the live server: the
+    // creative line came back as the model's paraphrase and the
+    // judgement one as "", and neither is a fault. (In the product a
+    // child never sends either sentence: both intents are in the
+    // browser Mind's LOCAL_INTENTS, answered before any request.)
+    // The build string is the deployment verdict now — meaningful since
+    // 3D, kept in step by K4d.
+    log('C1 two sentences, for information (the model may answer them in its own words)…');
     const next = await say('What could happen next?');
     log('   "What could happen next?" →', JSON.stringify(next));
     const good = await say('Is this story any good?');
     log('   "Is this story any good?" →', JSON.stringify(good));
     const checks = {
-      mind_1N5_creative: /yours to (choose|decide)/i.test(next),
-      mind_1N5_judgement: /don'?t think about it|only notice|only look|only come and look/i.test(good),
+      creative_answer: JSON.stringify(next),
+      judgement_answer: JSON.stringify(good),
     };
 
     // The one thing that needs a real story. Before the fix,
@@ -198,14 +226,16 @@ const EXPECTED_BUILD = 'R6';
     if (flags.build !== EXPECTED_BUILD) {
       log('NOTE: the server reports build ' + JSON.stringify(flags.build) +
           ' and this checkout expects ' + JSON.stringify(EXPECTED_BUILD) + '.');
-      log('      Expected until the next deploy — `BUILD` was not bumped for 1N.1 or 1N.5,');
-      log('      so it only starts meaning something from the first deploy that carries a new one.');
-      log('      The behavioural checks below are what decide.');
+      log('      Redeploy companion-chat from this checkout to bring them in step.');
     }
     console.table(Object.assign({}, flags, checks,
       { buildMatchesCheckout: flags.build === EXPECTED_BUILD, pagesFix }));
-    const verdict = flags.mindEnabled && flags.productionClosed &&
-      Object.values(checks).every(Boolean) && !/^FAIL/.test(pagesFix);
+    // The verdict is what a deployment can get WRONG: unreachable, the
+    // Mind off, a stale build, or the `pages` fix missing. The gates and
+    // the model list are the owner's configuration and are reported
+    // above, not judged here.
+    const verdict = flags.mindEnabled && flags.build === EXPECTED_BUILD
+      && !/^FAIL/.test(pagesFix);
     console.log(verdict
       ? '%cDEPLOYED — this is the current build.'
       : '%cNOT the current build, or a flag is wrong. See the table.',
