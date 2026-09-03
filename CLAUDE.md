@@ -7134,6 +7134,96 @@ where they were.
   `js/vihuplanetHome.js` ·
   `tools/social-sky-test/run-social-sky-tests.js`
 
+### 57. A Feature Is Not Finished Until the Companion Knows About It
+
+Locked by the product owner in the Sprint R6 brief: *"from this sprint
+onward, implementation and Companion knowledge maintenance are one
+workflow."* It is a STANDING RULE for every future sprint, not a
+one-off feature — and it ships the first learning loop the Companion
+has.
+
+- **THE KNOWLEDGE SYNC RULE.** Whenever a concept, feature or rule of
+  VihuPlanet is added or changed, the same sprint evaluates whether the
+  Companion Knowledge Base must change with it, and updates the RIGHT
+  layer: **Canon** (`assets/canon/vihuplanet.canon.json`) for what the
+  world IS — timeless, worldview, no interface vocabulary; **Studio
+  Knowledge** (`assets/canon/studio.knowledge.json`) for how the Studio
+  works — where a control is, what pressing it does; **Live Context**
+  (`js/companionLive.js`) for what is true right now. A feature is not
+  complete until implementation, authoritative knowledge, Companion
+  awareness and gap instrumentation have all been considered — and
+  every sprint ends with the owner's completion report naming what
+  knowledge was added, changed, and left open.
+- **THE SOCIAL WORLD IS IN THE CANON NOW.** Three sections joined it in
+  this sprint, each naming the decision it restates: **the Sky of
+  Creators** (Decision 56 — three circles, one-way quiet choosing, no
+  counts, mutual-only visibility of unshared work), **Showing, Gifts
+  and Keeping** (only the Companion crosses worlds, a copy travels and
+  the original stays, a gift is never a message, keeping copies to the
+  corresponding place, giving grows the giver's garden), and **taking a
+  creation into your hands** (Look What I Made — the letter, the folded
+  book, the card that comes alive, watching the making; a window onto a
+  creation, never the creation leaving). Studio Knowledge gained the
+  matching four capabilities — My Sky, Show a creation, Gifts and
+  Keeping, Look What I Made — each carried only on the surface where
+  its control actually stands, per Step 3E's own rule.
+- **NO FEATURE BRAINS, EVER.** No SkyBrain, GiftsBrain, StoryBrain or
+  HelpBrain. There is ONE Companion Mind and knowledge reaches it as
+  DATA through the layers above — the same rule Decision 48 already
+  states for surfaces, applied to features. The knowledge travels to
+  the model the way everything else does: generated into
+  `companion-chat` by `sync-shared.js`, one copy, never hand-mirrored.
+- **THE CONVERSATION GAP LOG** (`js/companionGapLog.js`). Every time a
+  Companion cannot adequately answer — it says it does not know, the
+  round trip failed, context was missing, or a boundary held — the
+  exchange is recorded: when, which Companion, what was asked, a few
+  surrounding turns, which surface and screen, what was answered, a
+  classification, and a resolution status. The loop is the point:
+  *ask → respond → inadequate → log → review recurring gaps → improve
+  the knowledge → better Companion.* It never makes the Companion
+  pretend to know; the answers are exactly what they were.
+- **NOT EVERY UNKNOWN IS A MISSING CANON**, and the classifier encodes
+  the owner's own examples: *"what is a volcano?"* is
+  `model_capability`; *"what happens when I Keep a Gift?"* names the
+  product's own vocabulary and is `vihuplanet_knowledge_missing`. Nine
+  categories: vihuplanet_knowledge_missing · studio_knowledge_missing ·
+  live_context_missing · story_context_missing ·
+  ambiguity_or_misunderstanding · model_capability · safety_restriction
+  · technical_failure · other. **A boundary holding is the product
+  WORKING**: a refusal is logged as `safety_restriction` with
+  resolution `by-design`, never as an open defect.
+- **INSTRUMENTATION, NEVER MEMORY — structurally.** `CompanionMemory`
+  and `MagicCard` are unreachable from the gap log (the suite scans the
+  stripped source), nothing a Companion says is ever read back FROM it,
+  and no entry can become a memory. An entry holds NO card id, NO
+  nickname, NO username, NO email.
+- **THE STORE IS THE story_cheers DISCIPLINE AGAIN**
+  (`supabase/migrations_gap_log.sql`): `conversation_gaps` has RLS on
+  with NO policies; exactly three SECURITY DEFINER doors —
+  `gap_log_insert` (any verified session reports its own gap, caller
+  derived from the session, every field capped at the door, 40/hour),
+  `gap_log_review` and `gap_log_resolve` (administrators only, via the
+  existing `is_platform_admin()`). Local first: a capped ring buffer in
+  the browser holds the entry either way, and the platform push is
+  bounded and forgotten on failure (Decision 49).
+- **ONE DOOR, BESIDE THE OBSERVE STEP.** Both conversation surfaces —
+  the Studio's `js/companionChat.js` and the Ether's
+  `js/travellerTalk.js` — offer every exchange to
+  `CompanionGapLog.consider()` exactly where they already `_observe`
+  it. Deliberate silence (an empty turn) is not a gap; an adequate
+  answer records nothing.
+- Proved in `tools/companion-gap-test/` (26): the pg half runs the real
+  migration as real sessions (session-derived insert, unauthorized
+  refusal, the unreadable table, admin review/resolve, the 'other'
+  fallback, the caps, the rate); the classifier half runs the owner's
+  own examples; and the surface half drives the real chat and watches a
+  gap land while zero memories are written.
+- `js/companionGapLog.js` · `supabase/migrations_gap_log.sql` ·
+  `assets/canon/vihuplanet.canon.json` ·
+  `assets/canon/studio.knowledge.json` ·
+  `supabase/functions/companion-chat/index.ts` ·
+  `tools/companion-gap-test/run-companion-gap-tests.js`
+
 ## Roadmap
 
 1. Theme Designer Polish

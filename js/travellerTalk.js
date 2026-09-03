@@ -134,6 +134,10 @@ const TravellerTalk = (function () {
             { intent: a.intent, certainty: a.certainty });
         }
       } catch (e) {}
+      // R6 — the Conversation Gap Log watches the Ether too, in the
+      // same words: an unknown, a refusal or a missing context here is
+      // a signal for review exactly as it is in the Studio.
+      _gap(said, a.reply, { intent: a.intent, certainty: a.certainty });
       return { text: a.reply, intent: a.intent };
     } catch (e) {
       return { text: '', intent: 'no-context' };
@@ -156,6 +160,17 @@ const TravellerTalk = (function () {
   // it does not exist.
   let _els = null, _open = false, _ctx = null;
   let _turns = [];        // in memory, while open, and nowhere else
+
+  // R6 — instrumentation, never memory (js/companionGapLog.js).
+  function _gap(said, reply, extra) {
+    try {
+      if (typeof CompanionGapLog === 'undefined') return;
+      CompanionGapLog.consider(Object.assign({
+        surface: 'ether', companion: _ctx ? _ctx.companionId : null,
+        said: said, reply: reply, turns: _turns
+      }, extra || {}));
+    } catch (e) {}
+  }
 
   function _root() {
     try { return document.querySelector('.ether-portal-foot'); } catch (e) { return null; }

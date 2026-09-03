@@ -584,9 +584,24 @@ async function call(req, over, providerFetch) {
   // what face that is. `speak` still comes back from the server and is
   // still deliberately ignored.
   const chatCode = chatSrc.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
-  ck(!/CompanionEngine|CompanionBrain|setState\(|VihuVoice|\.speak\(/.test(chatCode),
+  // ---- J5b WAS NARROWED IN SPRINT R5, DELIBERATELY -----------------
+  //
+  // It forbade the bare word `VihuVoice`, written when the surface had
+  // no reason to know a voice module existed. Sprint R5's send guard
+  // must refuse a new turn while audio is ACTUALLY SOUNDING, and the
+  // only honest reading of that is the voice module's own
+  // `isPlaying()` — a state read that plays nothing. Guarding on
+  // anything else (a surface-side flag) is exactly the stale-state
+  // deadlock R5 removed.
+  //
+  // The property that mattered survives, harder: the surface may ASK
+  // whether a voice is sounding and may never MAKE one — no speak, no
+  // prepare, no stop through VihuVoice; the engine, the Brain and pose
+  // setting stay unreachable.
+  ck(!/CompanionEngine|CompanionBrain|setState\(|\.speak\(/.test(chatCode)
+     && !/VihuVoice\s*\.\s*(?!isPlaying\b)\w+/.test(chatCode),
      'J5b it still sets no pose itself, plays no voice and does not touch the Brain',
-     'the engine, the Brain and the voice are all unreachable from it');
+     'the engine, the Brain and pose-setting are unreachable; VihuVoice is read (isPlaying) and never played');
   const notifies = (chatCode.match(/CompanionDirector\.notify\(/g) || []).length;
   const otherDirector = (chatCode.match(/CompanionDirector\.(?!notify)/g) || []).length;
   ck(notifies > 0 && otherDirector === 0,
@@ -1129,7 +1144,20 @@ async function call(req, over, providerFetch) {
           input.value = 'Leafy, do you remember our forest?';
           document.querySelector('.companion-chat-row').dispatchEvent(
             new Event('submit', { bubbles: true, cancelable: true }));
-          await new Promise((r) => setTimeout(r, 600));
+          // ---- THE WAIT WAS WIDENED IN SPRINT R6, FOR SPRINT R5 ----
+          //
+          // A fixed 600ms encoded pre-R5 timing. The answer is now HELD
+          // behind its own voice (Decision 50's 3A.1 amendment), and R5
+          // adds one deliberate retry to a failing voice — in this
+          // harness Leafy's voice is configured and unreachable, so the
+          // hold legitimately runs to its own HOLD_MS bound before the
+          // words go up. The property is unchanged (the answer is shown,
+          // once); the check now waits the way a child does — until the
+          // bounded hold releases — instead of asserting the old clock.
+          for (let i = 0; i < 40; i++) {
+            if (document.querySelector('.companion-chat-said').textContent) break;
+            await new Promise((r) => setTimeout(r, 100));
+          }
           return {
             said: document.querySelector('.companion-chat-said').textContent,
             turns: CompanionChat.turns().length,
@@ -1211,7 +1239,13 @@ async function call(req, over, providerFetch) {
           input.value = 'how many pages are there?';
           document.querySelector('.companion-chat-row').dispatchEvent(
             new Event('submit', { bubbles: true, cancelable: true }));
-          await new Promise((r) => setTimeout(r, 600));
+          // The authored failure line is speakable text, so it rides the
+          // same bounded hold-for-voice as a real answer (R5's retry
+          // included) — wait for it the same way Y5 does.
+          for (let i = 0; i < 40; i++) {
+            if (document.querySelector('.companion-chat-said').textContent) break;
+            await new Promise((r) => setTimeout(r, 100));
+          }
           return document.querySelector('.companion-chat-said').textContent;
         });
         ck(/catch that/i.test(failed) &&

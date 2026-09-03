@@ -78,7 +78,7 @@
 // the wrong instrument for is it deployed and the right one for which
 // one is it" — and it was written after the last time and then not
 // applied twice running. It is applied now.
-const BUILD = '3E';
+const BUILD = 'R6';
 
 // ===== BEGIN GENERATED edgeAuth — do not edit below this line =====
 // Generated from supabase/functions/_shared/edgeAuth.js, which is the
@@ -1827,7 +1827,9 @@ const STUDIO_KNOWLEDGE = {
         "Your journey begins / Now Look What You Can Make — the screen that offers ways to start.",
         "Three named starting points once a first story is finished: My Little Story, Character Card, Little Message.",
         "If a story was left unfinished: 'You were making something', its name, and Carry on.",
-        "A door to the next story, when there is one waiting."
+        "A door to the next story, when there is one waiting.",
+        "✨ My Sky 🎁 — the one door to the social world: the Sky of Creators, Gifts, What I've Shown, My Creations and Find a Creator all live inside it. The 🎁 on the door glows softly when a new Gift waits.",
+        "🌌 Back to the Ether — a quiet pill in the corner, for leaving the Studio on purpose."
       ],
       "notHere": [
         "pages",
@@ -1835,7 +1837,7 @@ const STUDIO_KNOWLEDGE = {
         "Play My Story",
         "Finish Story"
       ],
-      "evidence": "js/creationFlow.js — 'Begin', 'Carry on', 'Discover', 'My Little Story', 'Character Card', 'Little Message'"
+      "evidence": "js/creationFlow.js — 'Begin', 'Carry on', 'Discover', 'My Little Story', 'Character Card', 'Little Message' · '✨ My Sky', socialdoor, ether-door"
     },
     {
       "id": "story-editor",
@@ -2065,6 +2067,82 @@ const STUDIO_KNOWLEDGE = {
       ],
       "expectedResult": "The story is there when you come back, on Studio Home under 'You were making something'.",
       "evidence": "studio.html — #autosaveStatus 'Saved locally' · js/creatorProjectStore.js"
+    },
+    {
+      "id": "my-sky",
+      "name": "My Sky",
+      "where": [
+        "studio-home"
+      ],
+      "entryPoint": "✨ My Sky 🎁 — one door on Studio Home. It is only there for a Creator holding a Magic Card.",
+      "steps": [
+        "Tap ✨ My Sky 🎁.",
+        "The Sky opens: your own Companion rests in the middle, and the Creators you know stand in three circles around it — closest, the ones you chose each other; middle, the ones you chose; furthest, the ones who chose you.",
+        "The doors down the left side lead to ✦ What I've Shown, 🎁 Gifts, 🎨 My Creations and ＋ Find a Creator.",
+        "One Back button, always in the same corner, leaves the whole Sky for Studio Home."
+      ],
+      "expectedResult": "Everything social lives inside this one place. Tapping a Companion opens that Creator's own page; nothing here ever leaves the Studio by surprise.",
+      "commonProblems": [
+        "The door is absent, not broken — it only appears once a Magic Card is held."
+      ],
+      "evidence": "js/creationFlow.js — '✨ My Sky' socialdoor · js/socialSky.js — sidebar, three zones, universal Back"
+    },
+    {
+      "id": "show-a-creation",
+      "name": "Showing a creation to a Creator",
+      "where": [
+        "studio-home",
+        "story-editor"
+      ],
+      "entryPoint": "🎁 Show — on a story's card in My Projects, on a drawing or a kept letter in My Garden, or on a Creator's own page inside the Sky.",
+      "steps": [
+        "Pick the creation.",
+        "Choose the Creator from your own Sky — somebody has to be in your Sky before there is anyone to show.",
+        "Add a little note if you want; your exact words travel with it.",
+        "Your Companion carries it through a doorway and comes back. The original stays right here with you."
+      ],
+      "expectedResult": "The creation is shown to that one Creator. Nothing is published, nothing moves to the Ether, and the original never leaves.",
+      "commonProblems": [
+        "Nobody to choose — ⭐ Put them in my Sky on a Creator's page is what makes Show possible."
+      ],
+      "evidence": "js/creationShow.js — itemFor, canShow, openShowDialog · js/contextPanel.js — '🎁 Show to your Sky'"
+    },
+    {
+      "id": "gifts-and-keeping",
+      "name": "Gifts, and keeping one",
+      "where": [
+        "studio-home"
+      ],
+      "entryPoint": "🎁 Gifts inside My Sky — or the small 🎁 resting on a star whose Creator has something for you.",
+      "steps": [
+        "Open the gift: their Companion steps out of a doorway, says whose it is, and reveals what it carried — with the sender's own note, in their exact words.",
+        "Keep it if you want it: a story lands in My Projects, a drawing in your Garden, a letter with your letters."
+      ],
+      "expectedResult": "Keeping makes a copy of your very own; the sender's original is untouched, wherever it lives.",
+      "commonProblems": [
+        "A kept letter never covers your own letter — your own ink always wins that place."
+      ],
+      "evidence": "js/creationShow.js — openGifts, keep · supabase creator_shows via creation_show_*"
+    },
+    {
+      "id": "look-what-i-made",
+      "name": "Look What I Made",
+      "where": [
+        "story-editor"
+      ],
+      "entryPoint": "✨ Look — beside Play My Story, awake whenever the story has something on a page.",
+      "steps": [
+        "Tap ✨ Look. Your creation comes up with four doors:",
+        "💌 Share with Parent — a letter carrying it to a grown-up.",
+        "📄 Print Foldable — a little book folded from one sheet of paper.",
+        "🃏 Print Story Card — a small card to give away; a phone pointed at its stars opens the creation.",
+        "🎬 Watch — the making, played again as its own small film."
+      ],
+      "expectedResult": "The creation becomes something to show a person — and stays yours, in VihuPlanet, the whole time. The book and the card show a preview first; printing is the step after.",
+      "commonProblems": [
+        "✨ Look asleep — the story has nothing on its pages yet."
+      ],
+      "evidence": "js/lookWhatIMade.js — #lookBtn '✨ Look', the four doors · CLAUDE.md Decision 52"
     }
   ],
   "neverSay": [
@@ -2360,6 +2438,39 @@ const VIHUPLANET_CANON = {
         "A Story that is cheered grows — it becomes a little more alive in the Ether.",
         "Anybody in the Ether may cheer a Story, whether or not they have ever made one of their own.",
         "No number is ever shown and nobody is ever told who cheered. The growing is the whole of what anyone sees."
+      ]
+    },
+    {
+      "key": "sky",
+      "title": "The Sky of Creators",
+      "truths": [
+        "Every Creator has a Sky of their own — the Creators whose makings they chose to keep close, each seen through that Creator's Companion.",
+        "The Sky has three circles. Closest stand the Creators who chose each other — the strongest bond, and the only one drawn with a connecting line. In the middle stand the Creators this Creator chose. Furthest stand the Creators who chose them.",
+        "Choosing somebody is quiet and one-way. The other Creator is not asked, is not told, and owes nothing back. When two Creators have each chosen the other, they have found each other.",
+        "Nobody can ask who watches whom. Nothing in the Sky is counted, ranked or compared, and a Companion never says how many of anything stand there.",
+        "Creators who chose each other may see what the other is still making — the stories not yet in the Ether — because they chose each other. Nobody else can."
+      ]
+    },
+    {
+      "key": "showing",
+      "title": "Showing, Gifts, and Keeping",
+      "truths": [
+        "A Creator may show a creation to a Creator in their Sky. Showing means: I made this, and I want you to see it.",
+        "Only the Companion crosses between worlds. The Creator stays in their own world, and the original creation stays with its maker — what travels is a copy, carried by the Companion through a doorway and revealed on the other side.",
+        "What arrives is a Gift, and a Gift is a creation, never a message. There is no reply to write; the answer to a creation is another creation.",
+        "Keeping a Gift makes a copy in the keeper's own world — a story among their stories, a drawing in their Garden, a letter among their letters — and the sender's original is untouched. A kept letter never covers the keeper's own letter.",
+        "Showing is not sharing with VihuPlanet. A shown creation joins nobody's Ether; only its maker can ever put it there.",
+        "Giving makes the giver's Garden a little more alive. Nothing that happens afterwards — whether the Gift is looked at, whether it is kept — changes that."
+      ]
+    },
+    {
+      "key": "taking-it-to-hands",
+      "title": "A Creation That Travels to Hands",
+      "truths": [
+        "A finished creation can become something to show a person outside VihuPlanet: a letter posted to a grown-up, a little book folded from one sheet of paper, or a small card to give away.",
+        "The small card comes alive — point a phone at its square of stars, and the creation opens for whoever is holding it.",
+        "The making itself can be watched again: the way a creation came to be, played as its own small film.",
+        "None of this moves the creation out of VihuPlanet. What leaves is a window onto it; the creation stays its maker's, where it was made."
       ]
     }
   ]

@@ -12,10 +12,17 @@
         "Your journey begins / Now Look What You Can Make — the screen that offers ways to start.",
         "Three named starting points once a first story is finished: My Little Story, Character Card, Little Message.",
         "If a story was left unfinished: 'You were making something', its name, and Carry on.",
-        "A door to the next story, when there is one waiting."
+        "A door to the next story, when there is one waiting.",
+        "✨ My Sky 🎁 — the one door to the social world: the Sky of Creators, Gifts, What I've Shown, My Creations and Find a Creator all live inside it. The 🎁 on the door glows softly when a new Gift waits.",
+        "🌌 Back to the Ether — a quiet pill in the corner, for leaving the Studio on purpose."
       ],
-      "notHere": ["pages", "the Add panel", "Play My Story", "Finish Story"],
-      "evidence": "js/creationFlow.js — 'Begin', 'Carry on', 'Discover', 'My Little Story', 'Character Card', 'Little Message'"
+      "notHere": [
+        "pages",
+        "the Add panel",
+        "Play My Story",
+        "Finish Story"
+      ],
+      "evidence": "js/creationFlow.js — 'Begin', 'Carry on', 'Discover', 'My Little Story', 'Character Card', 'Little Message' · '✨ My Sky', socialdoor, ether-door"
     },
     {
       "id": "story-editor",
@@ -45,30 +52,78 @@
     {
       "id": "start-a-story",
       "name": "Starting a story",
-      "where": ["studio-home"],
+      "where": [
+        "studio-home"
+      ],
       "entryPoint": "One of the named starting points on Studio Home — My Little Story, Character Card or Little Message.",
-      "steps": ["Pick the one that sounds like what you want to make.", "The story opens, with one page ready."],
+      "steps": [
+        "Pick the one that sounds like what you want to make.",
+        "The story opens, with one page ready."
+      ],
       "expectedResult": "The Story Editor opens with an empty first page.",
-      "commonProblems": ["Nothing to pick from — a first story has not been finished yet, and there is a Begin instead."],
+      "commonProblems": [
+        "Nothing to pick from — a first story has not been finished yet, and there is a Begin instead."
+      ],
       "evidence": "js/creationFlow.js"
     },
     {
       "id": "add-something",
       "name": "Putting something on the page",
-      "where": ["story-editor"],
+      "where": [
+        "story-editor"
+      ],
       "entryPoint": "The panel on the right of the page.",
       "controls": [
-        { "label": "Emojis", "icon": "😀", "id": "stickers" },
-        { "label": "Shapes", "icon": "🔺", "id": "shapes" },
-        { "label": "Text", "icon": "🅰️", "id": "text" },
-        { "label": "Doodle", "icon": "✏️", "id": "doodle" },
-        { "label": "Photo", "icon": "🖼️", "id": "photo" },
-        { "label": "My Garden", "icon": "🪴", "id": "library" },
-        { "label": "Family Photos", "icon": "📷", "id": "family" },
-        { "label": "From This World", "icon": "🎁", "id": "fromWorld" },
-        { "label": "Voice", "icon": "🎤", "id": "voice" }
+        {
+          "label": "Emojis",
+          "icon": "😀",
+          "id": "stickers"
+        },
+        {
+          "label": "Shapes",
+          "icon": "🔺",
+          "id": "shapes"
+        },
+        {
+          "label": "Text",
+          "icon": "🅰️",
+          "id": "text"
+        },
+        {
+          "label": "Doodle",
+          "icon": "✏️",
+          "id": "doodle"
+        },
+        {
+          "label": "Photo",
+          "icon": "🖼️",
+          "id": "photo"
+        },
+        {
+          "label": "My Garden",
+          "icon": "🪴",
+          "id": "library"
+        },
+        {
+          "label": "Family Photos",
+          "icon": "📷",
+          "id": "family"
+        },
+        {
+          "label": "From This World",
+          "icon": "🎁",
+          "id": "fromWorld"
+        },
+        {
+          "label": "Voice",
+          "icon": "🎤",
+          "id": "voice"
+        }
       ],
-      "steps": ["Look at the panel on the right.", "Tap the one you want. It goes on the page and you can move it."],
+      "steps": [
+        "Look at the panel on the right.",
+        "Tap the one you want. It goes on the page and you can move it."
+      ],
       "expectedResult": "The thing appears on the page and can be dragged.",
       "commonProblems": [
         "A tile is not there — not everything is there from the start. What a child has met so far is what shows.",
@@ -79,77 +134,200 @@
     {
       "id": "add-a-page",
       "name": "Adding a page",
-      "where": ["story-editor"],
+      "where": [
+        "story-editor"
+      ],
       "entryPoint": "+ Add Page, under the list of pages on the left.",
-      "steps": ["Find PAGES down the left.", "Tap + Add Page at the bottom of that list."],
+      "steps": [
+        "Find PAGES down the left.",
+        "Tap + Add Page at the bottom of that list."
+      ],
       "expectedResult": "A new empty page appears at the end and opens.",
       "evidence": "studio.html — #addPageBtn, label '+ Add Page'"
     },
     {
       "id": "name-the-story",
       "name": "Naming a story",
-      "where": ["story-editor"],
+      "where": [
+        "story-editor"
+      ],
       "entryPoint": "The story's name across the top.",
-      "steps": ["Tap the name at the top.", "Type the new one."],
+      "steps": [
+        "Tap the name at the top.",
+        "Type the new one."
+      ],
       "expectedResult": "The story is called that everywhere — in your stories, and on the page if the World shows it.",
       "evidence": "studio.html — #bookTitle, #bookTitleEdit"
     },
     {
       "id": "play-the-story",
       "name": "Playing a story back",
-      "where": ["story-editor"],
+      "where": [
+        "story-editor"
+      ],
       "entryPoint": "Play My Story, at the top.",
-      "steps": ["Tap Play My Story."],
+      "steps": [
+        "Tap Play My Story."
+      ],
       "expectedResult": "The story plays through, page by page.",
-      "commonProblems": ["It looks asleep — there is nothing on the page yet, or a story chapter is running and has not finished."],
+      "commonProblems": [
+        "It looks asleep — there is nothing on the page yet, or a story chapter is running and has not finished."
+      ],
       "evidence": "studio.html — #playStoryBtn, label 'Play My Story', class is-asleep when disabled"
     },
     {
       "id": "finish-the-story",
       "name": "Finishing a story",
-      "where": ["story-editor"],
+      "where": [
+        "story-editor"
+      ],
       "entryPoint": "Finish Story, at the top.",
-      "steps": ["Tap Finish Story.", "Two choices come up: take the story, or share it with VihuPlanet.", "Neither one is the one you have to pick."],
+      "steps": [
+        "Tap Finish Story.",
+        "Two choices come up: take the story, or share it with VihuPlanet.",
+        "Neither one is the one you have to pick."
+      ],
       "expectedResult": "Every part of the story is made and handed over. Sharing is a separate choice.",
-      "commonProblems": ["It looks asleep — same as Play My Story."],
+      "commonProblems": [
+        "It looks asleep — same as Play My Story."
+      ],
       "evidence": "studio.html — #shareBtn, label 'Finish Story' · CLAUDE.md Decision 12"
     },
     {
       "id": "go-back",
       "name": "Going back",
-      "where": ["story-editor"],
+      "where": [
+        "story-editor"
+      ],
       "entryPoint": "🏠 at the top left goes to Studio Home. 🌌 goes back out to the Ether.",
-      "steps": ["Tap 🏠 for Studio Home, or 🌌 to go out to VihuPlanet."],
+      "steps": [
+        "Tap 🏠 for Studio Home, or 🌌 to go out to VihuPlanet."
+      ],
       "expectedResult": "The story is kept on its own — nothing has to be saved by hand.",
       "evidence": "studio.html — #homeBtn '🏠', #etherBtn '🌌'"
     },
     {
       "id": "the-garden",
       "name": "My Garden",
-      "where": ["story-editor"],
+      "where": [
+        "story-editor"
+      ],
       "entryPoint": "🪴 My Garden in the panel on the right.",
-      "steps": ["Tap 🪴 My Garden.", "It opens on two rooms — your drawings, and your letters.", "Tap one to put it on the page, or tap an empty letter to make it."],
+      "steps": [
+        "Tap 🪴 My Garden.",
+        "It opens on two rooms — your drawings, and your letters.",
+        "Tap one to put it on the page, or tap an empty letter to make it."
+      ],
       "expectedResult": "Your own drawing or your own letter goes on the page.",
-      "commonProblems": ["The tile is not there — My Garden is one of the things a child meets as they go."],
+      "commonProblems": [
+        "The tile is not there — My Garden is one of the things a child meets as they go."
+      ],
       "evidence": "js/contextPanel.js — data-add-id 'library', label 'My Garden' · CLAUDE.md Decision 27"
     },
     {
       "id": "talk-to-me",
       "name": "Talking to your Companion",
-      "where": ["studio-home", "story-editor", "ether"],
+      "where": [
+        "studio-home",
+        "story-editor",
+        "ether"
+      ],
       "entryPoint": "The small opener at the foot of the screen, or tapping the Companion.",
-      "steps": ["Tap it.", "Type, or use 🎤 to say it out loud."],
+      "steps": [
+        "Tap it.",
+        "Type, or use 🎤 to say it out loud."
+      ],
       "expectedResult": "The conversation opens at the bottom. Closing it forgets what was said.",
       "evidence": "js/companionChat.js · js/travellerTalk.js"
     },
     {
       "id": "saving",
       "name": "Keeping a story safe",
-      "where": ["story-editor"],
+      "where": [
+        "story-editor"
+      ],
       "entryPoint": "Nothing — it keeps itself.",
-      "steps": ["Nothing to do. It saves on its own while you work."],
+      "steps": [
+        "Nothing to do. It saves on its own while you work."
+      ],
       "expectedResult": "The story is there when you come back, on Studio Home under 'You were making something'.",
       "evidence": "studio.html — #autosaveStatus 'Saved locally' · js/creatorProjectStore.js"
+    },
+    {
+      "id": "my-sky",
+      "name": "My Sky",
+      "where": [
+        "studio-home"
+      ],
+      "entryPoint": "✨ My Sky 🎁 — one door on Studio Home. It is only there for a Creator holding a Magic Card.",
+      "steps": [
+        "Tap ✨ My Sky 🎁.",
+        "The Sky opens: your own Companion rests in the middle, and the Creators you know stand in three circles around it — closest, the ones you chose each other; middle, the ones you chose; furthest, the ones who chose you.",
+        "The doors down the left side lead to ✦ What I've Shown, 🎁 Gifts, 🎨 My Creations and ＋ Find a Creator.",
+        "One Back button, always in the same corner, leaves the whole Sky for Studio Home."
+      ],
+      "expectedResult": "Everything social lives inside this one place. Tapping a Companion opens that Creator's own page; nothing here ever leaves the Studio by surprise.",
+      "commonProblems": [
+        "The door is absent, not broken — it only appears once a Magic Card is held."
+      ],
+      "evidence": "js/creationFlow.js — '✨ My Sky' socialdoor · js/socialSky.js — sidebar, three zones, universal Back"
+    },
+    {
+      "id": "show-a-creation",
+      "name": "Showing a creation to a Creator",
+      "where": [
+        "studio-home",
+        "story-editor"
+      ],
+      "entryPoint": "🎁 Show — on a story's card in My Projects, on a drawing or a kept letter in My Garden, or on a Creator's own page inside the Sky.",
+      "steps": [
+        "Pick the creation.",
+        "Choose the Creator from your own Sky — somebody has to be in your Sky before there is anyone to show.",
+        "Add a little note if you want; your exact words travel with it.",
+        "Your Companion carries it through a doorway and comes back. The original stays right here with you."
+      ],
+      "expectedResult": "The creation is shown to that one Creator. Nothing is published, nothing moves to the Ether, and the original never leaves.",
+      "commonProblems": [
+        "Nobody to choose — ⭐ Put them in my Sky on a Creator's page is what makes Show possible."
+      ],
+      "evidence": "js/creationShow.js — itemFor, canShow, openShowDialog · js/contextPanel.js — '🎁 Show to your Sky'"
+    },
+    {
+      "id": "gifts-and-keeping",
+      "name": "Gifts, and keeping one",
+      "where": [
+        "studio-home"
+      ],
+      "entryPoint": "🎁 Gifts inside My Sky — or the small 🎁 resting on a star whose Creator has something for you.",
+      "steps": [
+        "Open the gift: their Companion steps out of a doorway, says whose it is, and reveals what it carried — with the sender's own note, in their exact words.",
+        "Keep it if you want it: a story lands in My Projects, a drawing in your Garden, a letter with your letters."
+      ],
+      "expectedResult": "Keeping makes a copy of your very own; the sender's original is untouched, wherever it lives.",
+      "commonProblems": [
+        "A kept letter never covers your own letter — your own ink always wins that place."
+      ],
+      "evidence": "js/creationShow.js — openGifts, keep · supabase creator_shows via creation_show_*"
+    },
+    {
+      "id": "look-what-i-made",
+      "name": "Look What I Made",
+      "where": [
+        "story-editor"
+      ],
+      "entryPoint": "✨ Look — beside Play My Story, awake whenever the story has something on a page.",
+      "steps": [
+        "Tap ✨ Look. Your creation comes up with four doors:",
+        "💌 Share with Parent — a letter carrying it to a grown-up.",
+        "📄 Print Foldable — a little book folded from one sheet of paper.",
+        "🃏 Print Story Card — a small card to give away; a phone pointed at its stars opens the creation.",
+        "🎬 Watch — the making, played again as its own small film."
+      ],
+      "expectedResult": "The creation becomes something to show a person — and stays yours, in VihuPlanet, the whole time. The book and the card show a preview first; printing is the step after.",
+      "commonProblems": [
+        "✨ Look asleep — the story has nothing on its pages yet."
+      ],
+      "evidence": "js/lookWhatIMade.js — #lookBtn '✨ Look', the four doors · CLAUDE.md Decision 52"
     }
   ],
   "neverSay": [

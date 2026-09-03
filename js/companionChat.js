@@ -494,6 +494,7 @@ const CompanionChat = (function () {
       if (here.reply) _turns.push({ speaker: 'companion', text: here.reply });
       _turns = _turns.slice(-MAX_TURNS);
       _observe(said, here.reply, { intent: here.intent, certainty: here.certainty });
+      _gap(said, here.reply, { intent: here.intent, certainty: here.certainty, reason: here.reason });
       return { ok: true, reply: here.reply, speak: here.speak, where: 'local' };
     };
     if (here && here.local) {
@@ -568,6 +569,7 @@ const CompanionChat = (function () {
         // survive one — otherwise asking how many pages there are would
         // forget the dragon.
         _observe(said, reply);
+        _gap(said, reply, { intent: here && here.intent, certainty: here && here.certainty, fromServer: true });
         return { ok: true, reply: reply, speak: !!body.speak || !!reply };
       }).catch(function () { return { ok: false, reason: 'unavailable' }; });
     });
@@ -1004,6 +1006,7 @@ const CompanionChat = (function () {
       const held = turn.answered();
       const wait = held > 0 ? held : Math.max(0, BEAT_MS - spent);
       const words = r.ok ? (r.reply || '') : _unheard();
+      if (!r.ok) _gap(said, words, { reason: 'unavailable' });
       setTimeout(function () {
         if (turn !== _turn) return;
         _lastMs = Date.now() - t0;
@@ -1341,6 +1344,20 @@ const CompanionChat = (function () {
 
   let _lastSpoke = false;
   let _turn = null;
+
+  // R6 — THE CONVERSATION GAP LOG. Beside every observe, the exchange
+  // is offered to js/companionGapLog.js, which decides whether it was
+  // an inadequate answer and records it for review. Instrumentation,
+  // never memory: it changes nothing about what was said.
+  function _gap(said, reply, extra) {
+    try {
+      if (typeof CompanionGapLog === 'undefined') return;
+      CompanionGapLog.consider(Object.assign({
+        surface: 'studio', companion: _companionId(),
+        said: said, reply: reply, turns: _turns
+      }, extra || {}));
+    } catch (e) {}
+  }
 
   function _observe(said, reply, meta) {
     try {

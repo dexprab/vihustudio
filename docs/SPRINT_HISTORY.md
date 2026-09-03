@@ -11538,3 +11538,34 @@ computed style, the outer string proved stroke-free) and B3g now
 counts four bonds and two star-strings on the sixteen-creator sky.
 social-sky 68 · show-journey 76 — green. Client-only; the next Pages
 deploy carries it.
+
+## Build 0753 — R6: the Knowledge Sync Rule, and the Conversation Gap Log
+
+The owner's standing rule, made real: implementation and Companion
+knowledge maintenance are one workflow from here on (CLAUDE.md →
+Decision 57). The social world reached the Companion's knowledge in
+the right layers — three canon sections (the Sky of Creators;
+Showing, Gifts and Keeping — only the Companion crosses worlds; Look
+What I Made) and four Studio Knowledge capabilities (My Sky, Show,
+Gifts and Keeping, Look What I Made), each carried only on the
+surface whose control actually stands there. No feature brains: one
+Mind, knowledge as data, generated into companion-chat by sync-shared
+(function BUILD 'R6' — redeploy carries it). And the first learning
+loop: js/companionGapLog.js offers every exchange to a classifier
+beside the existing observe step on both surfaces — an inadequate
+answer (unknown, missing context, technical failure, a boundary
+holding) is recorded locally (capped ring) and pushed bounded to
+conversation_gaps (migrations_gap_log.sql — RLS on, no policies,
+three SECURITY DEFINER doors, 40/hr, admin-only review/resolve).
+Nine classifications, the owner's own examples encoded (volcano →
+model_capability; Keep a Gift → vihuplanet_knowledge_missing); a
+refusal logs as by-design, never an open defect; CompanionMemory and
+MagicCard structurally unreachable. New suite companion-gap 26 (real
+pg sessions + classifier + the real chat surface logging a gap while
+writing zero memories). Regressions: chat 256 (J5b narrowed with
+reason — VihuVoice may be READ (isPlaying) never played; Y5/Y7 widened
+to wait out R5's bounded hold instead of asserting the pre-R5 clock) ·
+context 90 · canon 94 · guide 53 · edge-auth 129 · conversation 135 ·
+dialogue 56 · mind 172 · parity 84 · knowledge 99 · presence 90 ·
+ether-encounter 94 — green. Deploy: run migrations_gap_log.sql (after
+migrations_admin_console.sql), redeploy companion-chat.
