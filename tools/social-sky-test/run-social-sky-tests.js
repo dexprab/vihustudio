@@ -310,6 +310,11 @@ function sqlSection() {
       sky: [{ username: 'stargirl', companion: 'quill', circle: true }],
       choseMe: [{ username: 'newfriend', companion: 'nimbus', since: '2026-02-01T00:00:00Z' }]
     }));
+    // one unseen gift already in the local cache, so the single door's
+    // 🎁 has something real to light up for at boot (R4.2)
+    localStorage.setItem('vihu.gifts.' + s.aCard, JSON.stringify([
+      { id: 'boot1', from: 'moonmaker', kind: 'drawing', name: 'A little sun', seen: false, kept: false }
+    ]));
   }, seeded);
 
   // The REAL return: a genuine page load, the Gateway tapped the way
@@ -336,17 +341,28 @@ function sqlSection() {
 
   const band = await page.evaluate(() => {
     const t = (document.querySelector('.creation-flow-social') || {}).innerText || '';
+    const doors = document.querySelectorAll('.creation-flow-socialdoor-btn');
+    const gift = document.querySelector('.creation-flow-socialdoor-gift');
     return {
-      sky: /🌌 My Sky/.test(t),
-      gifts: /🎁 Gifts/.test(t),
+      sky: /✨ My Sky/.test(t),
+      doorCount: doors.length,
+      doorGlows: doors.length === 1 && doors[0].classList.contains('is-new'),
+      giftOnDoor: !!gift && gift.textContent === '🎁',
+      giftLit: !!gift && gift.classList.contains('is-lit'),
       oldRow: /My Orbit · /.test(t),
       newStars: /New stars are interested in your creations/.test(t),
       found: /You and @stargirl found each other/.test(t),
       named: /newfriend/.test(t),
     };
   });
-  ck(band.sky && band.gifts && !band.oldRow,
-     'B1  STUDIO HOME OFFERS 🌌 My Sky · 🎁 Gifts — the sky replaced the list row', JSON.stringify(band));
+  // R4.2 — TURNED AROUND, on the owner's consolidation: My Sky is the
+  // single social destination, so Studio Home offers exactly ONE door
+  // — ✨ My Sky 🎁 — the 🎁 lit when a new Gift waits, the door
+  // glowing softly for a new star. Light, never a number.
+  ck(band.sky && band.doorCount === 1 && band.giftOnDoor
+     && band.giftLit && band.doorGlows && !band.oldRow,
+     'B1  STUDIO HOME OFFERS ONE DOOR — ✨ My Sky 🎁, the gift lit and the door aglow for what is new (R4.2)',
+     JSON.stringify(band));
   ck(band.newStars && !band.named,
      'B2  "✨ New stars are interested in your creations" — and NEVER the chooser\'s name at the door',
      JSON.stringify({ newStars: band.newStars, named: band.named }));
@@ -390,14 +406,23 @@ function sqlSection() {
         meCentered: meR ? Math.round(Math.hypot(meR.left + meR.width / 2 - cx,
                                                 meR.top + meR.height / 2 - cy)) : null,
         lines: document.querySelectorAll('.social-sky-lines line').length,
-        lineClasses: Array.from(document.querySelectorAll('.social-sky-lines line'))
-          .map((ln) => ln.getAttribute('class') || ''),
+        strokes: document.querySelectorAll('.social-sky-lines ellipse').length,
+        trails: Array.from(document.querySelectorAll('.social-sky-lines g'))
+          .map((g) => {
+            const dots = Array.from(g.querySelectorAll('circle'));
+            const mean = dots.reduce((a, c) => a + Math.hypot(
+              Number(c.getAttribute('cx')) - 50, Number(c.getAttribute('cy')) - 50), 0)
+              / Math.max(dots.length, 1);
+            return { cls: g.getAttribute('class') || '', dots: dots.length,
+                     mean: Math.round(mean) };
+          }),
         bands: document.querySelectorAll('.social-sky-band').length,
         legends: legend.length,
         legendText: legend.length ? legend[0].innerText : '',
         marks: Array.from(document.querySelectorAll('.social-sky-star .social-sky-mark'))
           .map((m) => (m.closest('.social-sky-star').className.match(/is-(mutual|chosen|far)/) || [,''])[1]
                       + ':' + m.textContent),
+        quiets: document.querySelectorAll('.social-sky-overlay .social-sky-quiet').length,
         side: {
           present: !!document.querySelector('.social-sky-side'),
           profile: (document.querySelector('.social-sky-profile') || { innerText: '' }).innerText,
@@ -419,26 +444,34 @@ function sqlSection() {
   // R4 mockup adds one, so the property is now: the states are still
   // PLACES first (no band sections), and the words appear exactly
   // once, in ONE legend, in the sky's own language — chose, never
-  // follow.
+  // follow. (R4.1: the mutual line reads "We chose each other" — the
+  // owner's own wording.)
   ck(sky.open && !!mStar && !!fStar && sky.bands === 0
      && sky.legends === 1
      && /I chose them/.test(sky.legendText)
-     && /You chose each other/.test(sky.legendText)
+     && /We chose each other/.test(sky.legendText)
      && /They chose me/.test(sky.legendText)
+     && /💛/.test(sky.legendText) && /⭐/.test(sky.legendText) && /🌿/.test(sky.legendText)
      && !/follow/i.test(sky.legendText),
-     'B3  THE SKY IS SPATIAL — no list sections; the one legend (R4) words the states in sky language',
+     'B3  THE SKY IS SPATIAL — no list sections; the one legend words the states in sky language (💛 ⭐ 🌿)',
      JSON.stringify({ bands: sky.bands, stars: sky.stars.length, legend: sky.legendText.replace(/\n/g, ' · ') }));
   ck(sky.meCentered !== null && sky.meCentered < 40 && mStar.dist < fStar.dist,
      'B3b MY COMPANION IS THE CENTRE, the mutual star nearest, the new chooser furthest',
      JSON.stringify({ me: sky.meCentered, mutual: mStar.dist, far: fStar.dist }));
-  // R4 — TURNED AROUND: the constellation now joins EVERY Companion to
-  // the child's own (the owner's mockup), the relationship spoken by
-  // the line's own light — the mutual line keeps its distinct stroke.
-  ck(sky.lines === sky.stars.length && sky.lines >= 2
-     && sky.lineClasses.filter((c) => c === 'is-mutual').length === 1
-     && sky.lineClasses.filter((c) => c === 'is-far').length === 1,
-     'B3c a golden line joins EVERY Companion to the centre — the mutual line its own brighter stroke (R4)',
-     JSON.stringify({ lines: sky.lines, classes: sky.lineClasses }));
+  // R4.1/R4.2 — TURNED AGAIN, on the owner's corrections ("do not
+  // draw arbitrary network-style connecting lines" · "think
+  // ✦ · ✦ · ✦, not ─────"): the connection structure IS the
+  // three-circle model, and each POPULATED zone's orbit is a STRING
+  // OF STARS — a trail of many small dots around its own circle, no
+  // point-to-point line, no stroked ring, and no trail for an empty
+  // zone. The inner trail circles closer than the outer.
+  const trMutual = (sky.trails || []).find((t) => t.cls === 'is-mutual');
+  const trFar = (sky.trails || []).find((t) => t.cls === 'is-far');
+  ck(sky.lines === 0 && sky.strokes === 0 && sky.trails.length === 2
+     && !!trMutual && !!trFar && trMutual.dots >= 20 && trFar.dots >= 20
+     && trMutual.mean < trFar.mean,
+     'B3c THE ORBITS ARE STRINGS OF STARS (R4.2) — a trail per populated zone, no lines, no strokes, none for an empty zone',
+     JSON.stringify({ lines: sky.lines, strokes: sky.strokes, trails: sky.trails }));
   ck(sky.fieldW >= 900,
      'B3d and the sky has room to breathe — a spacious canvas, not a small modal', sky.fieldW + 'px wide');
   // R4 — the relationship mark on each star matches its tier, and it is
@@ -459,8 +492,9 @@ function sqlSection() {
      && /Go to Ether/.test(sky.side.ether)
      && /My Sky/.test(sky.side.active)
      && !/\d/.test(doors)
-     && /@/.test(sky.side.profile),
-     'B3f THE SIDEBAR HOLDS THE DOORS — My Sky · What I’ve Shown · Gifts · My Creations · Find a Creator · Go to Ether, no number on any of them (R4)',
+     && /@/.test(sky.side.profile)
+     && sky.quiets === 1,
+     'B3f THE SIDEBAR HOLDS THE DOORS — and ONE universal Back stands for the whole of My Sky (R4.2)',
      JSON.stringify({ doors, ether: sky.side.ether, active: sky.side.active, profile: sky.side.profile.replace(/\n/g, ' ') }));
   ck(!!mStar && /quill\/idle\.png/.test(mStar.companion || '')
      && mStar.name === '@stargirl',
@@ -490,6 +524,64 @@ function sqlSection() {
      'B6  SEEN SETTLES THE GLOW — the stars themselves stay', JSON.stringify(settled));
   ck(settled.lines.length === 0,
      'B6b and the creative events go quiet with it — an invitation, never a nag');
+
+  // R4.1 — MANY CREATORS STILL LIVE IN THREE CIRCLES. Sixteen stars
+  // (4 mutual · 9 chosen · 3 choosers) seeded straight into the sky
+  // cache: the zone ordering must hold on average distance, all three
+  // orbits draw, nothing becomes a band/list, and a crowded zone
+  // SPREADS around its circle (wide in both axes) instead of
+  // stacking. The cache is restored afterwards so the later checks
+  // meet the fixture sky they expect.
+  const crowded = await page.evaluate(() => {
+    document.querySelectorAll('.social-sky-overlay').forEach((o) => o.remove());
+    const card = MagicCard.getActive();
+    const key = 'vihu.sky.' + card.id;
+    const prev = localStorage.getItem(key);
+    const sky = [];
+    ['ally', 'breeze', 'cloud', 'dewdrop', 'ember', 'fern', 'glowworm', 'harbor', 'iris']
+      .forEach((n) => sky.push({ username: n, companion: 'leafy', circle: false }));
+    ['moonpal', 'nightowl', 'opal', 'pebble']
+      .forEach((n) => sky.push({ username: n, companion: 'quill', circle: true }));
+    localStorage.setItem(key, JSON.stringify({
+      sky,
+      choseMe: [
+        { username: 'quietkid', companion: 'nimbus' },
+        { username: 'riverkid', companion: 'leosaurus' },
+        { username: 'starlingpal', companion: 'leafy' },
+      ],
+    }));
+    SocialSky.open();
+    return new Promise((resolve) => setTimeout(() => {
+      const stars = Array.from(document.querySelectorAll('.social-sky-star')).map((s) => ({
+        cls: (s.className.match(/is-(mutual|chosen|far)/) || [, ''])[1],
+        l: parseFloat(s.style.left), t: parseFloat(s.style.top),
+      }));
+      const dist = (s) => Math.hypot(s.l - 50, s.t - 50);
+      const by = (z) => stars.filter((s) => s.cls === z);
+      const avg = (list) => list.reduce((a, s) => a + dist(s), 0) / Math.max(list.length, 1);
+      const spread = (list) => ({
+        l: Math.round(Math.max(...list.map((s) => s.l)) - Math.min(...list.map((s) => s.l))),
+        t: Math.round(Math.max(...list.map((s) => s.t)) - Math.min(...list.map((s) => s.t))),
+      });
+      const out = {
+        n: stars.length,
+        orbits: document.querySelectorAll('.social-sky-lines g').length,
+        bands: document.querySelectorAll('.social-sky-band').length,
+        avgM: Math.round(avg(by('mutual'))), avgC: Math.round(avg(by('chosen'))),
+        avgF: Math.round(avg(by('far'))),
+        spreadC: spread(by('chosen')),
+      };
+      document.querySelector('.social-sky-quiet').click();
+      if (prev === null) localStorage.removeItem(key);
+      else localStorage.setItem(key, prev);
+      resolve(out);
+    }, 450));
+  });
+  ck(crowded.n === 16 && crowded.orbits === 3 && crowded.bands === 0
+     && crowded.avgM < crowded.avgC && crowded.avgC < crowded.avgF
+     && crowded.spreadC.l > 30 && crowded.spreadC.t > 30,
+     'B3g SIXTEEN CREATORS STILL LIVE IN THREE CIRCLES (R4.1) — zone order holds, all three orbits draw, and a crowded zone spreads around its circle instead of becoming a list',
+     JSON.stringify(crowded));
 
   // ---- Show, from every creation type ------------------------------
   const showables = await page.evaluate(async (s) => {

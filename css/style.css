@@ -14019,6 +14019,31 @@ body.studio-rite-running .companion-chat-open{ display:none !important; }
    Discover door below a 600px fold, the exact failure Decision 22's
    short-window rule exists to prevent (caught by creation-home F13). */
 .creation-flow-socialdoor{ margin:8px 0 0; display:flex; gap:8px; }
+/* R4.2 — ONE DOOR: ✨ My Sky 🎁. The gift glyph rests dim until a new
+   Gift waits, then lights up softly; a new star lends the whole door
+   a quiet glow. Light, never a number. */
+.creation-flow-socialdoor-gift{
+  margin-left:8px;
+  opacity:0.5; filter:grayscale(0.5);
+  transition:opacity .4s ease, filter .4s ease;
+}
+.creation-flow-socialdoor-gift.is-lit{
+  opacity:1; filter:none;
+  animation:socialdoor-gift-breathe 3.2s ease-in-out infinite;
+}
+@keyframes socialdoor-gift-breathe{
+  0%,100%{ text-shadow:0 0 4px rgba(255,215,130,0.3); }
+  50%{ text-shadow:0 0 11px rgba(255,215,130,0.8); }
+}
+.creation-flow-socialdoor-btn.is-new{
+  border-color:rgba(255,215,130,0.55);
+  box-shadow:0 0 14px rgba(255,215,130,0.22);
+}
+@media (prefers-reduced-motion: reduce){
+  .creation-flow-socialdoor-gift.is-lit{
+    animation:none; text-shadow:0 0 8px rgba(255,215,130,0.6);
+  }
+}
 .creation-flow-socialdoor-btn{
   display:block;
   flex:1;
@@ -14269,6 +14294,8 @@ body.studio-rite-running .companion-chat-open{ display:none !important; }
   border:1px solid rgba(241,234,208,0.16);
   box-shadow:0 30px 80px rgba(0,0,0,0.5);
   display:flex;
+  /* R4.2 — the universal Back anchors to the panel's own corner */
+  position:relative;
 }
 /* R4 — THE SIDEBAR, from the product owner's own mockup: a quiet rail
    holding the child's own Companion and the doors of the social world
@@ -14408,11 +14435,21 @@ body.studio-rite-running .companion-chat-open{ display:none !important; }
      be watched — only to be alive. */
   animation:social-sky-line-drift 30s linear infinite;
 }
-/* R4 — every Companion is joined to the centre now; the relationship
-   speaks through the line's own light, never a label on it. */
-.social-sky-lines line.is-chosen{ stroke:rgba(255,215,130,0.16); }
-.social-sky-lines line.is-far{ stroke:rgba(255,215,130,0.09); stroke-width:0.22; }
-@keyframes social-sky-line-drift{ to{ stroke-dashoffset:-26; } }
+/* R4.2 — THE THREE ORBITS AS STRINGS OF STARS (✦ · ✦ · ✦, never a
+   drawn line): each populated zone lays a trail of tiny stars along
+   its circle, tinted like its own mark — gold inner, violet middle,
+   leaf-green outer — the inner trail brightest, so the trail itself
+   carries relationship strength. The dots breathe at three slow
+   paces, so the strings shimmer instead of sitting still. */
+.social-sky-lines circle{
+  animation:social-sky-trail 6s ease-in-out infinite;
+}
+.social-sky-lines circle:nth-child(2n){ animation-duration:8.5s; animation-delay:-2.7s; }
+.social-sky-lines circle:nth-child(3n){ animation-duration:11s; animation-delay:-5.3s; }
+@keyframes social-sky-trail{ 0%,100%{ opacity:0.55; } 50%{ opacity:1; } }
+.social-sky-lines g.is-mutual circle{ fill:rgba(255,215,130,0.75); }
+.social-sky-lines g.is-chosen circle{ fill:rgba(200,170,255,0.55); }
+.social-sky-lines g.is-far circle{ fill:rgba(150,215,170,0.42); }
 /* One star = one Creator, standing where the relationship puts them.
    Positioned absolutely (inline left/top from the layout), centred on
    its own point. */
@@ -14511,7 +14548,7 @@ body.studio-rite-running .companion-chat-open{ display:none !important; }
      not move. */
   .social-sky-field::before,.social-sky-field::after,
   .social-sky-figure,.social-sky-me .social-sky-figure,
-  .social-sky-find-plus,.social-sky-lines line{ animation:none; }
+  .social-sky-find-plus,.social-sky-lines circle{ animation:none; }
 }
 /* R4 — the relationship mark on the figure's rim: a state mark the
    legend explains (💛 · ✦ · 🌿), never an achievement and never a
@@ -14522,14 +14559,21 @@ body.studio-rite-running .companion-chat-open{ display:none !important; }
   filter:drop-shadow(0 0 3px rgba(10,13,26,0.9));
   pointer-events:none;
 }
-.social-sky-star.is-chosen .social-sky-mark{ color:#c9a8ff; }
+.social-sky-star.is-chosen .social-sky-mark{
+  color:#c9a8ff;
+  /* the ⭐ emoji is gold by nature; the agreed middle-circle symbol is
+     a PURPLE star, so the mark takes the hue */
+  filter:hue-rotate(215deg) saturate(1.6) drop-shadow(0 0 3px rgba(10,13,26,0.9));
+}
 .social-sky-star.is-far .social-sky-mark{ color:#9fd7aa; font-size:11px; }
 /* R4 — the legend: the three states in the sky's own words, one quiet
    row at the foot of the field. Present only when a star is. */
 .social-sky-legend{
-  position:absolute; left:50%; bottom:10px;
-  transform:translateX(-50%);
-  display:flex; gap:18px; white-space:nowrap;
+  /* bottom-left corner, a small quiet column — off the outer ring's
+     arc, which owns the centre of the field's foot (R4.1) */
+  position:absolute; left:18px; bottom:14px;
+  display:flex; flex-direction:column; align-items:flex-start; gap:4px;
+  white-space:nowrap;
   z-index:3; pointer-events:none;
 }
 .social-sky-legend-item{
@@ -14537,7 +14581,10 @@ body.studio-rite-running .companion-chat-open{ display:none !important; }
   font-size:11px; color:rgba(241,234,208,0.62);
 }
 .social-sky-legend-glyph{ font-size:11px; }
-.social-sky-legend-glyph.is-chosen{ color:#c9a8ff; }
+.social-sky-legend-glyph.is-chosen{
+  color:#c9a8ff;
+  filter:hue-rotate(215deg) saturate(1.6);
+}
 .social-sky-legend-glyph.is-far{ color:#9fd7aa; }
 
 /* "They have something to show me" — one small mark on the star, a
@@ -14580,10 +14627,7 @@ body.studio-rite-running .companion-chat-open{ display:none !important; }
 .social-sky-me .social-sky-name{ font-size:12px; opacity:0.7; }
 .social-sky-empty{
   position:absolute; left:50%;
-  /* clear of the ＋ Find a Creator star, which stands at bottom:8% of
-     the same centre line — the two used to draw through each other
-     (reported with a screenshot: "choose them ＋ and they appear") */
-  bottom:calc(8% + 96px);
+  bottom:14%;
   transform:translateX(-50%);
   width:min(440px,80%);
   margin:0; text-align:center;
@@ -14608,8 +14652,11 @@ body.studio-rite-running .companion-chat-open{ display:none !important; }
    lives IN the sky: the ＋ is a soft star low in the field, part of
    the world, never a settings button. */
 .social-sky-find-star{
-  position:absolute; left:50%; bottom:8%;
-  transform:translateX(-50%);
+  /* R4.1 — the corners are the only ring-free ground: the outer
+     orbit's bottom arc runs straight through the old centre-bottom
+     spot (measured — a chooser stood on the ＋). Top-right, opposite
+     the title, off every circle whatever the sky holds. */
+  position:absolute; right:40px; top:14px;
   width:auto !important; height:auto !important;
   margin:0 !important; padding:8px 14px !important;
   display:flex; flex-direction:column; align-items:center; gap:2px;
@@ -15198,6 +15245,22 @@ body.studio-rite-running .companion-chat-open{ display:none !important; }
              inset 0 0 22px rgba(186,156,255,0.45);
 }
 @keyframes show-portal-swirl{ to{ transform:rotate(360deg); } }
+/* R4.2 — the doorway DEEPENS while it stands open: the rim turns a
+   little faster and the night inside breathes, light welling up from
+   somewhere behind it — a passage, never a flat transition. */
+.show-portal.is-open::before{ animation-duration:2.4s; }
+.show-portal.is-open::after{
+  animation:show-portal-depth 6.5s ease-in-out infinite;
+}
+@keyframes show-portal-depth{
+  0%,100%{ box-shadow:0 0 26px rgba(255,203,69,0.4),
+                      inset 0 0 22px rgba(186,156,255,0.45); }
+  50%{ box-shadow:0 0 40px rgba(255,203,69,0.58),
+                  inset 0 0 36px rgba(186,156,255,0.62); }
+}
+@media (prefers-reduced-motion: reduce){
+  .show-portal::before,.show-portal.is-open::after{ animation:none; }
+}
 
 /* Arrival: the mirror — somebody steps OUT of the doorway into this
    world, and settles with the small bounce of a landing. */

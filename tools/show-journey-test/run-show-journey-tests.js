@@ -544,15 +544,18 @@ function sqlSection() {
        'SD1 THE SPACE REMEMBERS WHAT I HAVE SHOWN THEM — my own send history, and never a word about seen',
        sd1.items.join(','));
     await page.evaluate(() => {
-      Array.from(document.querySelectorAll('.social-sky-quiet'))
-        .find((b) => /Back to My Sky/.test(b.textContent)).click();
+      Array.from(document.querySelectorAll('.social-sky-nav-btn'))
+        .find((b) => /My Sky/.test(b.textContent)).click();
     });
     const backSky = await page.evaluate(() => ({
       field: !!document.querySelector('.social-sky-field'),
       findStar: !!document.querySelector('.social-sky-find-star'),
     }));
+    // R4.2 — the way back to the sky IS the sidebar's own door: no
+    // section carries a Back of its own any more, and the one
+    // universal Back leaves My Sky for Studio Home.
     ck(backSky.field && backSky.findStar,
-       'S3  BACK RETURNS TO THE SKY — where ＋ Find a Creator now stands as a soft star in the field itself');
+       'S3  THE SIDEBAR DOOR RETURNS TO THE SKY (R4.2) — where ＋ Find a Creator stands as a soft star in the field');
 
     // ---- R4: the sidebar's own rooms -------------------------------
     // ✦ What I've Shown gathers the whole send history in one room,
@@ -569,12 +572,14 @@ function sqlSection() {
       seenWord: /\bseen\b|\bviewed\b/i.test((document.querySelector('.social-sky-space') || {}).textContent || ''),
       active: (document.querySelector('.social-sky-nav-btn.is-active') || {}).textContent || '',
       sideStands: !!document.querySelector('.social-sky-side'),
+      quiets: document.querySelectorAll('.social-sky-overlay .social-sky-quiet').length,
     }));
     ck(shownRoom.heads.indexOf('@stargirl') !== -1
        && shownRoom.items.indexOf('The Moon Dragon') !== -1
-       && !shownRoom.seenWord && /What I/.test(shownRoom.active) && shownRoom.sideStands,
-       'SD3 ✦ WHAT I’VE SHOWN IS A ROOM OF ITS OWN (R4) — the whole history grouped by Creator, kept travels, never a word about seen',
-       JSON.stringify({ heads: shownRoom.heads, items: shownRoom.items }));
+       && !shownRoom.seenWord && /What I/.test(shownRoom.active) && shownRoom.sideStands
+       && shownRoom.quiets === 1,
+       'SD3 ✦ WHAT I’VE SHOWN IS A ROOM OF ITS OWN (R4) — grouped by Creator, kept travels, never a word about seen, and ONE universal Back (R4.2)',
+       JSON.stringify({ heads: shownRoom.heads, items: shownRoom.items, quiets: shownRoom.quiets }));
 
     // 🎨 My Creations — the child's own things seen from the social
     // world, a 🌌 mark on exactly the ones already in the Ether (a
@@ -660,8 +665,8 @@ function sqlSection() {
     // Proved against the seeded cache (it holds only stargirl), so on
     // the old code ghostkid stays missing here.
     const liveAdd = await page.evaluate(async () => {
-      Array.from(document.querySelectorAll('.social-sky-quiet'))
-        .find((b) => /Back to My Sky/.test(b.textContent)).click();
+      Array.from(document.querySelectorAll('.social-sky-nav-btn'))
+        .find((b) => /My Sky/.test(b.textContent)).click();
       await new Promise((r) => setTimeout(r, 150));
       return {
         field: !!document.querySelector('.social-sky-field'),
@@ -678,8 +683,8 @@ function sqlSection() {
       Array.from(document.querySelectorAll('.social-sky-quiet'))
         .find((b) => /Take out of my Sky/.test(b.textContent)).click();
       await new Promise((r) => setTimeout(r, 150));
-      Array.from(document.querySelectorAll('.social-sky-quiet'))
-        .find((b) => /Back to My Sky/.test(b.textContent)).click();
+      Array.from(document.querySelectorAll('.social-sky-nav-btn'))
+        .find((b) => /My Sky/.test(b.textContent)).click();
       await new Promise((r) => setTimeout(r, 150));
       return !Array.from(document.querySelectorAll('.social-sky-star .social-sky-name'))
         .some((n) => n.textContent === '@ghostkid');

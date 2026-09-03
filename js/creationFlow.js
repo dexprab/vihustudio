@@ -894,31 +894,33 @@ const CreationFlow=(function(){
       }).catch(function(){});
     }catch(e){}
 
-    // SOCIAL SKY R1 — Studio Home is the home of the child's social
-    // world, and that world is a SKY: 🌌 My Sky (the visualization,
-    // Companions in three layers) and 🎁 Gifts (things other Creators
-    // have shown them), one quiet row for a Creator holding a card.
-    // Absent for a Traveller — a relationship needs somebody to
-    // belong to. The Ether's doorway note still opens the Sky on
-    // arrival. The Gifts label gains a quiet ✨ when something unseen
-    // is waiting — a mark, never a number.
+    // SOCIAL SKY R4.2 — ONE DOOR: ✨ My Sky 🎁. My Sky is the single
+    // social destination (the Sky, Gifts, What I've Shown and Find a
+    // Creator all live inside it), so Studio Home offers exactly one
+    // way in for a Creator holding a card — absent for a Traveller.
+    // The 🎁 on the door lights up subtly when a new Gift waits, and
+    // the door itself takes a soft glow when a new star does — light
+    // and marks, never a number. The Ether's doorway note still opens
+    // the Sky on arrival, and 🌌 Back to the Ether stays its own
+    // separate Studio Home action.
+    let skyDoorBtn=null;
     try{
       if(typeof CreatorOrbit!=='undefined'&&typeof MagicCard!=='undefined'
          &&MagicCard.getActive&&MagicCard.getActive()
          &&typeof CreatorSocial!=='undefined'&&CreatorSocial.openSocialPanel){
         const socialRow=_el('div','creation-flow-socialdoor');
-        const openBtn=_el('button','creation-flow-socialdoor-btn','🌌 My Sky');
-        openBtn.type='button';
-        openBtn.addEventListener('click',function(){ CreatorSocial.openSocialPanel(); });
-        socialRow.appendChild(openBtn);
-        if(typeof CreationShow!=='undefined'&&CreationShow.openGifts){
-          const giftsBtn=_el('button','creation-flow-socialdoor-btn','🎁 Gifts');
-          giftsBtn.type='button';
-          giftsBtn.addEventListener('click',function(){ CreationShow.openGifts(); });
-          socialRow.appendChild(giftsBtn);
+        skyDoorBtn=_el('button','creation-flow-socialdoor-btn');
+        skyDoorBtn.type='button';
+        skyDoorBtn.appendChild(_el('span','creation-flow-socialdoor-sky','✨ My Sky'));
+        const giftGlyph=_el('span','creation-flow-socialdoor-gift','🎁');
+        giftGlyph.setAttribute('aria-hidden','true');
+        skyDoorBtn.appendChild(giftGlyph);
+        skyDoorBtn.addEventListener('click',function(){ CreatorSocial.openSocialPanel(); });
+        socialRow.appendChild(skyDoorBtn);
+        if(typeof CreationShow!=='undefined'&&CreationShow.refresh){
           CreationShow.refresh().then(function(){
-            if(giftsBtn.isConnected&&CreationShow.unseen().length){
-              giftsBtn.textContent='🎁 Gifts ✨';
+            if(giftGlyph.isConnected&&CreationShow.unseen().length){
+              giftGlyph.classList.add('is-lit');
             }
           }).catch(function(){});
         }
@@ -933,12 +935,17 @@ const CreationFlow=(function(){
     // your creations" · "✨ You and @name found each other" — shown
     // until the child has had an opportunity to SEE the sky itself
     // (opening it is what settles the glow and quiets these). Never
-    // "X followed you", never a count.
+    // "X followed you", never a count. A new star also lends the
+    // door its soft glow (R4.2).
     try{
       if(typeof SocialSky!=='undefined'&&SocialSky.refresh){
         SocialSky.refresh().then(function(){
           if(!slot.isConnected) return;
-          SocialSky.eventLines().slice(0,3).forEach(function(line){
+          const lines=SocialSky.eventLines();
+          if(lines.length&&skyDoorBtn&&skyDoorBtn.isConnected){
+            skyDoorBtn.classList.add('is-new');
+          }
+          lines.slice(0,3).forEach(function(line){
             slot.appendChild(_el('div','creation-flow-activity',line));
           });
         }).catch(function(){});

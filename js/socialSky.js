@@ -304,7 +304,7 @@ const SocialSky=(function(){
     b.style.top=opts.y.toFixed(2)+'%';
     const fig=_figure(entry.companion);
     // R4 — the relationship mark, from the owner's mockup: one small
-    // state mark on the figure's rim (💛 we chose each other · ✦ I
+    // state mark on the figure's rim (💛 we chose each other · ⭐ I
     // chose them · 🌿 they chose me). It names a RELATIONSHIP the
     // legend explains — never an achievement, never a count — and the
     // spatial hierarchy still carries the same truth without it.
@@ -351,32 +351,47 @@ const SocialSky=(function(){
     return b;
   }
 
-  // WHERE A STAR STANDS — the whole relationship model, said spatially
-  // and never as a list: mutual choices closest around the child's own
-  // Companion, the Creators they chose further out, and the Creators
-  // who chose them further and fainter still. No rings are drawn, no
-  // layer is labelled, and an empty layer simply isn't there — the
-  // hierarchy is felt, not explained.
+  // WHERE A STAR STANDS — THE THREE-CIRCLE MODEL, and it is the agreed
+  // geometry (restated by the product owner after R4 drifted toward a
+  // generic constellation map): three relationship ZONES around the
+  // child's own Companion — the inner circle for we-chose-each-other,
+  // the middle circle for I-chose-them, the outer circle for
+  // they-chose-me. Distance from the centre IS relationship gravity.
+  // The zones are never labelled on the stars and never become a list;
+  // an empty zone simply isn't there.
   //
-  // Positions are deterministic: within a layer the stars share the
+  // ONE set of zone radii, consumed by the placement AND by the drawn
+  // orbit rings, so the two can never disagree about where a circle is.
+  const ZONES={
+    mutual:{rx:15,ry:20,turn:0},
+    chosen:{rx:28,ry:33,turn:Math.PI/5},
+    far:{rx:40,ry:43,turn:Math.PI/3}
+  };
+
+  // Positions are deterministic: within a zone the stars share the
   // circle evenly (sorted by name, starting at the top), with a small
   // per-name jitter so three companions never look like a diagram —
-  // and each layer's ring is turned a little so layers interleave
+  // and each zone's ring is turned a little so zones interleave
   // instead of stacking into columns. The same sky draws the same way
-  // every time.
-  function _placed(list,rx,ry,turn){
+  // every time. A CROWDED zone breathes rather than becoming a
+  // contact list: past six stars, every other one steps a little off
+  // the circle (outward on the inner ring — away from the child's own
+  // Companion — inward on the others), so neighbours stop shouldering
+  // each other while everyone stays plainly in their zone.
+  function _placed(list,zone,drift){
     const sorted=list.slice().sort(function(a,b){
       return _norm(a.username)<_norm(b.username)?-1:1;
     });
     const n=sorted.length;
     return sorted.map(function(e,i){
       const name=_norm(e.username);
-      const a=-Math.PI/2+turn+(2*Math.PI*i)/Math.max(n,1)
+      const a=-Math.PI/2+zone.turn+(2*Math.PI*i)/Math.max(n,1)
         +(_jitter(name,1000)/1000)*(Math.PI/Math.max(n*3,6));
+      const s=(n>6&&i%2===1)?drift:0;
       return {
         entry:e,
-        x:50+Math.cos(a)*rx+(_jitter(name+'x',4)),
-        y:50+Math.sin(a)*ry+(_jitter(name+'y',4))
+        x:50+Math.cos(a)*(zone.rx+s)+(_jitter(name+'x',4)),
+        y:50+Math.sin(a)*(zone.ry+s)+(_jitter(name+'y',4))
       };
     });
   }
@@ -408,6 +423,15 @@ const SocialSky=(function(){
     const body=_el('div','social-sky-body');
     panel.appendChild(side);
     panel.appendChild(body);
+    // R4.2 — ONE UNIVERSAL BACK for the whole of My Sky. Moving
+    // between the Sky, Gifts, What I've Shown, a Creator's space and
+    // Find stays INSIDE the flow (the sidebar's doors are the way
+    // around), so no section carries a Back of its own; the one Back,
+    // always in the same corner, leaves My Sky for Studio Home.
+    const uback=_el('button','social-sky-quiet','Back');
+    uback.type='button';
+    uback.addEventListener('click',done);
+    panel.appendChild(uback);
     function _clear(){ while(body.firstChild) body.removeChild(body.firstChild); }
 
     const navBtns={};
@@ -736,10 +760,6 @@ const SocialSky=(function(){
         }
       }catch(e){}
 
-      const back=_el('button','social-sky-quiet','← Back to My Sky');
-      back.type='button';
-      back.addEventListener('click',function(){ render(); });
-      space.appendChild(back);
     }
 
     // A mutual friend's unshared story, paged through quietly.
@@ -854,10 +874,6 @@ const SocialSky=(function(){
       });
       space.appendChild(go);
       space.appendChild(note);
-      const back=_el('button','social-sky-quiet','← Back to My Sky');
-      back.type='button';
-      back.addEventListener('click',function(){ render(); });
-      space.appendChild(back);
       input.focus();
     }
 
@@ -908,10 +924,6 @@ const SocialSky=(function(){
           if(!any) nothing();
         }).catch(function(){ if(space.isConnected) nothing(); });
       }
-      const back=_el('button','social-sky-quiet','← Back to My Sky');
-      back.type='button';
-      back.addEventListener('click',function(){ render(); });
-      space.appendChild(back);
     }
 
     // ----------------------------------------------------------------
@@ -964,10 +976,6 @@ const SocialSky=(function(){
           });
         })(CreatorProjectStore.list());
       }catch(e){ note.textContent='Nothing here yet — go make something ✨'; }
-      const back=_el('button','social-sky-quiet','← Back to My Sky');
-      back.type='button';
-      back.addEventListener('click',function(){ render(); });
-      space.appendChild(back);
     }
 
     function render(){
@@ -987,34 +995,46 @@ const SocialSky=(function(){
       // the screen, not a box the screen contains.
       field.appendChild(_el('h3','social-sky-title','🌌 My Sky'));
 
-      const mutual=_placed(l.mutual,15,20,0);
-      const chosen=_placed(l.chosen,28,33,Math.PI/5);
-      const far=_placed(l.choseMe,40,43,Math.PI/3);
+      const mutual=_placed(l.mutual,ZONES.mutual,3);
+      const chosen=_placed(l.chosen,ZONES.chosen,-3);
+      const far=_placed(l.choseMe,ZONES.far,-3);
 
-      // Constellation lines (R4, from the owner's mockup) — EVERY
-      // Companion in the sky is joined to the child's own by a golden
-      // dotted line: the sky is one constellation, not scattered
-      // portraits. The relationship still speaks through the line's
-      // own light — the mutual line brightest, a chosen line softer,
-      // a they-chose-me line faintest — never through a label on it.
+      // THE ORBITS, AS STRINGS OF STARS (R4.1 drew them, R4.2 gave
+      // them their voice — the owner's rule: "connection lines must
+      // follow the three-circle/orbit structure", and "think
+      // ✦ · ✦ · ✦, not ─────"). Each POPULATED zone lays a trail of
+      // tiny stars along its own circle, from the same ZONES the
+      // placement reads, wobbling gently off the true ellipse so the
+      // trail curves organically instead of tracing a diagram. The
+      // tint is the zone's own mark — gold inner, violet middle,
+      // leaf-green outer — and the inner trail is the densest and
+      // brightest, so the trail itself carries relationship
+      // strength. Deterministic (no Math.random): the same sky
+      // shimmers the same way every visit. An empty zone lays no
+      // trail: no ladder on screen to fill.
       if(mutual.length||chosen.length||far.length){
         const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
         svg.setAttribute('class','social-sky-lines');
         svg.setAttribute('viewBox','0 0 100 100');
         svg.setAttribute('preserveAspectRatio','none');
         svg.setAttribute('aria-hidden','true');
-        function join(list,cls){
-          list.forEach(function(p){
-            const line=document.createElementNS('http://www.w3.org/2000/svg','line');
-            line.setAttribute('class',cls);
-            line.setAttribute('x1','50'); line.setAttribute('y1','50');
-            line.setAttribute('x2',p.x.toFixed(2)); line.setAttribute('y2',p.y.toFixed(2));
-            svg.appendChild(line);
-          });
+        function trail(zone,cls,count){
+          const g=document.createElementNS('http://www.w3.org/2000/svg','g');
+          g.setAttribute('class',cls);
+          for(let i=0;i<count;i++){
+            const a=(2*Math.PI*i)/count;
+            const w=Math.sin(a*3+zone.rx)*1.1+(((i*7919)%13)-6)/9;
+            const c=document.createElementNS('http://www.w3.org/2000/svg','circle');
+            c.setAttribute('cx',(50+Math.cos(a)*(zone.rx+w)).toFixed(2));
+            c.setAttribute('cy',(50+Math.sin(a)*(zone.ry+w)).toFixed(2));
+            c.setAttribute('r',((((i*31)%3)*0.09)+0.16).toFixed(2));
+            g.appendChild(c);
+          }
+          svg.appendChild(g);
         }
-        join(far,'is-far');
-        join(chosen,'is-chosen');
-        join(mutual,'is-mutual');
+        if(far.length) trail(ZONES.far,'is-far',44);
+        if(chosen.length) trail(ZONES.chosen,'is-chosen',36);
+        if(mutual.length) trail(ZONES.mutual,'is-mutual',30);
         field.appendChild(svg);
       }
 
@@ -1033,7 +1053,7 @@ const SocialSky=(function(){
         });
       }
       put(far,'is-far',newStar,'🌿');
-      put(chosen,'is-chosen',null,'✦');
+      put(chosen,'is-chosen',null,'⭐');
       put(mutual,'is-mutual',newMutual,'💛');
 
       // The child themselves — their Companion is the centre of their
@@ -1050,15 +1070,16 @@ const SocialSky=(function(){
           'Your sky is waiting. When you meet a Creator in the Ether whose things you love, choose them — and they appear here.'));
       }
 
-      // THE LEGEND (R4, from the owner's mockup) — the one place the
-      // three states are put into words, and the words are the sky's
-      // own: chose, never follow. It appears only once there is a
-      // star to read it against — an empty sky keeps its one kind
-      // sentence and no key to a map with nothing on it.
+      // THE LEGEND (R4, worded by the owner in R4.1) — the one place
+      // the three states are put into words, small and unobtrusive,
+      // and the words are the sky's own: chose, never follow. It
+      // appears only once there is a star to read it against — an
+      // empty sky keeps its one kind sentence and no key to a map
+      // with nothing on it.
       if(l.mutual.length||l.chosen.length||l.choseMe.length){
         const legend=_el('div','social-sky-legend');
-        [['is-chosen','✦','I chose them'],
-         ['is-mutual','💛','You chose each other'],
+        [['is-mutual','💛','We chose each other'],
+         ['is-chosen','⭐','I chose them'],
          ['is-far','🌿','They chose me']].forEach(function(row){
           const it=_el('span','social-sky-legend-item');
           const g=_el('span','social-sky-legend-glyph '+row[0],row[1]);
@@ -1080,10 +1101,6 @@ const SocialSky=(function(){
       find.addEventListener('click',function(){ renderFind(); });
       field.appendChild(find);
 
-      const back=_el('button','social-sky-quiet','Back');
-      back.type='button';
-      back.addEventListener('click',done);
-      field.appendChild(back);
     }
 
     if(opts&&opts.creator){ renderSpace(_norm(opts.creator),opts.companion||null); }

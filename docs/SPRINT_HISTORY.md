@@ -11393,3 +11393,56 @@ worded), B3c (lines === stars, the mutual stroke distinct); new B3e
 show-journey 76 · creation-home 84 · social-orbit 31 ·
 social-ether-identity 20 — all green. Server untouched; 0747's
 pending step stands (re-run migrations_social_sky.sql + verify).
+
+## Build 0750 — R4.1 + R4.2: the three circles restored, and My Sky made one flow
+
+Two corrections from the product owner in one sitting, and both are
+about R4 drifting where it should not have. FIRST: "STOP redesigning
+the Sky as a generic constellation/network graph. Restore the agreed
+3-circle relationship geometry." The zones had never moved — the
+placement always read three elliptical layers — but the radial
+centre-to-star lines READ as a network diagram, and that reading is
+the defect. The lines are gone. One ZONES table now feeds both the
+placement and the drawn orbits, so the two can never disagree about
+where a circle is; the chosen mark became the agreed ⭐ (hue-shifted
+to the purple star, since an emoji cannot take a colour); the legend
+carries his exact wording — 💛 We chose each other · ⭐ I chose them ·
+🌿 They chose me; and a crowded zone breathes (past six stars every
+other one steps a little off its circle — outward on the inner ring,
+away from the child's own Companion) so sixteen Creators still read
+as three circles and never as a contact list (B3g measures it: zone
+order by average distance, spread in both axes). The field's corners
+turned out to be the only ring-free ground — the outer orbit's bottom
+arc ran straight through the old centre-bottom ＋ Find star (measured:
+a chooser stood on it) — so ＋ moved to the top-right corner and the
+legend to a bottom-left column. THEN the consolidation sprint arrived
+and the orbits got their voice: "think ✦ · ✦ · ✦, not ─────" — each
+populated zone now lays a STRING OF STARS along its circle, many
+small dots wobbling gently off the true ellipse (deterministic, no
+Math.random), tinted like the zone's own mark, densest and brightest
+on the inner circle, shimmering at three slow paces. No line element
+and no stroked ring exists in the sky at all (B3c counts both at
+zero). Studio Home's two social buttons became ONE DOOR — ✨ My Sky
+🎁 — the 🎁 resting dim until a new Gift waits and then lighting
+softly, the door itself taking a quiet glow for a new star; light and
+marks, never a number (the old '🎁 Gifts ✨' text-swap became a lit
+glyph, and B1 turned around with its reason). My Sky is the single
+social destination now, so the sections lost their own Back buttons —
+the sidebar's doors are the way around, and ONE universal Back,
+always in the panel's corner, leaves My Sky for Studio Home (the
+in-flow peek keeps its drill-out '← Back', which returns to the room
+that opened it, not to the map). The portal gained depth rather than
+a redesign: while it stands open the rim turns a little faster and
+the night inside breathes — a passage, not a flat transition;
+reduced motion stills it. Already standing and merely re-verified:
+refresh stays on Studio Home (G3), the Ether shelf shows which
+creations live there (E2), star-tap opens the Creator's space (S1),
+Show/Keep grow the garden (K1), Go to Ether stays its own Studio
+Home action and surrenders the tab's authority (E5), and every
+boundary scan (no follower/friend/rank vocabulary, no counts, gifts
+are creations not messages) is unchanged. creationShow.js's R3.8
+dedupe separator — a raw NUL byte that made the file read as binary
+to grep and diff — became the escaped form it always meant. social-sky
+68 · show-journey 76 · creation-home 84 · social-orbit 31 ·
+social-ether-identity 20 — all green. Server untouched; 0747's
+pending step stands (re-run migrations_social_sky.sql + verify).
