@@ -735,6 +735,49 @@ html, body {
   .vp-action:hover { transform: none; }
 }
 
+/* ===============================================================
+   The exploration nudge — "There's more out there."
+   One small direct invitation to a fresh Traveller that the Ether is
+   something to move through (Decision 58, the Exploration Nudge
+   brief). Words over the living universe, never a panel: no border,
+   no card, no arrows, no diagram, nothing to press and nothing that
+   blocks a tap — pointer-events: none, so the sky underneath stays
+   entirely the child's. The bracketed input hint is deliberately the
+   quieter of the two lines: the invitation is the sentence, the
+   mechanics are a whisper.
+   =============================================================== */
+.vp-explore-nudge {
+  position: absolute;
+  left: 50%;
+  bottom: calc(16vh + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  text-align: center;
+  pointer-events: none;
+  z-index: 5;
+  opacity: 0;
+  transition: opacity 900ms ease;
+}
+.vp-explore-nudge.is-in { opacity: 1; }
+.vp-explore-nudge-line {
+  font-family: 'Kalam', system-ui, sans-serif;
+  font-size: clamp(1rem, 0.9rem + 0.5vw, 1.25rem);
+  color: rgba(241, 234, 208, 0.92);
+  letter-spacing: 0.02em;
+  text-shadow: 0 0 18px rgba(11, 16, 38, 0.9), 0 1px 3px rgba(11, 16, 38, 0.8);
+}
+.vp-explore-nudge-hint {
+  margin-top: 0.35rem;
+  font-family: 'Kalam', system-ui, sans-serif;
+  font-size: clamp(0.72rem, 0.68rem + 0.25vw, 0.85rem);
+  color: rgba(241, 234, 208, 0.55);
+  text-shadow: 0 0 14px rgba(11, 16, 38, 0.9);
+}
+@media (prefers-reduced-motion: reduce) {
+  /* The words may remain (the invitation is text, not motion); only
+     the fade goes. */
+  .vp-explore-nudge { transition: none; }
+}
+
 
 /* ===============================================================
    Mark Your Stars

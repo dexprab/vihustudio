@@ -188,6 +188,7 @@
         patterns: function () { return PATTERNS.map(function (p) { return p.id; }); },
         diagnostics: function () { return { quiet: true, decisions: [] }; },
         decideNow: function () { return null; },
+        touchNow: function () { return null; },
         setTimeScale: function () {},
         destroy: function () {}
       };
@@ -709,6 +710,145 @@
       });
     }
 
+    // ---------- the touch: the ripple asked; the sky MAY answer ----
+    //
+    // A Traveller's tap on empty Ether is acknowledged by the ripple
+    // layer itself (js/etherRipple.js — the acknowledgment is
+    // provider grammar, like a creature's swell-ack), and the ripple
+    // then tells this composer that a touch happened. Whether
+    // anything MORE answers is decided here, from world state, and
+    // the commonest decision is nothing further: a tap that reliably
+    // produced a response would teach "tap = reward", which is the
+    // one lesson the ripple must never teach. So the answers are
+    // rare, spaced by their own drawn-out cooldown, capped per
+    // visit, refused outright while anything else is speaking, and
+    // refused entirely in the arrival and orientation — a fresh
+    // Traveller's first taps meet the ripple alone.
+    //
+    // The response vocabulary is the sky's own, already built: a
+    // faint wave answering back to the touched place, a few stars
+    // that were not there before near it, or something far off
+    // answering in the touch's direction. No new machinery, no
+    // reward, nothing collected — and a touch the sky chose to
+    // answer becomes an anchor, so a later experience may echo the
+    // place the child themselves marked.
+    var ripple = opts.ripple || null;
+    var TOUCH_RESPONSES = [
+      { id: 'echo-wave', rarity: 'uncommon', delay: [1.0, 1.6],
+        expects: 'a faint answering wave returns to the touched place' },
+      { id: 'near-stars', rarity: 'rare', delay: [2.2, 4.0], notBefore: 55,
+        expects: 'a few faint stars, near where the sky was touched' },
+      { id: 'far-answer', rarity: 'very_rare', delay: [2.6, 4.2], notBefore: 120,
+        expects: 'something far off answers, in the direction of the touch' }
+    ];
+    var visitTouch = {};
+    TOUCH_RESPONSES.forEach(function (r) {
+      var tier = RARITY[r.rarity] || RARITY.common;
+      visitTouch[r.id] = {
+        present: Math.random() < tier.visit,
+        lean: rand(0.75, 1.3),
+        performed: 0
+      };
+    });
+    // The sky never answers the very first taps of a visit, and after
+    // any answer the next is a long, freshly drawn while away — an
+    // interval that cannot be learned, in a sky that mostly declines.
+    var touchReadyAt = rand(20, 60);
+    var pendingTouch = null;
+
+    function onTouch(p) {
+      var ph = phase();
+      var entry = { touch: true, phase: ph, chosen: null };
+      if (!p || typeof p.x !== 'number' || typeof p.y !== 'number') return null;
+      if (ph === 'arrival' || ph === 'orientation') {
+        entry.chosen = 'ripple-only';
+        entry.why = 'the ' + ph + ' is still speaking';
+        log(entry);
+        return null;
+      }
+      if (liveExperience || life.active() || life.trail() || pendingTouch) {
+        entry.chosen = 'ripple-only';
+        entry.why = 'the sky is already speaking';
+        log(entry);
+        return null;
+      }
+      if (time < touchReadyAt) {
+        entry.chosen = 'ripple-only';
+        entry.why = 'the ripple is the whole answer for now';
+        log(entry);
+        return null;
+      }
+      var pool = [];
+      entry.rejected = [];
+      TOUCH_RESPONSES.forEach(function (r) {
+        var vt = visitTouch[r.id];
+        if (!vt.present) { entry.rejected.push({ id: r.id, because: 'not-in-this-visit' }); return; }
+        if (r.notBefore && time < r.notBefore) { entry.rejected.push({ id: r.id, because: 'too-early' }); return; }
+        if (r.id === 'near-stars' && time - lastMarkAt < 60) {
+          entry.rejected.push({ id: r.id, because: 'mark-too-recent' }); return;
+        }
+        if (vt.performed >= 2) { entry.rejected.push({ id: r.id, because: 'answered-enough' }); return; }
+        var tier = RARITY[r.rarity] || RARITY.common;
+        pool.push({
+          r: r,
+          appeal: tier.weight * vt.lean * Math.pow(0.45, vt.performed) * rand(0.85, 1.15)
+        });
+      });
+      var best = null;
+      for (var i = 0; i < pool.length; i++) {
+        if (!best || pool[i].appeal > best.appeal) best = pool[i];
+      }
+      // The quiet line sits well above decide()'s: most touches are
+      // ripple-only, by design, so no child can learn that tapping
+      // makes things happen.
+      var quietLine = 0.30 * tempo * rand(0.85, 1.3);
+      if (!best || best.appeal < quietLine) {
+        entry.chosen = 'ripple-only';
+        entry.why = best
+          ? 'nothing owed (best ' + best.r.id + ' at ' +
+            best.appeal.toFixed(2) + ' under ' + quietLine.toFixed(2) + ')'
+          : 'nothing eligible';
+        log(entry);
+        return null;
+      }
+      var r = best.r;
+      visitTouch[r.id].performed++;
+      pendingTouch = { id: r.id, x: p.x, y: p.y,
+                       due: time + rand(r.delay[0], r.delay[1]) };
+      touchReadyAt = time + rand(45, 120) * tempo;
+      // The place the child touched, and the sky chose to answer, is
+      // a place worth coming back to.
+      addAnchor(p.x, p.y, 'touched');
+      remember({ pattern: 'touch:' + r.id, familyId: null, outcome: 'react',
+                 sector: sectorNow, interaction: 'asked', depth: 'offered' });
+      entry.chosen = r.id;
+      entry.why = 'the sky answers a touch (appeal ' + best.appeal.toFixed(2) + ')';
+      entry.expects = r.expects;
+      log(entry);
+      return r.id;
+    }
+    if (ripple && ripple.on && !ripple.quiet) ripple.on('touched', onTouch);
+
+    function performTouch() {
+      var pt = pendingTouch;
+      pendingTouch = null;
+      if (pt.id === 'echo-wave') {
+        if (ripple && ripple.echoAt) ripple.echoAt(pt.x, pt.y);
+      } else if (pt.id === 'near-stars') {
+        life.markAt(pt.x + rand(-80, 80), pt.y + rand(-55, 55),
+                    { life: rand(20, 40) });
+        lastMarkAt = time;
+      } else if (pt.id === 'far-answer') {
+        var lookNow = lookPoint();
+        var adx = pt.x - lookNow.x, ady = pt.y - lookNow.y;
+        var alen = Math.sqrt(adx * adx + ady * ady) || 1;
+        var reach = Math.max(universe.ether.viewWidth,
+                             universe.ether.viewHeight) * rand(0.5, 0.75);
+        life.bloomAt(lookNow.x + (adx / alen) * reach,
+                     lookNow.y + (ady / alen) * reach * 0.7);
+      }
+    }
+
     // ---------- the clock ----------
     function drawGap() {
       // The air between experiences. Phase leans it, the visit's
@@ -750,6 +890,9 @@
 
       tickLedger(dt);
       tickBeckon();
+      // A composed answer to a touch arrives on its own small delay —
+      // never while a Spirit owns the moment.
+      if (pendingTouch && time >= pendingTouch.due && !portalOpen()) performTouch();
 
       // The arrival script: the first crossing is the whale, guide
       // armed, inside the first-20-seconds window — the one beat the
@@ -826,14 +969,30 @@
           quiet: false,
           state: this.state ? this.state() : null,
           decisions: decisions.slice(),
-          nextOfferIn: Math.max(0, Math.round((gapTarget - time) * 10) / 10)
+          nextOfferIn: Math.max(0, Math.round((gapTarget - time) * 10) / 10),
+          touch: {
+            readyIn: Math.max(0, Math.round((touchReadyAt - time) * 10) / 10),
+            pending: pendingTouch ? pendingTouch.id : null,
+            responses: TOUCH_RESPONSES.map(function (r) {
+              return { id: r.id, rarity: r.rarity,
+                       inThisVisit: visitTouch[r.id].present,
+                       performed: visitTouch[r.id].performed };
+            })
+          }
         };
       },
       decideNow: decide,
+      // The same entry a real touch takes, for a suite: the decision,
+      // the log and the scheduling are identical — nothing is asked
+      // of the screen.
+      touchNow: onTouch,
       setTimeScale: function (k) {
         if (typeof k === 'number' && k > 0 && k <= 600) timeScale = k;
       },
-      destroy: function () { destroyed = true; }
+      destroy: function () {
+        destroyed = true;
+        if (ripple && ripple.off) { try { ripple.off('touched', onTouch); } catch (e) {} }
+      }
     };
   }
 

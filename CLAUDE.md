@@ -7552,6 +7552,119 @@ leads somewhere.
   timed out on the jellyfish ENTERING the view: 12 px/s under a
   starved frame clock's capped dt — the B2 lesson again, answered
   the same way (a speed manner, which the recharge never reads).
+- **THE ONE LINE OF INSTRUCTION IN VIHUPLANET IS AN INVITATION TO
+  EXPLORE** (the Exploration Nudge sprint, build 0764). Decision 10's
+  glance clause recorded *"there is not one instruction anywhere in
+  VihuPlanet, this would be the first, and it would have to be read"*
+  — and the product owner has now decided to add exactly this one:
+  *"There's more out there."*, with a quieter bracketed line answering
+  only HOW — *(Use the arrow keys to explore)* for a fine pointer,
+  *(Swipe to explore)* for a coarse one, read off the input actually
+  in the child's hands and never the user agent. It is words over the
+  living sky, `pointer-events: none` — no arrows, no diagrams, no
+  panel, no modal, nothing blocked and nothing that must be answered.
+  **It appears once per visit and is gone the moment exploration
+  begins** — the same stillness-reset signal the glance and the
+  beckon already answer to — and an unanswered nudge withdraws on its
+  own and never returns; nothing is stored, because a Traveller is
+  stateless (Decision 19).
+- **THE THREE INVITATIONS SPEAK IN TURN, NEVER TOGETHER.** The nudge
+  is the direct one and goes first (~7 s of stillness, just as the
+  arrival turn finishes saying the same thing wordlessly); the glance
+  holds while the nudge's words are up, and an unanswered nudge is
+  counted as the first invitation given so the glance follows at its
+  own spacing rather than in the same breath; the beckon keeps its
+  own clock (~16 s) and arrives after the nudge has gone either way.
+  Under reduced motion the turn and the glance stay silenced and the
+  nudge's TEXT remains — a line of text is not motion, and the
+  invitation still stands for exactly the child the others cannot
+  reach.
+- **THE ETHER ANSWERS A TOUCH** (`js/etherRipple.js`, the same
+  sprint). A deliberate tap on the empty field is acknowledged from
+  the exact touched place: a slow, irregular wavefront of light in
+  the Ether's own palette — its shape modulated by harmonics drawn
+  fresh per touch, so it can never read as a UI click ring — with a
+  few faint star-motes stirring near it, field-anchored like
+  everything that belongs to the sky. The meaning is *"the Ether
+  noticed me"*, and the acknowledgment is PROVIDER grammar (the
+  creature swell-ack's own rule): immediate, always, never a
+  discovery.
+- **TAP OWNERSHIP GAINED A FALLTHROUGH, NOT A RIVAL.** A tap on a
+  Spirit is the Spirit's; a tap in a creature's hit region is the
+  creature layer's (the identical box, so the two can never both
+  answer one tap); a sky tap while a Spirit is focused still SENDS IT
+  HOME (universe.js's own gesture) and deliberately does NOT also
+  ripple — one tap, one meaning, and `focus.close()` keeps `isOpen()`
+  true through the whole return, so the guard holds for the whole
+  gesture; a drag never ripples, because the traveller's own
+  click-suppression eats the click a drag ends in — no second drag
+  detector exists. Only the intentional tap on empty sky is the
+  ripple's.
+- **WHETHER ANYTHING MORE ANSWERS IS THE COMPOSER'S, AND MOSTLY
+  NOTHING DOES.** The ripple emits one event; `js/etherExperience.js`
+  reasons over world state and logs every decision — `ripple-only` in
+  the arrival and orientation by name, `ripple-only` while anything
+  else is speaking, `ripple-only` before the visit's own drawn hold
+  (20–60 s) and between answers (45–120 s × tempo). The response
+  table is three rows on the composer's own rarity tiers — a faint
+  wave returning to the touched place (`echoAt`, the ripple's one
+  composer seam), a few stars that were not there near it (`markAt`),
+  something far off answering in the touch's direction (`bloomAt`) —
+  each capped at twice per visit, so the ceiling is six in however
+  long a sitting. Measured: 2 answered of 60 steady taps across ten
+  pumped minutes. **A tap can never be farmed**: two dampeners in the
+  provider (taps faster than a breath are one touch; each ripple
+  spends a little of the sky's interest, and only unhurried touches
+  even reach the Composer), no counter anywhere, and no independent
+  ripple scheduler — the layer has no timer at all, suite-checked. An
+  answered touch becomes an ANCHOR, so a later experience can echo
+  the very place the child marked.
+- **REDUCED MOTION ACKNOWLEDGES WITHOUT TRAVELLING.** A tap gets a
+  still, soft glow that fades by opacity alone — the product's own
+  line (core/traveller.js): what the child does deliberately is
+  answered, what they did not ask for is silenced. Nothing stirs, no
+  echo, and the Composer is not consulted (its mount is inert there
+  anyway).
+- **MYSTERY AND CHALLENGE ARE DISTINCT CONCEPTS NOW, AND THE
+  FOUNDATION IS A DOCUMENT, NOT A SYSTEM.**
+  `docs/ETHER_MYSTERY_CHALLENGE_ARCHITECTURE.md` is the study the
+  Mystery/Challenge sprint was ordered to do before building: a
+  Mystery is something that creates a QUESTION (not something rare or
+  animated); a Challenge is one OPTIONAL way of engaging with one,
+  emerging from the world and never announced ("CHALLENGE: FOLLOW THE
+  STAR TRAIL" is forbidden on any screen forever); a Discovery is
+  what exploration reached, is the only reward, and should sometimes
+  leave a new question behind. **Mystery does not require Challenge**
+  — the unresolved patterns (silent, shy, distant, deep crossings;
+  odd-stars; the wonders) are the product already honouring it. The
+  document maps every ingredient EXISTING / PARTIAL / MISSING /
+  FUTURE, records that the depth ladder, phases, anchors and decision
+  log are internal reasoning that must stay invisible, and names the
+  missing primitives honestly rather than filling them with features:
+  a discovery that poses the next question, child-first connections
+  over the anchors, noticed-ness for the sky patterns, and
+  behaviour-driven (never clock-driven) long-session depth. **No
+  generic challenge engine was built and none may be**: no task
+  queues, no objective systems, no mission lists, no puzzle
+  framework, no reward framework, no mystery table — a reified
+  "mystery object" would be the first step toward a quest log.
+- **KNOWLEDGE SYNC (Decision 57).** Canon section 23 gained two
+  truths: the Ether notices a gentle touch (and touching the sky is a
+  way of saying hello, never a way of making things happen), and
+  wondering is its own way of being in the Ether — following is a
+  choice, never a task, with nothing counted. The generated copies
+  were rebuilt; Studio Knowledge and Live Context are untouched —
+  nothing here is a Studio control or a session fact.
+- `tools/ether-ripple-test/` (43) covers both halves through the real
+  journey — the tap that ripples from the touched place, the drag
+  that never does, the burst that becomes a few faint touches and
+  composes nothing, Spirit and creature ownership held, the nudge's
+  appearance, wording per input, dismissal and non-return, reduced
+  motion's still acknowledgment, statelessness — and the composer's
+  touch policy pumped across simulated minutes in Node. Four fixes
+  proved by reverting: the creature hit-region skip (B5), the
+  min-gap dampener (B3), the nudge's dismissal (B8), and the
+  arrival/orientation refusal (M1).
 - Out of scope and not implemented: creature encounters as a reward
   system, creature dialogue, a Companion in the Ether, per-Traveller
   encounter history, more activity rows (story hunt, missing
@@ -7559,10 +7672,16 @@ leads somewhere.
   star-trail is now its second real row), and bringing
   non-Story creations into the Ether feed (a composer target already
   carries `kind`, which is the seam for it; Show snapshots are private
-  gifts and stay out — Decision 56).
+  gifts and stay out — Decision 56). The full Mystery/Challenge
+  system is NOT built — this sprint is its foundation, and
+  `docs/ETHER_MYSTERY_CHALLENGE_ARCHITECTURE.md` §7 is the honest
+  list of what is still missing.
 - `js/etherLife.js` · `js/etherDiscovery.js` · `js/etherExperience.js` ·
+  `js/etherRipple.js` · `js/vihuplanetHome.js` ·
   `docs/ETHER_EXPERIENCE_ARCHITECTURE.md` ·
+  `docs/ETHER_MYSTERY_CHALLENGE_ARCHITECTURE.md` ·
   `tools/ether-experience-test/run-ether-experience-tests.js` ·
+  `tools/ether-ripple-test/run-ether-ripple-tests.js` ·
   `vihuplanet/runtime/core/traveller.js` ·
   `assets/canon/vihuplanet.canon.json` ·
   `tools/ether-life-test/run-ether-life-tests.js`

@@ -347,6 +347,18 @@
       // both are absent-not-broken if their scripts never loaded.
       try {
         if (window.EtherLife && !window.vihuEtherLife) {
+          // THE ETHER ANSWERS A TOUCH. The ripple layer is a provider
+          // exactly as the creature layer is: it owns HOW the sky
+          // acknowledges a tap on the empty field; the Experience
+          // Composer owns WHETHER anything more answers, which is why
+          // it is mounted first and handed to the Composer below.
+          // Absent-not-broken if its script never loaded, and with no
+          // Composer it acknowledges and nothing ever answers further
+          // — ripple-only forever, which is a valid sky.
+          var rippleLayer = null;
+          if (window.EtherRipple) {
+            try { rippleLayer = EtherRipple.mount(universe, {}); } catch (eR) {}
+          }
           // EXPERIMENTAL BRANCH — the Experience Composer, when its
           // script is here, conducts the sky: the creature layer
           // mounts with its own scheduler stood down and the Composer
@@ -358,7 +370,9 @@
           var life = null;
           if (window.EtherExperience && window.EtherDiscovery) {
             life = EtherLife.mount(universe, { conducted: true });
-            var exp = life ? EtherExperience.mount(universe, life) : null;
+            var exp = life
+              ? EtherExperience.mount(universe, life, { ripple: rippleLayer })
+              : null;
             if (exp) {
               window.vihuEtherComposer = exp;
               window.vihuEtherDiscovery = exp.discovery ||
@@ -376,6 +390,11 @@
               window.vihuEtherDiscovery = EtherDiscovery.attach(universe, life);
             }
           }
+          // The ripple defers to whichever creature layer actually
+          // stood up — its only question of it is "did this tap land
+          // on a being?", so it is told the final handle.
+          if (rippleLayer && rippleLayer.setLife) rippleLayer.setLife(life);
+          window.vihuEtherRipple = rippleLayer;
           window.vihuEtherLife = life;
         }
       } catch (e) {}
@@ -396,6 +415,12 @@
       } catch (e) {}
 
       thresholdCrossed = true;
+      // The exploration nudge waits on the child's own stillness, so
+      // its watch begins the moment they are actually in the universe
+      // — including under reduced motion, where the arrival turn and
+      // the glance are silenced but a line of TEXT is not motion and
+      // the invitation still stands.
+      watchForNudge();
       // An invitation that was followed has now actually been ANSWERED —
       // somebody is in the universe rather than merely on the page. It
       // is the one moment that distinguishes a letter that was opened
@@ -523,6 +548,11 @@
         // the story out from under them.
         if (u.focus && u.focus.isOpen && u.focus.isOpen()) return;
 
+        // The exploration nudge is the direct invitation and speaks
+        // first: while its words are up, the wordless glance holds
+        // its turn — never two invitations at once.
+        if (nudgeVisible) return;
+
         var due = GLANCE_AFTER_S + glancesGiven * GLANCE_SPACING_S;
         if (still < due) return;
 
@@ -561,6 +591,135 @@
         if (t < 1) window.requestAnimationFrame(step);
         else if (done) done();
       })(performance.now());
+    }
+
+    // ---------- the exploration nudge ----------
+    //
+    // "There's more out there." — one small direct invitation to a
+    // fresh Traveller that the Ether is something to MOVE THROUGH,
+    // with a quieter line answering only "how?" for the input in
+    // their hands. Decided by the product owner in the Exploration
+    // Nudge brief, and it deliberately amends Decision 10's "not one
+    // instruction anywhere in VihuPlanet": this is the first and only
+    // line of instruction the universe carries, and everything about
+    // it keeps it an invitation rather than a tutorial — no arrows,
+    // no diagrams, no panel, no modal, nothing blocked, nothing that
+    // must be answered.
+    //
+    // THE THREE INVITATIONS SPEAK IN TURN, NEVER TOGETHER. The nudge
+    // is the direct one and goes first (~7s of stillness — the
+    // arrival turn has just finished saying the same thing
+    // wordlessly); the glance (Decision 10) holds while the nudge's
+    // words are up, and when the nudge withdraws unanswered it is
+    // counted as the first invitation given, so the glance follows at
+    // its own spacing rather than in the same breath; the beckon
+    // (Decision 58, ~16s) keeps its own clock and arrives after the
+    // nudge has gone either way. Three sentences, spaced — never a
+    // chorus.
+    //
+    // AND IT DISAPPEARS THE MOMENT EXPLORATION BEGINS. The same
+    // signal the glance and the beckon already answer to — the
+    // Traveller's own stillness resetting, which only a real turn of
+    // the universe does (keys, a drag, a touch, the edge zones) — and
+    // once answered, or once shown and withdrawn, it never returns
+    // this visit. Nothing is stored: a Traveller is stateless
+    // (Decision 19), and the whole record of this dies with the page.
+    var NUDGE_AFTER_S = 7;    // stillness before it appears — the
+                              // arrival turn (4.2–6.5s) has finished
+    var NUDGE_LIFE_S = 6;     // how long the words wait for an answer
+
+    var nudgeEl = null;
+    var nudgeShown = false;   // once per visit, ever
+    var nudgeVisible = false;
+    var nudgeShownAtStill = 0;
+    var nudgeTimer = null;
+    var nudgeLastStill = 0;
+
+    // Which words answer "how do I explore?" — read off the input
+    // environment actually in the child's hands, never the user
+    // agent. A coarse primary pointer is a finger; everything else
+    // has arrow keys. The first sentence is the invitation; this one
+    // is quieter on purpose.
+    function nudgeHint() {
+      var coarse = false;
+      try { coarse = window.matchMedia('(pointer: coarse)').matches; } catch (e) {}
+      return coarse ? '(Swipe to explore)' : '(Use the arrow keys to explore)';
+    }
+
+    function showNudge() {
+      if (nudgeShown || nudgeEl) return;
+      nudgeShown = true;
+      nudgeEl = document.createElement('div');
+      nudgeEl.className = 'vp-explore-nudge';
+      nudgeEl.setAttribute('data-nudge', '');
+      var line = document.createElement('div');
+      line.className = 'vp-explore-nudge-line';
+      line.textContent = 'There’s more out there.';
+      var hint = document.createElement('div');
+      hint.className = 'vp-explore-nudge-hint';
+      hint.textContent = nudgeHint();
+      nudgeEl.appendChild(line);
+      nudgeEl.appendChild(hint);
+      var home = document.querySelector('.vp-home') || document.body;
+      home.appendChild(nudgeEl);
+      nudgeVisible = true;
+      window.requestAnimationFrame(function () {
+        if (nudgeEl) nudgeEl.classList.add('is-in');
+      });
+    }
+
+    function hideNudge() {
+      if (!nudgeEl) return;
+      nudgeVisible = false;
+      var el = nudgeEl;
+      nudgeEl = null;
+      el.classList.remove('is-in');
+      window.setTimeout(function () {
+        if (el.parentNode) el.parentNode.removeChild(el);
+      }, 950);
+    }
+
+    function stopNudgeWatch() {
+      if (nudgeTimer) { window.clearInterval(nudgeTimer); nudgeTimer = null; }
+    }
+
+    function watchForNudge() {
+      if (nudgeTimer) return;
+      nudgeLastStill = 0;
+      nudgeTimer = window.setInterval(function () {
+        var u = universe;
+        if (!u || !u.traveller || !u.traveller.stillSeconds) return stopNudgeWatch();
+        var still = u.traveller.stillSeconds();
+
+        // They explored. That is the whole answer — the words go at
+        // once and are never shown again this visit.
+        if (still < nudgeLastStill - 0.4) {
+          stopNudgeWatch();
+          nudgeShown = true;
+          if (nudgeVisible) hideNudge();
+          return;
+        }
+        nudgeLastStill = still;
+
+        // A Spirit being met owns the moment; an invitation to move
+        // the universe under a held story would be two sentences at
+        // once.
+        if (u.focus && u.focus.isOpen && u.focus.isOpen()) return;
+
+        if (!nudgeShown && still >= NUDGE_AFTER_S) {
+          showNudge();
+          nudgeShownAtStill = still;
+          return;
+        }
+        if (nudgeVisible && still >= nudgeShownAtStill + NUDGE_LIFE_S) {
+          // Unanswered. Withdraw, hand the floor to the wordless
+          // invitations — counted as the first one given, so the
+          // glance follows at its own spacing rather than instantly.
+          hideNudge();
+          glancesGiven = Math.max(glancesGiven, 1);
+          stopNudgeWatch();
+        }
+      }, 450);
     }
 
     function enterTheEther() {

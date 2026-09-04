@@ -11898,3 +11898,40 @@ green, zero page errors, plus a 6-minute real-time conducted
 playtest (whale at 9s, trail followed and found at 36s, then a
 beckon and a silent jellyfish crossing, cv 0.90 gaps). Detail:
 `docs/ETHER_EXPERIENCE_ARCHITECTURE.md` (now marked production).
+
+## Build 0764 — Exploration Nudge, Ether Ripple & the Mystery/Challenge foundation
+
+Two implementations and one study, per the product owner's brief. The
+NUDGE: "There's more out there." over the living sky with a quieter
+input-aware hint (arrow keys for a fine pointer, swipe for a coarse
+one) — the one line of instruction VihuPlanet carries, a deliberate,
+recorded amendment of Decision 10's wordlessness; appears once per
+visit at ~7s of stillness, gone the instant exploration begins, holds
+the glance while its words are up and hands the floor over at the
+glance's own spacing when unanswered; text remains under reduced
+motion. The RIPPLE (`js/etherRipple.js`): a deliberate tap on empty
+Ether is acknowledged from the exact touched place by an organic
+harmonically-modulated wavefront with stirring motes — provider
+grammar, immediate, always — while WHETHER anything more answers is
+the Experience Composer's alone: a three-row response table on the
+composer's own rarity tiers (echo wave · near stars · far answer),
+refused by name in arrival/orientation and while anything else
+speaks, held 20–60s into a visit and 45–120s×tempo between answers,
+capped twice each per visit (measured: 2 of 60 steady taps), with
+min-gap and interest dampeners in the provider so tapping can never
+become a game; sky-tap-closes-Spirit deliberately does not also
+ripple, a drag never ripples (the traveller's own click-suppression),
+a creature's hit box stays the creature's, and reduced motion gets a
+still opacity-only glow with no composition. The FOUNDATION:
+`docs/ETHER_MYSTERY_CHALLENGE_ARCHITECTURE.md` defines Mystery (a
+question, not a rarity), Challenge (an optional engagement, never
+announced), Discovery (the only reward, sometimes leaving a new
+question), maps every ingredient EXISTING/PARTIAL/MISSING/FUTURE and
+names the missing primitives honestly instead of building them — no
+challenge engine, no mystery table, no new brain, no new scheduler.
+Canon section 23 gained two truths (the gentle touch; wondering as
+its own way of being), generated copies rebuilt. New suite
+`tools/ether-ripple-test/` (43; four fixes proved by reverting).
+Wall: ether-life 76 + walkthrough 14 · ether-experience 54 ·
+ether-encounter 94 · ether-share 21 · social-ether-identity 20 ·
+companion-canon 94 · companion-context 90 · companion-gap 29 — green.
