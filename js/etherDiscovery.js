@@ -71,9 +71,81 @@
   // Staging: one wonder at a time, with air between them.
   var REST_AFTER_FOUND_S = 40;
 
+  // ---------------------------------------------------------------
+  // The pickers, as module functions (experimental branch): the
+  // knowledge of WHICH Story or wonder makes a discovery is this
+  // file's, and lifting it out of the attach() closure lets the
+  // Experience Composer consult the same rules instead of growing a
+  // second copy that could disagree. attach() below uses exactly
+  // these — behaviour unchanged.
+  // ---------------------------------------------------------------
+  function pickStory(universe, recent) {
+    recent = recent || [];
+    var entities = [];
+    try { entities = universe.stories.all() || []; } catch (e) { return null; }
+    var best = null, bestFit = -1;
+    for (var i = 0; i < entities.length; i++) {
+      var e = entities[i];
+      if (!e || e.focusT > 0) continue;
+      if (recent.indexOf(e.id) !== -1) continue;
+      var prox = e.prox || 0;
+      if (prox > 0.45) continue;         // already found, effectively
+      var fresh = 0;
+      try {
+        var t = e.publishedAt ? new Date(e.publishedAt).getTime() : 0;
+        fresh = t > 0 ? Math.min(1, Math.max(0, 1 - (Date.now() - t) / (1000 * 3600 * 24 * 90))) : 0;
+      } catch (err) {}
+      // How well this Story fits being the next discovery. Internal
+      // arithmetic for one choice, never a quantity anything shows.
+      var fit = (1 - prox) + fresh * 0.5 + Math.random() * 0.2;
+      if (fit > bestFit) { bestFit = fit; best = e; }
+    }
+    if (!best) return null;
+    return {
+      kind: 'story',
+      id: best.id,
+      entity: best,
+      x: best.position.x,
+      y: best.position.y
+    };
+  }
+
+  function pickWonder(universe, near) {
+    var ether = universe.ether;
+    var reach = Math.max(ether.viewWidth, ether.viewHeight) * 0.85;
+    var angle = Math.random() * Math.PI * 2;
+    // A wonder may be asked to bloom NEAR a given field point — the
+    // seam a cross-experience connection uses (something happening
+    // where something else already happened). Otherwise: offset from
+    // wherever the child is looking right now — far enough to require
+    // a real turn, never so far that the trail cannot say which way.
+    if (near && typeof near.x === 'number') {
+      return {
+        kind: 'wonder', id: null,
+        x: near.x + Math.cos(angle) * 60,
+        y: near.y + Math.sin(angle) * 40
+      };
+    }
+    var cam = universe.camera.offsetFor(ether.depth.stories);
+    var cx = ether.viewWidth * 0.5 - cam.x;
+    var cy = ether.viewHeight * 0.5 - cam.y;
+    return {
+      kind: 'wonder',
+      id: null,
+      x: cx + Math.cos(angle) * reach,
+      y: cy + Math.sin(angle) * reach * 0.6
+    };
+  }
+
   function attach(universe, life, opts) {
     opts = opts || {};
     if (!universe || !life || life.quiet || !life.setComposer) return null;
+
+    // A conductor (the Experience Composer, experimental branch) may
+    // steer two things and only two: what a trail should prefer to
+    // lead to, and how long the sky rests after a find. The one-at-a-
+    // time rule, the activity registry and the pickers stay here.
+    var conductor = opts.conductor || null;
 
     var listeners = {};
     function on(evt, fn) { (listeners[evt] = listeners[evt] || []).push(fn); }
@@ -102,61 +174,25 @@
     //   · fresher first when several qualify.
     // No eligible Story → a wonder: a point far enough from the centre
     // that following the trail genuinely turns the universe.
-    function chooseStory() {
-      var entities = [];
-      try { entities = universe.stories.all() || []; } catch (e) { return null; }
-      var best = null, bestFit = -1;
-      for (var i = 0; i < entities.length; i++) {
-        var e = entities[i];
-        if (!e || e.focusT > 0) continue;
-        if (recent.indexOf(e.id) !== -1) continue;
-        var prox = e.prox || 0;
-        if (prox > 0.45) continue;         // already found, effectively
-        var fresh = 0;
-        try {
-          var t = e.publishedAt ? new Date(e.publishedAt).getTime() : 0;
-          fresh = t > 0 ? Math.min(1, Math.max(0, 1 - (Date.now() - t) / (1000 * 3600 * 24 * 90))) : 0;
-        } catch (err) {}
-        // How well this Story fits being the next discovery. Internal
-        // arithmetic for one choice, never a quantity anything shows.
-        var fit = (1 - prox) + fresh * 0.5 + Math.random() * 0.2;
-        if (fit > bestFit) { bestFit = fit; best = e; }
-      }
-      if (!best) return null;
-      return {
-        kind: 'story',
-        id: best.id,
-        entity: best,
-        x: best.position.x,
-        y: best.position.y
-      };
-    }
-
-    function chooseWonder() {
-      var ether = universe.ether;
-      var reach = Math.max(ether.viewWidth, ether.viewHeight) * 0.85;
-      var angle = Math.random() * Math.PI * 2;
-      // In field coordinates on the story plane, offset from wherever
-      // the child is looking right now — far enough to require a real
-      // turn, never so far that the trail cannot say which way.
-      var cam = universe.camera.offsetFor(ether.depth.stories);
-      var cx = ether.viewWidth * 0.5 - cam.x;
-      var cy = ether.viewHeight * 0.5 - cam.y;
-      return {
-        kind: 'wonder',
-        id: null,
-        x: cx + Math.cos(angle) * reach,
-        y: cy + Math.sin(angle) * reach * 0.6
-      };
-    }
+    function chooseStory() { return pickStory(universe, recent); }
+    function chooseWonder(near) { return pickWonder(universe, near); }
 
     // The composer js/etherLife.js calls when a guiding creature has
     // been noticed and needs somewhere to lead.
     function compose(info) {
       // One discovery at a time, with rest after the last one found —
-      // the staging rule that keeps wonder from becoming noise.
+      // the staging rule that keeps wonder from becoming noise. A
+      // conductor may lengthen the rest (its quiet phase); the
+      // one-at-a-time rule is not up for steering.
       if (activityLive) return null;
-      if (now() - lastFoundAt < REST_AFTER_FOUND_S && lastFoundAt > 0) return null;
+      var rest = REST_AFTER_FOUND_S;
+      if (conductor && conductor.restSeconds) {
+        try {
+          var r = conductor.restSeconds();
+          if (typeof r === 'number' && r >= 0) rest = Math.max(rest, r);
+        } catch (e) {}
+      }
+      if (now() - lastFoundAt < rest && lastFoundAt > 0) return null;
 
       var activity = null;
       for (var i = 0; i < ACTIVITIES.length; i++) {
@@ -168,9 +204,17 @@
       if (!activity) return null;
 
       var target = null;
-      for (var k = 0; k < activity.leadsTo.length && !target; k++) {
-        if (activity.leadsTo[k] === 'story') target = chooseStory();
-        else if (activity.leadsTo[k] === 'wonder') target = chooseWonder();
+      var leads = activity.leadsTo;
+      if (conductor && conductor.preferTarget) {
+        var pref;
+        try { pref = conductor.preferTarget(info, activity); } catch (e) { pref = undefined; }
+        if (pref === null) return null;           // this trail leads nowhere today
+        if (pref && pref.kind) target = pref;     // an explicit place (an anchor)
+        else if (pref && pref.prefer) leads = pref.prefer;
+      }
+      for (var k = 0; k < leads.length && !target; k++) {
+        if (leads[k] === 'story') target = chooseStory();
+        else if (leads[k] === 'wonder') target = chooseWonder();
       }
       if (!target) return null;
 
@@ -234,6 +278,8 @@
 
   global.EtherDiscovery = {
     ACTIVITIES: ACTIVITIES,
+    pickStory: pickStory,
+    pickWonder: pickWonder,
     attach: attach
   };
 })(typeof window !== 'undefined' ? window : this);
