@@ -138,6 +138,14 @@ export const LIMITS = {
   // covers real enthusiasm; anything past that is a script, not a
   // child.
   'creation-share': { max: 20, windowSeconds: 3600 },
+
+  // THE ETHER MYSTERY LAB's generation endpoint (Decision 58 — the
+  // browser Lab). Administrators only, and every request is a real
+  // model call that costs money — a research batch is a few dozen
+  // requests in a sitting, and anything past thirty an hour is a loop,
+  // not a person reviewing candidates. Written in the same commit as
+  // the endpoint, which is this module's own rule.
+  'lab-generate': { max: 30, windowSeconds: 3600 },
 };
 
 // The safe failure shape. Consistent everywhere, and it never carries a

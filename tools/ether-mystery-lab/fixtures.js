@@ -296,4 +296,12 @@ const adversarial = [
   }
 ];
 
-module.exports = { valid, adversarial };
+// Dual-environment: CommonJS for the Node lab and the suites (their
+// existing require() is untouched), a global for the browser Lab page —
+// one copy either way, which is this file's own founding rule.
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { valid, adversarial };
+}
+if (typeof window !== 'undefined') {
+  window.EtherLabFixtures = { valid: valid, adversarial: adversarial };
+}

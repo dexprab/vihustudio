@@ -12018,3 +12018,43 @@ the full Ether/companion regression wall green — and the concurrent-
 worktree port lesson met again (8903 was serving another agent's
 checkout; verified via the server process's cwd, re-run on an owned
 port). Detail: `docs/ETHER_GENERATIVE_ENGINE.md`.
+
+## Build 0767 — the Ether Mystery Lab: the browser research instrument
+
+The 0766 offline lab became a standalone browser utility
+(`tools/ether-mystery-lab/index.html`, noindex, not part of the Ether
+bundle — loading it mounts nothing, writes nothing, calls nothing;
+measured) that operates the whole research pipeline: ingredients →
+grammar → generate → the ONE validator (`js/etherGrammar.js`, reused
+never duplicated) → an eleven-dimension creative screening (an
+honestly-labelled heuristic, never a gate) → human review (🌟/✨/🟡/🔴,
+fourteen rejection reasons, notes, REAL percentages over the reviewed
+set) → approve → a reviewable JSON export a person commits by hand —
+VALID ≠ APPROVED enforced in order, and a browser click can never
+write `assets/ether/experience-pool.js`. Three connection modes with a
+status line that never lies (FIXTURE MODE / CONFIGURED — NOT TESTED /
+LLM CONNECTED / LLM UNAVAILABLE): a deterministic ten-grammar fixture
+bank; the deployable `supabase/functions/lab-generate` relay
+(administrators-only, session-derived caller, the `lab-generate`
+bucket 30/h added to the shared LIMITS in the same commit, one-word
+failures, provider text proven not to leak — the second place that
+knows OpenAI exists, amending Decision 34 on the record); and a
+dev-only Direct mode whose typed key lives in a closure and provably
+lands in no storage, cookie, log or export. Ground truth corrected the
+brief: the project holds 18 constellation families, not 88 — exposed
+by extracting magicCard.js's own literals as text (never executing it;
+the suite proves the extraction matches `MagicCard.library()` exactly),
+resemblance authored-by-the-Lab and suggestive-never-literal, no cell
+coordinates anywhere, and the Stars boundary refusing a smuggled
+pattern whole BEFORE prompt assembly. Six critical-experiment presets
+(same-creation×grammars with the reskin measure on screen,
+constellations, mystery-without-challenge, challenge-from-mystery,
+next-mystery, depth-layers) dry-run green in fixture mode and are
+REAL-MODEL PENDING — no model was reachable here and no creative
+success is claimed; the first real run is the product owner's, through
+this instrument. Suite: `tools/ether-mystery-lab-test/` (98; three
+reversion proofs — the Stars sweep, the source label forged at the
+connection after the fixture-generator forge measured inert, the
+export approved-only filter), with the 0766 runtime byte-identical and
+the Ether regression wall green. Detail: `docs/ETHER_MYSTERY_LAB.md` ·
+`supabase/DEPLOY_lab_generate.md`.

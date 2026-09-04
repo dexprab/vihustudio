@@ -100,6 +100,8 @@ const LIMITS = {
   'companion-chat': { max: 40, windowSeconds: 3600 },
 
   'creation-share': { max: 20, windowSeconds: 3600 },
+
+  'lab-generate': { max: 30, windowSeconds: 3600 },
 };
 
 const REFUSALS = {

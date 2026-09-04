@@ -1,132 +1,57 @@
-// creator-born — Lumo writes when a new Creator is born.
+// lab-generate — the Ether Mystery Lab's generation endpoint.
 //
-// "as soon as a new creator is born i would like to get email from lumo
-// at prabhakarsharma83@gmail.com" — the product owner.
+// SPRINT — Ether Mystery Lab (Decision 58). ADMINISTRATORS ONLY.
 //
-// Called by the `creator_born` trigger on magic_card_identities (see
-// supabase/migrations_admin_console.sql). A row arriving in that table
-// IS a child becoming a Creator: CLAUDE.md -> Decision 11, "A Creator is
-// someone holding a claimed Magic Card."
-//
-// Sending mirrors supabase/functions/sky-protection exactly — the same
-// two transports, the same environment variables, the same "an
-// unconfigured deployment is a handled state" discipline. Nothing new
-// was invented for delivery.
-//
-// WHAT IT DOES NOT SEND. No parent email, no constellation pattern, no
-// story content, no card id beyond the short human code. This is a note
-// saying somebody arrived, to one fixed address; the roll behind the
-// admin login is where the detail lives, and that is deliberate — an
-// inbox is not an access-controlled surface.
-//
-// Deploy:
-//   supabase functions deploy creator-born
-//
-// LEAVE JWT VERIFICATION ON — do NOT pass --no-verify-jwt. This function
-// sends mail, so an unauthenticated one is a way for anybody who learns
-// the URL to fill an inbox. The trigger that calls it sends the service
-// role key (supabase/migrations_admin_console.sql), so it is unaffected.
-// The cost is only that a browser tab cannot test it: a plain GET
-// returns UNAUTHORIZED_NO_AUTH_HEADER from Supabase's gateway before
-// reaching this code, which is the gateway working rather than a fault.
-// Test with the anon key, which is public by design:
-//   curl -i <url> -H "Authorization: Bearer <anon key>"
-// Environment (already set for sky-protection):
-//   RESEND_API_KEY + SKY_FROM_EMAIL, or SMTP_HOST/SMTP_USER/SMTP_PASS
-// Optional:
-//   CREATOR_BORN_TO   the address to write to; defaults below.
-
-const BUILD = '2026-08-18 · creator born, in Lumo’s voice';
-const DEFAULT_TO = 'prabhakarsharma83@gmail.com';
-
-function env(name: string): string {
-  return (Deno.env.get(name) || '').trim();
-}
-
-function esc(s: string): string {
-  return String(s || '').replace(/[&<>"]/g, (c) =>
-    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] as string));
-}
-
-// Lumo's own voice — the Guardian who greets a child at both thresholds
-// (docs/COMPANION_CANON.md). Warm, short, never a dashboard summary; this
-// is a note from somebody who was there, not an analytics alert.
-function compose(p: Record<string, string>) {
-  const who = p.nickname && p.nickname.trim() ? p.nickname.trim() : 'Someone new';
-  const companion = (p.companion || '').trim();
-  const species = (p.species || '').trim();
-
-  const subject = `${who} became a Creator ✨`;
-
-  const lines = [
-    `${who} just claimed their Magic Card.`,
-    '',
-    companion
-      ? `${companion}${species ? ` the ${species}` : ''} woke up beside them, and the two of them are bonded now — that part only happens once.`
-      : `Their Companion has not woken yet.`,
-    '',
-    `Card ${p.code || '—'}`,
-    p.claimedAt ? `${new Date(p.claimedAt).toUTCString()}` : '',
-    '',
-    `There is one more sky in VihuPlanet than there was this morning.`,
-    '',
-    '— Lumo',
-  ].filter((l) => l !== undefined);
-
-  const text = lines.join('\n');
-
-  const html = `<!doctype html><html><body style="margin:0;background:#0d1220;padding:28px 12px;">
-<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:520px;margin:0 auto;background:#151c2e;border-radius:14px;">
-<tr><td style="padding:26px 26px 8px;font:600 19px/1.3 Georgia,serif;color:#e7eaf3;">
-${esc(who)} became a Creator ✨
-</td></tr>
-<tr><td style="padding:0 26px 6px;font:400 15px/1.6 -apple-system,Segoe UI,Roboto,sans-serif;color:#a6adbf;">
-${esc(who)} just claimed their Magic Card.
-</td></tr>
-<tr><td style="padding:0 26px 6px;font:400 15px/1.6 -apple-system,Segoe UI,Roboto,sans-serif;color:#a6adbf;">
-${companion
-      ? `${esc(companion)}${species ? ` the ${esc(species)}` : ''} woke up beside them, and the two of them are bonded now — that part only happens once.`
-      : `Their Companion has not woken yet.`}
-</td></tr>
-<tr><td style="padding:14px 26px 0;font:400 13px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;color:#6e7893;">
-Card ${esc(p.code || '—')}${p.claimedAt ? `<br>${esc(new Date(p.claimedAt).toUTCString())}` : ''}
-</td></tr>
-<tr><td style="padding:18px 26px 26px;font:400 15px/1.6 Georgia,serif;color:#dfb169;">
-There is one more sky in VihuPlanet than there was this morning.<br>— Lumo
-</td></tr>
-</table></body></html>`;
-
-  return { subject, text, html };
-}
-
-async function sendViaResend(to: string, subject: string, text: string, html: string) {
-  const key = env('RESEND_API_KEY');
-  const from = env('SKY_FROM_EMAIL') || 'Lumo <onboarding@resend.dev>';
-  if (!key) return { ok: false, error: 'no RESEND_API_KEY' };
-  const res = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from, to: [to], subject, text, html }),
-  });
-  if (!res.ok) return { ok: false, error: `resend ${res.status}: ${await res.text()}` };
-  return { ok: true };
-}
-
 // ---------------------------------------------------------------
-// A SERVER-TO-SERVER CALLER, AND ONLY THAT (Sprint 1A, Decision 30)
+// WHAT THIS IS, AND WHAT IT IS NOT
 //
-// Nothing in a browser calls this. Its only caller is Postgres itself:
-// notify_creator_born() in supabase/migrations_admin_console.sql fires
-// it through pg_net with the SERVICE ROLE key it keeps in
-// platform_settings. The header above already says "an unauthenticated
-// one is a way for anybody who learns the URL" to send mail — and left
-// it at verify_jwt, which the public anon key satisfies.
+// The browser Lab (tools/ether-mystery-lab/index.html) is a DEVELOPER
+// research instrument: it assembles a generation request from the
+// Ether's own vocabulary (js/etherGrammar.js's contract, the Creation
+// Lens's projections, the constellation family library) and asks a
+// real model for Mystery/Challenge CANDIDATES — structured data in the
+// 0766 candidate schema, never code. This function is the secure path
+// for that ask: the provider key lives HERE, in the function's own
+// environment, and nowhere else (Decision 25's rule, applied again).
 //
-// So this is the strictest of the three caller classes: a real session
-// is not enough, because no session should ever be here. The shared
-// module compares the presented token against the service key in
-// constant time and refuses everything else, including a perfectly
-// valid child's session.
+// It is NOT part of the Ether runtime. No child-facing path reaches
+// it, nothing in the Ether runtime knows it exists, and the Composer
+// stays deterministic — a candidate this function returns is DATA that
+// still has to pass the one validator, a human review, and a reviewed
+// commit before any child can meet it (the canon-repository pattern).
+//
+// ---------------------------------------------------------------
+// WHY IT IS A THIN RELAY AND NOT A PROMPT OWNER
+//
+// The prompt lives in ONE place — tools/ether-mystery-lab/labKit.js —
+// because the Lab's Direct (dev-only) mode and this endpoint must send
+// the IDENTICAL contract, or the first real experiment would be
+// comparing two different generators. The prompt is reviewable product
+// research, not a secret; the KEY is the secret, and the key is the
+// whole reason this function exists. What this function adds on top of
+// the relay: the session-derived caller, the administrators-only gate
+// (the invite-send precedent — a metered relay wearing our name is
+// admin business), the rate bucket, bounded requests (Decision 49: a
+// promise that cannot settle is not a failure mode this product may
+// have), and the guarantee that no provider error text and no key ever
+// reaches a browser.
+//
+// AMENDS Decision 34's "companion-chat is the only place in VihuPlanet
+// that knows OpenAI exists" — this is now the second, recorded in
+// CLAUDE.md's Decision 58 clauses. Same posture: the provider host is
+// named exactly once, failures are HTTP 200 with a one-word reason,
+// and the reply never names the provider.
+//
+// CONFIGURATION:
+//   OPENAI_API_KEY    required for real generation (shared with
+//                     companion-chat — one account, one key, one place
+//                     per function's own env)
+//   LAB_MODEL         optional, default gpt-4o-mini
+//
+// Deploy: supabase/DEPLOY_lab_generate.md.
+
+const BUILD = 'LAB1';
+
 // ===== BEGIN GENERATED edgeAuth — do not edit below this line =====
 // Generated from supabase/functions/_shared/edgeAuth.js, which is the
 // readable original with every decision explained. Regenerate with:
@@ -426,55 +351,172 @@ async function guard(req, opts) {
 
 // ===== END GENERATED edgeAuth =====
 
-async function serviceOnly(req: Request) {
-  return await guard(req, {
-    env: {
-      supabaseUrl: env('SUPABASE_URL'),
-      anonKey: env('SUPABASE_ANON_KEY'),
-      serviceKey: env('SUPABASE_SERVICE_ROLE_KEY'),
-    },
-    require: 'service',
+const CORS_HEADERS: Record<string, string> = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
+
+function json(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
   });
 }
 
-Deno.serve(async (req) => {
-  const pass = await serviceOnly(req);
-  if (!pass.ok) {
-    return new Response(JSON.stringify(pass.body), {
-      status: pass.status,
-      headers: { 'Content-Type': 'application/json' },
+const PROVIDER_URL = 'https://api.openai.com/v1/chat/completions';
+const DEFAULT_MODEL = 'gpt-4o-mini';
+
+// Bounds on what a caller may relay. Generous for a research batch,
+// impossible for abuse: at most a handful of messages, each capped,
+// and the model name must look like a model name rather than a path.
+const MAX_MESSAGES = 8;
+const MAX_MESSAGE_CHARS = 60000;
+const MODEL_RE = /^[a-z0-9][a-z0-9._-]{1,63}$/i;
+
+// Decision 49 — every network promise on a path somebody waits on
+// needs a bound, and this one aborts as well as races.
+async function boundedFetch(doFetch: typeof fetch, url: string, init: RequestInit, ms: number): Promise<Response | null> {
+  const ctl = new AbortController();
+  const t = setTimeout(() => { try { ctl.abort(); } catch { /* held */ } }, ms);
+  try {
+    const race = await Promise.race([
+      doFetch(url, { ...init, signal: ctl.signal }),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), ms + 500)),
+    ]);
+    return race as Response | null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+// The deployed artifact is the tested artifact (companion-chat's own
+// pattern): the handler takes its environment and its fetch as
+// injectable dependencies, Deno serves it, a suite imports it.
+type Deps = { env: (n: string) => string; fetchImpl?: typeof fetch };
+
+function makeHandler(deps: Deps) {
+  const env = deps.env;
+  const doFetch: typeof fetch = deps.fetchImpl || fetch;
+  return async (req: Request): Promise<Response> => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
+
+  // ---------------------------------------------------------------
+  // ADMINISTRATORS ONLY (the invite-send precedent, Decision 30).
+  //
+  // This relays to a metered provider on our account. Reached with the
+  // public anon key it would be a free, world-callable LLM — the exact
+  // failure Decision 30 records. The caller is derived from the
+  // verified session; platform_admins is asked with the email the AUTH
+  // SERVER returned, never one the client sent.
+  const SUPA_URL = env('SUPABASE_URL');
+  const SERVICE = env('SUPABASE_SERVICE_ROLE_KEY');
+  const db = (SUPA_URL && SERVICE) ? restDb(SUPA_URL, SERVICE, doFetch) : null;
+  const pass = await guard(req, {
+    env: { supabaseUrl: SUPA_URL, anonKey: env('SUPABASE_ANON_KEY'), serviceKey: SERVICE },
+    require: 'user',
+    bucket: 'lab-generate',
+    db,
+    envGet: env,
+    fetchImpl: doFetch,
+  });
+  if (!pass.ok) return json(pass.body, pass.status);
+  if (!(await isPlatformAdmin(db, pass.caller))) {
+    return json({ ok: false, reason: 'forbidden' }, 403);
+  }
+
+  let payload: Record<string, unknown> = {};
+  try { payload = await req.json(); } catch { payload = {}; }
+
+  const key = env('OPENAI_API_KEY');
+
+  // Which build is live and whether a provider key is configured at
+  // all — the Lab's "Test connection" button, so a missing key is a
+  // sentence on screen rather than a mystery. The key itself never
+  // travels, in either direction.
+  if (payload.action === 'ping') {
+    return json({
+      ok: true,
+      build: BUILD,
+      provider: key ? 'configured' : 'none',
+      model: env('LAB_MODEL') || DEFAULT_MODEL,
     });
   }
 
-  if (req.method === 'GET') {
-    // Same ping shape sky-protection uses, and for the same reason: a
-    // deployment that is running the OLD copy is otherwise invisible,
-    // which cost a real afternoon once.
-    return new Response(
-      JSON.stringify({
-        ok: true,
-        build: BUILD,
-        to: env('CREATOR_BORN_TO') || DEFAULT_TO,
-        transport: env('RESEND_API_KEY') ? 'resend' : (env('SMTP_HOST') ? 'smtp' : 'none'),
-      }),
-      { headers: { 'Content-Type': 'application/json' } },
-    );
+  if (payload.action !== 'generate') return json({ ok: false, reason: 'unknown-action' });
+  if (!key) return json({ ok: false, reason: 'not-configured' });
+
+  // The messages the Lab built (labKit.js is the one prompt owner).
+  // Validated for SHAPE and BOUNDS only — the content is the Lab's own
+  // research contract, already privacy-swept in the browser, and this
+  // function adds no second copy of that sweep because it adds no
+  // second source of data: everything it relays came from the one
+  // labKit builder or it is refused here by shape.
+  const msgs = payload.messages;
+  if (!Array.isArray(msgs) || !msgs.length || msgs.length > MAX_MESSAGES) {
+    return json({ ok: false, reason: 'bad-messages' });
+  }
+  for (const m of msgs) {
+    if (!m || typeof m !== 'object') return json({ ok: false, reason: 'bad-messages' });
+    const role = (m as Record<string, unknown>).role;
+    const content = (m as Record<string, unknown>).content;
+    if (role !== 'system' && role !== 'user' && role !== 'assistant') {
+      return json({ ok: false, reason: 'bad-messages' });
+    }
+    if (typeof content !== 'string' || !content || content.length > MAX_MESSAGE_CHARS) {
+      return json({ ok: false, reason: 'bad-messages' });
+    }
   }
 
-  let body: Record<string, string> = {};
-  try { body = await req.json(); } catch (_e) { /* an empty note is still a note */ }
+  let model = String(payload.model || env('LAB_MODEL') || DEFAULT_MODEL);
+  if (!MODEL_RE.test(model)) model = DEFAULT_MODEL;
 
-  const to = env('CREATOR_BORN_TO') || DEFAULT_TO;
-  const { subject, text, html } = compose(body);
+  // ONE attempt, bounded. No retry loop — the Lab's own rule (§20 of
+  // the brief): the developer deliberately requests another batch.
+  const res = await boundedFetch(doFetch, PROVIDER_URL, {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer ' + key,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model,
+      messages: msgs,
+      response_format: { type: 'json_object' },
+      temperature: typeof payload.temperature === 'number' &&
+        payload.temperature >= 0 && payload.temperature <= 1.5
+        ? payload.temperature : 0.9,
+    }),
+  }, 110000);
 
-  let sent: { ok: boolean; error?: string } = { ok: false, error: 'no transport configured' };
-  if (env('RESEND_API_KEY')) sent = await sendViaResend(to, subject, text, html);
+  // Failure is one word, and it never carries provider text, a request
+  // id or the key — which provider answered is configuration, and the
+  // ping is where a developer asks that.
+  if (!res) return json({ ok: false, reason: 'unavailable' });
+  if (!res.ok) {
+    return json({ ok: false, reason: res.status === 429 ? 'provider-busy' : 'unavailable' });
+  }
 
-  // Always 200. The caller is a database trigger on a child's Creator
-  // Ceremony, and nothing about that moment may depend on a mail server
-  // — the trigger swallows failures too, so this is belt and braces on
-  // purpose.
-  return new Response(JSON.stringify({ ok: true, delivered: sent.ok, detail: sent.error || null }), {
-    headers: { 'Content-Type': 'application/json' },
-  });
-});
+  let body: Record<string, unknown> = {};
+  try { body = await res.json(); } catch { return json({ ok: false, reason: 'malformed' }); }
+  const choices = body.choices;
+  const first = Array.isArray(choices) ? choices[0] as Record<string, unknown> : null;
+  const message = first && typeof first.message === 'object' ? first.message as Record<string, unknown> : null;
+  const text = message && typeof message.content === 'string' ? message.content : '';
+  if (!text) return json({ ok: false, reason: 'malformed' });
+
+  // What leaves: the model's structured TEXT (the Lab parses and
+  // validates it), the model that answered, and the build. Nothing
+  // else — no usage ids, no provider metadata, no echo of the request.
+  return json({ ok: true, text, model, build: BUILD });
+};
+}
+
+// Deno serves it; a test imports it. Guarded rather than unconditional,
+// which is companion-chat's own one deviation and buys exactly that.
+const handler = makeHandler({ env: (n: string) => (typeof Deno !== 'undefined' ? (Deno.env.get(n) || '') : '') });
+if (typeof Deno !== 'undefined' && Deno.serve) Deno.serve(handler);
+
+export { makeHandler, handler, BUILD, DEFAULT_MODEL, MAX_MESSAGES, MAX_MESSAGE_CHARS };

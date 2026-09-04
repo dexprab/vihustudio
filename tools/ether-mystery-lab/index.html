@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- Developer tool. /tools/ is already robots-disallowed (Decision 28);
+     noindex anyway, the repository's habit. -->
+<meta name="robots" content="noindex, nofollow">
+<title>Ether Mystery Lab</title>
+<style>
+  :root {
+    --bg: #0d1120; --panel: #151b30; --panel2: #1b2340; --ink: #e8e4d8;
+    --dim: #9a96a8; --gold: #e8d9a8; --line: #2a3252; --warn: #ff6b6b;
+    --good: #7fd08a; --mid: #e8c46b;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 14px/1.5 -apple-system, "Segoe UI", Roboto, sans-serif; }
+  header { padding: 14px 20px; border-bottom: 1px solid var(--line);
+           display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; }
+  header h1 { font-size: 17px; margin: 0; color: var(--gold); font-weight: 600; }
+  header .sub { color: var(--dim); font-size: 12px; }
+  #labStatus { margin-left: auto; font-weight: 600; font-size: 13px;
+               padding: 4px 10px; border-radius: 6px; background: var(--panel2); }
+  #labStatus.fixture { color: var(--mid); }
+  #labStatus.connected { color: var(--good); }
+  #labStatus.unavailable { color: var(--warn); }
+  main { display: grid; grid-template-columns: 380px 1fr; gap: 14px;
+         padding: 14px 20px; align-items: start; }
+  @media (max-width: 980px) { main { grid-template-columns: 1fr; } }
+  section { background: var(--panel); border: 1px solid var(--line);
+            border-radius: 10px; padding: 14px; margin-bottom: 14px; }
+  section h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em;
+               color: var(--dim); margin: 0 0 10px; }
+  label { display: block; margin: 8px 0 2px; color: var(--dim); font-size: 12px; }
+  input[type=text], input[type=password], select, textarea {
+    width: 100%; background: var(--panel2); color: var(--ink);
+    border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px;
+    font: inherit; }
+  textarea { min-height: 64px; font-family: ui-monospace, monospace; font-size: 12px; }
+  button { background: var(--panel2); color: var(--ink); border: 1px solid var(--line);
+           border-radius: 6px; padding: 6px 12px; font: inherit; cursor: pointer; }
+  button:hover { border-color: var(--gold); }
+  button.primary { background: #3a3418; border-color: var(--gold); color: var(--gold); font-weight: 600; }
+  button:disabled { opacity: .45; cursor: default; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 6px 0; }
+  .warn { color: var(--warn); font-size: 12px; line-height: 1.45;
+          border: 1px solid var(--warn); border-radius: 6px; padding: 8px; margin: 8px 0; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chips label { display: inline-flex; align-items: center; gap: 4px; margin: 0;
+                 background: var(--panel2); border: 1px solid var(--line);
+                 border-radius: 14px; padding: 3px 9px; color: var(--ink);
+                 font-size: 12px; cursor: pointer; }
+  .chips label.on { border-color: var(--gold); color: var(--gold); }
+  .note { color: var(--dim); font-size: 12px; }
+  pre { background: #0a0e1a; border: 1px solid var(--line); border-radius: 6px;
+        padding: 10px; overflow: auto; max-height: 300px; font-size: 11px;
+        white-space: pre-wrap; word-break: break-word; }
+  .cand { background: var(--panel2); border: 1px solid var(--line);
+          border-radius: 8px; padding: 12px; margin-bottom: 12px; }
+  .cand h3 { margin: 0 0 4px; font-size: 14px; color: var(--gold); }
+  .cand .meta { color: var(--dim); font-size: 11px; margin-bottom: 8px; }
+  .cand .facet { margin: 3px 0; font-size: 13px; }
+  .cand .facet b { color: var(--dim); font-weight: 600; font-size: 11px;
+                   text-transform: uppercase; letter-spacing: .05em; margin-right: 6px; }
+  .badge { display: inline-block; border-radius: 4px; padding: 1px 7px;
+           font-size: 11px; font-weight: 600; margin-right: 6px; }
+  .badge.valid { background: #14351c; color: var(--good); }
+  .badge.invalid { background: #3a1420; color: var(--warn); }
+  .badge.fixture { background: #3a3418; color: var(--mid); }
+  .badge.generated { background: #14283a; color: #7ab8e8; }
+  .badge.approved { background: #1b3a2a; color: var(--good); }
+  .qbar { display: inline-block; width: 30px; height: 7px; background: #0a0e1a;
+          border-radius: 3px; overflow: hidden; vertical-align: middle; margin-left: 4px; }
+  .qbar i { display: block; height: 100%; background: var(--gold); }
+  .qgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+           gap: 2px 10px; font-size: 11px; color: var(--dim); margin: 6px 0; }
+  .review { border-top: 1px dashed var(--line); margin-top: 8px; padding-top: 8px; }
+  .presets button { font-size: 12px; }
+  .hint { font-size: 11px; color: var(--dim); margin-top: 2px; }
+  #genState { font-weight: 600; }
+  details summary { cursor: pointer; color: var(--dim); font-size: 12px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🔭 Ether Mystery Lab</h1>
+  <span class="sub">developer research instrument — not part of the Ether runtime, never child-facing</span>
+  <span id="labStatus" class="fixture">FIXTURE MODE — REAL LLM NOT CONNECTED</span>
+</header>
+
+<main>
+<div><!-- left column -->
+
+  <section id="connectionPanel">
+    <h2>Connection</h2>
+    <div class="row">
+      <label style="margin:0"><input type="radio" name="mode" id="modeFixture" checked> Fixture</label>
+      <label style="margin:0"><input type="radio" name="mode" id="modeEndpoint"> Endpoint (lab-generate)</label>
+      <label style="margin:0"><input type="radio" name="mode" id="modeDirect"> Direct (dev only)</label>
+    </div>
+
+    <div id="endpointFields" hidden>
+      <label for="endpointUrl">lab-generate function URL</label>
+      <input type="text" id="endpointUrl" placeholder="https://&lt;project&gt;.supabase.co/functions/v1/lab-generate" autocomplete="off">
+      <label for="endpointToken">Session access token (administrator)</label>
+      <input type="password" id="endpointToken" autocomplete="off">
+      <div class="hint">The provider key lives in the function's environment, never here. Deploy &amp; configure: supabase/DEPLOY_lab_generate.md.</div>
+    </div>
+
+    <div id="directFields" hidden>
+      <div class="warn">⚠ DEVELOPMENT ONLY. The key you type is held in page memory
+        for this session only — never stored, never logged, never exported.
+        Close the tab or press Disconnect and it is gone. Do not use a
+        production key here; prefer the deployed endpoint.</div>
+      <label for="directKey">Your provider API key</label>
+      <input type="password" id="directKey" autocomplete="off" placeholder="sk-…">
+      <label for="directModel">Model</label>
+      <input type="text" id="directModel" value="gpt-4o-mini" autocomplete="off">
+    </div>
+
+    <div class="row">
+      <button id="testBtn">Test connection</button>
+      <button id="disconnectBtn">Disconnect / clear</button>
+    </div>
+  </section>
+
+  <section id="ingredientsPanel">
+    <h2>Ingredients</h2>
+    <label for="creationSelect">Creation (through the Creation Lens — only public creative structure ever travels)</label>
+    <select id="creationSelect"></select>
+    <details>
+      <summary>…or paste a creation entity (JSON) — it goes through the Lens like everything else</summary>
+      <textarea id="creationPaste" placeholder='{"id":"…","title":"…","cover":"…","pages":5,"focusT":0}'></textarea>
+      <div class="row"><button id="creationPasteBtn">Use pasted entity</button><span id="pasteState" class="note"></span></div>
+    </details>
+
+    <label>Sky figures (the project's real constellation families — <span id="figureCount">loading…</span>)</label>
+    <div class="hint">Resemblance is suggestive, never literal — the ambiguity is part of the Mystery. Classification authored by the Lab.</div>
+    <div id="figureChips" class="chips"></div>
+
+    <label>Ether beings</label>
+    <div id="creatureChips" class="chips"></div>
+
+    <label>Ether phenomena</label>
+    <div id="phenomenaChips" class="chips"></div>
+  </section>
+
+  <section id="generationPanel">
+    <h2>Generation</h2>
+    <div class="row">
+      <div style="flex:1">
+        <label for="grammarSelect">Grammar</label>
+        <select id="grammarSelect"></select>
+      </div>
+      <div>
+        <label for="countSelect">Candidates</label>
+        <select id="countSelect">
+          <option>1</option><option selected>5</option><option>10</option>
+          <option>25</option><option>50</option>
+        </select>
+      </div>
+      <div>
+        <label for="complexitySelect">Complexity (lab-only)</label>
+        <select id="complexitySelect">
+          <option value="mixed" selected>mixed</option>
+          <option value="simple">simple</option>
+          <option value="moderate">moderate</option>
+          <option value="layered">layered</option>
+        </select>
+      </div>
+    </div>
+
+    <label>Critical experiments (one click; run them against a real model)</label>
+    <div class="presets row" id="presetRow"></div>
+    <div id="presetNote" class="hint"></div>
+
+    <div class="row" style="margin-top:10px">
+      <button id="generateBtn" class="primary">✨ Generate</button>
+      <button id="cancelBtn" disabled>Cancel</button>
+      <span id="genState" class="note">idle</span>
+    </div>
+  </section>
+
+  <section>
+    <h2>Data sent to generator (the privacy boundary, visible)</h2>
+    <div class="hint">Exactly what the model receives — the Lens projection and the vocabulary, nothing else. If a build is refused, the reasons appear here instead and nothing is sent.</div>
+    <pre id="diagnostic">(build a generation to see it)</pre>
+  </section>
+
+  <section>
+    <h2>Session statistics (real, from reviewed candidates)</h2>
+    <pre id="stats">(nothing reviewed yet)</pre>
+    <div class="row">
+      <button id="exportBtn">⬇ Export approved candidates</button>
+      <span id="exportState" class="note"></span>
+    </div>
+    <div class="hint">The export is a reviewable JSON artifact. Committing entries into
+      assets/ether/experience-pool.js is a git-reviewed act — nothing here writes the pool.</div>
+  </section>
+
+</div>
+<div><!-- right column -->
+  <section>
+    <h2>Candidates — generated → validated → quality → human review → approved</h2>
+    <div id="reskinReport" class="note"></div>
+    <div id="candidates"><p class="note">No candidates yet. Choose ingredients and press Generate.</p></div>
+  </section>
+</div>
+</main>
+
+<!-- The 0766 architecture, reused, never duplicated. None of these
+     mounts anything: the grammar, the lens and the pool are pure
+     data/functions, and no Ether runtime file is loaded here. -->
+<script src="../../js/etherGrammar.js"></script>
+<script src="../../js/etherCreationLens.js"></script>
+<script src="../../assets/ether/experience-pool.js"></script>
+<script src="fixtures.js"></script>
+<script src="labConstellations.js"></script>
+<script src="labKit.js"></script>
+<script src="labConnection.js"></script>
+<script src="labUi.js"></script>
+</body>
+</html>

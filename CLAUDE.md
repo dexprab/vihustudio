@@ -7855,6 +7855,92 @@ leads somewhere.
   made selectable → S6). The lab's sixteen adversarial candidates are
   each refused with the reason the check names.
 - Architecture: `docs/ETHER_GENERATIVE_ENGINE.md`.
+- **THE MYSTERY LAB IS A BROWSER INSTRUMENT NOW, AND THE FIRST REAL
+  MODEL RUN IS THE PRODUCT OWNER'S** (build 0767, the Ether Mystery
+  Lab sprint). `tools/ether-mystery-lab/index.html` is a standalone
+  developer page that operates the whole research pipeline — SELECT
+  INGREDIENTS → GRAMMAR → GENERATE → the ONE validator → an
+  eleven-dimension creative screening (honestly labelled a heuristic,
+  never a gate) → HUMAN REVIEW (🌟/✨/🟡/🔴 with fourteen named
+  rejection reasons and free notes) → APPROVE → EXPORT. **VALID ≠
+  APPROVED is the lifecycle**, enforced in order, and the export is a
+  reviewable JSON artifact a person commits into
+  `assets/ether/experience-pool.js` by hand — a browser click can
+  never write the pool. Loading the Lab does NOTHING: no Ether mounts,
+  no Composer, no storage write, no POST, no model call (measured —
+  the suite counts requests), and every 0766 runtime file is
+  byte-identical.
+- **THREE CONNECTION MODES, AND THE STATUS NEVER LIES.** FIXTURE MODE
+  (a deterministic ten-grammar bank walking the identical pipeline,
+  everything badged fixture, including exports) · ENDPOINT
+  (`supabase/functions/lab-generate` — the key lives in the function's
+  env and nowhere else, Decision 25's rule; administrators-only via
+  `platform_admins`, the invite-send precedent; the `lab-generate`
+  bucket, 30/hour, in the shared LIMITS in the same commit; failures
+  one word, never provider text; **this AMENDS Decision 34** —
+  companion-chat is no longer the only place that knows OpenAI exists,
+  lab-generate is the second, same posture) · DIRECT (dev-only: a key
+  typed at runtime into a closure variable — never storage, never a
+  cookie, never an export, never a log — with a red warning and a
+  Disconnect that clears it; the suite types a key and proves it lands
+  nowhere). "LLM CONNECTED" is claimed only after a probe answered;
+  configured-but-untested says so; **a failed real generation FAILS on
+  screen and never silently becomes fixtures** — `source: fixture` /
+  `source: generated` is stamped by the transport, and forging it at
+  the connection turned four checks red (the forge in the fixture
+  generator was inert — measured — because the CONNECTION is the label
+  authority).
+- **THE 88 CONSTELLATIONS DO NOT EXIST, AND NOTHING WAS INVENTED.**
+  The brief's premise was measured against the repository: the project
+  holds **18 constellation families** (`js/magicCard.js` →
+  CONSTELLATIONS + CONSTELLATION_META — 17 mintable plus Ursa Major).
+  The Lab exposes exactly those, EXTRACTED from magicCard.js's own
+  source text — never executed, because loading that file runs
+  per-device repairs against localStorage, which a Lab load must never
+  do — and the suite proves the extraction matches
+  `MagicCard.library()` row for row. The one field the source lacks, a
+  resemblance class, is authored by the Lab and marked
+  `resemblanceAuthoredBy:'lab'`, `suggestive:true` — a whale-like
+  figure must never automatically become a whale. **Authoring the
+  remaining 70 families is an OPEN CONTENT DECISION for the product
+  owner.** And the candidate schema was deliberately NOT extended for
+  figures: the runtime cannot render a literal constellation, so a
+  schema field would validate what cannot be performed — a `figure`
+  show capability is the recorded next primitive instead.
+- **THE STARS BOUNDARY HOLDS IN THE LAB TOO, FOUR WAYS.** The family
+  projection has NO FIELD for cells (stronger than a filter); a
+  supplied ingredient carrying `pattern`/`cells`/`constellation`/
+  `stars` at any depth refuses the whole build BEFORE prompt assembly
+  (nothing trimmed, nothing sent, the diagnostic names the boundary);
+  anything shaped like serialized cell pairs is refused by shape even
+  under an unnamed key; and the export scan refuses again. Creations
+  reach a generator only through `js/etherCreationLens.js` — measured:
+  an entity carrying a maker's name, username, card, companion and
+  cover bytes produced an input containing none of them, and the §7
+  "Data sent to generator" panel shows the exact assembled input so
+  the boundary is seen working rather than trusted. Proved by
+  reversion: the Stars sweep removed → four checks red.
+- **THE SIX CRITICAL EXPERIMENTS ARE ONE-CLICK PRESETS, DRY-RUN IN
+  FIXTURE MODE, AND REAL-MODEL PENDING.** Same-creation × four
+  grammars (with the reskin measure on screen — same-activity-
+  different-adjectives is caught by signature, a generator quality
+  problem to record), constellations-as-ingredients,
+  mystery-without-challenge, challenge-from-mystery, next-mystery, and
+  different-child-depth. Rejection statistics are REAL percentages
+  over actually-reviewed candidates. **No creative success is claimed:
+  no model was reachable from the build environment, so every creative
+  finding — batch quality, constellation richness, reskin tendency —
+  is the product owner's to run through this instrument.** The
+  endpoint's behaviour IS proved (transpiled and driven with real
+  Requests: 401 for no session and for the anon key alone, 403
+  non-admin, ping/build, no-key handled, provider error/malformed/
+  unreachable each one word out with a juicy provider error proven not
+  to leak), and LLM MODE is proved in the browser against a stubbed
+  provider — connected, generated-labelled, cancellable, and never
+  falling back to fixtures on failure.
+- How to use, deploy and configure: `docs/ETHER_MYSTERY_LAB.md` ·
+  `supabase/DEPLOY_lab_generate.md`. Suite:
+  `tools/ether-mystery-lab-test/run-lab-tests.js` (98).
 - Out of scope and not implemented: creature encounters as a reward
   system, creature dialogue, a Companion in the Ether, per-Traveller
   encounter history, more activity rows (story hunt, missing
