@@ -11835,3 +11835,35 @@ no-recharge → G5a, not-repeatable → G5, no-kindle → G6, always-ring
 ether-share 21 · social-ether-identity 20 — green. No knowledge-base
 change: canon already says a being may light the sky so what rests
 far away can be seen.
+
+## Ether Experience Architecture (built on claude/ether-experience-architecture at build 0762; integrated at build 0763)
+
+The sea-of-mysteries architecture, built on its own branch with the
+production Ether untouched as baseline and fallback. One new module —
+`js/etherExperience.js`, the Experience Composer — owns whether, what
+kind, when and where anything happens in the Ether; `js/etherLife.js`
+and `js/etherDiscovery.js` become experience providers (a conducted
+mount stands the creature layer's own scheduler and idle-beckon clock
+down; `summon()` gains a manner — band, scale, speed, respond:
+default/acknowledge/shy/none, via an anchor; `beckonNow()`,
+`bloomAt()`, `markAt()` are the new provider seams; the discovery
+layer lifts its pickers to module functions and takes a conductor).
+The Composer reasons from world state (view sectors, behaviour,
+density), an experience-history ring, novelty over PATTERNS rather
+than assets, rarity tiers with per-visit dispositions (the
+exceptional simply does not exist in most visits), behaviour-driven
+phases with QUIET as a first-class choice, a discovery ledger
+(unknown→…→understood, internal only), and anchors that let later
+experiences echo earlier places. Not every mystery resolves — silent
+crossings, shy passages, distant passages, odd-stars — and a dev-only
+decision log (`?etherdebug=1`) answers "why did the Ether choose
+this". Canon section 23 gained three worldview truths; derived mind
+copies regenerated. All baseline suites re-run green on the branch
+(ether-life 72 + walkthrough 14 against the CONDUCTED sky, encounter
+94, share 21, social-ether-identity 20, gap 29, canon 94, context 90,
+voice 8); the new `tools/ether-experience-test/` (44) proves statics,
+pumped-clock composed hours (0% consecutive repeats, cv 0.28–0.49
+gaps, idle minutes producing quiet, dispositions, anchors) and the
+real page, with four checks proved by reversion. Detail:
+`docs/ETHER_EXPERIENCE_ARCHITECTURE.md`. Built experimental; merged
+into main at build 0763 — see the next entry.

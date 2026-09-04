@@ -347,9 +347,34 @@
       // both are absent-not-broken if their scripts never loaded.
       try {
         if (window.EtherLife && !window.vihuEtherLife) {
-          var life = EtherLife.mount(universe);
-          if (life && window.EtherDiscovery) {
-            window.vihuEtherDiscovery = EtherDiscovery.attach(universe, life);
+          // EXPERIMENTAL BRANCH — the Experience Composer, when its
+          // script is here, conducts the sky: the creature layer
+          // mounts with its own scheduler stood down and the Composer
+          // (js/etherExperience.js) owns when, what kind, and where.
+          // It attaches the discovery composition itself, with a
+          // conductor. If any of that is absent or refuses, the
+          // production wiring below runs exactly as it always has —
+          // the fallback is the baseline, not a broken sky.
+          var life = null;
+          if (window.EtherExperience && window.EtherDiscovery) {
+            life = EtherLife.mount(universe, { conducted: true });
+            var exp = life ? EtherExperience.mount(universe, life) : null;
+            if (exp) {
+              window.vihuEtherComposer = exp;
+              window.vihuEtherDiscovery = exp.discovery ||
+                EtherDiscovery.attach(universe, life);
+            } else if (life) {
+              // A conducted stage with no conductor would be an empty
+              // sky forever. Stand it back up autonomous.
+              try { life.destroy(); } catch (e2) {}
+              life = null;
+            }
+          }
+          if (!life) {
+            life = EtherLife.mount(universe);
+            if (life && window.EtherDiscovery) {
+              window.vihuEtherDiscovery = EtherDiscovery.attach(universe, life);
+            }
           }
           window.vihuEtherLife = life;
         }

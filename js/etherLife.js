@@ -252,6 +252,17 @@
     opts = opts || {};
     if (!universe || !universe.root || !universe.ether || !universe.camera) return null;
 
+    // EXPERIMENTAL BRANCH — conducted mode. When an Experience
+    // Composer owns the sky (js/etherExperience.js), this layer stops
+    // scheduling anything of its own: no internal next-crossing clock
+    // and no idle beckon clock. Everything else — drawing, movement,
+    // the notice grammar, the trail machinery, departure — is
+    // unchanged, because those are HOW a being behaves, and manner is
+    // the one thing a conductor may vary. A bare mount() without the
+    // flag behaves exactly as it always has, which is what keeps every
+    // existing suite that remounts through this public API honest.
+    var conducted = !!opts.conducted;
+
     var VihuPlanet = global.VihuPlanet;
     var Util = VihuPlanet && VihuPlanet.Util;
     var Env = VihuPlanet && VihuPlanet.Env;
@@ -284,11 +295,17 @@
     if (Env && Env.reducedMotion()) {
       return {
         quiet: true,
+        conducted: conducted,
         creatures: function () { return Object.keys(CREATURES); },
         active: function () { return null; },
         trail: function () { return null; },
         beckon: function () { return null; },
         summon: function () { return null; },
+        beckonNow: function () { return null; },
+        bloomAt: function () { return null; },
+        markAt: function () { return null; },
+        blooms: function () { return []; },
+        marks: function () { return []; },
         setComposer: function () {},
         setScout: function () {},
         on: on, off: off,
@@ -332,6 +349,8 @@
     var enc = null;          // the current encounter, or null
     var trail = null;        // the current guide trail, or null
     var beck = null;         // the current beckon, or null
+    var blooms = [];         // free-standing wonders (experimental branch)
+    var marks = [];          // faint sky anomalies (experimental branch)
     var becksGiven = 0;
     var becksStopped = false;
     var prevStill = 0;
@@ -371,12 +390,24 @@
     }
 
     // ---------- an encounter ----------
-    function summon(id) {
+    //
+    // `manner` (optional, experimental branch) is how a conductor
+    // varies a crossing without touching how a being behaves:
+    //   dir      +1 / -1                (which way it crosses)
+    //   yFrac    0..1 of the view height (which band it crosses in)
+    //   scale    0.3..1  drawn size/alpha (a small dim one is FAR)
+    //   speed    multiplier on its own pace
+    //   respond  'default' | 'acknowledge' | 'shy' | 'none'
+    //   via      {x,y} on the story plane the crossing should pass
+    //            near (a path that happens to cross an old place)
+    // Defaults reproduce today's behaviour exactly.
+    function summon(id, manner) {
       var def = CREATURES[id || 'whale'];
       if (!def || enc) return null;
+      manner = manner || {};
 
       var cam = camera.offsetFor(def.parallax, camScratch);
-      var dir = coin();
+      var dir = (manner.dir === 1 || manner.dir === -1) ? manner.dir : coin();
       var vw = ether.viewWidth, vh = ether.viewHeight;
       // Enter with the nose already at the edge of the VIEW — spawned
       // in field coordinates, so if the child turns away mid-crossing
@@ -387,10 +418,30 @@
       // seen beginning, which is what makes the first one land inside
       // the 20-second window instead of spending it off stage.
       var screenX = dir > 0 ? -def.span * 0.45 : vw + def.span * 0.45;
-      var screenY = vh * (0.5 + rand(-0.2, 0.2));
+      var screenY;
+      if (manner.via && typeof manner.via.x === 'number') {
+        // A crossing routed through a place something already
+        // happened: hold the band the anchor sits in, so the path
+        // passes it. The child made the first mark; the sky answers
+        // by happening to pass through it.
+        var camS0 = camera.offsetFor(ether.depth.stories, camStory);
+        var viaY = nearestCopy(manner.via.y + camS0.y, ether.height, vh * 0.5);
+        screenY = Math.max(vh * 0.12, Math.min(vh * 0.88, viaY));
+      } else if (typeof manner.yFrac === 'number') {
+        screenY = vh * Math.max(0.06, Math.min(0.94, manner.yFrac));
+      } else {
+        screenY = vh * (0.5 + rand(-0.2, 0.2));
+      }
       enc = {
         id: def.id,
         def: def,
+        manner: {
+          respond: manner.respond || 'default',
+          scale: (typeof manner.scale === 'number' && manner.scale > 0)
+                   ? Math.min(1.4, Math.max(0.25, manner.scale)) : 1,
+          speed: (typeof manner.speed === 'number' && manner.speed > 0)
+                   ? Math.min(2.5, Math.max(0.3, manner.speed)) : 1
+        },
         dir: dir,
         pos: { x: screenX - cam.x, y: screenY - cam.y },
         baseY: screenY - cam.y,
@@ -457,6 +508,25 @@
       if (enc.responded && !mayRepeat()) return;
       enc.responded = true;
       enc.swell = 1;
+
+      // A conductor's manner outranks the creature's own response —
+      // never its behaviour vocabulary, only WHICH of its answers
+      // this crossing gives. 'acknowledge': it brightens, shifts a
+      // little, and keeps its way — noticed, and that is the whole of
+      // it (a mystery is allowed to stay one). 'shy': it startles and
+      // leaves — being noticed is not always welcome.
+      if (enc.manner && enc.manner.respond === 'acknowledge') {
+        enc.veer = (enc.screen.y < ether.viewHeight * 0.5 ? -1 : 1) * 24;
+        emit('creature:responded', { id: enc.id, response: 'acknowledge' });
+        return;
+      }
+      if (enc.manner && enc.manner.respond === 'shy') {
+        enc.veer = (enc.screen.y < ether.viewHeight * 0.5 ? -1 : 1) * 90;
+        enc.speedScale = 2.2;
+        enc.fleeing = true;
+        emit('creature:responded', { id: enc.id, response: 'shy' });
+        return;
+      }
 
       if (enc.def.response === 'guide') {
         // The whale points. It near-pauses — a breath — arcs a little
@@ -661,15 +731,18 @@
       time += dt;
       elapsed += dt;
 
-      if (!enc && elapsed >= nextAt) {
+      if (!conducted && !enc && elapsed >= nextAt) {
         // The first crossing is always the whale — the one being whose
         // response is built end-to-end, so a fresh Traveller's first
-        // encounter is the one that can lead somewhere.
+        // encounter is the one that can lead somewhere. (In conducted
+        // mode the Experience Composer owns this decision entirely.)
         summon(hadFirst ? pickLater() : 'whale');
         hadFirst = true;
       }
 
       updateBeckon(dt, open);
+      updateBlooms();
+      updateMarks();
       if (enc) updateEncounter(dt);
       updateTrail(dt);
       draw();
@@ -711,8 +784,27 @@
 
       if (becksStopped || becksGiven >= times.beckons) return;
       if (trail || open) return;   // never while something is already speaking
+      if (conducted) return;       // the Composer says when — beckonNow()
       if (still < times.beckonAfter + becksGiven * times.beckonSpacing) return;
 
+      spawnBeckon();
+    }
+
+    // Offer a beckon now — the conducted-mode seam. The POLICY guards
+    // stay here (never past the cap, never after the Traveller has
+    // answered by turning, never while a trail or a portal is
+    // speaking), so a conductor can decide WHEN without ever being
+    // able to make the sky nag.
+    function beckonNow() {
+      if (beck || becksStopped || becksGiven >= times.beckons) return null;
+      var open = false;
+      try { open = universe.focus && universe.focus.isOpen(); } catch (e) {}
+      if (trail || open) return null;
+      spawnBeckon();
+      return beck ? { given: becksGiven, aimed: beck.aimed } : null;
+    }
+
+    function spawnBeckon() {
       // Where. A far Spirit's direction when the scout knows one;
       // otherwise any edge, because "more sky" is also true.
       var cam = camera.offsetFor(ether.depth.stories, camStory);
@@ -746,6 +838,54 @@
       };
       becksGiven++;
       emit('beckon', { aimed: beck.aimed });
+    }
+
+    // ---------- free-standing wonders and sky anomalies ----------
+    //
+    // Experimental branch. A bloom is the trail's own wonder, unhooked
+    // from any trail: a small figure of stars that comes into being
+    // somewhere, shines a few seconds, and goes — the sky having a
+    // moment of its own, sometimes exactly where something else once
+    // happened. A mark is quieter still: a few faint stars that were
+    // not there before, breathing, unexplained, gone in under a
+    // minute. Neither leads anywhere, neither is a control, and
+    // neither is ever announced.
+    function bloomAt(x, y, figId) {
+      var fig = null;
+      for (var i = 0; i < WONDERS.length; i++) {
+        if (WONDERS[i].id === figId) { fig = WONDERS[i]; break; }
+      }
+      if (!fig) fig = WONDERS[Math.floor(Math.random() * WONDERS.length)];
+      var b = { x: x, y: y, born: time, fig: fig, life: 7 };
+      blooms.push(b);
+      emit('bloom', { fig: fig.id });
+      return fig.id;
+    }
+
+    function markAt(x, y, opts) {
+      opts = opts || {};
+      var pts = [];
+      var n = 3 + Math.floor(Math.random() * 2);
+      for (var i = 0; i < n; i++) {
+        pts.push([rand(-34, 34), rand(-26, 26), Math.random() * Math.PI * 2]);
+      }
+      marks.push({
+        x: x, y: y, pts: pts, born: time,
+        life: Math.max(6, Math.min(90, opts.life || 25))
+      });
+      emit('mark', {});
+      return true;
+    }
+
+    function updateBlooms() {
+      for (var i = blooms.length - 1; i >= 0; i--) {
+        if (time - blooms[i].born > blooms[i].life) blooms.splice(i, 1);
+      }
+    }
+    function updateMarks() {
+      for (var i = marks.length - 1; i >= 0; i--) {
+        if (time - marks[i].born > marks[i].life) marks.splice(i, 1);
+      }
     }
 
     function updateEncounter(dt) {
@@ -803,7 +943,8 @@
           }
         }
       } else {
-        enc.pos.x += def.speed * enc.speedScale * enc.dir * dt;
+        enc.pos.x += def.speed * enc.speedScale *
+                     (enc.manner ? enc.manner.speed : 1) * enc.dir * dt;
         // The veer eases in once noticed and dies away on its own — an
         // arc, not a new heading; the wave is its ordinary swimming.
         if (enc.veer) {
@@ -861,7 +1002,10 @@
         // TURNED recently; a touch is always an act and comes through
         // notice() directly.
         var hold = (def.notice && def.notice.hold) || times.noticeHold;
-        if (enc.noticed > 0.5 && stillNow() < 3) {
+        // A 'none' manner is a passage that cannot be caught — small,
+        // far, and already leaving. Nearness never arms on it.
+        if (enc.manner && enc.manner.respond === 'none') { hold = Infinity; }
+        if (enc.noticed > 0.5 && stillNow() < 3 && hold !== Infinity) {
           enc.noticedFor += dt;
           if (enc.noticedFor >= hold) notice();
         } else {
@@ -879,7 +1023,9 @@
       // nothing.
       if (enc.pulse > 0) enc.pulse = Math.max(0, enc.pulse - dt * 0.22);
       if (enc.responded && !enc.guiding) {
-        enc.speedScale += (1 - enc.speedScale) * dt * 0.4;
+        // A fleeing creature stays fled; every other response eases
+        // back to its own pace.
+        enc.speedScale += ((enc.fleeing ? 2.2 : 1) - enc.speedScale) * dt * 0.4;
       }
 
       // ONE CROSSING, THEN GONE. Past the far side of the view, with
@@ -910,6 +1056,12 @@
     // opened the card.
     function onRootClick(ev) {
       if (!enc) return;
+      // A 'none' manner is a passage that cannot be caught — the
+      // conductor asked for a crossing that answers nothing, so a
+      // touch is not an ask it can grant. (V2.2's mid-recharge
+      // swell-ack below is for a creature that CAN answer and is
+      // gathering its light; this one never answers at all.)
+      if (enc.manner && enc.manner.respond === 'none') return;
       if (ev.target && ev.target.closest && ev.target.closest('.vp-story')) return;
       var rect = universe.root.getBoundingClientRect();
       var x = ev.clientX - rect.left, y = ev.clientY - rect.top;
@@ -931,14 +1083,82 @@
       var w = canvas.width, h = canvas.height;
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, w, h);
-      if (!enc && !trail && !beck) return;
+      if (!enc && !trail && !beck && !blooms.length && !marks.length) return;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
       var breath = (ether.ambient && ether.ambient.breath) || 1;
 
+      if (marks.length) drawMarks(breath);
       if (beck) drawBeckon(breath);
+      if (blooms.length) drawBlooms(breath);
       if (trail) drawTrail(breath);
       if (enc) drawCreature(breath);
+    }
+
+    // A free-standing wonder: the same figure family a trail's end
+    // blooms, drawn by the same rules, wherever the sky chose.
+    function drawBlooms(breath) {
+      var cam = camera.offsetFor(ether.depth.stories, camStory);
+      var cx = ether.viewWidth * 0.5, cy = ether.viewHeight * 0.5;
+      for (var i = 0; i < blooms.length; i++) {
+        var b = blooms[i];
+        var bAge = time - b.born;
+        var up = Util.smooth(Util.clamp(bAge / 1.4, 0, 1));
+        var down = Util.clamp((bAge - (b.life - 2.5)) / 1.6, 0, 1);
+        var ba = up * (1 - down) * breath;
+        if (ba <= 0) continue;
+        var bx = nearestCopy(b.x + cam.x, ether.width, cx);
+        var by = nearestCopy(b.y + cam.y, ether.height, cy);
+        var fig = b.fig;
+        var bh = 60;
+        ctx.strokeStyle = rgba(starRgb, 0.4 * ba);
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        for (var l = 0; l < fig.links.length; l++) {
+          var lk = fig.links[l];
+          ctx.moveTo(bx + fig.points[lk[0]][0] * bh, by + fig.points[lk[0]][1] * bh);
+          ctx.lineTo(bx + fig.points[lk[1]][0] * bh, by + fig.points[lk[1]][1] * bh);
+        }
+        ctx.stroke();
+        for (var p = 0; p < fig.points.length; p++) {
+          var tw = 0.7 + 0.3 * Math.sin(time * 2 + p * 2.1);
+          ctx.globalAlpha = ba * tw;
+          var br = 5 * tw;
+          ctx.drawImage(starSprite,
+            bx + fig.points[p][0] * bh - br * 2,
+            by + fig.points[p][1] * bh - br * 2, br * 4, br * 4);
+        }
+        ctx.globalAlpha = ba * 0.5;
+        ctx.drawImage(glowSprite, bx - bh, by - bh, bh * 2, bh * 2);
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    // The anomalies: a few stars that were not there before, faint
+    // enough to be doubted, breathing, and gone. Deliberately dimmer
+    // than anything else this layer draws — a mark is a question.
+    function drawMarks(breath) {
+      var cam = camera.offsetFor(ether.depth.stories, camStory);
+      var cx = ether.viewWidth * 0.5, cy = ether.viewHeight * 0.5;
+      for (var i = 0; i < marks.length; i++) {
+        var m = marks[i];
+        var age = time - m.born;
+        var up = Util.smooth(Util.clamp(age / 2.2, 0, 1));
+        var down = Util.clamp((age - (m.life - 3)) / 3, 0, 1);
+        var ma = up * (1 - down) * breath * 0.4;
+        if (ma <= 0) continue;
+        var mx = nearestCopy(m.x + cam.x, ether.width, cx);
+        var my = nearestCopy(m.y + cam.y, ether.height, cy);
+        for (var p = 0; p < m.pts.length; p++) {
+          var pt = m.pts[p];
+          var tw = 0.6 + 0.4 * Math.sin(time * 1.1 + pt[2]);
+          ctx.globalAlpha = ma * tw;
+          var r = 3.4 * tw;
+          ctx.drawImage(starSprite,
+            mx + pt[0] - r * 2, my + pt[1] - r * 2, r * 4, r * 4);
+        }
+      }
+      ctx.globalAlpha = 1;
     }
 
     // The beckon: one soft light sitting on the edge of the view, half
@@ -965,7 +1185,8 @@
 
     function drawCreature(breath) {
       var def = enc.def;
-      var half = def.span * 0.5;
+      var mScale = enc.manner ? enc.manner.scale : 1;
+      var half = def.span * 0.5 * mScale;
       var sx = enc.screen.x, sy = enc.screen.y;
 
       // Fade in from the edge, out at the far one, and glow a little
@@ -975,7 +1196,8 @@
       // The swell is the acknowledgment a child sees, so it carries
       // real weight — a brightening that could be missed is no
       // acknowledgment at all.
-      var a = def.alpha * breath * (0.55 + enc.noticed * 0.3 + enc.swell * 0.3) * edgeIn;
+      var a = def.alpha * breath * (0.55 + enc.noticed * 0.3 + enc.swell * 0.3) *
+              edgeIn * (0.45 + 0.55 * mScale);
 
       // Undulation: the further from the head, the more the body
       // moves — a swimmer, not a rigid sign dragged across the sky.
@@ -1159,6 +1381,7 @@
 
     return {
       quiet: false,
+      conducted: conducted,
       creatures: function () { return Object.keys(CREATURES); },
       active: function () {
         if (!enc) return null;
@@ -1169,6 +1392,7 @@
           noticed: enc.noticed,
           responded: enc.responded,
           response: enc.def.response,
+          respondMode: enc.manner ? enc.manner.respond : 'default',
           guiding: !!enc.guiding,
           pulse: enc.pulse,
           swell: enc.swell
@@ -1199,6 +1423,15 @@
         };
       },
       summon: summon,
+      beckonNow: beckonNow,
+      bloomAt: bloomAt,
+      markAt: markAt,
+      blooms: function () {
+        return blooms.map(function (b) { return { fig: b.fig.id, x: b.x, y: b.y }; });
+      },
+      marks: function () {
+        return marks.map(function (m) { return { x: m.x, y: m.y }; });
+      },
       setComposer: function (fn) { composer = fn; },
       setScout: function (fn) { scout = fn; },
       on: on, off: off,
@@ -1208,6 +1441,10 @@
         universe.root.removeEventListener('click', onRootClick);
         universe.off('ether:resized', sizeCanvas);
         if (canvas.parentNode) canvas.parentNode.removeChild(canvas);
+        // A conductor holding this instance must learn it is gone —
+        // a suite that remounts through the public API would otherwise
+        // leave the Composer conducting a stage that no longer exists.
+        emit('destroyed', {});
       }
     };
   }
