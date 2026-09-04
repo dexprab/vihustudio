@@ -11867,3 +11867,34 @@ gaps, idle minutes producing quiet, dispositions, anchors) and the
 real page, with four checks proved by reversion. Detail:
 `docs/ETHER_EXPERIENCE_ARCHITECTURE.md`. Built experimental; merged
 into main at build 0763 — see the next entry.
+
+## Build 0763 — Ether integration: the Experience Composer becomes main architecture
+
+The product owner validated the experimental branch in a 22-minute
+sitting and asked for CURRENT MAIN + EXPERIENCE ARCHITECTURE + ALL
+V2.2 FIXES = NEW MAIN, and that is what merged: no competing fork
+survives. The one hard conflict was `js/etherLife.js` — main's V2.2
+(repeatable jellyfish, 10s recharge, mid-recharge swell-ack,
+dimSpirits no-empty-ring gate, edge-kindles, last feather) against
+the experimental conducted mode, manner summon, beckonNow, blooms
+and marks, both cut from the same V2.1 base — resolved by hand so
+the conducted seams wrap AROUND the V2.2 interaction contract:
+onRootClick keeps main's structure with the manner:'none' early
+return added, respond() keeps main's mayRepeat guard and pulse gate
+with the acknowledge/shy branches inserted. Canon section 23 is the
+union (12 truths), generated copies confirmed drift-free by the real
+generators, and the safety tag `ether-pre-experience-merge` pins
+cccfa73. The experience suite gained a V section — the V2.2
+contract measured UNDER THE CONDUCTOR for the first time (ether-life's
+own G deliberately remounts autonomous): mid-recharge swell-ack and
+post-recharge re-fire on the conducted stage, a manner:'none'
+crossing never trapping a Story tap, and the structural fallback
+(Composer script blocked) reproducing the exact production wiring
+with the autonomous clock really running — every one proved by
+reversion. Wall: ether-life 76 + walkthrough 14 · ether-experience
+54 · ether-encounter 94 · ether-share 21 · social-ether-identity 20
+· companion-canon 94 · companion-context 90 · companion-gap 29 —
+green, zero page errors, plus a 6-minute real-time conducted
+playtest (whale at 9s, trail followed and found at 36s, then a
+beckon and a silent jellyfish crossing, cv 0.90 gaps). Detail:
+`docs/ETHER_EXPERIENCE_ARCHITECTURE.md` (now marked production).

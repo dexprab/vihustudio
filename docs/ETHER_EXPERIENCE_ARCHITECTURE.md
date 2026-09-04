@@ -1,7 +1,15 @@
-# Ether Experience Architecture (EXPERIMENTAL BRANCH)
+# Ether Experience Architecture
 
-Branch: `claude/ether-experience-architecture`. Production Ether
-(main) is the baseline and the fallback; nothing here is merged.
+PRODUCTION since build 0763. Built experimentally on
+`claude/ether-experience-architecture` and merged into main after
+the product owner validated it in a real playtest; the pre-Composer
+wiring survives only as the structural fallback (a page where
+`js/etherExperience.js` fails to load mounts the autonomous layer
+exactly as build 0762 did — proved by the suite's V3). The merge
+preserved every V2.2 behaviour verbatim: the repeatable jellyfish
+with its 10 s recharge, the mid-recharge swell-ack, no ring over
+nothing, the edge-kindles, card-owns-the-tap, the starbird's last
+feather, and the V2.1 one-crossing lifecycle.
 
 The governing quality is **mystery**. The Ether is a sea of
 mysteries — not a container for Stories, not a creature showcase,
@@ -12,7 +20,7 @@ animations, and should never be able to state its rules.
 
 ---
 
-## 1. CURRENT ETHER ARCHITECTURE (baseline, build 0761)
+## 1. THE PROVIDER LAYERS (formerly the whole architecture, build 0761/0762)
 
 Two layers plug into the runtime through public seams (Decision 9's
 test: `physics.js`, `storyManager.js`, `etherRenderer.js`,
@@ -49,7 +57,7 @@ spatial model of what the child has explored, and a scheduler that
 is a plain interval draw — over a long session it IS a rotation:
 crossing every 95–220 s, uniform in structure, forever.
 
-## 2. EXPERIMENTAL ETHER ARCHITECTURE
+## 2. THE EXPERIENCE ARCHITECTURE (production)
 
 One new module — **`js/etherExperience.js`** — becomes the central
 orchestration layer. The existing modules become **experience

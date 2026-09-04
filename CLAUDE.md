@@ -7489,6 +7489,69 @@ leads somewhere.
   hardened to relative counts sampled past the delay, then proved by
   revert: no-recharge, not-repeatable, no-kindle and always-ring each
   turn their own check red.
+- **THE EXPERIENCE COMPOSER IS MAIN ETHER ARCHITECTURE NOW** (build
+  0763). Validated by the product owner in a 22-minute real playtest
+  on its own branch and then merged, on his equation: *current main +
+  experience architecture + all current V2.2 fixes = new main* — no
+  competing fork survives. `js/etherExperience.js` conducts the sky:
+  derived-only world state (session clock, stillness, eight view
+  sectors, a per-Story discovery ledger that is internal only), eleven
+  data patterns, QUIET as a first-class choice, rarity as a per-visit
+  disposition, novelty penalising PATTERNS rather than assets, and
+  anchors that let a later experience echo an earlier place. The
+  providers stay who they were: `js/etherLife.js` mounts conducted
+  (its own crossing clock and idle-beckon clock stand down; drawing,
+  movement, the notice grammar and departure are untouched) and gains
+  the conductor's seams — a manner on `summon()` (band · scale ·
+  speed · respond: default / acknowledge / shy / none · via an
+  anchor), `beckonNow()` with the policy guards still local (the cap,
+  stop-forever, never over a trail or a portal), and free-standing
+  `bloomAt()` / `markAt()`; `js/etherDiscovery.js` lifts its pickers
+  to module functions and takes a `{conductor}` that may only
+  lengthen the rest and steer a trail's preference — one-at-a-time
+  and the activity registry are not up for steering.
+- **THE MERGE KEPT EVERY V2.2 BEHAVIOUR VERBATIM, and that was the
+  central hazard**: the experimental branch was cut from V2.1, so its
+  `etherLife.js` predated the jellyfish fixes. Resolved by hand so
+  the conducted seams wrap AROUND the V2.2 interaction contract —
+  the repeatable jellyfish with its 10s recharge, the mid-recharge
+  swell-ack, no ring over nothing (`dimSpirits()` gates the fire),
+  the edge-kindles for off-view dim Spirits, card-owns-the-tap, the
+  starbird's last feather at delivery, the V2.1 unwrapped
+  one-crossing lifecycle and the acted-not-idle notice gate all
+  survive: `onRootClick` keeps main's structure with the
+  manner:'none' early return added, and `respond()` keeps main's
+  `mayRepeat` guard and pulse gate with the acknowledge/shy manner
+  branches inserted above the response vocabulary. Canon section 23
+  is the UNION — twelve truths, the three sea-of-mysteries ones
+  joining V2's — and the generated copies were rebuilt and confirmed
+  drift-free. `ether-pre-experience-merge` tags the pre-merge main.
+- **THE V2.2 CONTRACT IS NOW MEASURED UNDER THE CONDUCTOR**, because
+  nothing had ever done so: ether-life's own G section deliberately
+  remounts the layer autonomous, so a conducted stage that quietly
+  bypassed the contract would have passed every existing check. The
+  experience suite's V section closes that: the jellyfish summoned on
+  the conducted stage with the composer alive swell-acks mid-recharge
+  and re-fires past it; a manner:'none' crossing never traps a tap
+  that belongs to a Story Spirit (the card opens, the passage stays
+  unanswered); and the structural fallback — the Composer script
+  blocked at the network — reproduces the production wiring exactly
+  (`EtherLife.mount(universe)` autonomous, discovery attached, no
+  composer, and the internal clock really scheduling its own first
+  whale). Each proved by reversion: `repeatable:false` turned V1d
+  red, a silent recharge turned V1c red, removing both tap guards
+  turned V2 red, a conducted fallback turned V3/V3b red.
+- **A CHECK WITH AN ESCAPE HATCH THAT ALWAYS FIRES MEASURES
+  NOTHING.** V2's first draft excused itself whenever no Story card
+  was tappable — which in the sparse sky was every run — and its
+  card-finding filter then rejected every Spirit anyway, because a
+  Spirit's own element is a ZERO-SIZE anchor whose visible children
+  overflow it (measured: 0×0 with `vp-story-image` under the same
+  point). The sky is seeded through the universe's own `seed()` and
+  the hit-test, not the rect, is the question. And the first V1 run
+  timed out on the jellyfish ENTERING the view: 12 px/s under a
+  starved frame clock's capped dt — the B2 lesson again, answered
+  the same way (a speed manner, which the recharge never reads).
 - Out of scope and not implemented: creature encounters as a reward
   system, creature dialogue, a Companion in the Ether, per-Traveller
   encounter history, more activity rows (story hunt, missing
@@ -7497,7 +7560,9 @@ leads somewhere.
   non-Story creations into the Ether feed (a composer target already
   carries `kind`, which is the seam for it; Show snapshots are private
   gifts and stay out — Decision 56).
-- `js/etherLife.js` · `js/etherDiscovery.js` ·
+- `js/etherLife.js` · `js/etherDiscovery.js` · `js/etherExperience.js` ·
+  `docs/ETHER_EXPERIENCE_ARCHITECTURE.md` ·
+  `tools/ether-experience-test/run-ether-experience-tests.js` ·
   `vihuplanet/runtime/core/traveller.js` ·
   `assets/canon/vihuplanet.canon.json` ·
   `tools/ether-life-test/run-ether-life-tests.js`

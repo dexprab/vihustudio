@@ -732,6 +732,240 @@ function autoCross(h, seconds) {
     await context.close();
   }
 
+  // =================================================================
+  console.log('\nV. THE V2.2 CONTRACT UNDER THE CONDUCTOR');
+  // The integration sprint's own question: conducted mode wraps AROUND
+  // the V2.2 interaction contract, it does not replace it. These checks
+  // run on the CONDUCTED page — the composer alive and holding the
+  // stage — because ether-life's own G section deliberately remounts
+  // the layer autonomous, so before this nothing had ever measured the
+  // repeatable jellyfish, the swell-ack or the card-owns-the-tap rule
+  // with a conductor standing there.
+  // =================================================================
+
+  // A finger probes for a visible part of the creature over open sky —
+  // the same rule ether-life's clickCreature records: a click that
+  // lands on a Story Spirit belongs to the Spirit.
+  async function tapCreature(page) {
+    const spot = await page.evaluate(() => {
+      const a = window.vihuEtherLife.active();
+      if (!a) return null;
+      const half = (EtherLife.CREATURES[a.id] || {}).span * 0.5 || 90;
+      const offs = [[0, 0], [60, 0], [-60, 0], [0, 55], [0, -55],
+                    [half * 0.8, 0], [-half * 0.8, 0], [60, 55], [-60, -55]];
+      for (const o of offs) {
+        const x = a.screen.x + o[0], y = a.screen.y + o[1];
+        if (x < 8 || x > 1432 || y < 8 || y > 892) continue;
+        const el = document.elementFromPoint(x, y);
+        if (el && el.closest && el.closest('.vp-story')) continue;
+        return { x, y };
+      }
+      return null;
+    });
+    if (!spot) return false;
+    await page.mouse.click(spot.x, spot.y);
+    return true;
+  }
+
+  // V1 — the repeatable jellyfish, conducted. Summon through the
+  // layer's own public seam (which is exactly what the composer does),
+  // with the composer still mounted and never destroyed. The sky is
+  // densified through the universe's own seed() so the ring has an
+  // audience and actually fires — a sparse sky never sets firedAt and
+  // there is no recharge window to measure (ether-life's own G lesson).
+  {
+    const { context, page } = await freshPage();
+    await page.waitForFunction(() =>
+      window.vihuPlanetUniverse.stories.count() > 0, null, { timeout: 20000 })
+      .catch(() => {});
+    await page.evaluate(() => {
+      const rows = [];
+      for (let i = 0; i < 6; i++) rows.push({ id: 'v22-seed-' + i, title: 'Seeded ' + i });
+      window.vihuPlanetUniverse.seed(rows);
+      window.__v22 = [];
+      window.vihuEtherLife.on('creature:responded', (p) => window.__v22.push(p));
+      // The stage may already hold the composer's first whale — one
+      // encounter at a time is the layer's own rule, so wait for a
+      // clear stage below rather than tearing anything down.
+    });
+    // `speed` is a real manner seam, and (the B2 lesson) it also keeps
+    // the check honest under load: a starved frame clock caps dt, and
+    // at 12 px/s a jellyfish can spend the whole timeout entering the
+    // view. The recharge behaviour under test does not read speed.
+    await page.waitForFunction(() => {
+      if (window.vihuEtherLife.active()) return false;
+      return window.vihuEtherLife.summon('jellyfish', { speed: 2 }) === 'jellyfish';
+    }, null, { timeout: 45000 });
+    const conductedStill = await page.evaluate(() => ({
+      conducted: window.vihuEtherLife.conducted,
+      composer: !!window.vihuEtherComposer
+    }));
+    ck(conductedStill.conducted === true && conductedStill.composer,
+       'V1  the jellyfish is summoned on the CONDUCTED stage, composer alive');
+
+    // First touch → the ring fires (pulse), firedAt stamps.
+    await page.waitForFunction(() => {
+      const a = window.vihuEtherLife.active();
+      return a && a.screen.x > 100 && a.screen.x < 1340;
+    }, null, { timeout: 45000 });
+    for (let i = 0; i < 4; i++) { if (await tapCreature(page)) break; await page.waitForTimeout(400); }
+    await page.waitForFunction(() => window.__v22.length > 0, null, { timeout: 6000 });
+    const first = await page.evaluate(() => window.__v22[0]);
+    ck(first.response === 'pulse' && first.id === 'jellyfish',
+       'V1b and the first touch is answered with light');
+
+    // The ring runs out, the light is still gathering: a touch inside
+    // the recharge window swell-acks and does NOT ring — V2.2's
+    // mid-recharge rule, now proved under the conductor.
+    await page.waitForFunction(() => {
+      const a = window.vihuEtherLife.active();
+      return !a || a.pulse <= 0;
+    }, null, { timeout: 12000 });
+    const alive = await page.evaluate(() => !!window.vihuEtherLife.active());
+    if (!alive) {
+      fail('V1c mid-recharge swell-ack under the conductor', 'the jellyfish left early');
+      fail('V1d post-recharge re-fire under the conductor', 'the jellyfish left early');
+    } else {
+      const base = await page.evaluate(() => window.__v22.length);
+      for (let i = 0; i < 4; i++) { if (await tapCreature(page)) break; await page.waitForTimeout(300); }
+      await page.waitForTimeout(400);
+      const midSwell = await page.evaluate(() =>
+        (window.vihuEtherLife.active() || {}).swell || 0);
+      // Past the respond delay, so a late ring cannot hide (the G5a
+      // lesson: a 400ms sample cannot see a ring that fires at 100ms
+      // + delay).
+      await page.waitForTimeout(700);
+      const midCount = await page.evaluate(() => window.__v22.length);
+      ck(midCount === base && midSwell > 0.25,
+         'V1c mid-recharge, a touch glows and does not ring — conducted',
+         'swell ' + midSwell.toFixed(2) + ', responses ' + base + ' -> ' + midCount);
+
+      // The recharge (10 layer-seconds from the fire) runs out; the
+      // next touch re-fires. A reveal is light, not a spent token —
+      // with a conductor standing there. The layer's clock runs on
+      // capped dt and can lag wall time under load, so this taps and
+      // asks rather than trusting one wall-clock sleep: a tap during
+      // the gather is only ever the warm swell-ack V1c just proved,
+      // so the loop cannot pass for the wrong reason.
+      const base2 = await page.evaluate(() => window.__v22.length);
+      let again = { n: base2, pulse: 0 };
+      for (let round = 0; round < 16 && again.n <= base2; round++) {
+        await page.waitForTimeout(1500);
+        if (!(await tapCreature(page))) continue;
+        await page.waitForTimeout(900);
+        again = await page.evaluate(() => ({
+          n: window.__v22.length,
+          pulse: (window.vihuEtherLife.active() || {}).pulse || 0
+        }));
+      }
+      ck(again.n > base2 && again.pulse > 0,
+         'V1d past the recharge, a touch re-fires the ring — conducted',
+         base2 + ' -> ' + again.n + ' responses, pulse ' + again.pulse.toFixed(2));
+    }
+    ck(page.errors.length === 0, 'V1e zero page errors', page.errors[0]);
+    await context.close();
+  }
+
+  // V2 — a manner:'none' crossing never traps a tap that belongs to a
+  // Story Spirit. The card-owns-the-tap rule (V2.1) and the
+  // conductor's quietest manner, together: a tap on a card opens the
+  // card, and the uncatchable passage answers nobody — least of all
+  // by swallowing somebody else's tap.
+  {
+    const { context, page } = await freshPage();
+    await page.waitForFunction(() =>
+      document.querySelector('.vp-story'), null, { timeout: 20000 });
+    // A sparse sky may drift both Canon Spirits out of the view, and
+    // an escape hatch that fires every run measures nothing — seed
+    // through the universe's own public seed() so a card is really
+    // there to tap (the ether-life G lesson).
+    await page.evaluate(() => {
+      const rows = [];
+      for (let i = 0; i < 6; i++) rows.push({ id: 'v22n-seed-' + i, title: 'Seeded ' + i });
+      window.vihuPlanetUniverse.seed(rows);
+      window.__v22n = [];
+      window.vihuEtherLife.on('creature:noticed', (p) => window.__v22n.push(p));
+    });
+    await page.waitForFunction(() => {
+      if (window.vihuEtherLife.active()) return false;
+      return window.vihuEtherLife.summon('whale',
+        { respond: 'none', scale: 0.4, speed: 2.2 }) === 'whale';
+    }, null, { timeout: 45000 });
+    // Tap a real Story card while the passage crosses. A card that is
+    // there but not yet hit-testable this frame is not a verdict —
+    // probe for one whose centre really answers to the Spirit.
+    let card = null;
+    for (let i = 0; i < 20 && !card; i++) {
+      card = await page.evaluate(() => {
+        // A Spirit's own element is a zero-size anchor whose visible
+        // children overflow it (measured: 0×0 with vp-story-image
+        // under the same point), so the rect's SIZE proves nothing —
+        // the hit-test is the whole question.
+        const els = Array.from(document.querySelectorAll('.vp-story'));
+        for (const el of els) {
+          const r = el.getBoundingClientRect();
+          const x = Math.min(1430, Math.max(10, r.left + r.width / 2));
+          const y = Math.min(890, Math.max(10, r.top + r.height / 2));
+          const hit = document.elementFromPoint(x, y);
+          if (hit && hit.closest && hit.closest('.vp-story')) return { x, y };
+        }
+        return null;
+      });
+      if (!card) await page.waitForTimeout(500);
+    }
+    if (!card) {
+      fail('V2  a manner:none crossing never traps a Story tap', 'no tappable card could be staged');
+    } else {
+      await page.mouse.click(card.x, card.y);
+      await page.waitForTimeout(900);
+      const out = await page.evaluate(() => ({
+        noticed: window.__v22n.length,
+        focusOpen: window.vihuPlanetUniverse.focus.isOpen()
+      }));
+      ck(out.noticed === 0 && out.focusOpen === true,
+         'V2  a manner:none crossing never traps a Story tap — the card opens, the passage stays unanswered',
+         'noticed ' + out.noticed + ', focus ' + out.focusOpen);
+    }
+    ck(page.errors.length === 0, 'V2b zero page errors', page.errors[0]);
+    await context.close();
+  }
+
+  // V3 — the structural fallback. With js/etherExperience.js unable to
+  // load, vihuplanetHome.js must reproduce today's production wiring
+  // exactly: an AUTONOMOUS EtherLife.mount(universe), discovery
+  // attached, no composer anywhere — and the layer's own scheduler
+  // brings the first whale inside the window, which only happens when
+  // the internal clock is running.
+  {
+    const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+    const page = await context.newPage();
+    page.errors = [];
+    page.on('pageerror', (e) => page.errors.push(String(e)));
+    await page.route('**/etherExperience.js*', (r) => r.abort());
+    await page.goto(BASE + '/index.html');
+    await page.waitForSelector('[data-begin]', { timeout: 20000 });
+    await page.click('[data-begin]');
+    await page.waitForFunction(() => !!window.vihuEtherLife, null, { timeout: 15000 });
+    const wiring = await page.evaluate(() => ({
+      composer: !!window.vihuEtherComposer,
+      moduleThere: !!window.EtherExperience,
+      conducted: window.vihuEtherLife.conducted,
+      discovery: !!window.vihuEtherDiscovery
+    }));
+    ck(!wiring.composer && !wiring.moduleThere && wiring.conducted === false &&
+       wiring.discovery,
+       'V3  no composer module → the production wiring, exactly: autonomous mount, discovery attached',
+       JSON.stringify(wiring));
+    await page.waitForFunction(() => !!window.vihuEtherLife.active(),
+      null, { timeout: 16000 }).catch(() => {});
+    const solo = await page.evaluate(() => window.vihuEtherLife.active());
+    ck(!!solo && solo.id === 'whale',
+       'V3b and the layer schedules its own first whale — the internal clock is really running',
+       solo ? solo.id : 'nothing arrived');
+    ck(page.errors.length === 0, 'V3c zero page errors', page.errors[0]);
+    await context.close();
+  }
+
   await browser.close();
   console.log('\n' + (failed ? 'FAILED' : 'ALL GREEN') + ' — ' + passed + ' passed, ' + failed + ' failed');
   if (failures.length) failures.forEach((f) => console.log('  · ' + f));
