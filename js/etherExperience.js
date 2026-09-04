@@ -389,13 +389,16 @@
       if (p.oncePerVisit && vp.performed > 0) return 'already-happened';
       if (p.notBefore && time < p.notBefore * (timeScale > 1 ? 1 / timeScale : 1) &&
           time < p.notBefore) return 'too-early';
-      if (!phaseFits(p, ph)) return 'wrong-phase';
-      if (p.family === 'creature' && life.active()) return 'sky-occupied';
-      if (p.family === 'creature' && life.trail()) return 'trail-live';
       if (p.needsAnchor) {
+        // Before the phase: a pattern that needs an old place and has
+        // none is impossible, not merely ill-timed, and the log
+        // should say the harder truth.
         var a = usableAnchor(p.needsAnchor);
         if (!a) return 'no-old-place-yet';
       }
+      if (!phaseFits(p, ph)) return 'wrong-phase';
+      if (p.family === 'creature' && life.active()) return 'sky-occupied';
+      if (p.family === 'creature' && life.trail()) return 'trail-live';
       if (p.id === 'odd-stars' && time - lastMarkAt < 60) return 'mark-too-recent';
       if (p.id === 'reveal') {
         var count = 0;
@@ -627,6 +630,13 @@
       if (p && p.target && p.target.kind === 'story' && p.target.id) {
         bumpStory(p.target.id, 'discovered');
       }
+      // Where a trail ended is a place the sky may come back to.
+      try {
+        var tr = life.trail();
+        if (tr && tr.target && typeof tr.target.x === 'number') {
+          addAnchor(tr.target.x, tr.target.y, 'found');
+        }
+      } catch (e) {}
       // The sky rests after a find — the quiet phase, drawn fresh
       // each time so its length is never learnable.
       restUntil = time + rand(40, 90);
