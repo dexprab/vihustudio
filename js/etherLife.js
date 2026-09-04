@@ -400,8 +400,15 @@
     }
 
     // A creature was genuinely noticed: turned toward, or touched.
+    //
+    // THE ACKNOWLEDGMENT IS IMMEDIATE even though the response keeps
+    // its beat: the creature brightens in the same breath as the
+    // touch, so a child is never left wondering whether anything
+    // happened while the respondDelay runs. Perceptibly connected
+    // first, naturally answered a moment later.
     function notice() {
       if (!enc || enc.responded || enc.respondIn >= 0) return;
+      enc.swell = Math.max(enc.swell, 0.8);
       enc.respondIn = times.respondDelay;
       emit('creature:noticed', { id: enc.id });
     }
@@ -412,11 +419,11 @@
       enc.swell = 1;
 
       if (enc.def.response === 'guide') {
-        // The whale points. It arcs a little away from the Traveller —
-        // noticed, not caught — and breathes out the trail, staying on
-        // its own way.
+        // The whale points. It near-pauses — a breath — arcs a little
+        // away from the Traveller (noticed, not caught) and breathes
+        // out the trail, staying on its own way.
         enc.veer = (enc.screen.y < ether.viewHeight * 0.5 ? -1 : 1) * 46;
-        enc.speedScale = 0.45;
+        enc.speedScale = 0.28;
         beginTrail();
       } else if (enc.def.response === 'pulse') {
         // The jellyfish reveals. One wide slow ring, and the dim
@@ -741,9 +748,26 @@
         enc.pos.y = enc.baseY + Math.sin(time * def.wave.freq) * def.wave.amp * 0.4;
       }
 
+      // UNWRAPPED, DELIBERATELY — and this is V2.1's whole fix. The
+      // wrap exists for things that BELONG to the sky (Spirits, trail
+      // motes, the beckon), so a child turning a full circle finds
+      // them again. A creature is a visitor passing through, and
+      // wrapping it made leaving impossible: in a sparse universe the
+      // field is only the view plus the seam margins, so the wrapped
+      // screen coordinate is clamped within ±(field/2) of the centre
+      // and the departure threshold below was UNREACHABLE — measured,
+      // the whale hit the seam at screen.x 1600 and reappeared at
+      // -160, forever. A rare encounter had become wallpaper, and a
+      // whale that never leaves keeps `responded` for the rest of the
+      // visit, which is why a later touch appeared to do nothing.
+      //
+      // The stated cost: a child who turns a long way off a crossing
+      // creature may lose it past the departure line. A transient
+      // being going unseen is the design — "did I just see that?" —
+      // where a permanent one was the bug.
       var cam = camera.offsetFor(def.parallax, camScratch);
-      enc.screen.x = nearestCopy(enc.pos.x + cam.x, ether.width, ether.viewWidth * 0.5);
-      enc.screen.y = nearestCopy(enc.pos.y + cam.y, ether.height, ether.viewHeight * 0.5);
+      enc.screen.x = enc.pos.x + cam.x;
+      enc.screen.y = enc.pos.y + cam.y;
 
       // Nearness, the Spirits' own sentence: distance from the centre
       // of the screen, because the Traveller IS the centre.
@@ -793,9 +817,12 @@
         enc.speedScale += (1 - enc.speedScale) * dt * 0.4;
       }
 
-      // Gone once past the far side of the view, with room to spare —
-      // but never mid-flight: a bird carrying a Traveller somewhere may
-      // legitimately cross the edge on the way there.
+      // ONE CROSSING, THEN GONE. Past the far side of the view, with
+      // room to spare, the encounter is over: the creature disappears
+      // and the NEXT one waits on the rarity schedule — never a wrap,
+      // never an immediate re-entry. (Never mid-flight, though: a bird
+      // carrying a Traveller somewhere may legitimately cross the edge
+      // on the way there.)
       if (!enc.guiding) {
         var beyond = def.span * 0.8;
         if ((enc.dir > 0 && enc.screen.x > ether.viewWidth + beyond) ||
@@ -808,9 +835,17 @@
     }
 
     // A touch on the sky. The canvas takes no pointer events; the host
-    // page asks on the universe root's behalf.
+    // page asks on the universe root's behalf. The hit region is the
+    // creature's span with a margin — generous enough that nobody has
+    // to hit a procedural star exactly, following the creature's own
+    // screen position frame by frame, and never the whole screen.
+    //
+    // A touch that landed on a Story Spirit belongs to the Spirit: a
+    // creature passing behind a card must not answer the tap that
+    // opened the card.
     function onRootClick(ev) {
       if (!enc || enc.responded) return;
+      if (ev.target && ev.target.closest && ev.target.closest('.vp-story')) return;
       var rect = universe.root.getBoundingClientRect();
       var x = ev.clientX - rect.left, y = ev.clientY - rect.top;
       var half = enc.def.span * 0.55;
@@ -867,7 +902,10 @@
       // for being noticed.
       var offEdge = Math.max(0, -sx, sx - ether.viewWidth);
       var edgeIn = Util.clamp(1 - offEdge / half, 0.35, 1);
-      var a = def.alpha * breath * (0.55 + enc.noticed * 0.3 + enc.swell * 0.15) * edgeIn;
+      // The swell is the acknowledgment a child sees, so it carries
+      // real weight — a brightening that could be missed is no
+      // acknowledgment at all.
+      var a = def.alpha * breath * (0.55 + enc.noticed * 0.3 + enc.swell * 0.3) * edgeIn;
 
       // Undulation: the further from the head, the more the body
       // moves — a swimmer, not a rigid sign dragged across the sky.
@@ -901,8 +939,9 @@
         ctx.drawImage(starSprite, pts[i][0] - r * 2, pts[i][1] - r * 2, r * 4, r * 4);
       }
 
-      // A soft warm heart, brighter for being noticed.
-      ctx.globalAlpha = a * (0.35 + enc.noticed * 0.45);
+      // A soft warm heart, brighter for being noticed — and brightest
+      // in the moment of acknowledging a touch.
+      ctx.globalAlpha = Math.min(1, a * (0.35 + enc.noticed * 0.45 + enc.swell * 0.6));
       var hr = half * 0.5;
       ctx.drawImage(glowSprite, sx - hr, sy - hr, hr * 2, hr * 2);
 
@@ -981,11 +1020,11 @@
         var along = 1 - Math.abs(t - wave) * 3;
         var pulse = Math.max(0, along);
         var tw = 0.7 + 0.3 * Math.sin(time * 1.7 + m.tw);
-        var a = 0.5 * lifeT * tw * breath * (1 - settle) * (0.65 + pulse * 0.6);
+        var a = 0.6 * lifeT * tw * breath * (1 - settle) * (0.65 + pulse * 0.6);
 
         var mx = nearestCopy(m.x + cam.x, ether.width, cx);
         var my = nearestCopy(m.y + cam.y, ether.height, cy);
-        var r = 3.4 + pulse * 2.2;
+        var r = 4.0 + pulse * 2.4;
         ctx.globalAlpha = a;
         ctx.drawImage(starSprite, mx - r * 2, my - r * 2, r * 4, r * 4);
       }
@@ -1043,7 +1082,8 @@
           responded: enc.responded,
           response: enc.def.response,
           guiding: !!enc.guiding,
-          pulse: enc.pulse
+          pulse: enc.pulse,
+          swell: enc.swell
         };
       },
       beckon: function () {

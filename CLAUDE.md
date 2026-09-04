@@ -7393,6 +7393,57 @@ leads somewhere.
   section 23 — each being answers in its own way; the way deeper is
   always a Story, and only inside one is a Traveller welcomed by who
   lives there.
+- **THE WHALE COULD NEVER LEAVE, AND A CLICK ON IT DID NOTHING** (V2.1,
+  build 0761). Both reported by the product owner from manual review —
+  *"whale travels left → right → disappears → immediately reappears"*
+  and *"click whale → nothing visibly changes"* — and both were ONE
+  bug. A creature's screen position went through the same wrap the
+  Spirits use, and in a sparse universe the field is only the view
+  plus the seam margins, so the wrapped coordinate was clamped within
+  ±(field/2) of the centre and the departure threshold was
+  MATHEMATICALLY UNREACHABLE: measured, the whale hit the seam at
+  screen 1600 and re-entered at −160, forever. A rare encounter had
+  become wallpaper — and a whale that never leaves keeps its spent
+  `responded` flag for the rest of the visit, which is why every later
+  touch was ignored. No automated check had ever asserted that a
+  crossing ENDS.
+- **CREATURES ARE UNWRAPPED NOW — VISITORS, NOT ANCHORED SKY.** The
+  wrap exists so a child turning a full circle finds the Spirits, the
+  trail and the beckon again; a being passing through is not found
+  again, it is met once. One crossing → gone → the next encounter
+  waits on the rarity schedule. Stated cost: a child who turns far off
+  a crossing creature may lose it past the departure line — a
+  transient going unseen is the design where a permanent one was the
+  bug.
+- **A TOUCH IS ACKNOWLEDGED IN THE SAME BREATH.** The respond beat
+  stays, but the creature brightens the instant it is noticed
+  (measured in the suite at 180ms, ahead of the answer), the swell now
+  carries real visual weight, and the whale near-pauses before
+  breathing its motes. A touch that lands on a Story Spirit belongs to
+  the Spirit and is never also answered by a creature behind it.
+- **AN OUTLIER MUST NEVER ELECT ITSELF NORMAL.** The new no-wrap check
+  first derived the direction of travel from the SUM of position
+  deltas — and three +1650 wrap jumps outweighed thirty-seven −110
+  honest steps, so the wraps flipped the trend and then read as the
+  trend: the check could not fail against the very bug it guards
+  (measured). The trend is the MEDIAN delta now, and W1–W3 were each
+  proved by putting the wrap back and watching them go red.
+- **THE SUITE'S WHALE → STORY PATH WAS A COIN TOSS, AND THE SPARSE
+  REVEAL WAS WHY.** With two Canon Stories, FAR_SPARSE means whatever
+  is in view has high prox, so whether ANY Story counted as
+  undiscovered — story trail or wonder trail — depended on where two
+  spirits happened to drift. Section B densifies through the
+  universe's own public seed(), as G already did.
+- **THE MANUAL WALKTHROUGH IS A COMMITTED HARNESS**
+  (`tools/ether-life-test/walkthrough.js`): a scripted stand-in for a
+  person, driving the product only the way a child does — the
+  threshold clicked, turning by real held arrow keys, the whale
+  clicked — screenshotting every beat. Tests A–D: passive (appears
+  once, crosses, never answers an idle Traveller, leaves, stays gone),
+  turn-to-notice, click-to-notice, rarity after exit. All 14 green,
+  after the automated suite alone had said V2 was done while the
+  manual behaviour was wrong — a suite that never asks whether the
+  crossing ends cannot see a whale that never leaves.
 - Out of scope and not implemented: creature encounters as a reward
   system, creature dialogue, a Companion in the Ether, per-Traveller
   encounter history, more activity rows (story hunt, missing

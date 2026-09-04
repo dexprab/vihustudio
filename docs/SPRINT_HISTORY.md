@@ -11768,3 +11768,37 @@ in its own way; the way deeper is always a Story). ether-life 66
 ether-encounter 94 · ether-share 21 · social-ether-identity 20 ·
 companion-gap 29 · companion-chat 256 · companion-canon 94 ·
 companion-context 90 — green.
+
+## Build 0761 — Ether V2.1: the whale can leave, and a touch is answered
+
+Both of the product owner's manual findings — the whale looping edge to
+edge forever, and a click on it doing nothing — were ONE bug. A
+creature's screen position went through the Spirits' wrap, and in a
+sparse universe the field is only the view plus the seam margins, so
+the wrapped coordinate was clamped inside ±(field/2) and the departure
+threshold was mathematically unreachable: measured, the whale hit the
+seam at screen 1600 and re-entered at −160, forever. A rare encounter
+had become wallpaper, and a whale that never leaves keeps its spent
+`responded` flag for the rest of the visit — which is why every later
+touch was silently ignored. No automated check had ever asserted that
+a crossing ENDS. Creatures are UNWRAPPED now — visitors, not anchored
+sky: one crossing → gone → the next encounter waits on rarity (stated
+cost: turning far off a crossing creature can lose it, which is the
+design where permanence was the bug). A touch is acknowledged in the
+same breath (the swell fires at notice, ahead of the respond beat,
+and carries real visual weight), the whale near-pauses before
+breathing its motes, and a tap that lands on a Story Spirit is never
+also answered by a creature behind it. The new W section proves the
+crossing (one way, ends, no respawn, immediate acknowledgment), with
+W1–W3 proved by putting the wrap back — after W1's first draft could
+not fail: it derived the direction of travel from the SUM of deltas,
+and three +1650 wrap jumps outvoted thirty-seven honest −110 steps,
+so the wraps elected themselves the trend (the median is the trend
+now). Section B stopped being a coin toss for the same sparse-reveal
+reason G already recorded, densified through the universe's own
+seed(). And the MANUAL WALKTHROUGH IS A COMMITTED HARNESS
+(tools/ether-life-test/walkthrough.js): threshold clicked, turning by
+real held arrow keys, the whale clicked, every beat screenshotted —
+Tests A–D, 14/14. ether-life 72 · ether-encounter 94 · ether-share
+21 · social-ether-identity 20 — green. No knowledge-base change: this
+sprint corrects behaviour the canon already describes.

@@ -415,6 +415,17 @@ function stripComments(src) {
     await page.waitForFunction(() =>
       window.vihuPlanetUniverse.stories.count() > 0, null, { timeout: 20000 })
       .catch(() => {});
+    // Densify, as G does: in a SPARSE universe (FAR_SPARSE) whatever
+    // is in view has high prox, so whether any Story counts as
+    // undiscovered — and therefore whether the whale points at a Story
+    // or a wonder — was down to where two Canon spirits happened to
+    // drift. This section is about the whale → STORY path, so the
+    // universe must reliably hold an undiscovered Story.
+    await page.evaluate(() => {
+      const rows = [];
+      for (let i = 0; i < 6; i++) rows.push({ id: 'b-seed-' + i, title: 'Seeded ' + i });
+      window.vihuPlanetUniverse.seed(rows);
+    });
     const storyCount = await page.evaluate(() => window.vihuPlanetUniverse.stories.count());
 
     await page.evaluate(() => {
@@ -1025,6 +1036,107 @@ function stripComments(src) {
        'H4b and none returns, however long the stillness after');
 
     ck(page.errors.length === 0, 'H5  zero page errors', page.errors[0]);
+    await context.close();
+  }
+
+  // =================================================================
+  // W. ONE CROSSING, THEN GONE — the V2.1 correction, reported from
+  // manual review, and the property no earlier check asserted: in a
+  // sparse universe the wrapped screen coordinate is clamped inside
+  // the seam margins, so the departure threshold was UNREACHABLE and
+  // the whale looped forever — a rare encounter that had become
+  // wallpaper, whose spent `responded` flag then swallowed every later
+  // touch. A creature now travels ONE way, leaves, and the next
+  // encounter waits on rarity.
+  // =================================================================
+  console.log('\nW. ONE CROSSING, THEN GONE');
+  {
+    const { context, page } = await freshPage();
+    await page.goto(BASE + '/index.html');
+    await crossThreshold(page);
+    await page.waitForFunction(() => !!window.vihuEtherLife, null, { timeout: 8000 });
+
+    await page.evaluate(() => {
+      try { window.vihuEtherLife.destroy(); } catch (e) {}
+      const t = Object.assign({}, EtherLife.TIMES, { firstArrival: [9999, 10000] });
+      window.vihuEtherLife = EtherLife.mount(window.vihuPlanetUniverse, { times: t });
+      window.vihuEtherDiscovery = EtherDiscovery.attach(
+        window.vihuPlanetUniverse, window.vihuEtherLife);
+      window.__lifeEvents = [];
+      ['creature:arrived', 'creature:noticed', 'creature:responded', 'creature:gone']
+        .forEach((e) => window.vihuEtherLife.on(e, (p) => window.__lifeEvents.push([e, p])));
+      // The registry's own data, hurried so a whole crossing fits a
+      // test: a whale at 42px/s takes fifty real seconds to cross.
+      EtherLife.CREATURES.whale.speed = 420;
+      window.vihuEtherLife.summon('whale');
+    });
+
+    // Sample its path across the whole crossing. A wrap is a single
+    // huge jump against the direction of travel; camera drift and the
+    // swim wave are tens of pixels.
+    const samples = [];
+    for (let i = 0; i < 60; i++) {
+      const s = await page.evaluate(() => {
+        const a = window.vihuEtherLife.active();
+        return a ? Math.round(a.screen.x) : null;
+      });
+      if (s === null) break;
+      samples.push(s);
+      await page.waitForTimeout(250);
+    }
+    const deltas = samples.slice(1).map((v, i) => v - samples[i]);
+    // The MEDIAN is the direction of travel. The first draft summed
+    // the deltas, and three +1650 wrap jumps outweighed thirty-seven
+    // −110 honest steps — the wraps flipped the trend and then read as
+    // the trend, so the check could not fail against the very bug it
+    // guards (measured). An outlier must never elect itself normal.
+    const sorted = deltas.slice().sort((a, b) => a - b);
+    const trend = Math.sign(sorted[Math.floor(sorted.length / 2)] || 0) || 1;
+    const wrapJump = deltas.find((d) => Math.sign(d) === -trend && Math.abs(d) > 600);
+    ck(samples.length > 4 && wrapJump === undefined,
+       'W1  it travels ONE way — no seam, no teleport, no re-entry from the far edge',
+       samples.length + ' samples, worst counter-move ' +
+       Math.min(...deltas.map((d) => d * trend)));
+
+    const gone = await page.evaluate(() =>
+      window.__lifeEvents.some((e) => e[0] === 'creature:gone'));
+    ck(gone, 'W2  and the crossing ENDS — the whale really leaves');
+
+    await page.waitForTimeout(4000);
+    const after = await page.evaluate(() => ({
+      active: window.vihuEtherLife.active(),
+      arrivals: window.__lifeEvents.filter((e) => e[0] === 'creature:arrived').length
+    }));
+    ck(after.active === null && after.arrivals === 1,
+       'W3  no immediate respawn — the next encounter waits on rarity',
+       after.arrivals + ' arrival(s) total');
+
+    // A touch is acknowledged in the same breath, before the response
+    // has even had its beat — a child must never wonder whether
+    // anything happened.
+    await page.evaluate(() => window.vihuEtherLife.summon('whale'));
+    await page.waitForFunction(() => {
+      const a = window.vihuEtherLife.active();
+      return a && a.screen.x > 120 && a.screen.x < 1320;
+    }, null, { timeout: 15000 });
+    const spot = await page.evaluate(() => window.vihuEtherLife.active().screen);
+    await page.mouse.click(spot.x, spot.y);
+    await page.waitForTimeout(180);
+    const ack = await page.evaluate(() => ({
+      a: window.vihuEtherLife.active(),
+      noticed: window.__lifeEvents.some((e) => e[0] === 'creature:noticed')
+    }));
+    ck(ack.noticed && ack.a && ack.a.swell > 0.5 && !ack.a.responded,
+       'W4  a touch brightens the whale IMMEDIATELY, ahead of its answer',
+       'swell ' + (ack.a ? ack.a.swell.toFixed(2) : '?') + ' at 180ms');
+    await page.waitForFunction(() =>
+      window.__lifeEvents.some((e) => e[0] === 'creature:responded'),
+      null, { timeout: 4000 }).catch(() => {});
+    const answered = await page.evaluate(() =>
+      window.__lifeEvents.some((e) => e[0] === 'creature:responded'));
+    ck(answered, 'W4b and the answer itself follows on its own beat');
+
+    ck(page.errors.length === 0, 'W5  zero page errors', page.errors[0]);
     await context.close();
   }
 
