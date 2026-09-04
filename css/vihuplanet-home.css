@@ -721,6 +721,17 @@ html, body {
    Either they work or they are not there. */
 .vp-home.is-marking .vp-actions { opacity: 0; pointer-events: none; }
 
+/* On a narrow view the two permanent actions span most of the width,
+   and the corner controls (the identity marker at bottom-left, Find a
+   Creator at bottom-right) live in fixed corners — measured at
+   390×844 the full-width row sat ON both of them, and at 768×1024 it
+   grazed the identity line by 8px. The actions lift above the corner
+   band; the corners stay exactly where they are on every view. */
+@media (max-width: 820px) {
+  .vp-actions {
+    bottom: calc(4.2rem + env(safe-area-inset-bottom, 0px));
+  }
+}
 @media (max-width: 640px) {
   .vp-actions { gap: 0.5rem; width: min(100%, 26rem); padding: 0 0.75rem; }
   .vp-action { flex: 1 1 0; justify-content: center; padding: 0.6rem 0.75rem; }
@@ -749,13 +760,33 @@ html, body {
 .vp-explore-nudge {
   position: absolute;
   left: 50%;
-  bottom: calc(16vh + env(safe-area-inset-bottom, 0px));
+  /* 16vh clears the two permanent actions on every ordinary window —
+     but on a phone held SIDEWAYS (390px tall) 16vh is 62px and the
+     nudge's second line sat 5px INTO the actions (measured at
+     844×390). The px floor is the actions' own height plus their 5vh
+     offset with breathing room, so a short window lifts the words
+     clear instead of scaling them into a collision. */
+  bottom: max(calc(16vh + env(safe-area-inset-bottom, 0px)),
+              calc(88px + env(safe-area-inset-bottom, 0px)));
   transform: translateX(-50%);
   text-align: center;
   pointer-events: none;
   z-index: 5;
   opacity: 0;
   transition: opacity 900ms ease;
+}
+/* Where the narrow-view lift raises the two actions, the
+   invitation's own floor rises with them, so a narrow AND short view
+   (a small phone held sideways) cannot bring the two back together.
+   Taller views still take the 16vh. AFTER the base rule on purpose:
+   at equal specificity the cascade order is the whole mechanism, and
+   a draft of this block placed earlier in the file lost silently —
+   caught by a failing check, not by reading. */
+@media (max-width: 820px) {
+  .vp-explore-nudge {
+    bottom: max(calc(16vh + env(safe-area-inset-bottom, 0px)),
+                calc(126px + env(safe-area-inset-bottom, 0px)));
+  }
 }
 .vp-explore-nudge.is-in { opacity: 1; }
 .vp-explore-nudge-line {

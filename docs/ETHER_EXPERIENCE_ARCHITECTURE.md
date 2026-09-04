@@ -226,3 +226,95 @@ No LLM anywhere in orchestration (§29). No gamification of any kind
 behaviour (§33). No new world-boundary behaviour (§31). No
 Story-domination: a Story is one possible discovery outcome among
 several, and the quiet phase outranks content.
+
+## 8. TOUCH AND SMALL SCREENS (build 0765)
+
+The same Ether, a different input language — never a "mobile app".
+Everything here was measured under Chromium touch emulation over real
+device profiles (390×844@3x, 844×390@3x, 768×1024@2x, 1024×768@2x,
+1440×900@1x); no touch hardware exists in the build environment and
+none is claimed.
+
+**The responsive range as found.** The whole first-visit surface —
+threshold, arrival turn, nudge, ripple, creatures, Spirits, the two
+permanent actions, the corner controls — laid out correctly on every
+profile with TWO measured defects. On a phone held sideways (844×390)
+the nudge's second line sat 5px into the permanent actions (16vh is
+62px at 390 tall) — fixed with a px floor under the nudge's bottom
+offset (`max(16vh…, 88px…)` in css/vihuplanet-home.css); every other
+profile is untouched by the max(). And on a phone held upright the
+≤640px full-width actions row sat ON both bottom-corner controls (the
+identity line under the buttons, Find a Creator over Create Story —
+the numbers alone under-read it; a screenshot exposed it). The
+actions lift above the corner band on narrow views (≤820px, which
+also clears an 8px graze at 768 portrait), and the nudge's floor
+rises with them so a small sideways phone (640×360) cannot bring the
+pair back together — that rule must sit AFTER the base
+`.vp-explore-nudge` rule in the stylesheet, because at equal
+specificity the cascade order is the whole mechanism (a draft placed
+earlier lost silently; `T5c` caught it). Decision 21 is untouched: mobile
+Ether is first-class, only the Studio door is gated, and `goStudio()`
+remains the one gate.
+
+**Gestures: tap and swipe coexist by a slop, not a mode.**
+`core/traveller.js` (the one runtime file Decision 9 leaves editable)
+gained `TOUCH_STARTS_AT = 8` — a touch earns steering only after 8px
+of accumulated travel, the touch twin of the mouse path's
+`DRAG_STARTS_AT = 6`, a little wider because fingers are wider than
+pointers. Below it the camera holds AND stillness keeps accruing, so
+a tap can never silence the nudge, the glance or the beckon; past it
+the sky follows the finger one-to-one exactly as before. A real swipe
+sets the SAME time-bounded `swallowClickUntil` the mouse drag uses —
+one suppression mechanism, two input paths, no second gesture
+detector — and a fresh touchstart clears a stale swallow so the next
+tap is never eaten. Chromium's own gesture recognizer additionally
+withholds sub-slop touchmove from the page entirely (measured: a
+build with the slop removed still showed no camera motion under CDP
+jitter), so on Chromium the product slop is belt-and-braces; iOS
+Safari delivers touchmove with no slop of its own, which is exactly
+the browser the product rule exists for.
+
+**The ripple is tuned to the sky it spreads in, not scaled down.**
+235px of reach is right on a laptop and is 60% of a phone's width — a
+wave that big reads as the screen flashing, not light leaving the
+touched place. Each ripple now takes
+`clamp(shortEdge × 0.42, 120, 235)` measured AT THE TOUCH (a rotation
+mid-flight never resizes a travelling wave): 390px phone → 164px,
+768px tablet → 235 (capped), desktop → 235 exactly as before. The
+touch-point accuracy, duration (1.9s wave / 1.6s echo), min-gap,
+interest reservoir and Composer policy are unchanged on every device.
+
+**The nudge reads the hands, not the user agent.** `(pointer: coarse)`
+still decides first; a device with BOTH inputs (a convertible
+laptop) is read by what the hands actually did — the first real
+`touchstart` flips the wording to "(Swipe to explore)" for the rest
+of the visit (one passive once-listener in js/vihuplanetHome.js,
+nothing stored, Decision 19). A genuine fine-pointer+touch hybrid is
+un-emulatable in Chromium (hasTouch forces a coarse pointer), so that
+flip is suite-proved with a synthetic touchstart and the limit is
+stated in the check itself.
+
+**Safe areas and UI minimization.** `viewport-fit=cover` plus
+`env(safe-area-inset-*)` were already on every floating surface
+(actions, nudge, find, identity); measured across all five profiles
+nothing sits under a notch band and nothing reserves a permanent
+strip. No hamburger, no toolbar, no instruction bar exists on any
+profile — the nudge stays the one line of instruction in VihuPlanet.
+
+**Performance, measured.** All four Ether canvases follow
+`Env.dpr()`'s cap of 2 (a DPR-3 phone renders 780×1688, not
+1170×2532 — the cap working, not a bug). Phone profile, this
+container: ~59–60fps idle and with ripples active; CPU throttled ×4
+≈ 9–16fps in a container already running the suite — a stand-in
+measurement, disclosed as such. Over an 11-minute session with
+periodic taps: DOM node count flat, JS heap flat (~11MB), no
+architectural fix demanded. Exploration depth is untouched by any of
+this: the Wonder→Exploration→Discovery loop, rarity, one-at-a-time
+and the quiet phase are input-independent, and the walkthrough
+verifies a Spirit tap still opens a Spirit and a whale still answers
+its own tap on every touch profile.
+
+**The 13-step touch test is a committed harness** —
+`tools/ether-ripple-test/touch-walkthrough.js` — run per profile with
+screenshots, exactly as `tools/ether-life-test/walkthrough.js`
+already is for the creatures.

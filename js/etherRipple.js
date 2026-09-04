@@ -77,8 +77,23 @@
     waveLife: 1.9,     // s a wavefront takes to spread and go
     echoLife: 1.6,     // s a returning wave takes to arrive
     stillLife: 1.2,    // s the reduced-motion glow takes to fade
-    reach: 235         // px the wavefront spreads
+    reach: 235,        // px the wavefront spreads, at desktop size
+    reachMin: 120,     // px it never shrinks below — visible on any view
+    reachFrac: 0.42    // of the view's short edge, where that is smaller
   };
+  // A ripple's spread belongs to the sky it spreads in. 235px is right
+  // for a laptop and is 60% of a phone's width — a wave that big reads
+  // as the whole screen flashing rather than light leaving the touched
+  // place. Each ripple takes the smaller of the desktop reach and a
+  // fraction of the view's short edge, measured AT THE TOUCH (a
+  // rotation mid-flight does not resize a wave already travelling):
+  // 390px phone → 164 · 768 tablet → 235 (capped) · desktop → 235.
+  function reachFor(ether) {
+    var short = Math.min(ether.viewWidth || 0, ether.viewHeight || 0);
+    if (!(short > 0)) return TUNING.reach;
+    return Math.max(TUNING.reachMin,
+                    Math.min(TUNING.reach, short * TUNING.reachFrac));
+  }
 
   function rand(lo, hi) { return lo + Math.random() * (hi - lo); }
 
@@ -183,6 +198,7 @@
       var r = {
         kind: reduced ? 'still' : 'wave',
         fx: fx, fy: fy, born: time, strength: strength,
+        reach: reachFor(ether),
         ph1: Math.random() * Math.PI * 2,
         ph2: Math.random() * Math.PI * 2,
         motes: []
@@ -221,7 +237,7 @@
       if (reduced) return null;
       ripples.push({
         kind: 'echo', fx: fx, fy: fy, born: time,
-        strength: 0.8,
+        strength: 0.8, reach: reachFor(ether),
         ph1: Math.random() * Math.PI * 2,
         ph2: Math.random() * Math.PI * 2,
         motes: []
@@ -320,9 +336,10 @@
         var t = Util.clamp(age / lifeS, 0, 1);
         var eased = 1 - Math.pow(1 - t, 2);
         // The wave spreads out; the echo arrives back in.
+        var reach = r.reach || TUNING.reach;
         var radius = r.kind === 'echo'
-          ? (1 - eased) * TUNING.reach * 0.8 + 26
-          : eased * TUNING.reach * (0.6 + 0.4 * r.strength) + 12;
+          ? (1 - eased) * reach * 0.8 + 26
+          : eased * reach * (0.6 + 0.4 * r.strength) + 12;
         var fade = r.kind === 'echo'
           ? Util.clamp(t * 3, 0, 1) * (1 - Util.clamp((t - 0.75) / 0.25, 0, 1))
           : (1 - t);
@@ -412,6 +429,7 @@
 
   global.EtherRipple = {
     TUNING: TUNING,
+    reachFor: reachFor,
     mount: mount
   };
 })(typeof window !== 'undefined' ? window : this);

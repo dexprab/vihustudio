@@ -11935,3 +11935,53 @@ its own way of being), generated copies rebuilt. New suite
 Wall: ether-life 76 + walkthrough 14 · ether-experience 54 ·
 ether-encounter 94 · ether-share 21 · social-ether-identity 20 ·
 companion-canon 94 · companion-context 90 · companion-gap 29 — green.
+
+## Build 0765 — Mobile / Touch Ether Optimization
+
+The same Ether under a finger — an input-language sprint, never a
+"mobile app" (Decision 21's scope anchor holds untouched: mobile Ether
+is first-class, only the Studio door is gated, `goStudio()` stays the
+one gate and no new device gate exists anywhere near the Ether). The
+responsive range was MEASURED across five profiles (phone
+portrait/landscape @3x, small tablet, tablet landscape @2x, desktop)
+and held everywhere but two places: sideways at 844×390 the nudge sat
+5px INTO the two permanent actions (16vh is 62px at 390 tall) — fixed
+with a px floor (`max(16vh…, 88px…)`), every other profile untouched —
+and upright the ≤640px full-width actions row sat ON both corner
+controls (the identity line under the buttons, Find a Creator over
+Create Story; a screenshot exposed what the numbers under-read). The
+actions lift above the corner band on narrow views (≤820px), and the
+nudge's floor rises with them — whose first draft sat EARLIER in the
+stylesheet than the base rule and lost the cascade silently, caught
+by its own failing check (T5c), not by reading.
+A TAP IS NOT A SWIPE: `core/traveller.js` gained `TOUCH_STARTS_AT = 8`
+— below it the camera holds and stillness keeps accruing (a tap must
+never silence the nudge, the glance or the beckon; measured broken:
+stillness 9.5→0 on a 3px jitter), above it the sky follows the finger
+exactly as before — and a real swipe sets the SAME `swallowClickUntil`
+the mouse drag uses, one suppression mechanism for two input paths,
+with a fresh touchstart clearing a stale swallow. Chromium's own
+recognizer withholds sub-slop touchmove entirely (measured — which
+also re-diagnosed the earlier "1.35px jitter" as easing residue), so
+the product slop is belt-and-braces there and load-bearing for iOS
+Safari, which delivers touchmove with no slop of its own; the
+revert-proof check therefore drives synthetic events into the real
+handlers. The RIPPLE reach became viewport-aware, not scaled down:
+`clamp(shortEdge×0.42, 120, 235)` stamped per ripple at the touch —
+phone 164px, tablet and desktop the unchanged 235 — with duration,
+accuracy, dampening and Composer policy identical everywhere. The
+NUDGE reads the hands, not the user agent: coarse pointer first, and
+a convertible's first real touchstart flips the wording to swipe for
+the visit (nothing stored, Decision 19). Performance measured on the
+phone profile: all four Ether canvases at Env.dpr()'s cap of 2, DOM
+flat at 218 nodes and heap flat ~11MB across an 11-minute tapping
+session, listener balance bounded (plateaus, never per-tap). The
+13-step touch test is a committed harness
+(`tools/ether-ripple-test/touch-walkthrough.js`, three profiles,
+screenshots, rotation included, no forced-orientation screen) — run
+as Chromium touch emulation over real device profiles, disclosed in
+its own output: no touch hardware exists here and none is claimed.
+Canon untouched — input mechanics are not worldview. Suite 43→58
+(T1–T6; six fixes proved by reverting, and the revert tool's own ''
+lesson recorded in it). Detail:
+`docs/ETHER_EXPERIENCE_ARCHITECTURE.md` §8.

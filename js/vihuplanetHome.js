@@ -640,10 +640,26 @@
     // agent. A coarse primary pointer is a finger; everything else
     // has arrow keys. The first sentence is the invitation; this one
     // is quieter on purpose.
+    // A DEVICE WITH BOTH INPUTS IS READ BY WHAT THE HANDS ARE DOING.
+    // A convertible laptop with a touchscreen reports a fine primary
+    // pointer, and a child poking its screen has told the truth better
+    // than the media query has: the first real touchstart flips the
+    // answer to swipe wording for the rest of the visit. One passive
+    // listener, removed after its first word; nothing stored, because
+    // a Traveller is stateless (Decision 19).
+    var sawTouch = false;
+    try {
+      window.addEventListener('touchstart', function markTouch() {
+        sawTouch = true;
+        window.removeEventListener('touchstart', markTouch);
+      }, { passive: true, once: true });
+    } catch (e) {}
+
     function nudgeHint() {
       var coarse = false;
       try { coarse = window.matchMedia('(pointer: coarse)').matches; } catch (e) {}
-      return coarse ? '(Swipe to explore)' : '(Use the arrow keys to explore)';
+      return (coarse || sawTouch)
+        ? '(Swipe to explore)' : '(Use the arrow keys to explore)';
     }
 
     function showNudge() {

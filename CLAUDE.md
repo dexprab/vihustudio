@@ -7665,6 +7665,94 @@ leads somewhere.
   proved by reverting: the creature hit-region skip (B5), the
   min-gap dampener (B3), the nudge's dismissal (B8), and the
   arrival/orientation refusal (M1).
+- **THE SAME ETHER UNDER A FINGER, NEVER A MOBILE APP** (build 0765,
+  the Mobile / Touch sprint). Decision 21's scope anchor holds
+  untouched — mobile Ether is first-class, only the Studio door is
+  gated, `goStudio()` stays the one gate and no new device gate came
+  anywhere near the Ether. The responsive range was MEASURED across
+  five real device profiles and held everywhere but two places. A
+  phone held sideways (844×390) put the nudge's second line 5px INTO
+  the two permanent actions, because 16vh is 62px at 390 tall — fixed
+  with a px floor (`max(16vh…, 88px…)`), every other profile untouched
+  by the max(). And a phone held upright put the ≤640px FULL-WIDTH
+  actions row ON both corner controls — the identity line ran under
+  the buttons and Find a Creator overlapped Create Story — a collision
+  by construction that the numbers alone under-read and a SCREENSHOT
+  exposed. The actions lift above the corner band on narrow views
+  (≤820px, which also clears an 8px graze at 768 portrait), and the
+  nudge's floor rises with them so a small sideways phone cannot bring
+  the pair back together — that second rule's first draft sat EARLIER
+  in the stylesheet than the base rule and lost the cascade silently,
+  caught by its own failing check (`T5c`), not by reading.
+- **A TAP IS NOT A SWIPE, AND A FINGER IS NEVER PERFECTLY STILL.**
+  `core/traveller.js` (the one runtime file Decision 9 leaves
+  editable) gained `TOUCH_STARTS_AT = 8` — the touch twin of the
+  mouse path's `DRAG_STARTS_AT = 6`, a little wider because fingers
+  are wider than pointers. Below it the camera holds AND stillness
+  keeps accruing, so a tap can never silence the nudge, the glance or
+  the beckon (measured broken: stillness 9.5→0 on a 3px jitter);
+  above it the sky follows the finger one-to-one exactly as it always
+  has. A real swipe sets the SAME time-bounded `swallowClickUntil`
+  the mouse drag already used — one suppression mechanism, two input
+  paths, no second gesture detector, which is what the sprint's own
+  orientation demanded — and a fresh touchstart clears a stale
+  swallow so the next tap is never eaten.
+- **CHROMIUM HID THE BUG AND THE FIX ALIKE, AND THE CHECK HAD TO GO
+  AROUND IT.** Chromium's own gesture recognizer withholds sub-slop
+  touchmove from the page entirely — measured: a build with the slop
+  REMOVED still showed no camera motion under CDP jitter, which also
+  re-diagnosed the sprint's opening "3px jitter moved the camera
+  1.35px" as easing residue from the preceding swipe. So on Chromium
+  the product slop is belt-and-braces, and it is load-bearing for iOS
+  Safari, which delivers touchmove with no slop of its own. The
+  revert-proof check (`T2d`) therefore drives synthetic touch events
+  straight into the real handlers — the CDP path structurally cannot
+  see this guard fail.
+- **THE RIPPLE IS TUNED TO THE SKY IT SPREADS IN, NOT SCALED DOWN.**
+  235px of reach is right on a laptop and is 60% of a phone's width —
+  a wave that big reads as the screen flashing rather than light
+  leaving the touched place. Each ripple takes
+  `clamp(shortEdge × 0.42, 120, 235)`, stamped per ripple AT THE
+  TOUCH so a rotation mid-flight never resizes a travelling wave:
+  phone 164px, tablet and desktop the unchanged 235. Duration,
+  touch-point accuracy, the dampeners and the Composer policy are
+  identical on every device.
+- **THE NUDGE READS THE HANDS, NOT THE USER AGENT — now on both-input
+  devices too.** `(pointer: coarse)` still decides first; a
+  convertible laptop's first real `touchstart` flips the wording to
+  *(Swipe to explore)* for the rest of the visit — one passive
+  once-listener, nothing stored (Decision 19). A genuine
+  fine-pointer+touch hybrid is UN-EMULATABLE in Chromium (hasTouch
+  forces a coarse pointer), so the flip is suite-proved with a
+  synthetic touchstart and the limit is stated in the check rather
+  than papered over.
+- **PERFORMANCE WAS MEASURED, AND NO ARCHITECTURAL FIX WAS
+  DEMANDED.** All four Ether canvases already follow `Env.dpr()`'s
+  cap of 2 (a DPR-3 phone renders 780×1688 — the cap working, not a
+  defect); across an 11-minute phone-profile session with periodic
+  taps the DOM held flat at 218 nodes, the JS heap flat at ~11MB, and
+  the listener balance plateaued (bounded one-time additions, never
+  per-tap). Frame numbers from this container are stand-ins and are
+  disclosed as such wherever they are written down.
+- **THE 13-STEP TOUCH TEST IS A COMMITTED HARNESS**
+  (`tools/ether-ripple-test/touch-walkthrough.js`), the ether-life
+  walkthrough's own precedent: three touch profiles, screenshots at
+  every beat, rotation mid-visit with no forced-orientation screen,
+  and both gestures proved again after rotating. It prints its own
+  disclosure — **Chromium touch emulation over real device profiles;
+  no touch hardware exists in the build environment and none is
+  claimed.** Exploration depth is input-independent and verified: a
+  Spirit tap still opens a Spirit, a whale still answers its own tap,
+  and nothing anywhere is "tap object → open Story".
+- **Canon untouched, deliberately** (Decision 57 considered): input
+  mechanics are not worldview, and section 23's "the Ether notices a
+  gentle touch" already covers a finger as much as a mouse. The suite
+  grew 43→58 (`T1`–`T6`), six fixes proved by reverting — and the
+  revert tool recorded its own lesson: a broken form of `''` makes
+  `replace('', line)` insert at position 0 of the file, which put a
+  top-level `return` at the head of traveller.js on restore, legal to
+  `node --check`'s CommonJS reading and a SyntaxError in the browser.
+  Detail: `docs/ETHER_EXPERIENCE_ARCHITECTURE.md` §8.
 - Out of scope and not implemented: creature encounters as a reward
   system, creature dialogue, a Companion in the Ether, per-Traveller
   encounter history, more activity rows (story hunt, missing

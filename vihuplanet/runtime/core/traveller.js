@@ -137,9 +137,35 @@
     // the camera at once is what a child sees as the Ether glitching.
     // The portal's own keyboard handler already states the assumption
     // this violated: "the universe is stopped anyway."
+    // A TAP IS NOT A SWIPE, AND A FINGER IS NEVER PERFECTLY STILL.
+    // A child's tap wobbles a few pixels between touchstart and
+    // touchend, and every wobble used to steer the camera and reset
+    // stillness — measured with the slop removed: a 3px synthetic
+    // jitter dropped stillness 9.5 → 0, silencing the nudge, the
+    // glance and the beckon for a tap that meant "hello", not "turn".
+    // So a touch earns steering only after TOUCH_STARTS_AT px of
+    // accumulated travel (the touch twin of DRAG_STARTS_AT, a little
+    // wider because fingers are wider than pointers), and until then
+    // the camera holds and stillness keeps accruing.
+    //
+    // Chromium's own gesture recognizer withholds sub-slop touchmove
+    // from the page entirely, so there this guard is belt-and-braces;
+    // iOS Safari delivers touchmove with no slop of its own, which is
+    // the browser this rule is load-bearing for.
+    //
+    // And a real swipe eats the click that follows it, through the
+    // SAME time-bounded swallow the mouse drag uses — one suppression
+    // mechanism, two input paths. Chromium suppresses that click
+    // itself once a touch travels past its own slop; not every
+    // browser promises it, and the ripple reads clicks.
+    var TOUCH_STARTS_AT = 8;  // px of travel before a touch is a drag
     function onTouchStart(ev) {
       if (!enabled) { drag = null; return; }
       if (!ev.touches || ev.touches.length !== 1) return;
+      // A fresh touch outranks a stale swallow: where the browser
+      // already suppressed the swipe's own click, the bound must not
+      // linger into the next tap's.
+      swallowClickUntil = 0;
       drag = { x: ev.touches[0].clientX, y: ev.touches[0].clientY, moved: 0 };
     }
     function onTouchMove(ev) {
@@ -151,6 +177,7 @@
       drag.x = t.clientX;
       drag.y = t.clientY;
       drag.moved += Math.abs(dx) + Math.abs(dy);
+      if (drag.moved <= TOUCH_STARTS_AT) return;  // still a tap, camera holds
       // Dragging right pulls the universe right, which means looking
       // left — the sky moves with the finger, not against it.
       camera.look(-(dx / Math.max(1, ether.viewWidth)) * Math.PI * 2 * 0.5,
@@ -158,7 +185,14 @@
       still = 0;
       if (drag.moved > 12) ev.preventDefault();
     }
-    function onTouchEnd() { drag = null; }
+    function onTouchEnd() {
+      if (drag && drag.moved > TOUCH_STARTS_AT) {
+        // A swipe is a swipe even where the browser forgets to
+        // suppress its trailing click — same bound as the mouse path.
+        swallowClickUntil = Date.now() + 300;
+      }
+      drag = null;
+    }
 
     // ---------- dragging with a mouse ----------
     //

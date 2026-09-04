@@ -683,6 +683,294 @@ function stripComments(src) {
     await context.close();
   }
 
+  // =================================================================
+  console.log('\nT. TOUCH — the same Ether under a finger (Chromium touch');
+  console.log('   emulation over real device profiles; no touch hardware');
+  console.log('   exists in this environment and none is claimed)');
+  // =================================================================
+  const PHONE = {
+    hasTouch: true, isMobile: true, deviceScaleFactor: 3,
+    viewport: { width: 390, height: 844 }
+  };
+  // A real finger through the CDP: touchStart, moves, touchEnd — the
+  // events the traveller's own handlers read, not a synthesized click.
+  async function touchDrag(page, from, to, steps, msPerStep) {
+    const cdp = await page.context().newCDPSession(page);
+    const pts = [];
+    for (let i = 0; i <= steps; i++) {
+      pts.push({ x: from.x + (to.x - from.x) * (i / steps),
+                 y: from.y + (to.y - from.y) * (i / steps) });
+    }
+    await cdp.send('Input.dispatchTouchEvent',
+      { type: 'touchStart', touchPoints: [{ x: pts[0].x, y: pts[0].y, id: 1 }] });
+    for (let i = 1; i <= steps; i++) {
+      await cdp.send('Input.dispatchTouchEvent',
+        { type: 'touchMove', touchPoints: [{ x: pts[i].x, y: pts[i].y, id: 1 }] });
+      if (msPerStep) await page.waitForTimeout(msPerStep);
+    }
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await cdp.detach();
+  }
+  const yawOf = (page) =>
+    page.evaluate(() => window.vihuPlanetUniverse.camera.offsetFor(1).x);
+  const stillOf = (page) =>
+    page.evaluate(() => window.vihuPlanetUniverse.traveller.stillSeconds());
+
+  // T1 — a finger's tap ripples from the touched place; a finger's
+  // swipe turns the sky and never ripples. The two gestures coexist.
+  {
+    const { context, page } = await freshPage(PHONE);
+    // Past the arrival turn, so camera measurements are the child's.
+    await page.waitForTimeout(8000);
+    await page.touchscreen.tap(200, 300);
+    await page.waitForTimeout(250);
+    const afterTap = await page.evaluate(() => ({
+      touches: window.vihuEtherRipple.touches(),
+      active: window.vihuEtherRipple.active()
+    }));
+    const r = afterTap.active[0];
+    ck(afterTap.touches === 1 && r && r.kind === 'wave' &&
+       Math.abs(r.screen.x - 200) < 60 && Math.abs(r.screen.y - 300) < 60,
+       'T1  a finger\'s tap ripples where the finger was',
+       JSON.stringify(afterTap.active));
+    const y0 = await yawOf(page);
+    await touchDrag(page, { x: 300, y: 400 }, { x: 100, y: 400 }, 12, 16);
+    await page.waitForTimeout(250);
+    const y1 = await yawOf(page);
+    const afterSwipe = await page.evaluate(() => window.vihuEtherRipple.touches());
+    ck(Math.abs(y1 - y0) > 30 && afterSwipe === 1,
+       'T1b a finger\'s swipe turns the sky and never ripples it',
+       'yaw ' + (y1 - y0).toFixed(1) + ', touches ' + afterSwipe);
+    ck(page.errors.length === 0, 'T1c zero page errors on the phone profile',
+       page.errors[0]);
+    await context.close();
+  }
+
+  // T2 — a tap is not a swipe: a finger's few pixels of wobble moves
+  // the camera no more than the sky's own ambient drift, and does not
+  // silence the invitations (stillness keeps accruing through a tap).
+  // Load-bearing: TOUCH_STARTS_AT in core/traveller.js.
+  {
+    const { context, page } = await freshPage(PHONE);
+    await page.waitForTimeout(9000);
+    // Control: what the ambient camera does with NO input at all.
+    const a0 = await yawOf(page);
+    await page.waitForTimeout(400);
+    const a1 = await yawOf(page);
+    const ambient = a1 - a0;
+    // The same window around a 3px jittery tap.
+    const s0 = await stillOf(page);
+    const b0 = await yawOf(page);
+    await touchDrag(page, { x: 220, y: 350 }, { x: 223, y: 352 }, 2, 16);
+    await page.waitForTimeout(368);
+    const b1 = await yawOf(page);
+    const s1 = await stillOf(page);
+    ck(Math.abs((b1 - b0) - ambient) < 1.0,
+       'T2  a jittery tap moves the camera no more than ambient drift',
+       'tap window ' + (b1 - b0).toFixed(2) + ' vs ambient ' + ambient.toFixed(2));
+    ck(s1 > s0, 'T2b and a tap never resets stillness — the invitations keep their clock',
+       'still ' + s0.toFixed(1) + ' -> ' + s1.toFixed(1));
+    // A real swipe DOES reset it: the slop must not deafen the sky.
+    await touchDrag(page, { x: 300, y: 400 }, { x: 200, y: 400 }, 8, 16);
+    const s2 = await stillOf(page);
+    ck(s2 < 1, 'T2c while a real swipe still answers the glance\'s question',
+       'still ' + s2.toFixed(2));
+    // T2d/T2e — the PRODUCT's own slop, driven with synthetic touch
+    // events straight into the handlers. Chromium's gesture recognizer
+    // withholds sub-slop touchmove from the page (measured: a broken
+    // build's stillness survived a CDP jitter untouched), so the CDP
+    // path above cannot see this guard at all — while iOS Safari
+    // delivers touchmove with no slop of its own, which is exactly the
+    // browser this rule exists for. Load-bearing and revert-proved:
+    // without TOUCH_STARTS_AT the jitter resets stillness to 0.
+    const syn = await page.evaluate(() => {
+      const u = window.vihuPlanetUniverse;
+      const root = u.root;
+      function tev(type, x, y) {
+        const t = new Touch({ identifier: 1, target: root, clientX: x, clientY: y });
+        return new TouchEvent(type, {
+          touches: type === 'touchend' ? [] : [t],
+          changedTouches: [t], bubbles: true, cancelable: true
+        });
+      }
+      const s0 = u.traveller.stillSeconds();
+      root.dispatchEvent(tev('touchstart', 220, 350));
+      root.dispatchEvent(tev('touchmove', 222, 351));
+      root.dispatchEvent(tev('touchmove', 223, 352));
+      root.dispatchEvent(tev('touchend', 223, 352));
+      const s1 = u.traveller.stillSeconds();
+      root.dispatchEvent(tev('touchstart', 300, 400));
+      for (let i = 1; i <= 6; i++) {
+        root.dispatchEvent(tev('touchmove', 300 - i * 5, 400));
+      }
+      root.dispatchEvent(tev('touchend', 270, 400));
+      const s2 = u.traveller.stillSeconds();
+      return { s0: s0, s1: s1, s2: s2 };
+    });
+    ck(syn.s1 >= syn.s0,
+       'T2d the traveller\'s own slop holds where a browser delivers every wobble',
+       'still ' + syn.s0.toFixed(2) + ' -> ' + syn.s1.toFixed(2));
+    ck(syn.s2 === 0,
+       'T2e and the same handler still answers a real swipe past the slop',
+       'still ' + syn.s2.toFixed(2));
+    await context.close();
+  }
+
+  // T3 — a swipe's trailing click is eaten by the traveller's own
+  // bound, not only by the browser's goodwill. Chromium suppresses
+  // that click itself, so this drives a synthetic one straight into
+  // the capture listener within the bound. Load-bearing: the
+  // touchend swallow in core/traveller.js.
+  {
+    const { context, page } = await freshPage(PHONE);
+    await page.waitForTimeout(1500);
+    await touchDrag(page, { x: 300, y: 400 }, { x: 250, y: 400 }, 4, 16);
+    const seen = await page.evaluate(() => {
+      const root = window.vihuPlanetUniverse.root;
+      const ev = new MouseEvent('click',
+        { bubbles: true, cancelable: true, clientX: 250, clientY: 400 });
+      root.dispatchEvent(ev);
+      return { touches: window.vihuEtherRipple.touches(),
+               defaultPrevented: ev.defaultPrevented };
+    });
+    ck(seen.touches === 0 && seen.defaultPrevented,
+       'T3  the sky\'s own hands eat a swipe\'s trailing click',
+       JSON.stringify(seen));
+    await context.close();
+  }
+
+  // T4 — the ripple's spread belongs to the sky it spreads in: on a
+  // 390px phone a wave reaches ~164px, on the desktop the full 235,
+  // and the floor keeps it visible on any view. Measured at the
+  // touch, on the real mounted layer.
+  {
+    const { context, page } = await freshPage(PHONE);
+    await page.waitForTimeout(600);
+    const phone = await page.evaluate(() => {
+      const u = window.vihuPlanetUniverse;
+      window.vihuEtherRipple.touch(120, 200);
+      return {
+        reach: window.EtherRipple.reachFor(u.ether),
+        cap: window.EtherRipple.TUNING.reach,
+        floor: window.EtherRipple.TUNING.reachMin,
+        short: Math.min(u.ether.viewWidth, u.ether.viewHeight)
+      };
+    });
+    ck(Math.abs(phone.reach - phone.short * 0.42) < 1 && phone.reach < phone.cap &&
+       phone.reach >= phone.floor,
+       'T4  a phone\'s ripple reaches a fraction of its own view',
+       JSON.stringify(phone));
+    await context.close();
+    // ...and the desktop is untouched: its short edge earns the cap.
+    const d = await freshPage();
+    const desk = await d.page.evaluate(() =>
+      window.EtherRipple.reachFor(window.vihuPlanetUniverse.ether));
+    ck(desk === 235, 'T4b the desktop\'s wave is exactly what it always was',
+       'reach ' + desk);
+    await d.context.close();
+  }
+
+  // T5 — phone held sideways: the invitation's words clear the two
+  // permanent actions (measured overlapping by 5px before the fix).
+  // Load-bearing: the px floor under .vp-explore-nudge's bottom.
+  {
+    const { context, page } = await freshPage({
+      hasTouch: true, isMobile: true, deviceScaleFactor: 3,
+      viewport: { width: 844, height: 390 }
+    });
+    await page.waitForSelector('[data-nudge].is-in', { timeout: 14000 })
+      .catch(() => {});
+    const geo = await page.evaluate(() => {
+      const r = (sel) => {
+        const el = document.querySelector(sel);
+        return el ? el.getBoundingClientRect() : null;
+      };
+      return { nudge: r('[data-nudge]'), actions: r('[data-actions]') };
+    });
+    ck(!!geo.nudge && !!geo.actions && geo.nudge.bottom <= geo.actions.top - 4,
+       'T5  sideways, the invitation stands clear of the two actions',
+       geo.nudge && ('nudge b ' + Math.round(geo.nudge.bottom) +
+                     ' vs actions t ' + Math.round(geo.actions.top)));
+    await context.close();
+  }
+
+  // T5b — upright on a phone, the full-width actions row must not sit
+  // on the corner controls (measured before the fix: it covered the
+  // identity line AND Find a Creator). Load-bearing: the narrow-view
+  // actions lift in css/vihuplanet-home.css.
+  {
+    const { context, page } = await freshPage(PHONE);
+    await page.waitForTimeout(1200);
+    const geo = await page.evaluate(() => {
+      const r = (sel) => {
+        const el = document.querySelector(sel);
+        if (!el || el.hidden) return null;
+        return el.getBoundingClientRect();
+      };
+      const hit = (a, b) => !!a && !!b &&
+        a.left < b.right && a.right > b.left &&
+        a.top < b.bottom && a.bottom > b.top;
+      const actions = r('[data-actions]');
+      return {
+        vsFind: hit(actions, r('[data-find]')),
+        vsIdentity: hit(actions, r('[data-identity]')),
+        actionsT: actions && Math.round(actions.top)
+      };
+    });
+    ck(geo.vsFind === false && geo.vsIdentity === false,
+       'T5b upright, the actions never sit on the corner controls',
+       JSON.stringify(geo));
+    // ...and on a small phone held sideways (640×360) the lifted
+    // actions and the invitation still keep their distance.
+    await page.setViewportSize({ width: 640, height: 360 });
+    await page.waitForTimeout(400);
+    const short = await page.evaluate(() => {
+      // The nudge itself is once-per-visit and may already be gone —
+      // measure where its CSS would PUT one, with a probe element in
+      // the real stylesheet's own class.
+      const a = document.querySelector('[data-actions]');
+      const probe = document.createElement('div');
+      probe.className = 'vp-explore-nudge';
+      probe.textContent = 'probe';
+      (document.querySelector('.vp-home') || document.body).appendChild(probe);
+      const nb = probe.getBoundingClientRect().bottom;
+      probe.remove();
+      return {
+        nudgeBottom: Math.round(nb),
+        actionsTop: a ? Math.round(a.getBoundingClientRect().top) : null
+      };
+    });
+    ck(short.actionsTop !== null && short.nudgeBottom <= short.actionsTop - 4,
+       'T5c and a small sideways phone keeps them apart too',
+       JSON.stringify(short));
+    await context.close();
+  }
+
+  // T6 — a device with BOTH inputs is read by what the hands are
+  // doing: a fine pointer says arrow keys until the first real touch,
+  // which flips the answer to swipe for the rest of the visit.
+  // Chromium's emulation couples hasTouch with a COARSE pointer, so a
+  // genuine convertible (fine pointer + touchscreen) cannot be
+  // emulated here — the touchstart is dispatched synthetically into
+  // the same listener a real screen would fire, and that limit is
+  // stated rather than papered over.
+  {
+    const { context, page } = await freshPage();
+    const coarse = await page.evaluate(() =>
+      window.matchMedia('(pointer: coarse)').matches);
+    await page.evaluate(() => window.dispatchEvent(new Event('touchstart')));
+    await page.waitForSelector('[data-nudge].is-in', { timeout: 14000 })
+      .catch(() => {});
+    const hint = await page.evaluate(() => {
+      const el = document.querySelector('.vp-explore-nudge-hint');
+      return el ? el.textContent : null;
+    });
+    ck(coarse === false && hint === '(Swipe to explore)',
+       'T6  a fine-pointer screen that has been touched is told to swipe',
+       'coarse ' + coarse + ', hint ' + hint);
+    await context.close();
+  }
+
   await browser.close();
 
   // =================================================================
