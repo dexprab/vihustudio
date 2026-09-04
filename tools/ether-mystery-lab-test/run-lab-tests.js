@@ -519,7 +519,15 @@ async function sectionB() {
     providerHits++;
     if (providerBehaviour === 'never') return; // hang — for the cancel test
     if (providerBehaviour === 'error') {
-      return route.fulfill({ status: 500, body: JSON.stringify({ error: { message: 'SECRET-DETAIL' } }) });
+      // The shape of a REAL refusal, taken from the one that was
+      // reported: a status, a structured code that names the fault, and
+      // free-text prose carrying a project identifier. One response
+      // proves both halves — the code must reach the page, the prose
+      // must not.
+      return route.fulfill({ status: 403, contentType: 'application/json',
+        body: JSON.stringify({ error: {
+          message: 'Project `proj_SECRET-DETAIL` does not have access to model `x`',
+          code: 'model_not_found', type: 'invalid_request_error' } }) });
     }
     if (providerBehaviour === 'malformed') {
       // A well-formed provider envelope whose MODEL TEXT is not JSON —
@@ -695,6 +703,9 @@ async function sectionB() {
   ck((await page.locator('.cand').count()) === beforeFail,
     'B11b no candidate appeared from the failure');
   ck(failState.indexOf('SECRET-DETAIL') === -1, 'B11c no provider error text reaches the page');
+  ck(failState.indexOf('model_not_found') !== -1,
+    'B11e the provider\'s structured error code IS surfaced — a bare status number is not a diagnosis',
+    failState);
   providerBehaviour = 'malformed';
   await page.click('#generateBtn');
   await page.waitForTimeout(700);

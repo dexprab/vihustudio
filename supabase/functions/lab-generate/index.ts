@@ -46,7 +46,7 @@
 //   OPENAI_API_KEY    required for real generation (shared with
 //                     companion-chat — one account, one key, one place
 //                     per function's own env)
-//   LAB_MODEL         optional, default gpt-4o-mini
+//   LAB_MODEL         optional, default gpt-4.1-mini
 //
 // Deploy: supabase/DEPLOY_lab_generate.md.
 
@@ -365,7 +365,7 @@ function json(body: unknown, status = 200): Response {
 }
 
 const PROVIDER_URL = 'https://api.openai.com/v1/chat/completions';
-const DEFAULT_MODEL = 'gpt-4o-mini';
+const DEFAULT_MODEL = 'gpt-4.1-mini';
 
 // Bounds on what a caller may relay. Generous for a research batch,
 // impossible for abuse: at most a handful of messages, each capped,

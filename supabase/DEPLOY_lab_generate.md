@@ -43,7 +43,7 @@ review, and a reviewed commit before any child could meet it.
 3. **Configure the key** (Function secrets). `OPENAI_API_KEY` is the
    same secret companion-chat already uses on this project — if that
    is set project-wide, nothing new is needed. Optionally `LAB_MODEL`
-   (default `gpt-4o-mini`).
+   (default `gpt-4.1-mini`).
 
 4. **Check who may call it.** The caller's session email must be in
    `platform_admins` — the same table the invite desk uses. An empty

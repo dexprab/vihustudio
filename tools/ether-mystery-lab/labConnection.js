@@ -37,7 +37,7 @@
 
   var DIRECT_URL = 'https://api.openai.com/v1/chat/completions';
   var DIRECT_MODELS_URL = 'https://api.openai.com/v1/models';
-  var DEFAULT_DIRECT_MODEL = 'gpt-4o-mini';
+  var DEFAULT_DIRECT_MODEL = 'gpt-4.1-mini';
   var REQUEST_MS = 120000;
   var PROBE_MS = 15000;
 
@@ -189,7 +189,27 @@
         })
       }, REQUEST_MS).then(function (res) {
         if (!res) return { ok: false, reason: 'unavailable' };
-        if (!res.ok) return { ok: false, reason: res.status === 429 ? 'provider-busy' : ('provider answered ' + res.status) };
+        if (!res.ok) {
+          if (res.status === 429) return { ok: false, reason: 'provider-busy' };
+          // A refusal must say enough to be acted on. The provider's
+          // structured error CODE is a fixed vocabulary that names the
+          // fault — model_not_found, insufficient_permissions — and a
+          // bare status number is what turned a ten-second fix into a
+          // debugging session. Its free-text `message` is deliberately
+          // NOT shown: it is prose rather than a diagnosis, and it
+          // carries organisation and project identifiers, which have no
+          // business on a screen. Direct mode is the developer's own
+          // browser and own key, so the whole response is theirs to read
+          // in the network panel; this is the part worth putting in front
+          // of them. The endpoint's own posture is untouched — a failure
+          // there is still one word and never provider text (suite S6).
+          return res.json().catch(function () { return null; }).then(function (body) {
+            var err = body && body.error;
+            var code = err && (err.code || err.type);
+            code = code ? String(code).slice(0, 60) : '';
+            return { ok: false, reason: 'provider answered ' + res.status + (code ? ' (' + code + ')' : '') };
+          });
+        }
         return res.json().catch(function () { return null; }).then(function (body) {
           var text = body && body.choices && body.choices[0] &&
             body.choices[0].message && body.choices[0].message.content;
