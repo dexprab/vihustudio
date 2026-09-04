@@ -7444,6 +7444,51 @@ leads somewhere.
   after the automated suite alone had said V2 was done while the
   manual behaviour was wrong — a suite that never asks whether the
   crossing ends cannot see a whale that never leaves.
+- **A REVEAL IS LIGHT, NOT A SPENT TOKEN** (V2.2, build 0762). Reported
+  by the product owner: *"I was only able to click once on it."* The
+  once-per-encounter guard is right for the whale — its answer composes
+  a discovery — and wrong for the jellyfish, whose answer is only
+  light, and which drifts across the sky for minutes. A TOUCH may now
+  ask it again; the light GATHERS for ten seconds between rings (the
+  product owner's own number), and a touch while it gathers still
+  glows warmly — "click → nothing" must never come back through a
+  silent recharge. Merely keeping it centred still answers once, or
+  looking at it would strobe.
+- **THE REVEAL REACHES BEYOND THE VIEW, AND NEVER FIRES OVER
+  NOTHING.** The same report's first half — *"a blast of outgoing
+  circle and then nothing"* — was the sparse sky: with two Canon
+  Stories, FAR_SPARSE resolves everything in view, so the wash had no
+  audience, and anything genuinely dim was off-screen where a halo is
+  invisible by definition. A dim Spirit beyond the view now KINDLES at
+  the edge in its direction — the beckon's own geometry, worn for a
+  moment — so the reveal is a reason to turn; and with nothing
+  anywhere to reveal the ring does not fire at all: the jellyfish
+  answers with its own light alone, a smaller true answer instead of a
+  large empty one. A flight also leaves a last feather where it ends,
+  so even the shortest star-trail has a start and an end.
+- **A TAP ON A CARD BELONGS TO THE CARD, AND THE SUITE MUST CLICK LIKE
+  A CHILD.** V2.1's rule that a creature never answers a tap that
+  landed on a Story Spirit is correct — and it is exactly why a test
+  that clicks blindly at the creature's centre fails whenever a card
+  drifts in front of it. The suite's clicks now probe for a visible
+  part of the creature over open sky, which is what a finger does.
+- **A GREEN SUITE AGAINST SOMEBODY ELSE'S CHECKOUT PROVES NOTHING, AND
+  IT HAPPENED HERE.** Mid-sprint, every jellyfish check went red with
+  the code provably correct on disk — because a concurrent worktree's
+  static server had claimed the suite's port and was serving ITS
+  checkout, one without the fix. Found by fetching the served file and
+  reading the server process's working directory, after two rounds of
+  theorising about the code got nowhere. The lesson joins the fixture
+  family: the thing under test is the thing SERVED, not the thing on
+  disk, and a suite must own its port (ETHER_PORT exists for exactly
+  this). Two of this sprint's own checks were then caught passing for
+  the wrong reasons on the right code — one sampled inside the
+  respond-delay window and could not see the ring that fired 100ms
+  later; one waited on an absolute event count a cascade had already
+  satisfied and measured the pre-response moment — and both were
+  hardened to relative counts sampled past the delay, then proved by
+  revert: no-recharge, not-repeatable, no-kindle and always-ring each
+  turn their own check red.
 - Out of scope and not implemented: creature encounters as a reward
   system, creature dialogue, a Companion in the Ether, per-Traveller
   encounter history, more activity rows (story hunt, missing

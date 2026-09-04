@@ -11802,3 +11802,36 @@ real held arrow keys, the whale clicked, every beat screenshotted —
 Tests A–D, 14/14. ether-life 72 · ether-encounter 94 · ether-share
 21 · social-ether-identity 20 — green. No knowledge-base change: this
 sprint corrects behaviour the canon already describes.
+
+## Build 0762 — Ether V2.2: the jellyfish can be asked again, and its light reaches past the view
+
+Both halves of the product owner's jellyfish report closed. "I was
+only able to click once on it": the once-per-encounter guard is right
+for the whale, whose answer composes a discovery, and wrong for a
+reveal, which is only light — a touch may now ask again, with the
+light GATHERING for ten seconds between rings (the owner's own
+number), and a touch mid-gather still glowing warmly so "click →
+nothing" cannot return through a silent recharge. "A blast of
+outgoing circle and then nothing": the sparse sky resolves everything
+in view (FAR_SPARSE), so the wash had no audience and anything dim
+was off-screen where a halo is invisible — a dim Spirit beyond the
+view now KINDLES at the edge in its direction (the beckon's geometry,
+worn for a moment), and with nothing anywhere to reveal the ring does
+not fire at all: the swell alone is a smaller true answer instead of
+a large empty one. A star-trail flight also leaves a last feather
+where it ends. Suite lessons paid for in full: the suite's clicks now
+probe for a visible part of the creature over open sky (V2.1's
+card-owns-the-tap rule is exactly why blind centre-clicks fail); and
+mid-sprint every jellyfish check went red with the code provably
+correct — a CONCURRENT WORKTREE'S server had claimed the suite's
+port and was serving its own checkout. The thing under test is the
+thing SERVED, not the thing on disk; the suite runs on its own port
+now, and two checks caught passing for the wrong reasons (sampling
+inside the respond-delay window; waiting on an absolute event count a
+cascade had already satisfied) were hardened to relative counts past
+the delay. Proved by revert, each behaviour against its own check:
+no-recharge → G5a, not-repeatable → G5, no-kindle → G6, always-ring
+→ G7. ether-life 76 + walkthrough 14 · ether-encounter 94 ·
+ether-share 21 · social-ether-identity 20 — green. No knowledge-base
+change: canon already says a being may light the sky so what rests
+far away can be seen.

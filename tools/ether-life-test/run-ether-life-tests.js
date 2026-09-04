@@ -279,6 +279,33 @@ function stripComments(src) {
     await page.keyboard.up('ArrowRight');
   }
 
+  // Click the active creature the way a child does: on a visible part
+  // of it. A tap that lands on a Story Spirit's card belongs to the
+  // Spirit (V2.2's own rule), so clicking blindly at the creature's
+  // centre fails exactly when a card happens to drift in front of it —
+  // measured: a jellyfish behind a card took no click at all. Probe
+  // spots inside the hit region until one is over open sky.
+  async function clickCreature(page) {
+    const spot = await page.evaluate(() => {
+      const a = window.vihuEtherLife.active();
+      if (!a) return null;
+      const half = (EtherLife.CREATURES[a.id] || {}).span * 0.5 || 90;
+      const offs = [[0, 0], [60, 0], [-60, 0], [0, 55], [0, -55],
+                    [half * 0.8, 0], [-half * 0.8, 0], [60, 55], [-60, -55]];
+      for (const o of offs) {
+        const x = a.screen.x + o[0], y = a.screen.y + o[1];
+        if (x < 8 || x > 1432 || y < 8 || y > 892) continue;
+        const el = document.elementFromPoint(x, y);
+        if (el && el.closest && el.closest('.vp-story')) continue;
+        return { x, y };
+      }
+      return null;
+    });
+    if (!spot) return false;
+    await page.mouse.click(spot.x, spot.y);
+    return true;
+  }
+
   async function centreOn(page, getScreen, parallax) {
     for (let i = 0; i < 10; i++) {
       await turnTap(page);
@@ -880,11 +907,7 @@ function stripComments(src) {
       const a = window.vihuEtherLife.active();
       return a && a.screen.x > -60 && a.screen.x < 1500;
     }, null, { timeout: 20000 });
-    const spot = await page.evaluate(() => {
-      const s = window.vihuEtherLife.active().screen;
-      return { x: Math.max(12, Math.min(1428, s.x)), y: Math.max(12, Math.min(888, s.y)) };
-    });
-    await page.mouse.click(spot.x, spot.y);
+    for (let i = 0; i < 4; i++) { if (await clickCreature(page)) break; await page.waitForTimeout(400); }
     await page.waitForFunction(() =>
       window.__lifeEvents.some((e) => e[0] === 'creature:responded'),
       null, { timeout: 6000 });
@@ -949,6 +972,146 @@ function stripComments(src) {
        'G3  light is not a path — no trail, no activity, nothing owed');
 
     await page.screenshot({ path: path.join(SHOTS, 'g-jellyfish.png') });
+
+    // ---- V2.2: A LAMP CAN BE TAPPED AGAIN. Reported by the product
+    // owner ("I was only able to click once on it"): the once-per-
+    // encounter guard is right for the whale, whose answer composes a
+    // discovery, and wrong for a reveal, which is only light — and the
+    // jellyfish drifts for minutes. A touch may ask again once the
+    // last ring has run out.
+    await page.waitForFunction(() => {
+      const a = window.vihuEtherLife.active();
+      return !a || a.pulse <= 0;
+    }, null, { timeout: 12000 });
+    const stillHere = await page.evaluate(() => !!window.vihuEtherLife.active());
+    if (!stillHere) {
+      fail('G5  a second touch is answered', 'the jellyfish left before the retry');
+    } else {
+      // MID-RECHARGE, a touch glows and does not ring. The light
+      // gathers for ten seconds between fires (the product owner's
+      // own number), and a touch inside that window must still be
+      // visibly acknowledged — "click → nothing" is the exact report
+      // this sprint exists to close, and a silent recharge would
+      // reintroduce it.
+      const baseMid = await page.evaluate(() =>
+        window.__lifeEvents.filter((e) => e[0] === 'creature:responded').length);
+      for (let i = 0; i < 4; i++) { if (await clickCreature(page)) break; await page.waitForTimeout(300); }
+      await page.waitForTimeout(400);
+      const midSwell = await page.evaluate(() =>
+        (window.vihuEtherLife.active() || {}).swell || 0);
+      // AND THEN PAST THE RESPOND DELAY: a check inside that window
+      // cannot see a ring that fires 100ms later — measured, removing
+      // the recharge entirely still passed the 400ms version.
+      await page.waitForTimeout(700);
+      const midResp = await page.evaluate(() =>
+        window.__lifeEvents.filter((e) => e[0] === 'creature:responded').length);
+      ck(midResp === baseMid && midSwell > 0.25,
+         'G5a while the light gathers, a touch glows — and does not ring',
+         'swell ' + midSwell.toFixed(2) + ', responses ' + baseMid + ' -> ' + midResp);
+
+      // The recharge runs out; the next touch fires. During the SECOND
+      // pulse, an off-view dim Spirit must kindle at the edge of the
+      // view in its direction — a halo drawn at off-screen coordinates
+      // reveals nothing, which was the whole of the sparse-sky "blast
+      // then nothing" report.
+      await page.waitForTimeout(5800);
+      const baseG5 = await page.evaluate(() =>
+        window.__lifeEvents.filter((e) => e[0] === 'creature:responded').length);
+      for (let i = 0; i < 4; i++) { if (await clickCreature(page)) break; await page.waitForTimeout(300); }
+      await page.waitForFunction((b) =>
+        window.__lifeEvents.filter((e) => e[0] === 'creature:responded').length > b,
+        baseG5, { timeout: 6000 }).catch(() => {});
+      const again = await page.evaluate(() => ({
+        responses: window.__lifeEvents.filter((e) => e[0] === 'creature:responded').length,
+        pulse: (window.vihuEtherLife.active() || {}).pulse || 0
+      }));
+      ck(again.responses > baseG5 && again.pulse > 0,
+         'G5  a second touch is answered — a reveal is light, not a spent token',
+         baseG5 + ' -> ' + again.responses + ' responses, pulse ' + again.pulse.toFixed(2));
+
+      const kindle = await (async () => {
+        for (let i = 0; i < 40; i++) {
+          const r = await page.evaluate(() => {
+            const u = window.vihuPlanetUniverse;
+            const a = window.vihuEtherLife.active();
+            if (!a || a.pulse <= 0) return { over: true, lit: 0 };
+            const vw = u.ether.viewWidth, vh = u.ether.viewHeight;
+            const offs = u.stories.all().filter((e) =>
+              (e.prox || 0) <= 0.5 && typeof e.screenX === 'number' &&
+              (e.screenX < -20 || e.screenX > vw + 20 ||
+               e.screenY < -20 || e.screenY > vh + 20));
+            if (!offs.length) return { none: true, lit: 0 };
+            const c = document.querySelector('.vp-ether-life');
+            const ctx = c.getContext('2d');
+            for (const e of offs) {
+              const rdx = e.screenX - vw / 2, rdy = e.screenY - vh / 2;
+              const t = Math.min(
+                Math.abs(rdx) > 1e-4 ? (rdx > 0 ? (vw / 2) / rdx : -(vw / 2) / rdx) : 1e9,
+                Math.abs(rdy) > 1e-4 ? (rdy > 0 ? (vh / 2) / rdy : -(vh / 2) / rdy) : 1e9);
+              const kx = vw / 2 + rdx * t, ky = vh / 2 + rdy * t;
+              const x = Math.max(0, Math.min(c.width - 90, Math.round(kx) - 45));
+              const y = Math.max(0, Math.min(c.height - 90, Math.round(ky) - 45));
+              const d = ctx.getImageData(x, y, 90, 90).data;
+              let lit = 0;
+              for (let k = 3; k < d.length; k += 4) if (d[k] > 10) lit++;
+              if (lit > 400) return { lit };
+            }
+            return { lit: 0 };
+          });
+          if (r.lit > 400) return r.lit;
+          if (r.over) return 0;
+          if (r.none) return -1;
+          await page.waitForTimeout(140);
+        }
+        return 0;
+      })();
+      if (kindle === -1) {
+        ok('G6  (every dim Spirit happened to be in view this run — no edge to kindle)');
+      } else {
+        ck(kindle > 400,
+           'G6  a Spirit resting beyond the view kindles at the edge — a reason to turn',
+           kindle + ' lit px');
+      }
+
+      // And with NOTHING anywhere to reveal, no ring fires at all: the
+      // jellyfish answers with its own light alone, a smaller true
+      // answer instead of a large empty one. (Waiting out the second
+      // recharge first, so the empty sky is what refuses the ring —
+      // not the recharge.)
+      await page.waitForFunction(() => {
+        const a = window.vihuEtherLife.active();
+        return !a || a.pulse <= 0;
+      }, null, { timeout: 12000 });
+      await page.waitForTimeout(6500);
+      const emptyState = await page.evaluate(() => {
+        const u = window.vihuPlanetUniverse;
+        u.stories.all().slice().forEach((e) => u.remove(e.id));
+        return { count: u.stories.count(), here: !!window.vihuEtherLife.active() };
+      });
+      if (!emptyState.here) {
+        fail('G7  no ring over nothing', 'the jellyfish left before the empty-sky check');
+      } else {
+        const baseG7 = await page.evaluate(() =>
+          window.__lifeEvents.filter((e) => e[0] === 'creature:responded').length);
+        for (let i = 0; i < 4; i++) { if (await clickCreature(page)) break; await page.waitForTimeout(300); }
+        await page.waitForFunction((b) =>
+          window.__lifeEvents.filter((e) => e[0] === 'creature:responded').length > b,
+          baseG7, { timeout: 6000 }).catch(() => {});
+        // Past the respond delay, so a ring that DOES fire is seen —
+        // sampled at the moment of response, an always-ring build read
+        // as ringless because the pulse had not been lit yet.
+        await page.waitForTimeout(700);
+        const empty = await page.evaluate(() => ({
+          responses: window.__lifeEvents.filter((e) => e[0] === 'creature:responded').length,
+          a: window.vihuEtherLife.active()
+        }));
+        ck(empty.responses > baseG7 && empty.a && empty.a.pulse <= 0 && empty.a.swell > 0.25,
+           'G7  over an empty sky the answer is the swell alone — no ring over nothing',
+           'pulse ' + (empty.a ? empty.a.pulse : '?') + ', swell ' +
+           (empty.a ? empty.a.swell.toFixed(2) : '?'));
+      }
+    }
+
     ck(page.errors.length === 0, 'G4  zero page errors', page.errors[0]);
     await context.close();
   }

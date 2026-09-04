@@ -115,6 +115,19 @@
       alpha: 0.7,
       wave: { amp: 22, freq: 0.35 },
       response: 'pulse',
+      // A reveal is light, not a discovery being granted, so asking
+      // for it again is as honest as tapping a lamp again — and the
+      // jellyfish drifts for minutes, so "once per crossing" read as
+      // broken the second time a child touched it (reported by the
+      // product owner: "I was only able to click once on it"). A
+      // TOUCH may ask again; merely keeping it centred still answers
+      // once, or looking at it would strobe.
+      repeatable: true,
+      // And the light GATHERS between rings — ten seconds from one
+      // fire to the next, the product owner's own number. A touch
+      // while it is gathering still glows warmly (never ignored), it
+      // simply does not ring yet.
+      recharge: 10,
       points: [
         [ 0.00, -0.55], [-0.55, -0.15], [ 0.55, -0.15],
         [-0.40,  0.55], [-0.05,  0.75], [ 0.35,  0.60], [ 0.00,  0.10]
@@ -390,6 +403,7 @@
         responded: false,
         respondIn: -1,
         pulse: 0,             // jellyfish's answer
+        firedAt: -1,          // when that answer last rang
         guiding: null,        // starbird's flight to a discovery
         born: time,
         screen: { x: 0, y: 0 },
@@ -406,15 +420,41 @@
     // touch, so a child is never left wondering whether anything
     // happened while the respondDelay runs. Perceptibly connected
     // first, naturally answered a moment later.
+    // May this creature answer AGAIN? Only a repeatable one, only
+    // after its last answer has fully run out AND its light has
+    // gathered again (the recharge), and only to a touch — the caller
+    // decides which gesture is asking.
+    function mayRepeat() {
+      return !!(enc && enc.responded && enc.def.repeatable &&
+                enc.pulse <= 0 && enc.respondIn < 0 &&
+                (enc.firedAt < 0 || time - enc.firedAt >= (enc.def.recharge || 0)));
+    }
+
     function notice() {
-      if (!enc || enc.responded || enc.respondIn >= 0) return;
+      if (!enc || enc.respondIn >= 0) return;
+      if (enc.responded && !mayRepeat()) return;
       enc.swell = Math.max(enc.swell, 0.8);
       enc.respondIn = times.respondDelay;
       emit('creature:noticed', { id: enc.id });
     }
 
+    // The Spirits a reveal has any business lighting: still dim —
+    // unresolved in front of the child — wherever they rest, on
+    // screen or beyond its edges.
+    function dimSpirits() {
+      var out = [];
+      var entities = [];
+      try { entities = universe.stories.all() || []; } catch (e) { return out; }
+      for (var i = 0; i < entities.length; i++) {
+        var e = entities[i];
+        if (e && (e.prox || 0) <= 0.5 && typeof e.screenX === 'number') out.push(e);
+      }
+      return out;
+    }
+
     function respond() {
-      if (!enc || enc.responded) return;
+      if (!enc) return;
+      if (enc.responded && !mayRepeat()) return;
       enc.responded = true;
       enc.swell = 1;
 
@@ -427,9 +467,23 @@
         beginTrail();
       } else if (enc.def.response === 'pulse') {
         // The jellyfish reveals. One wide slow ring, and the dim
-        // Spirits it washes over glow for a moment — light showing
-        // where things rest, not a path to any one of them.
-        enc.pulse = 1;
+        // Spirits it washes over glow for a moment — in view as a
+        // halo on the Spirit itself, beyond the view as a KINDLE at
+        // the edge in its direction, so the reveal is a reason to
+        // turn rather than a light show for the already-seen.
+        //
+        // AND A RING NEVER FIRES OVER NOTHING. Reported by the
+        // product owner as "a blast of outgoing circle and then
+        // nothing": in a sparse universe almost everything in view is
+        // already resolved (storySpirit's FAR_SPARSE), so the wash
+        // had no audience and the answer read as a malfunction. With
+        // nothing anywhere to reveal, the jellyfish answers with its
+        // own light alone — the swell — which is a smaller true
+        // answer instead of a large empty one.
+        if (dimSpirits().length) {
+          enc.pulse = 1;
+          enc.firedAt = time;   // the recharge counts from the fire
+        }
       } else if (enc.def.response === 'feathers') {
         // The starbird carries. It turns and flies TO the discovery
         // itself, shedding feather-glints behind it as it goes: the
@@ -710,8 +764,19 @@
         var gdx = tsx - enc.screen.x, gdy = tsy - enc.screen.y;
         var gdist = Math.sqrt(gdx * gdx + gdy * gdy) || 1;
         if (gdist < 130) {
-          // Delivered. A small flare, and the bird flies on the way it
-          // was going — the discovery is the trail's to hold now.
+          // Delivered. A small flare, a last feather where the flight
+          // ended — a trail has an end as surely as a start, and even
+          // the shortest flight leaves both — and the bird flies on
+          // the way it was going; the discovery is the trail's now.
+          if (trail && trail.shed && trail.state === 'guiding' &&
+              trail.motes.length < 18) {
+            trail.motes.push({
+              x: enc.screen.x - camS.x,
+              y: enc.screen.y - camS.y,
+              delay: time - trail.born,
+              tw: Math.random() * Math.PI * 2
+            });
+          }
           enc.swell = 1;
           enc.guiding = null;
           enc.baseY = enc.pos.y;
@@ -844,15 +909,20 @@
     // creature passing behind a card must not answer the tap that
     // opened the card.
     function onRootClick(ev) {
-      if (!enc || enc.responded) return;
+      if (!enc) return;
       if (ev.target && ev.target.closest && ev.target.closest('.vp-story')) return;
       var rect = universe.root.getBoundingClientRect();
       var x = ev.clientX - rect.left, y = ev.clientY - rect.top;
       var half = enc.def.span * 0.55;
-      if (Math.abs(x - enc.screen.x) < half &&
-          Math.abs(y - enc.screen.y) < half * 0.7) {
-        notice();
+      if (Math.abs(x - enc.screen.x) >= half ||
+          Math.abs(y - enc.screen.y) >= half * 0.7) return;
+      if (enc.responded && !mayRepeat()) {
+        // Still gathering its light. The touch is never ignored — a
+        // warm glow says "I hear you" — the ring simply is not ready.
+        enc.swell = Math.max(enc.swell, 0.45);
+        return;
       }
+      notice();
     }
     universe.root.addEventListener('click', onRootClick);
 
@@ -966,13 +1036,11 @@
         ctx.stroke();
 
         var band = 110;
-        var entities = [];
-        try { entities = universe.stories.all() || []; } catch (e) {}
-        for (var s = 0; s < entities.length; s++) {
-          var ent = entities[s];
-          // Only what was difficult to see: a Spirit already resolved
-          // in front of the child needs no lamp.
-          if (!ent || (ent.prox || 0) > 0.5 || typeof ent.screenX !== 'number') continue;
+        var vw = ether.viewWidth, vh = ether.viewHeight;
+        var vcx = vw * 0.5, vcy = vh * 0.5;
+        var dims = dimSpirits();
+        for (var s = 0; s < dims.length; s++) {
+          var ent = dims[s];
           var edx = ent.screenX - sx, edy = ent.screenY - sy;
           var ed = Math.sqrt(edx * edx + edy * edy);
           var wash = Math.max(0, 1 - Math.abs(ed - pr) / band);
@@ -982,10 +1050,30 @@
           // near-invisible exactly where it matters most, on the
           // Spirits furthest from the light.
           var envl = Util.clamp(enc.pulse * 3, 0, 1);
-          ctx.globalAlpha = wash * envl * 0.6 * breath;
-          ctx.drawImage(glowSprite, ent.screenX - 46, ent.screenY - 46, 92, 92);
-          ctx.globalAlpha = wash * envl * 0.8 * breath;
-          ctx.drawImage(starSprite, ent.screenX - 10, ent.screenY - 10, 20, 20);
+          var inView = ent.screenX > -20 && ent.screenX < vw + 20 &&
+                       ent.screenY > -20 && ent.screenY < vh + 20;
+          if (inView) {
+            ctx.globalAlpha = wash * envl * 0.6 * breath;
+            ctx.drawImage(glowSprite, ent.screenX - 46, ent.screenY - 46, 92, 92);
+            ctx.globalAlpha = wash * envl * 0.8 * breath;
+            ctx.drawImage(starSprite, ent.screenX - 10, ent.screenY - 10, 20, 20);
+          } else {
+            // A Spirit resting BEYOND the view kindles at the edge in
+            // its direction — the beckon's own geometry, worn for a
+            // moment. A halo drawn at off-screen coordinates reveals
+            // nothing (the sparse-sky "blast then nothing" report),
+            // and the whole point of a reveal is a reason to TURN.
+            var rdx = ent.screenX - vcx, rdy = ent.screenY - vcy;
+            var tEdge = Math.min(
+              Math.abs(rdx) > 1e-4 ? (rdx > 0 ? (vw - vcx) / rdx : -vcx / rdx) : 1e9,
+              Math.abs(rdy) > 1e-4 ? (rdy > 0 ? (vh - vcy) / rdy : -vcy / rdy) : 1e9
+            );
+            var kx = vcx + rdx * tEdge, ky = vcy + rdy * tEdge;
+            ctx.globalAlpha = wash * envl * 0.55 * breath;
+            ctx.drawImage(glowSprite, kx - 52, ky - 52, 104, 104);
+            ctx.globalAlpha = wash * envl * 0.8 * breath;
+            ctx.drawImage(starSprite, kx - 11, ky - 11, 22, 22);
+          }
         }
       }
 
