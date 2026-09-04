@@ -621,8 +621,11 @@
       // waits its own drawn-out while.
       drawGap();
     });
+    var trailOwner = null;   // the experience whose trail is guiding
     onLife('trail:begun', function () {
       chain = Math.max(chain, 1);
+      trailOwner = liveExperience ||
+        (history.length ? history[history.length - 1] : null);
     });
     onLife('trail:found', function (p) {
       found++;
@@ -640,9 +643,11 @@
       // The sky rests after a find — the quiet phase, drawn fresh
       // each time so its length is never learnable.
       restUntil = time + rand(40, 90);
-      if (history.length) {
-        history[history.length - 1].depth = 'discovered';
-      }
+      // The find belongs to the experience whose trail it was — not
+      // to whatever happened to be offered since (measured: a beckon
+      // between the trail and the find was being credited with it).
+      if (trailOwner) { trailOwner.depth = 'discovered'; trailOwner = null; }
+      else if (history.length) history[history.length - 1].depth = 'discovered';
     });
     onLife('trail:faded', function () {
       // Followed by nobody. Nothing owed, and the trail's end is
