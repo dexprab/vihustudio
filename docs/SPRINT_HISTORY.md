@@ -12058,3 +12058,49 @@ connection after the fixture-generator forge measured inert, the
 export approved-only filter), with the 0766 runtime byte-identical and
 the Ether regression wall green. Detail: `docs/ETHER_MYSTERY_LAB.md` ·
 `supabase/DEPLOY_lab_generate.md`.
+
+
+## Ether Mystery Lab — Visual Experience Preview (build 0767)
+
+The Lab could generate and validate structured Mysteries and had no way
+to answer the only question a reviewer actually has: would a child
+notice this, would they know what to try, is it magical? Every
+candidate card now leads with MYSTERY, a plain-language description and
+one button — **▶ PLAY IN ETHER** — with every technical facet folded
+into a disclosure below the judgement controls, and nothing on the
+creative path naming a grammar, a schema field, a capability or an id.
+The preview is the REAL Ether: `tools/ether-mystery-lab/preview.html`
+loads the whole of `vihuplanet/runtime/`, `js/etherLife.js`,
+`js/etherRipple.js` and `js/etherMystery.js` unmodified, builds a
+controlled universe with three fixture creations, and hands the
+candidate to the real interpreter through the same seam the Composer
+uses (`candidates()` → `begin()`); the Composer itself is deliberately
+not mounted, because the reviewer's press IS the "when", and the
+creature layer mounts conducted so nothing crosses the sky unasked. No
+production file was edited — four new Lab-only files, an iframe the Lab
+throws away on exit, no network call, no model, and the production pool
+not merely left alone but never loaded. Valid is not previewable, and
+the gap is NAMED rather than approximated: a written-down `REPRESENTED`
+table (held against the interpreter by the suite, never derived from
+it) refuses `brighten`, a glint residue, `of:'sky'` and any
+`creationKind` but story with *Preview unavailable — unsupported
+runtime capability*, one plain sentence saying which, no PLAY, and the
+approve classifications disabled. All ten grammars preview in
+principle — the interpreter is grammar-agnostic — and all five active
+shipped experiences preview while the one retired entry does not, for
+the very capability it names. A replay is a replay: a seeded generator
+plus setting (and putting back) the runtime's own `vp-runtime-seed`,
+after measuring a first play at 509,516 against every replay at
+779,544; frame-for-frame identity is not claimed. The pre-existing red
+`B3` in `tools/ether-mystery-test/` was diagnosed as a race — a ring
+placed around the look point self-engages through `approach` while the
+Traveller still counts as having just acted — and the check now
+isolates the tap it is about; the product behaviour is unchanged and
+correct. Two findings the preview surfaced and did not fix, both for a
+product decision: a third of a fixture batch is unpreviewable because
+the Lab's own generator reaches for `brighten` and a glint residue, and
+a mystery with nothing to do resolves on its first frame — which is
+what the `notice` grammar exists to make possible. Suite:
+`tools/ether-mystery-lab-test/` 99 → 141 (`P1`–`P10`),
+four reversion proofs, three committed preview screenshots. Detail:
+`docs/ETHER_MYSTERY_LAB.md`.

@@ -932,6 +932,22 @@ function lookAt(h, x, y) {
   // touch belonged to the mystery (not to the ripple's own answers).
   {
     const { page, context } = await freshPage();
+    // THE TAP MUST BE THE THING THAT ENGAGES, AND IT WAS A RACE.
+    // `stars-that-answer` arms both `tap` and `approach`, and the ring
+    // is placed AROUND the look point — measured, two of its three
+    // glints land at prox 0.56–0.69, past the approach threshold. The
+    // notice grammar then engages them on its own for as long as the
+    // Traveller counts as having just acted (still < 3s), which after
+    // the threshold click is the first three seconds of every run. So
+    // on a fast machine this check tapped an element the sky had
+    // already answered: `chosen` was 'mystery' and the delta was zero,
+    // and whether it passed depended on how quickly the page loaded.
+    // Waiting for the Traveller to be still isolates the tap, which is
+    // the only thing B3 is about — the hand-off through the composer.
+    await page.waitForFunction(() =>
+      window.vihuPlanetUniverse &&
+      window.vihuPlanetUniverse.traveller.stillSeconds() > 3.2,
+      null, { timeout: 15000 });
     await page.evaluate(() => {
       window.vihuEtherMystery.begin('stars-that-answer', { look: null });
     });
@@ -957,12 +973,14 @@ function lookAt(h, x, y) {
       const answer = comp.touchNow({ x: p.fx, y: p.fy });
       const after = my.instrument().elements.filter((e) => e.engaged).length;
       const log = comp.diagnostics().decisions.filter((d) => d.touch).pop();
-      return { answer, engagedDelta: after - before, chosen: log && log.chosen };
+      return { answer, before, engagedDelta: after - before,
+               chosen: log && log.chosen };
     }, spot);
-    ck(claimed.answer === null && claimed.engagedDelta === 1 &&
-       claimed.chosen === 'mystery',
+    ck(claimed.before === 0 && claimed.answer === null &&
+       claimed.engagedDelta === 1 && claimed.chosen === 'mystery',
        'B3  the composer\'s touch path hands the tap to the posed mystery',
-       'chosen=' + claimed.chosen);
+       'chosen=' + claimed.chosen + ' before=' + claimed.before +
+       ' delta=' + claimed.engagedDelta);
     ck(page.errors.length === 0, 'B3b zero page errors', page.errors[0]);
     await context.close();
   }

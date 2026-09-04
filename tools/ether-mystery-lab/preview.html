@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- Developer instrument. /tools/ is already robots-disallowed
+     (Decision 28); noindex anyway, the repository's habit. -->
+<meta name="robots" content="noindex, nofollow">
+<title>Ether Mystery Lab — Preview</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90' fill='%23E8B871'%3E%E2%9C%BF%3C/text%3E%3C/svg%3E">
+
+<link rel="stylesheet" href="../../vihuplanet/runtime/css/runtime.css">
+<style>
+  /* Chrome for a REVIEWER, not for a child. Two navigation controls
+     and, when something cannot be shown, one sentence saying so. There
+     is no instruction anywhere over the sky: whether the Mystery
+     communicates itself is the whole thing being judged, and a caption
+     explaining it would answer the question for the reviewer. */
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; background: #12182B;
+               color: #F1EAD0; font: 14px/1.5 -apple-system, "Segoe UI", Roboto, sans-serif;
+               overflow: hidden; }
+  .stage { position: absolute; inset: 0; }
+  .stage-universe { position: absolute; inset: 0; }
+
+  .chrome { position: absolute; top: 12px; right: 14px; z-index: 50;
+            display: flex; gap: 8px; opacity: .55; transition: opacity .25s; }
+  .chrome:hover { opacity: 1; }
+  .chrome button { background: rgba(18,24,43,.72); color: #F1EAD0;
+                   border: 1px solid rgba(241,234,208,.28); border-radius: 999px;
+                   padding: 5px 13px; font: inherit; cursor: pointer; }
+  .chrome button:hover { border-color: #E8B871; color: #E8B871; }
+
+  .unavailable { position: absolute; inset: 0; z-index: 60; display: none;
+                 align-items: center; justify-content: center; padding: 40px;
+                 background: rgba(18,24,43,.86); }
+  .unavailable.on { display: flex; }
+  .unavailable div { max-width: 520px; text-align: center; }
+  .unavailable h2 { font-size: 16px; color: #E8B871; margin: 0 0 10px; font-weight: 600; }
+  .unavailable p { color: rgba(241,234,208,.72); margin: 6px 0; }
+</style>
+</head>
+<body>
+
+<!-- THIS PAGE IS NOT THE PRODUCT, and it is not a second Ether. It
+     mounts the real universe, the real creature layer, the real touch
+     layer and the real Mystery interpreter, hands ONE candidate to the
+     interpreter through the same seam the Experience Composer uses,
+     and gets out of the way. The production pool is deliberately NOT
+     loaded here: a preview has no business being able to see it, let
+     alone reach it. -->
+<main class="stage">
+  <div class="stage-universe" data-universe></div>
+
+  <div class="chrome" data-chrome hidden>
+    <button type="button" data-act="replay">⟲ Replay</button>
+    <button type="button" data-act="exit">✕ Exit Preview</button>
+  </div>
+
+  <div class="unavailable" data-unavailable>
+    <div>
+      <h2>Preview unavailable — unsupported runtime capability</h2>
+      <p data-unavailable-why></p>
+      <p><button type="button" data-act="exit">✕ Back to the Lab</button></p>
+    </div>
+  </div>
+</main>
+
+<!-- The runtime, in its own dependency order (the sandbox's order,
+     which is index.html's order). -->
+<script src="../../vihuplanet/artDirection/illustrationRules.js"></script>
+<script src="../../vihuplanet/runtime/core/namespace.js"></script>
+<script src="../../vihuplanet/runtime/core/rng.js"></script>
+<script src="../../vihuplanet/runtime/core/signal.js"></script>
+<script src="../../vihuplanet/runtime/core/clock.js"></script>
+<script src="../../vihuplanet/runtime/core/camera.js"></script>
+<script src="../../vihuplanet/runtime/core/traveller.js"></script>
+<script src="../../vihuplanet/runtime/stories/storyEntity.js"></script>
+<script src="../../vihuplanet/runtime/stories/storyManager.js"></script>
+<script src="../../vihuplanet/runtime/stories/storyLayer.js"></script>
+<script src="../../vihuplanet/runtime/stories/storySpirit.js"></script>
+<script src="../../vihuplanet/runtime/physics/spatialGrid.js"></script>
+<script src="../../vihuplanet/runtime/physics/physics.js"></script>
+<script src="../../vihuplanet/runtime/ether/ether.js"></script>
+<script src="../../vihuplanet/runtime/ether/currents.js"></script>
+<script src="../../vihuplanet/runtime/ether/aurora.js"></script>
+<script src="../../vihuplanet/runtime/ether/etherRenderer.js"></script>
+<script src="../../vihuplanet/runtime/ambient/ambientSystem.js"></script>
+<script src="../../vihuplanet/runtime/focus/focusSystem.js"></script>
+<script src="../../vihuplanet/runtime/birth/storyBirth.js"></script>
+<script src="../../vihuplanet/runtime/worlds/worldEngine.js"></script>
+<script src="../../vihuplanet/runtime/core/universe.js"></script>
+
+<!-- The Ether's own providers — the same files the product loads. -->
+<script src="../../js/etherLife.js"></script>
+<script src="../../js/etherRipple.js"></script>
+<script src="../../js/etherGrammar.js"></script>
+<script src="../../js/etherCreationLens.js"></script>
+<script src="../../js/etherMystery.js"></script>
+
+<script src="labPreviewSupport.js"></script>
+<script src="labPreview.js"></script>
+</body>
+</html>

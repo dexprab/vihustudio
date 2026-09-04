@@ -43,6 +43,8 @@ const { spawn } = require('child_process');
 const ROOT = path.resolve(__dirname, '..', '..');
 const PORT = Number(process.env.ETHER_LAB_PORT || 8907);
 const BASE = 'http://127.0.0.1:' + PORT;
+const SHOTS = path.join(__dirname, 'shots');
+try { fs.mkdirSync(SHOTS, { recursive: true }); } catch (e) {}
 
 let passed = 0, failed = 0;
 const failures = [];
@@ -785,12 +787,362 @@ async function sectionB() {
 }
 
 // ===================================================================
+// P. THE PREVIEW — ▶ PLAY IN ETHER.
+//
+// The creative review surface. A reviewer must be able to decide
+// whether a Mystery is magical without reading its JSON, and the
+// preview must be the REAL Ether — the real universe, the real
+// providers, the real interpreter — rather than a picture of one.
+//
+// P1  statics: no second engine, no second renderer, no network
+// P2  the support matrix, in Node, over the shipped pool and the
+//     Lab's own fixtures — valid is not the same as previewable
+// P3  loading the Lab still does nothing
+// P4  PLAY opens the real Ether and the candidate is POSED
+// P5  determinism: same candidate + same seed → the same sky
+// P6  the candidate enters through the existing interpreter/provider
+//     path, and a real tap engages through the existing touch chain
+// P7  exit is clean, and the demonstration comes home
+// P8  an unsupported capability can never become a fake experience
+// P9  the preview writes no production state and calls no model
+// ===================================================================
+async function sectionP() {
+  console.log('\n== P. the preview ==');
+  const { chromium } = require('playwright');
+  const Support = require('../ether-mystery-lab/labPreviewSupport.js');
+
+  // ---------- P1: statics ----------
+  const prev = stripComments(read('tools/ether-mystery-lab/labPreview.js'));
+  const host = stripComments(read('tools/ether-mystery-lab/labPreviewHost.js'));
+  const sup = stripComments(read('tools/ether-mystery-lab/labPreviewSupport.js'));
+  const previewHtml = read('tools/ether-mystery-lab/preview.html');
+
+  // NOT A SECOND ENGINE. The preview may not interpret a candidate, so
+  // it must not read the fields only the interpreter reads.
+  ck(!/\belements\s*\.\s*forEach|\bplacePoints|\bcoverRegions|drawImage|getContext/.test(prev),
+    'P1  the preview draws nothing and places nothing — no second renderer');
+  ck(prev.indexOf('EtherMystery.mount') !== -1 && prev.indexOf('.begin(') !== -1 &&
+     prev.indexOf('.candidates()') !== -1,
+    'P1b the candidate enters through the REAL interpreter seam');
+  ck(!/fetch\s*\(|XMLHttpRequest|WebSocket|api\.openai|navigator\.sendBeacon/.test(prev + host + sup),
+    'P1c no network call of any kind exists in the preview layer');
+  ck(!/localStorage|indexedDB/.test(prev + host + sup),
+    'P1d no persistent storage in the preview layer');
+  // The one storage key it DOES touch is the runtime's own session
+  // seed, set deliberately so a replay is a replay. Named, so nobody
+  // can add a second one quietly.
+  const ss = prev.match(/sessionStorage\.[a-zA-Z]+\(([^)]*)\)/g) || [];
+  ck(ss.length > 0 && ss.every((c) => c.indexOf('vp-runtime-seed') !== -1),
+    'P1e every storage call names ONE key — the runtime\'s own seed', ss.join(' '));
+  // Decision 9: the protected runtime files never learn the Lab exists.
+  const PROTECTED = ['vihuplanet/runtime/physics/physics.js',
+    'vihuplanet/runtime/stories/storyManager.js',
+    'vihuplanet/runtime/ether/etherRenderer.js',
+    'vihuplanet/runtime/core/universe.js',
+    'vihuplanet/runtime/ambient/ambientSystem.js'];
+  const leaked = PROTECTED.filter((f) => /LabPreview|ether-mystery-lab|tools\//.test(read(f)));
+  ck(leaked.length === 0, 'P1f the protected runtime files name nothing of the Lab', leaked.join(','));
+  // The production pool is not merely left alone — it is out of reach.
+  ck(previewHtml.indexOf('experience-pool.js') === -1,
+    'P1g the preview document never loads the production pool');
+  ck(previewHtml.indexOf('js/etherMystery.js') !== -1 &&
+     previewHtml.indexOf('js/etherLife.js') !== -1 &&
+     previewHtml.indexOf('js/etherRipple.js') !== -1 &&
+     previewHtml.indexOf('runtime/core/universe.js') !== -1,
+    'P1h it loads the REAL runtime and the REAL providers');
+  ck(previewHtml.indexOf('noindex') !== -1, 'P1i the preview page is noindex');
+  // No instruction over the sky: the whole point is whether the
+  // Mystery explains itself.
+  ck(!/STEP\s*1|Click this|click here|COMPLETE THE|objective|CHALLENGE:/i.test(previewHtml),
+    'P1j nothing on the sky instructs the reviewer');
+
+  // ---------- P2: the honest support matrix ----------
+  const poolSrc = read('assets/ether/experience-pool.js');
+  const poolSandbox = { window: {} };
+  require('vm').createContext(poolSandbox);
+  require('vm').runInContext(poolSrc, poolSandbox);
+  const entries = poolSandbox.window.EtherExperiencePool.experiences;
+  const activeUnsupported = entries.filter((e) => e.status === 'active' &&
+    !Support.support(e.candidate).ok);
+  ck(activeUnsupported.length === 0,
+    'P2  every ACTIVE shipped experience can be previewed',
+    activeUnsupported.map((e) => e.candidate.id).join(','));
+  // And the retired one cannot — which is the rule catching the very
+  // entry the runtime has no branch for.
+  const retired = entries.filter((e) => e.status !== 'active')[0];
+  ck(retired && !Support.support(retired.candidate).ok &&
+     Support.support(retired.candidate).reasons.indexOf('onEngage:brighten') !== -1,
+    'P2b the retired entry is refused by name, for the capability it names');
+  // REPRESENTED is written down; it must never claim something the
+  // interpreter has no branch for.
+  const interp = stripComments(read('js/etherMystery.js'));
+  const missing = Support.REPRESENTED.responses.filter((r) => interp.indexOf("'" + r + "'") === -1);
+  ck(missing.length === 0,
+    'P2c every response the table claims has a branch in the interpreter', missing.join(','));
+  ck(interp.indexOf("'brighten'") === -1,
+    'P2d and the one it does NOT claim is genuinely absent there');
+  // A capability outside the table refuses, whatever else is right.
+  const fx = require('../ether-mystery-lab/fixtures.js');
+  const brighten = fx.valid.filter((f) => (f.candidate.behaviour || {}).onEngage === 'brighten')[0];
+  ck(brighten && !Support.support(brighten.candidate).ok,
+    'P2e a valid candidate naming an unperformable response is not previewable');
+  const glintResidue = fx.valid.filter((f) =>
+    ((f.candidate.outcome || {}).residue || {}).show === 'glint')[0];
+  ck(glintResidue && Support.support(glintResidue.candidate).reasons.indexOf('residue:glint') !== -1,
+    'P2f a residue the runtime always draws as a mark is named, not approximated');
+  // Plain language: no schema word, no grammar id, no capability name.
+  const plain = Support.plain(entries[0].candidate);
+  const words = [plain.mystery, plain.action, plain.discovery, plain.next].join(' ');
+  ck(!/grammar|reconstruct|shard|glint|onEngage|ingredient|candidate|schema|residue|near-look|creation-revealed/i
+      .test(words),
+    'P2g the plain description carries no schema, grammar or capability word', words.slice(0, 90));
+  ck(plain.mystery && plain.action && plain.discovery && plain.next,
+    'P2h all four facets are said in plain language');
+  // A MYSTERY WITH NOTHING TO DO ENDS ON ITS FIRST FRAME — the
+  // runtime's own resolveDone(), measured in the preview. It is
+  // performable, so it is not refused; the reviewer is warned, because
+  // a preview that appears and goes reads as a broken preview.
+  const nothingToDo = {
+    id: 'only-to-be-noticed', grammar: 'notice',
+    title: 'a small light nobody has to do anything about',
+    elements: [{ role: 'light', show: 'glint', place: 'near-look' }],
+    behaviour: { pace: 'still' },
+    outcome: { possible: ['unresolved'] },
+    constraints: { rarity: 'common', lifeS: 60, phases: ['exploration'] }
+  };
+  const ntd = Support.support(nothingToDo);
+  ck(ntd.ok && ntd.notes.some((n) => /nothing here for a child to do/.test(n)),
+    'P2i a mystery with nothing to do is previewable, and the reviewer is warned',
+    ntd.notes.join(' ').slice(0, 60));
+
+  // ---------- the browser ----------
+  const server = spawn('node', ['tools/bring-it-alive/test/serve.js', String(PORT)],
+    { cwd: ROOT, stdio: 'ignore' });
+  await new Promise((res) => setTimeout(res, 900));
+  try {
+    const served = await (await fetch(BASE + '/tools/ether-mystery-lab/labPreview.js')).text();
+    ck(served === read('tools/ether-mystery-lab/labPreview.js'),
+      'P3  the served tree IS this tree');
+  } catch (e) { fail('P3  the served tree IS this tree', String(e)); }
+
+  const browser = await chromium.launch({
+    executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome'
+  });
+  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  const errs = [];
+  page.on('pageerror', (e) => errs.push(String(e)));
+  let modelHits = 0;
+  await page.route('https://api.openai.com/**', (r) => { modelHits++; r.abort(); });
+  const reqs = [];
+  page.on('request', (r) => reqs.push({ method: r.method(), url: r.url() }));
+
+  await page.goto(BASE + '/tools/ether-mystery-lab/index.html');
+  await page.waitForTimeout(1200);
+  const idle = await page.evaluate(() => ({
+    frames: document.querySelectorAll('[data-lab-preview]').length,
+    universes: document.querySelectorAll('.vp-universe').length,
+    ether: typeof window.VihuPlanet !== 'undefined' || typeof window.EtherMystery !== 'undefined',
+    ss: sessionStorage.length, ls: localStorage.length
+  }));
+  ck(idle.frames === 0 && idle.universes === 0 && !idle.ether &&
+     idle.ss === 0 && idle.ls === 0,
+    'P3b loading the Lab still does nothing — no frame, no Ether, no storage');
+
+  await page.selectOption('#creationSelect', 'fixture-0');
+  await page.click('#generateBtn');
+  await page.waitForTimeout(700);
+
+  // ---------- P4: PLAY opens the real Ether ----------
+  const cards = await page.evaluate(() => Array.prototype.map.call(
+    document.querySelectorAll('.cand'), (c) => ({
+      play: !!c.querySelector('button[data-play]'),
+      unavail: !!c.querySelector('.unavail'),
+      plain: !!c.querySelector('.plain'),
+      techFolded: !!c.querySelector('details.tech') && !c.querySelector('details.tech').open
+    })));
+  ck(cards.length > 0 && cards.every((c) => c.plain && c.techFolded),
+    'P4  every card leads with plain language and folds its technical details away');
+  ck(cards.some((c) => c.play), 'P4b at least one candidate offers PLAY IN ETHER');
+
+  const playIdx = cards.findIndex((c) => c.play);
+  await page.locator('.cand').nth(playIdx).locator('button[data-play]').click();
+  await page.waitForTimeout(2600);
+  const frame = page.frames().find((f) => f.url().indexOf('preview.html') !== -1);
+  ck(!!frame, 'P4c PLAY opens the preview in its own document');
+  const world = frame ? await frame.evaluate(() => {
+    const inst = window.LabPreview.instrument();
+    return {
+      universe: document.querySelectorAll('.vp-universe').length,
+      stage: document.querySelectorAll('canvas.vp-ether-mystery').length,
+      spirits: window.LabPreview.stories().length,
+      posed: !!inst, elements: inst ? inst.elements.length : 0,
+      chrome: !document.querySelector('[data-chrome]').hidden,
+      unavailable: document.querySelector('[data-unavailable]').classList.contains('on')
+    };
+  }) : {};
+  ck(world.universe === 1 && world.spirits === 3,
+    'P4d the real universe is built, with real creations in it',
+    JSON.stringify(world));
+  ck(world.posed && world.elements >= 1 && world.stage === 1,
+    'P4e the candidate is POSED on the interpreter\'s own stage');
+  ck(world.chrome && !world.unavailable,
+    'P4f Replay and Exit are the only chrome over the sky');
+  await page.screenshot({ path: path.join(SHOTS, 'p4-preview-reconstruct.png') });
+
+  // ---------- P5: determinism ----------
+  //
+  // The interesting comparison is a FIRST play against a REPLAY, not
+  // two replays. vihuplanet/runtime/core/rng.js mints its session seed
+  // on its first call and reads it back afterwards, so a fresh
+  // document and a replay consumed a different number of draws and the
+  // second sky came out different — measured, then fixed by setting
+  // that key from the preview seed. Two replays would have agreed
+  // either way, which is why this opens its own page.
+  const candNow = await frame.evaluate(() => window.LabPreview.candidate());
+  const detPage = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+  await detPage.goto(BASE + '/tools/ether-mystery-lab/preview.html');
+  await detPage.waitForFunction(() => !!window.LabPreview, null, { timeout: 15000 });
+  const det = await detPage.evaluate((c) => {
+    function shot() {
+      var i = window.LabPreview.instrument();
+      return i ? i.elements.map((e) => Math.round(e.x) + ',' + Math.round(e.y)).join(' ') : 'none';
+    }
+    window.LabPreview.play(c, 'seed-X');   // the FIRST play in this document
+    const first = shot();
+    window.LabPreview.play(c, 'seed-X');   // a replay of the same thing
+    const replay = shot();
+    window.LabPreview.play(c, 'seed-Y');
+    const other = shot();
+    return { first: first, replay: replay, other: other };
+  }, candNow);
+  await detPage.close();
+  ck(det.first !== 'none' && det.first === det.replay,
+    'P5  a replay of the same candidate and seed is the same sky as the first play',
+    det.first + '  vs  ' + det.replay);
+  ck(det.other !== det.first, 'P5b a different seed is a different sky', det.other);
+
+  // ---------- P6: the existing chain, driven for real ----------
+  const chain = frame ? await frame.evaluate(async () => {
+    const cand = window.LabPreview.candidate();
+    window.LabPreview.play(cand, 'seed-X');
+    await new Promise((r) => setTimeout(r, 1400));   // let the elements arrive
+    const inst = window.LabPreview.instrument();
+    const before = inst.elements.filter((e) => e.engaged).length;
+    // The ripple is the real touch layer; the posed mystery is asked
+    // FIRST about where the tap landed — the production ownership rule.
+    const el = inst.elements.filter((e) => !e.engaged)[0] || inst.elements[0];
+    const u = window.LabPreview.universe();
+    const cam = u.camera.offsetFor(u.ether.depth.stories, { x: 0, y: 0 });
+    // drive through the ripple's own public touch(), in screen space
+    const rip = window.LabPreview.ripple();
+    if (rip) rip.touch(el.x + cam.x, el.y + cam.y);
+    await new Promise((r) => setTimeout(r, 200));
+    const after = window.LabPreview.instrument();
+    return {
+      before: before,
+      after: after ? after.elements.filter((e) => e.engaged).length : -1,
+      viaRipple: !!rip
+    };
+  }).catch((e) => ({ err: String(e) })) : null;
+  ck(chain && chain.viaRipple && chain.after > chain.before,
+    'P6  a real touch reaches the posed mystery through the existing chain',
+    JSON.stringify(chain));
+
+  // ---------- P7: exit is clean, the demonstration comes home ----------
+  await frame.click('button[data-act="exit"]');
+  await page.waitForTimeout(700);
+  const afterExit = await page.evaluate(() => ({
+    frames: document.querySelectorAll('[data-lab-preview]').length,
+    universes: document.querySelectorAll('.vp-universe').length,
+    ether: typeof window.VihuPlanet !== 'undefined',
+    demo: (document.querySelector('.cand .demo-title') || {}).textContent || null,
+    demoText: (document.querySelector('.cand .demo') || {}).innerText || ''
+  }));
+  ck(afterExit.frames === 0 && afterExit.universes === 0 && !afterExit.ether,
+    'P7  exit disposes the whole preview — no frame, no universe, nothing left');
+  ck(afterExit.demo === 'What the preview demonstrated',
+    'P7b what the preview demonstrated comes home, after the fact');
+  ck(/MYSTERY/.test(afterExit.demoText) && /CHILD ACTION/.test(afterExit.demoText) &&
+     /DISCOVERY/.test(afterExit.demoText) && /NEXT MYSTERY/.test(afterExit.demoText),
+    'P7c and it names Mystery · Child action · Discovery · Next Mystery');
+
+  // ---------- P8: unsupported can never become a fake experience ----------
+  const unIdx = cards.findIndex((c) => c.unavail);
+  if (unIdx >= 0) {
+    const un = await page.evaluate((i) => {
+      const c = document.querySelectorAll('.cand')[i];
+      return {
+        text: (c.querySelector('.unavail') || {}).textContent || '',
+        why: (c.querySelector('.play-row .hint') || {}).textContent || '',
+        play: !!c.querySelector('button[data-play]'),
+        exceptional: c.querySelector('button[data-classify="exceptional"]').disabled,
+        good: c.querySelector('button[data-classify="good"]').disabled,
+        reject: c.querySelector('button[data-classify="reject"]').disabled
+      };
+    }, unIdx);
+    ck(!un.play && un.text.indexOf('Preview unavailable — unsupported runtime capability') === 0,
+      'P8  an unperformable candidate says so and offers no PLAY', un.text);
+    ck(un.why.length > 0, 'P8b and it says which capability, in plain words', un.why);
+    ck(un.exceptional && un.good && !un.reject,
+      'P8c it is kept out of the creative approval path, and still reviewable');
+    await page.screenshot({ path: path.join(SHOTS, 'p8-unavailable.png') });
+  } else {
+    fail('P8  no unsupported candidate in the batch to check');
+  }
+
+  // ---------- P9: nothing production moved, nothing was asked ----------
+  const off = reqs.filter((r) => r.url.indexOf('127.0.0.1') === -1);
+  ck(modelHits === 0 && off.length === 0,
+    'P9  the whole preview called no model and made no off-host request',
+    off.map((r) => r.url).join(','));
+  ck(reqs.filter((r) => r.method === 'POST').length === 0,
+    'P9b and no POST of any kind');
+  const store = await page.evaluate(() => ({ ls: localStorage.length, ss: sessionStorage.length }));
+  // sessionStorage is per ORIGIN, so the frame's one deliberate write
+  // is visible here — which this check found by going red. The preview
+  // puts it back on exit, so the document that opened it is left
+  // exactly as it was.
+  ck(store.ls === 0 && store.ss === 0,
+    'P9b2 the Lab document is left exactly as it was — the preview put its one key back',
+    JSON.stringify(store));
+  const poolAfter = await (await fetch(BASE + '/assets/ether/experience-pool.js')).text();
+  ck(poolAfter === poolSrc, 'P9c the production experience pool is byte-identical');
+  ck(errs.length === 0, 'P9d zero page errors across the whole preview journey', errs[0]);
+
+  // ---------- three different candidates, for the record ----------
+  const SHOWCASE = ['a-cover-come-apart', 'behind-a-veil-of-light', 'stars-that-answer'];
+  const shots = [];
+  for (const id of SHOWCASE) {
+    const cand = entries.filter((e) => e.candidate.id === id)[0];
+    if (!cand) continue;
+    const p2 = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+    await p2.goto(BASE + '/tools/ether-mystery-lab/preview.html');
+    await p2.waitForFunction(() => !!window.LabPreview, null, { timeout: 15000 });
+    const posed = await p2.evaluate((c) => {
+      window.LabPreview.play(c, 'shot');
+      const i = window.LabPreview.instrument();
+      return i ? i.elements.length : 0;
+    }, cand.candidate);
+    await p2.waitForTimeout(2600);
+    await p2.screenshot({ path: path.join(SHOTS, 'preview-' + id + '.png') });
+    shots.push(id + ':' + posed);
+    await p2.close();
+  }
+  ck(shots.length === 3 && shots.every((s) => Number(s.split(':')[1]) > 0),
+    'P10 three different candidates were each posed and captured', shots.join(' '));
+
+  await browser.close();
+  server.kill();
+}
+
+// ===================================================================
 (async () => {
   try {
     await sectionS();
     sectionF();
     await sectionE();
     await sectionB();
+    await sectionP();
   } catch (e) {
     fail('suite crashed', (e && e.stack || String(e)).split('\n')[0]);
   }

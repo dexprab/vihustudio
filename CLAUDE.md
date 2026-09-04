@@ -7941,6 +7941,140 @@ leads somewhere.
 - How to use, deploy and configure: `docs/ETHER_MYSTERY_LAB.md` ·
   `supabase/DEPLOY_lab_generate.md`. Suite:
   `tools/ether-mystery-lab-test/run-lab-tests.js` (98).
+- **A CANDIDATE IS JUDGED BY BEING EXPERIENCED, NOT BY BEING READ**
+  (build 0767, the Visual Experience Preview sprint). The Lab could
+  generate and validate structured Mysteries and had no way to answer
+  the only question a reviewer actually has — *would a child notice
+  this, would they know what to try, is it magical?* Every candidate
+  card now leads with **MYSTERY**, a plain-language description and
+  one button, **▶ PLAY IN ETHER**, and every technical facet is folded
+  into a `technical details` disclosure BELOW the judgement controls.
+  Nothing on the creative path names a grammar, a schema field, a
+  capability or an id.
+- **IT IS THE REAL ETHER, NOT A PICTURE OF ONE.**
+  `tools/ether-mystery-lab/preview.html` loads the whole of
+  `vihuplanet/runtime/`, `js/etherLife.js`, `js/etherRipple.js` and
+  `js/etherMystery.js` — unmodified — builds a controlled universe with
+  three fixture creations, and hands the candidate to the REAL
+  interpreter through the SAME seam the Composer uses
+  (`candidates()` → `begin(key, ctx)`). There is no second Mystery
+  engine and no second renderer: every element, drawing, outcome and
+  residue is the interpreter's own, and the suite fails if the preview
+  ever grows one of its own. **No production file was edited** — the
+  preview is four new Lab-only files.
+- **WHAT IS DELIBERATELY NOT MOUNTED IS THE COMPOSER.** It owns WHEN a
+  mystery may be offered — phase, rarity, novelty, quiet, the visit's
+  temperament — and a review has none of those questions; the
+  reviewer's press IS the "when", exactly as `perform()` is in the live
+  sky. The creature layer mounts CONDUCTED, so nothing crosses the sky
+  unasked and the preview is about the candidate rather than about
+  whatever else happened to pass — while its `bloomAt()` and
+  `markAt()` stay live, because the interpreter reaches for them on a
+  discovery and on a residue. The touch chain is production's: a tap
+  reaches the ripple layer and the posed mystery is asked FIRST about
+  where it landed, proved by removing the wiring and watching the check
+  go red.
+- **TWO NAVIGATION CONTROLS AND NOT ONE WORD OF INSTRUCTION.**
+  `⟲ Replay` and `✕ Exit Preview` in a corner, and nothing else over
+  the sky — no step list, no caption, no "click this". Whether the
+  Mystery communicates itself is the whole thing being judged, and a
+  caption would answer the question for the reviewer.
+- **VALID IS NOT PREVIEWABLE, AND THE GAP IS NAMED RATHER THAN
+  APPROXIMATED.** `js/etherGrammar.js` approves a slightly wider
+  vocabulary than `js/etherMystery.js` performs.
+  `labPreviewSupport.js` holds `REPRESENTED` — a **written-down** table
+  of everything the interpreter has a real branch for, written down
+  rather than derived because a check that reads its expectations from
+  the thing it is checking proves nothing, and the suite holds the
+  table against the interpreter rather than the other way round. A
+  candidate naming something unperformable gets **Preview unavailable —
+  unsupported runtime capability**, one plain sentence saying which, no
+  PLAY button, and its 🌟/✨ approvals disabled — kept out of the
+  creative approval path, still reviewable as 🟡 or 🔴. **Inventing a
+  renderer is the one thing this may never do.**
+- **ALL TEN GRAMMARS ARE PREVIEWABLE IN PRINCIPLE**, because the
+  interpreter is grammar-AGNOSTIC — `grammar` is used only for novelty
+  identity and diagnostics. What decides a preview is the CAPABILITIES
+  a candidate names. Measured over the shipped pool: all five active
+  experiences preview, and the one RETIRED entry does not, for
+  `onEngage: 'brighten'` — the rule catching precisely the entry the
+  runtime cannot perform. The unperformable set is four things:
+  `brighten` (no branch), a `glint` residue (always drawn as a mark),
+  `of: 'sky'` or `of` on a non-shard, and any `creationKind` but
+  `story`.
+- **A FINDING WORTH ACTING ON, AND NOT DECIDED HERE.** The Lab's own
+  fixture bank uses `brighten` four times and a glint residue twice, so
+  a third of a fixture batch is unpreviewable — and a generator will do
+  the same. The choice is a product one: teach `js/etherMystery.js`
+  those two capabilities, or narrow `js/etherGrammar.js` to what the
+  runtime performs.
+- **A MYSTERY WITH NOTHING TO DO ENDS ON ITS FIRST FRAME**, and the
+  preview is what found it. With no element armed and no wait pending
+  the interpreter's own `resolveDone()` is satisfied immediately, so an
+  observation-only candidate resolves before a child could look at it —
+  which is exactly what the `notice` grammar exists to make possible.
+  The runtime was NOT changed (this sprint may not), the candidate is
+  performable so it is not refused, and the reviewer is WARNED instead,
+  because a preview that appears and goes reads as a broken preview. A
+  second thing for a product decision to settle.
+- **`minPages` IS FIDELITY, NOT LAZINESS.** The runtime's own story
+  entity carries no page count, so `js/etherCreationLens.js` reports 0
+  pages for every real Spirit in the live Ether too — a candidate
+  asking for a minimum would find no creation in production either, and
+  the preview must not be kinder than the sky. No shipped entry uses
+  it. An ANCHORED candidate is about a place met earlier in the visit
+  and a preview has no earlier, so one is STAGED with the sky's own
+  faint mark through the same `life.markAt()` a residue uses, and the
+  reviewer is told it was staged rather than left to think the sky
+  remembered something.
+- **A REPLAY IS A REPLAY, AND THE RUNTIME'S OWN SEED WAS WHY IT WAS
+  NOT.** A seeded generator replaces `Math.random` before anything is
+  created, so the star field, the creations' places and every
+  interpreter placement follow the preview seed. That was not enough:
+  `vihuplanet/runtime/core/rng.js` mints its session seed on the FIRST
+  call and reads it back afterwards, so a first play and a replay
+  consumed a different number of draws — measured, a ring at 509,516
+  first and 779,544 on every replay after. The preview sets
+  `vp-runtime-seed` itself, and PUTS IT BACK on exit, because
+  `sessionStorage` is per ORIGIN and the Lab page underneath can see
+  it — which this sprint's own check found by going red. **Frame-for-
+  frame identity is NOT claimed**: breathing, drifting and twinkling
+  run on the wall clock, so two runs are the same composition rather
+  than the same film.
+- **DISPOSABLE IS HOW IT IS MOUNTED, NEVER A PROMISE TO TIDY UP.** The
+  preview is an iframe the Lab removes on exit — its own document, its
+  own globals, its own universe. It never loads
+  `assets/ether/experience-pool.js`, so the production pool is out of
+  REACH rather than merely left alone; it makes no network call of any
+  kind, calls no model, and cannot touch a Creator, a card, a memory, a
+  social record or the live Ether, because none of those modules is
+  loaded in it. Loading the Lab still does nothing at all.
+- **A PRE-EXISTING RED CHECK WAS DIAGNOSED AND FIXED, AND IT WAS A
+  RACE.** `ether-mystery`'s `B3` was failing on main before this
+  sprint. Measured across four runs: `stars-that-answer` arms both
+  `tap` and `approach` and places its ring AROUND the look point, so
+  two of its three glints land at prox 0.56–0.69 — past the approach
+  threshold — and the notice grammar engages them on its own for as
+  long as the Traveller counts as having just acted (`still < 3`),
+  which after the threshold click is the first three seconds of every
+  run. So the check tapped an element the sky had already answered:
+  `chosen` was `mystery` and the delta was zero, and whether it passed
+  depended on how fast the page loaded. The check now waits for the
+  Traveller to be still before posing, which ISOLATES the tap — the
+  only thing B3 is about — and asserts the element was unengaged
+  first. **The product behaviour is correct and unchanged**: the child
+  crossed the threshold, the stars are where they are looking, and
+  approach is satisfied.
+- `tools/ether-mystery-lab-test/run-lab-tests.js` grew 99 → 141
+  (`P1`–`P10`), with four load-bearing checks proved by temporary
+  reversion: claiming `brighten` represented → `P2b`/`P2c`/`P2e` red;
+  removing the runtime seed handling → `P5` and `P9b2` red; removing
+  the ripple → mystery wiring → `P6` red; removing the exit teardown →
+  `P9b2` red. Screenshots of three different candidate previews are
+  committed under `tools/ether-mystery-lab-test/shots/`.
+- `tools/ether-mystery-lab/preview.html` · `labPreview.js` ·
+  `labPreviewHost.js` · `labPreviewSupport.js` ·
+  `docs/ETHER_MYSTERY_LAB.md`
 - Out of scope and not implemented: creature encounters as a reward
   system, creature dialogue, a Companion in the Ether, per-Traveller
   encounter history, more activity rows (story hunt, missing

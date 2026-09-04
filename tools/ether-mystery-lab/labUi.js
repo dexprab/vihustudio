@@ -18,6 +18,17 @@
   var Kit = window.EtherMysteryLabKit;
   var Conn = window.LabConnection;
   var Grammar = window.EtherGrammar;
+  var Support = window.LabPreviewSupport;
+  var PreviewHost = window.LabPreviewHost;
+
+  // What the preview demonstrated, per candidate. Page memory only:
+  // it is never written into the session, never exported, and goes
+  // when the tab does.
+  var demonstrated = {};
+  // The preview seed. One per Lab session so a reviewer replaying the
+  // same candidate gets the same sky, and different candidates do not
+  // all land in identical places.
+  var previewSeed = 'lab-' + Date.now();
 
   var $ = function (id) { return document.getElementById(id); };
 
@@ -373,25 +384,97 @@
       var invalidNote = (item.validation && !item.validation.ok)
         ? '<div class="facet"><b>refused</b>' + esc(item.validation.reasons.join(' · ')) + '</div>' : '';
 
+      // THE CREATIVE SURFACE COMES FIRST. A reviewer judging whether a
+      // Mystery is any good should not have to read a schema to do it,
+      // so the card leads with plain language and the way into the
+      // Ether, and every technical facet is folded away underneath.
+      var plain = Support ? Support.plain(c) : null;
+      var sup = (Support && item.validation && item.validation.ok)
+        ? Support.support(c) : null;
+
       card.innerHTML =
-        '<h3>' + esc(c.id || '(no id)') + ' <span class="note">· ' + esc(c.grammar || '?') + ' · ' + esc(c.complexity || '') + '</span></h3>' +
+        '<h3>MYSTERY <span class="note">· ' + esc(c.id || '(no id)') + '</span></h3>' +
         '<div class="meta">' + badges + '</div>' +
-        facet('mystery', d.mystery) +
+        (plain ? '<div class="plain">' + esc(plain.mystery) + '</div>' : '') +
+        '<div class="play-row"></div>' +
+        '<div class="demo"></div>' +
+        '<div class="review"></div>' +
+        '<details class="tech"><summary>technical details</summary>' +
+        facet('grammar', (c.grammar || '?') + ' · ' + (c.complexity || '')) +
         facet('challenge', d.challenge) +
         facet('child action', d.action) +
         facet('discovery', d.discovery) +
         facet('next mystery', d.next) +
         facet('ingredients', JSON.stringify(c.ingredients || {})) +
         invalidNote + qual +
-        '<details><summary>candidate JSON</summary><pre>' + esc(JSON.stringify(c, null, 2)) + '</pre></details>' +
-        '<div class="review"></div>';
+        '<pre>' + esc(JSON.stringify(c, null, 2)) + '</pre></details>';
 
-      card.querySelector('.review').appendChild(reviewControls(item));
+      card.querySelector('.play-row').appendChild(playControl(item, sup));
+      card.querySelector('.review').appendChild(reviewControls(item, sup));
+      renderDemonstration(card, item);
       host.appendChild(card);
     });
   }
 
-  function reviewControls(item) {
+  // ▶ PLAY IN ETHER — or the honest refusal. A candidate naming a
+  // capability the interpreter cannot perform is never approximated:
+  // it says so, and it is kept out of the creative approval path.
+  function playControl(item, sup) {
+    var wrap = document.createElement('div');
+    if (!PreviewHost || !Support) {
+      wrap.innerHTML = '<span class="note">Preview unavailable — the preview is not loaded.</span>';
+      return wrap;
+    }
+    if (!(item.validation && item.validation.ok)) {
+      wrap.innerHTML = '<span class="unavail">Preview unavailable — the sky refuses this one at the door.</span>';
+      return wrap;
+    }
+    if (sup && !sup.ok) {
+      wrap.innerHTML = '<span class="unavail">Preview unavailable — unsupported runtime capability</span>' +
+        '<div class="hint">' + esc(Support.whyUnavailable(sup.reasons).join('; and ')) + '</div>';
+      wrap.setAttribute('data-preview', 'unavailable');
+      return wrap;
+    }
+    var b = document.createElement('button');
+    b.className = 'primary play';
+    b.textContent = '▶ PLAY IN ETHER';
+    b.setAttribute('data-play', item.labId);
+    b.addEventListener('click', function () {
+      PreviewHost.open(item.candidate, previewSeed, function (report) {
+        if (report) demonstrated[item.labId] = report;
+        renderCandidates();
+      });
+    });
+    wrap.appendChild(b);
+    if (sup && sup.notes.length) {
+      var n = document.createElement('div');
+      n.className = 'hint';
+      n.textContent = sup.notes.join(' ');
+      wrap.appendChild(n);
+    }
+    return wrap;
+  }
+
+  // Secondary, and only after the reviewer has been there: what the
+  // preview actually did, in the same plain language.
+  function renderDemonstration(card, item) {
+    var rep = demonstrated[item.labId];
+    var host = card.querySelector('.demo');
+    if (!rep || !host) return;
+    var h = rep.happened || {};
+    var ending = h.ending === 'discovery'
+      ? 'Something was found' + (h.discovery ? ' — ' + h.discovery.replace(/-/g, ' ') : '') + '.'
+      : h.ending ? 'It stayed a question.' : 'It was still open when you left.';
+    host.innerHTML =
+      '<div class="demo-title">What the preview demonstrated</div>' +
+      facet('mystery', rep.mystery) +
+      facet('child action', rep.action) +
+      facet('discovery', rep.discovery) +
+      facet('next mystery', rep.next) +
+      facet('what happened', ending);
+  }
+
+  function reviewControls(item, sup) {
     var wrap = document.createElement('div');
     if (item.review) {
       var summary = document.createElement('div');
@@ -409,6 +492,13 @@
         var b = document.createElement('button');
         b.textContent = pair[1];
         b.setAttribute('data-classify', pair[0]);
+        // Kept out of the creative approval path: a candidate nobody
+        // can SEE must not be approved on the strength of its JSON.
+        if (sup && !sup.ok &&
+            (pair[0] === 'exceptional' || pair[0] === 'good')) {
+          b.disabled = true;
+          b.title = 'Preview unavailable — unsupported runtime capability';
+        }
         b.addEventListener('click', function () {
           var reasons = Array.prototype.slice.call(wrap.querySelectorAll('input[data-reason]:checked'))
             .map(function (c) { return c.getAttribute('data-reason'); });

@@ -117,6 +117,150 @@ product owner, recorded as open rather than papered over with a fake
 list. **No cell coordinates ever reach the Lab, the page, a prompt or
 an export.**
 
+## ▶ PLAY IN ETHER — the visual experience preview
+
+The Lab's primary creative review surface. A candidate card leads with
+**MYSTERY**, a plain-language description, and one button; the reviewer
+presses it and experiences the candidate inside a real Ether, then
+judges it. Nothing on that path requires reading JSON, a grammar id, a
+capability name or a schema field — the technical facets are folded
+into a `technical details` disclosure beneath the judgement controls.
+
+**It is the real Ether, not a picture of one.** `preview.html` loads
+the whole of `vihuplanet/runtime/`, `js/etherLife.js`,
+`js/etherRipple.js` and `js/etherMystery.js` — unmodified — builds a
+controlled universe with three fixture creations, and hands the
+candidate to the **real interpreter** through the **same seam the
+Experience Composer uses**: `candidates()` for availability, then
+`begin(key, ctx)`. Every element, every drawing, every outcome and
+every residue is the interpreter's own. There is no second Mystery
+engine and no second renderer, and the suite fails if the preview ever
+grows one.
+
+**What is deliberately NOT mounted is the Composer.** The Composer owns
+WHEN a mystery may be offered — phase, rarity, novelty, quiet, the
+visit's temperament — and a review has none of those questions. The
+reviewer's press IS the "when", exactly as `perform()` is in the live
+sky. The creature layer mounts CONDUCTED, so nothing crosses the sky
+unasked and the preview is about the candidate rather than about
+whatever else happened to pass; its `bloomAt()` and `markAt()` are
+live, because the interpreter reaches for them on a discovery and a
+residue.
+
+**The touch chain is production's.** A tap reaches the ripple layer,
+and the posed mystery is asked FIRST about where it landed — the same
+order `js/etherExperience.js` uses. Suite-proved by removing the wiring
+and watching the check go red.
+
+**No instruction, ever.** Two navigation controls in a corner —
+`⟲ Replay` and `✕ Exit Preview` — and nothing else over the sky. No
+step list, no caption, no "click this": whether the Mystery
+communicates itself is the whole thing being judged.
+
+**Deterministic.** A seeded generator replaces `Math.random` for the
+whole run before anything is created, so the same candidate and seed
+lay the sky out identically — the star field, the creations' places and
+every placement the interpreter draws. The preview also SETS
+`vp-runtime-seed` itself: `vihuplanet/runtime/core/rng.js` mints its
+session seed on the first call and reads it back afterwards, so a first
+play and a replay consumed a different number of draws and produced
+different skies (measured: a ring at 509,516 first and 779,544 on every
+replay). That key is put back on exit, because `sessionStorage` is per
+ORIGIN and the Lab page underneath can see it. What is NOT claimed is
+frame-for-frame identity: breathing, drifting and twinkling run on the
+wall clock, so two runs are the same composition rather than the same
+film.
+
+**Isolated and disposable.** The preview is an iframe the Lab removes
+on exit — a separate document with its own globals, its own universe
+and its own copy of the providers. It never loads
+`assets/ether/experience-pool.js`, so the production pool is out of
+reach rather than merely left alone; it makes no network call of any
+kind, calls no model, and cannot touch a Creator, a card, a memory, a
+social record or the live Ether, because none of those modules is
+loaded in it.
+
+### Preview unavailable — unsupported runtime capability
+
+`labPreviewSupport.js` holds `REPRESENTED`: a **written-down** table of
+everything `js/etherMystery.js` has a real branch for. It is written
+down rather than derived, because a check that reads its expectations
+from the thing it is checking proves nothing — and the suite holds the
+table against the interpreter rather than the other way round.
+
+`js/etherGrammar.js` approves a slightly wider vocabulary than
+`js/etherMystery.js` performs, and the gap is not a bug in either. What
+matters is that it is never papered over. A candidate naming something
+unperformable gets **Preview unavailable — unsupported runtime
+capability**, one plain sentence saying which, no PLAY button, and its
+🌟/✨ approvals disabled — kept out of the creative approval path,
+still reviewable as 🟡 or 🔴.
+
+| Capability | Represented? |
+|---|---|
+| shows: shard · mark · glint · veil · link | all five |
+| places: near-look · far · scattered · ring · at-anchor · toward-creation | all six |
+| actions: tap · approach · dwell · return · wait | all five |
+| responses: gather · link · reveal · drift-away · dissolve | five of six |
+| responses: **brighten** | **no branch — unpreviewable** |
+| outcomes: discovery · unresolved · dissolve | all three |
+| discoveries: creation-revealed · wonder · place | all three |
+| residue show: mark | yes |
+| residue show: **glint** | **always drawn as a mark — unpreviewable** |
+| `of: 'cover'` on a shard | yes |
+| `of: 'sky'`, or `of` on a non-shard | **unpreviewable** |
+| `creationKind: 'story'` | yes (the only kind the Ether holds) |
+| `creationKind:` anything else | **unpreviewable** |
+| `ingredients.minPages` above 0 | **unpreviewable** — see below |
+| `ingredients.anchor` | yes, with an earlier place STAGED and disclosed |
+
+All ten grammars are previewable in principle: the interpreter is
+grammar-agnostic, and `grammar` is used only for novelty identity and
+diagnostics. What decides a preview is the CAPABILITIES a candidate
+names, not its grammar. Measured over the shipped pool: all five active
+experiences preview; the one retired entry does not, for `brighten` —
+which is the rule catching precisely the entry the runtime cannot
+perform.
+
+**A finding worth acting on.** The Lab's own fixture bank uses
+`brighten` four times and a glint residue twice, so a third of a
+fixture batch is unpreviewable. A generator will do the same. The
+choice is a product one: teach `js/etherMystery.js` those two
+capabilities, or narrow `js/etherGrammar.js` to what the runtime
+performs. Nothing was decided here.
+
+**`minPages` is fidelity, not laziness.** The runtime's own story
+entity (`storyEntity.js`) carries no page count, so
+`js/etherCreationLens.js` reports 0 pages for every real Spirit in the
+live Ether too. A candidate asking for a minimum page count would find
+no creation in production either, and the preview must not be kinder
+than the sky. No entry in the shipped pool uses it.
+
+**A mystery with nothing to do ends on its first frame.** Measured in
+the preview, which is what a preview is for: with no element armed and
+no wait pending, the interpreter's own `resolveDone()` is satisfied
+immediately and the whole experience resolves before a child could look
+at it. That is the runtime's behaviour and this sprint did not change
+it. The candidate is performable, so it is not refused — the reviewer
+is warned instead, because a preview that appears and goes reads as a
+broken preview. A second thing for a product decision to settle: the
+`notice` grammar's whole point is something sitting there to be
+noticed, and today an observation-only candidate cannot.
+
+**Staged, not faked.** An anchored candidate is ABOUT a place met
+earlier in the visit, and a preview has no earlier — so one is staged
+with the sky's own faint mark, through the same `life.markAt()` call a
+residue uses, and the reviewer is told it was staged rather than left
+to think the sky remembered something.
+
+### After the preview
+
+Exiting shows **What the preview demonstrated** — Mystery · Child
+action · Discovery · Next Mystery, in the same plain language, plus
+what actually happened (found / stayed a question / still open). It is
+secondary information, shown after the fact, and nothing of it appears
+over the sky.
+
 ## The candidate lifecycle — VALID ≠ APPROVED
 
     generated → validated | invalid → quality-reviewed → reviewed
@@ -182,7 +326,8 @@ bucket on top.
 `js/etherGrammar.js`, `js/etherCreationLens.js`, `js/etherMystery.js`,
 `js/etherExperience.js`, `js/etherLife.js`, `js/etherDiscovery.js`,
 `js/etherRipple.js` and `assets/ether/experience-pool.js` are all
-**byte-identical to 0766**. The Composer stays deterministic, the
+**byte-identical to 0766** — the preview sprint changed no production
+file either, and mounts them exactly as `index.html` does. The Composer stays deterministic, the
 child's tap reaches only local code, and the full Ether suite wall
 runs unchanged. The candidate schema was deliberately NOT extended for
 constellations: a constellation informs the creative content and rides
@@ -195,6 +340,9 @@ what cannot be performed.
 
 `tools/ether-mystery-lab/index.html` · `labUi.js` · `labKit.js` ·
 `labConnection.js` · `labConstellations.js` · `fixtures.js` ·
-`run-lab.js` · `supabase/functions/lab-generate/index.ts` ·
+`run-lab.js` · **`preview.html` · `labPreview.js` ·
+`labPreviewHost.js` · `labPreviewSupport.js`** ·
+`supabase/functions/lab-generate/index.ts` ·
 `supabase/DEPLOY_lab_generate.md` ·
-`tools/ether-mystery-lab-test/run-lab-tests.js` (98)
+`tools/ether-mystery-lab-test/run-lab-tests.js` (141) ·
+`tools/ether-mystery-lab-test/shots/`
