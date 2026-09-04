@@ -286,8 +286,12 @@ brief's own instruction.
    something behind* (a faint mark where a wonder bloomed, a
    direction hinted at where a trail ended). Cheap — `markAt` already
    exists; what is missing is the Composer choosing to chain it, and
-   a rule for how rarely. **Recommended next step** (see the report's
-   final section).
+   a rule for how rarely.
+   **BUILT — the Generative Mystery & Challenge Engine** (build 0766,
+   `docs/ETHER_GENERATIVE_ENGINE.md`): a validated experience may
+   declare residue, its ending leaves a long faint mark, and the
+   Composer records the place as a `residue` anchor the echo patterns
+   and `at-anchor` experiences can answer.
 2. **Child-first connections.** Anchors let the SKY connect places;
    there is no way for the composition to notice that the CHILD
    returned somewhere on their own and let the sky acknowledge it.
@@ -336,6 +340,9 @@ that already exists.
 ---
 
 *Companion documents:* `docs/ETHER_EXPERIENCE_ARCHITECTURE.md` (the
-Composer itself) · CLAUDE.md → Decision 58 (the locked product
+Composer itself) · `docs/ETHER_GENERATIVE_ENGINE.md` (the generative
+Mystery/Challenge engine built on this foundation: grammar vocabulary,
+candidate schema, validator, approved pool, interpreter, offline
+generation lab) · CLAUDE.md → Decision 58 (the locked product
 decisions) · `assets/canon/vihuplanet.canon.json` → section 23 (what
 a Companion may say about any of this).

@@ -209,6 +209,21 @@
         performed: 0
       };
     });
+    // Generated experiences arrive as data (js/etherMystery.js reads
+    // the approved pool), so their visit temperament is drawn lazily,
+    // the first time each grammar is even considered — same rules,
+    // same rarity discipline, one map.
+    function visitFor(id, rarity) {
+      if (!visitPatterns[id]) {
+        var tier = RARITY[rarity] || RARITY.common;
+        visitPatterns[id] = {
+          present: Math.random() < tier.visit,
+          lean: rand(0.75, 1.3),
+          performed: 0
+        };
+      }
+      return visitPatterns[id];
+    }
     var tempo = rand(0.85, 1.2);   // the visit's overall pace lean
 
     // ---------- world state (session-only, dies with the page) ----
@@ -240,6 +255,15 @@
     var arrivalDone = false;
 
     var camScratch = { x: 0, y: 0 };
+
+    // The generated-mystery provider (js/etherMystery.js), when its
+    // script is here. It supplies candidate rows and performs chosen
+    // ones; every WHETHER/WHEN decision stays in this file — the
+    // provider has no scheduler and begins nothing by itself.
+    var mystery = (opts.mystery && !opts.mystery.quiet) ? opts.mystery : null;
+    function mysteryLive() {
+      try { return !!(mystery && mystery.live()); } catch (e) { return false; }
+    }
 
     function log(entry) {
       entry.t = Math.round(time * 10) / 10;
@@ -400,12 +424,27 @@
       if (!phaseFits(p, ph)) return 'wrong-phase';
       if (p.family === 'creature' && life.active()) return 'sky-occupied';
       if (p.family === 'creature' && life.trail()) return 'trail-live';
+      if (mysteryLive()) return 'mystery-live';
       if (p.id === 'odd-stars' && time - lastMarkAt < 60) return 'mark-too-recent';
       if (p.id === 'reveal') {
         var count = 0;
         try { count = universe.stories.count(); } catch (e) {}
         if (count < 3) return 'nothing-to-reveal';
       }
+      return null;
+    }
+
+    // Eligibility for a generated-mystery row — the same questions the
+    // pattern rows answer, asked of data that arrived from the pool.
+    function mysteryEligible(row, ph) {
+      var vp = visitFor(row.id, row.rarity);
+      if (!vp.present) return 'not-in-this-visit';
+      if (row.oncePerVisit && vp.performed > 0) return 'already-happened';
+      if (row.notBefore && time < row.notBefore) return 'too-early';
+      if (row.needsAnchor && !usableAnchor(row.needsAnchor)) return 'no-old-place-yet';
+      if (!phaseFits(row, ph)) return 'wrong-phase';
+      if (life.active() || life.trail()) return 'sky-occupied';
+      if (mysteryLive()) return 'mystery-live';
       return null;
     }
 
@@ -466,6 +505,37 @@
         });
       });
 
+      // Generated experiences join the same weighing — rows of DATA
+      // from the approved pool, never a second decision path. The
+      // novelty identity of a generated row is its GRAMMAR, so the
+      // Ether may reuse an ingredient freely and is still punished
+      // for repeating a kind of experience (the novelty rule, held).
+      if (mystery) {
+        var mm = null;
+        try { mm = mystery.candidates(); } catch (eM) { mm = null; }
+        if (mm) {
+          (mm.refused || []).forEach(function (r) {
+            entry.rejected.push({ id: 'mystery:' + r.id, because: r.because });
+          });
+          (mm.offer || []).forEach(function (row) {
+            var no = mysteryEligible(row, ph);
+            if (no) { entry.rejected.push({ id: row.id, because: no }); return; }
+            var tier = RARITY[row.rarity] || RARITY.uncommon;
+            var vp = visitFor(row.id, row.rarity);
+            var cand = { id: row.id, mystery: row, familyId: null, outcome: row.outcome };
+            var fresh = novelty(cand);
+            cand.appeal = tier.weight * vp.lean * fresh * rand(0.85, 1.15);
+            cand.fresh = fresh;
+            pool.push(cand);
+            entry.candidates.push({
+              id: row.id + '(' + row.key + ')',
+              appeal: Math.round(cand.appeal * 100) / 100,
+              fresh: Math.round(fresh * 100) / 100
+            });
+          });
+        }
+      }
+
       var best = null;
       for (var i = 0; i < pool.length; i++) {
         if (!best || pool[i].appeal > best.appeal) best = pool[i];
@@ -485,11 +555,13 @@
         return null;
       }
 
-      entry.chosen = best.id + (best.familyId && !best.pattern.creature
-        ? ':' + best.familyId : '');
+      entry.chosen = best.mystery
+        ? best.id + '(' + best.mystery.key + ')'
+        : best.id + (best.familyId && !best.pattern.creature
+            ? ':' + best.familyId : '');
       entry.why = 'freshest fit for ' + ph +
                   ' (appeal ' + best.appeal.toFixed(2) + ')';
-      entry.expects = best.pattern.expects;
+      entry.expects = best.mystery ? best.mystery.expects : best.pattern.expects;
       entry.outcome = best.outcome;
       log(entry);
       perform(best);
@@ -498,9 +570,36 @@
 
     // ---------- performing ----------
     function perform(cand) {
+      var look = lookPoint();
+
+      // A generated experience: hand the provider the chosen row and
+      // the world context it may use (the look point; an old place,
+      // when the row asked for one). The provider performs; this
+      // composer records, exactly as it does for a creature.
+      if (cand.mystery) {
+        var row = cand.mystery;
+        var mctx = { look: look };
+        var mexp = {
+          pattern: row.id, familyId: null, outcome: row.outcome,
+          sector: sectorNow, interaction: 'none', depth: 'offered'
+        };
+        if (row.needsAnchor) {
+          var man = usableAnchor(row.needsAnchor);
+          if (!man) return;
+          mctx.anchor = { x: man.x, y: man.y };
+          mexp.viaAnchor = man.why;
+        }
+        var began = null;
+        try { began = mystery.begin(row.key, mctx); } catch (eB) { began = null; }
+        if (!began) return;
+        visitFor(row.id, row.rarity).performed++;
+        liveExperience = mexp;
+        remember(mexp);
+        return;
+      }
+
       var p = cand.pattern;
       var vp = visitPatterns[p.id];
-      var look = lookPoint();
       var exp = {
         pattern: p.id, familyId: cand.familyId || null,
         outcome: p.outcome, sector: sectorNow, interaction: 'none',
@@ -569,6 +668,9 @@
     // the composer offers it as one mechanism among many, and only
     // in the orientation the policy was written for.
     function tickBeckon() {
+      // Never two invitations at once: a posed mystery is already the
+      // sky asking a question.
+      if (mysteryLive()) return;
       var b = life.beckon();
       if (!b || b.stopped || b.active) return;
       var given = b.given || 0;
@@ -710,6 +812,48 @@
       });
     }
 
+    // ---------- generated mysteries: the provider reports back ----------
+    //
+    // The provider performs and this composer keeps the record — the
+    // same division the creature layer already lives by. A resolved
+    // mystery is a find (the sky rests after it, exactly as after a
+    // trail's end); a dissolved one is a question that stays open and
+    // costs nothing; residue is a PLACE — an anchor a later experience
+    // may echo, which is what lets one discovery seed the next mystery
+    // without any of it being scripted.
+    if (mystery && mystery.on) {
+      mystery.on('mystery:engaged', function () {
+        if (liveExperience && liveExperience.pattern.indexOf('mystery:') === 0) {
+          liveExperience.interaction = 'engaged';
+          liveExperience.depth = 'interacted';
+        }
+      });
+      mystery.on('mystery:resolved', function (p) {
+        if (liveExperience && liveExperience.pattern.indexOf('mystery:') === 0) {
+          liveExperience.depth = 'discovered';
+          liveExperience.answer = p && p.discovery;
+          liveExperience = null;
+        }
+        found++;
+        chain++;
+        restUntil = time + rand(40, 90);
+        if (p && p.storyId) bumpStory(p.storyId, 'noticed');
+        if (p && p.at) addAnchor(p.at.x, p.at.y, 'mystery');
+        drawGap();
+      });
+      mystery.on('mystery:dissolved', function (p) {
+        if (liveExperience && liveExperience.pattern.indexOf('mystery:') === 0) {
+          if (p && p.engaged) liveExperience.depth = 'interacted';
+          liveExperience = null;
+        }
+        chain = 0;
+        drawGap();
+      });
+      mystery.on('mystery:residue', function (p) {
+        if (p && typeof p.x === 'number') addAnchor(p.x, p.y, 'residue');
+      });
+    }
+
     // ---------- the touch: the ripple asked; the sky MAY answer ----
     //
     // A Traveller's tap on empty Ether is acknowledged by the ripple
@@ -760,6 +904,19 @@
       var ph = phase();
       var entry = { touch: true, phase: ph, chosen: null };
       if (!p || typeof p.x !== 'number' || typeof p.y !== 'number') return null;
+      // A tap that lands on a posed mystery belongs to the mystery —
+      // asked FIRST, before any of this composer's own touch answers,
+      // the same ownership rule a creature's hit region already has.
+      if (mysteryLive()) {
+        var claimed = false;
+        try { claimed = !!mystery.touchAt(p.x, p.y); } catch (eT) {}
+        if (claimed) {
+          entry.chosen = 'mystery';
+          entry.why = 'the touch belongs to the posed mystery';
+          log(entry);
+          return null;
+        }
+      }
       if (ph === 'arrival' || ph === 'orientation') {
         entry.chosen = 'ripple-only';
         entry.why = 'the ' + ph + ' is still speaking';
@@ -970,6 +1127,8 @@
           state: this.state ? this.state() : null,
           decisions: decisions.slice(),
           nextOfferIn: Math.max(0, Math.round((gapTarget - time) * 10) / 10),
+          mystery: (mystery && mystery.diagnostics)
+            ? mystery.diagnostics() : null,
           touch: {
             readyIn: Math.max(0, Math.round((touchReadyAt - time) * 10) / 10),
             pending: pendingTouch ? pendingTouch.id : null,

@@ -7753,6 +7753,108 @@ leads somewhere.
   top-level `return` at the head of traveller.js on restore, legal to
   `node --check`'s CommonJS reading and a SyntaxError in the browser.
   Detail: `docs/ETHER_EXPERIENCE_ARCHITECTURE.md` §8.
+- **THE ETHER CAN NOW GENERATE MYSTERIES, AND NO MODEL CONDUCTS IT**
+  (build 0766, the Generative Mystery & Challenge Engine). The
+  foundation document's successor: not a catalogue of activities but a
+  VOCABULARY the Ether makes them from. Ten **experience grammars**
+  (`js/etherGrammar.js` — reconstruct · connect · uncover · transform ·
+  trace · complete · experiment · notice · return · echo), a strict
+  candidate SCHEMA, and a validator nothing may pass around: deny by
+  shape (an unknown key at any depth is refused by name — Decision 33's
+  own discipline), forbidden keys refuse a candidate whole (stars,
+  card, owner, email, memories, orbit, circle…), every string is
+  scanned for executable shapes, gamification, frightening content and
+  instruction-speak, and an experience that needs a capability outside
+  the approved lists is REJECTED, never worked around.
+- **THE RESPONSIBILITIES ARE FOUR, AND THEY STAY SEPARATE.** The child
+  experiences the Ether; the Composer conducts it (generated
+  experiences join `decide()`'s one weighing as DATA rows — same
+  rarity, same phases, same quiet line, availability refusals named in
+  the decision log); an asynchronous OFFLINE generator may expand what
+  it can express (`tools/ether-mystery-lab/` — the runtime never calls
+  a model, never waits on a network, and a child's tap reaches only
+  local code); the validator protects it. No MysteryBrain, no second
+  scheduler, no runtime generation queue, no per-child mystery state.
+- **THE APPROVED POOL IS A COMMITTED FILE, the canon-repository
+  pattern** (`assets/ether/experience-pool.js`): validated experience
+  DATA, never code, reviewed in a commit, re-validated AGAIN at load
+  (a poisoned entry is refused with its reasons named and can never be
+  offered — proved). Lifecycle: generate → validate → approve →
+  activate → retire/reject; a retired entry stays for the record with
+  its reason written down and is never selectable. Five active
+  experiences across five grammars ship, honestly labelled `fixture` —
+  **no model is reachable from the build environment and no output was
+  passed off as generated.** Demand is a question the lab answers
+  (pool thin? grammars unused? one dominating?), never a clock.
+- **ONE CANDIDATE, MANY EXPERIENCES — measured, which is the whole
+  generative claim.** A creation-bound experience binds at begin time
+  to a real public creation (through `js/etherCreationLens.js`, the
+  one projector: a whitelist BUILT field by field from the shared
+  feed's already-public facts — cover, title, page count — with
+  nothing of the maker's surviving into it, and a generator sees even
+  less: kind, page count, that a cover exists). The same reconstruct
+  candidate over two creations and two world states produced two
+  materially different experiences — different creation, different
+  places on the sky, zero bespoke activity code — and the same
+  creation under another grammar is a different question entirely.
+- **THE INTERPRETER IS A PROVIDER, exactly as the creature layer is**
+  (`js/etherMystery.js`): it owns HOW a posed mystery looks — cover
+  shards, faint stars, glints, a veil, joining lines, one canvas
+  beneath the story plane — and begins NOTHING by itself. Engagement
+  is the approved interaction vocabulary only (tap · approach · dwell
+  · return · wait — touch first-class, generous radius, no hover, no
+  dexterity, no deadlines: the validator refuses `seconds` on a tap by
+  name). The notice grammar is the creatures' own: nearness counts
+  only after a recent act. A tap on a posed mystery belongs to the
+  mystery — the Composer asks it FIRST, before its own touch answers,
+  a new link in the ownership chain rather than a rival.
+- **NOT EVERY MYSTERY RESOLVES, STRUCTURALLY.** Outcomes are drawn
+  from a candidate's own `possible` set — a discovery
+  (`creation-revealed` sends a travelling light to the creation's own
+  Spirit and rests a halo there, drawn on the layer's canvas with
+  nothing written to any entity; `wonder` blooms through the life
+  layer), or `unresolved`, a first-class ending. An untaken mystery
+  dissolves on a bounded lifetime — a question is never a debt — and
+  a resolved one rests the sky exactly as a trail's end does. An
+  ending may leave RESIDUE — a long faint mark whose place becomes a
+  `residue` anchor — which closes the foundation document's own first
+  gap: Mystery → Discovery → something remains → new Mystery is now a
+  seam (`echo-bloom`, `convergence` and `at-anchor` experiences can
+  answer the place), never a guarantee.
+- **NOVELTY'S IDENTITY FOR A GENERATED ROW IS ITS GRAMMAR**
+  (`mystery:<grammar>`), riding the Composer's existing history ring —
+  so the Ether may reuse an ingredient freely and is still punished
+  for repeating a KIND of experience. Proved by reverting: novelty
+  bypassed → the same grammar plays twice running and the check goes
+  red. And quiet held: 72–77% of a simulated two-hour visit holds
+  nothing live, pool attached, with zero network requests counted.
+- **THE STAGE COSTS NOTHING WHILE EMPTY, and that was a measured
+  lesson.** The first build cleared its full-screen canvas every idle
+  frame — real fill cost on a phone, paid for nothing — and the
+  cheapest fix was honesty: clear once when the last thing fades,
+  then stop. The touch walkthrough also re-taught the concurrent-
+  worktree lesson the hard way: port 8903 was serving ANOTHER
+  worktree's checkout, so two "failures" were measured against a tree
+  without this sprint in it. Verified by reading the server process's
+  own working directory; the suite re-run on an owned port. The
+  walkthrough remains load-flaky in this container — the pristine base
+  tree failed a step under the same load — and that is disclosed
+  rather than papered over.
+- **KNOWLEDGE SYNC (Decision 57).** Canon section 23 gained one truth:
+  a mystery can gather around a shared creation — pieces that belong
+  together, a soft light with something behind it, a path of small
+  lights — and the Ether never breaks what someone made; it only
+  wonders about it. Generated copies rebuilt; Studio Knowledge and
+  Live Context untouched.
+- `tools/ether-mystery-test/` (63) proves it four ways — statics,
+  the interpreter in Node against fixture worlds, the full conducted
+  stack across simulated hours, and the real page under mouse and
+  finger — with five load-bearing checks proved by temporary
+  reversion (validator waved through → S8+C6; novelty bypassed → C2c;
+  touch hand-off removed → C4; lifetime bound removed → G8; retired
+  made selectable → S6). The lab's sixteen adversarial candidates are
+  each refused with the reason the check names.
+- Architecture: `docs/ETHER_GENERATIVE_ENGINE.md`.
 - Out of scope and not implemented: creature encounters as a reward
   system, creature dialogue, a Companion in the Ether, per-Traveller
   encounter history, more activity rows (story hunt, missing
@@ -7760,10 +7862,15 @@ leads somewhere.
   star-trail is now its second real row), and bringing
   non-Story creations into the Ether feed (a composer target already
   carries `kind`, which is the seam for it; Show snapshots are private
-  gifts and stay out — Decision 56). The full Mystery/Challenge
+  gifts and stay out — Decision 56). ~~The full Mystery/Challenge
   system is NOT built — this sprint is its foundation, and
   `docs/ETHER_MYSTERY_CHALLENGE_ARCHITECTURE.md` §7 is the honest
-  list of what is still missing.
+  list of what is still missing.~~ The generative engine above now
+  stands on that foundation; §7's gaps 2–4 (child-first connections,
+  noticed-ness for the sky patterns, behaviour-driven long-session
+  depth) remain open, and a real model has still never produced a
+  candidate — connecting one is an offline/deploy-time step, never a
+  runtime one.
 - `js/etherLife.js` · `js/etherDiscovery.js` · `js/etherExperience.js` ·
   `js/etherRipple.js` · `js/vihuplanetHome.js` ·
   `docs/ETHER_EXPERIENCE_ARCHITECTURE.md` ·

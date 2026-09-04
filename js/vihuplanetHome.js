@@ -368,10 +368,24 @@
           // production wiring below runs exactly as it always has —
           // the fallback is the baseline, not a broken sky.
           var life = null;
+          var mysteryLayer = null;
           if (window.EtherExperience && window.EtherDiscovery) {
             life = EtherLife.mount(universe, { conducted: true });
+            // The generated-mystery provider (js/etherMystery.js):
+            // performs validated experience DATA from the approved
+            // pool, under the Composer's baton — it has no scheduler
+            // of its own, so without a Composer it would simply never
+            // begin anything. Absent-not-broken if any script or the
+            // pool never loaded.
+            if (life && window.EtherMystery && window.EtherGrammar &&
+                window.EtherCreationLens) {
+              try {
+                mysteryLayer = EtherMystery.mount(universe, { life: life });
+              } catch (eMy) { mysteryLayer = null; }
+            }
             var exp = life
-              ? EtherExperience.mount(universe, life, { ripple: rippleLayer })
+              ? EtherExperience.mount(universe, life,
+                  { ripple: rippleLayer, mystery: mysteryLayer })
               : null;
             if (exp) {
               window.vihuEtherComposer = exp;
@@ -382,6 +396,12 @@
               // sky forever. Stand it back up autonomous.
               try { life.destroy(); } catch (e2) {}
               life = null;
+            }
+            if (!exp && mysteryLayer) {
+              // No conductor means nothing could ever begin a mystery;
+              // take the stage down rather than leave an idle canvas.
+              try { mysteryLayer.destroy(); } catch (e3) {}
+              mysteryLayer = null;
             }
           }
           if (!life) {
@@ -395,6 +415,7 @@
           // on a being?", so it is told the final handle.
           if (rippleLayer && rippleLayer.setLife) rippleLayer.setLife(life);
           window.vihuEtherRipple = rippleLayer;
+          window.vihuEtherMystery = mysteryLayer;
           window.vihuEtherLife = life;
         }
       } catch (e) {}

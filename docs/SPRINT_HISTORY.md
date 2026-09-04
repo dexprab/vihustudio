@@ -11985,3 +11985,36 @@ Canon untouched — input mechanics are not worldview. Suite 43→58
 (T1–T6; six fixes proved by reverting, and the revert tool's own ''
 lesson recorded in it). Detail:
 `docs/ETHER_EXPERIENCE_ARCHITECTURE.md` §8.
+
+## Build 0766 — The Generative Mystery & Challenge Engine
+
+The Ether can now continually create Mystery and Challenge experiences
+from a vocabulary instead of a catalogue, with no model anywhere in a
+child-facing path. Ten experience GRAMMARS, a strict candidate schema
+and a deny-by-shape validator (`js/etherGrammar.js` — forbidden keys
+refuse a candidate whole, every string scanned for executable shapes,
+gamification, frightening content and instruction-speak, unavailable
+capabilities rejected never worked around); one privacy projector from
+a public creation to its creative structure (`js/etherCreationLens.js`);
+a committed, honestly fixture-labelled approved pool re-validated at
+load (`assets/ether/experience-pool.js`, the canon-repository pattern —
+five active experiences across five grammars, one retired with its
+reason written down); an interpreter that performs validated DATA as a
+provider under the Composer's baton (`js/etherMystery.js` — no
+scheduler, one live mystery, bounded everything, touch-first
+engagement through the creatures' own notice grammar, a tap on a posed
+mystery claimed through the Composer's ownership chain, unresolved a
+first-class ending, residue anchors closing the foundation's
+"discovery that poses the next question" gap); and an offline
+generation lab (`tools/ether-mystery-lab/` — the contract, the demand
+verdict, sixteen adversarial fixtures each refused by name; no model
+reachable here, and none claimed). One reconstruct candidate over
+different creations and world states measurably produced materially
+different experiences with zero bespoke activity code; novelty keys on
+GRAMMAR so ingredients repeat and experience patterns do not; 72–77%
+of a simulated two-hour visit stayed quiet with zero network requests.
+Suite: `tools/ether-mystery-test/` (63; five reversion proofs), plus
+the full Ether/companion regression wall green — and the concurrent-
+worktree port lesson met again (8903 was serving another agent's
+checkout; verified via the server process's cwd, re-run on an owned
+port). Detail: `docs/ETHER_GENERATIVE_ENGINE.md`.
