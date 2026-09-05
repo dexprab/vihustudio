@@ -8227,6 +8227,135 @@ leads somewhere.
   Ether).
 - `tools/ether-mystery-lab/labResearch.js` ·
   `docs/ETHER_MYSTERY_LAB.md`
+- **THE MODEL WAS ASKED FOR SOMETHING THE SCHEMA CANNOT HOLD** (build
+  0767, the Contract Repair sprint). The diagnosis of the 10/10 invalid
+  Pegasus batch found its root cause: the generation preset explicitly
+  offered a CONSTELLATION as an ingredient, and the candidate schema has
+  no representation for a sky figure at all — `SCHEMA.top` and
+  `SCHEMA.ingredients` know only `creation` and `anchor`. **The model
+  could not legally express the ingredient it was told to use**, and the
+  most natural key name for it, `constellation`, is a FORBIDDEN privacy
+  key. Every candidate that tried died on the first unknown top-level
+  key, which is also why each one reported a single reason.
+- **THE REPAIR IS A PROMPT REPAIR, NOT A SCHEMA ONE, AND THAT IS THE
+  DECISION.** Phase 1 required a truthful contract and Phase 2 forbade
+  adding a constellation field yet — so the honest reading is that the
+  contract must state what today's schema can express: **a mystery is
+  about a creation or an anchor; a sky figure, an Ether being and an
+  unexplained phenomenon are INSPIRATION ONLY** — they may colour the
+  imagery, the arrangement and the wording, and naming one anywhere
+  refuses the candidate. `directives.skyFigures` became
+  `directives.inspirationOnly` carrying that sentence with it, and
+  `directives.ingredientsAvailable` names the two that are real. **This
+  is an interim state forced by the contract, never the product
+  decision** — Option B below stays fully open.
+- **THE SCHEMA IS SHOWN AS A SCHEMA NOW.** It was bare key-name lists —
+  no types, no required marking, no nesting, no allowed values, no
+  example — while a dozen rules the validator genuinely enforces were
+  stated nowhere. **A model cannot obey a rule it has not been told.**
+  Every field now carries its type, whether it is required, what may go
+  in it and one sentence of guidance; the field NAMES are read from
+  `EtherGrammar.SCHEMA` and every allowed VALUE from `CAPABILITIES` /
+  `GRAMMARS` / `PHASES` / `RARITIES` at build time, so a vocabulary
+  change reaches the prompt with nobody remembering to copy it. **A
+  schema key with no description is reported as UNDOCUMENTED rather
+  than quietly omitted**, and `C1` fails on it — a hand-mirrored
+  contract is a promise nobody can keep (Decision 30).
+- **AND EVERY RULE THAT WAS ENFORCED IN SILENCE IS STATED.** The id
+  format and the role format as literal regexes, unknown keys refused by
+  name, no `seconds` on a tap, the five interaction verbs and nothing
+  else, `engage[].on` must name a declared role, what needs a creation,
+  `tap-for-sure-outcome` / `outcome-obvious-no-question` /
+  `experiment-must-stay-uncertain` by their own refusal codes, the
+  reskin rule, the banned gamification and instruction vocabulary, every
+  bound, and that `requires` is never read. **The validator's early
+  return is disclosed rather than fixed** — it is validator behaviour and
+  this sprint may not touch it, so the contract warns that reading stops
+  at the first unknown top-level key and one invented field can hide
+  every other problem.
+- **SIX WORKED EXAMPLES, AND THE SUITE RUNS THEM THROUGH THE REAL
+  VALIDATOR.** A valid one, an invalid one (the Pegasus shape, with the
+  seven rules it breaks named), a mystery without a challenge, a
+  challenge emerging from a mystery, one reaching a discovery, one
+  leaving the next question. **An example the Ether would refuse — or
+  could not perform — is the worst possible thing to show a model**, so
+  `C4` validates every valid one and `C5` requires every one to be
+  PREVIEWABLE, which is what "use only currently supported
+  capabilities" means in practice. None is structurally identical to a
+  shipped pool entry, so a model copying one verbatim is not instantly
+  refused as a reskin. `PROMPT_VERSION` is `ether-mystery-lab-3`.
+- **THE CONSTELLATION QUESTION IS REPORTED, NOT ANSWERED — AND OPTION B
+  IS NOT FAR-FETCHED.** `js/etherLife.js` already draws constellation
+  BEINGS (stars joined by faint lines, breathing) and the wonders
+  registry already draws small star figures, so *a figure of stars* is a
+  shape this runtime knows how to draw; `js/etherMystery.js` simply has
+  no branch for one. **The real cost is GEOMETRY, and it lands on the
+  privacy boundary**: the 18 families' shapes live in `js/magicCard.js`
+  as CELL COORDINATES on the card's own grid — the same lattice a
+  child's pattern occupies — so Option B needs an AUTHORED skeleton per
+  family in the creature registry's form, never a projection of the
+  card. That is product-owner content authorship, the same class of act
+  as the Companion species names (Decision 44), and it is the largest
+  item in Option B. The field would be `element.figure`, never
+  `constellation`: that name is on `FORBIDDEN_KEYS` and stays there.
+- **RECOMMENDED: STAY ON OPTION A, AND LET ONE MEASUREMENT DECIDE.**
+  The repaired contract makes the deciding experiment one press —
+  *Different Constellations, Same Grammar*. If six figures through one
+  grammar produce materially different structures, the figure is already
+  earning its keep as inspiration and Option B buys presentation; if
+  they produce one structure wearing six titles, that is the evidence
+  FOR Option B, because the figure cannot matter until it is on the sky.
+  **The answer comes from a measurement rather than an argument**, which
+  is the only reason to prefer one over the other.
+- **THE CAPABILITY MATRIX IS AN AUDIT, AND NEITHER SIDE WAS CHANGED.**
+  Five capabilities validate and cannot be performed. `brighten` has no
+  branch at all — measured, no line of the update or draw path reads it,
+  so engaging simply does nothing — and is the one **recommended to be
+  BUILT**: it is the cheapest of them and the only response with no
+  substitute, since `dissolve` removes, `gather` moves and `reveal`
+  uncovers, and none of them says *it answered you and stayed*. A
+  `glint` residue and `of:'sky'` are **accidental schema drift** (lists
+  copied from `shows`) and are recommended for WITHDRAWAL;
+  `creationKind:'any'` is an **honest future** and stays; `minPages` is a
+  **dead parameter** — the runtime reads it and the lens reports 0 pages
+  for every creation, so any minimum makes a candidate permanently
+  unofferable — and is recommended for withdrawal. **Until any of that
+  is decided the contract names all five and tells a model not to use
+  them**, which is the only thing the Lab may do about it alone.
+- **RESEARCH_WAIVED IS KEPT, AND NOW SAYS SO ON ITS FACE.** Still the
+  same four DESIGN judgements and nothing structural (`C12` fails if a
+  capability, a bound or a boundary joins them). The button reads
+  **🧪 TRY IDEA — RESEARCH ONLY** and the preview badge says the same,
+  because *invisibly research* is not research labelling. It still
+  cannot enter production approval, export to the pool, modify the
+  production Ether, bypass the real validator or be represented as
+  valid, and an idea needing a capability the Ether lacks still gets
+  ⚠ Cannot preview with the missing capability named.
+- **PHASE 6 IS NOT RUN, AND NO FIXTURE OUTPUT IS PASSED OFF AS ONE.**
+  This environment's network policy refuses `api.openai.com` at the
+  CONNECT tunnel and there is no key, so the Pegasus regeneration and
+  every creative-quality finding are the product owner's. What shipped
+  is the HARNESS: **⭐ Pegasus — Regeneration** (Pegasus · Composer
+  choose · 5 · mixed, the brief's exact parameters), **Same
+  Constellation, Different Grammars** and **Different Constellations,
+  Same Grammar** join the presets, and arming one now sets the grammar,
+  the complexity and the figures as well as the count — a run defined by
+  one press rather than by matching five controls by hand. Every preset
+  dry-runs green in FIXTURE MODE in the suite.
+- **PRODUCTION FILES CHANGED: ZERO, for the third sprint running.**
+  `js/etherGrammar.js` and `js/etherMystery.js` are byte-identical —
+  a truthful contract needed only that the model be told the truth about
+  them. `F10`'s `presets.length === 6` was turned round with its reason
+  in place: a count copied into a test goes stale silently, and it went
+  red because a preset ARRIVED. The six critical experiments are now
+  held by name.
+- `tools/ether-mystery-lab-test/run-lab-tests.js` grew 191 → 226
+  (`C1`–`C12`), with five load-bearing checks proved by temporary
+  reversion: an example the validator would refuse → `C4` red; an
+  example naming `brighten` → `C5`+`C5b` red; a schema key described
+  under the wrong name → `C1`+`C1b`+`C1d`+`C3` red; the id-format rule
+  removed from BOTH places it is stated → `C3` red; a preset told to
+  build its mystery FROM a figure again → `C10d` red.
 - Out of scope and not implemented: creature encounters as a reward
   system, creature dialogue, a Companion in the Ether, per-Traveller
   encounter history, more activity rows (story hunt, missing

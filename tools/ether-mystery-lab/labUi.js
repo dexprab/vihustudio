@@ -228,6 +228,11 @@
       ? (e.title + ': ' + e.brief + (e.needsCreation ? ' (needs a creation selected)' : ''))
       : '';
     if (e && e.count) $('countSelect').value = String(e.count);
+    // A preset may name its own grammar and complexity — Phase 6's
+    // runs are defined by their exact parameters, so arming one has to
+    // set them rather than leaving a reviewer to match them by hand.
+    if (e && e.complexity) $('complexitySelect').value = e.complexity;
+    if (e && e.grammar && !e.grammars) $('grammarSelect').value = e.grammar;
   }
 
   function gatherBuildOpts(refine) {
@@ -243,6 +248,11 @@
     var chosenFigureIds = selectedValues('figureChips');
     var chosen = figures.filter(function (f) { return chosenFigureIds.indexOf(f.figure) !== -1; });
     if (preset && preset.constellations === 'all' && !chosen.length) chosen = figures;
+    else if (preset && Array.isArray(preset.constellations) && !chosen.length) {
+      chosen = figures.filter(function (f) {
+        return preset.constellations.indexOf(f.figure) !== -1;
+      });
+    }
 
     var chosenCreatures = creatures.filter(function (c) {
       return selectedValues('creatureChips').indexOf(c.id) !== -1;
@@ -517,7 +527,12 @@
     }
     if (study['case'] === 'try-idea' && study.previewCandidate) {
       wrap.appendChild(previewButton(item, study.previewCandidate, 'try',
-        '🧪 TRY IDEA', 'try'));
+        // The label says RESEARCH ONLY on its face. A research preview
+        // must always be visibly labelled as one — it can never enter
+        // production approval, never export to the pool, never touch
+        // the production Ether and never be represented as a valid
+        // candidate, and the button is the first place that is said.
+        '🧪 TRY IDEA — RESEARCH ONLY', 'try'));
       var t = document.createElement('div');
       t.className = 'hint';
       t.textContent = 'Not production-valid. This shows whether the idea ' +

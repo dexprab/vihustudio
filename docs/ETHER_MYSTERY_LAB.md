@@ -37,7 +37,7 @@ The Node entry points survive unchanged:
 
     node tools/ether-mystery-lab/run-lab.js            # demand + contract + validate
     NODE_PATH=/opt/node22/lib/node_modules \
-      node tools/ether-mystery-lab-test/run-lab-tests.js   # the suite (98)
+      node tools/ether-mystery-lab-test/run-lab-tests.js   # the suite (226)
 
 ## The three connection modes
 
@@ -454,6 +454,225 @@ performed; (c) resolve the four validator ↔ interpreter gaps in the
 direction the product wants. **Nothing was changed here**: the whole
 point of §8 was to diagnose before touching either side.
 
+## THE CONTRACT REPAIR — what changed, mismatch by mismatch
+
+The recommendation above was taken for (a), deferred to the product
+owner for (b), and audited rather than acted on for (c). **The repair
+is entirely in the Lab**: `js/etherGrammar.js` and `js/etherMystery.js`
+are byte-identical, because a truthful contract turned out to need only
+that the model be told the truth about them.
+
+| # | Mismatch | Repaired how |
+|---|---|---|
+| 1 | A sky figure cannot be expressed at all | **The prompt stops asking for one.** `directives.inspirationOnly` replaces `directives.skyFigures`, carrying figures, beings and phenomena together under one sentence: *these are not ingredients, they have no field, naming one refuses the candidate whole.* `directives.ingredientsAvailable` names the two that exist. The contract states it again in prose. **Not a schema change** — see the constellation decision below. |
+| 2 | `constellation` is a forbidden privacy key while figures were offered as ingredients | The contradiction is gone with #1: nothing now invites a candidate to name a figure in any field, and the RULES list names `figure`, `skyFigure`, `constellation` and `being` among the fields never to invent. The forbidden-key list is **untouched** — Decision 48 is not negotiable. |
+| 3 | Beings and phenomena had no schema field either | Same channel, same sentence. |
+| 4 | The id format was never stated | Stated twice — in the field description and in the RULES list, as the literal regex. The role format is stated with it (it was equally unstated and equally fatal). |
+| 5 | `seconds` on a tap/approach is refused and the prompt never said so | Stated on the field and in the RULES list, with *why* (nothing here counts down). |
+| 6 | The mystery-must-stay-a-question rules were principles rather than rules | All three named by their refusal codes: `tap-for-sure-outcome`, `outcome-obvious-no-question`, and `experiment` must include `unresolved`. |
+| 7 | The schema was bare key-name lists | Replaced by a structured, complete schema: **every field, its type, required/optional, its nesting, its allowed values and one sentence of guidance**, ordered by `EtherGrammar.SCHEMA` itself and populated from `CAPABILITIES` / `GRAMMARS` / `PHASES` / `RARITIES` at build time. A schema key with no description is reported as UNDOCUMENTED and fails the suite. |
+| 8 | Title vocabulary was scanned and never disclosed | The whole banned list — gamification and instruction language both — is in the RULES. |
+| 9 | `requires` was never explained | Described, and marked *the interpreter never reads it; leaving it out is safest.* |
+| 10 | The validator returns early on an unknown top-level key | Cannot be fixed from the Lab (it is validator behaviour), so it is **disclosed to the model**: *reading STOPS at the first unknown TOP-LEVEL key, so one invented field can hide every other problem.* The invalid worked example is exactly that case and its `why` says so. |
+| 11–14 | `brighten` · glint residue · `of:'sky'` · `creationKind:'any'` | Named in one RULES line — *DO NOT USE, EVEN THOUGH THEY VALIDATE* — with the reason: the runtime cannot perform them, so the experience would never be seen. Also on each field's own description. **Neither side was changed**; see the capability matrix. |
+| 15 | `minPages` invites a permanently unofferable candidate | Same line, plus its own field description: *DO NOT USE — the live projection reports 0 pages for every creation.* |
+
+**Six worked examples ship with the contract**, and the suite runs
+every one of them through the REAL `EtherGrammar.validate()` and the
+REAL `LabPreviewSupport.support()`: a valid one, an invalid one (with
+the seven rules it breaks named), a mystery without a challenge, a
+challenge emerging from a mystery, one reaching a discovery, and one
+leaving the next question behind. **An example the Ether would refuse —
+or could not perform — is the worst possible thing to show a model**,
+so `C4` and `C5` are the heart of the repair, and no example may name
+any of the five validate-but-unperformable values. None of the six is
+structurally identical to a shipped pool entry either, so a model
+copying one verbatim is not instantly refused as a reskin.
+
+`PROMPT_VERSION` moved to `ether-mystery-lab-3`. The contract is
+~19.7 KB of system message (roughly 5 K tokens), of which the schema
+and the examples are most; it is sent once per generation, not per
+candidate.
+
+## PHASE 2 — SHOULD A CONSTELLATION BE A PLAYABLE ETHER INGREDIENT?
+
+**This is a product decision and it is NOT taken here.** What follows
+is the recommendation with its reasoning, and the minimal primitive if
+the answer is yes. Nothing was implemented.
+
+### Option A — INSPIRATION ONLY
+
+A constellation influences creative generation and is not an
+interactive runtime entity. It shapes what a candidate places, how many,
+where, and how the title reads; it never appears in the data.
+
+- **Cost: nothing.** It is what the runtime already supports, and as of
+  this sprint it is what the contract truthfully describes.
+- **Weakness:** what the figure contributes is invisible to everybody
+  except the model. A reviewer cannot tell a Pegasus-inspired candidate
+  from any other except by reading its title, and a child certainly
+  cannot. If figures under Option A turn out to produce structurally
+  identical candidates with different words, the figure is decoration
+  in the prompt rather than an ingredient in the world.
+
+### Option B — A PLAYABLE ETHER INGREDIENT
+
+A constellation is represented as a real Ether visual entity, and
+approved grammars may interact with it through explicitly supported
+capabilities.
+
+- **It is not far-fetched, and the Ether's own direction points at
+  it.** `js/etherLife.js` already draws constellation BEINGS — stars in
+  the palette's paper-cream joined by faint lines, breathing — and the
+  wonders registry already draws small star figures (bird · skyfish ·
+  starflower). *A figure of stars joined by faint lines* is a shape this
+  runtime knows how to draw; it is simply not something
+  `js/etherMystery.js` has a branch for.
+- **The real cost is GEOMETRY, and it lands on the privacy boundary.**
+  The 18 families' shapes live in `js/magicCard.js` as CELL COORDINATES
+  on the card's own grid — the same lattice a child's pattern occupies.
+  The family shape is public (`magicCard.js`: *A FAMILY IS NOT AN
+  IDENTITY*), but hauling card cells into a generated experience is
+  precisely the shape the Lab's own `CELLS_SHAPE` sweep refuses, and it
+  would put the card's lattice one step from a generator. **So Option B
+  needs an authored skeleton per family — points and links in the
+  creature registry's own form — not a projection of the card.** That is
+  content authorship, the same class of product-owner act as the
+  Companion species names (Decision 44), and it is the largest item in
+  Option B by far.
+- **The field must not be called `constellation`.** That name is on
+  `FORBIDDEN_KEYS` for a reason that does not change. `figure` is free
+  and means the public family, never a child's sky.
+
+**THE MINIMAL PRIMITIVE, if Option B is taken.** One new show
+capability and one new element field, and nothing else:
+
+| Piece | What it is |
+|---|---|
+| `element.show: 'figure'` | draws one sky figure — faint stars joined by faint lines, in the Ether's own palette, breathing like a creature. One placement point and one scale, unlike the multi-point shows. |
+| `element.figure: '<family id>'` | which family. Required on `show:'figure'`, refused anywhere else. Validated against the family list; never a free string. |
+| a figure skeleton registry | `{points, links}` per family, authored, in `js/etherLife.js`'s own form. **Not derived from the Magic Card's cells.** |
+| one `draw()` branch | in `js/etherMystery.js`, reusing the creature layer's own star-and-link drawing. |
+| `REPRESENTED.shows` gains `figure` | in `labPreviewSupport.js`, so a preview stops refusing it. |
+
+What a figure could then legitimately DO, using only capabilities that
+already exist: **be observed** (`dwell`), **be approached**, **be
+touched**, **be completed** (the `complete` grammar over a figure with
+one star missing), **be joined** (`onEngage: 'link'`), **be revealed**
+(`onEngage: 'reveal'` under a `veil`) and **dissolve**. No new
+interaction verb, no new response, no new outcome. Anything beyond that
+list is a second decision, not this one.
+
+**RECOMMENDED: stay on Option A now, and let one experiment decide
+whether to build Option B.** The repaired contract makes that
+experiment cheap and it is one press: run **Constellations as
+Inspiration** and **Different Constellations, Same Grammar** against a
+real model, then read the on-screen reskin measure.
+
+- If the same grammar across six different figures produces
+  **materially different** structures, the figure is already earning
+  its keep as inspiration, and Option B buys presentation rather than
+  substance — defer it.
+- If it produces **the same structure with different adjectives**, that
+  is the evidence FOR Option B: the figure cannot matter until it is on
+  the sky, and the skeleton authorship is worth paying for.
+
+Either way the answer comes from a measurement rather than from an
+argument, which is the only reason to prefer one of these over the
+other.
+
+## PHASE 3 — THE CAPABILITY MATRIX
+
+Audited, not changed. **Validator** = `js/etherGrammar.js` accepts it ·
+**Interpreter** = `js/etherMystery.js` has a real branch for it ·
+**Preview** = `labPreviewSupport.js`'s written-down `REPRESENTED` claims
+it.
+
+| Capability | Validator | Interpreter | Preview | Product decision |
+|---|---|---|---|---|
+| `show`: shard · mark · glint · veil · link | ✅ | ✅ each has its own drawing branch | ✅ | — |
+| `place`: all six | ✅ | ✅ `placePoints()` places every one | ✅ | — |
+| `action`: tap · approach · dwell · return · wait | ✅ | ✅ all armed | ✅ | — |
+| `onEngage`: gather · link · reveal · drift-away · dissolve | ✅ | ✅ | ✅ | — |
+| **`onEngage: 'brighten'`** | ✅ | ❌ **no branch.** Engaging sets `el.engaged`, and no line of the update or draw path reads the response — measured: nothing visible happens at all | ❌ named | **NEEDED: build it or withdraw it.** Recommended: **build it.** It is the cheapest real capability in the list (an engaged element holds a raised alpha for a beat), the fixture corpus and a generator both reach for it naturally, and it is the one response with no substitute — `dissolve` removes, `gather` moves, `reveal` uncovers, and none of them says *it answered you and stayed*. |
+| `outcome`: discovery · unresolved · dissolve | ✅ | ✅ | ✅ | — |
+| `discovery`: creation-revealed · wonder · place | ✅ | ✅ | ✅ | — |
+| `residue.show: 'mark'` | ✅ | ✅ `residueAt()` → `life.markAt()` | ✅ | — |
+| **`residue.show: 'glint'`** | ✅ | ❌ `residueAt()` always draws a mark; the value is read and ignored | ❌ named | **ACCIDENTAL SCHEMA DRIFT. Recommended: withdraw it** from the validator, leaving `residue.show` a one-value field (or drop the field and always leave a mark). A residue is *a long faint trace of something that happened*; a small light is what a live element looks like, so the distinction was never a design intention — it was a list copied from `shows`. |
+| **`element.of: 'cover'`** | ✅ | ⚠️ **never read.** A `shard` always uses the creation's cover; `el.of` is not referenced anywhere in the interpreter | ✅ (harmless — it agrees with what happens) | **Vestigial but honest.** Keep, or fold away with `of` below. |
+| **`element.of: 'sky'`** | ✅ | ❌ silently ignored — it draws a cover shard | ❌ named | **ACCIDENTAL DRIFT. Recommended: withdraw it.** There is no such thing as a piece of the sky; the value describes nothing the Ether has. With it gone, `of` has one legal value and can be dropped from the schema entirely. |
+| **`ingredients.creationKind: 'story'`** | ✅ | ✅ the only kind the Ether holds | ✅ | — |
+| **`ingredients.creationKind: 'any'`** | ✅ | ⚠️ **means the same as `story` today** — there is nothing else to match | ❌ named | **INTENTIONAL FUTURE CAPABILITY.** Decision 58 already names bringing non-Story creations into the feed as a real future seam (`kind` exists on a composer target). Recommended: **keep, and leave it named in the contract as *use "story"***. It costs nothing and it is the honest state of the world. |
+| **`ingredients.minPages`** | ✅ 0..40 | ⚠️ **read and always false.** `findCreation()` compares against `lens.project().pages`, which is 0 for every real Spirit because the runtime's story entity carries no page count | ❌ blocks a preview | **NEITHER a capability gap NOR drift — a dead parameter.** Recommended: **withdraw it** unless the entity gains a page count. A field that can only ever make a candidate unofferable is a trap, and the contract currently has to spend a line warning a model away from it. |
+| **`requires`** | ✅ validated | ⚠️ never read | n/a | **Vestigial.** Recommended: keep (it is free and it documents intent) or drop; either is defensible. It is stated as unread in the contract. |
+
+**The rule this matrix exists to enforce:** the production candidate
+vocabulary must never claim a capability the interpreter cannot execute.
+Today it claims five. Two should be built or withdrawn (`brighten`,
+glint residue), two should be withdrawn (`of:'sky'`, `minPages`), one
+is an honest future (`creationKind:'any'`) — and **until any of that is
+decided, the contract names all five and tells a model not to use
+them**, which is the only thing the Lab may do about it on its own.
+
+## PHASE 4 — RESEARCH-WAIVED, AND WHAT IT MAY NEVER BE
+
+`RESEARCH_WAIVED` is kept exactly as Sprint R built it: four DESIGN
+judgements (`outcome-obvious-no-question` · `tap-for-sure-outcome` ·
+`experiment-must-stay-uncertain` · `reskin-of-existing`) and nothing
+structural. `C12` fails if a capability, a bound or a boundary ever
+joins the list.
+
+The button now reads **🧪 TRY IDEA — RESEARCH ONLY** and the preview's
+own badge says the same, because *invisibly research* is not research
+labelling. Everything the mechanism could never do, it still cannot:
+enter production approval (`approve()` refuses `not-valid`), export to
+the production pool (the approved export takes approved items only),
+modify the production Ether (the preview never loads
+`assets/ether/experience-pool.js` and makes no request), bypass
+production validation (the research grammar DELEGATES to the real
+`EtherGrammar.validate()`), or be represented as a valid candidate (the
+card carries the INVALID badge throughout). An idea needing a capability
+the Ether does not have still gets **⚠ Cannot preview this idea yet** and
+the sentence naming what is missing; nothing is faked.
+
+## PHASE 6 — THE REPAIRED CONTRACT, TESTED
+
+**NOT RUN. REAL-MODEL PENDING.** No model is reachable from the build
+environment — the network policy refuses `api.openai.com` at the CONNECT
+tunnel and there is no key — so the regeneration and every creative
+finding are the product owner's to run. Nothing below is filled with
+fixture output pretending to be a batch.
+
+What shipped instead is the harness, one press per run, each dry-run
+green in FIXTURE MODE by the suite:
+
+| Preset | Parameters |
+|---|---|
+| ⭐ **Pegasus — Regeneration** | Pegasus · Composer choose · 5 · mixed — the brief's exact experiment |
+| Same Constellation, Different Grammars | Pegasus × reconstruct / connect / trace / notice · 4 · mixed |
+| Different Constellations, Same Grammar | six figures × `connect` · 6 · mixed |
+| Mystery Without Challenge | unchanged from Sprint 0767 |
+| Challenge Emerging From Mystery | unchanged from Sprint 0767 |
+
+Arming a preset now sets the grammar, the complexity and the figures as
+well as the count, so the run is defined by pressing it rather than by
+matching five controls by hand.
+
+**How to run it:** open `tools/ether-mystery-lab/index.html`, connect
+(ENDPOINT or DIRECT), press **⭐ Pegasus — Regeneration**, press
+GENERATE. Then read, in order: the valid/invalid count on the cards, the
+reskin measure, and — for every candidate that offers it — **▶ PLAY IN
+ETHER**. Export the research log at the end; it carries the invalid ones
+with their refusals and their derived intent, which is the material the
+next repair would be made from.
+
+**The success criterion is not 5/5 brilliant.** It is that the model can
+now produce candidates that conform to the actual schema, use only
+supported capabilities, correctly distinguish a constellation from a
+Creation, pass validation when genuinely valid, and be previewed when
+the runtime supports them. **Creative quality is a separate question and
+must not be claimed until the previews have actually been watched.**
+
 ## KNOWN RUNTIME LIMITATION — NOTICE with no armed interaction
 
 `js/etherMystery.js`'s `resolveDone()` is satisfied on the first frame
@@ -552,5 +771,5 @@ what cannot be performed.
 **`labResearch.js`** ·
 `supabase/functions/lab-generate/index.ts` ·
 `supabase/DEPLOY_lab_generate.md` ·
-`tools/ether-mystery-lab-test/run-lab-tests.js` (191) ·
+`tools/ether-mystery-lab-test/run-lab-tests.js` (226) ·
 `tools/ether-mystery-lab-test/shots/`

@@ -314,8 +314,17 @@ function sectionF() {
 
   // F10 — every experiment preset (§13–18) exists and dry-runs in
   // fixture mode through the identical pipeline.
+  // A COUNT COPIED INTO A TEST GOES STALE SILENTLY — this read
+  // `=== 6` and went red the moment Phase 6's three runs joined the
+  // list, which is a preset arriving rather than one going missing.
+  // The property worth holding is that the six critical experiments
+  // are all still THERE, by name; C10 covers Phase 6's own five.
   const presets = Object.keys(K.EXPERIMENTS);
-  ck(presets.length === 6, 'F10 six critical experiments exist', presets.join(','));
+  const SIX = ['same-creation', 'constellations', 'mystery-without-challenge',
+    'challenge-from-mystery', 'next-mystery', 'depth-layers'];
+  const goneMissing = SIX.filter((id) => presets.indexOf(id) === -1);
+  ck(goneMissing.length === 0 && presets.length >= 6,
+    'F10 the six critical experiments all exist', goneMissing.join(',') || presets.length + ' presets');
   let presetTrouble = [];
   presets.forEach((id) => {
     const e = K.EXPERIMENTS[id];
@@ -1625,10 +1634,271 @@ async function sectionR() {
 }
 
 // ===================================================================
+// C. THE GENERATION CONTRACT — is the world the model is shown the
+//    world the validator and the interpreter actually implement?
+//
+// This is the heart of the contract repair. Everything else in the
+// Lab can be right while the prompt asks for something that cannot
+// exist, and the only symptom is a batch of refusals nobody can
+// explain. So: every schema key is described; every allowed value is
+// the grammar's own rather than a copy; every rule the validator
+// enforces is stated in words; and every worked example is run
+// through the REAL validator and the REAL support table, because an
+// example the Ether would refuse — or could not perform — is the
+// worst possible thing to put in front of a model.
+// ===================================================================
+function sectionC() {
+  console.log('\n== C. the generation contract ==');
+  const sb = kitSandbox();
+  const K = sb.EtherMysteryLabKit;
+  const G = sb.EtherGrammar;
+  const Support = sb.LabPreviewSupport;
+  const poolSigs = sb.EtherExperiencePool.experiences
+    .filter((e) => e.status === 'active').map((e) => G.signature(e.candidate));
+
+  // ---- C1: the schema doc IS the schema, level by level ----
+  const doc = K.schemaDoc();
+  ck(doc.undocumented.length === 0,
+    'C1  every key in EtherGrammar.SCHEMA is described to the model',
+    doc.undocumented.join(','));
+  ck(doc.extra.length === 0,
+    'C1b the doc describes no field the schema does not have', doc.extra.join(','));
+  const levels = doc.levels.map((l) => l.level).sort().join(',');
+  ck(levels === Object.keys(G.SCHEMA).sort().join(','),
+    'C1c every level of the schema is present', levels);
+  // Types and required-ness are the part the validator holds in CODE
+  // rather than in data, so they are authored — but they must at
+  // least all be there.
+  const typeless = [];
+  doc.levels.forEach((l) => l.fields.forEach((f) => {
+    if (!f.type || f.type === 'UNDOCUMENTED' || !f.note) typeless.push(l.level + '.' + f.name);
+  }));
+  ck(typeless.length === 0,
+    'C1d every field carries a type and a sentence of guidance', typeless.join(','));
+  const required = doc.levels.filter((l) => l.level === 'top')[0]
+    .fields.filter((f) => f.required).map((f) => f.name).sort().join(',');
+  ck(required === 'elements,grammar,id,outcome',
+    'C1e the four genuinely required top-level fields are marked REQUIRED', required);
+
+  // ---- C2: allowed values are DERIVED, never a second copy ----
+  const text = K.systemPrompt();
+  function fieldValues(level, name) {
+    const lv = doc.levels.filter((l) => l.level === level)[0];
+    const f = lv && lv.fields.filter((x) => x.name === name)[0];
+    return (f && f.values) || [];
+  }
+  const derived = [
+    ['element', 'show', G.CAPABILITIES.shows],
+    ['element', 'place', G.CAPABILITIES.places],
+    ['engage', 'action', G.CAPABILITIES.actions],
+    ['behaviour', 'onEngage', G.CAPABILITIES.responses],
+    ['outcome', 'possible', G.CAPABILITIES.outcomes],
+    ['outcome', 'discovery', G.CAPABILITIES.discoveries],
+    ['constraints', 'rarity', G.RARITIES],
+    ['constraints', 'phases', G.PHASES],
+    ['top', 'complexity', G.COMPLEXITIES]
+  ];
+  const drift = derived.filter(([lv, f, src]) =>
+    fieldValues(lv, f).join(',') !== src.join(','));
+  ck(drift.length === 0,
+    'C2  every allowed-value list is the grammar\'s own, read at build time',
+    drift.map((d) => d[0] + '.' + d[1]).join(','));
+  const missingGrammar = Object.keys(G.GRAMMARS).filter((g) => text.indexOf(g + ' — ') === -1);
+  ck(missingGrammar.length === 0,
+    'C2b every grammar is named with what it poses and its creation rule',
+    missingGrammar.join(','));
+  ck(text.indexOf('creation: REQUIRED') !== -1 && text.indexOf('creation: NEVER') !== -1,
+    'C2c the two grammars with a hard creation rule state it in words');
+
+  // ---- C3: the previously-unstated rules are stated ----
+  // Each needle is a rule js/etherGrammar.js genuinely refuses on and
+  // the pre-repair prompt never mentioned (the fifteen-mismatch table
+  // in docs/ETHER_MYSTERY_LAB.md, items 2-9).
+  const MUST_STATE = [
+    ['the id format', '^[a-z0-9][a-z0-9-]{2,60}$'],
+    ['the role format', '^[a-z][a-z0-9-]{0,24}$'],
+    ['unknown keys refused by name', 'refused by name'],
+    ['the early return that hides later problems', 'first unknown TOP-LEVEL key'],
+    ['no deadlines on a tap', 'refused as a deadline'],
+    ['the interaction verbs', 'no hover'],
+    ['engage.on must name a declared role', 'declared in this same candidate'],
+    ['what needs a creation', 'toward-creation'],
+    ['tap-for-sure-outcome', 'tap-for-sure-outcome'],
+    ['outcome-obvious-no-question', 'outcome-obvious-no-question'],
+    ['experiment must stay uncertain', 'experiment` grammar MUST include'],
+    ['reskin refusal', 'Vary the structure, not the adjectives'],
+    ['the banned title vocabulary', 'leaderboard'],
+    ['the instruction vocabulary', 'find the missing'],
+    ['the bounds', 'At most 8 element rows'],
+    ['requires is optional and unread', 'The interpreter never reads it'],
+    ['the five validate-but-unperformable values', 'DO NOT USE, EVEN THOUGH THEY VALIDATE'],
+    ['intent, never implementation', 'EXPERIENCE INTENT USING THE APPROVED VOCABULARY']
+  ];
+  const unstated = MUST_STATE.filter(([, needle]) => text.indexOf(needle) === -1);
+  ck(unstated.length === 0,
+    'C3  every rule the validator enforces is stated in the contract',
+    unstated.map((u) => u[0]).join(' · '));
+
+  // ---- C4: the worked examples pass the REAL validator ----
+  // The heart of it. An example that would be refused teaches a model
+  // exactly the wrong thing.
+  const valids = K.EXAMPLES.filter((e) => e.valid);
+  const badExamples = valids.filter((e) => !G.validate(e.candidate, { existing: poolSigs }).ok);
+  ck(valids.length >= 6 && badExamples.length === 0,
+    'C4  every worked VALID example passes the real validator',
+    badExamples.map((e) => e.candidate.id + ':' +
+      G.validate(e.candidate, { existing: poolSigs }).reasons.join(',')).join(' | '));
+
+  // ---- C5: and the runtime can actually perform them ----
+  const unperformable = valids.filter((e) => !Support.support(e.candidate).ok);
+  ck(unperformable.length === 0,
+    'C5  every worked VALID example uses only capabilities the interpreter performs',
+    unperformable.map((e) => e.candidate.id + ':' +
+      Support.support(e.candidate).reasons.join(',')).join(' | '));
+  // Stated positively as well: the five known validate-but-unperformable
+  // values must appear in no example.
+  const serial = JSON.stringify(valids.map((e) => e.candidate));
+  ck(serial.indexOf('"brighten"') === -1 && serial.indexOf('"sky"') === -1 &&
+     serial.indexOf('minPages') === -1 && serial.indexOf('"any"') === -1 &&
+     serial.indexOf('"show":"glint","when"') === -1,
+    'C5b no example names brighten, of:sky, creationKind:any, minPages or a glint residue');
+
+  // ---- C6: the invalid example really is invalid ----
+  const inv = K.EXAMPLES.filter((e) => !e.valid);
+  ck(inv.length === 1, 'C6  exactly one example is shown as a refusal', String(inv.length));
+  const iv = G.validate(inv[0].candidate, { existing: poolSigs });
+  ck(!iv.ok && iv.reasons.indexOf('unknown-key:candidate.figure') !== -1,
+    'C6b it is genuinely refused, on the sky-figure field it invents',
+    iv.reasons.join(','));
+
+  // ---- C7: the six kinds the brief names are all shown ----
+  const kinds = K.EXAMPLES.map((e) => e.kind);
+  const NEEDED = ['valid', 'invalid', 'mystery-without-challenge',
+    'mystery-with-challenge', 'discovery', 'next-mystery'];
+  const missingKind = NEEDED.filter((k) => kinds.indexOf(k) === -1);
+  ck(missingKind.length === 0,
+    'C7  a valid one, an invalid one, mystery-without-challenge, mystery+challenge, a discovery and a next mystery',
+    missingKind.join(','));
+  const nextM = K.EXAMPLES.filter((e) => e.kind === 'next-mystery')[0];
+  ck(nextM && nextM.candidate.outcome.residue,
+    'C7b the next-mystery example genuinely leaves residue');
+  const noChal = K.EXAMPLES.filter((e) => e.kind === 'mystery-without-challenge')[0];
+  ck(noChal && (noChal.candidate.outcome.possible || []).indexOf('discovery') === -1,
+    'C7c the mystery-without-challenge example genuinely reaches no discovery');
+  ck(K.EXAMPLES.every((e) => typeof e.why === 'string' && e.why.length > 20),
+    'C7d every example says why, in words a reviewer can argue with');
+  // And a model copying one verbatim must not be refused as a reskin.
+  const clash = valids.filter((e) => poolSigs.indexOf(G.signature(e.candidate)) !== -1);
+  ck(clash.length === 0,
+    'C7e no example is structurally identical to a shipped pool entry',
+    clash.map((e) => e.candidate.id).join(','));
+
+  // ---- C8: THE PROMPT NO LONGER ASKS FOR THE IMPOSSIBLE ----
+  // The candidate schema has no field for a sky figure. Until that is
+  // a product decision, the contract must say so rather than offer
+  // one as an ingredient — which is what produced the Pegasus batch.
+  ck(text.indexOf('INSPIRATION ONLY') !== -1 &&
+     text.indexOf('exactly two') !== -1,
+    'C8  the contract states that a mystery is about a creation or an anchor, and nothing else');
+  ck(text.indexOf('the schema has no field for one') !== -1,
+    'C8b and that a sky figure has no field, so naming one refuses the candidate');
+  ck(text.indexOf('SUGGESTIVE, never literal') !== -1,
+    'C8c the suggestive-resemblance rule survived the repair');
+  const built = K.buildInput({
+    structures: [{ kind: 'story', pages: 5, hasCover: true }],
+    constellations: [{ figure: 'pegasus', name: 'Pegasus', starCount: 9,
+                       looksLike: 'mythical', about: 'The winged horse.' }],
+    grammar: 'compose', count: 5, pool: sb.EtherExperiencePool
+  });
+  ck(built.ok && built.input.directives.inspirationOnly &&
+     built.input.directives.inspirationOnly.skyFigures.length === 1 &&
+     built.input.directives.skyFigures === undefined,
+    'C8d a supplied figure travels in a channel LABELLED inspiration, never beside the creations');
+  ck(built.ok && /NOT INGREDIENTS/.test(built.input.directives.inspirationOnly.note),
+    'C8e and the channel carries the boundary in its own words');
+  ck(built.ok && built.input.directives.ingredientsAvailable &&
+     /ingredients.creation/.test(built.input.directives.ingredientsAvailable.creation) &&
+     /ingredients.anchor/.test(built.input.directives.ingredientsAvailable.anchor),
+    'C8f and the two real ingredients are named as the two real ingredients');
+
+  // ---- C9: the privacy boundary is untouched by any of it ----
+  ck(text.indexOf('constellation`') !== -1 || text.indexOf('`constellation`') !== -1 ||
+     text.indexOf('constellation') !== -1,
+    'C9  the contract names `constellation` among the fields never to invent');
+  const smuggled = K.buildInput({ entities: [{ id: 'e2', cover: 'x', pages: 1, focusT: 0,
+    pattern: [[1, 2], [3, 4], [5, 6], [7, 8]] }] });
+  ck(smuggled.ok === false && smuggled.refused && !smuggled.messages,
+    'C9b a placed sky is still refused whole, before any prompt is assembled',
+    (smuggled.reasons || []).join(','));
+  const promptSweep = K._sweep({ prompt: text });
+  ck(promptSweep.length === 0 ||
+     promptSweep.every((r) => r.indexOf('text-too-long') === 0),
+    'C9c the contract text itself carries no forbidden key and no reference',
+    promptSweep.filter((r) => r.indexOf('text-too-long') !== 0).join(','));
+
+  // ---- C10: PHASE 6's runs are one press each, and dry-run green ----
+  const P6 = ['pegasus-regeneration', 'same-constellation', 'different-constellations',
+    'mystery-without-challenge', 'challenge-from-mystery'];
+  const absent = P6.filter((id) => !K.EXPERIMENTS[id]);
+  ck(absent.length === 0, 'C10 every Phase 6 run is a one-press preset', absent.join(','));
+  const peg = K.EXPERIMENTS['pegasus-regeneration'];
+  ck(peg && peg.count === 5 && peg.grammar === 'compose' &&
+     peg.complexity === 'mixed' &&
+     Array.isArray(peg.constellations) && peg.constellations.join(',') === 'pegasus',
+    'C10b the Pegasus run carries the brief\'s exact parameters: Pegasus · Composer choose · 5 · mixed',
+    JSON.stringify(peg && { c: peg.count, g: peg.grammar, x: peg.complexity, f: peg.constellations }));
+  const trouble = [];
+  Object.keys(K.EXPERIMENTS).forEach((id) => {
+    const e = K.EXPERIMENTS[id];
+    const figs = (e.constellations === 'all' || Array.isArray(e.constellations))
+      ? [{ figure: 'pegasus', name: 'Pegasus', starCount: 9, looksLike: 'mythical', about: 'x' }]
+      : [];
+    const b = K.buildInput({
+      structures: e.needsCreation ? [{ kind: 'story', pages: 5, hasCover: true }] : [],
+      constellations: figs, grammar: e.grammar || 'compose', count: e.count,
+      complexity: e.complexity, emphasis: e.emphasis, pool: sb.EtherExperiencePool
+    });
+    if (!b.ok) { trouble.push(id + ':build'); return; }
+    const parsed = K.parseCandidates(K.fixtureGenerate({ count: e.count, grammars: e.grammars }).text);
+    if (!parsed.ok) { trouble.push(id + ':parse'); return; }
+    const bad = parsed.candidates.filter((c) => !G.validate(c, { existing: poolSigs }).ok);
+    if (bad.length) trouble.push(id + ':' + bad.length + '-invalid');
+  });
+  ck(trouble.length === 0,
+    'C10c every preset — Phase 6\'s five included — dry-runs green in fixture mode',
+    trouble.join(' '));
+  // The emphasis a preset carries must not contradict the contract.
+  const contradicts = Object.keys(K.EXPERIMENTS).filter((id) =>
+    /draws its mystery from one supplied sky figure|figure to being/.test(
+      K.EXPERIMENTS[id].emphasis || ''));
+  ck(contradicts.length === 0,
+    'C10d no preset still tells a model to build its mystery FROM a sky figure',
+    contradicts.join(','));
+
+  // ---- C11: the contract label moved with the contract ----
+  ck(K.PROMPT_VERSION === 'ether-mystery-lab-3',
+    'C11 PROMPT_VERSION names the repaired contract', K.PROMPT_VERSION);
+  const S2 = K.createSession({ pool: sb.EtherExperiencePool });
+  const it = S2.add(K.FIXTURE_BANK.notice, { source: 'fixture' });
+  ck(it.lab.promptVersion === K.PROMPT_VERSION,
+    'C11b and it travels on every candidate the session records');
+
+  // ---- C12: RESEARCH_WAIVED is still four DESIGN judgements ----
+  // Phase 4: keep it, and keep it incapable of standing over a
+  // capability, a bound or a boundary.
+  const R = sb.LabResearch;
+  ck(R.RESEARCH_WAIVED.length === 4 &&
+     R.RESEARCH_WAIVED.every((r) => !/capability|forbidden|stars|bad-|too-many|no-elements/.test(r)),
+    'C12 RESEARCH_WAIVED still waives four design judgements and nothing structural',
+    R.RESEARCH_WAIVED.join(','));
+}
+
+// ===================================================================
 (async () => {
   try {
     await sectionS();
     sectionF();
+    sectionC();
     await sectionE();
     await sectionB();
     await sectionP();

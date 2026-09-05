@@ -12151,3 +12151,44 @@ and the NOTICE limitation is recorded rather than patched. Production
 files changed: zero. Suite: `tools/ether-mystery-lab-test/` 141 → 191
 (`R1`–`R24`), five reversion proofs, two committed screenshots. Detail:
 `docs/ETHER_MYSTERY_LAB.md`.
+
+## Ether Mystery Lab: Contract Repair + the Constellation Question (build 0767)
+
+The diagnosis was right and the fix was a PROMPT fix. The generation
+preset offered a constellation as an ingredient while the candidate
+schema has no representation for a sky figure at all — so the model
+could not legally express the thing it was told to use, and its most
+natural key name (`constellation`) is a forbidden privacy key. Phase 1
+therefore made the contract state what the schema can actually hold: a
+mystery is about a `creation` or an `anchor`, and figures, beings and
+phenomena travel in a channel LABELLED inspiration with the boundary in
+its own words. The schema is shown as a schema now — every field with
+its type, required marking, nesting, allowed values and a sentence of
+guidance, with the names read from `EtherGrammar.SCHEMA` and the values
+from `CAPABILITIES` at build time, and an undocumented key reported
+rather than omitted — and every rule the validator enforced in silence
+is stated: the id and role formats, unknown keys refused by name, no
+seconds on a tap, the five interaction verbs, `engage.on` naming a real
+role, what needs a creation, the three mystery-must-stay-a-question
+refusals by their own codes, the reskin rule, the banned vocabulary, the
+bounds, and the validator's early return disclosed rather than fixed.
+Six worked examples ship with it and the suite runs every valid one
+through the REAL validator AND the REAL support table, because an
+example the Ether would refuse or could not perform is the worst thing
+to show a model. **Phase 2 is reported, not taken**: Option B is not
+far-fetched (the creature layer already draws star figures) but its real
+cost is authored geometry per family — the shapes that exist live on the
+Magic Card's own lattice, which Decision 48 guards — so the
+recommendation is Option A now and one measurement to decide, *Different
+Constellations, Same Grammar*, which the repaired contract makes one
+press. Phase 3 is an audit producing a capability matrix: build
+`brighten`, withdraw the glint residue, `of:'sky'` and `minPages`, keep
+`creationKind:'any'` as an honest future — nothing changed on either
+side. RESEARCH_WAIVED is kept and now reads **🧪 TRY IDEA — RESEARCH
+ONLY** on its face. **Phase 6 was NOT RUN**: no model is reachable here,
+so the Pegasus regeneration and every creative finding are the product
+owner's, and what shipped is the harness — the brief's exact run as a
+one-press preset, plus the two comparison runs, each dry-run green in
+fixture mode. Production files changed: zero, for the third sprint
+running. Suite: `tools/ether-mystery-lab-test/` 191 → 226 (`C1`–`C12`),
+five reversion proofs. Detail: `docs/ETHER_MYSTERY_LAB.md`.
