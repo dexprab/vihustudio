@@ -165,15 +165,33 @@ every placement the interpreter draws. The preview also SETS
 session seed on the first call and reads it back afterwards, so a first
 play and a replay consumed a different number of draws and produced
 different skies (measured: a ring at 509,516 first and 779,544 on every
-replay). That key is put back on exit, because `sessionStorage` is per
-ORIGIN and the Lab page underneath can see it. What is NOT claimed is
+replay). That key is put back on exit, because the preview tab is
+reused across plays and the key must be left as it was found. (When
+the preview was a frame the Lab shared its top-level context and
+therefore its `sessionStorage`, and the write WAS visible there —
+measured, by that sprint's own check going red. A tab has its own, so
+the reach is gone rather than merely tidied up after.) What is NOT
+claimed is
 frame-for-frame identity: breathing, drifting and twinkling run on the
 wall clock, so two runs are the same composition rather than the same
 film.
 
-**Isolated and disposable.** The preview is an iframe the Lab removes
-on exit — a separate document with its own globals, its own universe
-and its own copy of the providers. It never loads
+**Isolated and disposable.** The preview opens in a **tab of its own**,
+which the Lab closes on exit — a separate top-level document with its
+own globals, its own universe, its own copy of the providers and its
+own `sessionStorage`. A tab rather than a frame because the reviewer is
+judging what a sky would feel like to a child, and a child meets it
+full-screen with nothing else on the glass: a frame inside the Lab is
+the right size and the wrong context, with the batch, the buttons and
+the browser's own idea of the page still around it. The Lab stays where
+it was, so the review does not lose its place. One tab, opened under a
+fixed name and reused, so a second PLAY navigates the one already there
+rather than piling previews up — and every play carries an epoch,
+because the outgoing document's own farewell report arrives *after* the
+next preview has been armed and would otherwise close the tab that had
+just opened. A browser that refuses the pop-up is answered with a plain
+sentence on the card, never with a preview that silently did not
+happen. It never loads
 `assets/ether/experience-pool.js`, so the production pool is out of
 reach rather than merely left alone; it makes no network call of any
 kind, calls no model, and cannot touch a Creator, a card, a memory, a

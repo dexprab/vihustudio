@@ -32,16 +32,18 @@
 // pass), and its blooms and marks — which the interpreter reaches for
 // on a discovery and on a residue — work exactly as they do live.
 //
-// ISOLATION. This document is loaded in an iframe and thrown away on
+// ISOLATION. This document is opened in a TAB OF ITS OWN and closed on
 // exit, which is what "disposable" means here rather than a promise to
 // tidy up. It never loads assets/ether/experience-pool.js, so the
 // production pool is not merely left alone — it is out of reach. There
-// no network call of any kind here, and nothing can touch a Creator, a
-// card, a memory, a social record or the live Ether: none of those
-// modules is loaded either. The ONE storage key this document writes
-// is the runtime's own `vp-runtime-seed`, set deliberately so a replay
-// is a replay (see below) — and it is PUT BACK on exit, because
-// sessionStorage is per origin and the Lab page underneath can see it.
+// is no network call of any kind here, and nothing can touch a
+// Creator, a card, a memory, a social record or the live Ether: none
+// of those modules is loaded either. The ONE storage key this document
+// writes is the runtime's own `vp-runtime-seed`, set deliberately so a
+// replay is a replay (see below) — and it is PUT BACK on exit, because
+// this tab is reused across plays and the key must be left as it was
+// found. A tab is its own top-level browsing context, so unlike the
+// frame this used to be, that write cannot reach the Lab page at all.
 //
 // DETERMINISM. A seeded generator replaces Math.random for the whole
 // run before anything is created, so the same candidate and the same
@@ -128,6 +130,8 @@
   // ---------------------------------------------------------------
   var run = null;          // the live run, or null
   var current = null;      // { candidate, seed }
+  var finished = false;    // the exit report has been sent
+  var epoch = null;        // which of the Lab's presses this document is
   var realRandom = Math.random;
   var priorSeedKey = null; // what sessionStorage held before the preview
   var seedKeyTaken = false;
@@ -144,11 +148,13 @@
     if (host) host.innerHTML = '';
     Math.random = realRandom;
     // The runtime's own session seed is put back exactly as it was.
-    // sessionStorage is per ORIGIN rather than per document — measured,
-    // by this sprint's own check going red — so the frame's write is
-    // visible to the Lab page underneath it. Nothing there reads it,
-    // but leaving it would be the preview altering the document that
-    // opened it, which is the one thing "disposable" must mean.
+    // sessionStorage is per TOP-LEVEL CONTEXT, so a preview in its own
+    // tab cannot reach the Lab's — but this tab is REUSED across plays,
+    // so the key is still the one thing a run leaves behind, and it is
+    // still put back. (When this was a frame the two shared an origin
+    // and the write WAS visible to the Lab, measured by this sprint's
+    // own check going red; the tab removes that reach rather than the
+    // discipline.)
     if (seedKeyTaken) {
       try {
         if (priorSeedKey === null) global.sessionStorage.removeItem('vp-runtime-seed');
@@ -200,6 +206,7 @@
   //                reason is refused here too.
   function play(candidate, seed, mode) {
     teardown();
+    finished = false;
     mode = (mode === 'try') ? 'try' : 'play';
     var box = el('[data-unavailable]');
     if (box) box.classList.remove('on');
@@ -385,20 +392,35 @@
   // ---------------------------------------------------------------
   // Talking to the Lab. postMessage both ways: the candidate arrives
   // as structured data and the report goes back the same way. Nothing
-  // is stored on either side of the frame.
+  // is stored on either side.
+  //
+  // The Lab is whoever OPENED this document — its opener when this is
+  // a tab, which is how the Lab opens it, and its parent frame if it
+  // is ever embedded again. Opened directly with neither (a developer
+  // typing the URL, and the suite's own determinism checks), there is
+  // simply nobody to tell and the preview still plays.
   // ---------------------------------------------------------------
+  function labWindow() {
+    try {
+      if (global.parent && global.parent !== global) return global.parent;
+      if (global.opener && global.opener !== global) return global.opener;
+    } catch (e) {}
+    return null;
+  }
   function post(type, payload) {
     try {
-      if (global.parent && global.parent !== global) {
-        var msg = { type: 'lab-preview:' + type };
-        var src = payload || {};
-        Object.keys(src).forEach(function (k) { msg[k] = src[k]; });
-        global.parent.postMessage(msg, '*');
-      }
+      var target = labWindow();
+      if (!target) return;
+      var msg = { type: 'lab-preview:' + type };
+      var src = payload || {};
+      Object.keys(src).forEach(function (k) { msg[k] = src[k]; });
+      target.postMessage(msg, '*');
     } catch (e) {}
   }
 
   function exitNow() {
+    if (finished) return;
+    finished = true;
     var report = current ? current.report : null;
     // Whatever the interpreter last recorded outranks what the events
     // happened to catch — the outcomes ring is its own account.
@@ -414,7 +436,7 @@
       } catch (e) {}
     }
     teardown();
-    post('exit', { report: report });
+    post('exit', { report: report, epoch: epoch });
   }
 
   function wire() {
@@ -428,9 +450,15 @@
     doc.addEventListener('keydown', function (ev) {
       if (ev.key === 'Escape') exitNow();
     });
+    // A reviewer may close the tab with the browser's own ✕ rather than
+    // with Exit Preview. The trip still happened, so the demonstration
+    // still goes home — the Lab clears its callback on the first report
+    // it receives, so this can never deliver a second one.
+    global.addEventListener('pagehide', function () { exitNow(); });
     global.addEventListener('message', function (ev) {
       var d = ev && ev.data;
       if (!d || d.type !== 'lab-preview:play') return;
+      epoch = (typeof d.epoch === 'number') ? d.epoch : null;
       play(d.candidate, d.seed, d.mode);
     });
     post('ready', {});

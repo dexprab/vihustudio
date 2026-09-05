@@ -557,16 +557,32 @@
     return wrap;
   }
 
+  // The preview opens in a TAB OF ITS OWN — the sky and nothing else,
+  // on whichever screen the reviewer wants it, with the Lab left
+  // exactly where it was so the review does not lose its place. The
+  // press is what opens it, synchronously, or no browser would allow
+  // it at all; a browser that refuses anyway is answered with a plain
+  // sentence rather than with a preview that silently did not happen.
   function previewButton(item, candidate, mode, label, cls) {
     var b = document.createElement('button');
     b.className = cls;
     b.textContent = label;
     b.setAttribute(mode === 'try' ? 'data-try' : 'data-play', item.labId);
     b.addEventListener('click', function () {
-      PreviewHost.open(candidate, previewSeed, function (report) {
+      var blocked = b.parentNode && b.parentNode.querySelector('[data-popup-blocked]');
+      if (blocked) blocked.parentNode.removeChild(blocked);
+      var opened = PreviewHost.open(candidate, previewSeed, function (report) {
         if (report) demonstrated[item.labId] = report;
         renderCandidates();
       }, mode);
+      if (opened && opened.ok === false && b.parentNode) {
+        var n = document.createElement('div');
+        n.className = 'hint';
+        n.setAttribute('data-popup-blocked', '1');
+        n.textContent = 'Your browser blocked the preview tab. Allow pop-ups ' +
+          'for this page and press again.';
+        b.parentNode.appendChild(n);
+      }
     });
     return b;
   }

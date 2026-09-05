@@ -946,24 +946,31 @@ async function sectionP() {
     executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome'
   });
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  // THE PREVIEW IS ITS OWN TAB NOW, so page-level listeners would stop
+  // seeing it — and P9's "the whole preview called no model and made no
+  // off-host request" would go quietly vacuous, which is the worst kind
+  // of green. Everything is watched at the CONTEXT, which is every page
+  // in it, popups included.
+  const ctx = page.context();
   const errs = [];
   page.on('pageerror', (e) => errs.push(String(e)));
+  ctx.on('page', (p) => p.on('pageerror', (e) => errs.push(String(e))));
   let modelHits = 0;
-  await page.route('https://api.openai.com/**', (r) => { modelHits++; r.abort(); });
+  await ctx.route('https://api.openai.com/**', (r) => { modelHits++; r.abort(); });
   const reqs = [];
-  page.on('request', (r) => reqs.push({ method: r.method(), url: r.url() }));
+  ctx.on('request', (r) => reqs.push({ method: r.method(), url: r.url() }));
 
   await page.goto(BASE + '/tools/ether-mystery-lab/index.html');
   await page.waitForTimeout(1200);
   const idle = await page.evaluate(() => ({
-    frames: document.querySelectorAll('[data-lab-preview]').length,
+    open: window.LabPreviewHost.isOpen(),
     universes: document.querySelectorAll('.vp-universe').length,
     ether: typeof window.VihuPlanet !== 'undefined' || typeof window.EtherMystery !== 'undefined',
     ss: sessionStorage.length, ls: localStorage.length
   }));
-  ck(idle.frames === 0 && idle.universes === 0 && !idle.ether &&
+  ck(!idle.open && ctx.pages().length === 1 && idle.universes === 0 && !idle.ether &&
      idle.ss === 0 && idle.ls === 0,
-    'P3b loading the Lab still does nothing — no frame, no Ether, no storage');
+    'P3b loading the Lab still does nothing — no preview tab, no Ether, no storage');
 
   await page.selectOption('#creationSelect', 'fixture-0');
   await page.click('#generateBtn');
@@ -982,10 +989,22 @@ async function sectionP() {
   ck(cards.some((c) => c.play), 'P4b at least one candidate offers PLAY IN ETHER');
 
   const playIdx = cards.findIndex((c) => c.play);
-  await page.locator('.cand').nth(playIdx).locator('button[data-play]').click();
+  // The press must open a TAB — the sky and nothing else, on whichever
+  // screen the reviewer wants, with the Lab left where it was. A popup
+  // Playwright never saw would fail here rather than being silently
+  // read as "the preview did not happen".
+  const [frame] = await Promise.all([
+    page.waitForEvent('popup', { timeout: 15000 }),
+    page.locator('.cand').nth(playIdx).locator('button[data-play]').click()
+  ]);
+  await frame.waitForLoadState('domcontentloaded');
   await page.waitForTimeout(2600);
-  const frame = page.frames().find((f) => f.url().indexOf('preview.html') !== -1);
-  ck(!!frame, 'P4c PLAY opens the preview in its own document');
+  ck(!!frame && frame.url().indexOf('preview.html') !== -1 &&
+     frame !== page && page.frames().length === 1,
+    'P4c PLAY opens the preview in a tab of its own, not inside the Lab',
+    frame && frame.url());
+  ck(await page.evaluate(() => window.LabPreviewHost.isOpen()),
+    'P4d1 and the Lab knows a preview is standing');
   const world = frame ? await frame.evaluate(() => {
     const inst = window.LabPreview.instrument();
     return {
@@ -1004,7 +1023,7 @@ async function sectionP() {
     'P4e the candidate is POSED on the interpreter\'s own stage');
   ck(world.chrome && !world.unavailable,
     'P4f Replay and Exit are the only chrome over the sky');
-  await page.screenshot({ path: path.join(SHOTS, 'p4-preview-reconstruct.png') });
+  await frame.screenshot({ path: path.join(SHOTS, 'p4-preview-reconstruct.png') });   // the preview's own tab
 
   // ---------- P5: determinism ----------
   //
@@ -1067,21 +1086,71 @@ async function sectionP() {
 
   // ---------- P7: exit is clean, the demonstration comes home ----------
   await frame.click('button[data-act="exit"]');
-  await page.waitForTimeout(700);
+  await page.waitForTimeout(900);
   const afterExit = await page.evaluate(() => ({
-    frames: document.querySelectorAll('[data-lab-preview]').length,
+    open: window.LabPreviewHost.isOpen(),
     universes: document.querySelectorAll('.vp-universe').length,
     ether: typeof window.VihuPlanet !== 'undefined',
     demo: (document.querySelector('.cand .demo-title') || {}).textContent || null,
     demoText: (document.querySelector('.cand .demo') || {}).innerText || ''
   }));
-  ck(afterExit.frames === 0 && afterExit.universes === 0 && !afterExit.ether,
-    'P7  exit disposes the whole preview — no frame, no universe, nothing left');
+  ck(!afterExit.open && frame.isClosed() && ctx.pages().length === 1 &&
+     afterExit.universes === 0 && !afterExit.ether,
+    'P7  exit disposes the whole preview — the tab is closed and nothing is left behind',
+    ctx.pages().length + ' page(s)');
   ck(afterExit.demo === 'What the preview demonstrated',
     'P7b what the preview demonstrated comes home, after the fact');
   ck(/MYSTERY/.test(afterExit.demoText) && /CHILD ACTION/.test(afterExit.demoText) &&
      /DISCOVERY/.test(afterExit.demoText) && /NEXT MYSTERY/.test(afterExit.demoText),
     'P7c and it names Mystery · Child action · Discovery · Next Mystery');
+
+  // ---------- P7d: ONE TAB, REUSED — and a stale report cannot end it ----------
+  //
+  // The tab is opened under a fixed name, so a second PLAY navigates
+  // the one that is already there. That is what a reviewer wants and it
+  // is also the trap: the OUTGOING document's own pagehide report
+  // arrives AFTER the next preview has been armed, and without the
+  // epoch it closed the tab that had just opened. Measured, not
+  // reasoned about — reverting the epoch leaves one page and a closed
+  // preview here.
+  const [tabA] = await Promise.all([
+    page.waitForEvent('popup', { timeout: 15000 }),
+    page.locator('.cand').nth(playIdx).locator('button[data-play]').click()
+  ]);
+  await tabA.waitForLoadState('domcontentloaded');
+  await page.waitForTimeout(1600);
+  await page.locator('.cand').nth(playIdx).locator('button[data-play]').click();
+  await page.waitForTimeout(2600);
+  const reused = {
+    pages: ctx.pages().length,
+    closed: tabA.isClosed(),
+    open: await page.evaluate(() => window.LabPreviewHost.isOpen()),
+    posed: tabA.isClosed() ? false
+      : await tabA.evaluate(() => !!window.LabPreview.instrument()).catch(() => false)
+  };
+  ck(reused.pages === 2 && !reused.closed && reused.open && reused.posed,
+    'P7d a second PLAY reuses the one preview tab, and the outgoing document\'s own report never ends it',
+    JSON.stringify(reused));
+  if (!tabA.isClosed()) await tabA.click('button[data-act="exit"]').catch(() => {});
+  await page.waitForTimeout(700);
+
+  // ---------- P7e: a refused pop-up is SAID, never a silence ----------
+  //
+  // A blocked pop-up is the one failure a tab has that a frame did not,
+  // and the worst possible answer to it is a button that appears to do
+  // nothing. The browser's refusal is simulated here rather than waited
+  // for, because a headless browser allows pop-ups.
+  await page.evaluate(() => { window.__realOpen = window.open; window.open = () => null; });
+  await page.locator('.cand').nth(playIdx).locator('button[data-play]').click();
+  await page.waitForTimeout(500);
+  const refused = await page.evaluate(() => ({
+    open: window.LabPreviewHost.isOpen(),
+    note: (document.querySelector('.cand [data-popup-blocked]') || {}).textContent || ''
+  }));
+  ck(!refused.open && ctx.pages().length === 1 && /Allow pop-ups/.test(refused.note),
+    'P7e a browser that refuses the preview tab is answered with a plain sentence',
+    JSON.stringify(refused));
+  await page.evaluate(() => { window.open = window.__realOpen; });
 
   // ---------- P8: unsupported can never become a fake experience ----------
   const unIdx = cards.findIndex((c) => c.unavail);
@@ -1115,12 +1184,14 @@ async function sectionP() {
   ck(reqs.filter((r) => r.method === 'POST').length === 0,
     'P9b and no POST of any kind');
   const store = await page.evaluate(() => ({ ls: localStorage.length, ss: sessionStorage.length }));
-  // sessionStorage is per ORIGIN, so the frame's one deliberate write
-  // is visible here — which this check found by going red. The preview
-  // puts it back on exit, so the document that opened it is left
-  // exactly as it was.
+  // sessionStorage is per ORIGIN but per TOP-LEVEL CONTEXT. When the
+  // preview was a frame the two shared one, its one deliberate write
+  // was visible here, and this check found that by going red. A tab has
+  // its own, so the reach is gone rather than merely tidied up after —
+  // and the preview still puts the key back, because the tab is reused
+  // across plays.
   ck(store.ls === 0 && store.ss === 0,
-    'P9b2 the Lab document is left exactly as it was — the preview put its one key back',
+    'P9b2 the Lab document is left exactly as it was — the preview\'s one key never reaches it',
     JSON.stringify(store));
   const poolAfter = await (await fetch(BASE + '/assets/ether/experience-pool.js')).text();
   ck(poolAfter === poolSrc, 'P9c the production experience pool is byte-identical');
@@ -1443,10 +1514,15 @@ async function sectionR() {
     executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome'
   });
   const page = await browser.newPage({ viewport: { width: 1440, height: 1100 } });
+  // Watched at the CONTEXT — the research preview is its own tab too
+  // (see P's own note), and R23's "no request off this host" must keep
+  // covering it.
+  const ctx = page.context();
   const errs = [];
   page.on('pageerror', (e) => errs.push(String(e)));
+  ctx.on('page', (p) => p.on('pageerror', (e) => errs.push(String(e))));
   const reqs = [];
-  page.on('request', (r) => reqs.push({ method: r.method(), url: r.url() }));
+  ctx.on('request', (r) => reqs.push({ method: r.method(), url: r.url() }));
 
   // The stubbed provider hands back the INVALID batch — the real page,
   // the real transport, the real validator, the real research layer.
@@ -1515,11 +1591,16 @@ async function sectionR() {
   try { fs.mkdirSync(SHOTS, { recursive: true }); } catch (e) {}
   await page.screenshot({ path: path.join(SHOTS, 'research-invalid-cards.png'), fullPage: true });
 
-  // R19 — TRY IDEA opens the REAL preview and poses the idea.
-  await page.click('button[data-try]');
+  // R19 — TRY IDEA opens the REAL preview and poses the idea, in a tab
+  // of its own exactly as PLAY does.
+  const [frame] = await Promise.all([
+    page.waitForEvent('popup', { timeout: 15000 }),
+    page.click('button[data-try]')
+  ]);
+  await frame.waitForLoadState('domcontentloaded');
   await page.waitForTimeout(2600);
-  const inFrame = await page.evaluate(() => !!document.querySelector('[data-lab-preview]'));
-  const frame = page.frames().filter((f) => f.url().indexOf('preview.html') !== -1)[0];
+  const inFrame = !!frame && frame.url().indexOf('preview.html') !== -1 &&
+    await page.evaluate(() => window.LabPreviewHost.isOpen());
   const posed = frame ? await frame.evaluate(() => {
     const i = window.LabPreview.instrument();
     return {
@@ -1537,7 +1618,7 @@ async function sectionR() {
   ck(posed && posed.badge,
     'R19b and the preview says it is a research run, never a plain play');
   try { fs.mkdirSync(SHOTS, { recursive: true }); } catch (e) {}
-  await page.screenshot({ path: path.join(SHOTS, 'research-try-idea.png') });
+  await frame.screenshot({ path: path.join(SHOTS, 'research-try-idea.png') });   // the preview's own tab
 
   // R20 — determinism holds on the research path too. The interesting
   // comparison is a FIRST play against a replay in a FRESH document
@@ -1563,13 +1644,14 @@ async function sectionR() {
     det.first + '  vs  ' + det.replay);
 
   await frame.click('[data-act="exit"]');
-  await page.waitForTimeout(700);
+  await page.waitForTimeout(900);
   const cleaned = await page.evaluate(() => ({
-    frames: document.querySelectorAll('[data-lab-preview]').length,
+    open: window.LabPreviewHost.isOpen(),
     ss: sessionStorage.length, ls: localStorage.length
   }));
-  ck(cleaned.frames === 0 && cleaned.ss === 0 && cleaned.ls === 0,
-    'R20b exiting a research preview leaves the Lab exactly as it was',
+  ck(!cleaned.open && frame.isClosed() && ctx.pages().length === 1 &&
+     cleaned.ss === 0 && cleaned.ls === 0,
+    'R20b exiting a research preview closes its tab and leaves the Lab exactly as it was',
     JSON.stringify(cleaned));
 
   // R21 — the two exports, on the real page.
