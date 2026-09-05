@@ -8075,6 +8075,158 @@ leads somewhere.
 - `tools/ether-mystery-lab/preview.html` · `labPreview.js` ·
   `labPreviewHost.js` · `labPreviewSupport.js` ·
   `docs/ETHER_MYSTERY_LAB.md`
+- **INVALID DOES NOT MEAN INVISIBLE** (build 0767, the Rejected
+  Candidate Research sprint). The first real LLM run produced 10/10
+  invalid candidates, and the Lab's answer was to hide them: a refused
+  candidate got a reason code and no way to see, try or learn from what
+  the model was reaching for. That is the wrong instrument. **VALID
+  means eligible for production; INVALID means not eligible for
+  production and potentially valuable as research**, and the two
+  questions the Lab must answer separately are *is this candidate
+  technically expressible by the Ether* and *is the underlying idea
+  worth expressing*. A candidate can be VALID + BAD IDEA, INVALID +
+  GOOD IDEA, VALID + GOOD IDEA or INVALID + BAD IDEA.
+- **EVERY REFUSED CANDIDATE KEEPS ITS CARD, and gains a research view a
+  person can read without knowing a schema**: what the model was trying
+  to make, why it is not production-ready in plain words, whether the
+  Ether can show it, and what was repaired if anything was. The raw
+  reason codes stay, folded into `technical details` below the
+  judgement. **The intent is DERIVED, never invented and never asked of
+  a model** — from the candidate's own title, the shape of experience it
+  chose, what it places and how it hoped to end — and a candidate too
+  broken to say anything about says exactly that.
+- **THREE ANSWERS, NEVER ONE WEARING THREE NAMES.** ▶ PLAY IN ETHER for
+  a valid performable candidate; **🧪 TRY IDEA** for an invalid one
+  whose idea the existing Ether can still show; **⚠ Cannot preview this
+  idea yet** naming the missing capability, or the research explanation
+  where there is nothing to show. **An invalid candidate is never called
+  "Play in Ether", and a capability that does not exist is never faked
+  to make a card playable.**
+- **TRY IDEA RIDES THE SAME REAL PATH** — `candidates()` → `begin()`,
+  the same universe, the same providers, the same touch chain. There is
+  no second Mystery engine, no second renderer and no generic animation
+  player; `js/etherMystery.js` was not touched, and the suite fails if
+  the research layer ever draws or places anything.
+- **THE PROJECTION NEVER GUESSES, and that is the whole discipline.**
+  `js/…` is untouched; `tools/ether-mystery-lab/labResearch.js` holds
+  EIGHT named, mechanical, reportable rules — relocate a key the schema
+  has exactly one home for (top-level `residue` → `outcome.residue`,
+  which is the brief's own example), drop a key the schema has nowhere
+  to put, supply an id from the candidate's own title, imply a creation
+  the candidate already names, drop a deadline the vocabulary forbids,
+  clamp a number to a bound the schema already states, set aside a title
+  the sky never renders, drop a label nothing performs. **After the
+  rules run, the REAL validator decides**: this file never declares
+  anything valid, and where a mechanical repair cannot get there the
+  answer is that it cannot be previewed. Anything needing more than an
+  obvious mapping is not case A — a projection that guessed would be the
+  parallel interpretation of candidate semantics the sprint forbids by
+  name.
+- **RESEARCH_WAIVED IS THE ONE DELIBERATE BYPASS, AND IT IS FOUR NAMED
+  REASONS.** The validator holds two kinds of rule: what the runtime can
+  PERFORM (capabilities, shapes, bounds, the privacy boundary) and the
+  product's own DESIGN judgement. The first can never be waived. On the
+  TRY IDEA path only, the interpreter is handed a grammar that DELEGATES
+  to the real `EtherGrammar.validate()` and stands over exactly
+  `outcome-obvious-no-question` · `tap-for-sure-outcome` ·
+  `experiment-must-stay-uncertain` · `reskin-of-existing` — so a
+  candidate refused only because the Ether has an opinion about good
+  mysteries is shown AS WRITTEN, with nothing repaired. Never installed
+  on the PLAY path; the production pool is never loaded where it lives;
+  and a check fails if a waived reason ever names a capability, a bound
+  or a boundary.
+- **A PRIVACY BOUNDARY IS NEVER REPAIRED AROUND, and the validator's own
+  short-circuit is why that needed saying.** `validate()` returns early
+  on an unknown TOP-LEVEL key, so its privacy sweep never runs and
+  `constellation` at the top level comes back merely as "unknown" — one
+  `drop-unknown-key` away from being quietly tidied and offered as an
+  experiment. The research layer asks `FORBIDDEN_KEYS` itself, at any
+  depth, before any rule may touch anything. Proved by reverting: the
+  smuggled sky comes back `try-idea`.
+- **AN INVALID CANDIDATE CAN BE JUDGED AND CAN NEVER SHIP.** The four
+  judgements are the same four and are RESEARCH judgements on a refused
+  card — ✨ Good there means the IDEA is promising, and the card says so.
+  `approve()` refuses on `not-valid`, only an approved item reaches the
+  pool export, and both are proved by reverting.
+- **TWO EXPORTS, AND THEY ARE DIFFERENT ARTIFACTS.** The production
+  export is exactly as strict as it was (`ether-experience-pool-entries`,
+  approved only). The new **research log**
+  (`ether-mystery-lab-research-log`, `productionReady: false`, its own
+  note) carries EVERY candidate of a session with its refusals, its
+  derived intent, its preview status, what was repaired, what was waived
+  and the human judgement. **Before it existed the Lab threw away
+  exactly the material a research instrument is for** — which is why the
+  Pegasus batch cannot be analysed today and why the next one can.
+- **↻ REGENERATE IS REFINEMENT THROUGH THE SAME CONTRACT.** It sends the
+  candidate's OWN intent and its OWN refusals back through
+  `buildInput()` — same privacy sweep, same transport — as
+  `directives.refine`, and the instruction is deliberately **not** "make
+  it valid", which invites meaningless schema compliance. The answer is
+  a NEW candidate LINKED to the original (`cand-3` → `cand-3-r1`); the
+  original is never mutated and keeps its own reasons and its own
+  judgement. `PROMPT_VERSION` bumped to `ether-mystery-lab-2`, because
+  what the model is shown genuinely changed.
+- **THE PEGASUS BATCH WAS NOT AVAILABLE, AND NOTHING WAS INVENTED IN ITS
+  PLACE.** The Lab persisted nothing and the only egress was the
+  approved export, which invalid candidates could not enter — so of
+  §8's five comparisons, four were made from source and the third (the
+  actual model output) could not be. **No JSON anywhere claims to be
+  that batch**; the probes in the suite are labelled as constructed.
+  What IS evidence is the product owner's own reading of it, and every
+  idea he listed — something separated from Pegasus, something hidden
+  around it, a glint leading somewhere, a relationship, something subtly
+  changing — is a shape the grammars ALREADY express, so the failure was
+  almost certainly the encoding rather than the ideas.
+- **THE CENTRAL MISMATCH: A SKY FIGURE CANNOT BE EXPRESSED AT ALL.**
+  `directives.skyFigures` reaches the model as an ingredient and
+  `SCHEMA.top` / `SCHEMA.ingredients` have NO field for one — a
+  candidate may only ever be about a `creation` or an `anchor`. So the
+  constellations preset tells a model to draw its mystery from a figure
+  and gives it nowhere to say which, and the most natural key names are
+  `figure`, `skyFigure` or `constellation` — the third of which is a
+  FORBIDDEN privacy key. Ether beings and phenomena have the same hole.
+  Fourteen further mismatches are named one by one in
+  `docs/ETHER_MYSTERY_LAB.md`, including four the prompt never states
+  (the id format, no deadlines on a tap, the mystery-must-stay-a-question
+  rule, the banned title vocabulary), a schema shown as bare key lists
+  with no types and no example, the validator's own early return hiding
+  every problem after the first, and `minPages` — validated 0–40 while
+  the live lens reports 0 pages for every real Spirit.
+- **A RECOMMENDATION, NOT A CHANGE.** State the unstated rules in the
+  prompt and show one worked example; decide the sky-figure question as
+  a product matter (the runtime cannot draw a literal constellation, so
+  a schema field without a renderer would validate what cannot be
+  performed); then resolve the four validator ↔ interpreter gaps in the
+  direction the product wants. **Neither the prompt, the schema, the
+  validator nor the interpreter was changed** — §8's whole instruction
+  was to diagnose before touching either side, and §10 forbids fixing
+  `brighten` and the glint residue on this sprint's own judgement.
+- **THE NOTICE LIMITATION IS RECORDED, NOT PATCHED.**
+  `resolveDone()` is satisfied on the first frame when no element is
+  armed and no wait is pending, so an observation-only candidate
+  resolves before a child could look at it — which defeats the `notice`
+  grammar. `js/etherMystery.js` is untouched, `tools/ether-mystery-test/`
+  was not weakened, and the Lab warns the reviewer instead. It is
+  written down in `docs/ETHER_MYSTERY_LAB.md` under its own heading.
+- **PRODUCTION FILES CHANGED: ZERO.** The whole sprint is Lab-only —
+  one new file and five edited ones under `tools/ether-mystery-lab/`.
+  `R24` asserts that `js/etherGrammar.js` and `js/etherMystery.js` name
+  nothing from the Lab, and the suite re-fetches
+  `assets/ether/experience-pool.js` after the journey and requires it
+  byte-identical.
+- `tools/ether-mystery-lab-test/run-lab-tests.js` grew 141 → 191
+  (`R1`–`R24`), with five load-bearing checks proved by temporary
+  reversion: a capability added to `RESEARCH_WAIVED` → `R3`+`R9b` red;
+  the forbidden-key stop removed → `R6b` red (a smuggled sky offered as
+  an experiment); `approve()`'s validity gate removed → `R11`+`R12`+
+  `R13b` red; the refinement link removed → `R14b`+`R22` red; the UI
+  offering PLAY for an invalid candidate → `R17c`+`R18`+`R18b`+`R18c`
+  red. Screenshots: `shots/research-invalid-cards.png` (four refused
+  candidates, still visible, one of them unpreviewable) and
+  `shots/research-try-idea.png` (an invalid idea running in the real
+  Ether).
+- `tools/ether-mystery-lab/labResearch.js` ·
+  `docs/ETHER_MYSTERY_LAB.md`
 - Out of scope and not implemented: creature encounters as a reward
   system, creature dialogue, a Companion in the Ether, per-Traveller
   encounter history, more activity rows (story hunt, missing

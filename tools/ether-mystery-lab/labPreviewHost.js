@@ -43,7 +43,8 @@
     if (d.type === 'lab-preview:ready') {
       if (pending && frame && frame.contentWindow) {
         frame.contentWindow.postMessage(
-          { type: 'lab-preview:play', candidate: pending.candidate, seed: pending.seed },
+          { type: 'lab-preview:play', candidate: pending.candidate,
+            seed: pending.seed, mode: pending.mode },
           '*');
       }
       return;
@@ -55,12 +56,14 @@
     }
   }
 
-  function open(candidate, seed, done) {
+  // mode: 'play' (a valid candidate) or 'try' (a research run over an
+  // invalid one — see labPreview.js and labResearch.js).
+  function open(candidate, seed, done, mode) {
     close();
     ensureStyle();
     if (!listening) { global.addEventListener('message', onMessage); listening = true; }
     onDone = done || null;
-    pending = { candidate: candidate, seed: seed };
+    pending = { candidate: candidate, seed: seed, mode: (mode === 'try') ? 'try' : 'play' };
     overlay = doc.createElement('div');
     overlay.className = 'lab-preview-overlay';
     overlay.setAttribute('data-lab-preview', '1');

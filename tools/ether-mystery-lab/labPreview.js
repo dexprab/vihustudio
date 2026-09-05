@@ -56,6 +56,7 @@
 
   var doc = global.document;
   var Support = global.LabPreviewSupport;
+  var Research = global.LabResearch;
 
   // ---------------------------------------------------------------
   // The seeded generator. mulberry32 — small, well-behaved, and the
@@ -188,14 +189,26 @@
     };
   }
 
-  function play(candidate, seed) {
+  // mode: 'play' — a VALID candidate, exactly as the sky would perform it.
+  //       'try'  — an INVALID candidate whose idea the existing Ether can
+  //                still show. The interpreter is handed a grammar that
+  //                delegates to the REAL validator and stands over the four
+  //                DESIGN reasons LabResearch names (RESEARCH_WAIVED) — never
+  //                a capability, never a bound, never the privacy boundary.
+  //                What is performed is still the interpreter's own drawing,
+  //                and a candidate the real validator refuses for any other
+  //                reason is refused here too.
+  function play(candidate, seed, mode) {
     teardown();
+    mode = (mode === 'try') ? 'try' : 'play';
     var box = el('[data-unavailable]');
     if (box) box.classList.remove('on');
+    var badge = el('[data-try-badge]');
+    if (badge) badge.hidden = (mode !== 'try');
 
     var sup = Support.support(candidate);
     if (!sup.ok) {
-      current = { candidate: candidate, seed: seed, report: newReport(candidate) };
+      current = { candidate: candidate, seed: seed, mode: mode, report: newReport(candidate) };
       current.report.unavailable = sup.reasons;
       unavailable(Support.whyUnavailable(sup.reasons).join('; and '));
       post('unavailable', { reasons: sup.reasons, report: current.report });
@@ -203,8 +216,9 @@
     }
 
     var report = newReport(candidate);
+    report.mode = mode;
     sup.notes.forEach(function (n) { report.staged.push(n); });
-    current = { candidate: candidate, seed: seed, report: report };
+    current = { candidate: candidate, seed: seed, mode: mode, report: report };
 
     // Everything from here is seeded. Installed BEFORE the universe is
     // created, because the star field, the currents and where the
@@ -260,9 +274,12 @@
     // either — and the production pool is not loaded in this document
     // at all.
     var mystery = null;
+    var researchGrammar = (mode === 'try' && Research)
+      ? Research.researchGrammar(global.EtherGrammar) : null;
     try {
       mystery = global.EtherMystery.mount(universe, {
         life: life,
+        grammar: researchGrammar || undefined,
         pool: {
           experiences: [{ status: 'active', source: 'lab-preview', candidate: candidate }]
         }
@@ -405,7 +422,7 @@
       b.addEventListener('click', function () {
         var act = b.getAttribute('data-act');
         if (act === 'exit') exitNow();
-        else if (act === 'replay' && current) play(current.candidate, current.seed);
+        else if (act === 'replay' && current) play(current.candidate, current.seed, current.mode);
       });
     });
     doc.addEventListener('keydown', function (ev) {
@@ -414,7 +431,7 @@
     global.addEventListener('message', function (ev) {
       var d = ev && ev.data;
       if (!d || d.type !== 'lab-preview:play') return;
-      play(d.candidate, d.seed);
+      play(d.candidate, d.seed, d.mode);
     });
     post('ready', {});
   }
@@ -434,6 +451,7 @@
     universe: function () { return run ? run.universe : null; },
     ripple: function () { return run ? run.ripple : null; },
     candidate: function () { return current ? current.candidate : null; },
+    mode: function () { return current ? (current.mode || 'play') : null; },
     stories: function () {
       if (!run || !run.universe) return [];
       try { return run.universe.stories.all(); } catch (e) { return []; }

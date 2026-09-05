@@ -19,6 +19,7 @@
   var Conn = window.LabConnection;
   var Grammar = window.EtherGrammar;
   var Support = window.LabPreviewSupport;
+  var Research = window.LabResearch;
   var PreviewHost = window.LabPreviewHost;
 
   // What the preview demonstrated, per candidate. Page memory only:
@@ -214,6 +215,7 @@
       $('generateBtn').disabled = false;
     });
     $('exportBtn').addEventListener('click', exportNow);
+    $('researchBtn').addEventListener('click', exportResearchNow);
   }
 
   function armPreset(id) {
@@ -228,7 +230,7 @@
     if (e && e.count) $('countSelect').value = String(e.count);
   }
 
-  function gatherBuildOpts() {
+  function gatherBuildOpts(refine) {
     var preset = armedPreset ? Kit.EXPERIMENTS[armedPreset] : null;
     var structures = [];
     var entities = [];
@@ -257,12 +259,17 @@
       count: Number($('countSelect').value),
       complexity: $('complexitySelect').value,
       emphasis: preset ? preset.emphasis : '',
+      refine: refine || null,
       pool: window.EtherExperiencePool
     };
   }
 
-  function generateNow() {
-    var opts = gatherBuildOpts();
+  // refine: { original, intent, refusedBecause, ofLabId } — §6. It goes
+  // through the SAME buildInput → connection → parse → validate path a
+  // plain generation takes; nothing about a refinement is a second
+  // pipeline, and the result is a NEW candidate linked to the original.
+  function generateNow(refine) {
+    var opts = gatherBuildOpts(refine);
     var built = Kit.buildInput(opts);
     if (!built.ok) {
       // REFUSED WHOLE, and the diagnostic says why. Nothing was sent.
@@ -306,10 +313,15 @@
       parsed.candidates.forEach(function (c) {
         var item = session.add(c, {
           source: res.source, model: res.model,
-          params: params, generatedAt: new Date().toISOString()
+          params: params, generatedAt: new Date().toISOString(),
+          refinementOf: refine ? refine.ofLabId : null,
+          refinementBrief: refine ? {
+            intent: refine.intent, refusedBecause: refine.refusedBecause
+          } : null
         });
         session.validate(item);
         session.quality(item);
+        session.study(item);
       });
       $('genState').textContent = 'received ' + parsed.candidates.length + ' candidate(s)' +
         (parsed.dropped ? ' (' + parsed.dropped + ' malformed dropped)' : '') +
@@ -384,6 +396,49 @@
       var invalidNote = (item.validation && !item.validation.ok)
         ? '<div class="facet"><b>refused</b>' + esc(item.validation.reasons.join(' · ')) + '</div>' : '';
 
+      // §1/§5/§7 — INVALID DOES NOT MEAN INVISIBLE. A refused candidate
+      // keeps its card, and gains a research view a person can read
+      // without knowing a schema: what the model was trying to make,
+      // why it is not production-ready, and whether the Ether can show
+      // the idea at all. The technical reasons stay, folded away below.
+      var study = item.research || session.study(item);
+      var research = '';
+      if (study && !study.valid) {
+        var repaired = !!(study.projection && study.projection.applied.length);
+        var can = study['case'] === 'try-idea'
+          ? (repaired
+              ? 'Yes — as an experiment. Some of how it was written had to be ' +
+                'repaired first, and it is not production-valid.'
+              : 'Yes — as an experiment, exactly as it was written. It is ' +
+                'still not production-valid.')
+          : study['case'] === 'unsupported'
+            ? 'No — it needs something the Ether does not have yet.'
+            : 'No — there is not enough here to show honestly.';
+        research =
+          '<div class="research">' +
+          '<div class="research-title">🧪 RESEARCH IDEA</div>' +
+          facet('what the model was trying to do',
+            (study.intent && study.intent.sentence) ||
+            'Nothing in this record says what it was for.') +
+          facet('why it is not production-ready', study.plainReasons.join('; and ')) +
+          facet('can the Ether show this?', can +
+            (study.missing && study.missing.length
+              ? ' (' + study.missing.join('; and ') + ')' : '')) +
+          ((study.projection && study.projection.applied.length)
+            ? facet('what was repaired for the experiment',
+                study.projection.applied.map(function (a) { return a.plain; }).join('; and '))
+            : '') +
+          ((study.projection && study.projection.waived.length)
+            ? facet('stood over for research',
+                'The Ether would refuse this in production for a design ' +
+                'reason rather than because it cannot draw it, so the ' +
+                'experiment shows the idea as written.')
+            : '') +
+          '</div>';
+      }
+      var lineage = (item.lab && item.lab.refinementOf)
+        ? '<div class="lineage">Refinement of ' + esc(item.lab.refinementOf) + '</div>' : '';
+
       // THE CREATIVE SURFACE COMES FIRST. A reviewer judging whether a
       // Mystery is any good should not have to read a schema to do it,
       // so the card leads with plain language and the way into the
@@ -393,9 +448,12 @@
         ? Support.support(c) : null;
 
       card.innerHTML =
-        '<h3>MYSTERY <span class="note">· ' + esc(c.id || '(no id)') + '</span></h3>' +
+        '<h3>MYSTERY <span class="note">· ' + esc(c.id || '(no id)') + ' · ' +
+        esc(item.labId) + '</span></h3>' +
         '<div class="meta">' + badges + '</div>' +
+        lineage +
         (plain ? '<div class="plain">' + esc(plain.mystery) + '</div>' : '') +
+        research +
         '<div class="play-row"></div>' +
         '<div class="demo"></div>' +
         '<div class="review"></div>' +
@@ -409,50 +467,93 @@
         invalidNote + qual +
         '<pre>' + esc(JSON.stringify(c, null, 2)) + '</pre></details>';
 
-      card.querySelector('.play-row').appendChild(playControl(item, sup));
-      card.querySelector('.review').appendChild(reviewControls(item, sup));
+      card.querySelector('.play-row').appendChild(playControl(item, sup, study));
+      card.querySelector('.review').appendChild(reviewControls(item, sup, study));
       renderDemonstration(card, item);
       host.appendChild(card);
     });
   }
 
-  // ▶ PLAY IN ETHER — or the honest refusal. A candidate naming a
-  // capability the interpreter cannot perform is never approximated:
-  // it says so, and it is kept out of the creative approval path.
-  function playControl(item, sup) {
+  // ▶ PLAY IN ETHER · 🧪 TRY IDEA · ⚠ Cannot preview this idea yet.
+  //
+  // THREE DIFFERENT ANSWERS, NEVER ONE WEARING THREE NAMES. A valid,
+  // performable candidate gets PLAY IN ETHER and is the sky exactly as
+  // it would be. An INVALID one whose idea the existing Ether can still
+  // show gets TRY IDEA — visibly and semantically a different thing,
+  // never called Play. Everything else says so plainly, and a
+  // capability that does not exist is never faked to make a card
+  // playable.
+  function playControl(item, sup, study) {
     var wrap = document.createElement('div');
     if (!PreviewHost || !Support) {
       wrap.innerHTML = '<span class="note">Preview unavailable — the preview is not loaded.</span>';
       return wrap;
     }
-    if (!(item.validation && item.validation.ok)) {
-      wrap.innerHTML = '<span class="unavail">Preview unavailable — the sky refuses this one at the door.</span>';
+
+    // ---- valid ----
+    if (item.validation && item.validation.ok) {
+      if (sup && !sup.ok) {
+        wrap.innerHTML = '<span class="unavail">Preview unavailable — unsupported runtime capability</span>' +
+          '<div class="hint">' + esc(Support.whyUnavailable(sup.reasons).join('; and ')) + '</div>';
+        wrap.setAttribute('data-preview', 'unavailable');
+        return wrap;
+      }
+      wrap.appendChild(previewButton(item, item.candidate, 'play',
+        '▶ PLAY IN ETHER', 'primary play'));
+      if (sup && sup.notes.length) {
+        var n = document.createElement('div');
+        n.className = 'hint';
+        n.textContent = sup.notes.join(' ');
+        wrap.appendChild(n);
+      }
       return wrap;
     }
-    if (sup && !sup.ok) {
-      wrap.innerHTML = '<span class="unavail">Preview unavailable — unsupported runtime capability</span>' +
-        '<div class="hint">' + esc(Support.whyUnavailable(sup.reasons).join('; and ')) + '</div>';
+
+    // ---- invalid ----
+    if (!study) {
+      wrap.innerHTML = '<span class="unavail">Preview unavailable — the sky refuses this one at the door.</span>';
       wrap.setAttribute('data-preview', 'unavailable');
       return wrap;
     }
+    if (study['case'] === 'try-idea' && study.previewCandidate) {
+      wrap.appendChild(previewButton(item, study.previewCandidate, 'try',
+        '🧪 TRY IDEA', 'try'));
+      var t = document.createElement('div');
+      t.className = 'hint';
+      t.textContent = 'Not production-valid. This shows whether the idea ' +
+        'underneath it can be experienced in the Ether as it exists today.';
+      wrap.appendChild(t);
+      wrap.setAttribute('data-preview', 'try-idea');
+      return wrap;
+    }
+    var why = (study.missing && study.missing.length)
+      ? study.missing.join('; and ')
+      : study.plainReasons.join('; and ');
+    if (study['case'] === 'unsupported') {
+      wrap.innerHTML = '<span class="unavail">⚠ Cannot preview this idea yet</span>' +
+        '<div class="hint">This idea needs a capability Ether does not currently have: ' +
+        esc(why) + '.</div>';
+      wrap.setAttribute('data-preview', 'unsupported');
+      return wrap;
+    }
+    wrap.innerHTML = '<span class="unavail">⚠ Cannot preview this idea yet</span>' +
+      '<div class="hint">There is not enough here to show honestly: ' + esc(why) + '.</div>';
+    wrap.setAttribute('data-preview', 'uninterpretable');
+    return wrap;
+  }
+
+  function previewButton(item, candidate, mode, label, cls) {
     var b = document.createElement('button');
-    b.className = 'primary play';
-    b.textContent = '▶ PLAY IN ETHER';
-    b.setAttribute('data-play', item.labId);
+    b.className = cls;
+    b.textContent = label;
+    b.setAttribute(mode === 'try' ? 'data-try' : 'data-play', item.labId);
     b.addEventListener('click', function () {
-      PreviewHost.open(item.candidate, previewSeed, function (report) {
+      PreviewHost.open(candidate, previewSeed, function (report) {
         if (report) demonstrated[item.labId] = report;
         renderCandidates();
-      });
+      }, mode);
     });
-    wrap.appendChild(b);
-    if (sup && sup.notes.length) {
-      var n = document.createElement('div');
-      n.className = 'hint';
-      n.textContent = sup.notes.join(' ');
-      wrap.appendChild(n);
-    }
-    return wrap;
+    return b;
   }
 
   // Secondary, and only after the reviewer has been there: what the
@@ -474,14 +575,30 @@
       facet('what happened', ending);
   }
 
-  function reviewControls(item, sup) {
+  // §13 — HUMAN REVIEW, on INVALID candidates too. The four judgements
+  // are the same four; what they MEAN on a refused candidate is stated
+  // on the card, because "Good" there says the IDEA is promising and
+  // never that the candidate is production-ready. Nothing here can move
+  // an invalid candidate into the production export: session.approve()
+  // refuses on `not-valid`, and only an approved item is exported.
+  function reviewControls(item, sup, study) {
     var wrap = document.createElement('div');
+    var invalid = !(item.validation && item.validation.ok);
+    if (invalid) {
+      var head = document.createElement('div');
+      head.className = 'research-judgement';
+      head.textContent = 'Research judgement — “Good” here means the IDEA is ' +
+        'creatively promising, not that this candidate is production-ready. ' +
+        'An invalid candidate can never be approved or exported to the pool.';
+      wrap.appendChild(head);
+    }
     if (item.review) {
       var summary = document.createElement('div');
       summary.className = 'note';
       summary.textContent = 'reviewed: ' + item.review.classification +
         (item.review.reasons.length ? ' — ' + item.review.reasons.join(', ') : '') +
-        (item.review.notes ? ' — "' + item.review.notes + '"' : '');
+        (item.review.notes ? ' — "' + item.review.notes + '"' : '') +
+        (invalid ? ' (research only)' : '');
       wrap.appendChild(summary);
     }
     var row = document.createElement('div');
@@ -492,9 +609,11 @@
         var b = document.createElement('button');
         b.textContent = pair[1];
         b.setAttribute('data-classify', pair[0]);
-        // Kept out of the creative approval path: a candidate nobody
-        // can SEE must not be approved on the strength of its JSON.
-        if (sup && !sup.ok &&
+        // Kept out of the creative approval path: a VALID candidate
+        // nobody can SEE must not be approved on the strength of its
+        // JSON. An invalid one is never approvable anyway, so its
+        // judgement stays open — that is the research result.
+        if (!invalid && sup && !sup.ok &&
             (pair[0] === 'exceptional' || pair[0] === 'good')) {
           b.disabled = true;
           b.title = 'Preview unavailable — unsupported runtime capability';
@@ -510,14 +629,21 @@
         });
         row.appendChild(b);
       });
+
+    // §6 — ↻ Regenerate. It sends the candidate's OWN intent and its
+    // OWN refusals back through the same generation contract, and the
+    // answer becomes a NEW candidate linked to this one. The original
+    // is never mutated and never loses its reasons.
     var regen = document.createElement('button');
     regen.textContent = '↻ Regenerate';
-    regen.title = 'Ask for one more candidate with this grammar (an explicit request, never automatic)';
-    regen.setAttribute('data-regenerate', '1');
+    regen.title = invalid
+      ? 'Ask again for this same idea, expressed with what the Ether can do'
+      : 'Ask for one more candidate with this grammar';
+    regen.setAttribute('data-regenerate', item.labId);
     regen.addEventListener('click', function () {
-      $('grammarSelect').value = item.candidate.grammar || 'compose';
+      var brief = session.refinementBrief(item.labId);
       $('countSelect').value = '1';
-      generateNow();
+      generateNow(brief);
     });
     row.appendChild(regen);
     wrap.appendChild(row);
@@ -564,6 +690,33 @@
     a.remove();
     $('exportState').textContent = ex.count + ' approved candidate(s) exported — review the file, then commit entries into assets/ether/experience-pool.js';
     window.__lastLabExport = ex.artifact; // for the suite's own reading
+  }
+
+  // §8's real answer: the Lab used to throw away exactly the material a
+  // research instrument exists to study. The research log carries EVERY
+  // candidate — valid and invalid — with its refusals, its derived
+  // intent, whether it could be previewed and what a person made of it.
+  // It is deliberately NOT the pool artifact and says so in its own
+  // format name, its note and a `productionReady:false` flag.
+  function exportResearchNow() {
+    var ex = session.exportResearch();
+    if (!ex.ok) {
+      $('researchState').textContent = ex.refused
+        ? 'research export refused: ' + ex.reasons.join(', ')
+        : 'nothing to export yet';
+      return;
+    }
+    if (!ex.count) { $('researchState').textContent = 'nothing generated yet'; return; }
+    var blob = new Blob([JSON.stringify(ex.artifact, null, 2)], { type: 'application/json' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'ether-mystery-lab-research-' + Date.now() + '.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    $('researchState').textContent = ex.count + ' candidate(s) in the research log — ' +
+      'RESEARCH ONLY, never committed into the experience pool';
+    window.__lastLabResearchExport = ex.artifact; // for the suite's own reading
   }
 
   // ---------------- boot (draws; asks nothing of any model) --------

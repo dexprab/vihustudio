@@ -28,7 +28,11 @@
 (function (global) {
   'use strict';
 
-  var PROMPT_VERSION = 'ether-mystery-lab-1';
+  // Bumped from -1 when the REFINEMENT channel joined the directives
+  // (§6): a refinement carries the original candidate and the exact
+  // refusals back through the SAME generation contract, so what the
+  // model is shown genuinely changed and the label must say so.
+  var PROMPT_VERSION = 'ether-mystery-lab-2';
 
   function G() { return global.EtherGrammar; }
   function L() { return global.EtherCreationLens; }
@@ -210,6 +214,25 @@
       etherPhenomena: (opts.phenomena || []).map(String).slice(0, 12),
       emphasis: String(opts.emphasis || '').slice(0, 900)
     };
+
+    // §6 — REFINEMENT. A refused idea goes back through this same
+    // contract carrying its own intent and the exact reasons it was
+    // refused. Deliberately NOT "make it valid": that invites
+    // meaningless schema compliance, and the whole point is that the
+    // creative intent survives. The original travels as DATA and is
+    // swept with everything else below.
+    if (opts.refine && opts.refine.original) {
+      directives.refine = {
+        keepThisIdea: String(opts.refine.intent || '').slice(0, 400),
+        refusedBecause: (opts.refine.refusedBecause || []).map(String).slice(0, 12),
+        original: opts.refine.original,
+        instruction: 'Keep the mystery idea below. Express it using ONLY the ' +
+          'supplied capabilities and the supplied schema. Do not merely make it ' +
+          'schema-compliant — if the idea cannot survive the vocabulary, say so ' +
+          'by producing a different idea in the same spirit rather than an empty one.'
+      };
+      directives.candidatesWanted = 1;
+    }
 
     var input = { contract: contract, directives: directives };
 
@@ -415,9 +438,21 @@
         .map(function (e) { return G().signature(e.candidate); });
     }
 
+    function refinementId(ofLabId) {
+      var n = items.filter(function (i) {
+        return i.lab && i.lab.refinementOf === ofLabId;
+      }).length + 1;
+      return ofLabId + '-r' + n;
+    }
+
     function add(candidate, lab) {
+      // A REFINEMENT IS A NEW CANDIDATE, NEVER AN EDIT. The original
+      // keeps its own record, its own validation and its own review;
+      // the refinement is linked to it by name (cand-3 → cand-3-r1)
+      // and both stay visible for research.
+      var refOf = (lab && lab.refinementOf) || null;
       var item = {
-        labId: 'cand-' + (++seq),
+        labId: refOf ? refinementId(refOf) : 'cand-' + (++seq),
         state: 'generated',
         candidate: candidate,
         lab: {
@@ -428,9 +463,12 @@
           model: (lab && lab.model) || null,
           generatedAt: (lab && lab.generatedAt) || new Date().toISOString(),
           params: (lab && lab.params) || null,
-          promptVersion: PROMPT_VERSION
+          promptVersion: PROMPT_VERSION,
+          refinementOf: refOf,
+          refinementBrief: (lab && lab.refinementBrief) || null
         },
         validation: null,
+        research: null,
         quality: null,
         review: null
       };
@@ -527,6 +565,103 @@
       return { ok: true, artifact: artifact, count: entries.length };
     }
 
+    // §1/§7 — the research view of one candidate, computed once and
+    // kept on the item so the page, the statistics and the research
+    // log all read the SAME answer. Delegated whole to LabResearch;
+    // this file decides nothing about intent, cases or projection.
+    function studyItem(item) {
+      var R = global.LabResearch;
+      if (!R) return null;
+      item.research = R.study(item.candidate, {
+        validation: item.validation || undefined,
+        poolSignatures: poolSignatures(),
+        fallbackId: item.labId
+      });
+      return item.research;
+    }
+
+    // §6 — the structured refinement instruction, built from the
+    // candidate's OWN refusals and its OWN derived intent. It goes
+    // back through buildInput() like any other generation.
+    function refinementBrief(labId) {
+      var item = items.filter(function (i) { return i.labId === labId; })[0];
+      if (!item) return null;
+      var r = item.research || studyItem(item);
+      return {
+        original: item.candidate,
+        intent: (r && r.intent && r.intent.sentence) || '',
+        refusedBecause: (r && r.plainReasons) || [],
+        ofLabId: item.labId
+      };
+    }
+
+    // §1/§7/§14 — THE RESEARCH LOG. Every candidate this session
+    // produced, valid and invalid, with its refusals, its derived
+    // intent, whether it could be previewed and what a person made of
+    // it. This is NOT the pool artifact and must never be confused
+    // with one: a different format name, an explicit productionReady
+    // flag, and its own note. The approved export above stays exactly
+    // as strict — an invalid candidate can never reach it.
+    function exportResearch() {
+      var rows = items.map(function (i) {
+        var r = i.research || studyItem(i);
+        return {
+          labId: i.labId,
+          refinementOf: (i.lab && i.lab.refinementOf) || null,
+          source: i.lab.source,
+          model: i.lab.model || null,
+          generatedAt: i.lab.generatedAt,
+          promptVersion: i.lab.promptVersion,
+          params: i.lab.params,
+          technicalStatus: (i.validation && i.validation.ok) ? 'valid' : 'invalid',
+          refusedBecause: (i.validation && i.validation.reasons) || [],
+          refusedInPlainWords: (r && r.plainReasons) || [],
+          creativeIntent: (r && r.intent && r.intent.sentence) || null,
+          previewStatus: (r && r['case']) || 'unknown',
+          previewBlockedBy: (r && r.missing) || [],
+          projectionApplied: (r && r.projection && r.projection.applied) || [],
+          designReasonsWaived: (r && r.projection && r.projection.waived) || [],
+          humanJudgement: i.review ? {
+            classification: i.review.classification,
+            reasons: i.review.reasons,
+            notes: i.review.notes,
+            productionApproval: i.state === 'approved'
+          } : null,
+          qualityHeuristic: i.quality ? { total: i.quality.total, outOf: i.quality.outOf } : null,
+          candidate: i.candidate
+        };
+      });
+      var artifact = {
+        format: 'ether-mystery-lab-research-log',
+        productionReady: false,
+        note: 'RESEARCH ONLY. Every candidate of one Lab session, VALID AND ' +
+          'INVALID, with its refusals, its derived creative intent, whether the ' +
+          'Ether could show it, and what a person made of it. This is not a pool ' +
+          'artifact: nothing here may be committed into ' +
+          'assets/ether/experience-pool.js. Only the separate approved export ' +
+          'carries entries in the pool\'s own shape.',
+        exportedAt: new Date().toISOString(),
+        promptVersion: PROMPT_VERSION,
+        counts: {
+          total: rows.length,
+          valid: rows.filter(function (r) { return r.technicalStatus === 'valid'; }).length,
+          invalid: rows.filter(function (r) { return r.technicalStatus === 'invalid'; }).length,
+          playable: rows.filter(function (r) { return r.previewStatus === 'playable'; }).length,
+          tryIdea: rows.filter(function (r) { return r.previewStatus === 'try-idea'; }).length,
+          unsupported: rows.filter(function (r) { return r.previewStatus === 'unsupported'; }).length,
+          uninterpretable: rows.filter(function (r) { return r.previewStatus === 'uninterpretable'; }).length
+        },
+        candidates: rows
+      };
+      var scanReasons = [];
+      sweep(artifact, 'artifact', scanReasons);
+      var serial = JSON.stringify(artifact);
+      if (/sk-[A-Za-z0-9]{8,}/.test(serial)) scanReasons.push('key-material');
+      if (CELLS_SHAPE.test(serial)) scanReasons.push('stars-shaped-data');
+      if (scanReasons.length) return { ok: false, refused: true, reasons: scanReasons };
+      return { ok: true, artifact: artifact, count: rows.length };
+    }
+
     // §24 — real percentages from actually reviewed candidates.
     function stats() {
       var byState = {}, byClass = {}, reasonCounts = {};
@@ -558,7 +693,10 @@
       quality: qualityItem,
       review: review,
       approve: approve,
+      study: studyItem,
+      refinementBrief: refinementBrief,
       exportApproved: exportApproved,
+      exportResearch: exportResearch,
       stats: stats,
       items: function () { return items.slice(); },
       get: function (labId) {

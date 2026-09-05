@@ -261,6 +261,213 @@ what actually happened (found / stayed a question / still open). It is
 secondary information, shown after the fact, and nothing of it appears
 over the sky.
 
+## 🧪 INVALID DOES NOT MEAN INVISIBLE — the research view
+
+A refused candidate is not a failure to be hidden. It is the material a
+research instrument exists to study, and the Lab now keeps every one of
+them on screen with a research view a person can read without knowing a
+schema.
+
+**Two separate questions, never one score.** *Is this candidate
+technically expressible by the Ether?* is the validator's. *Is the
+underlying idea worth expressing?* is the reviewer's. A candidate can
+be VALID + BAD IDEA, INVALID + GOOD IDEA, VALID + GOOD IDEA or INVALID
++ BAD IDEA, and the Lab must let you see the difference.
+
+Every refused card carries:
+
+- **WHAT THE MODEL WAS TRYING TO DO** — one plain sentence, DERIVED
+  from the candidate itself (its own title, the shape of experience it
+  chose, what it places, how it hoped to end) and never invented, never
+  asked of a model. A candidate too broken to say anything about says
+  so.
+- **WHY IT IS NOT PRODUCTION-READY** — the validator's reason codes in
+  a reviewer's words (*"it invents a field the schema has no place for:
+  figure"*), with the raw codes still in `technical details`.
+- **CAN THE ETHER SHOW THIS?** — and what is missing when it cannot.
+- **WHAT WAS REPAIRED FOR THE EXPERIMENT**, when anything was.
+
+### The three preview answers
+
+| Card | Button | Meaning |
+|---|---|---|
+| VALID + performable | **▶ PLAY IN ETHER** | the sky exactly as it would be |
+| INVALID, idea expressible today | **🧪 TRY IDEA** | not production-valid; here is whether the idea underneath can be experienced |
+| INVALID, needs a missing capability | **⚠ Cannot preview this idea yet** | *"This idea needs a capability Ether does not currently have: &lt;capability&gt;."* |
+| INVALID, nothing to show or not allowed | **⚠ Cannot preview this idea yet** | the research explanation, and no preview |
+
+An invalid candidate is **never** called "Play in Ether", and a
+capability that does not exist is **never** faked to make a card
+playable. `js/etherMystery.js` was not touched.
+
+### `labResearch.js` — the projection, and the one bypass
+
+`tools/ether-mystery-lab/labResearch.js` is pure: no DOM, no storage,
+no network, no clock, no model, and it draws and places nothing. It
+does four things — `intent()`, `plainWhy()`, `project()`, `study()`.
+
+**The projection never guesses.** It is a table of named, mechanical,
+reportable edits, and each says why it is safe:
+
+| Rule | What it does |
+|---|---|
+| `relocate-known-key` | a key the schema has exactly ONE home for, put one level up (top-level `residue` → `outcome.residue`) |
+| `drop-unknown-key` | a field the schema has nowhere to put (`figure`, `skyFigure`) — dropped and reported |
+| `supply-id` | a malformed id → a slug of the candidate's own title; ids never reach the sky |
+| `imply-creation` | the candidate already names a shard, a line toward a creation, or a creation being found |
+| `drop-deadline` | `seconds` on a tap or approach — the action stays, the deadline does not exist here |
+| `clamp-to-bounds` | a number outside a bound the schema already states |
+| `set-aside-title` | a title whose words are refused; the sky never renders one |
+| `drop-unusable-label` | a complexity, rarity, phase, creationKind or `requires` the Composer/interpreter never performs |
+
+After the rules run, **the REAL validator decides.** `labResearch.js`
+never declares anything valid; if a mechanical repair cannot get there,
+the answer is that it cannot be previewed, and saying so is the
+research result. Anything needing more than an obvious mapping is not
+case A — a projection that guessed would be a parallel interpretation
+of candidate semantics, which is forbidden.
+
+**RESEARCH_WAIVED is the one deliberate bypass, and it is four named
+reasons.** The validator holds two kinds of rule: statements about what
+the runtime can PERFORM (capabilities, shapes, bounds, the privacy
+boundary) and the product's own DESIGN judgement. On the TRY IDEA path
+only, the interpreter is handed a grammar that delegates to the REAL
+`EtherGrammar.validate()` and stands over exactly:
+
+    outcome-obvious-no-question · tap-for-sure-outcome ·
+    experiment-must-stay-uncertain · reskin-of-existing
+
+Nothing else. It is never installed on the PLAY path, the production
+pool is never loaded where it lives, and a candidate refused for a
+capability, a bound or a forbidden key is refused there too. The suite
+checks that no waived reason names a capability, bound or boundary.
+
+**A privacy boundary is never repaired around.** The validator returns
+early on an unknown TOP-LEVEL key, so its own sweep never runs and a
+privacy field put there comes back merely as "unknown" — so the
+research layer asks `FORBIDDEN_KEYS` itself, at any depth, before any
+rule may drop anything. That candidate is `uninterpretable`, full stop.
+
+### An invalid candidate can be judged. It can never ship.
+
+The four judgements are the same four, and on a refused candidate they
+are **research judgements**: ✨ Good there means *the idea is
+creatively promising*, not *this is production-ready*. The card says
+so. `approve()` refuses on `not-valid`, only an approved item reaches
+the pool export, and the suite proves both.
+
+### Two exports, and they are different artifacts
+
+| Button | Format | For |
+|---|---|---|
+| ⬇ Export approved candidates | `ether-experience-pool-entries` | a person to review and commit into `assets/ether/experience-pool.js` |
+| 📓 Export research log | `ether-mystery-lab-research-log`, `productionReady: false` | reading and learning from — **never** committed into the pool |
+
+The research log carries EVERY candidate of a session, valid and
+invalid, with its refusals (raw and in plain words), its derived
+creative intent, its preview status, what the projection repaired, what
+was waived, and the human judgement. Before it existed the Lab threw
+away exactly the material it is for — which is why the first Pegasus
+batch cannot be analysed today (see below).
+
+### ↻ Regenerate — refinement, through the same contract
+
+Pressing it on any candidate sends that candidate's OWN intent and its
+OWN refusals back through `buildInput()` — the same generation
+contract, the same privacy sweep, the same transport. `directives.refine`
+carries `{ keepThisIdea, refusedBecause, original, instruction }`, and
+the instruction is deliberately **not** "make it valid": that invites
+meaningless schema compliance, and the point is that the creative
+intent survives.
+
+The answer is a **NEW candidate linked to the original** (`cand-3` →
+`cand-3-r1`). The original is never mutated, keeps its own validation
+reasons and its own judgement, and both stay visible.
+
+## THE 10/10 INVALID PEGASUS BATCH — what could and could not be traced
+
+**The batch itself was not available.** The Lab persists nothing: no
+`localStorage`, no server write, and the only egress was the approved
+export — which invalid candidates could not enter. That batch lived in
+one browser session and is gone. **Nothing here reconstructs it, and no
+JSON below is presented as the model's actual output.**
+
+Of §8's five comparisons, four could be made from source and one could
+not:
+
+| # | Comparison | Made? |
+|---|---|---|
+| 1 | the generation prompt | ✅ `labKit.js` → `systemPrompt()` / `userPrompt()` |
+| 2 | the candidate schema shown to the model | ✅ `EtherGrammar.contract()` |
+| 3 | the actual model output | ❌ **not available — the batch was never persisted** |
+| 4 | the validator schema | ✅ `js/etherGrammar.js` → `validate()` |
+| 5 | the interpreter's expectations | ✅ `js/etherMystery.js` via `REPRESENTED` |
+
+What IS evidence about the batch is the product owner's own reading of
+it (§7): the ideas were *something separated from Pegasus · something
+hidden around Pegasus · a glint/trail leading somewhere · a
+relationship involving Pegasus · something subtly changing around
+Pegasus.* Every one of those is a shape the grammars already express —
+`reconstruct`, `uncover`, `trace`, `connect`, `notice` — so the failure
+was almost certainly in the ENCODING rather than in the ideas.
+
+### The contract mismatches, by name
+
+| # | Mismatch | Where | Severity |
+|---|---|---|---|
+| 1 | **A sky figure cannot be expressed at all.** `directives.skyFigures` reaches the model as an ingredient, and `SCHEMA.top` / `SCHEMA.ingredients` have NO field for one. A candidate can only ever be about a `creation` or an `anchor`. | prompt ↔ schema | **critical** — and it is the constellations preset's own subject |
+| 2 | `constellation` is on `FORBIDDEN_KEYS` (a privacy rule about a Magic Card's sky) while the Lab simultaneously offers "sky figures" as ingredients — so the most natural key name for that ingredient is refused as a privacy violation. | prompt ↔ validator | high |
+| 3 | Ether beings and phenomena are offered as ingredients too, and have no schema field either. | prompt ↔ schema | high |
+| 4 | The id format `^[a-z0-9][a-z0-9-]{2,60}$` is **never stated in the prompt**. `pegasus_hidden` and `Pegasus Trail` both fail `bad-id`. | prompt | high |
+| 5 | `seconds` on a `tap` or `approach` is refused (`no-deadlines`) and the prompt never says so. | prompt ↔ validator | medium |
+| 6 | `tap-for-sure-outcome` / `outcome-obvious-no-question` refuse the single most natural mystery shape (one touch → a discovery), and the prompt states the principle loosely ("not every mystery resolves") without saying it is enforced. | prompt ↔ validator | high |
+| 7 | The schema is shown as **lists of key names only** — no types, no required/optional marking, no nesting, no worked example. Nothing says `elements` is an array, that `element.show` draws from `capabilities.shows`, or that `outcome.possible` is an array of outcome ids. | prompt | high |
+| 8 | Titles are scanned for gamification and instruction language. *"find the missing corner"* trips `instruction-language`; the banned vocabulary is never shown to the model. | prompt ↔ validator | medium |
+| 9 | `requires` accepts capability ids or `creation`/`anchor`, and the prompt never explains the field. | prompt | low |
+| 10 | The validator **returns early on an unknown top-level key**, so a refused candidate reports only its first family of problems. A reviewer (and a refinement) sees one reason where there may be four. | validator ergonomics | medium |
+| 11 | `onEngage: 'brighten'` — validator accepts, interpreter has no branch. | validator ↔ interpreter | known |
+| 12 | `outcome.residue.show: 'glint'` — validator accepts, interpreter always draws a mark. | validator ↔ interpreter | known |
+| 13 | `of: 'sky'` — validator accepts, interpreter performs only `of: 'cover'` on a shard. | validator ↔ interpreter | known |
+| 14 | `creationKind: 'any'` — validator accepts, only `story` exists. | validator ↔ interpreter | known |
+| 15 | `ingredients.minPages` is validated 0–40, and the Lab's own fixture creations advertise `pages: 5/1/12` — while the live lens reports **0 pages for every real Spirit**. The contract actively invites a field that makes a candidate permanently unofferable in production. | contract ↔ runtime | medium |
+
+**Constructed probes, run through the real validator** (labelled as
+constructed; they are in the suite, not passed off as the batch):
+
+    figure at top level              → unknown-key:candidate.figure
+    figure inside ingredients        → unknown-key:ingredients.skyFigure
+    residue at top level             → unknown-key:candidate.residue
+    underscored id + a timed tap     → bad-id · no-deadlines · tap-for-sure-outcome
+    the natural tap-for-a-discovery  → tap-for-sure-outcome
+    constellation named directly     → unknown-key (and a privacy field)
+    a title reading as an instruction→ instruction-language:candidate.title
+    of: 'sky'                        → VALID, and unperformable
+
+**Recommendation (not a change).** In order: (a) state the id format,
+the no-deadlines rule, the mystery-must-stay-a-question rule and the
+banned title vocabulary IN THE PROMPT, and show ONE worked example
+candidate; (b) decide the sky-figure question as a product matter — the
+runtime cannot draw a literal constellation, so either the ingredient
+stops being offered or a `figure` show capability is built, and a
+schema field without a renderer would validate what cannot be
+performed; (c) resolve the four validator ↔ interpreter gaps in the
+direction the product wants. **Nothing was changed here**: the whole
+point of §8 was to diagnose before touching either side.
+
+## KNOWN RUNTIME LIMITATION — NOTICE with no armed interaction
+
+`js/etherMystery.js`'s `resolveDone()` is satisfied on the first frame
+when no element is armed and no wait is pending, so an observation-only
+candidate **resolves before a child could look at it**. That defeats
+the `notice` grammar, whose whole point is something sitting there to
+be noticed.
+
+This is recorded, not patched. The Lab warns the reviewer
+(`labPreviewSupport.js` → `support().notes`) because a preview that
+appears and goes reads as a broken preview; `js/etherMystery.js` is
+untouched and `tools/ether-mystery-test/` was not weakened. Fixing it
+is a product decision with its own sprint.
+
 ## The candidate lifecycle — VALID ≠ APPROVED
 
     generated → validated | invalid → quality-reviewed → reviewed
@@ -342,7 +549,8 @@ what cannot be performed.
 `labConnection.js` · `labConstellations.js` · `fixtures.js` ·
 `run-lab.js` · **`preview.html` · `labPreview.js` ·
 `labPreviewHost.js` · `labPreviewSupport.js`** ·
+**`labResearch.js`** ·
 `supabase/functions/lab-generate/index.ts` ·
 `supabase/DEPLOY_lab_generate.md` ·
-`tools/ether-mystery-lab-test/run-lab-tests.js` (141) ·
+`tools/ether-mystery-lab-test/run-lab-tests.js` (191) ·
 `tools/ether-mystery-lab-test/shots/`

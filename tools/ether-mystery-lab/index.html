@@ -85,6 +85,17 @@
   .cand .demo { margin: 8px 0; }
   .cand .demo-title { font-size: 11px; text-transform: uppercase;
                       letter-spacing: .06em; color: var(--dim); margin-bottom: 4px; }
+  /* The research view of a refused candidate — §1/§5: invalid does not
+     mean invisible, and the reviewer reads plain language rather than a
+     reason code. Technical detail stays folded away below. */
+  .cand .research { border-left: 2px solid var(--mid); padding-left: 10px;
+                    margin: 6px 0 10px; }
+  .cand .research-title { font-size: 11px; letter-spacing: .06em; color: var(--mid);
+                          font-weight: 600; margin-bottom: 4px; }
+  .cand .lineage { font-size: 11px; color: var(--dim); margin-bottom: 6px; }
+  .cand .research-judgement { font-size: 11px; color: var(--mid); margin-bottom: 6px; }
+  .cand button.try { font-size: 14px; padding: 8px 16px; background: #3a2a18;
+                     border-color: var(--mid); color: var(--mid); font-weight: 600; }
   details.tech { margin-top: 10px; }
   .presets button { font-size: 12px; }
   .hint { font-size: 11px; color: var(--dim); margin-top: 2px; }
@@ -207,6 +218,14 @@
     </div>
     <div class="hint">The export is a reviewable JSON artifact. Committing entries into
       assets/ether/experience-pool.js is a git-reviewed act — nothing here writes the pool.</div>
+    <div class="row">
+      <button id="researchBtn">📓 Export research log (all candidates)</button>
+      <span id="researchState" class="note"></span>
+    </div>
+    <div class="hint">A different artifact, deliberately: EVERY candidate this session
+      produced, valid and invalid, with its refusals, its derived creative intent, whether
+      the Ether could show it and what you made of it. <b>Research only</b> — it is not in
+      the pool's shape and nothing in it may be committed into the experience pool.</div>
   </section>
 
 </div>
@@ -228,6 +247,7 @@
 <script src="fixtures.js"></script>
 <script src="labConstellations.js"></script>
 <script src="labPreviewSupport.js"></script>
+<script src="labResearch.js"></script>
 <script src="labPreviewHost.js"></script>
 <script src="labKit.js"></script>
 <script src="labConnection.js"></script>

@@ -12104,3 +12104,50 @@ what the `notice` grammar exists to make possible. Suite:
 `tools/ether-mystery-lab-test/` 99 → 141 (`P1`–`P10`),
 four reversion proofs, three committed preview screenshots. Detail:
 `docs/ETHER_MYSTERY_LAB.md`.
+
+
+## Ether Mystery Lab — Rejected Candidate Research (build 0767)
+
+The first real LLM run produced 10/10 invalid candidates, and the Lab's
+answer was to hide them — a reason code, and no way to see, try or
+learn from what the model was reaching for. **INVALID DOES NOT MEAN
+INVISIBLE**: valid now means eligible for production, invalid means not
+eligible and potentially valuable as research, and the two questions
+the Lab must answer separately are whether a candidate is technically
+expressible and whether the idea underneath is worth expressing. Every
+refused candidate keeps its card and gains a research view in plain
+language — what the model was trying to make (DERIVED from the
+candidate's own title, grammar, elements and outcome; never invented,
+never asked of a model), why it is not production-ready, whether the
+Ether can show it, and what was repaired if anything was. Three
+answers, never one wearing three names: ▶ PLAY IN ETHER, **🧪 TRY
+IDEA** for an invalid candidate whose idea the existing Ether can show,
+and **⚠ Cannot preview this idea yet** naming the missing capability.
+TRY IDEA rides the SAME real path — `candidates()` → `begin()`, the
+same universe, the same providers, the same touch chain — so there is
+no second engine and `js/etherMystery.js` was not touched. The new
+`tools/ether-mystery-lab/labResearch.js` projects an invalid candidate
+through EIGHT named, mechanical, reportable rules and then lets the
+REAL validator decide; `RESEARCH_WAIVED` is the one deliberate bypass
+and is four DESIGN reasons, never a capability, a bound or the privacy
+boundary — and because `validate()` returns early on an unknown
+top-level key, the layer asks `FORBIDDEN_KEYS` itself before any rule
+may drop anything. An invalid candidate can be judged (research
+judgement, said on the card) and can never be approved or exported to
+the pool; a second **research log** export carries every candidate of a
+session with its refusals, intent, preview status and judgement, which
+is exactly the material the Lab used to throw away. ↻ Regenerate sends
+a candidate's own intent and refusals back through the SAME generation
+contract and produces a NEW linked candidate (`cand-3` → `cand-3-r1`),
+never a mutation. **The Pegasus batch itself was gone** — the Lab
+persisted nothing — so four of §8's five comparisons were made from
+source and the model's actual output was not, and no JSON anywhere
+claims to be it; fifteen contract mismatches are named in
+`docs/ETHER_MYSTERY_LAB.md`, the central one being that a sky figure
+cannot be expressed in the schema at all while the constellations
+preset asks a model to build a mystery from one. Prompt, schema,
+validator and interpreter were all left unchanged as recommendations,
+and the NOTICE limitation is recorded rather than patched. Production
+files changed: zero. Suite: `tools/ether-mystery-lab-test/` 141 → 191
+(`R1`–`R24`), five reversion proofs, two committed screenshots. Detail:
+`docs/ETHER_MYSTERY_LAB.md`.

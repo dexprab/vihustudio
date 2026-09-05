@@ -22,6 +22,12 @@
  *      storage or an export, a smuggled constellation pattern is
  *      refused whole, LLM mode is proved against a stubbed provider
  *      and never silently falls back to fixtures
+ *   R. the research view — INVALID DOES NOT MEAN INVISIBLE: the four
+ *      preview cases, the written-down projection, the research
+ *      grammar's one deliberate bypass, an invalid candidate that can
+ *      never be approved or exported to the pool, a refinement that is
+ *      a new linked candidate, and TRY IDEA riding the same real
+ *      interpreter
  *
  * Load-bearing checks proved by temporary reversion during the
  * sprint (each run red, then restored): the Stars boundary removed →
@@ -187,6 +193,8 @@ function kitSandbox() {
   sb.window = undefined;
   sb.global = sb;
   ['js/etherGrammar.js', 'js/etherCreationLens.js', 'assets/ether/experience-pool.js',
+   'tools/ether-mystery-lab/labPreviewSupport.js',
+   'tools/ether-mystery-lab/labResearch.js',
    'tools/ether-mystery-lab/labKit.js'].forEach((rel) => {
     vm.runInNewContext(read(rel), sb, { filename: rel });
   });
@@ -1136,6 +1144,487 @@ async function sectionP() {
 }
 
 // ===================================================================
+// R. THE RESEARCH VIEW — INVALID DOES NOT MEAN INVISIBLE.
+//
+// A refused candidate is not a failure to be hidden: it is the
+// material a research instrument exists to study. This section proves
+// the four §3 cases, the narrow written-down projection, the research
+// grammar's ONE deliberate bypass, that an invalid candidate can never
+// be approved or exported to the pool, that a refinement is a NEW
+// candidate, and that TRY IDEA rides the SAME real interpreter the
+// PLAY path does.
+//
+// R1–R9   the layer in Node, over the real grammar and support table
+// R10–R15 the session: approval, the two exports, refinement
+// R16–R24 the real page: an invalid batch rendered, tried, exported
+// ===================================================================
+
+// Constructed probes. These are NOT the product owner's Pegasus batch,
+// which the Lab never persisted and which is gone (see the sprint
+// report). They are written HERE to exercise each contract mismatch
+// the source-level trace named, and they are labelled as constructed
+// wherever they are used.
+const PROBES = {
+  figureAtTop: {
+    id: 'pegasus-square', grammar: 'reconstruct',
+    title: 'four stars of the great square, come apart',
+    figure: 'pegasus',
+    ingredients: { creation: true },
+    elements: [{ role: 'corner', show: 'shard', of: 'cover', place: 'scattered', count: 4 }],
+    engage: [{ action: 'tap', on: 'corner' }],
+    behaviour: { onEngage: 'gather' },
+    outcome: { possible: ['discovery'], discovery: 'creation-revealed' }
+  },
+  residueAtTop: {
+    id: 'glint-trail', grammar: 'trace',
+    title: 'a faint trail that leaves a mark behind',
+    elements: [{ role: 'step', show: 'glint', place: 'scattered', count: 3 }],
+    engage: [{ action: 'dwell', on: 'step', seconds: 3 }],
+    behaviour: { onEngage: 'drift-away' },
+    residue: { show: 'mark', when: 'either' },
+    outcome: { possible: ['discovery', 'unresolved'], discovery: 'place' }
+  },
+  designOnly: {
+    id: 'one-touch-sure', grammar: 'uncover',
+    title: 'a soft glow with something behind it',
+    ingredients: { creation: true },
+    elements: [{ role: 'veil', show: 'veil', place: 'near-look' },
+               { role: 'behind', show: 'shard', of: 'cover', place: 'near-look' }],
+    engage: [{ action: 'tap', on: 'veil' }],
+    behaviour: { onEngage: 'reveal' },
+    outcome: { possible: ['discovery'], discovery: 'creation-revealed' }
+  },
+  inventedCapability: {
+    id: 'wants-a-glow', grammar: 'notice',
+    title: 'a light that answers in a way the sky has never had',
+    elements: [{ role: 'spot', show: 'glint', place: 'far' }],
+    engage: [{ action: 'dwell', on: 'spot', seconds: 4 }],
+    behaviour: { onEngage: 'pulse' },
+    outcome: { possible: ['unresolved'] }
+  },
+  privateKey: {
+    id: 'smuggled-sky', grammar: 'connect',
+    title: 'lights that belong together',
+    ingredients: { creation: false },
+    elements: [{ role: 'pair', show: 'glint', place: 'scattered', count: 2 }],
+    engage: [{ action: 'dwell', on: 'pair', seconds: 3 }],
+    behaviour: { onEngage: 'link' },
+    outcome: { possible: ['unresolved'], memories: ['a thing the child said'] }
+  },
+  // A PRIVACY KEY AT THE TOP LEVEL. The validator returns early on an
+  // unknown TOP-LEVEL key, so its own sweep never runs and this comes
+  // back merely as "unknown" — which is exactly why the research layer
+  // asks the forbidden list itself before repairing anything.
+  smuggledTopLevel: {
+    id: 'smuggled-top', grammar: 'connect',
+    title: 'lights arranged the way a card is',
+    constellation: 'pegasus',
+    elements: [{ role: 'pair', show: 'glint', place: 'scattered', count: 2 }],
+    engage: [{ action: 'dwell', on: 'pair', seconds: 3 }],
+    behaviour: { onEngage: 'link' },
+    outcome: { possible: ['unresolved'] }
+  },
+  empty: {
+    id: 'nothing-here', grammar: 'notice',
+    title: 'an idea with nothing in it',
+    elements: [],
+    outcome: { possible: ['unresolved'] }
+  },
+  valid: {
+    id: 'a-real-one', grammar: 'notice',
+    title: 'one far light, a little nearer than it used to be',
+    elements: [{ role: 'shift', show: 'glint', place: 'far' }],
+    engage: [{ action: 'return', on: 'shift' }],
+    behaviour: { onEngage: 'dissolve', pace: 'still' },
+    outcome: { possible: ['unresolved'] }
+  }
+};
+
+async function sectionR() {
+  console.log('\n== R. the research view ==');
+  const { chromium } = require('playwright');
+  const Research = require('../ether-mystery-lab/labResearch.js');
+  const Support = require('../ether-mystery-lab/labPreviewSupport.js');
+  const G = kitSandbox().EtherGrammar;
+
+  // ---------- R1: the layer reaches nothing ----------
+  const src = stripComments(read('tools/ether-mystery-lab/labResearch.js'));
+  ck(!/fetch\s*\(|XMLHttpRequest|WebSocket|navigator\.sendBeacon|api\.openai/.test(src),
+    'R1  the research layer makes no network call of any kind');
+  ck(!/localStorage|sessionStorage|indexedDB/.test(src),
+    'R1b it stores nothing');
+  // NOT A SECOND ENGINE (§4). It may not draw, place or interpret an
+  // element — only the interpreter does that.
+  ck(!/getContext|drawImage|placePoints|coverRegions|createElement\s*\(\s*['"]canvas/.test(src),
+    'R1c it draws nothing and places nothing — no second renderer');
+
+  // ---------- R2: the projection is written down ----------
+  ck(Array.isArray(Research.RULES) && Research.RULES.length >= 5 &&
+     Research.RULES.every((r) => r.id && r.why && r.why.length > 20),
+    'R2  every projection rule is named and says why it is safe',
+    Research.RULES.map((r) => r.id).join(','));
+
+  // ---------- R3: the waiver names no capability, bound or boundary ----------
+  // The four reasons stood over on a research run must all be the
+  // product's own DESIGN judgement. A reason naming a capability, a
+  // bound, a shape or the privacy boundary would be a faked capability
+  // wearing a waiver, which §3 forbids.
+  const badWaiver = Research.RESEARCH_WAIVED.filter((r) =>
+    /^(unavailable-capability|forbidden-key|bad-|too-many|unknown-|not-an-object|no-)/.test(r));
+  ck(badWaiver.length === 0,
+    'R3  RESEARCH_WAIVED holds only design judgements — never a capability, bound or boundary',
+    badWaiver.join(',') || Research.RESEARCH_WAIVED.join(','));
+
+  // ---------- R4: the four cases ----------
+  const cases = {};
+  Object.keys(PROBES).forEach((k) => {
+    cases[k] = Research.study(PROBES[k], { grammar: G, support: Support, fallbackId: 'cand-1' });
+  });
+  ck(cases.valid['case'] === 'playable', 'R4  a valid, performable candidate is PLAYABLE');
+  ck(cases.figureAtTop['case'] === 'try-idea' && cases.residueAtTop['case'] === 'try-idea',
+    'R4b an invalid ENCODING whose idea the Ether can show is TRY IDEA',
+    cases.figureAtTop['case'] + '/' + cases.residueAtTop['case']);
+  ck(cases.designOnly['case'] === 'try-idea' &&
+     cases.designOnly.projection.applied.length === 0 &&
+     cases.designOnly.projection.waived.indexOf('tap-for-sure-outcome') !== -1,
+    'R4c a candidate refused ONLY for a design reason is tried AS WRITTEN — nothing repaired');
+  ck(cases.inventedCapability['case'] === 'unsupported',
+    'R4d a capability the Ether does not have is UNSUPPORTED — never faked into a preview');
+  ck(cases.empty['case'] === 'uninterpretable' && cases.privateKey['case'] === 'uninterpretable',
+    'R4e nothing to show, or something that may never travel, is UNINTERPRETABLE',
+    cases.empty['case'] + '/' + cases.privateKey['case']);
+
+  // ---------- R5: an unsupported capability is NAMED ----------
+  ck(cases.inventedCapability.missing.join(' ').indexOf('pulse') !== -1,
+    'R5  the unsupported case names the capability the idea asked for',
+    cases.inventedCapability.missing.join(' | '));
+  ck(!cases.inventedCapability.previewCandidate,
+    'R5b and it offers no preview candidate at all');
+
+  // ---------- R6: a privacy boundary is never repaired around ----------
+  ck(!cases.privateKey.projection && cases.privateKey.stopped &&
+     cases.privateKey.stopped.some((r) => r.indexOf('forbidden-key') === 0),
+    'R6  a forbidden key stops the study before any repair is attempted');
+  // The validator short-circuits on an unknown TOP-LEVEL key, so a
+  // privacy field put there is reported only as "unknown" and its own
+  // sweep never runs. The research layer asks the forbidden list itself
+  // before any rule may drop it — a privacy boundary is not something
+  // to repair around.
+  ck(cases.smuggledTopLevel['case'] === 'uninterpretable' &&
+     !cases.smuggledTopLevel.projection &&
+     cases.smuggledTopLevel.stopped &&
+     cases.smuggledTopLevel.stopped.some((r) => r.indexOf('forbidden-key') === 0),
+    'R6b a privacy key the validator only called "unknown" is still never repaired around',
+    cases.smuggledTopLevel['case']);
+
+  // ---------- R7: intent is derived, never invented ----------
+  const it = cases.residueAtTop.intent;
+  ck(it.ok && it.sentence.indexOf(PROBES.residueAtTop.title) !== -1 &&
+     it.sentence.indexOf('small lights') !== -1 &&
+     it.derivedFrom.indexOf('elements') !== -1,
+    'R7  the creative intent is built from the candidate\'s own title and fields', it.sentence);
+  ck(it.reaching.indexOf('residue') !== -1,
+    'R7b and it names what the model reached for that the schema has no room for',
+    it.reaching.join(','));
+  const bare = Research.intent({ elements: [] }, { grammar: G, support: Support });
+  ck(!bare.ok && !bare.sentence,
+    'R7c a candidate with nothing in it says so rather than being described');
+
+  // ---------- R8: the original is never mutated ----------
+  const before = JSON.stringify(PROBES.figureAtTop);
+  Research.study(PROBES.figureAtTop, { grammar: G, support: Support });
+  Research.project(PROBES.figureAtTop, { grammar: G });
+  ck(JSON.stringify(PROBES.figureAtTop) === before,
+    'R8  studying and projecting never touch the original candidate');
+
+  // ---------- R9: the research grammar delegates ----------
+  const rg = Research.researchGrammar(G);
+  const waived = rg.validate(PROBES.designOnly, {});
+  const stillNo = rg.validate(PROBES.inventedCapability, {});
+  const privNo = rg.validate(PROBES.privateKey, {});
+  ck(waived.ok && waived.waived.indexOf('tap-for-sure-outcome') !== -1,
+    'R9  the research grammar stands over a design refusal, and records it');
+  ck(!stillNo.ok && !privNo.ok,
+    'R9b and it still refuses an invented capability and a private key',
+    JSON.stringify([stillNo.reasons, privNo.reasons]));
+  ck(rg.CAPABILITIES === G.CAPABILITIES && rg.signature === G.signature,
+    'R9c it delegates everything else to the real grammar — one vocabulary');
+
+  // ---------- R10–R15: the session ----------
+  const sb = kitSandbox();
+  const K = sb.EtherMysteryLabKit;
+  void sb;
+  const ses = K.createSession({ pool: null });
+  const good = ses.add(JSON.parse(JSON.stringify(PROBES.valid)), { source: 'fixture' });
+  const bad = ses.add(JSON.parse(JSON.stringify(PROBES.figureAtTop)), { source: 'fixture' });
+  [good, bad].forEach((i) => { ses.validate(i); ses.quality(i); ses.study(i); });
+
+  ck(good.validation.ok && !bad.validation.ok && ses.items().length === 2,
+    'R10 an invalid candidate stays in the session beside a valid one');
+
+  ses.review(bad.labId, 'good', [], 'the idea is lovely, the encoding is not');
+  const ap = ses.approve(bad.labId);
+  ck(!ap.ok && ap.reason === 'not-valid' && bad.state === 'reviewed',
+    'R11 an invalid candidate can be JUDGED and can never be approved', ap.reason);
+
+  ses.review(good.labId, 'good', [], '');
+  ses.approve(good.labId);
+  const pool = ses.exportApproved();
+  ck(pool.ok && pool.count === 1 &&
+     pool.artifact.entries.every((e) => e.candidate.id !== 'pegasus-square'),
+    'R12 the production export holds the approved candidate ONLY — never the invalid one');
+
+  const log = ses.exportResearch();
+  ck(log.ok && log.artifact.format === 'ether-mystery-lab-research-log' &&
+     log.artifact.productionReady === false &&
+     log.artifact.note.indexOf('experience-pool.js') !== -1,
+    'R13 the research log is a DIFFERENT artifact and says it is not for the pool');
+  const badRow = log.artifact.candidates.filter((r) => r.labId === bad.labId)[0];
+  ck(log.artifact.candidates.length === 2 && badRow &&
+     badRow.technicalStatus === 'invalid' &&
+     badRow.refusedBecause.length > 0 &&
+     badRow.creativeIntent && badRow.previewStatus === 'try-idea' &&
+     badRow.humanJudgement.classification === 'good' &&
+     badRow.humanJudgement.productionApproval === false,
+    'R13b and it carries the invalid candidate whole — refusals, intent, preview status, judgement',
+    JSON.stringify(badRow && { s: badRow.technicalStatus, p: badRow.previewStatus }));
+
+  // R14 — a refinement is a NEW candidate, linked, and the original is
+  // untouched with its own reasons.
+  const brief = ses.refinementBrief(bad.labId);
+  ck(brief && brief.original.id === 'pegasus-square' &&
+     brief.intent && brief.refusedBecause.length > 0 && brief.ofLabId === bad.labId,
+    'R14 the refinement brief carries the original, its intent and its exact refusals');
+  const refined = ses.add(JSON.parse(JSON.stringify(PROBES.valid)),
+    { source: 'fixture', refinementOf: bad.labId, refinementBrief: brief });
+  ses.validate(refined); ses.quality(refined); ses.study(refined);
+  ck(refined.labId === bad.labId + '-r1' && refined.lab.refinementOf === bad.labId &&
+     ses.get(bad.labId).candidate.id === 'pegasus-square' &&
+     ses.get(bad.labId).validation.reasons.length > 0,
+    'R14b the refinement is a new linked candidate and the original keeps its reasons',
+    refined.labId);
+
+  // R15 — the refinement goes through the SAME generation contract.
+  const built = K.buildInput({
+    structures: [{ kind: 'story', pages: 5, hasCover: true }],
+    count: 1,
+    refine: { original: brief.original, intent: brief.intent,
+              refusedBecause: brief.refusedBecause }
+  });
+  ck(built.ok && built.input.directives.refine &&
+     built.input.directives.refine.original.id === 'pegasus-square' &&
+     built.input.directives.refine.instruction.indexOf('Keep the mystery idea') === 0 &&
+     built.input.contract.capabilities,
+    'R15 a refinement is assembled by the ONE buildInput, carrying the idea and the contract');
+  ck(built.messages[1].content.indexOf('pegasus-square') !== -1 &&
+     built.input.directives.refine.instruction.indexOf('make it valid') === -1,
+    'R15b it asks for the idea to survive the vocabulary — never merely "make it valid"');
+
+  // ---------- the browser ----------
+  const server = spawn('node', ['tools/bring-it-alive/test/serve.js', String(PORT)],
+    { cwd: ROOT, stdio: 'ignore' });
+  await new Promise((res) => setTimeout(res, 900));
+  try {
+    const served = await (await fetch(BASE + '/tools/ether-mystery-lab/labResearch.js')).text();
+    ck(served === read('tools/ether-mystery-lab/labResearch.js'),
+      'R16 the served tree IS this tree');
+  } catch (e) { fail('R16 the served tree IS this tree', String(e)); }
+
+  const browser = await chromium.launch({
+    executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome'
+  });
+  const page = await browser.newPage({ viewport: { width: 1440, height: 1100 } });
+  const errs = [];
+  page.on('pageerror', (e) => errs.push(String(e)));
+  const reqs = [];
+  page.on('request', (r) => reqs.push({ method: r.method(), url: r.url() }));
+
+  // The stubbed provider hands back the INVALID batch — the real page,
+  // the real transport, the real validator, the real research layer.
+  let providerHits = 0;
+  await page.route('https://api.openai.com/**', (route) => {
+    providerHits++;
+    if (route.request().url().indexOf('/models') !== -1) {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: '{"data":[]}' });
+    }
+    const batch = [PROBES.figureAtTop, PROBES.designOnly,
+                   PROBES.inventedCapability, PROBES.empty];
+    return route.fulfill({
+      status: 200, contentType: 'application/json',
+      body: JSON.stringify({ choices: [{ message: { content: JSON.stringify({ candidates: batch }) } }] })
+    });
+  });
+
+  const poolSrc = read('assets/ether/experience-pool.js');
+  await page.goto(BASE + '/tools/ether-mystery-lab/index.html');
+  await page.waitForTimeout(1200);
+  await page.check('#modeDirect');
+  await page.fill('#directKey', 'sk-RESEARCHTESTKEY1234567890');
+  await page.waitForTimeout(120);
+  await page.click('#testBtn');
+  await page.waitForTimeout(500);
+  await page.click('#generateBtn');
+  await page.waitForTimeout(1000);
+
+  const cards = await page.evaluate(() => Array.prototype.map.call(
+    document.querySelectorAll('.cand'), (c) => ({
+      id: (c.querySelector('h3') || {}).textContent || '',
+      invalid: !!c.querySelector('.badge.invalid'),
+      research: !!c.querySelector('.research'),
+      intent: (c.querySelector('.research .facet') || {}).textContent || '',
+      play: !!c.querySelector('button[data-play]'),
+      tryIt: !!c.querySelector('button[data-try]'),
+      preview: (c.querySelector('.play-row > div') || {}).getAttribute
+        ? c.querySelector('.play-row > div').getAttribute('data-preview') : null,
+      hint: (c.querySelector('.play-row .hint') || {}).textContent || '',
+      unavail: (c.querySelector('.play-row .unavail') || {}).textContent || ''
+    })));
+
+  ck(cards.length === 4 && cards.every((c) => c.invalid),
+    'R17 every invalid candidate stays visible on the page, badged INVALID',
+    cards.length + ' cards');
+  ck(cards.every((c) => c.research && c.intent.indexOf('trying to do') !== -1),
+    'R17b each one carries a research view saying what the model was trying to make');
+  ck(cards.every((c) => !c.play),
+    'R17c not one of them is offered "PLAY IN ETHER"');
+
+  const tryCards = cards.filter((c) => c.tryIt);
+  ck(tryCards.length === 2 && tryCards.every((c) => c.hint.indexOf('Not production-valid') === 0),
+    'R18 the two whose idea the Ether can show offer 🧪 TRY IDEA, labelled as research',
+    tryCards.length + '');
+  const unsupported = cards.filter((c) => c.preview === 'unsupported')[0];
+  ck(unsupported && unsupported.unavail.indexOf('Cannot preview this idea yet') !== -1 &&
+     unsupported.hint.indexOf('pulse') !== -1,
+    'R18b the one needing a missing capability says so and names it',
+    unsupported && unsupported.hint);
+  const uninterp = cards.filter((c) => c.preview === 'uninterpretable')[0];
+  ck(uninterp && uninterp.unavail.indexOf('Cannot preview this idea yet') !== -1,
+    'R18c and the one with nothing in it gets the research explanation, no preview');
+  // For the record (§17.12): four refused candidates, still visible,
+  // each saying what the model was trying to make and whether the Ether
+  // can show it — including the one that cannot be previewed at all.
+  try { fs.mkdirSync(SHOTS, { recursive: true }); } catch (e) {}
+  await page.screenshot({ path: path.join(SHOTS, 'research-invalid-cards.png'), fullPage: true });
+
+  // R19 — TRY IDEA opens the REAL preview and poses the idea.
+  await page.click('button[data-try]');
+  await page.waitForTimeout(2600);
+  const inFrame = await page.evaluate(() => !!document.querySelector('[data-lab-preview]'));
+  const frame = page.frames().filter((f) => f.url().indexOf('preview.html') !== -1)[0];
+  const posed = frame ? await frame.evaluate(() => {
+    const i = window.LabPreview.instrument();
+    return {
+      mode: window.LabPreview.mode(),
+      elements: i ? i.elements.length : 0,
+      badge: !document.querySelector('[data-try-badge]').hidden,
+      unavailable: document.querySelector('[data-unavailable]').classList.contains('on'),
+      universe: document.querySelectorAll('.vp-universe').length
+    };
+  }) : null;
+  ck(inFrame && posed && posed.mode === 'try' && posed.elements > 0 &&
+     !posed.unavailable && posed.universe === 1,
+    'R19 TRY IDEA poses the idea on the REAL interpreter in the REAL universe',
+    JSON.stringify(posed));
+  ck(posed && posed.badge,
+    'R19b and the preview says it is a research run, never a plain play');
+  try { fs.mkdirSync(SHOTS, { recursive: true }); } catch (e) {}
+  await page.screenshot({ path: path.join(SHOTS, 'research-try-idea.png') });
+
+  // R20 — determinism holds on the research path too. The interesting
+  // comparison is a FIRST play against a replay in a FRESH document
+  // (P5's own reasoning: the runtime's session seed is minted on its
+  // first call, so two replays would agree either way).
+  const tried = frame ? await frame.evaluate(() => window.LabPreview.candidate()) : null;
+  const detPage = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+  await detPage.goto(BASE + '/tools/ether-mystery-lab/preview.html');
+  await detPage.waitForFunction(() => !!window.LabPreview, null, { timeout: 15000 });
+  const det = await detPage.evaluate((c) => {
+    function shot() {
+      var i = window.LabPreview.instrument();
+      return i ? i.elements.map((e) => Math.round(e.x) + ',' + Math.round(e.y)).join(' ') : 'none';
+    }
+    window.LabPreview.play(c, 'seed-R', 'try');
+    const first = shot();
+    window.LabPreview.play(c, 'seed-R', 'try');
+    return { first: first, replay: shot(), mode: window.LabPreview.mode() };
+  }, tried);
+  await detPage.close();
+  ck(det.first !== 'none' && det.first === det.replay && det.mode === 'try',
+    'R20 the same idea and the same seed lay out the same sky on a research replay',
+    det.first + '  vs  ' + det.replay);
+
+  await frame.click('[data-act="exit"]');
+  await page.waitForTimeout(700);
+  const cleaned = await page.evaluate(() => ({
+    frames: document.querySelectorAll('[data-lab-preview]').length,
+    ss: sessionStorage.length, ls: localStorage.length
+  }));
+  ck(cleaned.frames === 0 && cleaned.ss === 0 && cleaned.ls === 0,
+    'R20b exiting a research preview leaves the Lab exactly as it was',
+    JSON.stringify(cleaned));
+
+  // R21 — the two exports, on the real page.
+  await page.click('#exportBtn');
+  await page.waitForTimeout(200);
+  const exportState = await page.textContent('#exportState');
+  ck(exportState.indexOf('nothing approved yet') !== -1,
+    'R21 with only invalid candidates the production export refuses — nothing to approve',
+    exportState);
+
+  const dl = page.waitForEvent('download').catch(() => null);
+  await page.click('#researchBtn');
+  await dl;
+  await page.waitForTimeout(200);
+  const logArtifact = await page.evaluate(() => window.__lastLabResearchExport || null);
+  ck(logArtifact && logArtifact.format === 'ether-mystery-lab-research-log' &&
+     logArtifact.productionReady === false &&
+     logArtifact.counts.invalid === 4 && logArtifact.counts.valid === 0 &&
+     logArtifact.candidates.every((r) => r.refusedBecause.length > 0 && r.creativeIntent),
+    'R21b the research log exports all four with their refusals and their intent',
+    logArtifact && JSON.stringify(logArtifact.counts));
+  ck(logArtifact && logArtifact.candidates.some((r) => r.previewStatus === 'try-idea') &&
+     logArtifact.candidates.some((r) => r.previewStatus === 'unsupported') &&
+     logArtifact.candidates.some((r) => r.previewStatus === 'uninterpretable'),
+    'R21c and it records which could be experimented with and which could not');
+
+  // R22 — ↻ Regenerate makes a NEW linked candidate; the original stays.
+  const beforeCount = await page.locator('.cand').count();
+  await page.click('button[data-regenerate]');
+  await page.waitForTimeout(1200);
+  const after = await page.evaluate(() => Array.prototype.map.call(
+    document.querySelectorAll('.cand'), (c) => ({
+      head: (c.querySelector('h3') || {}).textContent || '',
+      lineage: (c.querySelector('.lineage') || {}).textContent || ''
+    })));
+  ck(after.length > beforeCount && after.some((c) => c.lineage.indexOf('Refinement of') === 0),
+    'R22 a regenerate adds a NEW candidate linked to the original, and never replaces it',
+    beforeCount + ' → ' + after.length);
+  ck(after.some((c) => c.head.indexOf('pegasus-square') !== -1),
+    'R22b the original is still on the page with its own record');
+
+  // R23 — nothing production moved, and nothing new was asked of a model
+  // beyond the generations the reviewer pressed for.
+  const offHost = reqs.filter((r) => r.url.indexOf('127.0.0.1') === -1 &&
+    r.url.indexOf('api.openai.com') === -1);
+  ck(offHost.length === 0, 'R23 the whole research journey made no request off this host',
+    offHost.map((r) => r.url).slice(0, 2).join(' '));
+  const poolAfter = await (await fetch(BASE + '/assets/ether/experience-pool.js')).text();
+  ck(poolAfter === poolSrc, 'R23b the production experience pool is byte-identical');
+  ck(errs.length === 0, 'R23c zero page errors across the research journey', errs[0]);
+
+  // R24 — the runtime learned nothing about any of this.
+  const gram = read('js/etherGrammar.js');
+  const interp = read('js/etherMystery.js');
+  ck(gram.indexOf('LabResearch') === -1 && gram.indexOf('RESEARCH_WAIVED') === -1 &&
+     interp.indexOf('LabResearch') === -1 && interp.indexOf('RESEARCH_WAIVED') === -1 &&
+     interp.indexOf('try-idea') === -1,
+    'R24 the production validator and interpreter name nothing from the Lab');
+
+  await browser.close();
+  server.kill();
+}
+
+// ===================================================================
 (async () => {
   try {
     await sectionS();
@@ -1143,6 +1632,7 @@ async function sectionP() {
     await sectionE();
     await sectionB();
     await sectionP();
+    await sectionR();
   } catch (e) {
     fail('suite crashed', (e && e.stack || String(e)).split('\n')[0]);
   }
