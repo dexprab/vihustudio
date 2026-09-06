@@ -206,7 +206,14 @@
       $('presetRow').appendChild(b);
     });
 
-    $('generateBtn').addEventListener('click', generateNow);
+    // generateNow(refine) — and a click handler is called WITH THE
+    // EVENT, so wiring it directly made `refine` a MouseEvent on every
+    // plain press. buildInput's own `opts.refine.original` guard meant
+    // no refinement directive was ever sent (measured: the real
+    // Pegasus log carries refinementOf null throughout, so no
+    // provenance was harmed) — but every `if (refine)` in this file
+    // was reading true for an ordinary generation.
+    $('generateBtn').addEventListener('click', function () { generateNow(); });
     $('cancelBtn').addEventListener('click', function () {
       genSeq++;          // whatever resolves late belongs to nobody now
       Conn.cancel();
@@ -233,6 +240,27 @@
     // set them rather than leaving a reviewer to match them by hand.
     if (e && e.complexity) $('complexitySelect').value = e.complexity;
     if (e && e.grammar && !e.grammars) $('grammarSelect').value = e.grammar;
+    // AND A CREATION IS A PARAMETER LIKE ANY OTHER. `needsCreation`
+    // used to be a parenthetical in this very sentence and nothing
+    // else: gatherBuildOpts reads #creationSelect on its own, so a
+    // preset that needs a creation would generate perfectly happily
+    // without one — which is exactly what happened to the first
+    // Pegasus batch, and it is why all five candidates came back
+    // built on an anchor. It is set here for the same reason the
+    // three above are, and only when the reviewer has not chosen one
+    // themselves.
+    if (e && e.needsCreation && !$('creationSelect').value) {
+      $('creationSelect').value = 'fixture-0';
+    }
+  }
+
+  // Whether the armed preset's own requirement is actually met right
+  // now. A reviewer may clear the selection after arming, and a
+  // creation-less run of a creation-bound experiment answers a
+  // different question from the one being asked.
+  function presetCreationMissing() {
+    var preset = armedPreset ? Kit.EXPERIMENTS[armedPreset] : null;
+    return !!(preset && preset.needsCreation && !$('creationSelect').value);
   }
 
   function gatherBuildOpts(refine) {
@@ -279,6 +307,19 @@
   // plain generation takes; nothing about a refinement is a second
   // pipeline, and the result is a NEW candidate linked to the original.
   function generateNow(refine) {
+    // A creation-bound experiment run WITHOUT a creation answers a
+    // different question, and answers it convincingly — 5/5 valid,
+    // 5/5 the same. Said out loud rather than generated anyway.
+    if (!refine && presetCreationMissing()) {
+      $('diagnostic').textContent = 'NOT SENT — this experiment needs a creation.\n\n' +
+        'The armed preset is about what a mystery does with a real shared creation. ' +
+        'With none selected, shard, toward-creation and creation-revealed are all ' +
+        'refusable and the batch can only be built on an anchor. Choose a creation ' +
+        'above, or disarm the preset.';
+      $('genState').textContent = '';
+      lastDiagnostic = null;
+      return;
+    }
     var opts = gatherBuildOpts(refine);
     var built = Kit.buildInput(opts);
     if (!built.ok) {

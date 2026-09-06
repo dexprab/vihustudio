@@ -1148,7 +1148,20 @@
       title: '⭐ Pegasus — Regeneration',
       brief: 'The exact experiment that came back 10/10 invalid: Pegasus · Composer choose · 5 candidates · mixed complexity. Run it against the repaired contract.',
       count: 5, constellations: ['pegasus'], grammar: 'compose', complexity: 'mixed',
-      emphasis: 'Let the Pegasus figure inspire each candidate — a winged shape, a great square, a long neck of stars — through arrangement, count, placement and wording only. It is NOT an ingredient and has no field. Vary the grammar and the complexity across the five.'
+      needsCreation: true,
+      // THE FAIR TEST. The first run of this preset came back 5/5
+      // valid and 5/5 the same: no creation was supplied, so `shard`,
+      // `toward-creation` and `creation-revealed` were all refusable
+      // and the only ingredient left was an anchor — which the schema
+      // truthfully says pairs with `at-anchor`. Every candidate then
+      // placed every element there, and the interpreter's clustered
+      // branch puts those within ±40×±30px of ONE point. Measured on
+      // the five real candidates: bounding boxes of 64×69 to 148×125
+      // on a 1440×900 sky. The batch was never able to be spatially
+      // interesting. This preset now supplies a creation and asks for
+      // the space to be used; the CONTRACT is untouched, because it
+      // was already truthful — what was missing was the directive.
+      emphasis: 'Use the ONE supplied creation in every candidate. Let the Pegasus figure inspire each — a winged shape, a great square, a long neck of stars — through arrangement, count, placement and wording only. It is NOT an ingredient and has no field. VARY THE PLACEMENT ACROSS THE FIVE: draw on scattered, ring, far and toward-creation, and use at-anchor at most once. Do not give every element in a candidate the same place, and do not make one placement the batch default. A mystery should occupy real space on the sky rather than sitting in one small cluster. Vary the grammar and the complexity across the five as well.'
     },
     'same-constellation': {
       title: 'Same Constellation, Different Grammars',

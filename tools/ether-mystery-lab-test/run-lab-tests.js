@@ -799,6 +799,48 @@ async function sectionB() {
   ck(rr.indexOf('materially different') !== -1 || rr.indexOf('RESKINS PRESENT') !== -1,
     'B15 the reskin measure is on screen after a preset run', rr.slice(0, 60));
 
+  {
+    // B16 — ARMING A CREATION-BOUND PRESET SUPPLIES THE CREATION.
+    //
+    // `needsCreation` used to be a parenthetical in the preset note and
+    // nothing else — gatherBuildOpts reads #creationSelect on its own —
+    // so a creation-bound experiment generated perfectly happily without
+    // one. That is what happened to the first Pegasus batch, and it is
+    // why all five candidates came back built on an anchor. Arming now
+    // sets it, exactly as it already set count, grammar and complexity.
+    await page.reload();
+    await page.waitForTimeout(900);
+    await page.check('#modeFixture');
+    const creationBefore = await page.inputValue('#creationSelect');
+    await page.click('.lab-preset[data-preset="pegasus-regeneration"]');
+    await page.waitForTimeout(120);
+    const armed = await page.evaluate(() => ({
+      creation: document.getElementById('creationSelect').value,
+      count: document.getElementById('countSelect').value,
+      complexity: document.getElementById('complexitySelect').value,
+      grammar: document.getElementById('grammarSelect').value
+    }));
+    ck(creationBefore === '' && armed.creation === 'fixture-0' && armed.count === '5' &&
+       armed.complexity === 'mixed' && armed.grammar === 'compose',
+      'B16 arming the Pegasus run selects a creation as well as its other parameters',
+      JSON.stringify(armed));
+    await page.click('#generateBtn');
+    await page.waitForTimeout(700);
+    const pegDiag = await page.textContent('#diagnostic');
+    ck(pegDiag.indexOf('NOT SENT') === -1 && /story/.test(pegDiag),
+      'B16b and the creation is in the input that would reach a generator',
+      pegDiag.slice(0, 80));
+
+    // B16c — a reviewer who clears it is TOLD, and nothing is sent.
+    await page.selectOption('#creationSelect', '');
+    await page.click('#generateBtn');
+    await page.waitForTimeout(500);
+    const refusedDiag = await page.textContent('#diagnostic');
+    ck(refusedDiag.indexOf('NOT SENT — this experiment needs a creation') === 0,
+      'B16c a creation-bound experiment run without one is refused, not generated anyway',
+      refusedDiag.slice(0, 60));
+  }
+
   await browser.close();
   server.kill();
 }
@@ -1956,6 +1998,62 @@ function sectionC() {
   ck(contradicts.length === 0,
     'C10d no preset still tells a model to build its mystery FROM a sky figure',
     contradicts.join(','));
+
+  // ---- C10e-h: THE FAIR PEGASUS TEST (the forensic report's §C) ----
+  //
+  // The first run of this preset came back 5/5 valid and 5/5 the same.
+  // Traced: no creation was supplied, so shard / toward-creation /
+  // creation-revealed were all refusable, the only ingredient left was
+  // an anchor, and the schema truthfully says an anchor pairs with
+  // place 'at-anchor'. Every one of the five then placed every element
+  // there, and the interpreter's clustered branch puts those within
+  // ±40×±30px of ONE point. What changed is the PRESET and its
+  // DIRECTIVE. The contract is deliberately untouched.
+  ck(peg && peg.needsCreation === true,
+    'C10e the Pegasus run now supplies a creation — the ingredient that unlocks shard, ' +
+    'toward-creation and creation-revealed');
+  const pe = (peg && peg.emphasis) || '';
+  const named = ['scattered', 'ring', 'far', 'toward-creation'].filter((pl) => pe.indexOf(pl) !== -1);
+  ck(named.length === 4 && /at-anchor at most once/i.test(pe) &&
+     /vary the placement/i.test(pe),
+    'C10f and its directive requires placement to VARY across the batch, naming all four ' +
+    'and bounding at-anchor', named.join(',') + ' | at-anchor bounded: ' +
+    /at-anchor at most once/i.test(pe));
+  // Every placement it names must be a real capability — the P-family
+  // lesson (a directive that names something the vocabulary lacks is a
+  // directive that produces refusals).
+  const notReal = named.filter((pl) => G.CAPABILITIES.places.indexOf(pl) === -1);
+  ck(notReal.length === 0 && pe.indexOf('creation') !== -1,
+    'C10g every placement the directive names is a real capability, and it asks for the creation',
+    notReal.join(','));
+  // THE CONTRACT IS UNTOUCHED (the sprint's own constraint 3-5). Built
+  // with and without this preset's directive, everything but
+  // `directives` must be identical — schema, capabilities, grammars,
+  // boundaries, forbidden keys. A preset may steer a generator; it may
+  // never quietly restate the world.
+  const withPeg = K.buildInput({
+    structures: [{ kind: 'story', pages: 5, hasCover: true }],
+    constellations: [{ figure: 'pegasus', name: 'Pegasus', starCount: 9,
+                       looksLike: 'mythical', about: 'x' }],
+    grammar: peg.grammar, count: peg.count, complexity: peg.complexity,
+    emphasis: peg.emphasis, pool: sb.EtherExperiencePool
+  });
+  const without = K.buildInput({
+    structures: [{ kind: 'story', pages: 5, hasCover: true }],
+    constellations: [{ figure: 'pegasus', name: 'Pegasus', starCount: 9,
+                       looksLike: 'mythical', about: 'x' }],
+    grammar: peg.grammar, count: peg.count, complexity: peg.complexity,
+    emphasis: '', pool: sb.EtherExperiencePool
+  });
+  ck(withPeg.ok && without.ok &&
+     JSON.stringify(withPeg.input.contract) === JSON.stringify(without.input.contract),
+    'C10h the CONTRACT is byte-identical with and without the directive — only directives moved');
+  // And the creation actually reaches the model.
+  ck(withPeg.ok && Array.isArray(withPeg.input.contract.creations) &&
+     withPeg.input.contract.creations.length === 1 &&
+     withPeg.input.contract.creations[0].kind === 'story',
+    'C10i the creation reaches the generator as public creative structure',
+    JSON.stringify(withPeg.input.contract.creations));
 
   // ---- C11: the contract label moved with the contract ----
   ck(K.PROMPT_VERSION === 'ether-mystery-lab-3',
