@@ -412,43 +412,147 @@ tease, a primary action, a visible response and a payoff.
 | grammar | verdict | why |
 |---|---|---|
 | **reconstruct** | **KEEP** | The only frame that already meets the contract end to end: visible incompleteness (a tease), `tap` (an action), `gather` (a response), `creation-revealed` (the largest payoff), and `shard` — the one primitive with real imagery. It is the shipped `a-cover-come-apart`, and the only pool entry that passes. |
-| **connect** | **REWORK** | The canonical example's own grammar, and blocked on one missing primitive: links are drawn only between elements the child has **already** engaged, as one polyline in tap order, so "some stars are connected and some are missing" cannot be shown. Highest-value grammar to unblock. |
+| **connect** | **KEEP** *(was REWORK — unblocked at build 0768)* | The canonical example's own grammar. It was blocked on one missing primitive, and the Unfinished Pattern primitive is that primitive: a top-level `arrangement` places `node` lights as a figure whose joins already exist except for the few deliberately left out. It is the shipped `a-figure-not-yet-whole`. |
 | **uncover** | **REWORK** | Its tease is good (`veil` is one of only two perceptible shows) and its action is not: it attracts `approach`/`dwell`, which are supporting. Must require a primary action. |
 | **trace** | **REWORK** | Its premise is the one the contract names as insufficient — a thing moving away is not a reason to follow it. Needs a tease *before* the path. |
 | **transform** | **REWORK** | The cause→effect the contract most wants, blocked on its most natural response: `brighten` is declared in the vocabulary and does nothing in the interpreter. |
-| **complete** | **MERGE** | Nearly identical to reconstruct (pieces that belong together) and connect (finish the relationship). It has stopped being a grammar: completion is now what the contract asks of every active Mystery. |
+| **complete** | **KEEP** *(was MERGE — unblocked at build 0768)* | It stopped being a grammar while completion had no runtime meaning. `arrangement` gives it one: a figure is finished when it is WHOLE, which is a different thing from "every armed element has been engaged" and is the only completion the runtime can actually judge. |
 | **echo** | **MERGE** → return | Both are "a place met earlier this visit". It produced the verbatim copy of a worked example in the real batch. |
 | **notice** | **DEFER** | Its own premise — *subtly* — is in tension with perceptibility, and it structurally has no action. It produced the lowest-scoring candidate of the real batch (7/36) and the lowest of the shipped pool (33%). Also hits the recorded runtime limit: a mystery with nothing armed resolves on its first frame. |
 | **return** | **DEFER** | Measured: `return` needs near → away for 6s → back with a recent act, and engaged nothing across 13 seconds of a child looking. Keep `return` as a supporting *action*; it is not a frame. |
 | **experiment** | **DEFER** | Poses nothing, so nothing makes the child act in the first place. What it describes is already the ripple layer's job, not a Mystery's. |
 
-No grammar was added. `KEEP 1 · REWORK 4 · MERGE 2 · DEFER 3`.
+No grammar was added. At build 0767: `KEEP 1 · REWORK 4 · MERGE 2 ·
+DEFER 3`. At build 0768, with the Unfinished Pattern primitive shipped:
+`KEEP 3 · REWORK 3 · MERGE 1 · DEFER 3` — **connect** and **complete**
+moved up because the primitive gave each of them something the runtime
+can really perform, and nothing else moved.
 
 ## What cannot be built yet
 
 Recorded so no one mistakes it for an oversight, and so no one weakens
-the validator to hide it. Every line measured against build 0767:
+the validator to hide it. Measured against build 0767, and **revised at
+build 0768** — the Unfinished Pattern primitive closed the first five,
+which is the whole of what that sprint was for.
 
-1. **A pre-existing or partial connection** — blocks the canonical
-   example outright.
-2. **A named relationship between two particular elements** — links are
-   a chain in tap order, not declared pairs.
-3. **Any notion of a correct arrangement**, or completion beyond "every
-   armed element has been engaged".
-4. **Drag, connect, arrange, trace, follow, move, bring together** — and
-   the reason is gesture ownership, not effort.
-5. **Anything awakening, emerging, transforming, or the sky itself
-   responding** — the largest primitive the mystery layer can draw is
-   156px on a ~1650px diagonal.
-6. **`brighten`** — in the vocabulary, absent from the interpreter.
-7. **A payoff proportional to a meaningful action** — the three
-   discoveries are a 28px travelling light, a small bloom, and a
-   six-second halo.
-8. **A perceptible `mark` or `glint`** — both draw with the *same
+**Closed by the Unfinished Pattern primitive (build 0768):**
+
+1. ~~A pre-existing or partial connection~~ — an `arrangement`'s joins
+   exist from the moment the figure is posed, and the missing ones are
+   drawn as nothing at all.
+2. ~~A named relationship between two particular elements~~ — a link is
+   a declared pair of node indices, not a chain in tap order.
+3. ~~Any notion of a correct arrangement~~ — the figure being whole is
+   what finishing means, and `resolveDone()` says so.
+4. ~~Anything awakening, or the sky itself responding~~ — a completed
+   figure blazes, a light crosses to the creation's own Spirit, and a
+   ring sweeps out from where it lands across 72% of the view diagonal.
+5. ~~A payoff proportional to a meaningful action~~ — same clause. The
+   largest thing the mystery layer draws went from **156px** to a
+   figure spanning about two thirds of the short edge (measured 532px
+   at 1440×900, 277px at 390×844) and an answer measured at 730px
+   painted across a 1698px diagonal.
+
+**Still open, and named honestly rather than hopefully:**
+
+1. **A pre-existing relationship between anything OTHER than
+   `arrangement` nodes.** Outside a pattern, links are still a polyline
+   through what the child has already engaged.
+2. **A figure of any shape but a ring or an arc.** There is no way to
+   say "a swan", "a hook", or a particular arrangement of points — and
+   see §Constellations: the shapes live in `js/magicCard.js` as CELL
+   COORDINATES on a Magic Card's own grid, so a real figure needs an
+   AUTHORED skeleton in the creature registry's form, never a
+   projection of the card.
+3. **Drag, connect, arrange, trace, follow, move, bring together** as
+   child actions — and the reason is gesture ownership, not effort.
+   **Two taps carry the pattern**, which is why the primitive needed no
+   gesture change: the first tap chooses a light and the second says
+   which one it belongs to. The Traveller keeps drag.
+4. **Anything transforming into something else**, or a creation
+   changing its own appearance.
+5. **`brighten`** — in the vocabulary, absent from the interpreter.
+6. **A perceptible `mark` or `glint`** — both draw with the *same
    sprites* as the ambient star field, so the more faithfully the
-   interpreter performs them, the better they hide.
+   interpreter performs them, the better they hide. `node` exists
+   because of exactly this: it is drawn as a sized core with a wide
+   halo and never with the star sprite.
 
-None of it is implemented in this sprint. The Lab marks a candidate that
-needs any of it **DESIRED — RUNTIME CAPABILITY NOT YET IMPLEMENTED**,
-which is a finding rather than a failure — and never a route to becoming
-production-valid.
+None of the still-open list is implemented. The Lab marks a candidate
+that needs any of it **DESIRED — RUNTIME CAPABILITY NOT YET
+IMPLEMENTED**, which is a finding rather than a failure — and never a
+route to becoming production-valid.
+
+## The Unfinished Pattern primitive (build 0768)
+
+The canonical experience, and the smallest thing that expresses it.
+**Three parts, and deliberately nothing else.**
+
+**1. `node` — a light that is not camouflaged.** `mark` and `glint` are
+drawn with the same sprite as the ambient star field, so the more
+faithfully they are performed the better they hide; measured, they light
+0.002–0.007% of the screen. A node is a bright core sized as a fraction
+of the sky (`clamp(short × 0.017, 7, 16)`) inside a halo about 4.4× that
+— and what a child actually notices is not the node, it is the
+**figure** the nodes stand in.
+
+**2. `arrangement` — one block that turns lights into a figure.**
+`{ shape: 'ring' | 'arc', nodes: 4–8, missing: 1–3 }`. Nodes are laid
+evenly around a ring (or along an open arc) at a radius of
+`clamp(short × 0.34, 140, 420)`; consecutive nodes are joined; `missing`
+of those joins are left out, and a gap is drawn as **nothing at all** —
+no dashed hint, no marker, no instruction. The validator requires at
+least two joins to survive, so the figure can always still be read.
+
+*The field is `arrangement` and not `pattern`, deliberately.* Everywhere
+else in this product `pattern` means a Magic Card's constellation — a
+Creator's identity **and** their credential — and it is a guarded key
+that refuses whatever carries it (Decision 48). A schema field of that
+name collided with the Stars boundary on its first journey through the
+generation lab, and the right answer to that is to move the spelling,
+never the guard. The **experience** is still called the Unfinished
+Pattern.
+
+**3. Completion means WHOLE, not counted.** `resolveDone()` returns
+`missingLeft === 0` for a pattern rather than "every armed element has
+been engaged". A node standing between two joins that were there from
+the start is never engaged and never needs to be: what the child did is
+complete the shape, and the shape is what the world can see.
+
+**The gesture is the one the Ether already owns.** Two taps: the first
+chooses a light, the second says which one it belongs to. A pair that is
+not a missing join simply releases with a small shiver — no message, no
+sound of being wrong, no count of tries, and a child may tap all day.
+Dragging still turns the sky, and the mystery layer receives no drag at
+all.
+
+**The awakening is at Ether scale, and nothing is written to the
+creation.** The figure blazes; a light leaves it and crosses to the
+creation's own Spirit; where it lands a ring sweeps out across 72% of
+the view diagonal and a halo rests there for nine seconds. All of it is
+drawn on the mystery layer's own canvas — the jellyfish's precedent, and
+Decision 9's own rule. The original creation remains its Creator's; what
+awakens is the Ether's answer around its Spirit.
+
+**Required by construction.** An `arrangement` needs
+`ingredients.creation: true` and `outcome.discovery: 'creation-revealed'`,
+and its `behaviour.onEngage`, if given, must be `link`. Completing a
+figure that awakens nothing is not the canonical experience, so the
+validator refuses it rather than performing half of it.
+
+**The quality rule it is exempt from, and why.**
+`tap-for-sure-outcome` refuses "one tap, one certain prize" — a single
+armed element whose engagement *is* the outcome. A pattern's nodes are
+one role and one engage row by construction, so it matches that shape
+and is nothing like that experience: completing a multi-link figure the
+child had to read first is multi-step and can be got wrong. The
+exemption is narrow — it applies only where `arrangement` is present,
+which is already bound to a real creation and a real awakening.
+
+Suite: `tools/ether-mystery-test/` section **U** walks it on the real
+page — the figure, its span on a laptop and on a phone, a pair that does
+not belong, a join appearing, the figure not being finished a gap early,
+the awakening measured in painted pixels, the entity untouched, the
+Traveller's drag intact, and nothing left behind. Proved by reverting
+the completion rule, the missing-link check, the sweep and the figure's
+own layout, one at a time.

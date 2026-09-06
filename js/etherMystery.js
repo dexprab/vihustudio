@@ -60,6 +60,40 @@
     outcomesKept: 24     // diagnostics ring bound
   };
 
+  // THE UNFINISHED PATTERN — the one primitive that makes the
+  // canonical experience expressible: a figure of lights, some joined
+  // and some not, that a child can read and complete.
+  //
+  // WHY IT IS ITS OWN THING AND NOT A DRESSED-UP 'mark'. Measured on
+  // the shipped pool: 'mark' and 'glint' draw with the SAME sprite as
+  // the ambient star field, so the more faithfully the interpreter
+  // performs them the better they hide — 0.002-0.007% of the screen.
+  // The largest primitive before this was the veil at 156px on a
+  // ~1650px diagonal. A pattern is a FIGURE rather than a thing: its
+  // ring spans about two thirds of the short edge, so what a child
+  // notices is an arrangement, at Ether scale, from across the sky.
+  //
+  // EVERY NUMBER IS A FRACTION OF THE SKY, never a pixel constant, so
+  // a phone gets a pattern that fills its screen exactly as a laptop
+  // does. Measured: short edge 900 -> 306px radius (a 612px figure);
+  // short edge 390 -> 140px radius (a 280px figure, 72% of the width).
+  var PATTERN = {
+    radiusFrac: 0.34,    // of the short edge
+    radiusMin: 140,      // never smaller than a phone's own figure
+    radiusMax: 420,      // never so large the whole of it cannot be seen
+    squash: 0.82,        // a little flatter than a circle, so it fits
+    jitter: 0.05,        // radians — hand-drawn, never mechanical
+    coreFrac: 0.017,     // node core, of the short edge
+    coreMin: 7,
+    coreMax: 16,
+    joinS: 0.55,         // a new link draws itself over this long
+    igniteS: 1.6,        // the completed figure blazes for this long
+    closeS: 3.6,         // and a pattern takes longer to let go than
+                         // an ordinary mystery, because the blaze is
+                         // the payoff and must be seen before the fade
+    sweepFrac: 0.72      // the awakening's ring, of the view diagonal
+  };
+
   function rand(lo, hi) { return lo + Math.random() * (hi - lo); }
   function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
 
@@ -358,6 +392,57 @@
       return out;
     }
 
+    // ---------- the unfinished pattern ----------
+    // Nodes are laid out as a FIGURE — evenly around a ring, or along
+    // an open arc — rather than as scattered pieces, because the whole
+    // tease is that the arrangement is obviously deliberate and just
+    // as obviously not finished. Consecutive nodes are joined; a few
+    // of those joins are LEFT OUT, and the gaps are drawn as nothing
+    // at all. There is no dashed hint, no marker and no instruction:
+    // a child sees a shape that wants to be whole.
+    // `spec` is the candidate's own `arrangement` block — named that
+    // rather than `pattern`, because in this product 'pattern' is a
+    // Magic Card's constellation and a guarded key (js/etherGrammar.js
+    // says why). The experience is still the Unfinished Pattern.
+    function layoutPattern(spec, nodes, look) {
+      var short = shortEdge();
+      var r = clamp(short * PATTERN.radiusFrac, PATTERN.radiusMin, PATTERN.radiusMax);
+      var n = nodes.length;
+      var turn = rand(0, Math.PI * 2);
+      var arc = spec.shape === 'arc';
+      var span = arc ? Math.PI * 1.15 : Math.PI * 2;
+      var i;
+      for (i = 0; i < n; i++) {
+        var f = arc ? (i / Math.max(1, n - 1)) : (i / n);
+        var ang = turn + f * span + rand(-PATTERN.jitter, PATTERN.jitter);
+        var el = nodes[i];
+        el.x = el.home.x = look.x + Math.cos(ang) * r;
+        el.y = el.home.y = look.y + Math.sin(ang) * r * PATTERN.squash;
+        el.node = i;
+      }
+      // Links join consecutive nodes; a ring closes, an arc does not.
+      var links = [];
+      var count = arc ? (n - 1) : n;
+      for (i = 0; i < count; i++) {
+        links.push({ a: i, b: (i + 1) % n, present: true, joinedAt: -1 });
+      }
+      // Which joins are missing. The validator already guarantees at
+      // least two survive, so the figure can always still be read.
+      var order = [];
+      for (i = 0; i < links.length; i++) order.push(i);
+      for (i = order.length - 1; i > 0; i--) {
+        var j = Math.floor(Math.random() * (i + 1));
+        var t = order[i]; order[i] = order[j]; order[j] = t;
+      }
+      var missing = Math.min(spec.missing || 1, links.length - 2);
+      for (i = 0; i < missing; i++) links[order[i]].present = false;
+      return {
+        shape: spec.shape, nodes: nodes, links: links,
+        cx: look.x, cy: look.y, radius: r,
+        missingLeft: missing, sel: null, igniteAt: -1
+      };
+    }
+
     // ---------- begin: the Composer chose this experience ----------
     function begin(key, beginCtx) {
       if (inst || destroyed) return null;
@@ -451,10 +536,22 @@
       }
       if (!elements.length) return null;
 
-      // Assembly point for 'gather': the centroid of the pieces.
+      // The pattern: node elements are re-placed as a figure, and the
+      // figure replaces "every armed element engaged" as what finishing
+      // means (see resolveDone).
+      var pattern = null;
+      if (c.arrangement) {
+        var nodeEls = elements.filter(function (el) { return el.show === 'node'; });
+        if (nodeEls.length >= 4) pattern = layoutPattern(c.arrangement, nodeEls, look);
+      }
+
+      // Assembly point for 'gather': the centroid of the pieces. A
+      // pattern's is its own centre, which is where the figure blazes.
       var cxs = 0, cys = 0;
       elements.forEach(function (el) { cxs += el.home.x; cys += el.home.y; });
-      var assembly = { x: cxs / elements.length, y: cys / elements.length };
+      var assembly = pattern
+        ? { x: pattern.cx, y: pattern.cy }
+        : { x: cxs / elements.length, y: cys / elements.length };
 
       var img = null;
       if (creation) {
@@ -471,6 +568,7 @@
         pace: (c.behaviour && c.behaviour.pace) || 'slow',
         rules: rules,
         elements: elements,
+        pattern: pattern,
         assembly: assembly,
         creation: creation ? {
           id: creation.projection.id,
@@ -480,6 +578,7 @@
         img: img,
         born: time,
         lifeS: Math.min(con.lifeS || LIMITS.lifeS, grammar.CAPABILITIES.bounds.lifeS),
+        fadeS: pattern ? PATTERN.closeS : LIMITS.fadeS,
         state: 'posed',        // posed → closing → gone
         ending: null,
         closeAt: 0,
@@ -520,6 +619,12 @@
         if (r.action === 'wait' && !r.waited) allWaited = false;
       });
       if (!allWaited) return false;
+      // A PATTERN IS FINISHED WHEN THE FIGURE IS WHOLE, never when
+      // some number of things have been touched. A node sitting
+      // between two joins that were there from the start is never
+      // engaged and never needs to be — what the child did is complete
+      // the shape, and the shape is what the world can see.
+      if (inst.pattern) return inst.pattern.missingLeft === 0;
       for (var i = 0; i < inst.elements.length; i++) {
         var el = inst.elements[i];
         if (el.armed.length && !el.engaged) return false;
@@ -556,7 +661,7 @@
       if (outcomes.length > LIMITS.outcomesKept) outcomes.shift();
       inst.state = 'closing';
       inst.ending = ending;
-      inst.closeAt = time + LIMITS.fadeS;
+      inst.closeAt = time + (inst.fadeS || LIMITS.fadeS);
       inst.elements.forEach(function (el) {
         el.target = 0;
         // A discovery lets what was hidden be SEEN for a breath as
@@ -593,9 +698,20 @@
         if (kind === 'creation-revealed' && inst.creation) {
           // A light leaves the answered mystery and travels to the
           // creation's own Spirit, resting there a while — drawn on
-          // this canvas, nothing written to the entity.
+          // this canvas, nothing written to the entity. The CREATION
+          // ITSELF NEVER MOVES AND IS NEVER WRITTEN TO: what awakens is
+          // the Ether's answer around its Spirit, which is the
+          // jellyfish's own precedent and Decision 9's own rule.
+          //
+          // A COMPLETED PATTERN IS ANSWERED AT ETHER SCALE, because
+          // the payoff must be proportional to what the child did: the
+          // figure blazes, the light crosses the sky, and where it
+          // lands a ring sweeps out across the whole view.
+          var big = !!inst.pattern;
+          if (big) inst.pattern.igniteAt = time;
           pushEffect({ kind: 'travel', from: { x: at.x, y: at.y },
-                       entity: inst.creation.entity, t: 0, dur: 2.8 });
+                       entity: inst.creation.entity, t: 0,
+                       dur: big ? 3.2 : 2.8, big: big });
         } else if (kind === 'wonder') {
           if (life && life.bloomAt) {
             try { life.bloomAt(at.x + rand(-20, 20), at.y + rand(-14, 14)); } catch (e) {}
@@ -623,10 +739,50 @@
         if (d < bestD) { bestD = d; bestEl = el; }
       }
       if (!bestEl) return false;
+      if (inst.pattern && bestEl.show === 'node') return tapNode(bestEl);
       var tappable = bestEl.armed.some(function (r) { return r.action === 'tap'; });
       if (tappable && !bestEl.engaged) engageEl(bestEl, 'tap');
       else bestEl.tw += 2;   // a small acknowledging shiver either way
       return true;           // a posed thing is never empty sky
+    }
+
+    // JOINING TWO LIGHTS, WITH THE GESTURE THE ETHER ALREADY OWNS.
+    // The Traveller's drag turns the sky (Decision 58) and that is the
+    // one navigation gesture there is — so drag is NOT given a second
+    // meaning here. Two taps join two nodes: the first chooses, the
+    // second says which one it belongs to. That is enough for the whole
+    // canonical experience and costs the sky nothing.
+    //
+    // NOTHING BLAMES. A pair that is not a missing join simply releases
+    // with a small shiver — no message, no sound of being wrong, no
+    // count of tries. A child may tap all day.
+    function tapNode(el) {
+      var pat = inst.pattern;
+      if (pat.sel === el) { el.sel = false; pat.sel = null; el.tw += 1; return true; }
+      if (!pat.sel) { pat.sel = el; el.sel = true; return true; }
+      var a = pat.sel, b = el;
+      a.sel = false; pat.sel = null;
+      var joined = null;
+      for (var i = 0; i < pat.links.length; i++) {
+        var L = pat.links[i];
+        if (L.present) continue;
+        if ((L.a === a.node && L.b === b.node) || (L.a === b.node && L.b === a.node)) {
+          joined = L; break;
+        }
+      }
+      if (!joined) { a.tw += 2; b.tw += 2; return true; }
+      joined.present = true;
+      joined.joinedAt = time;
+      pat.missingLeft--;
+      // Both ends count as engaged, so the ordinary diagnostics and
+      // the 'engaged' event say what happened; the figure, not the
+      // count, is still what decides finishing.
+      engageEl(a, 'tap');
+      engageEl(b, 'tap');
+      emit('mystery:joined', { key: inst.key, a: a.node, b: b.node,
+                               left: pat.missingLeft });
+      dlog({ joined: [a.node, b.node], left: pat.missingLeft });
+      return true;
     }
 
     // ---------- the frame ----------
@@ -651,9 +807,12 @@
             !effects[i].landed) {
           effects[i].landed = true;
           var ent = effects[i].entity;
+          var big2 = !!effects[i].big;
           var at2 = (ent && ent.position) ? { x: ent.position.x, y: ent.position.y }
                                           : effects[i].from;
-          pushEffect({ kind: 'halo', at: at2, entity: ent, t: 0, dur: 6 });
+          pushEffect({ kind: 'halo', at: at2, entity: ent, t: 0, dur: big2 ? 9 : 6 });
+          // The Ether itself answers, once, across the whole sky.
+          if (big2) pushEffect({ kind: 'sweep', at: at2, entity: ent, t: 0, dur: 2.8 });
         }
         var lifespan = effects[i].kind === 'travel'
           ? effects[i].dur + 0.2 : effects[i].dur;
@@ -663,7 +822,7 @@
 
       if (inst.state === 'closing') {
         inst.elements.forEach(function (el) {
-          el.alpha = Math.max(0, el.alpha - dt / LIMITS.fadeS);
+          el.alpha = Math.max(0, el.alpha - dt / (inst.fadeS || LIMITS.fadeS));
         });
         if (time >= inst.closeAt) { inst = null; }
         return;
@@ -793,7 +952,7 @@
       if (inst) {
         var imgReady = inst.img && inst.img.complete && inst.img.naturalWidth > 0;
         // Links first, beneath the things they join.
-        if (inst.behaviour === 'link') {
+        if (inst.behaviour === 'link' && !inst.pattern) {
           var joined = inst.elements.filter(function (el) { return el.engaged; })
             .sort(function (a, b) { return a.engagedAt - b.engagedAt; });
           if (joined.length >= 2) {
@@ -808,11 +967,58 @@
             ctx.stroke();
           }
         }
+        // THE FIGURE IS DRAWN AS ONE THING, from its own centre, so it
+        // can never tear across the sky's seam: every node is placed
+        // relative to the centre's resolved copy rather than resolved
+        // on its own.
+        var pat = inst.pattern;
+        var patC = null;
+        if (pat) {
+          patC = {
+            x: nearestCopy(pat.cx + cam.x, ether.width, cx),
+            y: nearestCopy(pat.cy + cam.y, ether.height, cy)
+          };
+          var alive = pat.nodes.length ? pat.nodes[0].alpha : 0;
+          var blaze = 0;
+          if (pat.igniteAt >= 0) {
+            blaze = clamp(1 - (time - pat.igniteAt) / PATTERN.igniteS, 0, 1);
+          }
+          ctx.lineCap = 'round';
+          for (i = 0; i < pat.links.length; i++) {
+            var L = pat.links[i];
+            if (!L.present) continue;      // a gap is drawn as nothing
+            var na = pat.nodes[L.a], nb = pat.nodes[L.b];
+            var ax = patC.x + (na.x - pat.cx), ay = patC.y + (na.y - pat.cy);
+            var bx = patC.x + (nb.x - pat.cx), by = patC.y + (nb.y - pat.cy);
+            // A just-joined link draws itself along, once.
+            var grow = 1;
+            var fresh = 0;
+            if (L.joinedAt >= 0) {
+              var jt = (time - L.joinedAt) / PATTERN.joinS;
+              grow = clamp(jt, 0, 1);
+              fresh = clamp(1 - (time - L.joinedAt) / 1.6, 0, 1);
+            }
+            ctx.strokeStyle = rgba(glowRgb,
+              alive * breath * (0.26 + 0.5 * fresh + 0.62 * blaze));
+            ctx.lineWidth = 1.5 + 2.4 * fresh + 3 * blaze;
+            ctx.beginPath();
+            ctx.moveTo(ax, ay);
+            ctx.lineTo(ax + (bx - ax) * grow, ay + (by - ay) * grow);
+            ctx.stroke();
+          }
+          ctx.lineWidth = 1;
+        }
+
         for (i = 0; i < inst.elements.length; i++) {
           var el = inst.elements[i];
           if (el.alpha <= 0.01) continue;
-          sx = nearestCopy(el.x + cam.x, ether.width, cx);
-          sy = nearestCopy(el.y + cam.y, ether.height, cy);
+          if (patC && el.show === 'node') {
+            sx = patC.x + (el.x - pat.cx);
+            sy = patC.y + (el.y - pat.cy);
+          } else {
+            sx = nearestCopy(el.x + cam.x, ether.width, cx);
+            sy = nearestCopy(el.y + cam.y, ether.height, cy);
+          }
           var a = el.alpha * breath;
           var lift = el.engaged ? 1.18 : 1;
 
@@ -843,6 +1049,38 @@
             ctx.drawImage(glowSprite, sx - 78, sy - 66, 156, 132);
             ctx.globalAlpha = a * 0.35;
             ctx.drawImage(glowSprite, sx - 46, sy - 40, 92, 80);
+          } else if (el.show === 'node') {
+            // A NODE IS A LIGHT WITH A CORE, not a star sprite: the
+            // ambient sky is made of star sprites, so anything drawn
+            // with one is camouflaged by construction. A node is sized
+            // as a fraction of the sky and carries a wide soft halo, so
+            // the figure reads from across the view.
+            var core = clamp(shortEdge() * PATTERN.coreFrac,
+                             PATTERN.coreMin, PATTERN.coreMax);
+            var pulse = 0.86 + 0.14 * Math.sin(time * 1.15 + el.tw);
+            var chosen = el.sel ? 1 : 0;
+            var blz = (inst.pattern && inst.pattern.igniteAt >= 0)
+              ? clamp(1 - (time - inst.pattern.igniteAt) / PATTERN.igniteS, 0, 1) : 0;
+            var halo = core * (4.4 + 1.6 * chosen + 3.2 * blz);
+            ctx.globalAlpha = a * (0.34 + 0.24 * chosen + 0.4 * blz) * pulse;
+            ctx.drawImage(glowSprite, sx - halo, sy - halo, halo * 2, halo * 2);
+            ctx.globalAlpha = a * (0.9 + 0.1 * blz);
+            ctx.fillStyle = rgba(starRgb, 1);
+            ctx.beginPath();
+            ctx.arc(sx, sy, core * (0.62 + 0.16 * chosen + 0.3 * blz) * pulse,
+                    0, Math.PI * 2);
+            ctx.fill();
+            // The chosen node wears a quiet ring — the only thing that
+            // says "this one is in your hand", and it says it without
+            // a word.
+            if (el.sel) {
+              ctx.strokeStyle = rgba(starRgb, a * 0.55 * pulse);
+              ctx.lineWidth = 1.4;
+              ctx.beginPath();
+              ctx.arc(sx, sy, core * 1.9, 0, Math.PI * 2);
+              ctx.stroke();
+              ctx.lineWidth = 1;
+            }
           } else if (el.show === 'link') {
             // a link element is a faint short line of its own
             ctx.strokeStyle = rgba(glowRgb, a * 0.3);
@@ -869,6 +1107,27 @@
           sy = nearestCopy(py + cam.y, ether.height, cy);
           ctx.globalAlpha = 0.7 * breath * (0.5 + 0.5 * Math.sin(time * 3));
           ctx.drawImage(glowSprite, sx - 14, sy - 14, 28, 28);
+        } else if (fx.kind === 'sweep') {
+          // The Ether's own answer: one wide ring leaving the awakened
+          // Spirit and crossing the whole view. Drawn here, on this
+          // canvas — nothing is written to the entity, and nothing
+          // about the creation itself is touched.
+          var ent3 = fx.entity;
+          var wx = (ent3 && ent3.position) ? ent3.position.x : fx.at.x;
+          var wy = (ent3 && ent3.position) ? ent3.position.y : fx.at.y;
+          sx = nearestCopy(wx + cam.x, ether.width, cx);
+          sy = nearestCopy(wy + cam.y, ether.height, cy);
+          var reach = Math.sqrt(ether.viewWidth * ether.viewWidth +
+                                ether.viewHeight * ether.viewHeight) * PATTERN.sweepFrac;
+          var wt = clamp(fx.t / fx.dur, 0, 1);
+          var rr = reach * (wt * (2 - wt));         // out fast, then easing
+          ctx.globalAlpha = 0.34 * (1 - wt) * breath;
+          ctx.strokeStyle = rgba(glowRgb, 1);
+          ctx.lineWidth = 2.4 + 6 * (1 - wt);
+          ctx.beginPath();
+          ctx.arc(sx, sy, Math.max(1, rr), 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.lineWidth = 1;
         } else if (fx.kind === 'halo') {
           var ent2 = fx.entity;
           var hx = (ent2 && ent2.position) ? ent2.position.x : fx.at.x;
@@ -909,6 +1168,17 @@
           age: Math.round((time - inst.born) * 10) / 10,
           behaviour: inst.behaviour,
           creation: inst.creation ? inst.creation.id : null,
+          arrangement: inst.pattern ? {
+            shape: inst.pattern.shape,
+            nodes: inst.pattern.nodes.length,
+            radius: Math.round(inst.pattern.radius),
+            centre: { x: inst.pattern.cx, y: inst.pattern.cy },
+            missingLeft: inst.pattern.missingLeft,
+            selected: inst.pattern.sel ? inst.pattern.sel.node : null,
+            links: inst.pattern.links.map(function (L) {
+              return { a: L.a, b: L.b, present: L.present };
+            })
+          } : null,
           elements: inst.elements.map(function (el) {
             return { role: el.role, show: el.show, x: el.x, y: el.y,
                      alpha: Math.round(el.alpha * 100) / 100,

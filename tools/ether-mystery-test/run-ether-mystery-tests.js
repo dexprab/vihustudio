@@ -820,6 +820,15 @@ function lookAt(h, x, y) {
     page.on('console', (m) => page.consoleLines.push(m.text()));
     await page.goto(BASE + (url || '/index.html'));
     await page.waitForSelector('[data-begin]', { timeout: 20000 });
+    // THE THRESHOLD IS NOT CROSSED BEFORE THE PAGE IS READY.
+    // js/vihuplanetHome.js mounts the whole Ether stack inside the
+    // threshold handler, behind `if (window.EtherLife ...)` — so a
+    // click that beats the last <script> tag skips it silently and
+    // forever. The button is in the HTML from the first paint, and a
+    // cold cache (every version bump gives one) is enough to lose
+    // the race. A child takes longer than a harness does; the
+    // harness waits for the same thing the product waits for.
+    await page.waitForFunction(() => !!window.EtherLife, null, { timeout: 20000 });
     await page.click('[data-begin]');
     await page.waitForFunction(() => !!window.vihuEtherLife, null, { timeout: 15000 });
     return { page, context };
@@ -997,6 +1006,15 @@ function lookAt(h, x, y) {
     page.on('pageerror', (e) => page.errors.push(String(e)));
     await page.goto(BASE + '/index.html');
     await page.waitForSelector('[data-begin]', { timeout: 20000 });
+    // THE THRESHOLD IS NOT CROSSED BEFORE THE PAGE IS READY.
+    // js/vihuplanetHome.js mounts the whole Ether stack inside the
+    // threshold handler, behind `if (window.EtherLife ...)` — so a
+    // click that beats the last <script> tag skips it silently and
+    // forever. The button is in the HTML from the first paint, and a
+    // cold cache (every version bump gives one) is enough to lose
+    // the race. A child takes longer than a harness does; the
+    // harness waits for the same thing the product waits for.
+    await page.waitForFunction(() => !!window.EtherLife, null, { timeout: 20000 });
     await page.tap('[data-begin]');
     await page.waitForFunction(() => !!window.vihuEtherMystery, null, { timeout: 15000 });
     await page.evaluate(() => {
@@ -1037,6 +1055,15 @@ function lookAt(h, x, y) {
     page.on('pageerror', (e) => page.errors.push(String(e)));
     await page.goto(BASE + '/index.html');
     await page.waitForSelector('[data-begin]', { timeout: 20000 });
+    // THE THRESHOLD IS NOT CROSSED BEFORE THE PAGE IS READY.
+    // js/vihuplanetHome.js mounts the whole Ether stack inside the
+    // threshold handler, behind `if (window.EtherLife ...)` — so a
+    // click that beats the last <script> tag skips it silently and
+    // forever. The button is in the HTML from the first paint, and a
+    // cold cache (every version bump gives one) is enough to lose
+    // the race. A child takes longer than a harness does; the
+    // harness waits for the same thing the product waits for.
+    await page.waitForFunction(() => !!window.EtherLife, null, { timeout: 20000 });
     await page.click('[data-begin]');
     await page.waitForFunction(() => !!window.vihuEtherLife, null, { timeout: 15000 });
     const out = await page.evaluate(() => {
@@ -1097,6 +1124,347 @@ function lookAt(h, x, y) {
        out.outcomes + ' outcomes recorded');
     ck(noDebug, 'B7b an ordinary console hears nothing');
     ck(page.errors.length === 0, 'B7c zero page errors', page.errors[0]);
+    await context.close();
+  }
+
+  // ================================================================
+  // U. THE UNFINISHED PATTERN — the first real Ether Mystery
+  //    primitive, walked the way a child walks it.
+  //
+  // Everything here runs against the REAL page, the REAL pool entry
+  // and the REAL interpreter. The figure is not simulated anywhere:
+  // what is measured is what the canvas actually paints and what the
+  // instrument actually reports.
+  // ================================================================
+
+  // A helper: pose the canonical experience and wait for its lights.
+  // THE COMPOSER MAY HAVE GOT THERE FIRST. begin() refuses while an
+  // instance is live (one mystery at a time is the rule), so a harness
+  // that poses immediately after crossing the threshold is racing the
+  // Composer's own choice. Wait for the stage to be free, then pose —
+  // which is what the Composer itself does.
+  async function poseFigure(pg) {
+    let got = null;
+    for (let attempt = 0; attempt < 40 && got !== 'a-figure-not-yet-whole'; attempt++) {
+      got = await pg.evaluate(() => {
+        const my = window.vihuEtherMystery;
+        if (my.live()) return 'busy';
+        return my.begin('a-figure-not-yet-whole', { look: null });
+      });
+      if (got !== 'a-figure-not-yet-whole') await pg.waitForTimeout(500);
+    }
+    if (got !== 'a-figure-not-yet-whole') return null;
+    await pg.waitForFunction(() => {
+      const i = window.vihuEtherMystery.instrument();
+      return i && i.elements.length && i.elements[0].alpha > 0.5;
+    }, null, { timeout: 8000 });
+    return pg.evaluate(() => window.vihuEtherMystery.instrument());
+  }
+
+  // U1 — the figure exists, and it is a figure rather than a cluster.
+  {
+    const { page, context } = await freshPage();
+    const inst = await poseFigure(page);
+    const pat = inst && inst.arrangement;
+    ck(!!pat && pat.nodes === 6 && pat.links.length === 6 &&
+       pat.links.filter((L) => !L.present).length === 2 && pat.missingLeft === 2,
+       'U1  six lights, six joins, and two of them missing',
+       pat ? JSON.stringify({ n: pat.nodes, l: pat.links.length, m: pat.missingLeft })
+           : 'no figure');
+    // ETHER SCALE, MEASURED. The largest primitive before this was the
+    // veil at 156px; the figure has to be an order of magnitude
+    // different or the whole sprint is decoration.
+    const span = await page.evaluate(() => {
+      const i = window.vihuEtherMystery.instrument();
+      const xs = i.elements.map((e) => e.x), ys = i.elements.map((e) => e.y);
+      return {
+        w: Math.max.apply(null, xs) - Math.min.apply(null, xs),
+        h: Math.max.apply(null, ys) - Math.min.apply(null, ys),
+        short: Math.min(window.innerWidth, window.innerHeight)
+      };
+    });
+    ck(span.w > span.short * 0.55 && span.w > 156 * 3,
+       'U1b the figure spans the sky, not a corner of it',
+       Math.round(span.w) + 'x' + Math.round(span.h) + ' on a ' + span.short + ' short edge');
+    await page.screenshot({ path: path.join(SHOTS, 'u1-unfinished-figure.png') });
+    await context.close();
+  }
+
+  // U2 — a pair that does not belong together joins nothing, and
+  // nothing anywhere says the child was wrong.
+  {
+    const { page, context } = await freshPage();
+    const inst = await poseFigure(page);
+    const wrong = await page.evaluate(() => {
+      const my = window.vihuEtherMystery;
+      const i = my.instrument();
+      const pat = i.arrangement;
+      // Two nodes with NO missing join between them: pick the ends of
+      // a join that is already there.
+      const there = pat.links.filter((L) => L.present)[0];
+      const a = i.elements[there.a], b = i.elements[there.b];
+      my.touchAt(a.x, a.y);
+      const mid = my.instrument().arrangement.selected;
+      my.touchAt(b.x, b.y);
+      const after = my.instrument().arrangement;
+      return { chose: mid, left: after.missingLeft, sel: after.selected };
+    });
+    ck(wrong.chose !== null && wrong.left === 2 && wrong.sel === null,
+       'U2  a pair that does not belong joins nothing, and lets go quietly',
+       JSON.stringify(wrong));
+    const words = await page.evaluate(() => document.body.innerText);
+    ck (!/wrong|incorrect|try again|oops|no,/i.test(words),
+       'U2b and not one word on screen tells the child they were wrong');
+    ck(page.errors.length === 0, 'U2c zero page errors', page.errors[0]);
+    await context.close();
+  }
+
+  // U3 — joining a missing pair makes the join appear, and the
+  // figure is finished by being WHOLE rather than by a count.
+  {
+    const { page, context } = await freshPage();
+    await poseFigure(page);
+    const step = await page.evaluate(() => {
+      const my = window.vihuEtherMystery;
+      const i = my.instrument();
+      const gap = i.arrangement.links.filter((L) => !L.present)[0];
+      my.touchAt(i.elements[gap.a].x, i.elements[gap.a].y);
+      my.touchAt(i.elements[gap.b].x, i.elements[gap.b].y);
+      const after = my.instrument();
+      return { left: after.arrangement.missingLeft,
+               present: after.arrangement.links.filter((L) => L.present).length,
+               live: !!my.live(), outcomes: my.outcomes().length };
+    });
+    ck(step.left === 1 && step.present === 5,
+       'U3  the join appears where the child put it', JSON.stringify(step));
+    ck(step.live && step.outcomes === 0,
+       'U3b and with one gap left it is NOT finished — the figure decides, not a tally');
+    // Now close the last gap.
+    await page.evaluate(() => {
+      const my = window.vihuEtherMystery;
+      const i = my.instrument();
+      const gap = i.arrangement.links.filter((L) => !L.present)[0];
+      my.touchAt(i.elements[gap.a].x, i.elements[gap.a].y);
+      my.touchAt(i.elements[gap.b].x, i.elements[gap.b].y);
+    });
+    // A CHECK THAT CRASHES IS A CHECK NOBODY CAN READ. If the figure
+    // stops deciding when it is finished, this waits for ever — so the
+    // wait is caught and reported as the red it is.
+    let done = null;
+    try {
+      await page.waitForFunction(() =>
+        window.vihuEtherMystery.outcomes().length > 0, null, { timeout: 8000 });
+      done = await page.evaluate(() => window.vihuEtherMystery.outcomes()[0]);
+    } catch (e) { done = null; }
+    ck(!!done && done.ending === 'discovery' && done.discovery === 'creation-revealed',
+       'U3c whole — and a real creation is what it awakens',
+       done ? done.ending + '/' + done.discovery : 'never finished');
+    await context.close();
+  }
+
+  // U4 — THE AWAKENING IS AT ETHER SCALE, and it is drawn HERE.
+  // The creation itself is never written to: the entity is snapshotted
+  // before and after and must come back byte-for-byte.
+  {
+    const { page, context } = await freshPage();
+    await poseFigure(page);
+    const before = await page.evaluate(() => {
+      const my = window.vihuEtherMystery;
+      const id = my.instrument().creation;
+      const ent = window.vihuPlanetUniverse.stories.all()
+        .filter((e) => (e.source && e.source.projectId) === id ||
+                       e.id === id || (e.source && e.source.id) === id)[0];
+      window.__ent = ent || null;
+      if (!ent) return null;
+      // IDENTITY, not the whole entity: physics moves a Spirit every
+      // frame and the runtime fills in its own view fields as it goes,
+      // so position, prox and screen coordinates differ by design.
+      // What must not change is WHAT the creation is — and no key the
+      // mystery layer could have written may exist at all.
+      return JSON.stringify({
+        id: ent.id, title: ent.title, cover: ent.cover,
+        source: ent.source, growth: ent.growth, cheers: ent.cheers,
+        publishedAt: ent.publishedAt,
+        mine: Object.keys(ent).filter((k) =>
+          /arrangement|pattern|mystery|awaken|node|link/i.test(k)).sort()
+      });
+    });
+    await page.evaluate(() => {
+      const my = window.vihuEtherMystery;
+      let i = my.instrument();
+      while (i && i.arrangement && i.arrangement.missingLeft > 0) {
+        const gap = i.arrangement.links.filter((L) => !L.present)[0];
+        my.touchAt(i.elements[gap.a].x, i.elements[gap.a].y);
+        my.touchAt(i.elements[gap.b].x, i.elements[gap.b].y);
+        i = my.instrument();
+      }
+    });
+    // MEASURED OVER THE WHOLE ANSWER, NOT AT ONE INSTANT. The light
+    // crosses the sky first and the ring leaves the Spirit where it
+    // lands, so a single sample can catch the quiet middle — the first
+    // version of this check sampled at 4.2s, read 342px, and reported
+    // a working awakening as a failure. The property is the SIZE the
+    // answer reaches, so the size it reaches is what is measured.
+    let sawSweep = false, widest = 0, diag = 0;
+    for (let t = 0; t < 16; t++) {
+      await page.waitForTimeout(500);
+      const shot = await page.evaluate(() => {
+        const my = window.vihuEtherMystery;
+        const inst = my.instrument();
+        const c = document.querySelector('.vp-ether-mystery');
+        const g = c.getContext('2d');
+        const d = g.getImageData(0, 0, c.width, c.height).data;
+        let minX = c.width, maxX = -1, minY = c.height, maxY = -1, lit = 0;
+        for (let y = 0; y < c.height; y += 2) {
+          for (let x = 0; x < c.width; x += 2) {
+            if (d[(y * c.width + x) * 4 + 3] > 10) {
+              lit++;
+              if (x < minX) minX = x; if (x > maxX) maxX = x;
+              if (y < minY) minY = y; if (y > maxY) maxY = y;
+            }
+          }
+        }
+        const dpr = c.width / c.clientWidth;
+        return {
+          sweep: !!(inst && (inst.effects || []).indexOf('sweep') !== -1),
+          // ONLY ONCE THE FIGURE HAS LET GO. While it is still fading
+          // the painted box is the figure's own 500-600px, which would
+          // let this check pass with no answer at all.
+          figureGone: inst === null,
+          lit: lit, w: (maxX - minX) / dpr, h: (maxY - minY) / dpr,
+          diag: Math.sqrt(c.clientWidth * c.clientWidth + c.clientHeight * c.clientHeight)
+        };
+      });
+      if (shot.sweep) sawSweep = true;
+      if (shot.figureGone && shot.lit > 0 && shot.w > widest) widest = shot.w;
+      diag = shot.diag;
+    }
+    ck(sawSweep, 'U4  the Ether itself answers — a ring leaves the awakened Spirit');
+    // WHAT PAINTS IS A CHORD, NOT THE WHOLE RING. The ring leaves the
+    // Spirit, and the Spirit is usually somewhere off toward the edge
+    // of the view — that is the design (the answer is a reason to
+    // turn). So the honest measurement is that what a child sees is
+    // far larger than anything the runtime drew before this: the
+    // biggest element was the veil at 156px. The ring's REACH is
+    // pinned separately below, where it is a fact rather than a
+    // geometry that changes with where a Spirit happens to be.
+    ck(widest > 156 * 3,
+       'U4b and it crosses the sky, far larger than any element',
+       Math.round(widest) + 'px painted across a ' + Math.round(diag) + 'px diagonal');
+    const mySrc = read('js/etherMystery.js');
+    ck(/sweepFrac:\s*0\.72/.test(mySrc) &&
+       /Math\.sqrt\(ether\.viewWidth \* ether\.viewWidth \+/.test(mySrc),
+       'U4b2 and the ring is sized from the view diagonal, not from a pixel count');
+    const after = await page.evaluate(() => {
+      const ent = window.__ent;
+      if (!ent) return null;
+      return JSON.stringify({
+        id: ent.id, title: ent.title, cover: ent.cover,
+        source: ent.source, growth: ent.growth, cheers: ent.cheers,
+        publishedAt: ent.publishedAt,
+        mine: Object.keys(ent).filter((k) =>
+          /arrangement|pattern|mystery|awaken|node|link/i.test(k)).sort()
+      });
+    });
+    ck(before !== null && after === before,
+       'U4c and the creation itself was never written to',
+       before === after ? '' : 'entity changed');
+    await page.screenshot({ path: path.join(SHOTS, 'u4-awakening.png') });
+    ck(page.errors.length === 0, 'U4d zero page errors', page.errors[0]);
+    await context.close();
+  }
+
+  // U5 — A FINGER, ON A PHONE. The figure is a fraction of the SKY,
+  // so it must fill a small screen exactly as it fills a large one,
+  // and a real tap must join two lights.
+  {
+    const { page, context } = await freshPage(
+      { viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+    const inst = await poseFigure(page);
+    const span = await page.evaluate(() => {
+      const i = window.vihuEtherMystery.instrument();
+      const xs = i.elements.map((e) => e.x);
+      return { w: Math.max.apply(null, xs) - Math.min.apply(null, xs),
+               short: Math.min(window.innerWidth, window.innerHeight),
+               r: i.arrangement.radius };
+    });
+    ck(!!inst && span.w > span.short * 0.6,
+       'U5  on a phone the figure still fills the sky',
+       Math.round(span.w) + 'px across a ' + span.short + 'px short edge');
+    const joined = await page.evaluate(() => {
+      const my = window.vihuEtherMystery;
+      const i = my.instrument();
+      const gap = i.arrangement.links.filter((L) => !L.present)[0];
+      my.touchAt(i.elements[gap.a].x, i.elements[gap.a].y);
+      my.touchAt(i.elements[gap.b].x, i.elements[gap.b].y);
+      return my.instrument().arrangement.missingLeft;
+    });
+    ck(joined === 1, 'U5b and a touch joins two lights', 'left ' + joined);
+    ck(page.errors.length === 0, 'U5c zero page errors', page.errors[0]);
+    await page.screenshot({ path: path.join(SHOTS, 'u5-phone-figure.png') });
+    await context.close();
+  }
+
+  // U6 — NO GESTURE WAS TAKEN FROM THE TRAVELLER. Dragging the sky
+  // while a figure is posed still turns the universe, and the drag
+  // does not join anything.
+  {
+    const { page, context } = await freshPage();
+    await poseFigure(page);
+    const out = await page.evaluate(async () => {
+      const uni = window.vihuPlanetUniverse;
+      const my = window.vihuEtherMystery;
+      const i = my.instrument();
+      const before = uni.camera.yaw !== undefined ? uni.camera.yaw : null;
+      const el = i.elements[0];
+      const root = uni.root;
+      const r = root.getBoundingClientRect();
+      function ev(type, x, y) {
+        root.dispatchEvent(new MouseEvent(type, { clientX: x, clientY: y,
+          bubbles: true, cancelable: true, buttons: 1 }));
+      }
+      const sx = r.left + r.width * 0.5, sy = r.top + r.height * 0.5;
+      ev('mousedown', sx, sy);
+      for (let k = 1; k <= 8; k++) ev('mousemove', sx - k * 20, sy);
+      ev('mouseup', sx - 160, sy);
+      await new Promise((res) => requestAnimationFrame(res));
+      const j = my.instrument();
+      return { moved: true, left: j ? j.arrangement.missingLeft : null,
+               sel: j ? j.arrangement.selected : null };
+    });
+    ck(out.left === 2 && out.sel === null,
+       'U6  dragging the sky joins nothing — the Traveller keeps their gesture',
+       JSON.stringify(out));
+    ck(page.errors.length === 0, 'U6b zero page errors', page.errors[0]);
+    await context.close();
+  }
+
+  // U7 — nothing accumulates: after the whole experience the stage is
+  // empty again and there is still exactly one canvas.
+  {
+    const { page, context } = await freshPage();
+    await poseFigure(page);
+    await page.evaluate(() => {
+      const my = window.vihuEtherMystery;
+      let i = my.instrument();
+      while (i && i.arrangement && i.arrangement.missingLeft > 0) {
+        const gap = i.arrangement.links.filter((L) => !L.present)[0];
+        my.touchAt(i.elements[gap.a].x, i.elements[gap.a].y);
+        my.touchAt(i.elements[gap.b].x, i.elements[gap.b].y);
+        i = my.instrument();
+      }
+    });
+    await page.waitForFunction(() =>
+      window.vihuEtherMystery.live() === null, null, { timeout: 15000 });
+    await page.waitForTimeout(12000);
+    const end = await page.evaluate(() => ({
+      canvases: document.querySelectorAll('.vp-ether-mystery').length,
+      live: window.vihuEtherMystery.live(),
+      instrument: window.vihuEtherMystery.instrument()
+    }));
+    ck(end.canvases === 1 && end.live === null && end.instrument === null,
+       'U7  the figure leaves nothing behind — one canvas, empty stage');
+    ck(page.errors.length === 0, 'U7b zero page errors', page.errors[0]);
     await context.close();
   }
 

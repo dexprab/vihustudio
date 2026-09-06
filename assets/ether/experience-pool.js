@@ -29,6 +29,36 @@
   global.EtherExperiencePool = {
     version: 1,
     experiences: [
+      // THE UNFINISHED PATTERN — the canonical experience the product
+      // contract is written around (Decision 58): a figure of lights
+      // that is obviously deliberate and obviously not finished; the
+      // child reads it, joins what is missing, and a real creation
+      // already living in the Ether awakens for it. Authored rather
+      // than generated, and the source says so.
+      {
+        status: 'active',
+        source: 'authored',
+        approved: '2026-09-06',
+        candidate: {
+          id: 'a-figure-not-yet-whole',
+          grammar: 'connect',
+          title: 'a figure of lights that is not yet whole',
+          complexity: 'moderate',
+          ingredients: { creation: true, creationKind: 'story' },
+          arrangement: { shape: 'ring', nodes: 6, missing: 2 },
+          elements: [
+            { role: 'light', show: 'node', place: 'ring', count: 6 }
+          ],
+          engage: [
+            { action: 'tap', on: 'light' }
+          ],
+          behaviour: { onEngage: 'link', pace: 'slow' },
+          outcome: { possible: ['discovery'], discovery: 'creation-revealed',
+                     residue: { show: 'mark', when: 'resolved' } },
+          constraints: { rarity: 'uncommon', notBefore: 60, lifeS: 150,
+                         phases: ['exploration', 'deep', 'reignition'] }
+        }
+      },
       {
         status: 'active',
         source: 'fixture',

@@ -521,6 +521,15 @@ function autoCross(h, seconds) {
     page.on('console', (m) => page.consoleLines.push(m.text()));
     await page.goto(BASE + (url || '/index.html'));
     await page.waitForSelector('[data-begin]', { timeout: 20000 });
+    // THE THRESHOLD IS NOT CROSSED BEFORE THE PAGE IS READY.
+    // js/vihuplanetHome.js mounts the whole Ether stack inside the
+    // threshold handler, behind `if (window.EtherLife ...)` — so a
+    // click that beats the last <script> tag skips it silently and
+    // forever. The button is in the HTML from the first paint, and a
+    // cold cache (every version bump gives one) is enough to lose
+    // the race. A child takes longer than a harness does; the
+    // harness waits for the same thing the product waits for.
+    await page.waitForFunction(() => !!window.EtherLife, null, { timeout: 20000 });
     await page.click('[data-begin]');
     await page.waitForFunction(() => !!window.vihuEtherLife, null, { timeout: 15000 });
     return { context, page };
@@ -944,6 +953,15 @@ function autoCross(h, seconds) {
     await page.route('**/etherExperience.js*', (r) => r.abort());
     await page.goto(BASE + '/index.html');
     await page.waitForSelector('[data-begin]', { timeout: 20000 });
+    // THE THRESHOLD IS NOT CROSSED BEFORE THE PAGE IS READY.
+    // js/vihuplanetHome.js mounts the whole Ether stack inside the
+    // threshold handler, behind `if (window.EtherLife ...)` — so a
+    // click that beats the last <script> tag skips it silently and
+    // forever. The button is in the HTML from the first paint, and a
+    // cold cache (every version bump gives one) is enough to lose
+    // the race. A child takes longer than a harness does; the
+    // harness waits for the same thing the product waits for.
+    await page.waitForFunction(() => !!window.EtherLife, null, { timeout: 20000 });
     await page.click('[data-begin]');
     await page.waitForFunction(() => !!window.vihuEtherLife, null, { timeout: 15000 });
     const wiring = await page.evaluate(() => ({

@@ -40,9 +40,11 @@
   // and are named in NOT_REPRESENTED below.
   // ---------------------------------------------------------------
   var REPRESENTED = {
-    // draw(): shard · glint · mark · veil · link each have their own
-    // drawing branch.
-    shows: ['shard', 'mark', 'glint', 'veil', 'link'],
+    // draw(): shard · glint · mark · veil · link · node each have
+    // their own drawing branch. 'node' is the unfinished pattern's own
+    // light and is drawn as a sized core with a wide halo, never with
+    // the ambient star sprite.
+    shows: ['shard', 'mark', 'glint', 'veil', 'link', 'node'],
     // placePoints(): every place in the vocabulary is placed.
     places: ['near-look', 'far', 'scattered', 'ring', 'at-anchor', 'toward-creation'],
     // update()/touchAt(): every action in the vocabulary is armed.
@@ -208,14 +210,16 @@
     mark: 'a faint star',
     glint: 'a small light',
     veil: 'a soft glow with something behind it',
-    link: 'a faint line'
+    link: 'a faint line',
+    node: 'a light standing in a figure'
   };
   var SHOW_PLURAL = {
     shard: 'pieces of a creation\'s picture',
     mark: 'faint stars',
     glint: 'small lights',
     veil: 'soft glows with something behind them',
-    link: 'faint lines'
+    link: 'faint lines',
+    node: 'lights standing in a figure, with some of the joins missing'
   };
   var PLACE_WORDS = {
     'near-look': 'close to where you are looking',
@@ -268,6 +272,17 @@
     var mystery = parts.length
       ? parts.join('; and ') + '.'
       : 'Nothing is placed.';
+    // A PATTERN IS A FIGURE, so it is described as one: what a child
+    // sees is an arrangement that is obviously deliberate and just as
+    // obviously not finished.
+    if (c.arrangement) {
+      mystery = count(c.arrangement.nodes) + ' lights standing in a ' +
+        (c.arrangement.shape === 'arc' ? 'curve' : 'ring') +
+        ' about two thirds as wide as the screen, joined to each other — ' +
+        'except for ' + count(c.arrangement.missing) +
+        (c.arrangement.missing === 1 ? ' join, which is missing.'
+                                 : ' joins, which are missing.');
+    }
     if (c.title) mystery = c.title.charAt(0).toUpperCase() + c.title.slice(1) +
       ' — ' + mystery;
 
@@ -288,7 +303,11 @@
         action = (action ? action + ' ' : '') +
           'Or wait, and let a little time pass.';
       }
-      if (beh.onEngage && RESPONSE_WORDS[beh.onEngage]) {
+      if (c.arrangement) {
+        action = 'Touch one light, then touch another. If those two ' +
+          'belong together, the join appears. Nothing says so, and ' +
+          'nothing goes wrong if they do not.';
+      } else if (beh.onEngage && RESPONSE_WORDS[beh.onEngage]) {
         action += ' When something answers, ' + RESPONSE_WORDS[beh.onEngage] + '.';
       }
     }
@@ -297,7 +316,11 @@
     var possible = list(out.possible);
     var canFind = possible.indexOf('discovery') !== -1;
     var discovery;
-    if (canFind) {
+    if (c.arrangement && canFind) {
+      discovery = 'Once the figure is whole it blazes, a light crosses ' +
+        'the sky to a real creation living out there, and where it ' +
+        'lands a ring sweeps out across the whole view.';
+    } else if (canFind) {
       discovery = (DISCOVERY_WORDS[out.discovery] || 'something is found') + '.';
       discovery = discovery.charAt(0).toUpperCase() + discovery.slice(1);
       if (possible.length > 1) {

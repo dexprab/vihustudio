@@ -46,6 +46,15 @@ function ck(c, n, note) { (c ? ok : fail)(n, note); }
     await page.goto(BASE + '/index.html');
     // The one threshold, crossed the way a child crosses it: a click.
     await page.waitForSelector('[data-begin]', { timeout: 20000 });
+    // THE THRESHOLD IS NOT CROSSED BEFORE THE PAGE IS READY.
+    // js/vihuplanetHome.js mounts the whole Ether stack inside the
+    // threshold handler, behind `if (window.EtherLife ...)` — so a
+    // click that beats the last <script> tag skips it silently and
+    // forever. The button is in the HTML from the first paint, and a
+    // cold cache (every version bump gives one) is enough to lose
+    // the race. A child takes longer than a harness does; the
+    // harness waits for the same thing the product waits for.
+    await page.waitForFunction(() => !!window.EtherLife, null, { timeout: 20000 });
     await page.click('[data-begin]');
     await page.waitForFunction(() => !!window.vihuEtherLife, null, { timeout: 15000 });
     await page.evaluate(() => {

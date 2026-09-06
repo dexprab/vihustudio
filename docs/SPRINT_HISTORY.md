@@ -12192,3 +12192,56 @@ one-press preset, plus the two comparison runs, each dry-run green in
 fixture mode. Production files changed: zero, for the third sprint
 running. Suite: `tools/ether-mystery-lab-test/` 191 → 226 (`C1`–`C12`),
 five reversion proofs. Detail: `docs/ETHER_MYSTERY_LAB.md`.
+
+## The Unfinished Pattern — the first real Ether Mystery primitive (build 0768)
+
+The canonical example the product contract is written around now runs in
+the real Ether: **an unfinished visible figure the child can complete,
+which causes a real Creation to awaken.** Three parts and deliberately
+nothing else — a `node` light (`mark` and `glint` draw with the ambient
+star field's own sprite, so the more faithfully they are performed the
+better they hide; measured 0.002–0.007% of the screen), one
+top-level `arrangement` block that lays 4–8 nodes as a ring or an arc
+with 1–3 joins deliberately left out, and completion meaning **the
+figure is WHOLE** rather than "every armed element has been engaged".
+The gaps are drawn as nothing at all: no dashed hint, no marker, no
+instruction. No generic game mechanic came with it — no score, timer,
+level, progress bar, challenge UI or success popup exists in any of it.
+
+**The gesture is the one the Ether already owns.** Drag turns the sky
+and is the Traveller's single navigation gesture, so it was not given a
+second meaning: two taps carry the whole experience, the first choosing
+a light and the second saying which one it belongs to. A pair that does
+not belong releases with a small shiver — no message, no count of tries,
+and measured, not one word on screen tells a child they were wrong.
+
+**The awakening is at Ether scale and the creation is never touched.**
+The figure blazes, a light crosses to the creation's own Spirit, and
+where it lands a ring sweeps out across 72% of the view diagonal — all
+drawn on the mystery layer's own canvas, the jellyfish's precedent. The
+largest thing the layer draws went from the veil's **156px** to a figure
+spanning about two thirds of the short edge (532px at 1440×900, 277px at
+390×844) and an answer measured at 530px painted across a 1698px
+diagonal, against 110px with the sweep reverted.
+
+**The field is `arrangement`, not `pattern`, and the Stars boundary is
+why**: `pattern` means a Magic Card's constellation everywhere else in
+this product and is a guarded key, so the schema field collided with the
+Lab's own Stars sweep on its first journey through `buildInput()`. The
+spelling moved; the guard did not. One quality rule
+(`tap-for-sure-outcome`) is exempted narrowly and with its reason in
+place; nothing else in the validator was weakened.
+
+**A harness that crosses the threshold too fast sees no Ether at all.**
+The version bump gave every suite run a cold cache, and the whole Ether
+stack mounts inside the threshold handler behind `if (window.EtherLife…)`
+— so a click that beat the last `<script>` tag skipped it silently and
+forever, and three suites reported a broken product. Every Ether harness
+now waits for the same thing the product waits for.
+
+Canon section 23 gained one truth (Decision 57). **Disclosed: no child
+has played it** — what is proved is what a machine can prove, and
+whether a six-year-old notices it, knows what to try and feels the magic
+is the product owner's to find out. Suite:
+`tools/ether-mystery-test/` 63 → 83 (section **U**), four reversion
+proofs. Detail: `docs/ETHER_MYSTERY_CHALLENGE_ARCHITECTURE.md`.

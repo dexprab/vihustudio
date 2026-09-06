@@ -115,7 +115,13 @@
     // What an element may look like on the sky. All are the sky's own
     // language: fragments of a creation's public cover, faint stars,
     // small lights, a soft obscuring glow, a faint joining line.
-    shows: ['shard', 'mark', 'glint', 'veil', 'link'],
+    // 'node' is the pattern primitive's own point of light, and it
+    // exists because the others could not do this job: 'mark' and
+    // 'glint' are drawn with the SAME sprite as the ambient star
+    // field, so a child cannot tell one from the sky behind it
+    // (measured: 0.002-0.007% of the screen perceptible). A node is a
+    // bright core inside a ring, sized as a fraction of the sky.
+    shows: ['shard', 'mark', 'glint', 'veil', 'link', 'node'],
     // Where an element may be placed, relative to the visit.
     places: ['near-look', 'far', 'scattered', 'ring', 'at-anchor', 'toward-creation'],
     // How a child may engage — the approved interaction vocabulary,
@@ -138,7 +144,10 @@
       lifeS: 150,         // seconds before an untaken mystery dissolves
       outcomes: 3,        // possible endings
       notBeforeS: 900,
-      textChars: 140      // free-text (dev-only) field length
+      textChars: 140,     // free-text (dev-only) field length
+      arrangementNodesMin: 4, // fewer than four is not a figure
+      arrangementNodesMax: 8, // more than eight is a chore, not a mystery
+      arrangementMissingMax: 3
     }
   };
 
@@ -152,14 +161,22 @@
   // ---------------------------------------------------------------
   var SCHEMA = {
     top: ['id', 'grammar', 'title', 'complexity', 'ingredients', 'elements',
-          'engage', 'behaviour', 'outcome', 'constraints', 'requires'],
+          'engage', 'behaviour', 'outcome', 'constraints', 'requires', 'arrangement'],
     ingredients: ['creation', 'creationKind', 'minPages', 'anchor'],
     element: ['role', 'show', 'of', 'place', 'count'],
     engage: ['action', 'on', 'seconds'],
     behaviour: ['onEngage', 'pace'],
     outcome: ['possible', 'discovery', 'residue'],
     residue: ['show', 'when'],
-    constraints: ['rarity', 'phases', 'notBefore', 'oncePerVisit', 'lifeS']
+    constraints: ['rarity', 'phases', 'notBefore', 'oncePerVisit', 'lifeS'],
+    // THE UNFINISHED PATTERN. Three scalars, and every one of them is
+    // read by js/etherMystery.js: the figure the nodes stand in, how
+    // many of them there are, and how many of the figure's links are
+    // ABSENT. The interpreter draws the links that are there and
+    // leaves the gaps — which is what makes "something is missing"
+    // visible without a word being said. The correct missing
+    // relationship IS the gap; nothing else has to describe it.
+    arrangement: ['shape', 'nodes', 'missing']
   };
 
   // Keys that may never appear at ANY depth — a candidate that names
@@ -298,6 +315,58 @@
       reasons.push('bad-min-pages');
     }
 
+    // ---------- the unfinished pattern ----------
+    // Validated BEFORE the elements, because whether a `node` element
+    // is legal depends on whether a pattern was declared: a node
+    // outside a pattern is a point of light with nothing to belong
+    // to, and the whole primitive is about belonging.
+    // THE FIELD IS 'arrangement' AND NOT 'pattern', DELIBERATELY.
+    // Everywhere else in this product 'pattern' means a Magic Card's
+    // constellation — a Creator's identity AND their credential — and
+    // it is a guarded key that refuses whatever carries it (Decision
+    // 48). A schema field of that name would have collided with the
+    // Stars boundary on its first journey through the generation lab,
+    // and the right answer to that is to move the spelling, never the
+    // guard. The EXPERIENCE is still called the Unfinished Pattern.
+    var pat = candidate.arrangement;
+    var hasPattern = pat !== undefined;
+    if (hasPattern) {
+      if (!isPlain(pat)) { reasons.push('not-an-object:pattern'); pat = {}; }
+      else keysOutside(pat, SCHEMA.arrangement, 'arrangement', reasons);
+      if (['ring', 'arc'].indexOf(pat.shape) === -1) {
+        reasons.push('unavailable-capability:arrangement.shape:' + pat.shape);
+      }
+      if (!(typeof pat.nodes === 'number' && pat.nodes >= B.arrangementNodesMin &&
+            pat.nodes <= B.arrangementNodesMax && pat.nodes === Math.floor(pat.nodes))) {
+        reasons.push('bad-arrangement-nodes');
+      }
+      // A figure with no gap is not unfinished, and a figure that is
+      // mostly gaps is not a figure. Both ends are named refusals
+      // rather than silent clamps.
+      var linkCount = (pat.shape === 'arc') ? (pat.nodes - 1) : pat.nodes;
+      if (!(typeof pat.missing === 'number' && pat.missing >= 1 &&
+            pat.missing <= B.arrangementMissingMax && pat.missing === Math.floor(pat.missing))) {
+        reasons.push('bad-arrangement-missing');
+      } else if (typeof pat.nodes === 'number' && pat.missing > linkCount - 2) {
+        reasons.push('arrangement-too-broken-to-read');
+      }
+      // The awakening is what completing a pattern is FOR, so the
+      // pieces it needs are required rather than hoped for.
+      if (!wantsCreation) reasons.push('arrangement-needs-creation');
+      // The figure's own joining IS the response, so a pattern may not
+      // also ask for a behaviour that hides, gathers or drives things
+      // away — two things deciding where the nodes are is one thing
+      // too many.
+      var behOn = isPlain(candidate.behaviour) ? candidate.behaviour.onEngage : undefined;
+      if (behOn !== undefined && behOn !== 'link') {
+        reasons.push('arrangement-joins-with-link');
+      }
+      if ((out0().discovery) !== 'creation-revealed') {
+        reasons.push('arrangement-must-awaken-a-creation');
+      }
+    }
+    function out0() { return (isPlain(candidate.outcome) ? candidate.outcome : {}); }
+
     // Elements.
     var els = candidate.elements;
     if (!Array.isArray(els) || els.length === 0) {
@@ -319,6 +388,16 @@
       if (el.show === 'shard' && !wantsCreation) {
         reasons.push('shard-needs-creation');
       }
+      // A node belongs to a figure. Without one it is a light with no
+      // relationships, which is the thing the primitive exists to end.
+      if (el.show === 'node' && !hasPattern) reasons.push('node-needs-arrangement');
+      if (el.show === 'node') {
+        if (el.place !== 'ring') reasons.push('nodes-stand-in-a-ring');
+        var declared = (el.count === undefined) ? 1 : el.count;
+        if (hasPattern && declared !== pat.nodes) {
+          reasons.push('node-count-mismatch:' + declared + '-vs-' + pat.nodes);
+        }
+      }
       if (el.of !== undefined && ['cover', 'sky'].indexOf(el.of) === -1) {
         reasons.push('unavailable-capability:of:' + el.of);
       }
@@ -329,7 +408,12 @@
         reasons.push('toward-creation-needs-creation');
       }
       var n = (el.count === undefined) ? 1 : el.count;
-      if (!(typeof n === 'number' && n >= 1 && n <= 6 && n === Math.floor(n))) {
+      // Six is the ceiling for an ordinary row — more than that of one
+      // thing is clutter rather than an idea. A pattern's nodes are the
+      // exception, because they are not six of a thing: they are ONE
+      // figure, and how many lights it stands on is what shape it is.
+      var nMax = (el.show === 'node') ? B.arrangementNodesMax : 6;
+      if (!(typeof n === 'number' && n >= 1 && n <= nMax && n === Math.floor(n))) {
         reasons.push('bad-count:elements[' + i + ']');
         n = 1;
       }
@@ -462,8 +546,19 @@
     if (candidate.grammar === 'experiment' && possible.indexOf('unresolved') === -1) {
       reasons.push('experiment-must-stay-uncertain');
     }
+    // EXEMPT: A PATTERN IS NOT ONE TAP FOR A PRIZE. This rule exists
+    // to refuse "touch the thing, receive the reward" — a single armed
+    // element whose engagement IS the outcome. A pattern's nodes are
+    // one role and one engage row by construction, and completing it
+    // means joining every missing link of a figure the child had to
+    // read first. The act is multi-step and can be got wrong; what the
+    // rule guards against is that there is nothing to work out. So the
+    // exemption is narrow: it applies only where `pattern` is present,
+    // which the block above already binds to a real creation and to a
+    // creation-revealed discovery.
     if (childActs.indexOf('tap') !== -1 && childActs.length === 1 &&
-        eng.length === 1 && possible.length === 1 && possible[0] === 'discovery') {
+        eng.length === 1 && possible.length === 1 && possible[0] === 'discovery' &&
+        !hasPattern) {
       reasons.push('tap-for-sure-outcome');
     }
 

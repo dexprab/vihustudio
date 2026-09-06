@@ -2110,9 +2110,20 @@ function sectionC() {
      RT.unavailableActions.list.indexOf('connect') !== -1 &&
      /Traveller/.test(RT.unavailableActions.because),
     'M2  the runtime statement admits ONE primary action, and says why drag is not available');
+  // TURNED ROUND, WITH ITS REASON IN PLACE. This read "the runtime
+  // statement names brighten as inert AND the pre-existing connection
+  // as inexpressible" — both true when it was written, and the second
+  // half is what the unfinished-pattern primitive was built to close.
+  // What it was really guarding is that RUNTIME_TODAY tells the truth
+  // about the gap rather than flattering it, so it now asserts the
+  // half that is still true and that the closed half has MOVED rather
+  // than been deleted: an arrangement is declared as performable, and
+  // what remains inexpressible says so outside a pattern.
   ck(RT.responses.declaredButInert.indexOf('brighten') !== -1 &&
-     RT.cannotExpress.some((x) => /PRE-EXISTING connection/.test(x)),
-    'M2b it names brighten as inert and the pre-existing connection as inexpressible');
+     !!RT.arrangement && RT.arrangement.shapes.join(',') === 'ring,arc' &&
+     RT.cannotExpress.some((x) => /outside a pattern/.test(x)) &&
+     !RT.cannotExpress.some((x) => /PRE-EXISTING connection/.test(x)),
+    'M2b it names brighten as inert, and the connection it CAN now draw as buildable');
   // Cross-checked against the real interpreter rather than trusted.
   const interp = read('js/etherMystery.js');
   ck(RT.responses.perform.every((r) => interp.indexOf("'" + r + "'") !== -1) &&
@@ -2221,11 +2232,21 @@ function sectionC() {
   ck(missingExp.length === 0, 'M7  every experiment this sprint asks for exists',
     missingExp.join(','));
   const up = K.EXPERIMENTS['unfinished-pattern'];
-  ck(up.needsCreation === true && /VISIBLY INCOMPLETE/.test(up.emphasis) &&
-     /COMES ALIVE/.test(up.emphasis) && /never dwell\/return\/wait\/approach alone/.test(up.emphasis),
-    'M7b the canonical experiment asks for incompleteness, a primary action and an awakening');
-  ck(/do NOT substitute a smaller idea/.test(up.emphasis),
-    'M7c and it forbids quietly downgrading the idea to something the runtime can already do');
+  // TURNED ROUND, WITH ITS REASON IN PLACE. These two read "the
+  // canonical experiment asks for incompleteness, a primary action and
+  // an awakening" and "it forbids quietly downgrading the idea" —
+  // written when the runtime could NOT perform the canonical example,
+  // so the preset's whole job was to describe something unbuildable as
+  // closely as the vocabulary allowed. It is buildable now, so the
+  // preset names the real thing instead, and the property worth
+  // guarding moved with it: the experiment must still demand a real
+  // creation and a real awakening, and must still refuse a batch that
+  // is one idea wearing five titles.
+  ck(up.needsCreation === true && /arrangement/.test(up.emphasis) &&
+     /creation-revealed/.test(up.emphasis) && /"node"/.test(up.emphasis),
+    'M7b the canonical experiment asks for a real figure, a creation and an awakening');
+  ck(/differ only in their titles/.test(up.emphasis),
+    'M7c and it forbids five candidates that differ only in their titles');
 
   // M8 — the prompt carries the bar, the limits and the anti-patterns,
   // all rendered from the ONE copy.
@@ -2240,11 +2261,11 @@ function sectionC() {
   ck(K.ANTI_PATTERNS.every((a) => sysPrompt.indexOf(a) !== -1) &&
      /DO NOT PRODUCE ANY OF THESE/.test(sysPrompt),
     'M8c and every anti-pattern the last two batches produced is named');
-  ck(K.PROMPT_VERSION === 'ether-mystery-lab-4',
+  ck(K.PROMPT_VERSION === 'ether-mystery-lab-5',
     'M8d the prompt version names the new contract', K.PROMPT_VERSION);
 
   // ---- C11: the contract label moved with the contract ----
-  ck(K.PROMPT_VERSION === 'ether-mystery-lab-4',
+  ck(K.PROMPT_VERSION === 'ether-mystery-lab-5',
     'C11 PROMPT_VERSION names the current contract', K.PROMPT_VERSION);
   const S2 = K.createSession({ pool: sb.EtherExperiencePool });
   const it = S2.add(K.FIXTURE_BANK.notice, { source: 'fixture' });

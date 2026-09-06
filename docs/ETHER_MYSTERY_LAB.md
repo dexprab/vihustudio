@@ -433,7 +433,7 @@ was almost certainly in the ENCODING rather than in the ideas.
 
 | # | Mismatch | Where | Severity |
 |---|---|---|---|
-| 1 | **A sky figure cannot be expressed at all.** `directives.skyFigures` reaches the model as an ingredient, and `SCHEMA.top` / `SCHEMA.ingredients` have NO field for one. A candidate can only ever be about a `creation` or an `anchor`. | prompt ↔ schema | **critical** — and it is the constellations preset's own subject |
+| 1 | **A sky figure cannot be expressed at all.** *(Still true at build 0768 — `arrangement` is a ring or an arc of lights, never a named figure; see the constellation decision.)* `directives.skyFigures` reaches the model as an ingredient, and `SCHEMA.top` / `SCHEMA.ingredients` have NO field for one. A candidate can only ever be about a `creation` or an `anchor`. | prompt ↔ schema | **critical** — and it is the constellations preset's own subject |
 | 2 | `constellation` is on `FORBIDDEN_KEYS` (a privacy rule about a Magic Card's sky) while the Lab simultaneously offers "sky figures" as ingredients — so the most natural key name for that ingredient is refused as a privacy violation. | prompt ↔ validator | high |
 | 3 | Ether beings and phenomena are offered as ingredients too, and have no schema field either. | prompt ↔ schema | high |
 | 4 | The id format `^[a-z0-9][a-z0-9-]{2,60}$` is **never stated in the prompt**. `pegasus_hidden` and `Pegasus Trail` both fail `bad-id`. | prompt | high |
@@ -609,6 +609,8 @@ it.
 | Capability | Validator | Interpreter | Preview | Product decision |
 |---|---|---|---|---|
 | `show`: shard · mark · glint · veil · link | ✅ | ✅ each has its own drawing branch | ✅ | — |
+| **`show: 'node'`** *(new at build 0768)* | ✅ | ✅ a sized bright core inside a wide halo — deliberately **not** the ambient star sprite, which is what makes `mark` and `glint` camouflaged | ✅ | — |
+| **`arrangement`** *(new at build 0768)* | ✅ | ✅ `layoutPattern()` places 4–8 nodes as a ring or an arc, joins consecutive pairs, leaves 1–3 joins out; two taps join a missing pair; `resolveDone()` returns whole-ness | ✅ | **THE UNFINISHED PATTERN.** Requires a real creation and a `creation-revealed` discovery, and `behaviour.onEngage` of `link` if given. The field is spelled `arrangement` and not `pattern` because `pattern` is a Magic Card constellation everywhere else in this product and is a guarded key (Decision 48) — the spelling moved, the guard did not. |
 | `place`: all six | ✅ | ✅ `placePoints()` places every one | ✅ | — |
 | `action`: tap · approach · dwell · return · wait | ✅ | ✅ all armed | ✅ | — |
 | `onEngage`: gather · link · reveal · drift-away · dissolve | ✅ | ✅ | ✅ | — |

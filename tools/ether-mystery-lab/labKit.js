@@ -38,7 +38,7 @@
   // figures are stated as inspiration rather than offered as an
   // ingredient the schema cannot carry. A stored candidate says which
   // contract produced it, so this label must move whenever it changes.
-  var PROMPT_VERSION = 'ether-mystery-lab-4';
+  var PROMPT_VERSION = 'ether-mystery-lab-5';
 
   function G() { return global.EtherGrammar; }
   function L() { return global.EtherCreationLens; }
@@ -352,7 +352,18 @@
         constraints: { type: 'object', required: false, of: 'constraints',
           note: 'when the Composer may offer it. Advisory — the Composer still decides.' },
         requires: { type: 'array of strings', required: false,
-          note: 'an optional restatement of capabilities already asked for, plus "creation" / "anchor". The interpreter never reads it; leaving it out is safest.' }
+          note: 'an optional restatement of capabilities already asked for, plus "creation" / "anchor". The interpreter never reads it; leaving it out is safest.' },
+        arrangement: { type: 'object', required: false, of: 'arrangement',
+          note: 'THE UNFINISHED PATTERN. Present it and the element row whose show is "node" becomes a FIGURE — lights standing in a ring or along a curve, joined to each other, with a few joins left out. The child touches one light and then another; if those two belong together the join appears. It is finished when the figure is WHOLE, never when some number of things have been touched. An arrangement REQUIRES ingredients.creation true and outcome.discovery "creation-revealed" — completing the figure awakens a real creation, and that is what it is for. Its behaviour.onEngage, if given, must be "link".' }
+      },
+      arrangement: {
+        shape: { type: 'string', required: true, values: ['ring', 'arc'],
+          note: 'ring = the lights close a circle, so there are as many joins as lights · arc = an open curve, so there is one fewer join than there are lights.' },
+        nodes: { type: 'integer ' + C.bounds.arrangementNodesMin + '..' + C.bounds.arrangementNodesMax,
+          required: true,
+          note: 'how many lights stand in the figure. It MUST equal the count on the element row whose show is "node". Fewer than ' + C.bounds.arrangementNodesMin + ' is not a figure; more than ' + C.bounds.arrangementNodesMax + ' is a chore.' },
+        missing: { type: 'integer 1..' + C.bounds.arrangementMissingMax, required: true,
+          note: 'how many joins are left out — the whole of the tease. At least one, or nothing is unfinished; and at least two joins must survive, or the figure cannot be read at all.' }
       },
       ingredients: {
         creation: { type: 'boolean', required: false,
@@ -368,13 +379,14 @@
         role: { type: 'string', required: true,
           note: 'a name for this row, matching ^[a-z][a-z0-9-]{0,24}$ — lower case, no spaces. engage[].on refers to it.' },
         show: { type: 'string', required: true, values: C.shows,
-          note: 'shard = a piece of a creation\'s cover (needs ingredients.creation) · mark = a faint star · glint = a small light · veil = a soft glow with something behind it · link = a faint line.' },
+          note: 'shard = a piece of a creation\'s cover (needs ingredients.creation) · mark = a faint star · glint = a small light · veil = a soft glow with something behind it · link = a faint line · node = a light standing in a figure, which needs a top-level "arrangement" and place "ring". mark and glint are drawn with the same sprite as the sky\'s own stars and are all but invisible on their own — prefer node, shard or veil for anything a child must notice.' },
         of: { type: 'string', required: false, values: ['cover', 'sky'],
           note: 'only ever "cover", and only on a shard. "sky" validates and the runtime cannot perform it — do not use it.' },
         place: { type: 'string', required: true, values: C.places,
           note: '"toward-creation" needs ingredients.creation; "at-anchor" needs ingredients.anchor.' },
-        count: { type: 'integer 1..6', required: false,
-          note: 'how many of this row are placed. Defaults to 1.' }
+        count: { type: 'integer 1..6, or 1..' + C.bounds.arrangementNodesMax + ' on a "node" row',
+          required: false,
+          note: 'how many of this row are placed. Defaults to 1. On a "node" row it MUST equal arrangement.nodes.' }
       },
       engage: {
         action: { type: 'string', required: true, values: C.actions,
@@ -386,7 +398,7 @@
       },
       behaviour: {
         onEngage: { type: 'string', required: false, values: C.responses,
-          note: 'gather = engaged pieces come together · link = a line joins them · reveal = what was hidden comes out · drift-away = the touched thing leaves and a path appears · dissolve = it quietly goes. "brighten" validates and the runtime has no branch for it — do not use it.' },
+          note: 'gather = engaged pieces come together · link = a line joins them (and is the only value an "arrangement" may use) · reveal = what was hidden comes out · drift-away = the touched thing leaves and a path appears · dissolve = it quietly goes. "brighten" validates and the runtime has no branch for it — do not use it.' },
         pace: { type: 'string', required: false, values: ['slow', 'drifting', 'still'],
           note: 'how much anything moves. Nothing here is ever fast.' }
       },
@@ -618,7 +630,7 @@
   // suite cross-checks the parts that can be cross-checked.
   // ===============================================================
   var RUNTIME_TODAY = {
-    measuredAt: 'build 0767',
+    measuredAt: 'build 0768',
     deliberateActions: ['tap'],
     positionalActions: ['approach', 'dwell', 'return'],
     passiveActions: ['wait'],
@@ -636,8 +648,27 @@
     },
     responses: {
       perform: ['gather', 'reveal', 'dissolve', 'drift-away'],
+      // 'link' draws a polyline through what has been engaged, in tap
+      // order — and it is also the join a PATTERN uses, where it is a
+      // real relationship between two named lights rather than a
+      // decoration over a history.
       drawingOnly: ['link'],
       declaredButInert: ['brighten']
+    },
+    // THE ONE FIGURE THE RUNTIME CAN NOW DRAW. A top-level
+    // `arrangement` plus an element row showing 'node' is the
+    // unfinished-pattern
+    // primitive: lights standing in a ring or an arc, joined to one
+    // another with a few joins deliberately left out, completed by
+    // touching two lights that belong together, and answered at Ether
+    // scale when the figure is whole.
+    arrangement: {
+      shapes: ['ring', 'arc'],
+      nodes: '4 to 8',
+      missing: '1 to 3, and at least two joins must survive',
+      requires: 'ingredients.creation true and outcome.discovery "creation-revealed"',
+      figureWidthPx: 'about two thirds of the short edge — 612px on a 1440x900 sky, 280px on a 390-wide phone',
+      finishing: 'the FIGURE being whole, never a count of things touched'
     },
     // Measured on a 1440x900 sky, from the interpreter's own draw path.
     elementFootprintPx: {
@@ -645,21 +676,25 @@
       veil: '156x132, diffuse',
       mark: 'three ~6-10px sprites within a ~30px radius',
       glint: 'a ~10-17px sprite',
-      link: 'a 32px line'
+      link: 'a 32px line',
+      node: 'a 7-16px bright core inside a ~4.4x halo, and the FIGURE it stands in spans about two thirds of the short edge'
     },
-    largestPrimitivePx: 156,
+    largestPrimitivePx: 612,
     payoffs: {
-      'creation-revealed': 'a 28px light travels to the creation\'s Spirit and rests as a halo',
+      'creation-revealed': 'a 28px light travels to the creation\'s Spirit and rests as a halo — and from a completed PATTERN the figure blazes first, the light is bigger, and where it lands a ring sweeps out across 72% of the view diagonal',
       wonder: 'a small star figure blooms and goes',
       place: 'a 6-second halo'
     },
     // The canonical example's own gap, named exactly.
+    // What is STILL out of reach. The first four entries of this list
+    // were the canonical example's own gap and are now closed by the
+    // pattern primitive; what is left is named honestly rather than
+    // hopefully.
     cannotExpress: [
-      'a PRE-EXISTING connection: links are drawn only between elements the child has ALREADY engaged, as one polyline in tap order — at the moment a mystery is posed, nothing is joined, so "some stars are connected and some are missing" cannot be shown',
-      'a named relationship between two particular elements',
-      'a correct arrangement, or any notion of completion beyond "every armed element has been engaged"',
-      'anything awakening, emerging, transforming, or the sky itself responding',
-      'a response larger than 156px'
+      'a pre-existing or partial relationship between anything OTHER than pattern nodes — outside a pattern, links are still drawn only between elements the child has already engaged, as one polyline in tap order',
+      'a figure of any shape but a ring or an arc — there is no way to say "a swan", "a hook" or a particular arrangement of points',
+      'anything transforming into something else, or a creation changing its own appearance',
+      'a response to something other than completing a pattern that is larger than 156px'
     ],
     // Two facts that shaped both boring batches.
     knownTraps: [
@@ -819,6 +854,25 @@
         behaviour: { onEngage: 'dissolve', pace: 'still' },
         outcome: { possible: ['unresolved'], residue: { show: 'mark', when: 'either' } },
         constraints: { rarity: 'rare', phases: ['deep', 'reignition'], notBefore: 200, lifeS: 140 }
+      }
+    },
+    {
+      kind: 'unfinished-pattern',
+      label: 'VALID — an unfinished figure that awakens a creation (the canonical example)',
+      valid: true,
+      why: 'A figure of lights with two of its joins left out. The gaps are the tease and nothing announces them; touching two lights that belong together makes the join appear; it is finished when the FIGURE is whole rather than when some number of things have been touched; and completing it awakens a real creation across the sky. Note the three things an arrangement must have: the node row\'s count EQUALS arrangement.nodes, its place is "ring", and the creation and creation-revealed are both required.',
+      candidate: {
+        id: 'an-arc-with-gaps-in-it',
+        grammar: 'complete',
+        title: 'a curve of lights, and some of it not joined up',
+        complexity: 'moderate',
+        ingredients: { creation: true, creationKind: 'story' },
+        arrangement: { shape: 'arc', nodes: 7, missing: 3 },
+        elements: [{ role: 'light', show: 'node', place: 'ring', count: 7 }],
+        engage: [{ action: 'tap', on: 'light' }],
+        behaviour: { onEngage: 'link', pace: 'slow' },
+        outcome: { possible: ['discovery'], discovery: 'creation-revealed' },
+        constraints: { rarity: 'uncommon', phases: ['exploration', 'deep'], notBefore: 60, lifeS: 150 }
       }
     }
   ];
@@ -1058,8 +1112,14 @@
         return RUNTIME_TODAY.deliberateActions.indexOf(a) !== -1; }),
       supportingActs: acts.filter(function (a) {
         return PRODUCT_CONTRACT.action.supporting.indexOf(a) !== -1; }),
-      // The only two shows with a real footprint (RUNTIME_TODAY).
-      hasBigShow: shows.indexOf('shard') !== -1 || shows.indexOf('veil') !== -1,
+      // A PATTERN IS ITSELF, and several clauses read it.
+      arrangement: (c.arrangement && typeof c.arrangement === 'object') ? c.arrangement : null,
+      // The shows with a real footprint (RUNTIME_TODAY). 'node' joins
+      // shard and veil because it is drawn as a sized core with a wide
+      // halo rather than with the ambient star sprite — and the FIGURE
+      // it stands in is the largest thing the runtime draws.
+      hasBigShow: shows.indexOf('shard') !== -1 || shows.indexOf('veil') !== -1 ||
+                  shows.indexOf('node') !== -1,
       hasShard: shows.indexOf('shard') !== -1,
       hasVeil: shows.indexOf('veil') !== -1,
       onlyFaint: shows.length > 0 && shows.every(function (sh) {
@@ -1101,6 +1161,13 @@
     // so in as many words — a thing moving away is not a reason to
     // follow it).
     var teases = [];
+    // A PATTERN IS THE CONTRACT'S OWN CANONICAL TEASE — something
+    // visibly incomplete that looks as though it wants to be whole —
+    // and it is the one tease the world states rather than implies.
+    if (r.arrangement) {
+      teases.push('a figure that is visibly unfinished — ' +
+        (r.arrangement.missing || 1) + ' of its joins missing');
+    }
     if (r.hasShard && r.pieces >= 2) teases.push('visible incompleteness — pieces that belong together');
     if (r.hasVeil) teases.push('something partly hidden');
     if (r.hiddenSomething) teases.push('something behind something else');
@@ -1189,8 +1256,13 @@
     var scores = {
       // Would a child SEE it? The single thing the old heuristic could
       // not ask, and the one that separates the boring batches most.
+      // A PATTERN SCORES THE TOP MARK ON ITS OWN, and that is a
+      // measurement rather than a favour: it is the only thing the
+      // runtime draws at the scale of the sky — a figure two thirds
+      // the width of the screen, against a veil's 156px.
       perceptibility: dim(
-        (r.hasShard ? 2 : r.hasVeil ? 1 : 0) + ((r.hasBigShow && r.pieces >= 3) ? 1 : 0),
+        r.arrangement ? 3
+          : (r.hasShard ? 2 : r.hasVeil ? 1 : 0) + ((r.hasBigShow && r.pieces >= 3) ? 1 : 0),
         'would a child see this at all, against a living star field?'),
 
       // Is there something to DO — and is it aimed at something?
@@ -1239,7 +1311,8 @@
 
       // Genuine mystery — capped, so it can never carry a boring one.
       genuineMystery: dim(
-        (r.unresolved ? 1 : 0) + ((r.hasVeil || r.hiddenSomething || r.hasShard) ? 1 : 0) +
+        (r.unresolved ? 1 : 0) +
+        ((r.hasVeil || r.hiddenSomething || r.hasShard || r.arrangement) ? 1 : 0) +
         (chk.teases.length ? 1 : 0),
         'is something really unknown, rather than merely faint?'),
 
@@ -1667,9 +1740,16 @@
     // cannot yet perform — that is what it is for.
     'unfinished-pattern': {
       title: '⭐ Unfinished Pattern → Complete → Creation Awakens',
-      brief: 'The canonical product example. Can the generation contract even DESCRIBE it? Expect DESIRED candidates — the runtime cannot draw a pre-existing connection.',
+      brief: 'The canonical product example, and the runtime can now perform it. Every candidate should use the top-level "arrangement" — a figure of lights with joins missing, completed by touch, awakening the supplied creation.',
       count: 5, needsCreation: true, complexity: 'mixed',
-      emphasis: 'Every candidate is one experience: something is VISIBLY INCOMPLETE and looks as though it wants to become whole; the child notices without being told; the arrangement itself suggests what to try; the child acts, and each act is answered; when it is complete the supplied creation COMES ALIVE. Use the supplied creation in every one. The child\'s action must be a primary one, never dwell/return/wait/approach alone. Place things across real space so the incompleteness is visible as a shape. If the vocabulary cannot express a part of this, describe it as closely as the vocabulary allows and do NOT substitute a smaller idea.'
+      // WHAT CHANGED. When this preset was written the runtime could
+      // not draw a pre-existing connection, so it was expected to
+      // produce DESIRED candidates and nothing playable. The
+      // unfinished-pattern primitive closed exactly that gap, so the
+      // experiment is now a real one: what the generator has to show
+      // is that a figure with the same three numbers can still be five
+      // different experiences.
+      emphasis: 'Every candidate uses the top-level "arrangement": a ring or an arc of lights with a few joins missing, an element row showing "node" whose count EQUALS arrangement.nodes and whose place is "ring", behaviour.onEngage "link", the supplied creation, and outcome.discovery "creation-revealed". Within that, make the five genuinely different — the shape, how many lights, how many joins are missing, what else stands on the sky beside the figure, and how it may end. Do NOT produce five candidates that differ only in their titles.'
     },
     'same-creation-active': {
       title: 'Same Creation, Different ACTIVE Grammars',

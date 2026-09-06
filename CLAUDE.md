@@ -8484,6 +8484,124 @@ leads somewhere.
   contract gate are each proved by reverting.
 - `tools/ether-mystery-lab/labKit.js` → `PRODUCT_CONTRACT` /
   `RUNTIME_TODAY` · `docs/ETHER_MYSTERY_CHALLENGE_ARCHITECTURE.md`
+- **THE UNFINISHED PATTERN IS BUILT, AND IT IS THE FIRST REAL ETHER
+  MYSTERY PRIMITIVE** (build 0768). The canonical example the contract
+  above is written around — *an unfinished visible pattern the child can
+  complete, which causes a Creation to awaken* — now runs in the real
+  Ether. **Three parts, and deliberately nothing else**, because the
+  brief's own rule was not to overbuild.
+- **`node` EXISTS BECAUSE THE OTHER LIGHTS ARE CAMOUFLAGED BY
+  CONSTRUCTION.** `mark` and `glint` draw with the SAME sprite as the
+  ambient star field, so the more faithfully the interpreter performs
+  them the better they hide — measured at 0.002–0.007% of the screen. A
+  node is a bright core sized as a fraction of the sky
+  (`clamp(short × 0.017, 7, 16)`) inside a halo about 4.4× that. And
+  what a child notices is not the node: it is the FIGURE the nodes stand
+  in.
+- **THE FIGURE IS THE LARGEST THING THE ETHER DRAWS.** An `arrangement`
+  lays 4–8 nodes evenly around a ring, or along an open arc, at
+  `clamp(short × 0.34, 140, 420)` — measured 532px across at 1440×900
+  and 277px at 390×844, against the 156px veil that was the largest
+  primitive before it. Every number is a fraction of the sky and never a
+  pixel constant, so a phone gets a figure that fills its screen exactly
+  as a laptop does.
+- **THE GAPS ARE DRAWN AS NOTHING AT ALL.** Consecutive nodes are
+  joined; 1–3 of those joins are left out, with no dashed hint, no
+  marker and no instruction. At least two joins must survive — a figure
+  that is mostly gaps is not a figure — and a figure with no gap is not
+  unfinished; both ends are named refusals rather than silent clamps.
+- **COMPLETION MEANS WHOLE, NEVER COUNTED.** `resolveDone()` returns
+  `missingLeft === 0` for an arrangement instead of "every armed element
+  has been engaged". A node standing between two joins that were there
+  from the start is never engaged and never needs to be: what the child
+  did is complete the SHAPE, and the shape is what the world can see.
+  This is also what makes it not a generic game mechanic — there is no
+  score, no timer, no level, no progress bar, no challenge UI and no
+  success popup anywhere in it.
+- **NO GESTURE WAS TAKEN FROM THE TRAVELLER, and that was the sprint's
+  own instruction.** Drag turns the sky (Decision 58's own mobile rule)
+  and is the Ether's ONE navigation gesture; giving it a second meaning
+  is a product decision, not a technical shortcut. Two taps carry the
+  whole experience — the first chooses a light, the second says which
+  one it belongs to — so the mystery layer still receives no drag at
+  all. Measured: dragging the sky while a figure is posed joins nothing
+  and turns the universe exactly as before.
+- **A PAIR THAT DOES NOT BELONG IS NOT A MISTAKE.** Both lights release
+  with a small shiver. No message, no sound of being wrong, no count of
+  tries — measured, not one word on screen tells a child they were
+  wrong — and a child may tap all day.
+- **THE AWAKENING IS AT ETHER SCALE, AND THE CREATION IS NEVER TOUCHED.**
+  The figure blazes; a light leaves it and crosses to the creation's own
+  Spirit; where it lands a ring sweeps out across 72% of the view
+  diagonal and a halo rests there. All of it is drawn on the mystery
+  layer's own canvas — the jellyfish's precedent and Decision 9's own
+  rule — so **the original creation remains its Creator's and never
+  crosses the world boundary**; what wakes is the Ether's answer around
+  its Spirit. Measured: 530px painted across a 1698px diagonal once the
+  figure has let go, against 110px with the sweep reverted. It uses a
+  REAL creation from `universe.stories.all()` through the existing lens;
+  there is no placeholder anywhere.
+- **THE FIELD IS `arrangement` AND NOT `pattern`, AND THE STARS BOUNDARY
+  IS WHY.** Everywhere else in this product `pattern` means a Magic
+  Card's constellation — a Creator's identity AND their credential — and
+  it is a guarded key that refuses whatever carries it (Decision 48).
+  Named `pattern`, the schema field collided with the Lab's own Stars
+  sweep on its first journey through `buildInput()` and refused the
+  whole contract. **The right answer to that is to move the spelling,
+  never the guard.** The EXPERIENCE is still the Unfinished Pattern.
+- **THREE THINGS ARE REQUIRED BY CONSTRUCTION**: a real creation, a
+  `creation-revealed` discovery, and `behaviour.onEngage` of `link` if
+  it is given at all. Completing a figure that awakens nothing is not
+  the canonical experience, so the validator refuses it rather than
+  performing half of it.
+- **ONE QUALITY RULE IS EXEMPTED, NARROWLY, WITH ITS REASON IN PLACE.**
+  `tap-for-sure-outcome` refuses "one tap, one certain prize" — a single
+  armed element whose engagement IS the outcome. An arrangement's nodes
+  are one role and one engage row by construction, so it matches that
+  shape and is nothing like that experience. The exemption applies only
+  where `arrangement` is present, which is already bound to a creation
+  and an awakening. **Nothing else in the validator was weakened.**
+- **THE GRAMMAR ASSESSMENT MOVED, and only where the primitive earned
+  it.** `connect` and `complete` were REWORK and MERGE because the
+  runtime could not draw a pre-existing connection or judge completion;
+  both are KEEP now, and nothing else changed —
+  `KEEP 1 · REWORK 4 · MERGE 2 · DEFER 3` became
+  `KEEP 3 · REWORK 3 · MERGE 1 · DEFER 3`.
+- **FIVE OF THE EIGHT "cannot be built yet" ENTRIES ARE CLOSED**, which
+  is what that list was for. What remains is named honestly: a
+  relationship between anything OTHER than arrangement nodes, a figure
+  of any shape but a ring or an arc, drag as a child action, anything
+  transforming, `brighten`, and a perceptible `mark`/`glint`.
+- **A HARNESS THAT CROSSES THE THRESHOLD TOO FAST SEES NO ETHER AT ALL.**
+  The version bump gave every suite run a cold cache, and
+  `js/vihuplanetHome.js` mounts the whole Ether stack inside the
+  threshold handler behind `if (window.EtherLife …)` — so a click that
+  beat the last `<script>` tag skipped it **silently and forever**, and
+  three suites reported a broken product. The button is in the HTML from
+  the first paint; a child takes longer than a harness does. Every Ether
+  harness now waits for `window.EtherLife` before crossing, which is the
+  same thing the product waits for.
+- **KNOWLEDGE SYNC (Decision 57).** Canon section 23 gained one truth —
+  lights standing in a shape plainly meant to be whole, part of it not
+  joined up; touch one and then another and the join appears; nothing
+  says so and nothing goes wrong if they do not; and when the shape is
+  finished something someone made wakes up for it and the sky answers
+  all the way across. The generated copies were rebuilt and confirmed
+  drift-free. Studio Knowledge and Live Context are untouched — nothing
+  here is a Studio control or a session fact.
+- **DISCLOSED: NO CHILD HAS PLAYED IT.** The brief asks for a real human
+  playtest and there is nobody here to run one. What is proved is what a
+  machine can prove — the figure, its span on a laptop and on a phone, a
+  pair that does not belong, a join appearing, the figure not being
+  finished a gap early, the awakening measured in painted pixels, the
+  entity untouched, the Traveller's drag intact, and nothing left
+  behind. **Whether a six-year-old notices it, knows what to try, and
+  feels the magic is the product owner's to find out**, and the sprint
+  stops here rather than moving to the next grammar or capability.
+- `tools/ether-mystery-test/` section **U** (83 in all), proved by
+  reverting the completion rule (U3c + U4), the missing-link check (U2),
+  the sweep (U4 + U4b, 530px → 110px) and the figure's own layout
+  (U1b + U4b + U5), one at a time.
 - Out of scope and not implemented: creature encounters as a reward
   system, creature dialogue, a Companion in the Ether, per-Traveller
   encounter history, more activity rows (story hunt, missing
