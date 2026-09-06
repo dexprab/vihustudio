@@ -1,0 +1,399 @@
+{
+  "format": "ether-mystery-lab-research-log",
+  "productionReady": false,
+  "note": "RESEARCH ONLY. Every candidate of one Lab session, VALID AND INVALID, with its refusals, its derived creative intent, whether the Ether could show it, and what a person made of it. This is not a pool artifact: nothing here may be committed into assets/ether/experience-pool.js. Only the separate approved export carries entries in the pool's own shape.",
+  "exportedAt": "2026-09-06T01:51:55.335Z",
+  "promptVersion": "ether-mystery-lab-3",
+  "counts": {
+    "total": 5,
+    "valid": 5,
+    "invalid": 0,
+    "playable": 5,
+    "tryIdea": 0,
+    "unsupported": 0,
+    "uninterpretable": 0
+  },
+  "candidates": [
+    {
+      "labId": "cand-1",
+      "refinementOf": null,
+      "source": "generated",
+      "model": "gpt-4.1-mini",
+      "generatedAt": "2026-09-05T14:35:15.178Z",
+      "promptVersion": "ether-mystery-lab-3",
+      "params": {
+        "count": 5,
+        "grammar": "compose",
+        "grammars": null,
+        "complexity": "mixed",
+        "experiment": null
+      },
+      "technicalStatus": "valid",
+      "refusedBecause": [],
+      "refusedInPlainWords": [],
+      "creativeIntent": "The model was trying to make three faint stars, at a place you have already been, and it is allowed to stay a question.",
+      "previewStatus": "playable",
+      "previewBlockedBy": [],
+      "projectionApplied": [],
+      "designReasonsWaived": [],
+      "humanJudgement": null,
+      "qualityHeuristic": {
+        "total": 22,
+        "outOf": 33
+      },
+      "candidate": {
+        "id": "marked-shimmer-at-anchor",
+        "grammar": "notice",
+        "complexity": "simple",
+        "ingredients": {
+          "anchor": true
+        },
+        "elements": [
+          {
+            "role": "faint-mark",
+            "show": "mark",
+            "place": "at-anchor",
+            "count": 3
+          }
+        ],
+        "engage": [
+          {
+            "action": "dwell",
+            "on": "faint-mark",
+            "seconds": 5
+          }
+        ],
+        "behaviour": {
+          "pace": "still"
+        },
+        "outcome": {
+          "possible": [
+            "unresolved"
+          ]
+        },
+        "constraints": {
+          "rarity": "common",
+          "phases": [
+            "curiosity",
+            "quietish"
+          ],
+          "lifeS": 90
+        }
+      }
+    },
+    {
+      "labId": "cand-2",
+      "refinementOf": null,
+      "source": "generated",
+      "model": "gpt-4.1-mini",
+      "generatedAt": "2026-09-05T14:35:15.180Z",
+      "promptVersion": "ether-mystery-lab-3",
+      "params": {
+        "count": 5,
+        "grammar": "compose",
+        "grammars": null,
+        "complexity": "mixed",
+        "experiment": null
+      },
+      "technicalStatus": "valid",
+      "refusedBecause": [],
+      "refusedInPlainWords": [],
+      "creativeIntent": "The model was trying to make a soft glow with something behind it, at a place you have already been, and the place itself glows warmly for a while.",
+      "previewStatus": "playable",
+      "previewBlockedBy": [],
+      "projectionApplied": [],
+      "designReasonsWaived": [],
+      "humanJudgement": null,
+      "qualityHeuristic": {
+        "total": 27,
+        "outOf": 33
+      },
+      "candidate": {
+        "id": "return-to-softly-changed-anchor",
+        "grammar": "return",
+        "complexity": "moderate",
+        "ingredients": {
+          "anchor": true
+        },
+        "elements": [
+          {
+            "role": "soft-glow",
+            "show": "veil",
+            "place": "at-anchor"
+          }
+        ],
+        "engage": [
+          {
+            "action": "return",
+            "on": "soft-glow"
+          },
+          {
+            "action": "wait",
+            "seconds": 6
+          }
+        ],
+        "behaviour": {
+          "onEngage": "reveal",
+          "pace": "drifting"
+        },
+        "outcome": {
+          "possible": [
+            "discovery",
+            "unresolved"
+          ],
+          "discovery": "place"
+        },
+        "constraints": {
+          "rarity": "uncommon",
+          "phases": [
+            "exploration",
+            "reignition"
+          ],
+          "notBefore": 120,
+          "lifeS": 120
+        }
+      }
+    },
+    {
+      "labId": "cand-3",
+      "refinementOf": null,
+      "source": "generated",
+      "model": "gpt-4.1-mini",
+      "generatedAt": "2026-09-05T14:35:15.180Z",
+      "promptVersion": "ether-mystery-lab-3",
+      "params": {
+        "count": 5,
+        "grammar": "compose",
+        "grammars": null,
+        "complexity": "mixed",
+        "experiment": null
+      },
+      "technicalStatus": "valid",
+      "refusedBecause": [],
+      "refusedInPlainWords": [],
+      "creativeIntent": "The model was trying to make a faint star, at a place you have already been; and a faint star, at a place you have already been; and a faint line, at a place you have already been, and something faint stays behind afterwards.",
+      "previewStatus": "playable",
+      "previewBlockedBy": [],
+      "projectionApplied": [],
+      "designReasonsWaived": [],
+      "humanJudgement": null,
+      "qualityHeuristic": {
+        "total": 29,
+        "outOf": 33
+      },
+      "candidate": {
+        "id": "connect-two-faint-marks-at-anchor",
+        "grammar": "connect",
+        "complexity": "deeper",
+        "ingredients": {
+          "anchor": true
+        },
+        "elements": [
+          {
+            "role": "mark-1",
+            "show": "mark",
+            "place": "at-anchor"
+          },
+          {
+            "role": "mark-2",
+            "show": "mark",
+            "place": "at-anchor"
+          },
+          {
+            "role": "link-thread",
+            "show": "link",
+            "place": "at-anchor"
+          }
+        ],
+        "engage": [
+          {
+            "action": "approach",
+            "on": "mark-1"
+          },
+          {
+            "action": "tap",
+            "on": "mark-2"
+          }
+        ],
+        "behaviour": {
+          "onEngage": "link",
+          "pace": "still"
+        },
+        "outcome": {
+          "possible": [
+            "discovery",
+            "unresolved"
+          ],
+          "discovery": "wonder",
+          "residue": {
+            "show": "mark",
+            "when": "resolved"
+          }
+        },
+        "constraints": {
+          "rarity": "rare",
+          "phases": [
+            "deep"
+          ],
+          "notBefore": 180,
+          "lifeS": 130
+        }
+      }
+    },
+    {
+      "labId": "cand-4",
+      "refinementOf": null,
+      "source": "generated",
+      "model": "gpt-4.1-mini",
+      "generatedAt": "2026-09-05T14:35:15.181Z",
+      "promptVersion": "ether-mystery-lab-3",
+      "params": {
+        "count": 5,
+        "grammar": "compose",
+        "grammars": null,
+        "complexity": "mixed",
+        "experiment": null
+      },
+      "technicalStatus": "valid",
+      "refusedBecause": [],
+      "refusedInPlainWords": [],
+      "creativeIntent": "The model was trying to make a soft glow with something behind it, at a place you have already been; and two faint stars, at a place you have already been, and the place itself glows warmly for a while.",
+      "previewStatus": "playable",
+      "previewBlockedBy": [],
+      "projectionApplied": [],
+      "designReasonsWaived": [],
+      "humanJudgement": null,
+      "qualityHeuristic": {
+        "total": 26,
+        "outOf": 33
+      },
+      "candidate": {
+        "id": "soft-veil-hiding-at-anchor",
+        "grammar": "uncover",
+        "complexity": "moderate",
+        "ingredients": {
+          "anchor": true
+        },
+        "elements": [
+          {
+            "role": "soft-veil",
+            "show": "veil",
+            "place": "at-anchor"
+          },
+          {
+            "role": "hidden-mark",
+            "show": "mark",
+            "place": "at-anchor",
+            "count": 2
+          }
+        ],
+        "engage": [
+          {
+            "action": "approach",
+            "on": "soft-veil"
+          },
+          {
+            "action": "dwell",
+            "on": "soft-veil",
+            "seconds": 4
+          }
+        ],
+        "behaviour": {
+          "onEngage": "reveal",
+          "pace": "drifting"
+        },
+        "outcome": {
+          "possible": [
+            "discovery",
+            "unresolved"
+          ],
+          "discovery": "place"
+        },
+        "constraints": {
+          "rarity": "uncommon",
+          "phases": [
+            "exploration"
+          ],
+          "notBefore": 90,
+          "lifeS": 100
+        }
+      }
+    },
+    {
+      "labId": "cand-5",
+      "refinementOf": null,
+      "source": "generated",
+      "model": "gpt-4.1-mini",
+      "generatedAt": "2026-09-05T14:35:15.181Z",
+      "promptVersion": "ether-mystery-lab-3",
+      "params": {
+        "count": 5,
+        "grammar": "compose",
+        "grammars": null,
+        "complexity": "mixed",
+        "experiment": null
+      },
+      "technicalStatus": "valid",
+      "refusedBecause": [],
+      "refusedInPlainWords": [],
+      "creativeIntent": "The model was trying to make two faint stars, at a place you have already been, and something faint stays behind afterwards.",
+      "previewStatus": "playable",
+      "previewBlockedBy": [],
+      "projectionApplied": [],
+      "designReasonsWaived": [],
+      "humanJudgement": null,
+      "qualityHeuristic": {
+        "total": 27,
+        "outOf": 33
+      },
+      "candidate": {
+        "id": "echoing-faint-marks-from-anchor",
+        "grammar": "echo",
+        "complexity": "very-deep",
+        "ingredients": {
+          "anchor": true
+        },
+        "elements": [
+          {
+            "role": "echo-mark",
+            "show": "mark",
+            "place": "at-anchor",
+            "count": 2
+          }
+        ],
+        "engage": [
+          {
+            "action": "return",
+            "on": "echo-mark"
+          },
+          {
+            "action": "wait",
+            "seconds": 8
+          }
+        ],
+        "behaviour": {
+          "onEngage": "dissolve",
+          "pace": "still"
+        },
+        "outcome": {
+          "possible": [
+            "unresolved"
+          ],
+          "residue": {
+            "show": "mark",
+            "when": "either"
+          }
+        },
+        "constraints": {
+          "rarity": "rare",
+          "phases": [
+            "deep",
+            "reignition"
+          ],
+          "notBefore": 200,
+          "lifeS": 140
+        }
+      }
+    }
+  ]
+}

@@ -82,6 +82,17 @@
   .cand .play-row { margin: 4px 0 10px; }
   .cand button.play { font-size: 14px; padding: 8px 16px; }
   .cand .unavail { color: var(--mid); font-weight: 600; font-size: 13px; }
+  /* The product-contract verdict, and §11's DESIRED marking. The
+     verdict leads the card because a number is what let five boring
+     candidates through. */
+  .cand .contract { border-left: 3px solid var(--mid); padding: 6px 0 6px 10px;
+                    margin: 8px 0; font-size: 13px; }
+  .cand .contract.meets { border-left-color: var(--gold); }
+  .cand .contract.meets b { color: var(--gold); }
+  .cand .contract.short b { color: var(--mid); }
+  .cand .desired { border-left: 3px dashed var(--mid); padding: 6px 0 6px 10px;
+                   margin: 8px 0; font-size: 13px; }
+  .cand .desired b { color: var(--mid); letter-spacing: .02em; }
   .cand .demo { margin: 8px 0; }
   .cand .demo-title { font-size: 11px; text-transform: uppercase;
                       letter-spacing: .06em; color: var(--dim); margin-bottom: 4px; }

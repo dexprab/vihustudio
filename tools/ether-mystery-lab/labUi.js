@@ -435,13 +435,47 @@
         (item.state === 'approved' ? '<span class="badge approved">APPROVED</span>' : '') +
         '<span class="note">' + esc(item.state) + '</span>';
 
+      // THE PRODUCT CONTRACT VERDICT, ABOVE THE SCORE.
+      //
+      // A number is what let five boring candidates through at 22-29
+      // out of 33. The hard bar goes first and in words: whether a
+      // 6-10 year old would see it, know what to try, and get an
+      // answer worth the trying — and, where it falls short, exactly
+      // which clause. It is NOT the validator: it can never make a
+      // candidate valid or invalid (§12, technical validity and
+      // creative quality stay separate).
+      var contractBox = '';
+      var chk = item.quality && item.quality.contract;
+      if (chk) {
+        contractBox = '<div class="contract ' + (chk.meets ? 'meets' : 'short') + '">' +
+          '<b>' + esc(chk.verdict) + '</b>' +
+          '<div class="hint">' + esc(chk.note) + '</div>' +
+          (chk.teases.length
+            ? '<div class="hint">tease: ' + esc(chk.teases.join('; ')) + '</div>' : '') +
+          '</div>';
+      }
+
+      // §11 — DESIRED vs SUPPORTED TODAY. A candidate may aim at the
+      // product bar and ask for something js/etherMystery.js cannot
+      // perform. That is a finding, not a failure — but it is never
+      // quietly simulated and never becomes production-valid because
+      // we want the experience.
+      var desiredBox = '';
+      var sup = Support && item.candidate ? Support.support(item.candidate) : null;
+      if (sup && !sup.ok) {
+        desiredBox = '<div class="desired"><b>DESIRED — RUNTIME CAPABILITY NOT YET ' +
+          'IMPLEMENTED</b><div class="hint">' +
+          esc(Support.whyUnavailable(sup.reasons).join('; and ')) + '</div></div>';
+      }
+
       var qual = '';
       if (item.quality) {
         qual = '<div class="qgrid">' + Object.keys(item.quality.scores).map(function (k) {
           var s = item.quality.scores[k];
           return '<span>' + esc(k) + '<span class="qbar"><i style="width:' + (s.score / 3 * 100) + '%"></i></span></span>';
         }).join('') + '</div><div class="hint">heuristic screening ' +
-          item.quality.total + '/' + item.quality.outOf + ' — never a judgement, never a gate</div>';
+          item.quality.total + '/' + item.quality.outOf + ' — a screening aid for the ' +
+          'reviewer, never a judgement and never a gate. The verdict above is the bar.</div>';
       }
 
       var invalidNote = (item.validation && !item.validation.ok)
@@ -505,6 +539,12 @@
         lineage +
         (plain ? '<div class="plain">' + esc(plain.mystery) + '</div>' : '') +
         research +
+        // THE VERDICT LEADS, and it is deliberately NOT folded into
+        // `technical details` with the score. A number is what let five
+        // boring candidates through; the sentence that says whether a
+        // child would see this, know what to try and get an answer
+        // worth the trying belongs where a reviewer cannot miss it.
+        contractBox + desiredBox +
         '<div class="play-row"></div>' +
         '<div class="demo"></div>' +
         '<div class="review"></div>' +

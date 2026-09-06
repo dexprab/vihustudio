@@ -352,13 +352,32 @@ function sectionF() {
   ck(scRR.materiallyDifferent && scGrammars.size === 4,
     'F10c same creation × four grammars → four materially different experiences');
 
-  // F11 — the quality layer: eleven dimensions, honestly labelled a
-  // heuristic, and the mystery dimension reads structure.
+  // F11 — the quality layer. TURNED ROUND, with its reason in place.
+  //
+  // F11b used to read "an unresolved-only candidate scores as carrying
+  // real mystery" and asserted mystery.score >= 2 — two of three
+  // points for the word `unresolved` alone. That is the single rule
+  // the Mystery → Tease → Action → Magic sprint names as having to go:
+  // it is how five candidates a human called boring scored 22-29 out
+  // of 33. Being unresolved is now worth one point of one dimension
+  // and can never carry a candidate.
   const q = K.evaluate(K.FIXTURE_BANK.notice, { poolSignatures: poolSigs });
-  ck(Object.keys(q.scores).length === 11 && q.heuristic === true,
-    'F11 eleven creative dimensions, labelled heuristic');
-  ck(q.scores.mystery.score >= 2,
-    'F11b an unresolved-only candidate scores as carrying real mystery');
+  const DIMS = ['perceptibility', 'childAction', 'teaseStrength', 'responseStrength',
+    'causeEffect', 'spatialSignificance', 'surprise', 'payoff', 'genuineMystery',
+    'understandability', 'nextQuestion', 'originality'];
+  const missingDim = DIMS.filter((d) => !q.scores[d]);
+  ck(missingDim.length === 0 && q.heuristic === true,
+    'F11 the creative dimensions are the product contract\'s own, labelled heuristic',
+    missingDim.join(','));
+  const unresolvedOnly = { id: 'unresolved-only-probe', grammar: 'notice',
+    ingredients: {}, elements: [{ role: 'a', show: 'mark', place: 'near-look' }],
+    engage: [{ action: 'dwell', on: 'a' }], behaviour: { pace: 'still' },
+    outcome: { possible: ['unresolved'] },
+    constraints: { rarity: 'common', phases: ['exploration'] } };
+  const uq = K.evaluate(unresolvedOnly, {});
+  ck(uq.scores.genuineMystery.score <= 1 && !uq.contract.meets,
+    'F11b unresolved ALONE no longer buys mystery, and does not meet the contract',
+    'genuineMystery ' + uq.scores.genuineMystery.score + ' · ' + uq.contract.gaps.length + ' gaps');
 
   // F12 — generation is demand-aware: the contract carries the live
   // pool's own signatures and grammar spread.
@@ -2055,9 +2074,178 @@ function sectionC() {
     'C10i the creation reaches the generator as public creative structure',
     JSON.stringify(withPeg.input.contract.creations));
 
+  // ===============================================================
+  // M. MYSTERY → TEASE → ACTION → MAGIC — the product contract.
+  //
+  // The sprint's own success criterion is not technical validity: we
+  // have proved 5/5 valid can produce 5/5 boring. Every check here is
+  // about whether a 6-10 year old would see it, know what to try, and
+  // get an answer worth the trying — and every one of them is
+  // measured against the FIVE REAL MODEL CANDIDATES that produced that
+  // verdict, committed beside this file as the evidence they are.
+  // ===============================================================
+  const P = K.PRODUCT_CONTRACT;
+  const RT = K.RUNTIME_TODAY;
+
+  ck(P && P.version === 'mystery-tease-action-magic-1' &&
+     P.sequence.join(' ') === 'SEE WONDER TRY RESPONSE DISCOVERY POSSIBLE NEXT QUESTION',
+    'M1  the product contract carries the new sequence', P && P.sequence.join('→'));
+  ck(P.tease && P.tease.examples.length >= 8 && /moving away/.test(P.tease.notATease),
+    'M1b the tease is defined, and "it moved away" is named as NOT one');
+  ck(P.action.primary.indexOf('connect') !== -1 &&
+     P.action.supporting.join(',') === 'wait,dwell,approach,return' &&
+     /never be the sole meaningful interaction/.test(P.action.rule),
+    'M1c primary and supporting actions are separated, with the rule stated');
+  ck(P.scale.levels.length === 5 && P.payoff.bar.indexOf('Whoa') !== -1 &&
+     P.simplicity.noAgeModes === true,
+    'M1d experience scale, the payoff bar and "no age modes" are all in the contract');
+  ck(P.canonicalExample.sequence.join(' → ') ===
+     'UNFINISHED → NOTICE → CHILD EXPERIMENTS → COMPLETION → CREATION AWAKENS → ETHER RESPONDS',
+    'M1e the canonical example is recorded as the quality bar');
+
+  // M2 — THE HONEST HALF. The Lab must not pretend the runtime can do
+  // what the bar asks. Every claim here was measured against the
+  // shipped interpreter in the forensic pass.
+  ck(RT.deliberateActions.join(',') === 'tap' &&
+     RT.unavailableActions.list.indexOf('connect') !== -1 &&
+     /Traveller/.test(RT.unavailableActions.because),
+    'M2  the runtime statement admits ONE primary action, and says why drag is not available');
+  ck(RT.responses.declaredButInert.indexOf('brighten') !== -1 &&
+     RT.cannotExpress.some((x) => /PRE-EXISTING connection/.test(x)),
+    'M2b it names brighten as inert and the pre-existing connection as inexpressible');
+  // Cross-checked against the real interpreter rather than trusted.
+  const interp = read('js/etherMystery.js');
+  ck(RT.responses.perform.every((r) => interp.indexOf("'" + r + "'") !== -1) &&
+     !/behaviour === 'brighten'|onEngage === 'brighten'/.test(interp),
+    'M2c and the source agrees: every performing response is branched on, brighten is not');
+
+  // M3 — THE HEURISTIC NO LONGER REWARDS WHAT MADE THEM BORING.
+  const probeSmallQuiet = { id: 'small-and-quiet-probe', grammar: 'echo',
+    ingredients: { anchor: true },
+    elements: [{ role: 'm', show: 'mark', place: 'at-anchor', count: 2 }],
+    engage: [{ action: 'return', on: 'm' }, { action: 'wait', seconds: 8 }],
+    behaviour: { onEngage: 'dissolve', pace: 'still' },
+    outcome: { possible: ['unresolved'], residue: { show: 'mark', when: 'either' } },
+    constraints: { rarity: 'rare', phases: ['deep'], lifeS: 140 } };
+  const sq = K.evaluate(probeSmallQuiet, {});
+  ck(sq.scores.perceptibility.score === 0 && sq.scores.childAction.score === 0 &&
+     sq.scores.spatialSignificance.score === 0,
+    'M3  small, passive and all-in-one-place now scores zero on the three that matter',
+    JSON.stringify({ p: sq.scores.perceptibility.score, a: sq.scores.childAction.score,
+                     s: sq.scores.spatialSignificance.score }));
+
+  // M4 — THE REAL BATCH, RE-SCORED. Not a fixture: the five candidates
+  // gpt-4.1-mini actually produced, which a human played and called
+  // boring. The old heuristic gave them a mean of 79%.
+  const realLog = JSON.parse(read('tools/ether-mystery-lab-test/real-pegasus-batch.json'));
+  ck(realLog.candidates.length === 5 &&
+     realLog.candidates.every((r) => r.source === 'generated' && r.model) &&
+     realLog.counts.valid === 5,
+    'M4  the committed evidence is the real model batch — 5 generated, 5 valid',
+    realLog.candidates[0].model);
+  const rescored = realLog.candidates.map((r) => {
+    const nq = K.evaluate(r.candidate, {});
+    return { id: r.candidate.id,
+      oldPct: r.qualityHeuristic.total / r.qualityHeuristic.outOf,
+      newPct: nq.total / nq.outOf, meets: nq.contract.meets, gaps: nq.contract.gaps };
+  });
+  const oldMean = rescored.reduce((n, x) => n + x.oldPct, 0) / 5;
+  const newMean = rescored.reduce((n, x) => n + x.newPct, 0) / 5;
+  ck(oldMean > 0.75 && newMean < 0.55 && (oldMean - newMean) > 0.25,
+    'M4b the rewritten heuristic scores the "all boring" batch far lower than the old one',
+    Math.round(oldMean * 100) + '% → ' + Math.round(newMean * 100) + '%');
+  ck(rescored.every((x) => !x.meets && x.gaps.length),
+    'M4c and not one of the five meets the product contract — each with a named gap',
+    rescored.map((x) => x.gaps.length).join(','));
+  // The gap the human actually felt, named by the machine.
+  ck(rescored.filter((x) => x.gaps.some((gp) => /nothing a child would see/.test(gp))).length >= 3 &&
+     rescored.filter((x) => x.gaps.some((gp) => /no meaningful child action/.test(gp))).length >= 3,
+    'M4d the named gaps are the human\'s own words: nothing to see, nothing to do',
+    JSON.stringify(rescored.map((x) => x.gaps.length)));
+
+  // M5 — AND IT STILL DISCRIMINATES. A heuristic that scores
+  // everything low is as useless as one that scores everything high:
+  // the one shipped experience built on a real creation, with spread
+  // placement, a tap and a creation-revealed payoff, must pass.
+  const poolActive = sb.EtherExperiencePool.experiences.filter((e) => e.status === 'active');
+  const passing = poolActive.filter((e) => K.evaluate(e.candidate, {}).contract.meets);
+  ck(passing.length >= 1 && passing.some((e) => e.candidate.id === 'a-cover-come-apart'),
+    'M5  the curated pool\'s one creation-bound, spread, tappable experience MEETS the contract',
+    passing.map((e) => e.candidate.id).join(',') || 'none');
+
+  // M6 — TECHNICAL VALIDITY AND CREATIVE QUALITY STAY SEPARATE (§12).
+  // The contract check must be incapable of changing validity.
+  const fallsShortButValid = realLog.candidates[0].candidate;
+  ck(G.validate(fallsShortButValid, {}).ok === true &&
+     K.contractCheck(fallsShortButValid).meets === false,
+    'M6  a candidate can be perfectly VALID and fall short of the product contract');
+  // The precise property, rather than a crude scan: validity has
+  // exactly ONE source in the Lab — G().validate() inside add() — and
+  // the product-contract layer never consults it, never writes an
+  // `ok`, and never touches an item's validation. (The first draft of
+  // this check scanned for `reasons.push` and went red on labKit's own
+  // INPUT sweep — the Stars boundary, which refuses a request before
+  // it is sent and has nothing to do with a candidate's validity.
+  // A check that cannot tell two different arrays apart proves
+  // nothing.)
+  const kitSrc = stripComments(read('tools/ether-mystery-lab/labKit.js'));
+  const validateCalls = (kitSrc.match(/G\(\)\.validate\(/g) || []).length;
+  const ccBody = kitSrc.slice(kitSrc.indexOf('function contractCheck'),
+                              kitSrc.indexOf('function evaluate'));
+  ck(validateCalls === 1 && ccBody.indexOf('validate') === -1 &&
+     !/item\.validation\s*=|\.validation\.ok\s*=/.test(ccBody),
+    'M6b validity has ONE source in the Lab, and the contract layer never touches it',
+    validateCalls + ' validate call(s)');
+
+  // M9 — THE VERDICT LEADS, and it is not folded away with the score.
+  // (Checked in the browser section below; this is the static half —
+  // the card body carries the verdict, the tech fold carries the
+  // number.) A `<details>` child still has a bounding box, so
+  // "it renders" is not the same question as "a reviewer sees it" —
+  // the first measurement of this passed at 950x69 while the box was
+  // inside the fold.
+  const uiSrc = read('tools/ether-mystery-lab/labUi.js');
+  const bodyPart = uiSrc.slice(uiSrc.indexOf("var card = document.createElement"),
+                               uiSrc.indexOf("<details class=\"tech\">"));
+  ck(bodyPart.indexOf('contractBox') !== -1 && bodyPart.indexOf('desiredBox') !== -1,
+    'M9  the contract verdict and the DESIRED marking are in the card BODY');
+  const foldPart = uiSrc.slice(uiSrc.indexOf("<details class=\"tech\">"));
+  ck(foldPart.indexOf('contractBox') === -1 && foldPart.indexOf('qual') !== -1,
+    'M9b the number stays folded away, and the verdict is not folded with it');
+
+  // M7 — the §13 experiments exist, are research-only, and dry-run.
+  const NEW_EXP = ['unfinished-pattern', 'same-creation-active',
+    'same-grammar-different-creations', 'tease-no-challenge',
+    'tease-and-challenge', 'simple-vs-deeper'];
+  const missingExp = NEW_EXP.filter((id) => !K.EXPERIMENTS[id]);
+  ck(missingExp.length === 0, 'M7  every experiment this sprint asks for exists',
+    missingExp.join(','));
+  const up = K.EXPERIMENTS['unfinished-pattern'];
+  ck(up.needsCreation === true && /VISIBLY INCOMPLETE/.test(up.emphasis) &&
+     /COMES ALIVE/.test(up.emphasis) && /never dwell\/return\/wait\/approach alone/.test(up.emphasis),
+    'M7b the canonical experiment asks for incompleteness, a primary action and an awakening');
+  ck(/do NOT substitute a smaller idea/.test(up.emphasis),
+    'M7c and it forbids quietly downgrading the idea to something the runtime can already do');
+
+  // M8 — the prompt carries the bar, the limits and the anti-patterns,
+  // all rendered from the ONE copy.
+  const sysPrompt = K.systemPrompt();
+  ck(sysPrompt.indexOf(P.successCriterion) !== -1 &&
+     sysPrompt.indexOf(P.canonicalExample.story[0]) !== -1 &&
+     P.tease.examples.every((e) => sysPrompt.indexOf(e) !== -1),
+    'M8  the generator is given the product bar, whole');
+  ck(RT.cannotExpress.every((x) => sysPrompt.indexOf(x) !== -1) &&
+     sysPrompt.indexOf('DESIRED') !== -1,
+    'M8b and the honest half — what the runtime cannot do — travels with it');
+  ck(K.ANTI_PATTERNS.every((a) => sysPrompt.indexOf(a) !== -1) &&
+     /DO NOT PRODUCE ANY OF THESE/.test(sysPrompt),
+    'M8c and every anti-pattern the last two batches produced is named');
+  ck(K.PROMPT_VERSION === 'ether-mystery-lab-4',
+    'M8d the prompt version names the new contract', K.PROMPT_VERSION);
+
   // ---- C11: the contract label moved with the contract ----
-  ck(K.PROMPT_VERSION === 'ether-mystery-lab-3',
-    'C11 PROMPT_VERSION names the repaired contract', K.PROMPT_VERSION);
+  ck(K.PROMPT_VERSION === 'ether-mystery-lab-4',
+    'C11 PROMPT_VERSION names the current contract', K.PROMPT_VERSION);
   const S2 = K.createSession({ pool: sb.EtherExperiencePool });
   const it = S2.add(K.FIXTURE_BANK.notice, { source: 'fixture' });
   ck(it.lab.promptVersion === K.PROMPT_VERSION,

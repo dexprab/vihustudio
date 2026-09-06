@@ -346,3 +346,109 @@ candidate schema, validator, approved pool, interpreter, offline
 generation lab) · CLAUDE.md → Decision 58 (the locked product
 decisions) · `assets/canon/vihuplanet.canon.json` → section 23 (what
 a Companion may say about any of this).
+
+---
+
+# Mystery → Tease → Action → Magic
+
+Written after two real-model batches came back technically valid and, in
+the product owner's words, boring: too small, too subdued, too poetic
+for a six-year-old, with no reason to investigate and nothing to do.
+The contract itself lives as data in
+`tools/ether-mystery-lab/labKit.js` → `PRODUCT_CONTRACT`, so the bar the
+Lab screens against and the bar the generator is given cannot drift
+apart. This section is the reasoning behind it.
+
+## The sequence
+
+**SEE → WONDER → TRY → RESPONSE → DISCOVERY → POSSIBLE NEXT QUESTION.**
+In the child's own words: *"What is that?" · "I wonder…" · "Maybe I
+can…" · "Whoa!"*
+
+A Mystery is **not** merely something unusual, a faint visual, something
+that moves, something to wait near, or something to return to. Each of
+those was tried and each produced a candidate a child would walk past.
+
+## The Tease
+
+World behaviour that gives an understandable reason to investigate —
+never text, a tutorial, an objective marker, a quest, a prompt, a
+reward, a score or a timer. Something visibly incomplete; something that
+appears and hides; something behaving unlike everything around it; a
+pattern that seems to want to become something; a trail suggesting
+something is near; two things that almost connect; a creation that
+appears to be waiting; a familiar thing meaningfully changed.
+
+**A thing moving away is not, by itself, a tease.** A child does not
+follow something merely because it moved. This is stated because the
+`trace` grammar's whole premise is exactly that.
+
+## Interaction
+
+An **active** Mystery must contain a meaningful child action. Waiting,
+dwelling, standing near and returning are **supporting** behaviours and
+can never be the whole of it. The action is discoverable from the world
+— never a button.
+
+Measured, this is where the runtime is furthest behind: of the twelve
+primary actions the contract names, `js/etherMystery.js` has **one**
+(`tap`). `drag`, `connect`, `arrange`, `trace`, `follow`, `move` and
+`bring together` are not merely unbuilt — **the Traveller already owns
+drag for turning the sky** (`vihuplanet/runtime/core/traveller.js`,
+`DRAG_STARTS_AT` 6px / `TOUCH_STARTS_AT` 8px, and a real drag swallows
+the click that follows). A child dragging from one star to another turns
+the universe. Giving drag a second meaning is a product decision about
+the Ether's only navigation gesture, not an implementation detail.
+
+## The grammar assessment
+
+The finding that reframes all ten: **the interpreter reads `grammar` for
+nothing** but a novelty id and a diagnostics label. Ten grammars perform
+identically; a candidate differs only through its elements, engagement
+and behaviour. So a grammar is a **generative frame**, not a runtime
+behaviour, and the question is whether the frame reliably produces a
+tease, a primary action, a visible response and a payoff.
+
+| grammar | verdict | why |
+|---|---|---|
+| **reconstruct** | **KEEP** | The only frame that already meets the contract end to end: visible incompleteness (a tease), `tap` (an action), `gather` (a response), `creation-revealed` (the largest payoff), and `shard` — the one primitive with real imagery. It is the shipped `a-cover-come-apart`, and the only pool entry that passes. |
+| **connect** | **REWORK** | The canonical example's own grammar, and blocked on one missing primitive: links are drawn only between elements the child has **already** engaged, as one polyline in tap order, so "some stars are connected and some are missing" cannot be shown. Highest-value grammar to unblock. |
+| **uncover** | **REWORK** | Its tease is good (`veil` is one of only two perceptible shows) and its action is not: it attracts `approach`/`dwell`, which are supporting. Must require a primary action. |
+| **trace** | **REWORK** | Its premise is the one the contract names as insufficient — a thing moving away is not a reason to follow it. Needs a tease *before* the path. |
+| **transform** | **REWORK** | The cause→effect the contract most wants, blocked on its most natural response: `brighten` is declared in the vocabulary and does nothing in the interpreter. |
+| **complete** | **MERGE** | Nearly identical to reconstruct (pieces that belong together) and connect (finish the relationship). It has stopped being a grammar: completion is now what the contract asks of every active Mystery. |
+| **echo** | **MERGE** → return | Both are "a place met earlier this visit". It produced the verbatim copy of a worked example in the real batch. |
+| **notice** | **DEFER** | Its own premise — *subtly* — is in tension with perceptibility, and it structurally has no action. It produced the lowest-scoring candidate of the real batch (7/36) and the lowest of the shipped pool (33%). Also hits the recorded runtime limit: a mystery with nothing armed resolves on its first frame. |
+| **return** | **DEFER** | Measured: `return` needs near → away for 6s → back with a recent act, and engaged nothing across 13 seconds of a child looking. Keep `return` as a supporting *action*; it is not a frame. |
+| **experiment** | **DEFER** | Poses nothing, so nothing makes the child act in the first place. What it describes is already the ripple layer's job, not a Mystery's. |
+
+No grammar was added. `KEEP 1 · REWORK 4 · MERGE 2 · DEFER 3`.
+
+## What cannot be built yet
+
+Recorded so no one mistakes it for an oversight, and so no one weakens
+the validator to hide it. Every line measured against build 0767:
+
+1. **A pre-existing or partial connection** — blocks the canonical
+   example outright.
+2. **A named relationship between two particular elements** — links are
+   a chain in tap order, not declared pairs.
+3. **Any notion of a correct arrangement**, or completion beyond "every
+   armed element has been engaged".
+4. **Drag, connect, arrange, trace, follow, move, bring together** — and
+   the reason is gesture ownership, not effort.
+5. **Anything awakening, emerging, transforming, or the sky itself
+   responding** — the largest primitive the mystery layer can draw is
+   156px on a ~1650px diagonal.
+6. **`brighten`** — in the vocabulary, absent from the interpreter.
+7. **A payoff proportional to a meaningful action** — the three
+   discoveries are a 28px travelling light, a small bloom, and a
+   six-second halo.
+8. **A perceptible `mark` or `glint`** — both draw with the *same
+   sprites* as the ambient star field, so the more faithfully the
+   interpreter performs them, the better they hide.
+
+None of it is implemented in this sprint. The Lab marks a candidate that
+needs any of it **DESIRED — RUNTIME CAPABILITY NOT YET IMPLEMENTED**,
+which is a finding rather than a failure — and never a route to becoming
+production-valid.

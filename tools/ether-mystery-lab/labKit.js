@@ -38,7 +38,7 @@
   // figures are stated as inspiration rather than offered as an
   // ingredient the schema cannot carry. A stored candidate says which
   // contract produced it, so this label must move whenever it changes.
-  var PROMPT_VERSION = 'ether-mystery-lab-3';
+  var PROMPT_VERSION = 'ether-mystery-lab-4';
 
   function G() { return global.EtherGrammar; }
   function L() { return global.EtherCreationLens; }
@@ -482,6 +482,193 @@
   // THE RULES THE VALIDATOR ENFORCES AND THE PROMPT USED NOT TO STATE.
   // Every line corresponds to a real refusal in js/etherGrammar.js →
   // validate(). Nothing aspirational.
+  // ===============================================================
+  // THE PRODUCT CONTRACT — Mystery → Tease → Action → Magic.
+  //
+  // SPRINT — Mystery → Tease → Action → Magic. Written after two real
+  // model batches came back technically valid and, in the product
+  // owner's words, boring: too small, too subdued, too poetic for a
+  // six-year-old, with no reason to investigate and nothing to do.
+  //
+  // This is the PRODUCT definition, held as data so the prompt, the
+  // heuristic, the Lab surface and the suite all read ONE copy — a
+  // hand-mirrored contract is a promise nobody can keep (Decision 30).
+  // It is deliberately NOT the validator: technical validity and
+  // creative quality stay separate, and nothing here can make a
+  // candidate valid or invalid.
+  // ===============================================================
+  var PRODUCT_CONTRACT = {
+    version: 'mystery-tease-action-magic-1',
+    audience: 'children roughly six to ten',
+    sequence: ['SEE', 'WONDER', 'TRY', 'RESPONSE', 'DISCOVERY', 'POSSIBLE NEXT QUESTION'],
+    inTheChildsWords: ['What is that?', 'I wonder…', 'Maybe I can…', 'Whoa!'],
+
+    mysteryIsNot: [
+      'merely something unusual',
+      'a faint visual',
+      'merely something that moves',
+      'something the child can only wait near',
+      'something the child merely returns to'
+    ],
+
+    // §2 — THE TEASE. World behaviour that gives a reason to act.
+    tease: {
+      is: 'a subtle visual or spatial sequence that creates curiosity and gives the child an understandable reason to investigate',
+      isNot: ['text instruction', 'tutorial', 'objective marker', 'quest',
+              'button prompt', 'reward', 'score', 'timer'],
+      examples: [
+        'something is visibly incomplete',
+        'something briefly appears and hides',
+        'something behaves differently from everything around it',
+        'a pattern seems to want to become something',
+        'a trail suggests that something is nearby',
+        'two things almost connect but do not',
+        'a creation appears to be waiting for something',
+        'a familiar thing has changed in a meaningful way'
+      ],
+      // Stated because the last two batches leaned on it and it does
+      // not work: a thing moving away is not, by itself, a reason for
+      // a child to follow it.
+      notATease: 'something moving away, with nothing first making the child care where it goes'
+    },
+
+    // §3 — INTERACTION. Primary vs supporting, and the rule.
+    action: {
+      rule: 'a Mystery intended for active engagement MUST contain a meaningful child action; waiting, dwelling, standing near and returning are SUPPORTING behaviours and can never be the sole meaningful interaction',
+      primary: ['tap', 'drag', 'connect', 'arrange', 'trace', 'uncover', 'follow',
+                'find', 'move', 'choose', 'experiment', 'bring together'],
+      supporting: ['wait', 'dwell', 'approach', 'return'],
+      discoverable: 'the action is discoverable from the world itself — never a button, never an instruction'
+    },
+
+    // §6 — EXPERIENCE SCALE. Conceptual, never a pixel instruction.
+    scale: {
+      levels: ['local', 'regional', 'across-space', 'distant', 'world-scale'],
+      rule: 'the child must be able to NOTICE that something meaningful is happening in the Ether, and the payoff must be proportional to what they did — completing something meaningful must not be answered with a barely visible response'
+    },
+
+    // §9 — THE PAYOFF.
+    payoff: {
+      shouldFeelLike: 'the Ether itself reacted',
+      is: ['something awakens', 'something transforms', 'something emerges',
+           'the sky changes', 'a creation comes alive', 'a creature responds',
+           'a hidden place opens', 'a new mystery appears'],
+      isNot: ['score', 'badge', 'points', 'progress bar', 'popup',
+              'generic sparkle', 'a tiny animation'],
+      bar: 'the payoff should be capable of creating "Whoa."'
+    },
+
+    // §7 — SIMPLICITY. Difficulty emerges from structure; there are no
+    // age modes, because the system does not know the child's age.
+    simplicity: {
+      noAgeModes: true,
+      simple: ['an obvious missing piece', 'an obvious relationship', 'an immediate response'],
+      deeper: ['several things must be noticed', 'relationships are less obvious',
+               'exploration is required', 'multiple discoveries connect',
+               'a deeper pattern emerges'],
+      avoid: ['abstract language', 'poetic descriptions that need interpreting',
+              'multi-step instructions', 'reading-heavy explanations',
+              'arbitrary timers', 'dexterity challenges',
+              'hidden rules the child cannot infer']
+    },
+
+    // §8 — the distinction survives, with one addition.
+    mysteryVsChallenge: {
+      mystery: 'the strange, incomplete or unexpected thing that creates curiosity',
+      challenge: 'the optional way the child engages with it',
+      addition: 'for an ACTIVE mystery the child must have a meaningful thing to try',
+      guard: 'the Ether never becomes a challenge menu or a game system'
+    },
+
+    // §4 — THE CANONICAL EXAMPLE. The quality bar, as a sequence.
+    // Its visual implementation is explicitly out of scope.
+    canonicalExample: {
+      name: 'unfinished pattern',
+      story: [
+        'the child meets an unfinished pattern of stars and connecting lines',
+        'some stars are connected; some connections are missing',
+        'nothing says "complete the pattern"',
+        'the child notices that something is missing',
+        'the arrangement itself suggests what might be tried',
+        'the child connects the stars',
+        'as each connection is made, the pattern responds',
+        'when the pattern is complete, the creation comes alive in the Ether'
+      ],
+      sequence: ['UNFINISHED', 'NOTICE', 'CHILD EXPERIMENTS', 'COMPLETION',
+                 'CREATION AWAKENS', 'ETHER RESPONDS'],
+      note: 'an Ether-scale magical response, never a tiny UI reaction'
+    },
+
+    successCriterion: 'Would a 6-10 year old SEE this, WONDER about it, understand what they might TRY, try something, and experience a satisfying magical RESPONSE?'
+  };
+
+  // ===============================================================
+  // RUNTIME TODAY — the honest half, and §11's whole point.
+  //
+  // The contract above is the PRODUCT BAR. This is what
+  // js/etherMystery.js can actually perform right now. They disagree,
+  // substantially, and the Lab's job is to make that gap MEASURABLE
+  // rather than to hide it: a candidate may aim at the bar and be
+  // marked DESIRED — RUNTIME CAPABILITY NOT YET IMPLEMENTED. It must
+  // never become production-valid because we want the experience.
+  //
+  // WRITTEN DOWN, NOT DERIVED. A table read out of the thing it
+  // describes agrees with it by construction — the REPRESENTED lesson.
+  // Every line was measured against the shipped interpreter, and the
+  // suite cross-checks the parts that can be cross-checked.
+  // ===============================================================
+  var RUNTIME_TODAY = {
+    measuredAt: 'build 0767',
+    deliberateActions: ['tap'],
+    positionalActions: ['approach', 'dwell', 'return'],
+    passiveActions: ['wait'],
+    // Why the rest of §3's list is absent, and it is not simply "not
+    // built yet": the Traveller already owns drag for turning the sky
+    // (vihuplanet/runtime/core/traveller.js — DRAG_STARTS_AT 6px,
+    // TOUCH_STARTS_AT 8px, and a real drag swallows the click that
+    // follows it). A child dragging from one star to another turns the
+    // universe instead. Giving drag a second meaning is a product
+    // decision about the Ether's one navigation gesture, not an
+    // implementation detail.
+    unavailableActions: {
+      list: ['drag', 'connect', 'arrange', 'trace', 'follow', 'move', 'bring together'],
+      because: 'drag is the Traveller\'s own gesture for turning the sky; the mystery layer receives no drag at all'
+    },
+    responses: {
+      perform: ['gather', 'reveal', 'dissolve', 'drift-away'],
+      drawingOnly: ['link'],
+      declaredButInert: ['brighten']
+    },
+    // Measured on a 1440x900 sky, from the interpreter's own draw path.
+    elementFootprintPx: {
+      shard: '52 wide (needs a creation) plus an 80px glow',
+      veil: '156x132, diffuse',
+      mark: 'three ~6-10px sprites within a ~30px radius',
+      glint: 'a ~10-17px sprite',
+      link: 'a 32px line'
+    },
+    largestPrimitivePx: 156,
+    payoffs: {
+      'creation-revealed': 'a 28px light travels to the creation\'s Spirit and rests as a halo',
+      wonder: 'a small star figure blooms and goes',
+      place: 'a 6-second halo'
+    },
+    // The canonical example's own gap, named exactly.
+    cannotExpress: [
+      'a PRE-EXISTING connection: links are drawn only between elements the child has ALREADY engaged, as one polyline in tap order — at the moment a mystery is posed, nothing is joined, so "some stars are connected and some are missing" cannot be shown',
+      'a named relationship between two particular elements',
+      'a correct arrangement, or any notion of completion beyond "every armed element has been engaged"',
+      'anything awakening, emerging, transforming, or the sky itself responding',
+      'a response larger than 156px'
+    ],
+    // Two facts that shaped both boring batches.
+    knownTraps: [
+      'the interpreter reads `grammar` for nothing but a novelty id and a diagnostics label — ten grammars perform identically, and a candidate differs only through its elements, engage and behaviour',
+      '`complexity`, `element.of`, `requires` and `ingredients.creationKind` are validated and never read',
+      'every element placed at-anchor or near-look lands within +/-40x30px of ONE point'
+    ]
+  };
+
   var RULES_IN_WORDS = [
     'IDENTIFIERS. `id` must match ^[a-z0-9][a-z0-9-]{2,60}$ — hyphens, never underscores, never capitals, never spaces. Every element `role` must match ^[a-z][a-z0-9-]{0,24}$.',
     'NO ARBITRARY FIELDS. Any key not listed for its level is refused by name and the whole candidate falls. Do not invent `figure`, `skyFigure`, `constellation`, `being`, `phenomenon`, `colour`, `sound`, `text`, `hint`, `story`, `difficulty` or anything else. Note that reading STOPS at the first unknown TOP-LEVEL key, so one invented field can hide every other problem.',
@@ -654,12 +841,126 @@
   // person could read, built from the same source so the two cannot
   // disagree.
   // ---------------------------------------------------------------
+  // The product contract, as the model reads it. Rendered from
+  // PRODUCT_CONTRACT so the bar the Lab screens against and the bar
+  // the generator is given cannot drift apart.
+  function productContractText() {
+    var P = PRODUCT_CONTRACT;
+    var out = [];
+    out.push('WHAT A MYSTERY IS FOR — THE PRODUCT BAR.');
+    out.push('The audience is ' + P.audience + '. The whole of a Mystery is this sequence:');
+    out.push('  ' + P.sequence.join(' -> '));
+    out.push('In the child\'s own words: ' + P.inTheChildsWords.map(function (w) {
+      return '"' + w + '"';
+    }).join('  '));
+    out.push('');
+    out.push('A MYSTERY IS NOT: ' + P.mysteryIsNot.join('; ') + '.');
+    out.push('');
+    out.push('THE TEASE — WITHOUT ONE THERE IS NO MYSTERY.');
+    out.push(P.tease.is + '.');
+    out.push('It is world behaviour, never: ' + P.tease.isNot.join(', ') + '.');
+    out.push('Kinds of tease that work:');
+    P.tease.examples.forEach(function (e) { out.push('  - ' + e); });
+    out.push('NOT a tease: ' + P.tease.notATease + '.');
+    out.push('');
+    out.push('THE CHILD MUST HAVE SOMETHING TO TRY.');
+    out.push(P.action.rule + '.');
+    out.push('Primary actions (what a child DOES): ' + P.action.primary.join(', ') + '.');
+    out.push('Supporting only (never the whole of it): ' + P.action.supporting.join(', ') + '.');
+    out.push(P.action.discoverable + '.');
+    out.push('');
+    out.push('EXPERIENCE SCALE — ' + P.scale.levels.join(' / ') + '.');
+    out.push(P.scale.rule + '.');
+    out.push('');
+    out.push('THE PAYOFF SHOULD FEEL LIKE ' + P.payoff.shouldFeelLike.toUpperCase() + '.');
+    out.push('Good: ' + P.payoff.is.join('; ') + '.');
+    out.push('Never: ' + P.payoff.isNot.join(', ') + '.');
+    out.push(P.payoff.bar);
+    out.push('');
+    out.push('DIFFICULTY COMES FROM STRUCTURE, NEVER FROM AGE MODES.');
+    out.push('Simpler: ' + P.simplicity.simple.join('; ') + '.');
+    out.push('Deeper: ' + P.simplicity.deeper.join('; ') + '.');
+    out.push('Avoid entirely: ' + P.simplicity.avoid.join(', ') + '.');
+    out.push('');
+    out.push('MYSTERY vs CHALLENGE. ' + P.mysteryVsChallenge.mystery +
+      '; the challenge is ' + P.mysteryVsChallenge.challenge + '. ' +
+      P.mysteryVsChallenge.addition + '. ' + P.mysteryVsChallenge.guard + '.');
+    out.push('');
+    out.push('THE QUALITY BAR, AS ONE EXAMPLE (' + P.canonicalExample.name + '):');
+    P.canonicalExample.story.forEach(function (l) { out.push('  ' + l); });
+    out.push('  ' + P.canonicalExample.sequence.join(' -> '));
+    out.push('  ' + P.canonicalExample.note + '.');
+    out.push('');
+    out.push('THE ONE QUESTION EVERY CANDIDATE IS JUDGED BY: ' + P.successCriterion);
+    return out.join('\n');
+  }
+
+  // What the runtime can actually do today, said out loud. A generator
+  // that is told the bar and not the limits produces beautiful things
+  // nothing can perform; one told only the limits produces what the
+  // last two batches produced. It is given both, and told which is
+  // which.
+  function runtimeTodayText() {
+    var R = RUNTIME_TODAY;
+    var out = [];
+    out.push('WHAT THE ETHER CAN PERFORM TODAY (' + R.measuredAt + ') — AND WHERE IT FALLS SHORT OF THE BAR ABOVE.');
+    out.push('Of the primary actions, the runtime has exactly one: ' +
+      R.deliberateActions.join(', ') + '. ' +
+      R.unavailableActions.list.join(', ') + ' do not exist, because ' +
+      R.unavailableActions.because + '.');
+    out.push('Positional, and SUPPORTING only: ' + R.positionalActions.join(', ') +
+      '. Passive: ' + R.passiveActions.join(', ') + '.');
+    out.push('Responses that do something: ' + R.responses.perform.join(', ') +
+      '. Drawing only: ' + R.responses.drawingOnly.join(', ') +
+      '. Declared and inert — do not use: ' + R.responses.declaredButInert.join(', ') + '.');
+    out.push('How big things are drawn: ' + Object.keys(R.elementFootprintPx).map(function (k) {
+      return k + ' = ' + R.elementFootprintPx[k]; }).join('; ') +
+      '. The largest thing the runtime can draw is ' + R.largestPrimitivePx + 'px.');
+    out.push('What a discovery looks like: ' + Object.keys(R.payoffs).map(function (k) {
+      return k + ' = ' + R.payoffs[k]; }).join('; ') + '.');
+    out.push('CANNOT BE EXPRESSED AT ALL TODAY:');
+    R.cannotExpress.forEach(function (c) { out.push('  - ' + c); });
+    out.push('TRAPS WORTH KNOWING:');
+    R.knownTraps.forEach(function (c) { out.push('  - ' + c); });
+    out.push('');
+    out.push('SO: aim at the BAR. Where the bar and this list disagree, still describe the ' +
+      'experience the bar asks for using ONLY the supplied vocabulary — a candidate the ' +
+      'runtime cannot yet perform is marked DESIRED and studied, never quietly downgraded ' +
+      'into a smaller idea. What you must NOT do is invent vocabulary: an idea that needs a ' +
+      'capability outside the supplied lists is described with what exists, or dropped.');
+    return out.join('\n');
+  }
+
+  // §10 — what the last two batches did, named so it is not done again.
+  var ANTI_PATTERNS = [
+    'a few faint marks or glints as the whole of the experience — they are drawn with the same sprites as the background star field and are invisible against it',
+    'dwell, return, approach or wait as the PRIMARY interaction — those are supporting behaviours',
+    'every element of a candidate in the same place, and at-anchor as the batch default: everything placed there lands within a hand\'s width of ONE point',
+    'a tiny local decoration where the child did something meaningful',
+    'a poetic, subdued mystery that gives no clear reason to investigate',
+    'a title or a role name doing the work the arrangement should do — the child never reads anything',
+    'the same experience with different adjectives across a batch'
+  ];
+  function antiPatternsText() {
+    return 'DO NOT PRODUCE ANY OF THESE. Each one is something a real batch already did:\n' +
+      ANTI_PATTERNS.map(function (a) { return '- ' + a; }).join('\n') + '\n' +
+      'INSTEAD, SEEK: visible incompleteness; surprising behaviour; a clear visual ' +
+      'relationship; something the child can try; meaningful cause -> effect; a creation, ' +
+      'creature or phenomenon awakening; a spatially significant change.';
+  }
+
   function systemPrompt() {
     return [
       'You help design Ether experiences for children roughly six to ten years old.',
       'The Ether is a calm, living night sky inside VihuPlanet where children\'s shared creations drift as spirits of light. It is a sea of mysteries.',
       'You are NOT designing games. No screens, no menus, no instructions, no goals announced to anybody.',
       'The child\'s journey through an experience is: WHAT\'S THAT? -> I WONDER... -> I WANT TO SEE -> EXPLORE -> OH! -> WAIT... -> WHAT\'S THAT?',
+      '',
+      productContractText(),
+      '',
+      runtimeTodayText(),
+      '',
+      antiPatternsText(),
       '',
       'YOUR TASK: generate an EXPERIENCE INTENT using the approved vocabulary below. You are not designing runtime behaviour, drawing, animation or code — you are describing, in the supplied schema, what the world does.',
       '',
@@ -724,61 +1025,240 @@
   // for the human reviewer, honestly labelled, never a judgement and
   // never a gate: only the human review can approve.
   // ---------------------------------------------------------------
-  function evaluate(candidate, ctx) {
-    ctx = ctx || {};
+  // ---------------------------------------------------------------
+  // SHARED READING of a candidate — what it IS, in the terms the
+  // product contract is written in. contractCheck() and evaluate()
+  // both read it, so a hard PASS and a soft score can never disagree
+  // about what is in front of them.
+  // ---------------------------------------------------------------
+  function readCandidate(candidate) {
     var c = candidate || {};
     var els = Array.isArray(c.elements) ? c.elements : [];
     var eng = Array.isArray(c.engage) ? c.engage : [];
     var out = (c.outcome && typeof c.outcome === 'object') ? c.outcome : {};
+    var beh = (c.behaviour && typeof c.behaviour === 'object') ? c.behaviour : {};
     var possible = Array.isArray(out.possible) ? out.possible : [];
     var acts = eng.map(function (e) { return e.action; });
-    var childActs = acts.filter(function (a) { return a !== 'wait'; });
-    var beh = (c.behaviour && typeof c.behaviour === 'object') ? c.behaviour : {};
-    var pieces = els.reduce(function (n, e) { return n + (e.count || 1); }, 0);
+    var shows = els.map(function (e) { return e.show; });
+    var places = els.map(function (e) { return e.place; });
+    var armedRoles = {};
+    eng.forEach(function (e) { if (e.action !== 'wait') armedRoles[e.on || '*'] = true; });
+    var unarmed = els.filter(function (e) {
+      return !armedRoles['*'] && !armedRoles[e.role];
+    });
+    return {
+      c: c, els: els, eng: eng, out: out, beh: beh, possible: possible,
+      acts: acts, shows: shows, places: places,
+      roles: els.map(function (e) { return e.role; }).filter(function (v, i, a) {
+        return a.indexOf(v) === i; }),
+      pieces: els.reduce(function (n, e) { return n + (e.count || 1); }, 0),
+      // PRIMARY vs SUPPORTING — the contract's own division, and the
+      // runtime has exactly one primary action today.
+      primaryActs: acts.filter(function (a) {
+        return RUNTIME_TODAY.deliberateActions.indexOf(a) !== -1; }),
+      supportingActs: acts.filter(function (a) {
+        return PRODUCT_CONTRACT.action.supporting.indexOf(a) !== -1; }),
+      // The only two shows with a real footprint (RUNTIME_TODAY).
+      hasBigShow: shows.indexOf('shard') !== -1 || shows.indexOf('veil') !== -1,
+      hasShard: shows.indexOf('shard') !== -1,
+      hasVeil: shows.indexOf('veil') !== -1,
+      onlyFaint: shows.length > 0 && shows.every(function (sh) {
+        return sh === 'mark' || sh === 'glint' || sh === 'link'; }),
+      performing: RUNTIME_TODAY.responses.perform.indexOf(beh.onEngage) !== -1,
+      drawingOnly: RUNTIME_TODAY.responses.drawingOnly.indexOf(beh.onEngage) !== -1,
+      inertResponse: RUNTIME_TODAY.responses.declaredButInert.indexOf(beh.onEngage) !== -1,
+      hiddenSomething: beh.onEngage === 'reveal' && unarmed.length > 0,
+      hasDiscovery: possible.indexOf('discovery') !== -1,
+      discovery: out.discovery || null,
+      unresolved: possible.indexOf('unresolved') !== -1,
+      residue: !!out.residue,
+      spreadPlaces: places.filter(function (pl) {
+        return ['scattered', 'ring', 'far', 'toward-creation'].indexOf(pl) !== -1;
+      }).filter(function (v, i, a) { return a.indexOf(v) === i; }),
+      oneSpot: places.length > 0 && places.every(function (pl) {
+        return pl === 'at-anchor' || pl === 'near-look'; }),
+      creation: !!((c.ingredients || {}).creation)
+    };
+  }
+
+  // ---------------------------------------------------------------
+  // contractCheck(candidate) — the HARD product bar, and deliberately
+  // NOT the validator. It cannot make a candidate valid or invalid; it
+  // answers one question, the sprint's own: would a 6-10 year old SEE
+  // this, understand what to TRY, and get a RESPONSE worth the trying?
+  //
+  // Technical validity and creative quality stay separate. A candidate
+  // may be perfectly valid and fall short of every clause here — which
+  // is exactly what the last two real batches were.
+  // ---------------------------------------------------------------
+  function contractCheck(candidate) {
+    var r = readCandidate(candidate);
+    var gaps = [];
+    var met = {};
+
+    // TEASE — a reason to investigate, expressed in world behaviour.
+    // Deliberately: drift-away ALONE is not a tease (the contract says
+    // so in as many words — a thing moving away is not a reason to
+    // follow it).
+    var teases = [];
+    if (r.hasShard && r.pieces >= 2) teases.push('visible incompleteness — pieces that belong together');
+    if (r.hasVeil) teases.push('something partly hidden');
+    if (r.hiddenSomething) teases.push('something behind something else');
+    if ((r.beh.onEngage === 'link' || r.shows.indexOf('link') !== -1) && r.roles.length >= 2) {
+      teases.push('things that almost connect');
+    }
+    if (r.beh.onEngage === 'drift-away' && r.roles.length >= 2) {
+      teases.push('something leaves, and a path is left behind');
+    }
+    met.tease = teases.length > 0;
+    if (!met.tease) gaps.push('no tease — nothing here gives a child a reason to investigate');
+
+    // ACTION — a primary action, not a supporting one.
+    met.action = r.primaryActs.length > 0;
+    if (!met.action) {
+      gaps.push('no meaningful child action — ' +
+        (r.supportingActs.length
+          ? r.supportingActs.join('/') + ' ' + (r.supportingActs.length > 1 ? 'are' : 'is') +
+            ' supporting behaviour and cannot be the whole of it'
+          : 'nothing for the child to do at all'));
+    }
+
+    // RESPONSE — something the world does back.
+    met.response = r.performing || r.drawingOnly;
+    if (!met.response) {
+      gaps.push(r.inertResponse
+        ? 'the declared response (' + r.beh.onEngage + ') does nothing in the runtime'
+        : 'no visible response — the world does not answer the child');
+    }
+
+    // PAYOFF — a discovery is reachable.
+    met.payoff = r.hasDiscovery && !!r.discovery;
+    if (!met.payoff) gaps.push('no discovery — there is nothing for exploring to reach');
+
+    // PERCEPTIBILITY — measured, not asserted: mark, glint and link
+    // are drawn with the background's own sprites at a few pixels.
+    met.perceptible = r.hasBigShow;
+    if (!met.perceptible) {
+      gaps.push('nothing a child would see — ' + (r.shows.join('/') || 'no elements') +
+        ' draw at a few pixels with the same sprites as the star field');
+    }
+
+    // SPATIAL SIGNIFICANCE — not a pass/fail clause, but reported.
+    met.spatial = !r.oneSpot;
+
+    var meets = met.tease && met.action && met.response && met.payoff && met.perceptible;
+    return {
+      contract: PRODUCT_CONTRACT.version,
+      meets: meets,
+      verdict: meets ? 'MEETS THE PRODUCT CONTRACT' : 'FALLS SHORT OF THE PRODUCT CONTRACT',
+      met: met,
+      teases: teases,
+      gaps: gaps,
+      // Said plainly, because this is the sentence a reviewer reads.
+      note: meets
+        ? 'A child is given something to notice, something to try, and an answer worth the trying.'
+        : gaps.join('; ') + '.'
+    };
+  }
+
+  // ---------------------------------------------------------------
+  // CREATIVE QUALITY (§12) — REWRITTEN.
+  //
+  // The previous heuristic scored the five real "all boring"
+  // candidates 22-29 out of 33, which is the whole reason it was
+  // rewritten: it rewarded fewer elements for being fewer, slow
+  // behaviour for being restrained, and gave two of three mystery
+  // points for `unresolved` alone. It was a restraint-maximiser
+  // measuring quiet and calling it quality, and nothing in it could
+  // see whether anything was perceptible or whether the child had
+  // anything to do.
+  //
+  // Still eleven dimensions, still 0..3, still DETERMINISTIC
+  // HEURISTICS read off structure, still honestly labelled, still
+  // never a gate: only a human can approve.
+  // ---------------------------------------------------------------
+  function evaluate(candidate, ctx) {
+    ctx = ctx || {};
+    var c = candidate || {};
+    var r = readCandidate(c);
+    var chk = contractCheck(c);
     var g = G().GRAMMARS[c.grammar] || null;
 
     function dim(score, note) { return { score: Math.max(0, Math.min(3, score)), note: note }; }
 
-    var unresolved = possible.indexOf('unresolved') !== -1;
-    var hasDiscovery = possible.indexOf('discovery') !== -1;
-    var hasResidue = !!out.residue;
-    var hidden = els.some(function (e) { return e.show === 'veil' || e.show === 'mark'; });
-    var slowActs = acts.filter(function (a) { return a === 'dwell' || a === 'return' || a === 'wait'; });
-
     var scores = {
-      curiosity: dim((unresolved ? 1 : 0) + (hidden ? 1 : 0) + (childActs.length ? 1 : 0),
-        'does something pose a question rather than announce an outcome?'),
-      engagement: dim((childActs.length >= 1 ? 1 : 0) + (childActs.length <= 2 ? 1 : 0) +
-        (eng.length && eng.length <= 3 ? 1 : 0),
-        'a real, optional way in — without becoming a task list'),
-      understandability: dim(((c.complexity === 'simple' || c.complexity === 'moderate' || !c.complexity) ? 1 : 0) +
-        (els.length <= 3 ? 1 : 0) + (eng.length <= 2 ? 1 : 0),
-        'can a six-year-old read what seems to be happening?'),
-      depth: dim((hasResidue ? 1 : 0) + (possible.length > 1 ? 1 : 0) +
-        ((c.complexity === 'deeper' || c.complexity === 'very-deep') ? 1 : 0),
-        'is there more for a ten-year-old to notice?'),
-      magic: dim(((beh.pace === 'still' || beh.pace === 'drifting') ? 1 : 0) +
-        (slowActs.length ? 1 : 0) + (pieces <= 6 ? 1 : 0),
-        'does it feel like the Ether — calm, spacious, alive?'),
-      surprise: dim(((g && g.leansTo && g.leansTo.indexOf('unresolved') !== -1) ? 1 : 0) +
-        ((c.grammar === 'transform' || c.grammar === 'echo' || c.grammar === 'notice' || c.grammar === 'return') ? 1 : 0) +
-        (unresolved && hasDiscovery ? 1 : 0),
-        'can it end other than the obvious way?'),
-      discovery: dim((hasDiscovery ? 1 : 0) +
-        ((out.discovery === 'creation-revealed') ? 1 : 0) +
-        ((out.discovery === 'wonder' || out.discovery === 'place') ? 1 : 0),
-        'does exploring actually reach something?'),
-      mystery: dim((unresolved ? 2 : 0) + (hasResidue ? 1 : 0),
-        'does something remain unknown where it should?'),
-      restraint: dim((pieces <= 6 ? 1 : 0) + (eng.length <= 3 ? 1 : 0) +
-        ((!c.constraints || c.constraints.rarity !== 'common') ? 1 : 0),
-        'does it preserve the quiet rather than fill it?'),
+      // Would a child SEE it? The single thing the old heuristic could
+      // not ask, and the one that separates the boring batches most.
+      perceptibility: dim(
+        (r.hasShard ? 2 : r.hasVeil ? 1 : 0) + ((r.hasBigShow && r.pieces >= 3) ? 1 : 0),
+        'would a child see this at all, against a living star field?'),
+
+      // Is there something to DO — and is it aimed at something?
+      childAction: dim(
+        (r.primaryActs.length ? 2 : 0) +
+        ((r.primaryActs.length && r.eng.some(function (e) {
+          return RUNTIME_TODAY.deliberateActions.indexOf(e.action) !== -1 && e.on; })) ? 1 : 0),
+        'a real primary action, aimed at something in particular'),
+
+      // Is there a reason to act in the first place?
+      teaseStrength: dim(chk.teases.length,
+        'does the world give an understandable reason to investigate?'),
+
+      // Does anything happen back?
+      responseStrength: dim(
+        (r.performing ? 2 : r.drawingOnly ? 1 : 0) +
+        (r.discovery === 'creation-revealed' ? 1 : 0),
+        'does the world visibly answer, and how far does the answer reach?'),
+
+      // Is the answer clearly caused by what the child did?
+      causeEffect: dim(
+        (!r.primaryActs.length || !(r.performing || r.drawingOnly)) ? (r.performing ? 1 : 0)
+          : (r.eng.some(function (e) {
+              return RUNTIME_TODAY.deliberateActions.indexOf(e.action) !== -1 && e.on; }) ? 3 : 2),
+        'can a child tell that the world answered THEM?'),
+
+      // Does it use the sky, or sit in one spot?
+      spatialSignificance: dim(
+        r.oneSpot ? 0 : Math.min(3, r.spreadPlaces.length + (r.places.filter(function (v, i, a) {
+          return a.indexOf(v) === i; }).length > 1 ? 1 : 0)),
+        'does it happen across real space rather than in one small cluster?'),
+
+      // Can it end other than the obvious way? No free points for
+      // being unresolved — that is what the old one gave away.
+      surprise: dim(
+        (r.possible.length > 1 ? 1 : 0) +
+        ((g && g.leansTo && g.leansTo.indexOf('unresolved') !== -1 && r.primaryActs.length) ? 1 : 0) +
+        (r.residue ? 1 : 0),
+        'can it end more than one way, and leave something behind?'),
+
+      // How big is the magic?
+      payoff: dim(
+        (r.hasDiscovery ? 1 : 0) +
+        (r.discovery === 'creation-revealed' ? 2 : (r.discovery ? 1 : 0)),
+        'is the payoff proportional to what the child did?'),
+
+      // Genuine mystery — capped, so it can never carry a boring one.
+      genuineMystery: dim(
+        (r.unresolved ? 1 : 0) + ((r.hasVeil || r.hiddenSomething || r.hasShard) ? 1 : 0) +
+        (chk.teases.length ? 1 : 0),
+        'is something really unknown, rather than merely faint?'),
+
+      // Readable by a six-year-old, through the world alone.
+      understandability: dim(
+        (r.roles.length <= 3 ? 1 : 0) + (r.eng.length <= 2 ? 1 : 0) +
+        ((r.beh.onEngage && r.possible.length <= 2) ? 1 : 0),
+        'one clear relationship a six-year-old can read off the sky'),
+
+      // Could this leave the next question behind?
+      nextQuestion: dim((r.residue ? 2 : 0) + (r.unresolved ? 1 : 0),
+        'could this become the next mystery?'),
+
+      // Is it a new experience, or the last one wearing new words?
       originality: dim(
         ((ctx.poolSignatures || []).indexOf(G().signature(c)) === -1 ? 2 : 0) +
-        ((ctx.batchSignatures || []).filter(function (s) { return s === G().signature(c); }).length <= 1 ? 1 : 0),
-        'is it a new experience rather than a reskin?'),
-      nextQuestion: dim((hasResidue ? 2 : 0) + (unresolved ? 1 : 0),
-        'could this leave the next mystery behind?')
+        ((ctx.batchSignatures || []).filter(function (sg) {
+          return sg === G().signature(c); }).length <= 1 ? 1 : 0),
+        'is it a new experience rather than a reskin?')
     };
 
     var total = 0, max = 0;
@@ -788,7 +1268,11 @@
       note: 'structural screening for the human reviewer — never a judgement, never a gate',
       scores: scores,
       total: total,
-      outOf: max
+      outOf: max,
+      // The HARD product bar travels with the soft score, so a
+      // reviewer never sees a number without the sentence that says
+      // whether the thing is worth a child's time at all.
+      contract: chk
     };
   }
 
@@ -1177,6 +1661,47 @@
       grammar: 'connect', complexity: 'mixed',
       emphasis: 'One candidate per supplied sky figure, all in the SAME grammar. The figure must show in the arrangement and the number of things placed, not only in the words. It is inspiration only and has no field.'
     },
+    // ---- THE MYSTERY -> TEASE -> ACTION -> MAGIC EXPERIMENTS (§13).
+    // All RESEARCH. None of them goes near the production pool, and
+    // the canonical one is expected to produce candidates the runtime
+    // cannot yet perform — that is what it is for.
+    'unfinished-pattern': {
+      title: '⭐ Unfinished Pattern → Complete → Creation Awakens',
+      brief: 'The canonical product example. Can the generation contract even DESCRIBE it? Expect DESIRED candidates — the runtime cannot draw a pre-existing connection.',
+      count: 5, needsCreation: true, complexity: 'mixed',
+      emphasis: 'Every candidate is one experience: something is VISIBLY INCOMPLETE and looks as though it wants to become whole; the child notices without being told; the arrangement itself suggests what to try; the child acts, and each act is answered; when it is complete the supplied creation COMES ALIVE. Use the supplied creation in every one. The child\'s action must be a primary one, never dwell/return/wait/approach alone. Place things across real space so the incompleteness is visible as a shape. If the vocabulary cannot express a part of this, describe it as closely as the vocabulary allows and do NOT substitute a smaller idea.'
+    },
+    'same-creation-active': {
+      title: 'Same Creation, Different ACTIVE Grammars',
+      brief: 'One creation through four grammars, every one of them giving the child something to try. Materially different, or the generator is reskinning.',
+      grammars: ['reconstruct', 'connect', 'uncover', 'complete'],
+      count: 4, needsCreation: true, complexity: 'mixed',
+      emphasis: 'Use the ONE supplied creation in every candidate, and give every candidate a real tease AND a primary child action. Each grammar must produce a MATERIALLY different experience — a different thing to notice, a different thing to try, a different answer — never the same activity with different adjectives.'
+    },
+    'same-grammar-different-creations': {
+      title: 'Same Grammar, Different Creations',
+      brief: 'One grammar across several creations. Does the creation change the experience, or only its title?',
+      count: 5, needsCreation: true, grammar: 'reconstruct', complexity: 'mixed',
+      emphasis: 'One grammar for all of them, and let the CREATION shape each — how many pieces, how they are arranged, how far apart, what completing it reveals. Every candidate needs a tease and a primary action. If the five differ only in wording, the creation is not doing any work.'
+    },
+    'tease-no-challenge': {
+      title: 'Tease Without Challenge',
+      brief: 'A mystery that is worth meeting with nothing to do — the pure observation case. Does a tease alone still hold a child?',
+      count: 5,
+      emphasis: 'No challenge at all: the child may only look, dwell, return or wait. But there must still be a real TEASE — something visibly incomplete, changed, or behaving unlike everything around it — and it must be plainly visible. The outcome is unresolved. These are deliberately outside the active-mystery rule, and are for comparison.'
+    },
+    'tease-and-challenge': {
+      title: 'Tease + Meaningful Challenge',
+      brief: 'The contract\'s own shape: a tease that creates curiosity, then something real to try, then an answer worth the trying.',
+      count: 5, needsCreation: true, complexity: 'mixed',
+      emphasis: 'Each candidate: first a TEASE that gives an understandable reason to investigate; then a PRIMARY child action; then a response the child can plainly see; then a discovery. Nothing announced, nothing explained. The tease must come first — a thing merely moving away is not a reason to follow it.'
+    },
+    'simple-vs-deeper': {
+      title: 'Simple vs Deeper, Same Experience',
+      brief: 'The same underlying experience at two depths. Difficulty from structure, never from age modes or smaller pixels.',
+      count: 4, needsCreation: true, complexity: 'mixed',
+      emphasis: 'Produce PAIRS: the same underlying experience, once simple (an obvious missing piece, an obvious relationship, an immediate response) and once deeper (several things to notice, a less obvious relationship, discoveries that connect). Deeper must NOT mean fainter, smaller, slower or more poetic — it means more to notice. Both must be visible and both must give the child something to try.'
+    },
     'depth-layers': {
       title: 'Different Child Depth',
       brief: 'A younger child enjoys the obvious surface; an older child notices the deeper relationship. Same experience, no age gating.',
@@ -1353,6 +1878,10 @@
     EXPERIMENTS: EXPERIMENTS,
     FIXTURE_BANK: FIXTURE_BANK,
     RULES_IN_WORDS: RULES_IN_WORDS,
+    PRODUCT_CONTRACT: PRODUCT_CONTRACT,
+    RUNTIME_TODAY: RUNTIME_TODAY,
+    ANTI_PATTERNS: ANTI_PATTERNS,
+    contractCheck: contractCheck,
     EXAMPLES: EXAMPLES,
     schemaDoc: schemaDoc,
     schemaText: schemaText,

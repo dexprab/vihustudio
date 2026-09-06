@@ -8356,6 +8356,134 @@ leads somewhere.
   under the wrong name → `C1`+`C1b`+`C1d`+`C3` red; the id-format rule
   removed from BOTH places it is stated → `C3` red; a preset told to
   build its mystery FROM a figure again → `C10d` red.
+- **MYSTERY → TEASE → ACTION → MAGIC: THE PRODUCT DEFINITION IS
+  REWRITTEN** (build 0767, Lab and contract only). Locked by the product
+  owner after two REAL-model batches came back technically valid and, in
+  his words, boring: too small, too subdued, too poetic for a
+  six-year-old, no strong *"What's that?"*, and nothing meaningful to do.
+  **A Mystery is not merely something unusual, a faint visual, something
+  that moves, something to wait near, or something to return to.** It is
+  **SEE → WONDER → TRY → RESPONSE → DISCOVERY → POSSIBLE NEXT
+  QUESTION** — *"What is that?" · "I wonder…" · "Maybe I can…" ·
+  "Whoa!"*
+- **A MYSTERY TEASE IS WORLD BEHAVIOUR, and without one there is no
+  mystery.** Something visibly incomplete; something that appears and
+  hides; something behaving unlike everything around it; a pattern that
+  seems to want to become something; two things that almost connect; a
+  creation that appears to be waiting. Never text, a tutorial, an
+  objective marker, a quest, a prompt, a reward, a score or a timer.
+  **A thing moving away is NOT a tease** — a child does not follow
+  something merely because it moved, which is the `trace` grammar's
+  whole premise and is why that grammar is marked REWORK.
+- **AN ACTIVE MYSTERY MUST CONTAIN A MEANINGFUL CHILD ACTION.** Waiting,
+  dwelling, standing near and returning are SUPPORTING behaviours and
+  can never be the whole of it; the action is discoverable from the
+  world and is never a button. Measured, this is where the runtime is
+  furthest behind: of the twelve primary actions the contract names,
+  `js/etherMystery.js` has **one** — `tap`. And the rest are not merely
+  unbuilt: **the Traveller already owns drag for turning the sky**, so a
+  child dragging from one star to another turns the universe. Giving
+  drag a second meaning is a product decision about the Ether's only
+  navigation gesture.
+- **THE CANONICAL EXAMPLE IS THE QUALITY BAR** — an unfinished pattern
+  of stars, some connected and some not; nothing says *complete the
+  pattern*; the child notices, tries, each act is answered, and on
+  completion **the Creation comes alive in the Ether**. `UNFINISHED →
+  NOTICE → CHILD EXPERIMENTS → COMPLETION → CREATION AWAKENS → ETHER
+  RESPONDS`, at Ether scale rather than as a tiny UI reaction. **It is
+  not expressible today**: links are drawn only between elements the
+  child has ALREADY engaged, as one polyline in tap order, so at the
+  moment a mystery is posed nothing is joined and *"some are connected,
+  some are missing"* cannot be shown.
+- **EXPERIENCE SCALE joins the vocabulary as a product concept** —
+  local · regional · across-space · distant · world-scale. Conceptual,
+  never a pixel instruction. The rule is that the child must be able to
+  NOTICE that something meaningful is happening, and **the payoff must
+  be proportional to what they did**: completing something meaningful is
+  never answered with a barely visible response.
+- **DIFFICULTY EMERGES FROM STRUCTURE; there are no age modes**, because
+  the system does not know the child's age. Simpler is an obvious
+  missing piece and an immediate response; deeper is more to notice and
+  less obvious relationships. **Deeper never means fainter, smaller,
+  slower or more poetic.**
+- **THE GRAMMARS ARE ASSESSED, and no grammar was added.** The finding
+  that reframes all ten: the interpreter reads `grammar` for nothing but
+  a novelty id and a diagnostics label, so a grammar is a GENERATIVE
+  FRAME rather than a runtime behaviour. **KEEP: reconstruct** — the
+  only frame that already meets the contract end to end, and the shipped
+  `a-cover-come-apart`. **REWORK: connect** (the canonical example's own
+  grammar, blocked on the one missing primitive), **uncover** (good
+  tease, attracts a supporting action), **trace** (its premise is the
+  insufficient one), **transform** (the cause→effect most wanted,
+  blocked on `brighten` being inert). **MERGE: complete** into
+  reconstruct/connect — completion is now what the contract asks of
+  every active Mystery rather than one frame — and **echo** into
+  return. **DEFER: notice** (its own premise fights perceptibility; it
+  produced the lowest-scoring candidate of the real batch), **return**
+  (measured: engaged nothing across 13 seconds), **experiment** (poses
+  nothing, so nothing makes the child act).
+- **THE QUALITY HEURISTIC WAS A RESTRAINT-MAXIMISER, and it is
+  rewritten.** It scored the five real "all boring" candidates 22–29 out
+  of 33 because it rewarded fewer elements for being fewer, slow
+  behaviour for being restrained, and gave **two of three mystery points
+  for the word `unresolved` alone**. Nothing in it could ask whether a
+  child would SEE the thing or have anything to DO. The twelve
+  dimensions are now the contract's own — perceptibility · childAction ·
+  teaseStrength · responseStrength · causeEffect · spatialSignificance ·
+  surprise · payoff · genuineMystery · understandability · nextQuestion
+  · originality. **Measured on the same five real candidates: 79% → 46%,
+  and all five now FALL SHORT with a named gap**, three of them for
+  *nothing a child would see* and three for *nothing meaningful to do* —
+  the human's own two sentences, reached by machine. It still
+  discriminates rather than merely scoring everything low: the one
+  shipped experience built on a real creation, with spread placement, a
+  tap and a `creation-revealed` payoff, passes.
+- **A HARD CONTRACT VERDICT NOW LEADS EVERY CARD, above the number**, in
+  words, naming the clause it misses — because a number is what let five
+  boring candidates through. `contractCheck()` is **not** the validator
+  and cannot make anything valid or invalid: **technical validity and
+  creative quality stay separate**, and validity has exactly one source
+  in the Lab.
+- **SUPPORTED TODAY vs DESIRED, said out loud.** The generator is given
+  the product BAR *and* an honest statement of what the runtime can
+  actually perform, and is told to aim at the bar: a candidate needing a
+  capability that does not exist is marked **DESIRED — RUNTIME
+  CAPABILITY NOT YET IMPLEMENTED** and studied. The validator is never
+  weakened, the behaviour is never silently simulated, fixture output is
+  never called real, and wanting an experience never makes it
+  production-valid.
+- **Eight things cannot be built yet**, recorded so none is mistaken for
+  an oversight: a pre-existing or partial connection; a named
+  relationship between two particular elements; any notion of a correct
+  arrangement; drag/connect/arrange/trace/follow/move as child actions;
+  anything awakening, emerging or the sky itself responding (the largest
+  primitive is **156px** on a ~1650px diagonal); `brighten`; a payoff
+  proportional to a meaningful action (the three discoveries are a 28px
+  travelling light, a small bloom and a six-second halo); and a
+  perceptible `mark` or `glint` — **both draw with the same sprites as
+  the ambient star field**, so the more faithfully the interpreter
+  performs them the better they hide.
+- **KNOWLEDGE SYNC (Decision 57): no canon change, and the reason is
+  recorded rather than assumed.** Canon section 23 describes what a
+  child MEETS in the Ether, and this sprint implements no runtime
+  capability — nothing a child meets has changed. The canon changes in
+  the commit that makes a mystery visible, not in the one that decides
+  it should be.
+- **PRODUCTION FILES CHANGED: ZERO.** `js/etherGrammar.js`,
+  `js/etherMystery.js`, `js/etherLife.js`, `js/etherExperience.js`, the
+  runtime, the privacy handling and `assets/ether/experience-pool.js`
+  all have an empty diff. Build stays 0767. Six research experiments
+  join the Lab — **Unfinished Pattern → Complete → Creation Awakens**,
+  same-creation/different-active-grammars, same-grammar/different-
+  creations, tease-without-challenge, tease-plus-challenge, and
+  simple-vs-deeper — none of which goes near the production pool.
+- **The five real candidates are committed as evidence**
+  (`tools/ether-mystery-lab-test/real-pegasus-batch.json`), so the claim
+  that the heuristic separates them is re-measured on every run rather
+  than remembered. The suite is 237 → 260; the heuristic rewrite and the
+  contract gate are each proved by reverting.
+- `tools/ether-mystery-lab/labKit.js` → `PRODUCT_CONTRACT` /
+  `RUNTIME_TODAY` · `docs/ETHER_MYSTERY_CHALLENGE_ARCHITECTURE.md`
 - Out of scope and not implemented: creature encounters as a reward
   system, creature dialogue, a Companion in the Ether, per-Traveller
   encounter history, more activity rows (story hunt, missing
