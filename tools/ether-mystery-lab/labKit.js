@@ -362,8 +362,22 @@
         nodes: { type: 'integer ' + C.bounds.arrangementNodesMin + '..' + C.bounds.arrangementNodesMax,
           required: true,
           note: 'how many lights stand in the figure. It MUST equal the count on the element row whose show is "node". Fewer than ' + C.bounds.arrangementNodesMin + ' is not a figure; more than ' + C.bounds.arrangementNodesMax + ' is a chore.' },
+        figure: { type: 'object', required: false, of: 'figure',
+          note: 'A LAB EXPERIMENT — DO NOT USE. Hand-authored geometry for an arrangement: where each light stands and what is joined to what. It exists so a person can try out arrangements that suggest they might be SOMETHING before they are whole, and it is authored point by point by a human. A generated candidate must set shape "ring" or "arc" and leave this out.' },
         missing: { type: 'integer 1..' + C.bounds.arrangementMissingMax, required: true,
           note: 'how many joins are left out — the whole of the tease. At least one, or nothing is unfinished; and at least two joins must survive, or the figure cannot be read at all.' }
+      },
+      // THE FIGURE LEVEL — described because every schema key must be
+      // (a key with no description is reported UNDOCUMENTED rather
+      // than quietly omitted), and told plainly not to be used: it is
+      // the Lab's own experiment surface, authored by hand.
+      figure: {
+        points: { type: 'array of [x, y] pairs, one per node, each -1.4..1.4', required: true,
+          note: 'LAB EXPERIMENT — DO NOT USE. Where each light stands, in unit space, positive y downward. The longest reach becomes the figure\'s radius on the sky.' },
+        joins: { type: 'array of "a-b" strings, each naming two node indices', required: true,
+          note: 'LAB EXPERIMENT — DO NOT USE. Which lights belong to which, written "0-1". A light may be joined to more than two others, which is what lets a figure branch. Written as strings rather than as [a, b] pairs because a list of integer pairs is what a Magic Card constellation looks like and the Stars scans refuse that shape.' },
+        gaps: { type: 'array of join indices, as many as arrangement.missing', required: true,
+          note: 'LAB EXPERIMENT — DO NOT USE. WHICH joins are absent. On a figure the gap is the missing piece of its identity, so it is authored rather than drawn at random.' }
       },
       ingredients: {
         creation: { type: 'boolean', required: false,
@@ -1584,6 +1598,11 @@
             productionApproval: i.state === 'approved'
           } : null,
           qualityHeuristic: i.quality ? { total: i.quality.total, outOf: i.quality.outOf } : null,
+          // Evaluator-only, and only for the authored figure fixtures:
+          // which visual family this one is, which of the three levels
+          // it belongs to, and the question a person is being asked
+          // about it. It exists in the LOG and never in a candidate.
+          figureExperiment: figureNote(i.candidate && i.candidate.id),
           candidate: i.candidate
         };
       });
@@ -1690,6 +1709,12 @@
       brief: 'Mystery → curiosity → the world quietly suggests a possibility → optional challenge → discovery. Never announced.',
       count: 5,
       emphasis: 'The mystery comes first; the world itself quietly suggests one optional possibility; taking it leads to a discovery. Nothing is announced, framed as an objective, or required.'
+    },
+    'unfinished-figure': {
+      title: 'Unfinished Figure — does it suggest a meaning?',
+      brief: 'LAB EXPERIMENT (fixtures only). Eight authored arrangements: two pure-geometry controls, five figure-suggestive, one deliberately ambiguous. Play each and ask what a child might think it is.',
+      count: 8, needsCreation: true, fixturesOnly: true,
+      emphasis: 'This experiment is authored rather than generated: it compares pure geometry against arrangements whose points and joins suggest that they might be SOMETHING before they are whole. Run it in FIXTURE MODE.'
     },
     'next-mystery': {
       title: 'The Next Mystery',
@@ -1929,12 +1954,180 @@
     }
   };
 
+  // ---------------------------------------------------------------
+  // THE UNFINISHED FIGURE — a LAB-ONLY visual experiment (§1-§3 of the
+  // Meaningful Figure brief). Every one of these is HAND-AUTHORED, is
+  // labelled a fixture everywhere it travels, and exists to answer one
+  // question: can an unfinished arrangement suggest that it is
+  // SOMETHING before it comes alive?
+  //
+  // Three levels are compared, and the first two entries are the
+  // CONTROL so the comparison is real rather than remembered:
+  //   A  pure geometry      — the ring and the arc the runtime already
+  //                           draws, with no figure at all
+  //   B  figure-suggestive  — points and joins that suggest a body, a
+  //                           pair of extensions, a taper, a curl
+  //   C  ambiguous figure   — plainly something, resolving into no
+  //                           nameable thing
+  //
+  // NOTHING HERE NAMES AN OBJECT. There is no shape:'bird', no
+  // shape:'fish', no named-shape vocabulary anywhere — a figure is
+  // points and the relationships between them, and what a child sees
+  // in it is the child's. `family` and `mightBe` are for the EVALUATOR
+  // and never travel inside a candidate: they are stripped before a
+  // candidate is handed to anything.
+  // ---------------------------------------------------------------
+  // Unit space, and the sky's own y: POSITIVE Y IS DOWN, exactly as
+  // the canvas the interpreter draws on. Authored the other way round
+  // once and every figure came out upside down — a bowl rendered as a
+  // dome — which is the sort of thing only a screenshot tells you.
+  function figureCandidate(o) {
+    var c = {
+      id: o.id,
+      grammar: o.grammar || 'connect',
+      title: o.title,
+      complexity: o.complexity || 'moderate',
+      ingredients: { creation: true, creationKind: 'story' },
+      elements: [{ role: 'light', show: 'node', place: 'ring', count: o.nodes }],
+      engage: [{ action: 'tap', on: 'light' }],
+      behaviour: { onEngage: 'link', pace: 'slow' },
+      outcome: { possible: ['discovery', 'unresolved'], discovery: 'creation-revealed' },
+      constraints: { rarity: 'rare', notBefore: 90, lifeS: 150,
+                     phases: ['exploration', 'deep'] },
+      arrangement: o.figure
+        ? { shape: 'figure', nodes: o.nodes, missing: o.figure.gaps.length,
+            figure: o.figure }
+        : { shape: o.shape, nodes: o.nodes, missing: o.missing }
+    };
+    return c;
+  }
+
+  var FIGURE_EXPERIMENTS = [
+    // ---- A: PURE GEOMETRY (the control) --------------------------
+    { family: 'control — pure geometry (ring)', level: 'A',
+      mightBe: 'a circle of dots with one gap',
+      id: 'lab-figure-control-ring', nodes: 6, shape: 'ring', missing: 1,
+      title: 'lights standing evenly around, with one join missing' },
+    { family: 'control — pure geometry (arc)', level: 'A',
+      mightBe: 'a curve of dots with two gaps',
+      id: 'lab-figure-control-arc', nodes: 7, shape: 'arc', missing: 2,
+      complexity: 'moderate',
+      title: 'lights along an open curve, with two joins missing' },
+
+    // ---- B: FIGURE-SUGGESTIVE ------------------------------------
+    // A coil that tightens, with the outermost light joined to
+    // nothing: the long sweep hangs off the body it belongs to.
+    { family: 'curled figure', level: 'B',
+      mightBe: 'something curled up? a shell? a wave rolling over?',
+      id: 'lab-figure-curled', nodes: 6,
+      title: 'lights coiling in on themselves, the outermost joined to nothing',
+      figure: {
+        points: [[0.926, -0.025], [0.300, -0.521], [-0.307, -0.379],
+                 [-0.517, 0.06], [-0.347, 0.4], [-0.057, 0.463]],
+        joins: ['0-1', '1-2', '2-3', '3-4', '4-5'],
+        gaps: [0]
+      } },
+    // A body with two balanced extensions, one of them not attached.
+    // The strongest identity gap in the set: the thing is plainly
+    // symmetrical and plainly is not.
+    { family: 'winged figure', level: 'B',
+      mightBe: 'a bird? a moth? something with wings?',
+      id: 'lab-figure-winged', nodes: 7, complexity: 'deeper',
+      title: 'a line of lights with a pair of reaches, one of them loose',
+      figure: {
+        points: [[0, -0.4], [0, 0.06], [0, 0.58],
+                 [-0.52, -0.18], [-1.00, 0.06],
+                 [0.52, -0.18], [1.00, 0.06]],
+        joins: ['0-1', '1-2', '1-3', '3-4', '1-5', '5-6'],
+        gaps: [4]
+      } },
+    // A body tapering to a fork, severed halfway along: the tail end
+    // is still in formation but is no longer part of anything.
+    { family: 'swimming figure', level: 'B',
+      mightBe: 'something swimming? a fish? a tadpole?',
+      id: 'lab-figure-swimming', nodes: 6,
+      title: 'lights flowing to a fork, the middle of them parted',
+      figure: {
+        points: [[1.12, -0.05], [0.61, -0.21], [0.13, -0.11],
+                 [-0.31, 0.13], [-0.75, -0.21], [-0.78, 0.45]],
+        joins: ['0-1', '1-2', '2-3', '3-4', '3-5'],
+        gaps: [2]
+      } },
+    // A rising line with limbs on both sides at different heights,
+    // reaching. Two gaps, so what is loose is a limb and a tip.
+    { family: 'branching figure', level: 'B',
+      mightBe: 'a plant? antlers? something climbing?',
+      id: 'lab-figure-branching', nodes: 7, complexity: 'deeper',
+      title: 'a rising line of lights with reaches at different heights',
+      figure: {
+        points: [[-0.19, 1.02], [-0.11, 0.39], [-0.05, -0.19], [-0.11, -0.75],
+                 [-0.81, 0.09], [0.47, -0.49], [0.83, -0.09]],
+        joins: ['0-1', '1-2', '2-3', '1-4', '2-5', '5-6'],
+        gaps: [3, 5]
+      } },
+    // A form that looks like it is holding something, open at the one
+    // place that would let it hold anything.
+    { family: 'cupped figure', level: 'B',
+      mightBe: 'hands? a nest? a boat? something holding something?',
+      id: 'lab-figure-cupped', nodes: 6,
+      title: 'lights curving up on both sides, parted at the bottom',
+      figure: {
+        points: [[-1.00, -0.547], [-0.74, 0.093], [-0.28, 0.453],
+                 [0.28, 0.453], [0.74, 0.093], [1.00, -0.547]],
+        joins: ['0-1', '1-2', '2-3', '3-4', '4-5'],
+        gaps: [2]
+      } },
+
+    // ---- C: AMBIGUOUS FIGURE -------------------------------------
+    // A lopsided body with something rising off it. Deliberately
+    // resolves into nothing nameable: the point is that a child can
+    // put their own meaning on it and not be corrected.
+    { family: 'ambiguous organic figure', level: 'C',
+      mightBe: 'I do not know, but it looks like something — a seed? a bud? something drifting?',
+      id: 'lab-figure-adrift', nodes: 8, complexity: 'deeper',
+      title: 'a lopsided body of lights with something rising off it',
+      figure: {
+        points: [[0.52, -0.33], [0.80, 0.24], [0.40, 0.72], [-0.22, 0.82],
+                 [-0.72, 0.38], [-0.60, -0.23], [-0.26, -0.69], [0.06, -0.91]],
+        joins: ['0-1', '1-2', '2-3', '3-4', '4-5', '5-0', '5-6', '6-7'],
+        gaps: [5, 7]
+      } }
+  ];
+
+  // The candidates themselves, with every evaluator-only field left
+  // behind: what reaches the interpreter is a candidate and nothing
+  // more.
+  var FIGURE_BANK = FIGURE_EXPERIMENTS.map(figureCandidate);
+
+  // What a reviewer needs beside a figure fixture in the research log
+  // (§9): its family, its level, its lights, its joins and its gaps.
+  function figureNote(id) {
+    for (var i = 0; i < FIGURE_EXPERIMENTS.length; i++) {
+      var f = FIGURE_EXPERIMENTS[i];
+      if (f.id !== id) continue;
+      return {
+        family: f.family, level: f.level, mightBe: f.mightBe,
+        nodes: f.nodes,
+        joins: f.figure ? f.figure.joins.length : null,
+        missing: f.figure ? f.figure.gaps.length : f.missing
+      };
+    }
+    return null;
+  }
+
   // The fixture generator: a deterministic stand-in that exercises the
   // IDENTICAL pipeline. Returns the same {ok, text} shape a model
   // connection returns, so nothing downstream can tell the transport
   // apart — only the SOURCE LABEL says, and it always says 'fixture'.
   function fixtureGenerate(params) {
     params = params || {};
+    // THE FIGURE EXPERIMENT HAS ITS OWN BANK, and it is emitted whole:
+    // the comparison is between these eight and no others, so the
+    // count control does not thin it out.
+    if (params.experiment === 'unfinished-figure') {
+      return { ok: true, source: 'fixture', model: null,
+               text: JSON.stringify({ candidates: JSON.parse(JSON.stringify(FIGURE_BANK)) }) };
+    }
     var want = Math.max(1, Math.min(50, Number(params.count) || 5));
     var grammars = params.grammars ||
       (params.grammar && params.grammar !== 'compose' ? [params.grammar]
@@ -1957,6 +2150,8 @@
     REJECTION_REASONS: REJECTION_REASONS,
     EXPERIMENTS: EXPERIMENTS,
     FIXTURE_BANK: FIXTURE_BANK,
+    FIGURE_EXPERIMENTS: FIGURE_EXPERIMENTS,
+    FIGURE_BANK: FIGURE_BANK,
     RULES_IN_WORDS: RULES_IN_WORDS,
     PRODUCT_CONTRACT: PRODUCT_CONTRACT,
     RUNTIME_TODAY: RUNTIME_TODAY,

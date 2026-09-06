@@ -176,7 +176,17 @@
     // leaves the gaps — which is what makes "something is missing"
     // visible without a word being said. The correct missing
     // relationship IS the gap; nothing else has to describe it.
-    arrangement: ['shape', 'nodes', 'missing']
+    arrangement: ['shape', 'nodes', 'missing', 'figure'],
+    // AN EXPLICIT FIGURE — points and the relationships between them,
+    // in unit space, and NOTHING ELSE. There is deliberately no name
+    // here: no 'bird', no 'fish', no shape enum a generator could ask
+    // for by word. A figure suggests what it might be through the way
+    // its lights stand and what is joined to what, which is the only
+    // way an arrangement can hint at an identity without the product
+    // asserting one. `gaps` says WHICH joins are absent, because on a
+    // figure the missing relationship is the missing piece of its
+    // identity rather than a break anywhere.
+    figure: ['points', 'joins', 'gaps']
   };
 
   // Keys that may never appear at ANY depth — a candidate that names
@@ -333,7 +343,7 @@
     if (hasPattern) {
       if (!isPlain(pat)) { reasons.push('not-an-object:pattern'); pat = {}; }
       else keysOutside(pat, SCHEMA.arrangement, 'arrangement', reasons);
-      if (['ring', 'arc'].indexOf(pat.shape) === -1) {
+      if (['ring', 'arc', 'figure'].indexOf(pat.shape) === -1) {
         reasons.push('unavailable-capability:arrangement.shape:' + pat.shape);
       }
       if (!(typeof pat.nodes === 'number' && pat.nodes >= B.arrangementNodesMin &&
@@ -347,8 +357,75 @@
       if (!(typeof pat.missing === 'number' && pat.missing >= 1 &&
             pat.missing <= B.arrangementMissingMax && pat.missing === Math.floor(pat.missing))) {
         reasons.push('bad-arrangement-missing');
-      } else if (typeof pat.nodes === 'number' && pat.missing > linkCount - 2) {
+      } else if (pat.shape !== 'figure' &&
+                 typeof pat.nodes === 'number' && pat.missing > linkCount - 2) {
         reasons.push('arrangement-too-broken-to-read');
+      }
+      // The figure, when one is given. Everything is checked against
+      // the node count the arrangement already declares, so a figure
+      // can never describe lights that are not there.
+      var fig = pat.figure;
+      if (fig !== undefined) {
+        if (pat.shape !== 'figure') reasons.push('figure-needs-shape-figure');
+        if (!isPlain(fig)) { reasons.push('not-an-object:figure'); fig = {}; }
+        else keysOutside(fig, SCHEMA.figure, 'figure', reasons);
+        var idx = function (v) {
+          return typeof v === 'number' && v === Math.floor(v) &&
+                 v >= 0 && v < pat.nodes;
+        };
+        var pts = fig.points, jns = fig.joins, gps = fig.gaps;
+        var ptsOk = Array.isArray(pts) && pts.length === pat.nodes &&
+          pts.every(function (p) {
+            return Array.isArray(p) && p.length === 2 &&
+              typeof p[0] === 'number' && typeof p[1] === 'number' &&
+              Math.abs(p[0]) <= 1.4 && Math.abs(p[1]) <= 1.4;
+          });
+        if (!ptsOk) reasons.push('bad-figure-points');
+        // A JOIN IS WRITTEN "a-b", AND NOT AS A PAIR OF INTEGERS.
+        // In this product a list of integer pairs is what a Magic
+        // Card's constellation looks like, and the privacy scans that
+        // guard the Stars boundary match on exactly that shape — so a
+        // figure written [[0,1],[1,2]] is refused as stars-shaped
+        // data, correctly. The guard is right; the spelling moves.
+        var seenJoin = {};
+        var jnsOk = Array.isArray(jns) && jns.length >= 3 &&
+          jns.length <= B.arrangementNodesMax * 2 &&
+          jns.every(function (j) {
+            if (typeof j !== 'string' || !/^\d+-\d+$/.test(j)) return false;
+            var ab = j.split('-'), a = Number(ab[0]), b = Number(ab[1]);
+            if (!(idx(a) && idx(b) && a !== b)) return false;
+            var k = Math.min(a, b) + '-' + Math.max(a, b);
+            if (seenJoin[k]) return false;      // one relationship, once
+            seenJoin[k] = 1;
+            return true;
+          });
+        if (!jnsOk) reasons.push('bad-figure-joins');
+        var gpsOk = jnsOk && Array.isArray(gps) && gps.length === pat.missing &&
+          gps.every(function (g) {
+            return typeof g === 'number' && g === Math.floor(g) &&
+                   g >= 0 && g < jns.length;
+          });
+        if (!gpsOk) reasons.push('bad-figure-gaps');
+        // A figure that is mostly gaps is not a figure, exactly as for
+        // a ring — read here off the figure's own joins.
+        if (jnsOk && gpsOk && jns.length - gps.length < 2) {
+          reasons.push('arrangement-too-broken-to-read');
+        }
+        // Every light must belong to something. A node joined to
+        // nothing is a light with nothing to be part of, and the whole
+        // primitive is about belonging.
+        if (ptsOk && jnsOk) {
+          var belongs = {};
+          jns.forEach(function (j) {
+            var ab = String(j).split('-');
+            belongs[Number(ab[0])] = 1; belongs[Number(ab[1])] = 1;
+          });
+          for (var q = 0; q < pat.nodes; q++) {
+            if (!belongs[q]) { reasons.push('figure-node-belongs-to-nothing'); break; }
+          }
+        }
+      } else if (pat.shape === 'figure') {
+        reasons.push('shape-figure-needs-figure');
       }
       // The awakening is what completing a pattern is FOR, so the
       // pieces it needs are required rather than hoped for.

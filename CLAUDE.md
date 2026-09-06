@@ -8692,6 +8692,75 @@ leads somewhere.
   and is the opposite of the product rule now; what it was really
   guarding — that nothing ACCUMULATES — is still true and still checked).
   Proved by reverting the awakening itself and watching the figure fade.
+- **CAN UNFINISHED GEOMETRY BECOME UNFINISHED SOMETHING? — A LAB
+  EXPERIMENT, NOTHING PROMOTED.** The Unfinished Pattern works as an
+  interaction and its shapes mean nothing: a ring is a ring, an arc is
+  an arc, and the lights communicate geometry rather than identity. The
+  child reaction that earns is *"these dots need connecting"*; the one
+  worth having is *"what IS that?"* So eight arrangements were
+  hand-authored in the Lab — two pure-geometry controls, five
+  figure-suggestive, one deliberately ambiguous — and played in the real
+  Ether through the real interpreter.
+- **NO NAMED-SHAPE VOCABULARY, AND THAT IS THE CREATIVE RULE.** There is
+  no `shape:'bird'`, no shape library, no creature system and no figure
+  generator. A figure is `points` and `joins` — visual relationships and
+  nothing else — so what a child sees in one is the child's. The
+  evaluator's own family labels are Lab metadata and are stripped before
+  a candidate reaches the interpreter; the suite fails if either ever
+  travels inside one. **Nothing was asked of a model**, and the schema
+  documentation for the field says **LAB EXPERIMENT — DO NOT USE**,
+  because the contract must be truthful about every key the schema holds
+  and this is not one a generator may reach for.
+- **THE SEAM IS TWO PRODUCTION FILES AND IS INERT, WHICH IS DISCLOSED
+  RATHER THAN GLOSSED.** The figure geometry could only live in the
+  interpreter — the layout is a closure inside `EtherMystery.mount` and
+  no Lab-side route to it exists, and a second Mystery engine is
+  forbidden by this decision's own rule. So `arrangement.figure` is an
+  optional block `js/etherGrammar.js` validates and `js/etherMystery.js`
+  performs, and the ring/arc path never consults it. **Production Ether
+  behaviour is unchanged, measured three ways**: no ACTIVE pool
+  experience carries an arrangement at all, the held Unfinished Pattern
+  is still the plain arc it was, and `index.html` still pins `?v=0769`
+  so the changed files do not reach a child's browser until some future
+  ship. The build is deliberately NOT bumped: there is nothing shipped
+  to a child to stamp.
+- **A JOIN IS WRITTEN `"0-1"`, AND THE STARS BOUNDARY IS WHY.** The
+  first draft wrote a figure's joins as `[[0,1],[1,2]]` and the research
+  log's export refused the whole artifact as `stars-shaped-data`. The
+  scan was right: a list of integer pairs is exactly what a Magic Card's
+  constellation looks like, and no guard can tell a figure's
+  relationships from a child's credential by looking at the shape.
+  **The guard is not weakened; the spelling moves** — the same answer
+  this repository has now reached for a word matching inside its own
+  vocabulary, arriving this time as a data shape rather than a word.
+- **THE FINDING WORTH CARRYING: A DETACHED PART READS; A DETACHED POINT
+  DOES NOT.** Where a gap leaves a light joined to something else — a
+  loose wing is still two lights joined to each other — it reads as a
+  piece of the thing sitting apart from the thing. Where a gap leaves a
+  light joined to nothing it reads as a stray star, and the sky is
+  already full of those. Symmetry is the strongest tease there is, taper
+  is the next, and the ambiguous figure works precisely because two
+  people answer differently. **The controls earn their place**: the ring
+  answers *"a circle of dots"* and a two-gap arc reads as unrelated
+  fragments, which is the difference no argument would have
+  made obvious.
+- **COMPLETION RESOLVES AN IDENTITY RATHER THAN REVEALING A DIFFERENT
+  ONE.** Joining the last light does not swap the figure for another
+  object: the same arrangement simply becomes whole, and what roams
+  afterwards is recognisably what the child completed. Every figure
+  holds Ether scale on a phone as on a laptop (~72% of a phone's width).
+- **DISCLOSED, AND IT IS THE POINT OF THE EXPERIMENT: whether any of it
+  looks like anything is NOT proved.** What a machine can prove is that
+  the fixtures are real candidates the real validator accepts, that they
+  are not rings, that the joins and the gaps are the authored ones, that
+  the placement is faithful to a single scale, and that nothing is
+  reachable from production. **Whether a child wonders what it is** is
+  the product owner's to judge from the Lab, and nothing was promoted
+  pending that.
+- `tools/ether-mystery-lab/labKit.js` → `FIGURE_EXPERIMENTS` ·
+  `docs/ETHER_MYSTERY_LAB.md` → *The Unfinished Figure* ·
+  `tools/ether-mystery-lab-test/` section `UF` ·
+  `tools/ether-mystery-lab-test/shots/figures/`
 - Out of scope and not implemented: creature encounters as a reward
   system, creature dialogue, a Companion in the Ether, per-Traveller
   encounter history, more activity rows (story hunt, missing

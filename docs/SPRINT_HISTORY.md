@@ -12287,3 +12287,56 @@ place), with two harness lessons recorded: remounting the layer kills
 what lives in it, and `live()` goes null when the figure starts waking
 rather than when it has left. Detail:
 `docs/ETHER_MYSTERY_CHALLENGE_ARCHITECTURE.md`.
+
+## The Unfinished Figure — can geometry suggest a meaning? (Lab only)
+
+A LAB EXPERIMENT, with nothing promoted: the Unfinished Pattern is
+still held at `status: 'experiment'` and production Ether behaves
+exactly as it did. The interaction works and the shapes mean nothing —
+a ring is a ring — so eight arrangements were hand-authored to ask
+whether an unfinished figure can suggest that it is SOMETHING before it
+comes alive: two pure-geometry controls, five figure-suggestive, one
+deliberately ambiguous. **No named-shape vocabulary anywhere** — a
+figure is `points` and `joins`, visual relationships and nothing else,
+and the evaluator's family labels are stripped before a candidate
+reaches the interpreter.
+
+The seam is two production files and is INERT: `arrangement.figure` is
+an optional block the ring/arc path never consults, no active pool entry
+carries an arrangement at all, and `index.html` still pins `?v=0769`, so
+the changed files do not reach a child's browser until a future ship.
+Nothing was asked of a model; the schema documentation says **LAB
+EXPERIMENT — DO NOT USE** because the contract must be truthful about
+every key the schema holds.
+
+**The finding worth carrying: a detached PART reads, a detached POINT
+does not.** A gap that leaves a light joined to something else reads as
+a piece of the thing sitting apart from it (`winged`'s loose wing);
+a gap that leaves a light joined to nothing reads as a stray star, and
+the sky is full of those — which is why `branching`, with two orphans,
+is the weakest of the six. Symmetry is the strongest tease there is
+(`winged`, `cupped`), taper is the next (`swimming`), and the ambiguous
+figure works precisely because two people answer differently. The
+controls earn their place: the ring answers *"a circle of dots"* and the
+two-gap arc reads as unrelated fragments — two short strokes and a lone light. Completion resolves the
+identity from the same arrangement rather than revealing a different
+one, and what roams afterwards is recognisably what the child
+completed. Every figure holds Ether scale on a phone as on a laptop.
+
+Judgement fixture by fixture, the open questions and the screenshots:
+`docs/ETHER_MYSTERY_LAB.md` → *The Unfinished Figure*. Suite section
+`UF` in `tools/ether-mystery-lab-test/`; shots in
+`tools/ether-mystery-lab-test/shots/figures/`.
+
+**A pre-existing flake, measured rather than blamed on the change.**
+`tools/ether-mystery-test/` U9b (*"it leaves the place the child
+found it"*) asks for more than 150px of NET displacement over a 14s
+sample — and a wanderer's heading, curl and rest are drawn per
+awakening, with a rest of 3–8s falling inside that window. Measured
+three times on this same tree: 156px PASS, 141px FAIL, 121px FAIL —
+resting 0s, 5s and 4s of the fourteen. It is a coin
+toss, it has nothing to do with this experiment (the held entry is a
+plain arc carrying no figure, and `UF6b` proves the ring/arc layout is
+untouched), and it is reported rather than quietly re-tuned — changing
+a guard this sprint did not write would look like weakening one.
+Everything else in that suite is green (102 of 103).

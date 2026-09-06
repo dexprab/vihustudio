@@ -454,6 +454,15 @@
       var short = shortEdge();
       var r = clamp(short * PATTERN.radiusFrac, PATTERN.radiusMin, PATTERN.radiusMax);
       var n = nodes.length;
+      // A FIGURE, WHEN THE ARRANGEMENT CARRIES ONE. Points and the
+      // relationships between them, so the lights can stand in a way
+      // that suggests they are SOMETHING before they are whole. It is
+      // the same size, the same lights and the same two-tap joining;
+      // only where the lights stand and what belongs to what differ.
+      if (spec.figure && Array.isArray(spec.figure.points) &&
+          spec.figure.points.length === n) {
+        return layoutFigure(spec.figure, nodes, look, r);
+      }
       var turn = rand(0, Math.PI * 2);
       var arc = spec.shape === 'arc';
       var span = arc ? Math.PI * 1.15 : Math.PI * 2;
@@ -490,6 +499,66 @@
         shape: spec.shape, nodes: nodes, links: links,
         cx: look.x, cy: look.y, radius: r,
         missingLeft: missing, sel: null, igniteAt: -1
+      };
+    }
+
+    // A FIGURE IS PLACED AS AUTHORED, at the ring's own scale. The
+    // longest reach of the points becomes the radius the ring would
+    // have had, so a figure is exactly as big on the sky as the shape
+    // it replaces — on a phone as on a laptop, since the radius is a
+    // fraction of the short edge either way.
+    //
+    // `polar` is stored PRE-SQUASHED: the waking beat and the wanderer
+    // both rebuild a node as cos(ang)*r and sin(ang)*r*squash, so the
+    // y is divided by squash here and multiplied back there. Without
+    // that, a figure would change its proportions at the exact moment
+    // it came alive — and what a child completed must be what wakes.
+    function layoutFigure(fig, nodes, look, r) {
+      var n = nodes.length, i;
+      // Hand-set on the sky rather than mechanically level, and only a
+      // little: a figure has an up, and losing it would cost the very
+      // thing the points were authored for.
+      var turn = rand(-0.09, 0.09);
+      var ct = Math.cos(turn), st = Math.sin(turn);
+      var reach = 0;
+      for (i = 0; i < n; i++) {
+        reach = Math.max(reach, Math.abs(fig.points[i][0]),
+                                Math.abs(fig.points[i][1]));
+      }
+      var k = r / (reach || 1);
+      for (i = 0; i < n; i++) {
+        var px = fig.points[i][0] * k, py = fig.points[i][1] * k;
+        var x = px * ct - py * st;
+        var y = px * st + py * ct;
+        var el = nodes[i];
+        el.x = el.home.x = look.x + x;
+        el.y = el.home.y = look.y + y;
+        el.node = i;
+        var ys = y / PATTERN.squash;
+        el.polar = { ang: Math.atan2(ys, x), r: Math.sqrt(x * x + ys * ys) };
+      }
+      // The joins are the figure's own relationships — a body to a
+      // limb, a limb to its tip — rather than "each light to the next
+      // one round", which is why a figure may branch and a ring may
+      // not.
+      var links = [];
+      for (i = 0; i < fig.joins.length; i++) {
+        // "a-b" rather than [a, b]: a list of integer pairs is what a
+        // Magic Card's constellation looks like, and the Stars scans
+        // match that shape (js/etherGrammar.js says why).
+        var ab = String(fig.joins[i]).split('-');
+        links.push({ a: Number(ab[0]), b: Number(ab[1]),
+                     present: true, joinedAt: -1 });
+      }
+      // WHICH joins are missing is authored, never drawn at random: on
+      // a figure the gap is the missing piece of its identity.
+      for (i = 0; i < fig.gaps.length; i++) {
+        if (links[fig.gaps[i]]) links[fig.gaps[i]].present = false;
+      }
+      return {
+        shape: 'figure', nodes: nodes, links: links,
+        cx: look.x, cy: look.y, radius: r,
+        missingLeft: fig.gaps.length, sel: null, igniteAt: -1
       };
     }
 

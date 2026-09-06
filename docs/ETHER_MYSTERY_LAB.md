@@ -793,3 +793,157 @@ what cannot be performed.
 `supabase/DEPLOY_lab_generate.md` ·
 `tools/ether-mystery-lab-test/run-lab-tests.js` (226) ·
 `tools/ether-mystery-lab-test/shots/`
+
+---
+
+## THE UNFINISHED FIGURE — can unfinished geometry become unfinished *something*?
+
+**A LAB EXPERIMENT. Nothing here is in the production Ether, and the
+Unfinished Pattern is still held at `status: 'experiment'`.**
+
+The Unfinished Pattern works as an interaction. What it lacked was
+meaning: a ring is a ring and an arc is an arc, so the lights
+communicate *geometry* and never *identity*. The child reaction the
+interaction earns is "these dots need connecting"; the one worth having
+is **"what IS that?"**
+
+So this experiment changes only where the lights stand and what is
+joined to what, and asks whether an arrangement can suggest that it
+might be **something** before it comes alive.
+
+### The three levels being compared
+
+| | | |
+|---|---|---|
+| **A** | pure geometry | the ring and the arc the runtime already drew |
+| **B** | figure-suggestive | points and joins that suggest a body, a pair of reaches, a taper, a curl |
+| **C** | ambiguous figure | plainly *something*, resolving into nothing nameable |
+
+### How to run it
+
+Open the Lab in FIXTURE MODE, arm **Unfinished Figure — does it suggest
+a meaning?**, choose a creation, press GENERATE. Eight cards appear.
+Press **▶ PLAY IN ETHER** on each and answer one question:
+
+> *What might a child think this is?*
+
+If the answer is "nothing", "some dots", "a circle" or "an abstract
+shape", that fixture failed. If it is "maybe a bird?", "something
+swimming?", "I don't know, but it looks like something" — it is
+interesting. **Everyone seeing the same object is not the goal;
+ambiguity is.**
+
+### What is NOT here, deliberately
+
+There is **no named-shape vocabulary**. No `shape: 'bird'`, no
+`shape: 'fish'`, no shape library, no creature system, no procedural
+figure generator, and no semantic recognition of any kind. A figure is
+`points` and `joins` — visual relationships and nothing else — and what
+a child sees in it is the child's. The evaluator-facing family labels
+(`family`, `mightBe`) live in the Lab's own metadata and are stripped
+before a candidate reaches the interpreter; the suite fails if either
+ever travels inside one.
+
+Nothing was asked of a model. Every fixture is hand-authored, labelled
+`fixture` everywhere it travels, and the model path is untouched — the
+schema documentation for `arrangement.figure` says **LAB EXPERIMENT —
+DO NOT USE** in as many words, because the contract must be truthful
+about every key the schema holds (`C1`) and this is not a key a
+generator may reach for.
+
+### The findings
+
+**A DETACHED PART READS; A DETACHED POINT DOES NOT.** This is the one
+finding worth carrying forward. Where a gap leaves a light joined to
+*something* — `winged`'s loose wing is still two lights joined to each
+other — it reads as a piece of the thing, sitting apart from the thing.
+Where a gap leaves a light joined to *nothing*, it reads as a stray
+star, and the sky is already full of those. `branching` has two such
+orphans and is the weakest figure in the set for exactly that reason;
+`curled` has one and survives it because the rest of the coil is
+unmistakably a coil.
+
+**SYMMETRY IS THE STRONGEST TEASE THERE IS.** `winged` and `cupped` are
+the two that most reliably say *"something is missing"* without a word,
+because a thing that is plainly symmetrical and plainly is not asks its
+own question. `swimming` gets the same effect from taper: a body that
+narrows to a fork is going somewhere, and the break in the middle is
+obviously a break rather than a design.
+
+**THE CONTROLS ARE THE PROOF THE EFFECT IS REAL.** The ring is a
+deliberate, incomplete, entirely meaningless shape — it answers "what is
+that?" with "a circle of dots". The arc is worse: with two gaps it stops
+being one thing at all and reads as unrelated fragments — two short strokes and a lone light. Put beside
+the winged figure they make the difference obvious in a way no argument
+would.
+
+**COMPLETION RESOLVES THE IDENTITY, WHICH IS THE WHOLE POINT.** Joining
+the last light of `winged` does not reveal a different object — the same
+arrangement simply becomes symmetrical, and *that* is the "oh". The
+figure then blazes, gathers, wakes and roams exactly as build 0769 left
+it, and the thing that roams is recognisably the thing the child
+completed.
+
+**A JOIN IS WRITTEN `"0-1"`, AND THE STARS BOUNDARY IS WHY.** The first
+draft wrote joins as `[[0,1],[1,2]]` — the obvious shape — and the
+research log's export refused the whole artifact as `stars-shaped-data`.
+The scan was right: in this product a list of integer pairs is exactly
+what a Magic Card's constellation looks like, and the guard cannot tell
+a figure's relationships from a child's credential by looking. **The
+guard is not weakened and the spelling moves**, which is the same answer
+this repository has now reached twenty-one times for a word matching
+inside its own vocabulary — and the eleventh time the thing being
+protected was the Stars.
+
+### Judgement, fixture by fixture
+
+Every judgement below is from looking at the rendered sky, not from
+reading the data.
+
+| fixture | level | what might a child think this is? | verdict |
+|---|---|---|---|
+| `control-ring` | A | *"a circle of dots"* | **geometric.** Deliberate, incomplete, meaningless. The control working. |
+| `control-arc` | A | *"three little lines"* | **geometric, and worse.** Two gaps break an open curve into unrelated fragments. |
+| `curled` | B | *"a hook? something curled up?"* | **suggestive, modest.** Six lights only turn the coil about one and a half times, so it reads more like a hook than a curl. The loose outer light is a stray. |
+| `winged` | B | *"a bird? a moth? something with wings?"* | **the strongest in the set.** Symmetrical body, two reaches, one of them plainly detached. The gap is unmistakably the missing piece of its identity. |
+| `swimming` | B | *"a fish? a tadpole? something swimming?"* | **strong.** Taper plus a forked tail; the severed middle reads as a break rather than as a design. |
+| `branching` | B | *"a plant? — and two loose stars"* | **the weakest figure.** The trunk and its one limb read fine; two orphaned lights do not join the picture. Kept because it is what taught the detached-point finding. |
+| `cupped` | B | *"hands? a nest? a boat? something holding something?"* | **strong, and the most emotionally suggestive.** It is open at the one place that would let it hold anything. |
+| `adrift` | C | *"I don't know — a seed? a bud? something drifting?"* | **the ambiguity works.** Plainly something, nameable as nothing, and two children would answer differently. |
+
+Against §10's questions: all six figures look **intentional**; five of
+six **suggest something before completion**; the missing relationship
+feels **meaningful rather than arbitrary** in `winged`, `swimming`,
+`cupped` and `adrift`, and arbitrary in `branching`; completion creates
+an **"oh"** most clearly in `winged` and `cupped`; and it still reads as
+the Ether rather than as a puzzle game, because nothing is announced,
+counted, timed or scored.
+
+### Mobile
+
+Measured on a 390×844 phone profile against a 1440×900 laptop: every
+figure spans more than half the short edge on both, because the figure
+is normalised to the ring's own radius and that radius has always been
+a fraction of the short edge. The winged figure covers ~72% of a
+phone's width and is still plainly a winged figure. No figure collapses
+toward ambient-star scale on either.
+
+### Open, and not decided here
+
+- **Six lights is not many for a curl.** `curled` would read better at
+  eight, which is the schema's own ceiling. Whether the ceiling should
+  move is a product question, not this experiment's.
+- **The two controls and the six figures share one signature**, because
+  `EtherGrammar.signature()` does not read the arrangement at all — so
+  the pool's `reskin-of-existing` rule cannot tell two arrangements
+  apart however different their figures. It costs nothing today (no
+  figure is in the pool) and would matter the moment two were.
+- **Whether a real child sees any of this** is untested and untestable
+  here.
+
+### Files
+
+`tools/ether-mystery-lab/labKit.js` — `FIGURE_EXPERIMENTS`,
+`FIGURE_BANK`, the `unfinished-figure` preset, the `figure` schema
+documentation. Screenshots:
+`tools/ether-mystery-lab-test/shots/figures/`. Suite section: `UF`.

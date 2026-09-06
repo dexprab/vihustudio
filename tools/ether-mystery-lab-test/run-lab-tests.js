@@ -2293,6 +2293,269 @@ function sectionC() {
 }
 
 // ===================================================================
+// UF. THE UNFINISHED FIGURE — a Lab-only visual experiment.
+//
+// The question is whether an unfinished arrangement can suggest that
+// it is SOMETHING before it comes alive. What a machine can prove is
+// narrow and worth proving: that the eight authored fixtures are real
+// candidates the real validator accepts, that they are NOT rings, that
+// the joins and the gaps are the authored ones rather than drawn at
+// random, that they hold Ether scale on a laptop and on a phone, that
+// what comes alive is the same arrangement the child completed, and
+// that nothing about any of it is reachable from production.
+//
+// WHETHER ANY OF THEM LOOKS LIKE ANYTHING IS NOT PROVED HERE and is
+// not claimed: that is the reviewer's, from the screenshots.
+// ===================================================================
+async function sectionUF() {
+  console.log('\n== UF. the unfinished figure (Lab experiment) ==');
+  const { chromium } = require('playwright');
+  const sb = kitSandbox();
+  const G = sb.window ? sb.window.EtherGrammar : sb.EtherGrammar;
+  const Kit = sb.EtherMysteryLabKit || (sb.window && sb.window.EtherMysteryLabKit);
+  const Support = sb.LabPreviewSupport || (sb.window && sb.window.LabPreviewSupport);
+  const bank = Kit.FIGURE_BANK;
+  const meta = Kit.FIGURE_EXPERIMENTS;
+
+  // ---- UF1: they are real candidates ----
+  const verdicts = bank.map((c) => ({ id: c.id, v: G.validate(c) }));
+  ck(bank.length === 8 && verdicts.every((r) => r.v.ok),
+    'UF1  all eight authored fixtures are VALID through the real validator',
+    verdicts.filter((r) => !r.v.ok).map((r) => r.id + ':' + r.v.reasons).join(' ') || '8/8');
+  const levels = meta.map((m) => m.level).join('');
+  ck(levels.indexOf('A') === 0 && meta.filter((m) => m.level === 'A').length === 2 &&
+     meta.filter((m) => m.level === 'B').length === 5 &&
+     meta.filter((m) => m.level === 'C').length === 1,
+    'UF1b the set compares pure geometry (2), figure-suggestive (5) and ambiguous (1)',
+    levels);
+  ck(meta.every((m) => typeof m.mightBe === 'string' && m.mightBe.length > 4),
+    'UF1c every fixture carries the evaluator question — "what might a child think this is?"');
+
+  // ---- UF2: nothing in it names a thing ----
+  //
+  // THE WHOLE CREATIVE RULE. A figure is points and relationships; the
+  // moment a shape can be asked for by word this becomes named-shape
+  // recognition, which is what the experiment must not be. Checked over
+  // the CANDIDATES (what reaches the interpreter) and over the seam,
+  // never over the evaluator's own notes — `mightBe` is a question a
+  // person asks about a picture and is deliberately full of nouns.
+  const NAMED = /\b(bird|fish|butterfly|leaf|shell|creature|animal|face|whale|snake|flower|tree|star-shape)\b/i;
+  ck(!NAMED.test(JSON.stringify(bank)),
+    'UF2  not one candidate names a thing it might be');
+  ck(!NAMED.test(stripComments(read('js/etherMystery.js'))) &&
+     !NAMED.test(stripComments(read('js/etherGrammar.js'))),
+    'UF2b and neither does the seam — there is no shape vocabulary to ask for');
+  ck(JSON.stringify(bank).indexOf('family') === -1 &&
+     JSON.stringify(bank).indexOf('mightBe') === -1,
+    'UF2c the evaluator\'s own labels never travel inside a candidate');
+
+  // ---- UF3: every one of them can be shown ----
+  const sup = bank.map((c) => Support.support(c));
+  ck(sup.every((s) => s.ok),
+    'UF3  every fixture is previewable by the interpreter as it stands',
+    sup.filter((s) => !s.ok).map((s) => s.reasons.join(',')).join(' | ') || '8/8');
+
+  // ---- UF4: the geometry is the authored geometry ----
+  //
+  // A ring can only ever join each light to the next one round, so a
+  // node with three joins is proof that a figure is NOT a ring — and
+  // it is the thing the whole experiment needed: a body with limbs.
+  const degrees = meta.filter((m) => m.figure).map((m) => {
+    const d = {};
+    m.figure.joins.forEach((j) => {
+      const ab = j.split('-');
+      d[ab[0]] = (d[ab[0]] || 0) + 1; d[ab[1]] = (d[ab[1]] || 0) + 1;
+    });
+    return { id: m.id, max: Math.max.apply(null, Object.keys(d).map((k) => d[k])) };
+  });
+  ck(degrees.filter((d) => d.max >= 3).length >= 2,
+    'UF4  at least two figures branch — a light joined to three others, which a ring cannot do',
+    degrees.map((d) => d.id.replace('lab-figure-', '') + ':' + d.max).join(' '));
+  ck(meta.filter((m) => m.figure).every((m) =>
+      m.figure.joins.length - m.figure.gaps.length >= 2),
+    'UF4b every figure keeps enough joins to still be read');
+
+  // ---- UF5: production is not reachable from any of this ----
+  const pool = sb.EtherExperiencePool || (sb.window && sb.window.EtherExperiencePool);
+  const active = pool.experiences.filter((e) => e.status === 'active');
+  ck(active.length > 0 && active.every((e) => !e.candidate.arrangement),
+    'UF5  no ACTIVE pool experience carries an arrangement, so the figure path is unreachable in production',
+    active.length + ' active, ' + active.filter((e) => e.candidate.arrangement).length + ' with an arrangement');
+  const held = pool.experiences.filter((e) => e.status === 'experiment');
+  ck(held.length === 1 && held[0].candidate.arrangement &&
+     !held[0].candidate.arrangement.figure,
+    'UF5b the held Unfinished Pattern is still held, and is still the plain arc it was');
+  ck(!/\bfigure\s*:/.test(read('assets/ether/experience-pool.js')),
+    'UF5c and no shipped pool entry carries a figure of its own');
+
+  // ---- UF6: the seam is inert when nothing asks for it ----
+  //
+  // Driven through the REAL interpreter on the real page, because the
+  // claim is about behaviour rather than about a branch: a ring
+  // candidate must still lay out as a ring, every light the same
+  // distance from the middle.
+  const server = spawn('node', ['tools/bring-it-alive/test/serve.js', String(PORT)],
+    { cwd: ROOT, stdio: 'ignore' });
+  await new Promise((res) => setTimeout(res, 900));
+  const browser = await chromium.launch({
+    executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome'
+  });
+  try {
+    const measure = async (vp) => {
+      const page = await browser.newPage({ viewport: vp });
+      await page.goto(BASE + '/tools/ether-mystery-lab/preview.html');
+      await page.waitForFunction(() => !!window.LabPreview, null, { timeout: 20000 });
+      const out = {};
+      for (const c of bank) {
+        out[c.id] = await page.evaluate((cand) => {
+          window.LabPreview.play(cand, 'uf-seed');
+          const i = window.LabPreview.instrument();
+          if (!i || !i.arrangement) return null;
+          const els = i.elements.filter((e) => e.show === 'node');
+          const xs = els.map((e) => e.x), ys = els.map((e) => e.y);
+          // Every pairwise distance, so the shape can be compared with
+          // the one that was authored without knowing where the sky
+          // put it or which way round it turned it.
+          const D = [];
+          for (let a = 0; a < els.length; a++) {
+            for (let b = a + 1; b < els.length; b++) {
+              D.push(Math.hypot(els[a].x - els[b].x, els[a].y - els[b].y));
+            }
+          }
+          return {
+            n: els.length,
+            pairs: D,
+            w: Math.max.apply(null, xs) - Math.min.apply(null, xs),
+            h: Math.max.apply(null, ys) - Math.min.apply(null, ys),
+            short: Math.min(window.innerWidth, window.innerHeight),
+            links: i.arrangement.links.map((L) => L.a + '-' + L.b).join(' '),
+            gapPairs: i.arrangement.links
+              .map((L, k) => (L.present ? null : k)).filter((k) => k !== null).join(',')
+          };
+        }, c);
+      }
+      await page.close();
+      return out;
+    };
+    const desk = await measure({ width: 1440, height: 900 });
+    const phone = await measure({ width: 390, height: 844 });
+
+    // THE SHAPE ON THE SKY IS THE SHAPE THAT WAS AUTHORED. Every
+    // pairwise distance is divided by the same distance in unit space;
+    // for a faithful placement those ratios are ONE number (the scale),
+    // whatever the sky did about where to put it or which way to turn
+    // it. A ring ignores the points entirely, so reverting the seam
+    // sends this straight red.
+    const fidelity = meta.filter((m) => m.figure).map((m) => {
+      const pts = m.figure.points, got = desk[m.id];
+      if (!got) return { id: m.id, drift: Infinity };
+      const want = [];
+      for (let a = 0; a < pts.length; a++) {
+        for (let b = a + 1; b < pts.length; b++) {
+          want.push(Math.hypot(pts[a][0] - pts[b][0], pts[a][1] - pts[b][1]));
+        }
+      }
+      const k = want.map((d, j) => got.pairs[j] / d);
+      const lo = Math.min.apply(null, k), hi = Math.max.apply(null, k);
+      return { id: m.id, drift: hi / lo };
+    });
+    ck(fidelity.every((f) => f.drift < 1.02),
+      'UF6  every figure is placed as it was authored — one scale, no distortion',
+      fidelity.map((f) => f.id.replace('lab-figure-', '') + ':x' + f.drift.toFixed(4)).join(' '));
+    const figIds = meta.filter((m) => m.figure).map((m) => m.id);
+
+    // THE SEAM IS INERT WHEN NOTHING ASKS FOR IT. With no figure the
+    // interpreter still joins each light to the next one round, which
+    // is the ring formula's own signature — and a figure's joins are
+    // the authored ones, which a ring could never produce.
+    ck(desk['lab-figure-control-ring'] &&
+       desk['lab-figure-control-ring'].links === '0-1 1-2 2-3 3-4 4-5 5-0' &&
+       desk['lab-figure-control-arc'].links === '0-1 1-2 2-3 3-4 4-5 5-6',
+      'UF6b a ring and an arc with no figure are laid out exactly as they always were',
+      desk['lab-figure-control-ring'] ? desk['lab-figure-control-ring'].links : 'not posed');
+    ck(figIds.every((id) => {
+      const m = meta.find((x) => x.id === id);
+      return desk[id].links === m.figure.joins.join(' ');
+    }), 'UF6c and every figure carries its own authored joins, which a ring cannot express',
+      desk['lab-figure-winged'].links);
+
+    // The gaps are the authored ones. A ring shuffles which joins are
+    // missing; on a figure the gap IS the missing piece of its
+    // identity, so it may never be drawn at random.
+    const gapsRight = figIds.every((id) => {
+      const m = meta.find((x) => x.id === id);
+      return desk[id] && desk[id].gapPairs === m.figure.gaps.join(',');
+    });
+    ck(gapsRight, 'UF7  the missing joins are the authored ones, never shuffled',
+      figIds.map((id) => id.replace('lab-figure-', '') + ':' + (desk[id] && desk[id].gapPairs)).join(' '));
+
+    // ETHER SCALE, on both (§7). The largest primitive before the
+    // pattern existed was the veil at 156px.
+    const smallDesk = figIds.filter((id) => !(desk[id].w > desk[id].short * 0.5));
+    const smallPhone = figIds.filter((id) => !(phone[id].w > phone[id].short * 0.5));
+    ck(!smallDesk.length && !smallPhone.length,
+      'UF8  every figure spans the sky on a laptop AND on a phone',
+      'desktop ' + figIds.map((id) => Math.round(desk[id].w)).join('/') +
+      ' on 900 · phone ' + figIds.map((id) => Math.round(phone[id].w)).join('/') + ' on 390');
+
+    // ---- UF9: what comes alive is what the child completed ----
+    const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+    await page.goto(BASE + '/tools/ether-mystery-lab/preview.html');
+    await page.waitForFunction(() => !!window.LabPreview, null, { timeout: 20000 });
+    const winged = bank.find((c) => c.id === 'lab-figure-winged');
+    const alive = await page.evaluate(async (cand) => {
+      window.LabPreview.play(cand, 'uf-alive');
+      // A LIGHT IS NOT ARMED IN THE FRAME IT IS PLACED IN, so the
+      // completion waits exactly as a child does. And the loop is
+      // BOUNDED: a check that can hang looks like a broken product when
+      // it is a broken check.
+      await new Promise((r) => setTimeout(r, 1400));
+      const my = window.LabPreview.mystery();
+      let i = my.instrument();
+      const posed = i.arrangement.links.map((L) => L.a + '-' + L.b).join(' ');
+      let guard = 40;
+      while (guard-- > 0 && i && i.arrangement && i.arrangement.missingLeft > 0) {
+        const gap = i.arrangement.links.filter((L) => !L.present)[0];
+        my.touchAt(i.elements[gap.a].x, i.elements[gap.a].y);
+        my.touchAt(i.elements[gap.b].x, i.elements[gap.b].y);
+        i = my.instrument();
+      }
+      const live = window.LabPreview.instrument();
+      const whole = live ? live.arrangement.links.filter((L) => L.present).length : -1;
+      await new Promise((r) => setTimeout(r, 7000));
+      const w = window.LabPreview.alive();
+      return { posed: posed, whole: whole, count: w.length, nodes: w[0] && w[0].nodes };
+    }, winged);
+    ck(alive.whole === 6 && alive.count === 1 && alive.nodes === 7,
+      'UF9  a completed figure comes alive with all seven of its lights and every join',
+      JSON.stringify(alive));
+    await page.close();
+  } finally {
+    await browser.close();
+    server.kill();
+  }
+
+  // ---- UF10: the research log carries what a reviewer needs ----
+  const session = Kit.createSession();
+  bank.forEach((c) => session.add(c,
+    { source: 'fixture', params: { experiment: 'unfinished-figure' } }));
+  const rows = session.items();
+  const wingedRow = rows.find((r) => r.candidate.id === 'lab-figure-winged');
+  session.review(wingedRow.labId, 'good', [], 'reads as something');
+  const log = session.exportResearch();
+  const row = log.artifact.candidates.find((r) => r.candidate.id === 'lab-figure-winged');
+  ck(!!row && row.figureExperiment && row.figureExperiment.family === 'winged figure' &&
+     row.figureExperiment.nodes === 7 && row.figureExperiment.missing === 1 &&
+     row.candidate.arrangement.figure.joins.length === 6,
+    'UF10 the research log carries the fixture, its family, its nodes, its joins and its gaps',
+    row ? JSON.stringify(row.figureExperiment) : 'no row');
+  ck(log.artifact.candidates.some((r) => r.humanJudgement && r.humanJudgement.classification),
+    'UF10b and the human judgement travels with it');
+  ck(log.artifact.productionReady === false,
+    'UF10c and it is still marked research-only');
+}
+
+// ===================================================================
 (async () => {
   try {
     await sectionS();
@@ -2302,6 +2565,7 @@ function sectionC() {
     await sectionB();
     await sectionP();
     await sectionR();
+    await sectionUF();
   } catch (e) {
     fail('suite crashed', (e && e.stack || String(e)).split('\n')[0]);
   }
