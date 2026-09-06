@@ -947,10 +947,20 @@ async function sectionP() {
     activeUnsupported.map((e) => e.candidate.id).join(','));
   // And the retired one cannot — which is the rule catching the very
   // entry the runtime has no branch for.
-  const retired = entries.filter((e) => e.status !== 'active')[0];
+  // 'NOT ACTIVE' STOPPED MEANING 'RETIRED' when a fourth status
+  // arrived: 'experiment' is an entry that is finished and waiting on
+  // a product decision rather than one that was withdrawn, and it
+  // previews perfectly — which is the whole reason it is held in the
+  // Lab. This check is about the RETIRED one, so it names it.
+  const retired = entries.filter((e) => e.status === 'retired')[0];
   ck(retired && !Support.support(retired.candidate).ok &&
      Support.support(retired.candidate).reasons.indexOf('onEngage:brighten') !== -1,
     'P2b the retired entry is refused by name, for the capability it names');
+  const held = entries.filter((e) => e.status === 'experiment');
+  ck(held.every((e) => Support.support(e.candidate).ok),
+    'P2c and an entry held as an experiment previews — that is what it is for',
+    held.filter((e) => !Support.support(e.candidate).ok)
+        .map((e) => e.candidate.id).join(','));
   // REPRESENTED is written down; it must never claim something the
   // interpreter has no branch for.
   const interp = stripComments(read('js/etherMystery.js'));

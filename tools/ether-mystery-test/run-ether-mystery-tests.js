@@ -1138,27 +1138,61 @@ function lookAt(h, x, y) {
   // ================================================================
 
   // A helper: pose the canonical experience and wait for its lights.
-  // THE COMPOSER MAY HAVE GOT THERE FIRST. begin() refuses while an
-  // instance is live (one mystery at a time is the rule), so a harness
-  // that poses immediately after crossing the threshold is racing the
-  // Composer's own choice. Wait for the stage to be free, then pose —
-  // which is what the Composer itself does.
+  // THE UNFINISHED PATTERN IS HELD IN THE LAB, so it is not in the
+  // production pool and the page's own layer will never offer it. The
+  // harness mounts the interpreter over the real universe with the
+  // experiment supplied — which is EXACTLY what the Lab's preview does
+  // (tools/ether-mystery-lab/labPreview.js), so what is measured here
+  // is the same engine a reviewer judges. The production layer is torn
+  // down first, so there is still one stage and one canvas.
   async function poseFigure(pg) {
-    let got = null;
-    for (let attempt = 0; attempt < 40 && got !== 'a-figure-not-yet-whole'; attempt++) {
-      got = await pg.evaluate(() => {
-        const my = window.vihuEtherMystery;
-        if (my.live()) return 'busy';
-        return my.begin('a-figure-not-yet-whole', { look: null });
+    // AN ARRANGEMENT NEEDS A REAL CREATION, so the feed has to have
+    // arrived. Measured on the phone profile: the Stories land seconds
+    // after the threshold, and mounting before that refuses with
+    // `no-suitable-creation` — the interpreter doing its job, and a
+    // harness reading it as a broken product.
+    await pg.waitForFunction(() =>
+      window.vihuPlanetUniverse && window.vihuPlanetUniverse.stories.count() > 0,
+      null, { timeout: 20000 });
+    const got = await pg.evaluate(async () => {
+      const txt = await (await fetch('/assets/ether/experience-pool.js')).text();
+      const g = {}; (new Function('window', txt))(g);
+      const entry = g.EtherExperiencePool.experiences
+        .filter((e) => e.candidate && e.candidate.arrangement)[0];
+      if (!entry) return 'no-experiment';
+      if (window.vihuEtherMystery) {
+        try { window.vihuEtherMystery.destroy(); } catch (e) {}
+      }
+      const my = window.EtherMystery.mount(window.vihuPlanetUniverse, {
+        life: window.vihuEtherLife,
+        pool: { experiences: [{ status: 'active', source: 'lab', candidate: entry.candidate }] }
       });
-      if (got !== 'a-figure-not-yet-whole') await pg.waitForTimeout(500);
-    }
+      if (!my) return 'no-mount';
+      window.vihuEtherMystery = my;
+      window.__experiment = entry.candidate;
+      return my.begin(entry.candidate.id, { look: null }) || 'begin-refused';
+    });
     if (got !== 'a-figure-not-yet-whole') return null;
     await pg.waitForFunction(() => {
       const i = window.vihuEtherMystery.instrument();
       return i && i.elements.length && i.elements[0].alpha > 0.5;
     }, null, { timeout: 8000 });
     return pg.evaluate(() => window.vihuEtherMystery.instrument());
+  }
+
+  // Join every missing link, the way a child does — two taps a pair.
+  async function completeFigure(pg) {
+    return pg.evaluate(() => {
+      const my = window.vihuEtherMystery;
+      let i = my.instrument();
+      while (i && i.arrangement && i.arrangement.missingLeft > 0) {
+        const gap = i.arrangement.links.filter((L) => !L.present)[0];
+        my.touchAt(i.elements[gap.a].x, i.elements[gap.a].y);
+        my.touchAt(i.elements[gap.b].x, i.elements[gap.b].y);
+        i = my.instrument();
+      }
+      return true;
+    });
   }
 
   // U1 — the figure exists, and it is a figure rather than a cluster.
@@ -1439,32 +1473,258 @@ function lookAt(h, x, y) {
     await context.close();
   }
 
-  // U7 — nothing accumulates: after the whole experience the stage is
-  // empty again and there is still exactly one canvas.
+  // U7 — TURNED ROUND, WITH ITS REASON IN PLACE. This read "the figure
+  // leaves nothing behind — one canvas, empty stage", which was right
+  // when a completed figure faded. The product rule is now the
+  // opposite: a completed figure is NOT dissolved, it comes alive and
+  // stays in the sky. What U7 was really guarding is that nothing
+  // ACCUMULATES, and that is still true and still checked — the
+  // mystery itself ends, there is still one canvas, and what lives on
+  // is bounded (see U11).
   {
     const { page, context } = await freshPage();
     await poseFigure(page);
-    await page.evaluate(() => {
-      const my = window.vihuEtherMystery;
-      let i = my.instrument();
-      while (i && i.arrangement && i.arrangement.missingLeft > 0) {
-        const gap = i.arrangement.links.filter((L) => !L.present)[0];
-        my.touchAt(i.elements[gap.a].x, i.elements[gap.a].y);
-        my.touchAt(i.elements[gap.b].x, i.elements[gap.b].y);
-        i = my.instrument();
-      }
-    });
+    await completeFigure(page);
     await page.waitForFunction(() =>
       window.vihuEtherMystery.live() === null, null, { timeout: 15000 });
     await page.waitForTimeout(12000);
     const end = await page.evaluate(() => ({
       canvases: document.querySelectorAll('.vp-ether-mystery').length,
       live: window.vihuEtherMystery.live(),
-      instrument: window.vihuEtherMystery.instrument()
+      instrument: window.vihuEtherMystery.instrument(),
+      alive: window.vihuEtherMystery.wanderers()
     }));
     ck(end.canvases === 1 && end.live === null && end.instrument === null,
-       'U7  the figure leaves nothing behind — one canvas, empty stage');
-    ck(page.errors.length === 0, 'U7b zero page errors', page.errors[0]);
+       'U7  the mystery itself ends — one canvas, no live instance');
+    ck(end.alive.length === 1 && end.alive[0].nodes === 6,
+       'U7b and what the child completed is STILL THERE, alive',
+       JSON.stringify(end.alive));
+    ck(page.errors.length === 0, 'U7c zero page errors', page.errors[0]);
+    await context.close();
+  }
+
+  // ================================================================
+  // U8+. THE PATTERN BECOMES ALIVE — the product rule this sprint
+  //      exists for: completing the figure is the BEGINNING of the
+  //      discovery, never the end of it.
+  // ================================================================
+
+  // U8 — it does not vanish. For seconds after the last join the whole
+  // figure is still there, lit, where the child left it.
+  {
+    const { page, context } = await freshPage();
+    await poseFigure(page);
+    await completeFigure(page);
+    await page.waitForTimeout(2000);
+    const held = await page.evaluate(() => {
+      const my = window.vihuEtherMystery;
+      const i = my.instrument();
+      return {
+        stillThere: !!i,
+        lit: i ? i.elements.filter((e) => e.alpha > 0.6).length : 0,
+        nodes: i ? i.elements.length : 0,
+        gone: my.wanderers().length,
+        outcome: my.outcomes()[0] ? my.outcomes()[0].ending : null
+      };
+    });
+    ck(held.stillThere && held.lit === 6 && held.nodes === 6,
+       'U8  two seconds after the last join the figure is whole and lit',
+       JSON.stringify(held));
+    ck(held.outcome === 'discovery' && held.gone === 0,
+       'U8b it has answered, and it has NOT left yet — it wakes where it stands');
+    await page.screenshot({ path: path.join(SHOTS, 'u8-whole-and-waking.png') });
+    ck(page.errors.length === 0, 'U8c zero page errors', page.errors[0]);
+    await context.close();
+  }
+
+  // U9 — and then it leaves under its own power, and keeps going.
+  {
+    const { page, context } = await freshPage();
+    const posed = await poseFigure(page);
+    const from = { x: posed.arrangement.centre.x, y: posed.arrangement.centre.y };
+    await completeFigure(page);
+    await page.waitForFunction(() =>
+      window.vihuEtherMystery.wanderers().length > 0, null, { timeout: 15000 });
+    const born = await page.evaluate(() => window.vihuEtherMystery.wanderers()[0]);
+    ck(born.nodes === 6 && born.links === 6,
+       'U9  the figure the child completed is what came alive — every light, every join',
+       JSON.stringify({ n: born.nodes, l: born.links }));
+
+    // It roams: sampled over time, it goes somewhere and does not stop
+    // there, and its path is not a straight line to anything.
+    const track = [];
+    for (let t = 0; t < 14; t++) {
+      await page.waitForTimeout(1000);
+      const w = await page.evaluate(() => window.vihuEtherMystery.wanderers()[0] || null);
+      if (w) track.push({ x: w.x, y: w.y, resting: w.resting });
+    }
+    const last = track[track.length - 1];
+    const left = Math.hypot(last.x - from.x, last.y - from.y);
+    let travelled = 0;
+    for (let i = 1; i < track.length; i++) {
+      travelled += Math.hypot(track[i].x - track[i - 1].x, track[i].y - track[i - 1].y);
+    }
+    ck(left > 150, 'U9b it leaves the place the child found it',
+       Math.round(left) + 'px from where the figure stood');
+    // A WANDER, NOT A ROUTE — AND THE FIRST VERSION MEASURED THE WRONG
+    // THING. It compared the travelled path against the straight line
+    // from where the FIGURE stood, which includes a second the path
+    // does not, and is flattened further by every second the wanderer
+    // spends resting: measured across six wanderers the ratio came out
+    // 0.94 to 1.47 on identical behaviour, so it was a coin toss rather
+    // than a property. What "wanders" actually means is that the
+    // DIRECTION OF TRAVEL keeps changing, which nothing else confounds.
+    let turned = 0, prev = null;
+    for (let i = 1; i < track.length; i++) {
+      const dx = track[i].x - track[i - 1].x, dy = track[i].y - track[i - 1].y;
+      if (Math.hypot(dx, dy) < 1) continue;            // it was resting
+      const h = Math.atan2(dy, dx);
+      if (prev !== null) {
+        let d = h - prev;
+        while (d > Math.PI) d -= Math.PI * 2;
+        while (d < -Math.PI) d += Math.PI * 2;
+        turned += Math.abs(d);
+      }
+      prev = h;
+    }
+    const rested = track.filter((p) => p.resting).length;
+    ck(travelled > 150 && turned > 0.5,
+       'U9c and it wanders rather than travelling to a destination',
+       Math.round(travelled) + 'px travelled, ' +
+       (Math.round(turned * 100) / 100) + ' rad of turning, ' + rested + 's resting');
+    ck(page.errors.length === 0, 'U9d zero page errors', page.errors[0]);
+    await page.screenshot({ path: path.join(SHOTS, 'u9-roaming.png') });
+    await context.close();
+  }
+
+  // U10 — it stays part of the sky, and the sky carries on around it:
+  // another mystery can be posed while it roams, and it is still there
+  // afterwards. That is what "encounter it again" needs to be true.
+  {
+    const { page, context } = await freshPage();
+    await poseFigure(page);
+    await completeFigure(page);
+    await page.waitForFunction(() =>
+      window.vihuEtherMystery.wanderers().length > 0, null, { timeout: 15000 });
+    await page.waitForTimeout(1500);
+    const second = await page.evaluate(() => {
+      const my = window.vihuEtherMystery;
+      return { began: my.begin(window.__experiment.id, { look: null }),
+               alive: my.wanderers().length };
+    });
+    ck(second.began === 'a-figure-not-yet-whole' && second.alive === 1,
+       'U10 a new mystery can be posed while the last one is still out there',
+       JSON.stringify(second));
+    await page.waitForTimeout(20000);
+    const later = await page.evaluate(() => window.vihuEtherMystery.wanderers());
+    ck(later.length >= 1 && later[0].age > 20,
+       'U10b and twenty seconds on it is still alive in the sky',
+       later.length ? 'age ' + later[0].age + 's' : 'gone');
+    ck(page.errors.length === 0, 'U10c zero page errors', page.errors[0]);
+    await context.close();
+  }
+
+  // U11 — bounded, which is what "nothing accumulates" now means. Three
+  // completed figures leave at most the ceiling alive; the oldest is
+  // never deleted in front of a child, it drifts on and dims.
+  {
+    const { page, context } = await freshPage();
+    await poseFigure(page);
+    for (let round = 0; round < 3; round++) {
+      // POSE ON THE SAME LAYER. poseFigure() mounts a fresh interpreter,
+      // and a wanderer lives inside one — remounting between rounds
+      // would take the sky down with it and measure nothing.
+      if (round > 0) {
+        const again = await page.evaluate(() =>
+          window.vihuEtherMystery.begin(window.__experiment.id, { look: null }));
+        if (!again) break;
+        await page.waitForFunction(() => {
+          const i = window.vihuEtherMystery.instrument();
+          return i && i.elements.length && i.elements[0].alpha > 0.5;
+        }, null, { timeout: 8000 });
+      }
+      await completeFigure(page);
+      // `live()` goes null the moment the figure starts WAKING, which
+      // is four seconds before it leaves and before begin() will take
+      // another one. The honest signal that this round is over is the
+      // wanderer itself — measured: waiting on live() posed round two
+      // into a still-closing instance, begin() refused, and the check
+      // reported an empty sky as a broken ceiling.
+      await page.waitForFunction((n) =>
+        window.vihuEtherMystery.wanderers().length > n, round, { timeout: 20000 });
+      await page.waitForTimeout(300);
+    }
+    const cap = await page.evaluate(() => ({
+      all: window.vihuEtherMystery.wanderers(),
+      limit: window.EtherMystery.LIMITS.wanderers,
+      canvases: document.querySelectorAll('.vp-ether-mystery').length
+    }));
+    const staying = cap.all.filter((w) => !w.leaving);
+    ck(staying.length <= cap.limit && cap.all.length >= 2 && cap.canvases === 1,
+       'U11 the sky holds the ceiling and no more',
+       staying.length + ' staying of ' + cap.all.length + ', limit ' + cap.limit);
+    ck(cap.all.some((w) => w.leaving) || cap.all.length <= cap.limit,
+       'U11b and an evicted one drifts out rather than being deleted');
+    ck(page.errors.length === 0, 'U11c zero page errors', page.errors[0]);
+    await context.close();
+  }
+
+  // U12 — THE WORLD SAYS IT, NEVER WORDS. No label, no marker, no
+  // count, no success message: the transformation is visual or it does
+  // not exist.
+  {
+    const { page, context } = await freshPage();
+    const before = await page.evaluate(() => document.body.innerText);
+    await poseFigure(page);
+    await completeFigure(page);
+    await page.waitForFunction(() =>
+      window.vihuEtherMystery.wanderers().length > 0, null, { timeout: 15000 });
+    await page.waitForTimeout(2000);
+    const out = await page.evaluate((was) => {
+      const now = document.body.innerText;
+      const had = new Set(was.split('\n').map((l) => l.trim()).filter(Boolean));
+      return {
+        added: now.split('\n').map((l) => l.trim())
+          .filter((l) => l && !had.has(l)),
+        // The layer itself: one canvas, and a canvas holds no words.
+        layers: document.querySelectorAll('.vp-ether-mystery').length,
+        layerText: Array.prototype.map
+          .call(document.querySelectorAll('.vp-ether-mystery'),
+                (c) => c.textContent).join('')
+      };
+    }, before);
+    // NOT a whole-page text comparison: the Ether's own exploration
+    // nudge arrives on its own clock (Decision 58), so a page that says
+    // exactly what it said before would be measuring that clock rather
+    // than this behaviour. What must be true is that the transformation
+    // itself wrote nothing — the layer is a canvas, and nothing it did
+    // put a word anywhere.
+    ck(out.layers === 1 && out.layerText === '',
+       'U12 the transformation is drawn — the layer is one canvas and holds no words');
+    const words = out.added.join(' ').toLowerCase();
+    ck(!/complete|solved|well done|congrat|success|score|level|follow it|creature|alive/
+        .test(words),
+       'U12b and nothing new on screen names it, praises it or explains it',
+       out.added.join(' | '));
+    ck(page.errors.length === 0, 'U12c zero page errors', page.errors[0]);
+    await context.close();
+  }
+
+  // U13 — HELD IN THE LAB. The production pool does not offer it, so no
+  // child meets it until somebody writes 'active'.
+  {
+    const pool = read('assets/ether/experience-pool.js');
+    ck(/status: 'experiment'/.test(pool),
+       'U13 the unfinished pattern is held as an experiment, not shipped');
+    const { page, context } = await freshPage();
+    const live = await page.evaluate(() => {
+      const d = window.vihuEtherMystery.diagnostics();
+      return { keys: d.activeKeys, report: d.pool.map((r) => r.id + ':' + r.status) };
+    });
+    ck(live.keys.indexOf('a-figure-not-yet-whole') === -1,
+       'U13b and the production Ether never offers it', live.keys.join(','));
+    ck(live.report.indexOf('a-figure-not-yet-whole:experiment') !== -1,
+       'U13c while staying in the pool report, finished and waiting');
     await context.close();
   }
 

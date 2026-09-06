@@ -12245,3 +12245,45 @@ whether a six-year-old notices it, knows what to try and feels the magic
 is the product owner's to find out. Suite:
 `tools/ether-mystery-test/` 63 → 83 (section **U**), four reversion
 proofs. Detail: `docs/ETHER_MYSTERY_CHALLENGE_ARCHITECTURE.md`.
+
+## The Pattern becomes alive (build 0769)
+
+A product rule from the product owner: **the completion is the beginning
+of the discovery, never the end of it.** A child who joins the last
+light has not solved a puzzle and been paid; they have found out what
+the thing IS. So the completed figure is never dissolved, never swapped
+for a reveal and never tidied away — UNFINISHED → notice → experiment →
+whole → **alive** → **roaming the Ether**, and the last question,
+*where is it going?*, is the next mystery rather than the end of this
+one.
+
+It stays where it stands first: for 4.4 seconds after the last join the
+figure is still there, whole and lit, blazing and then drawing itself in
+and taking a breath while the ring softens out of its geometry — *I did
+not make it disappear, I made it come alive*. A posed figure is spread
+out to be read across the sky and a living thing is not a diagram, so it
+gathers to 72% and keeps breathing at that size. Then it sets off (one
+heading, quicker — it is going somewhere) and only then wanders, with
+real pauses. The first build got that wrong: a pure wander curled back
+on itself and covered 73px in sixteen seconds, which reads as drifting
+in place rather than as leaving.
+
+A wanderer is neither part of the instance nor an effect — the mystery
+ends and a new one can be posed while the last is still out there. It
+**wraps**, unlike the creature layer's visitors, so turning the universe
+can find it again. Bounded at two, and a third arrival sets the oldest
+drifting and dimming rather than deleting it. Only the SHAPE travels: a
+wanderer carries no candidate, no grammar, no creation and no outcome.
+The Creation still awakens alongside; nothing is written on screen at
+all — no label, no count, no success message.
+
+**Held in the Lab**, on the product owner's instruction: the pool entry
+is `status: 'experiment'` — finished, judged in the Lab, offered to no
+child until somebody writes `'active'` — and build 0768's canon truth
+went with it, on that build's own rule that the canon changes in the
+commit which makes a mystery visible. Suite:
+`tools/ether-mystery-test/` U1–U13 (U7 turned round with its reason in
+place), with two harness lessons recorded: remounting the layer kills
+what lives in it, and `live()` goes null when the figure starts waking
+rather than when it has left. Detail:
+`docs/ETHER_MYSTERY_CHALLENGE_ARCHITECTURE.md`.

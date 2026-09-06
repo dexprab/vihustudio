@@ -8598,10 +8598,100 @@ leads somewhere.
   behind. **Whether a six-year-old notices it, knows what to try, and
   feels the magic is the product owner's to find out**, and the sprint
   stops here rather than moving to the next grammar or capability.
-- `tools/ether-mystery-test/` section **U** (83 in all), proved by
+- `tools/ether-mystery-test/` section **U**, proved by
   reverting the completion rule (U3c + U4), the missing-link check (U2),
   the sweep (U4 + U4b, 530px → 110px) and the figure's own layout
   (U1b + U4b + U5), one at a time.
+- **THE PATTERN BECOMES ALIVE. THE COMPLETION IS THE BEGINNING OF THE
+  DISCOVERY, NEVER THE END OF IT** (build 0769, stated by the product
+  owner as a product rule). A child who joins the last light has not
+  solved a puzzle and been paid; they have found out what the thing IS.
+  So the figure is **never dissolved, never swapped for a reveal, and
+  never tidied away**: UNFINISHED → notice → experiment → the joins are
+  made → **whole** → **alive** → **roaming the Ether**. The last
+  question is *where is it going?*, and that is the next mystery rather
+  than the end of this one.
+- **IT STAYS WHERE IT STANDS FIRST, and that beat is the whole point.**
+  For 4.4 seconds after the last join the figure is still there, whole
+  and lit: it blazes, draws itself in, and takes a breath while the ring
+  softens out of its geometry and begins to undulate. Measured — two
+  seconds after completion all six lights are still above 0.6 alpha and
+  nothing has left. *I did not make it disappear. I made it come
+  alive.* Only then does it go anywhere.
+- **A SHAPE GATHERS ITSELF UP.** A posed figure is spread out to be read
+  across the sky; a living thing is not a diagram. It draws in to 72% as
+  it wakes and keeps breathing at that size — the clearest thing on
+  screen that says it CHANGED rather than simply carried on.
+- **IT SETS OFF, AND THEN IT EXPLORES — and the first build got that
+  wrong.** A pure wander at 0.42 rad/s curled back on itself and covered
+  73px in sixteen seconds, which reads as drifting in place rather than
+  as leaving. So the first leg holds roughly one heading and is quicker
+  (it is going somewhere) and only then does the heading wander (it is
+  looking around), with real pauses to look at things. Measured over
+  fourteen seconds: ~300px from where the figure stood, on a path longer
+  than the straight line. **Nothing aims at anything** — no target, no
+  route, no arrival, which is the whole difference between a living
+  thing and an animation travelling a reward path. Even the first leg
+  drifts: a straight line is the one thing a living thing never draws.
+- **IT STAYS PART OF THE SKY.** A wanderer is neither part of the
+  instance nor an effect — an effect is a transient light with a
+  duration, and this is a being that lives here now. The MYSTERY ends
+  (a new one can be posed while the last is still out there) and what
+  the child completed lives on. It **WRAPS**, unlike the creature
+  layer's visitors: a being that crosses once is met once, and this one
+  can be found again by turning the universe, which is what "encounter
+  it again" needs to be true.
+- **BOUNDED IS NOT THE SAME AS TEMPORARY.** `LIMITS.wanderers` is 2, and
+  a third arrival does not delete the oldest — it sets it drifting and
+  dimming over six seconds. Nothing accumulates; nothing is deleted in
+  front of a child either.
+- **ONLY THE SHAPE TRAVELS.** A wanderer carries no candidate, no
+  grammar, no creation and no outcome. It is a living thing now, and it
+  knows nothing about having been a question.
+- **THE CREATION STILL AWAKENS.** The light still crosses to its Spirit
+  and the ring still sweeps out from where it lands — that is the world
+  answering, and the pattern's own life is a separate thing happening at
+  the same time. Neither replaces the other.
+- **NOTHING IS WRITTEN.** No label, no marker, no count, no timer, no
+  progress, no success message, no instruction to follow it. Measured:
+  the layer is one canvas holding no text at all, and nothing new
+  appears on screen that names it, praises it or explains it. **U12 is
+  deliberately NOT a whole-page text comparison** — the Ether's own
+  exploration nudge arrives on its own clock, so a page that said
+  exactly what it said before would be measuring that clock rather than
+  this behaviour.
+- **HELD IN THE LAB, ON THE PRODUCT OWNER'S INSTRUCTION**: *"for the
+  Lab, this is still an experiment — do not move anything into
+  production Ether."* The pool entry is `status: 'experiment'` — a
+  fourth status meaning PENDING rather than withdrawn: the experience is
+  finished, it is judged in the Lab, and no child meets it until
+  somebody writes `'active'`. Only `'active'` was ever selectable, so
+  the runtime needed no change to honour it. **Reactivating is one
+  word.**
+- **AND THE CANON TRUTH WENT WITH IT.** Build 0768 added a section-23
+  truth describing the pattern experience; with nothing live it would
+  have had the Companion telling a child about something they cannot
+  meet. It is removed, on the previous build's own rule — *the canon
+  changes in the commit that makes a mystery visible* — and returns in
+  the commit that activates it. Studio Knowledge and Live Context are
+  untouched.
+- **A HARNESS THAT REMOUNTS THE LAYER KILLS WHAT LIVES IN IT.** The
+  suite's `poseFigure()` mounts a fresh interpreter (the experience is
+  not in production, so it is supplied exactly as the Lab's preview
+  supplies it) — and the ceiling check posed three figures that way and
+  measured zero wanderers, because each remount took the sky down with
+  it. It poses on the SAME layer between rounds now.
+- **AND AN ARRANGEMENT NEEDS A REAL CREATION TO EXIST YET.** On the
+  phone profile the Stories land seconds after the threshold, so
+  mounting immediately refused with `no-suitable-creation` — the
+  interpreter doing its job, read by a harness as a broken product. It
+  waits for the feed.
+- `tools/ether-mystery-test/` section **U** grew to U1–U13 (`U7` turned
+  round with its reason in place: it read *"the figure leaves nothing
+  behind — empty stage"*, which was right when a completed figure faded
+  and is the opposite of the product rule now; what it was really
+  guarding — that nothing ACCUMULATES — is still true and still checked).
+  Proved by reverting the awakening itself and watching the figure fade.
 - Out of scope and not implemented: creature encounters as a reward
   system, creature dialogue, a Companion in the Ether, per-Traveller
   encounter history, more activity rows (story hunt, missing

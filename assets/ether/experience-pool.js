@@ -22,6 +22,11 @@
 // it here with status 'active'. TO RETIRE ONE: flip its status and
 // say why — it stays for the record, and stops being selectable on
 // the next load.
+//
+// 'experiment' is the fourth status and it means PENDING rather than
+// withdrawn: the entry is finished, it is judged in the Lab, and no
+// child meets it until somebody writes 'active'. Only 'active' is ever
+// selectable, so the runtime needs to know nothing about the word.
 
 (function (global) {
   'use strict';
@@ -32,11 +37,18 @@
       // THE UNFINISHED PATTERN — the canonical experience the product
       // contract is written around (Decision 58): a figure of lights
       // that is obviously deliberate and obviously not finished; the
-      // child reads it, joins what is missing, and a real creation
-      // already living in the Ether awakens for it. Authored rather
-      // than generated, and the source says so.
+      // child reads it, joins what is missing, and it COMES ALIVE and
+      // roams the Ether. Authored rather than generated, and the source
+      // says so.
+      //
+      // HELD IN THE LAB, ON THE PRODUCT OWNER'S INSTRUCTION: "for the
+      // Lab, this is still an experiment — do not move anything into
+      // production Ether." The whole experience is built and works; it
+      // is judged in the Lab (tools/ether-mystery-lab/), where the
+      // interpreter is the same one the sky runs. Reactivating it is
+      // one word.
       {
-        status: 'active',
+        status: 'experiment',
         source: 'authored',
         approved: '2026-09-06',
         candidate: {

@@ -317,9 +317,16 @@
     var canFind = possible.indexOf('discovery') !== -1;
     var discovery;
     if (c.arrangement && canFind) {
-      discovery = 'Once the figure is whole it blazes, a light crosses ' +
-        'the sky to a real creation living out there, and where it ' +
-        'lands a ring sweeps out across the whole view.';
+      // WHAT THE REVIEWER IS ACTUALLY JUDGING. Completing the figure is
+      // the beginning of the discovery rather than the end of it, so
+      // the description has to say that it stays — a reviewer told the
+      // pattern "resolves" would read its own survival as a bug.
+      discovery = 'Once the figure is whole it blazes, and a light ' +
+        'crosses the sky to a real creation living out there. The ' +
+        'figure itself does NOT go: it gathers itself up, takes a ' +
+        'breath where it stands, and then sets off into the Ether on ' +
+        'its own. It stays in the sky, roaming — you can follow it, ' +
+        'and you can come across it again later.';
     } else if (canFind) {
       discovery = (DISCOVERY_WORDS[out.discovery] || 'something is found') + '.';
       discovery = discovery.charAt(0).toUpperCase() + discovery.slice(1);
@@ -342,6 +349,10 @@
         ', and the sky may come back to that place later.';
     } else {
       next = 'Nothing is left behind.';
+    }
+    if (c.arrangement) {
+      next += ' And the thing that came alive is still out there — ' +
+        'where it goes is the next question, and nobody answers it.';
     }
 
     return { mystery: mystery, action: action, discovery: discovery, next: next };

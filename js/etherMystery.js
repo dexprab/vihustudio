@@ -57,7 +57,8 @@
     lifeS: 90,           // default seconds before an untaken mystery dissolves
     fadeS: 2.4,          // seconds the closing fade takes
     appearS: 2.0,        // seconds an element takes to arrive
-    outcomesKept: 24     // diagnostics ring bound
+    outcomesKept: 24,    // diagnostics ring bound
+    wanderers: 2         // completed figures roaming the sky at once
   };
 
   // THE UNFINISHED PATTERN — the one primitive that makes the
@@ -88,9 +89,46 @@
     coreMax: 16,
     joinS: 0.55,         // a new link draws itself over this long
     igniteS: 1.6,        // the completed figure blazes for this long
-    closeS: 3.6,         // and a pattern takes longer to let go than
-                         // an ordinary mystery, because the blaze is
-                         // the payoff and must be seen before the fade
+    // A COMPLETED FIGURE IS NOT DISMISSED. It stays, blazes, takes a
+    // breath, and only then leaves under its own power — long enough
+    // for a child to understand that they did not make it disappear.
+    wakeS: 4.4,
+    // AND THEN IT ROAMS. Every number here is about a living thing
+    // looking around rather than a reward travelling to a destination:
+    // a slow speed, a heading that wanders, and real pauses.
+    roam: {
+      // IT SETS OFF, AND THEN IT EXPLORES. Measured on the first
+      // build: a pure wander at 0.42 rad/s curled back on itself and
+      // covered 73px in sixteen seconds — which reads as drifting in
+      // place, not as leaving. So the first leg holds one heading and
+      // is quicker (it is going somewhere), and only then does the
+      // heading start to wander (it is looking around).
+      departS: 3.5,
+      departSpeed: 30,
+      departTurn: 0.35,            // even setting off, it is not a ruler
+      speedMin: 13, speedMax: 26,  // field px per second, afterwards
+      turn: 0.3,                   // radians per second of wandering
+      // AND ITS OWN GENTLE BIAS. Measured: the wander is two summed
+      // sines whose phase comes from the wanderer's seed, and for some
+      // seeds that sum sits near zero for ten seconds — so whether the
+      // thing curved at all was a coin toss, and a straight line is
+      // exactly what it must never draw. A small per-wanderer curl
+      // means every one of them arcs, and no seed produces a ruler.
+      curl: 0.11,                  // radians per second, its own way
+      restEvery: [8, 16],          // seconds between pauses
+      restFor: [3, 8],             // and how long it stops to look
+      settleS: 3.2,                // waking brightness eases to resting
+      restGlow: 0.58,
+      swim: 0.13,                  // how much the figure undulates
+      // A SHAPE GATHERS ITSELF UP WHEN IT WAKES. The posed figure is
+      // spread out to be read across the sky; a living thing is not a
+      // diagram, so it draws in as it comes alive — which is the
+      // clearest thing on screen that says it CHANGED rather than
+      // simply carried on.
+      gather: 0.72,
+      breath: 0.045,
+      leaveS: 6                    // an evicted wanderer drifts out
+    },
     sweepFrac: 0.72      // the awakening's ring, of the view diagonal
   };
 
@@ -202,6 +240,7 @@
         },
         begin: function () { return null; },
         live: function () { return null; },
+        wanderers: function () { return []; },
         touchAt: function () { return false; },
         instrument: function () { return null; },
         diagnostics: function () { return { quiet: true, pool: loaded.report.slice() }; },
@@ -239,6 +278,13 @@
 
     // ---------- session state (dies with the page) ----------
     var inst = null;           // the one live instance, or null
+    // A COMPLETED FIGURE OUTLIVES ITS MYSTERY. Wanderers are not part
+    // of the instance and are not effects: an effect is a transient
+    // light with a duration, and this is a living thing that stays in
+    // the sky for the rest of the visit. Bounded (LIMITS.wanderers)
+    // rather than unlimited, because nothing in this layer may ever
+    // accumulate — but bounded is not the same as temporary.
+    var wanderers = [];
     var effects = [];          // transient lights, bounded
     var outcomes = [];         // diagnostics ring
     var time = 0;
@@ -419,6 +465,10 @@
         el.x = el.home.x = look.x + Math.cos(ang) * r;
         el.y = el.home.y = look.y + Math.sin(ang) * r * PATTERN.squash;
         el.node = i;
+        // THE FIGURE'S OWN SHAPE, kept in polar form. It is what wakes
+        // and swims once the figure is whole, and it is the only thing
+        // a wanderer inherits — a shape, not a mystery.
+        el.polar = { ang: ang, r: r };
       }
       // Links join consecutive nodes; a ring closes, an arc does not.
       var links = [];
@@ -441,6 +491,51 @@
         cx: look.x, cy: look.y, radius: r,
         missingLeft: missing, sel: null, igniteAt: -1
       };
+    }
+
+    // ---------- the figure comes alive ----------
+    // THE COMPLETION IS THE BEGINNING OF THE DISCOVERY, NOT THE END OF
+    // IT. A child who joins the last light has not solved a puzzle and
+    // been paid; they have found out what the thing IS. So the figure
+    // is never dissolved, never swapped for a reward, and never tidied
+    // away: it takes a breath where it stands, and then it goes off
+    // into the Ether under its own power. The question the child is
+    // left holding is "where is it going?", which is the next mystery
+    // rather than the end of this one.
+    function awaken(pat) {
+      // Only the SHAPE travels. A wanderer carries no candidate, no
+      // grammar, no creation and no outcome — it is a living thing
+      // now, and it knows nothing about having been a question.
+      var pts = pat.nodes.map(function (el) {
+        return { ang: el.polar.ang, r: el.polar.r, tw: el.tw };
+      });
+      var w = {
+        pts: pts,
+        links: pat.links.map(function (L) { return { a: L.a, b: L.b }; }),
+        cx: pat.cx, cy: pat.cy,
+        heading: rand(0, Math.PI * 2),
+        speed: rand(PATTERN.roam.speedMin, PATTERN.roam.speedMax),
+        seed: Math.random() * 1000,
+        curl: (Math.random() < 0.5 ? -1 : 1) *
+              rand(PATTERN.roam.curl * 0.6, PATTERN.roam.curl),
+        t: 0, born: time,
+        glow: 1,                       // eases to its resting brightness
+        scale: PATTERN.roam.gather,    // already drawn in, from the wake
+        rest: 0,
+        restAt: rand(PATTERN.roam.restEvery[0], PATTERN.roam.restEvery[1]),
+        leaving: -1
+      };
+      wanderers.push(w);
+      // THE CEILING PUSHES THE OLDEST OUT SLOWLY, never abruptly: it
+      // drifts on and dims rather than vanishing, so a child watching
+      // one never sees the sky delete something.
+      var alive = wanderers.filter(function (o) { return o.leaving < 0; });
+      while (alive.length > LIMITS.wanderers) {
+        alive.shift().leaving = time;
+      }
+      emit('mystery:alive', { nodes: pts.length, at: { x: w.cx, y: w.cy } });
+      dlog({ alive: pts.length, at: { x: Math.round(w.cx), y: Math.round(w.cy) } });
+      return w;
     }
 
     // ---------- begin: the Composer chose this experience ----------
@@ -578,7 +673,7 @@
         img: img,
         born: time,
         lifeS: Math.min(con.lifeS || LIMITS.lifeS, grammar.CAPABILITIES.bounds.lifeS),
-        fadeS: pattern ? PATTERN.closeS : LIMITS.fadeS,
+        fadeS: LIMITS.fadeS,
         state: 'posed',        // posed → closing → gone
         ending: null,
         closeAt: 0,
@@ -661,8 +756,14 @@
       if (outcomes.length > LIMITS.outcomesKept) outcomes.shift();
       inst.state = 'closing';
       inst.ending = ending;
-      inst.closeAt = time + (inst.fadeS || LIMITS.fadeS);
+      // A COMPLETED FIGURE DOES NOT FADE — the closing window is where
+      // it wakes instead, and it is longer for exactly that reason.
+      // An untaken or unresolved one lets go the ordinary way.
+      inst.waking = !!(inst.pattern && ending === 'discovery');
+      inst.fadeS = inst.waking ? PATTERN.wakeS : LIMITS.fadeS;
+      inst.closeAt = time + inst.fadeS;
       inst.elements.forEach(function (el) {
+        if (inst.waking && el.show === 'node') return;   // it stays lit
         el.target = 0;
         // A discovery lets what was hidden be SEEN for a breath as
         // everything closes — the veil parts before the light leaves.
@@ -800,7 +901,56 @@
       draw();
     }
 
+    // A LIVING THING LOOKING AROUND, never a path to a destination.
+    // The heading wanders on its own two slow waves, it stops to look
+    // at things, and it swims — the ring it used to be breathes in and
+    // out as it goes. Nothing here aims at anything: there is no
+    // target, no route and no arrival.
+    function roam(dt) {
+      var R = PATTERN.roam;
+      for (var i = wanderers.length - 1; i >= 0; i--) {
+        var w = wanderers[i];
+        w.t += dt;
+        // The waking brightness settles to a resting one. It stays
+        // visible — a child must be able to follow it — but it stops
+        // being the loudest thing in the sky.
+        var settle = clamp(w.t / R.settleS, 0, 1);
+        w.glow = 1 - (1 - R.restGlow) * settle;
+        if (w.leaving >= 0) {
+          w.glow *= clamp(1 - (time - w.leaving) / R.leaveS, 0, 1);
+          if (time - w.leaving > R.leaveS) { wanderers.splice(i, 1); continue; }
+        }
+        // Pauses. It stops, looks, and goes on somewhere else.
+        if (w.rest > 0) {
+          w.rest -= dt;
+          if (w.rest <= 0) {
+            w.restAt = w.t + rand(R.restEvery[0], R.restEvery[1]);
+            w.speed = rand(R.speedMin, R.speedMax);
+            w.heading += rand(-1.2, 1.2);
+          }
+        } else if (w.t >= w.restAt) {
+          w.rest = rand(R.restFor[0], R.restFor[1]);
+        }
+        var moving = w.rest > 0 ? 0 : 1;
+        // Even the first leg drifts a little — a straight line is the
+        // one thing a living thing never draws.
+        var departing = w.t < R.departS;
+        w.heading += (w.curl +
+                      (Math.sin(w.t * 0.13 + w.seed) +
+                       Math.sin(w.t * 0.29 + w.seed * 1.7) * 0.5) * R.turn) *
+                     dt * (departing ? R.departTurn : 1);
+        var speed = departing
+          ? R.departSpeed * clamp(w.t / 1.2, 0, 1)   // it gathers pace
+          : w.speed;
+        w.cx += Math.cos(w.heading) * speed * moving * dt;
+        w.cy += Math.sin(w.heading) * speed * moving * dt * 0.72;
+        // It keeps breathing wherever it is — resting included.
+        w.scale = R.gather + R.breath * Math.sin(w.t * 0.95 + w.seed);
+      }
+    }
+
     function update(dt) {
+      roam(dt);
       for (var i = effects.length - 1; i >= 0; i--) {
         effects[i].t += dt;
         if (effects[i].kind === 'travel' && effects[i].t >= effects[i].dur &&
@@ -821,6 +971,31 @@
       if (!inst) return;
 
       if (inst.state === 'closing') {
+        if (inst.waking) {
+          // THE FIGURE TAKES A BREATH WHERE IT STANDS. The blaze runs
+          // down, the ring softens out of its geometry and begins to
+          // undulate — this beat exists so a child sees that what they
+          // completed is alive, before it is anywhere else.
+          var pat = inst.pattern;
+          var R0 = PATTERN.roam;
+          var wake = clamp(1 - (inst.closeAt - time) / inst.fadeS, 0, 1);
+          var we = wake * wake * (3 - 2 * wake);
+          pat.wake = wake;
+          // It draws itself in and breathes — a shape becoming a being.
+          var gather = 1 - (1 - R0.gather) * we +
+                       R0.breath * we * Math.sin(time * 2.1);
+          for (var wi = 0; wi < pat.nodes.length; wi++) {
+            var wn = pat.nodes[wi];
+            wn.alpha = Math.min(1, wn.alpha + dt * 2);
+            var swim = gather * (1 + R0.swim * we *
+              Math.sin(time * 1.05 + wi * 0.9));
+            var ang = wn.polar.ang + 0.07 * we * Math.sin(time * 0.7 + wi);
+            wn.x = pat.cx + Math.cos(ang) * wn.polar.r * swim;
+            wn.y = pat.cy + Math.sin(ang) * wn.polar.r * PATTERN.squash * swim;
+          }
+          if (time >= inst.closeAt) { awaken(pat); inst = null; }
+          return;
+        }
         inst.elements.forEach(function (el) {
           el.alpha = Math.max(0, el.alpha - dt / (inst.fadeS || LIMITS.fadeS));
         });
@@ -932,7 +1107,7 @@
     }
 
     function draw() {
-      if (!inst && !effects.length) {
+      if (!inst && !effects.length && !wanderers.length) {
         if (stageDirty) {
           ctx.setTransform(1, 0, 0, 1, 0, 0);
           ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -1093,6 +1268,56 @@
         }
       }
 
+      // THE WANDERERS — drawn before the effects and after the posed
+      // mystery, because they belong to the sky rather than to any
+      // question. They WRAP, unlike the creature layer's visitors: a
+      // being that crossed once is met once, and this one lives here
+      // now, so turning the universe can find it again.
+      for (i = 0; i < wanderers.length; i++) {
+        var w = wanderers[i];
+        var wx = nearestCopy(w.cx + cam.x, ether.width, cx);
+        var wy = nearestCopy(w.cy + cam.y, ether.height, cy);
+        var wcore = clamp(shortEdge() * PATTERN.coreFrac,
+                          PATTERN.coreMin, PATTERN.coreMax);
+        var wa = w.glow * breath;
+        var wpts = [];
+        for (var pi = 0; pi < w.pts.length; pi++) {
+          var pt = w.pts[pi];
+          // It swims: the ring it used to be breathes as it travels,
+          // which is the whole difference between a shape and a being.
+          var sw = w.scale * (1 + PATTERN.roam.swim *
+            Math.sin(w.t * 1.05 + pi * 0.9 + w.seed));
+          var pa = pt.ang + 0.07 * Math.sin(w.t * 0.7 + pi + w.seed);
+          wpts.push({
+            x: wx + Math.cos(pa) * pt.r * sw,
+            y: wy + Math.sin(pa) * pt.r * PATTERN.squash * sw
+          });
+        }
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = rgba(glowRgb, wa * 0.3);
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        for (var li = 0; li < w.links.length; li++) {
+          var wl = w.links[li];
+          ctx.moveTo(wpts[wl.a].x, wpts[wl.a].y);
+          ctx.lineTo(wpts[wl.b].x, wpts[wl.b].y);
+        }
+        ctx.stroke();
+        ctx.lineWidth = 1;
+        for (var ni = 0; ni < wpts.length; ni++) {
+          var tw3 = 0.88 + 0.12 * Math.sin(w.t * 1.3 + ni * 1.7 + w.seed);
+          ctx.globalAlpha = wa * 0.3 * tw3;
+          ctx.drawImage(glowSprite,
+            wpts[ni].x - wcore * 3.6, wpts[ni].y - wcore * 3.6,
+            wcore * 7.2, wcore * 7.2);
+          ctx.globalAlpha = wa * tw3;
+          ctx.fillStyle = rgba(starRgb, 1);
+          ctx.beginPath();
+          ctx.arc(wpts[ni].x, wpts[ni].y, wcore * 0.6 * tw3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
       for (i = 0; i < effects.length; i++) {
         var fx = effects[i];
         if (fx.kind === 'travel') {
@@ -1188,6 +1413,20 @@
           effects: effects.map(function (f) { return f.kind; })
         };
       },
+      // What is alive in the sky right now. Positions and shape only —
+      // a wanderer holds nothing else, so there is nothing else to
+      // report. It is the suite's and the Lab's window, exactly as
+      // instrument() is, and never anything a child reads.
+      wanderers: function () {
+        return wanderers.map(function (w) {
+          return {
+            nodes: w.pts.length, links: w.links.length,
+            x: w.cx, y: w.cy, age: Math.round((time - w.born) * 10) / 10,
+            glow: Math.round(w.glow * 100) / 100,
+            resting: w.rest > 0, leaving: w.leaving >= 0
+          };
+        });
+      },
       outcomes: function () { return outcomes.slice(); },
       diagnostics: function () {
         return {
@@ -1195,6 +1434,7 @@
           pool: loaded.report.slice(),
           activeKeys: loaded.active.map(function (a) { return a.id; }),
           live: inst ? { key: inst.key, state: inst.state } : null,
+          alive: wanderers.length,
           outcomes: outcomes.slice()
         };
       },

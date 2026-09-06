@@ -476,6 +476,14 @@
     instrument: function () {
       return (run && run.mystery) ? run.mystery.instrument() : null;
     },
+    // What is ALIVE in the preview sky. A completed figure outlives its
+    // own mystery, so `instrument()` going null is no longer the end of
+    // anything — this is how the suite watches it roam.
+    alive: function () {
+      return (run && run.mystery && run.mystery.wanderers)
+        ? run.mystery.wanderers() : [];
+    },
+    mystery: function () { return run ? run.mystery : null; },
     universe: function () { return run ? run.universe : null; },
     ripple: function () { return run ? run.ripple : null; },
     candidate: function () { return current ? current.candidate : null; },

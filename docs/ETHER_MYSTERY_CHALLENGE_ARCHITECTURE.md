@@ -549,10 +549,83 @@ child had to read first is multi-step and can be got wrong. The
 exemption is narrow — it applies only where `arrangement` is present,
 which is already bound to a real creation and a real awakening.
 
+## The Pattern becomes alive (build 0769)
+
+**The completion is the beginning of the discovery, never the end of
+it.** A child who joins the last light has not solved a puzzle and
+collected a reward; they have found out what the thing IS. So the
+figure is never dissolved, never swapped for a reveal, and never tidied
+away.
+
+The sequence is:
+
+> UNFINISHED → the child notices → the child experiments → the joins are
+> made → **the figure is whole** → **it comes alive** → **it roams into
+> the Ether**
+
+**It stays where it stands first.** For 4.4 seconds after the last join
+the figure is still there, whole and lit — it blazes, then draws itself
+in and takes a breath while the ring softens out of its geometry and
+begins to undulate. That beat exists for one reason: *I did not make it
+disappear. I made it come alive.* Only after it is unmistakably a being
+does it go anywhere.
+
+**A shape gathers itself up.** A posed figure is spread out to be read
+across the sky; a living thing is not a diagram. It draws in to 72% as
+it wakes, and keeps breathing at that size for the rest of its life —
+which is the clearest thing on screen that says it CHANGED rather than
+simply carried on.
+
+**Then it sets off, and then it explores.** The first leg holds roughly
+one heading and is quicker: it is going somewhere. After that the
+heading wanders on two slow waves, the speed drops, and it stops to look
+at things. Measured over fourteen seconds: ~300px from where the figure
+stood, on a path longer than the straight line, with real pauses.
+Nothing aims at anything — there is no target, no route and no arrival,
+which is the difference between a living thing and an animation
+travelling a reward path.
+
+**It stays in the sky.** A wanderer is neither part of the instance nor
+an effect: the mystery itself ends (a new one can be posed while the
+last is still out there), and what the child completed lives on. It
+**wraps**, unlike the creature layer's visitors — a being that crosses
+once is met once, and this one lives here now, so turning the universe
+can find it again. Bounded at `LIMITS.wanderers` (2): a third arrival
+does not delete the oldest, it sets it drifting and dimming.
+
+**Only the shape travels.** A wanderer carries no candidate, no grammar,
+no creation and no outcome. It is a living thing now, and it knows
+nothing about having been a question.
+
+**The Creation still awakens** — the light still crosses to its Spirit
+and the ring still sweeps out from where it lands. That is the world
+answering; the pattern's own life is a separate thing that happens at
+the same time.
+
+**Nothing is written.** No label, no marker, no count, no success
+message, no instruction to follow it. The layer is a canvas and it holds
+no words. The last question — *where is it going?* — is the next mystery,
+and nobody answers it.
+
+**HELD IN THE LAB.** On the product owner's instruction (*"for the Lab,
+this is still an experiment — do not move anything into production
+Ether"*), the pool entry is `status: 'experiment'`: finished, judged in
+the Lab, and offered to no child until somebody writes `'active'`. Only
+`'active'` is ever selectable, so the runtime needs to know nothing
+about the word. Canon carries no truth about it while that is so — the
+canon changes in the commit that puts it in front of a child.
+
 Suite: `tools/ether-mystery-test/` section **U** walks it on the real
 page — the figure, its span on a laptop and on a phone, a pair that does
 not belong, a join appearing, the figure not being finished a gap early,
 the awakening measured in painted pixels, the entity untouched, the
-Traveller's drag intact, and nothing left behind. Proved by reverting
-the completion rule, the missing-link check, the sweep and the figure's
-own layout, one at a time.
+Traveller's drag intact; then that it is still whole and lit two seconds
+after the last join, that it comes alive with every light and every join
+intact, that it leaves and wanders rather than travelling, that it is
+still there twenty seconds later while a new mystery is posed, that the
+ceiling holds, that not one word is written, and that production never
+offers it. The harness mounts the interpreter with the experiment
+supplied — exactly as the Lab's preview does — because it is not in the
+production pool. Proved by reverting the completion rule, the
+missing-link check, the sweep, the figure's own layout, and the
+awakening itself, one at a time.
