@@ -12340,3 +12340,81 @@ plain arc carrying no figure, and `UF6b` proves the ring/arc layout is
 untouched), and it is reported rather than quietly re-tuned — changing
 a guard this sprint did not write would look like weakening one.
 Everything else in that suite is green (102 of 103).
+
+## The Creature Mystery — can you bring it to life? (Lab only)
+
+The Unfinished Figure's answer was that abstract geometry is not
+sufficiently meaningful: the best fixtures reached *"a bird? a moth?"*
+and the controls reached *"a circle of dots"*. So this experiment gives
+the child one short sentence before they look — *A hunter of the open
+sky is waiting…* — and asks whether the progression the product wants
+actually happens: **see → wonder → join the right lights → it's alive →
+where did it go?**
+
+Five hand-authored creatures (falcon, polar bear, whale, fox, octopus),
+seven or eight lights each, one to three missing joins, every one VALID
+through the real validator and previewable by the interpreter exactly as
+it stands. **Zero production files changed.** The creature's name and
+its hint are Lab metadata, the candidate ids are opaque (`lab-cm-1`…),
+and the hint is drawn by the Lab's own preview — `js/etherMystery.js`
+still renders no text, so the production Ether still contains not one
+instruction.
+
+**The hint does the work the geometry could not.** The same eight lights
+that read as an abstract shape read as *a bird with a loose wing* the
+moment the sentence above them says what kind of thing is waiting. The
+gaps stop being missing bits of a shape and become the missing bits of
+an animal. *"Connect the dots"* became *"make the bird whole."*
+
+**Completion must never be a coin toss, and it was one.** `resolve()`
+draws the ending at random from the candidate's `possible` list, and it
+does so whether the child COMPLETED the figure or the mystery simply ran
+out of time — the interpreter has no notion of *ended because it was
+finished*. A creature carrying the ordinary `['discovery','unresolved']`
+therefore came alive about half the times a child finished it. Fixed
+Lab-side with `possible: ['discovery']` (which a pattern candidate is
+already exempt from `tap-for-sure-outcome` for) and **recorded as a
+product finding**: if this is ever wanted in production the honest fix
+is in the interpreter.
+
+**The fox proves the previous sprint's finding in one picture** — it is
+authored with one gap of each kind, and its loose TAIL (two lights still
+joined) reads as a piece of the animal while its loose EAR (one light
+joined to nothing) reads as a stray star. **Eight lights is not enough
+for a four-legged animal**: the bear gets a back, a head and two legs,
+and no hint rescues that. **The middle of the progression is the gap** —
+nothing teaches a child that tapping one light and then another joins
+them, and the leading hint is forbidden from saying so.
+
+Strongest: the falcon. Weakest: the polar bear. Judgement across §15's
+ten dimensions, §14's research questions A–J, the screenshots and the
+open questions: `docs/ETHER_MYSTERY_LAB.md` → *The Creature Mystery*.
+Suite section `CR` in `tools/ether-mystery-lab-test/`; shots in
+`tools/ether-mystery-lab-test/shots/creatures/`.
+
+**Five of this sprint's own new checks were wrong before the product
+was, and each was corrected rather than the product.** Two asserted that
+no candidate names its creature, which the readable fixture ids made
+false — the ids were made opaque, which is the stronger property. Two
+asserted the sky carries no words at all, and what they were reading was
+the Story Spirits' own titles: **a Spirit showing its name is the Ether
+working**, so both now measure whether anything CHANGED (nothing does)
+and whether the experiment puts anything on screen but the hint (it does
+not). One of those then read a `display:none` panel as words on screen,
+because `innerText` falls back to `textContent` for an element that is
+not rendered — **the box decides, not the markup.** And the last
+compared the sky's own text across a twenty-second walk, which a Spirit
+drifting into view changes without anything having been announced; it
+now requires every word on the sky to be a Spirit's own name.
+
+Four load-bearing checks proved by temporary reversion: a readable id
+put back (`CR3`, `CR3b` red), the figure removed from a creature so it
+lays out as a ring (`CR5`, `CR5b`, `CR6b`, `CR9b` red), the hint's
+withdrawal removed (`CR11b` red), and a creature label put on the
+child-facing stage (`CR11c` red). Lab suite 317/317.
+
+**The same pre-existing flake as last sprint.** `tools/ether-mystery-test/`
+U9b asks for more than 150px of NET displacement over a 14s sample while
+a wanderer rests 3–8s inside that window; measured three times on the
+untouched tree it gave 156px PASS, 141px FAIL, 121px FAIL. Reported
+rather than re-tuned.

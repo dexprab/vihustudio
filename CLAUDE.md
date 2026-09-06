@@ -8761,6 +8761,108 @@ leads somewhere.
   `docs/ETHER_MYSTERY_LAB.md` → *The Unfinished Figure* ·
   `tools/ether-mystery-lab-test/` section `UF` ·
   `tools/ether-mystery-lab-test/shots/figures/`
+- **A CREATURE IS HIDDEN INSIDE THE PATTERN — A LAB EXPERIMENT, AND
+  ZERO PRODUCTION FILES CHANGED.** The Unfinished Figure answered its
+  own question with *mostly not*: the best fixtures reached *"a bird? a
+  moth?"* and the controls reached *"a circle of dots"*, so **abstract
+  geometric arrangements are not sufficiently meaningful.** This asks
+  the next question by giving the child one short sentence before they
+  look — *A hunter of the open sky is waiting…* — and measuring whether
+  the progression the product wants happens: see → wonder → join the
+  right lights → **it's alive** → where did it go? Five hand-authored
+  creatures (falcon, polar bear, whale, fox, octopus), seven or eight
+  lights each, all five VALID through the real validator and previewable
+  by the interpreter as they stand.
+- **THE HINT IS THE LAB'S, AND THE ETHER STILL HAS NO INSTRUCTION IN
+  IT.** `js/etherMystery.js` draws no text at all and this did not
+  change that: the sentence lives in the Lab's own preview, fades in on
+  its own beat and withdraws the moment the creature is whole. **The
+  hint names the CATEGORY, never the answer and never the action** — no
+  hint contains its own creature's name and none contains *connect*,
+  *join*, *tap*, *dots*, *complete* or *puzzle*. Adopting a leading hint
+  into production would be its own product decision, not something this
+  sprint quietly shipped.
+- **THE CANDIDATE IDS ARE OPAQUE, AND TWO OF THIS SPRINT'S OWN CHECKS
+  ARE WHY.** A candidate is what reaches the interpreter, so a fixture
+  id reading `lab-creature-falcon` carries the evaluator's own answer
+  inside the experience. They are `lab-cm-1`…`lab-cm-5`; the creature
+  and its hint live in Lab metadata and are looked up by id for the
+  research log. Two further checks asserted the sky carries no words at
+  all and were reading the **Story Spirits' own titles** — a Spirit
+  showing its name is the Ether working — so both now measure whether
+  anything CHANGED (nothing does) and whether the experiment puts
+  anything on screen but the hint (it does not). One of those then read
+  a `display:none` panel as words on screen, because `innerText` falls
+  back to `textContent` for an element that is not rendered — **the box
+  decides, not the markup**; and the last compared the sky's text across
+  a twenty-second walk, which a Spirit drifting into view changes with
+  nothing having been announced. **Five of this sprint's own checks were
+  wrong before the product was**, and each was corrected rather than the
+  product. Four are proved by temporary reversion: a readable id put
+  back, the figure removed so a creature lays out as a ring, the hint's
+  withdrawal removed, and a creature label put on the child-facing
+  stage. Lab suite 317/317.
+- **COMPLETION MUST NEVER BE A COIN TOSS, AND IT WAS ONE.** `resolve()`
+  draws the ending at random from a candidate's `possible` list, and it
+  does so whether the child COMPLETED the figure or the mystery simply
+  ran out of time — **the interpreter has no notion of "ended because it
+  was finished"**. A creature carrying the ordinary
+  `['discovery','unresolved']` therefore came alive about half the times
+  a child finished it and faded the other half, which is the one outcome
+  this progression cannot have. Fixed LAB-SIDE with
+  `possible: ['discovery']` — a legal candidate, since a pattern is
+  already exempt from `tap-for-sure-outcome` — and **recorded as a
+  product finding**: if the Creature Mystery is ever wanted in
+  production, the honest fix is in the interpreter.
+- **THE HINT DOES THE WORK THE GEOMETRY COULD NOT, AND THAT IS THE
+  RESULT.** The same eight lights that read as an abstract shape read as
+  *a bird with a loose wing* once the sentence says what kind of thing
+  is waiting: the gaps stop being missing bits of a shape and become the
+  missing bits of an animal. *"Connect the dots"* became *"make the bird
+  whole."* **The fox proves the previous experiment's finding in one
+  picture** — authored with one gap of each kind, its loose TAIL (two
+  lights still joined) reads as a piece of the animal and its loose EAR
+  (one light joined to nothing) reads as a stray star.
+- **EIGHT LIGHTS IS NOT ENOUGH FOR A FOUR-LEGGED ANIMAL.** A back, a
+  head, a tail and four legs do not fit in eight points, so the bear
+  gets a back, a head and two legs and reads as a bent line with two
+  sticks — whatever the hint says. Flying and swimming animals are
+  silhouettes; walking animals are volumes. Whether
+  `arrangementNodesMax` should move is a product question this did not
+  answer. **Strongest: the falcon. Weakest: the polar bear.**
+- **THE MIDDLE OF THE PROGRESSION IS THE GAP.** Seeing and awakening
+  both land; *"these stars go together"* still depends on a child
+  discovering unaided that tapping one light and then another joins
+  them. Nothing teaches it and the hint may not. That is an
+  interaction-affordance question rather than a creature one, and it is
+  the biggest thing the experiment found.
+- **PER-CREATURE MOVEMENT WAS DELIBERATELY NOT BUILT.** The wanderer
+  carries every light and every join of the figure the child completed,
+  and it drifts, rests and wraps **identically for a whale and for a
+  falcon**. A bird that flew differently from a whale is the first step
+  of a creature framework, which this experiment may not build, so it is
+  disclosed rather than approximated. No creature taxonomy, anatomy,
+  categories, rarity, collection, inventory, catalogue, progression,
+  levels, rewards, ownership or persistence exists; no Challenge
+  infrastructure was added; Traveller navigation is untouched and drag
+  still turns the sky.
+- **UNREACHABLE FROM PRODUCTION, MEASURED THREE WAYS.** No ACTIVE pool
+  experience carries an arrangement at all, no creature is in the pool
+  in any status, and nothing a child loads — `js/`, `assets/`, the
+  runtime — names one. The build is deliberately NOT bumped: there is
+  nothing shipped to a child to stamp.
+- **DISCLOSED: no child has played it.** What a machine proved is the
+  geometry, the completion rule, the wrong-pair silence, the awakening,
+  the roaming, the hint's rendering and withdrawal, the mobile layout
+  and the unreachability. Whether a six-year-old feels *"I know what
+  this is, and I want to make it come alive"* is the product owner's to
+  judge from the Lab, and nothing was promoted pending that.
+- `tools/ether-mystery-lab/labKit.js` → `CREATURE_EXPERIMENTS` ·
+  `tools/ether-mystery-lab/preview.html` · `labPreview.js` ·
+  `labPreviewHost.js` · `labUi.js` ·
+  `docs/ETHER_MYSTERY_LAB.md` → *The Creature Mystery* ·
+  `tools/ether-mystery-lab-test/` section `CR` ·
+  `tools/ether-mystery-lab-test/shots/creatures/`
 - Out of scope and not implemented: creature encounters as a reward
   system, creature dialogue, a Companion in the Ether, per-Traveller
   encounter history, more activity rows (story hunt, missing

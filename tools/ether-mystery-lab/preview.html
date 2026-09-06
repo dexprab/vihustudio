@@ -35,6 +35,21 @@
                        border: 1px solid rgba(232,184,113,.5); border-radius: 999px;
                        padding: 5px 13px; align-self: center; }
 
+  /* THE LEADING HINT — the ONE thing the child-facing half of this
+     preview says, and it is drawn by the LAB rather than by the
+     interpreter: a production Mystery still carries no text at all.
+     It names what KIND of thing is waiting and never the interaction
+     (§4 — "connect the dots to make a falcon" is exactly what it may
+     not say). Ether's own paper-cream, wide letters, no box, no
+     border, nothing to press. */
+  .hint { position: absolute; left: 0; right: 0; top: 8.5%; z-index: 40;
+          text-align: center; pointer-events: none;
+          color: rgba(241,234,208,.82); font-size: 17px; font-weight: 400;
+          letter-spacing: .055em; text-shadow: 0 1px 18px rgba(10,14,28,.85);
+          padding: 0 8%; opacity: 0; transition: opacity 1.6s ease; }
+  .hint.on { opacity: 1; }
+  @media (max-width: 640px) { .hint { font-size: 15px; top: 7%; } }
+
   .unavailable { position: absolute; inset: 0; z-index: 60; display: none;
                  align-items: center; justify-content: center; padding: 40px;
                  background: rgba(18,24,43,.86); }
@@ -55,6 +70,10 @@
      alone reach it. -->
 <main class="stage">
   <div class="stage-universe" data-universe></div>
+
+  <!-- The leading hint. Lab-rendered, over the real sky, and the only
+       words in the child-facing half of the preview. -->
+  <div class="hint" data-hint></div>
 
   <div class="chrome" data-chrome hidden>
     <!-- Reviewer chrome, in the same corner as the two controls. It is

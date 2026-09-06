@@ -652,10 +652,14 @@
     b.addEventListener('click', function () {
       var blocked = b.parentNode && b.parentNode.querySelector('[data-popup-blocked]');
       if (blocked) blocked.parentNode.removeChild(blocked);
+      // A creature fixture's leading hint is LAB knowledge (its
+      // creature and its words live in labKit, never in the
+      // candidate), so it is handed to the preview alongside.
+      var note = Kit.creatureNote && Kit.creatureNote(candidate.id);
       var opened = PreviewHost.open(candidate, previewSeed, function (report) {
         if (report) demonstrated[item.labId] = report;
         renderCandidates();
-      }, mode);
+      }, mode, { hint: note ? note.hint : '' });
       if (opened && opened.ok === false && b.parentNode) {
         var n = document.createElement('div');
         n.className = 'hint';

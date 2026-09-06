@@ -139,6 +139,7 @@
   function el(sel) { return doc.querySelector(sel); }
 
   function teardown() {
+    if (run && run.hintTimer) { try { global.clearTimeout(run.hintTimer); } catch (e) {} }
     if (!run) return;
     try { if (run.mystery) run.mystery.destroy(); } catch (e) {}
     try { if (run.ripple) run.ripple.destroy(); } catch (e) {}
@@ -173,6 +174,8 @@
     if (box) box.classList.add('on');
     var chrome = el('[data-chrome]');
     if (chrome) chrome.hidden = true;
+    var hintEl = el('[data-hint]');
+    if (hintEl) { hintEl.classList.remove('on'); hintEl.textContent = ''; }
   }
 
   // The demonstration report — what the preview actually DID, read off
@@ -204,10 +207,15 @@
   //                What is performed is still the interpreter's own drawing,
   //                and a candidate the real validator refuses for any other
   //                reason is refused here too.
-  function play(candidate, seed, mode) {
+  // opts.hint — the leading hint (§4), supplied BY THE LAB rather than
+  // carried inside a candidate: the interpreter draws no text, and a
+  // production Mystery still says nothing. It names what kind of thing
+  // is waiting; it never explains the interaction.
+  function play(candidate, seed, mode, opts) {
     teardown();
     finished = false;
     mode = (mode === 'try') ? 'try' : 'play';
+    var hintText = (opts && typeof opts.hint === 'string') ? opts.hint : '';
     var box = el('[data-unavailable]');
     if (box) box.classList.remove('on');
     var badge = el('[data-try-badge]');
@@ -380,6 +388,23 @@
 
     var chrome = el('[data-chrome]');
     if (chrome) chrome.hidden = false;
+
+    // The hint arrives a moment AFTER the pattern, so the lights are
+    // the first thing seen and the words answer a question the child
+    // has already started asking. It goes when the creature is whole —
+    // from then on the thing speaks for itself.
+    if (hintText) {
+      var hint = el('[data-hint]');
+      if (hint) {
+        hint.textContent = hintText;
+        run.hintTimer = global.setTimeout(function () {
+          if (run && run.mystery === mystery) hint.classList.add('on');
+        }, 900);
+        mystery.on('mystery:joined', function (d) {
+          if (d && d.left === 0) hint.classList.remove('on');
+        });
+      }
+    }
     post('playing', { id: candidate.id, elements: report.happened.elements });
   }
 
@@ -459,7 +484,7 @@
       var d = ev && ev.data;
       if (!d || d.type !== 'lab-preview:play') return;
       epoch = (typeof d.epoch === 'number') ? d.epoch : null;
-      play(d.candidate, d.seed, d.mode);
+      play(d.candidate, d.seed, d.mode, { hint: d.hint });
     });
     post('ready', {});
   }

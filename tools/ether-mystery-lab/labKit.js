@@ -1603,6 +1603,7 @@
           // it belongs to, and the question a person is being asked
           // about it. It exists in the LOG and never in a candidate.
           figureExperiment: figureNote(i.candidate && i.candidate.id),
+          creatureExperiment: creatureNote(i.candidate && i.candidate.id),
           candidate: i.candidate
         };
       });
@@ -1709,6 +1710,12 @@
       brief: 'Mystery → curiosity → the world quietly suggests a possibility → optional challenge → discovery. Never announced.',
       count: 5,
       emphasis: 'The mystery comes first; the world itself quietly suggests one optional possibility; taking it leads to a discovery. Nothing is announced, framed as an objective, or required.'
+    },
+    'creature-mystery': {
+      title: 'Creature Mystery — Can you bring it to life?',
+      brief: 'LAB EXPERIMENT (fixtures only). Five hand-authored creatures hidden in unfinished star patterns, each with a short leading hint. Join the missing lights and the creature comes alive and roams.',
+      count: 5, needsCreation: true, fixturesOnly: true,
+      emphasis: 'This experiment is authored rather than generated. A creature is hidden inside an unfinished pattern; a short hint says what KIND of thing is waiting without explaining the interaction. Run it in FIXTURE MODE.'
     },
     'unfinished-figure': {
       title: 'Unfinished Figure — does it suggest a meaning?',
@@ -2115,6 +2122,160 @@
     return null;
   }
 
+  // ---------------------------------------------------------------
+  // THE CREATURE MYSTERY — a LAB-ONLY experiment, and the successor to
+  // the Unfinished Figure. That one asked whether an abstract
+  // arrangement could SUGGEST something and answered "a bit, and only
+  // sometimes"; this one stops being coy. A creature is hidden inside
+  // an unfinished pattern of stars, a short leading hint says what KIND
+  // of thing is waiting, and joining the missing relationships brings
+  // it to life.
+  //
+  //   SEE THE PATTERN → READ THE HINT → WONDER → JOIN THE RIGHT LIGHTS
+  //   → THE CREATURE IS WHOLE → IT COMES ALIVE → IT ROAMS → "where did
+  //   it go?"
+  //
+  // FIVE HAND-AUTHORED CREATURES, deliberately not a taxonomy, not a
+  // generator and not a roster: five controlled experiments chosen for
+  // how DIFFERENT their silhouettes and topologies are — a flier, a
+  // heavy quadruped, a flowing swimmer, a compact land animal and a
+  // radial one.
+  //
+  // THE CREATURE'S NAME AND ITS HINT ARE EVALUATOR-SIDE and never
+  // travel inside a candidate: the interpreter draws no text at all,
+  // and the hint is rendered by the Lab's own preview. A production
+  // Mystery still carries no words. `points` are unit space with
+  // POSITIVE Y DOWNWARD, exactly as the canvas; `joins` are "a-b"
+  // strings because a list of integer pairs is what a Magic Card
+  // constellation looks like and the Stars scans refuse that shape.
+  // ---------------------------------------------------------------
+  function creatureCandidate(o) {
+    return {
+      id: o.id,
+      grammar: 'reconstruct',
+      title: o.title,
+      complexity: o.complexity || 'moderate',
+      ingredients: { creation: true, creationKind: 'story' },
+      elements: [{ role: 'light', show: 'node', place: 'ring', count: o.nodes }],
+      engage: [{ action: 'tap', on: 'light' }],
+      behaviour: { onEngage: 'link', pace: 'slow' },
+      // COMPLETION MUST BRING IT ALIVE. `resolve()` draws the ending at
+      // random from `possible`, and it does that whether the child
+      // completed the figure or the mystery simply ran out of time — so
+      // a creature carrying ['discovery','unresolved'] came alive only
+      // about half the times a child finished it, which is the one
+      // outcome the progression cannot have. `['discovery']` is exempt
+      // from `tap-for-sure-outcome` precisely because a pattern is not
+      // one tap for a prize, so this is a legal candidate rather than a
+      // loosened rule. Recorded as a product finding: the interpreter
+      // has no notion of "ended because it was completed".
+      outcome: { possible: ['discovery'], discovery: 'creation-revealed' },
+      constraints: { rarity: 'rare', notBefore: 90, lifeS: 150,
+                     phases: ['exploration', 'deep'] },
+      arrangement: { shape: 'figure', nodes: o.nodes,
+                     missing: o.figure.gaps.length, figure: o.figure }
+    };
+  }
+
+  // THE ID IS OPAQUE ON PURPOSE. A candidate is what reaches the
+  // interpreter, so anything inside it is inside the experience —
+  // and an id reading `lab-creature-falcon` would carry the
+  // evaluator's own answer along with it. The creature and its hint
+  // live HERE, beside the drawing, and are looked up by id for the
+  // research log; `CR3` fails if either ever travels in a candidate.
+  var CREATURE_EXPERIMENTS = [
+    // ---- THE FLIER. Swept wings, a small head and a long tail. Both
+    // wing ROOTS are missing, so each wing floats as a PAIR rather than
+    // as a loose light — the Unfinished Figure's own finding, applied:
+    // a detached PART reads, a detached POINT does not.
+    { creature: 'falcon',
+      hint: 'A hunter of the open sky is waiting…',
+      id: 'lab-cm-1', nodes: 8, complexity: 'moderate',
+      title: 'lights swept wide, and not yet joined',
+      figure: {
+        points: [[0, -0.70], [0, -0.22], [0, 0.46], [0, 0.95],
+                 [-0.52, -0.06], [-1.10, 0.34], [0.52, -0.06], [1.10, 0.34]],
+        joins: ['0-1', '1-2', '2-3', '1-4', '4-5', '1-6', '6-7'],
+        gaps: [3, 5]
+      } },
+
+    // ---- THE HEAVY ONE. A low head, a humped back and legs beneath
+    // it. It comes apart at the shoulder and at the hip, so what floats
+    // is a foreleg and a hindquarter — two parts, never two specks.
+    { creature: 'polar bear',
+      hint: 'Something huge walks the frozen north…',
+      id: 'lab-cm-2', nodes: 8, complexity: 'deeper',
+      title: 'a heavy shape of lights, come apart in two places',
+      figure: {
+        points: [[-1.18, 0.30], [-0.86, 0.02], [-0.42, -0.20], [0.10, -0.40],
+                 [0.72, -0.16], [-0.44, 0.28], [-0.40, 0.72], [0.74, 0.70]],
+        joins: ['0-1', '1-2', '2-3', '3-4', '2-5', '5-6', '4-7'],
+        gaps: [3, 4]
+      } },
+
+    // ---- THE SWIMMER, and the easiest: ONE join missing, in the
+    // middle of the body, so the whole tail assembly drifts free of the
+    // head. The silhouette is a single flowing line and a forked fluke.
+    { creature: 'whale',
+      hint: 'A giant of the deep is waiting…',
+      id: 'lab-cm-3', nodes: 7, complexity: 'simple',
+      title: 'a long flowing line of lights, parted in the middle',
+      figure: {
+        points: [[1.15, 0.10], [0.62, -0.10], [0.05, -0.16], [-0.55, 0.02],
+                 [-1.05, -0.30], [-1.05, 0.34], [0.35, 0.52]],
+        joins: ['0-1', '1-2', '2-3', '3-4', '3-5', '1-6'],
+        gaps: [2]
+      } },
+
+    // ---- THE COMPACT ONE. A pointed ear, a long low back and a tail
+    // bigger than it ought to be. The ear is deliberately a single
+    // loose light and the tail a pair: the same figure, testing both
+    // kinds of gap at once.
+    { creature: 'fox',
+      hint: 'A quiet traveller of the forest is waiting…',
+      id: 'lab-cm-4', nodes: 8, complexity: 'moderate',
+      title: 'a low line of lights with something loose at either end',
+      figure: {
+        points: [[-0.90, -0.62], [-1.18, -0.04], [-0.70, -0.16], [-0.24, 0.00],
+                 [0.42, 0.04], [0.88, -0.20], [1.22, -0.62], [-0.16, 0.60]],
+        joins: ['0-2', '1-2', '2-3', '3-4', '4-5', '5-6', '3-7'],
+        gaps: [0, 4]
+      } },
+
+    // ---- THE RADIAL ONE, and the hardest: three of the arms are
+    // adrift at once. It is the topology test §10 asks for — whether a
+    // hub-and-spokes creature is still readable when a third of it is
+    // loose, and whether three loose POINTS still belong to anything.
+    { creature: 'octopus',
+      hint: 'Something with many arms is waiting…',
+      id: 'lab-cm-5', nodes: 8, complexity: 'deeper',
+      title: 'lights reaching out from one place, some of them adrift',
+      figure: {
+        points: [[0, -0.92], [0, -0.42], [-0.95, -0.02], [-0.72, 0.58],
+                 [-0.26, 0.95], [0.26, 0.95], [0.72, 0.58], [0.95, -0.02]],
+        joins: ['0-1', '1-2', '1-3', '1-4', '1-5', '1-6', '1-7'],
+        gaps: [2, 4, 6]
+      } }
+  ];
+
+  var CREATURE_BANK = CREATURE_EXPERIMENTS.map(creatureCandidate);
+
+  // What the LAB knows about a creature fixture and the sky never
+  // does: which creature it is, and the leading hint the preview
+  // renders over it. Looked up by candidate id, so nothing has to
+  // travel inside a candidate to get here.
+  function creatureNote(id) {
+    for (var i = 0; i < CREATURE_EXPERIMENTS.length; i++) {
+      var c = CREATURE_EXPERIMENTS[i];
+      if (c.id !== id) continue;
+      return {
+        creature: c.creature, hint: c.hint, nodes: c.nodes,
+        joins: c.figure.joins.length, missing: c.figure.gaps.length
+      };
+    }
+    return null;
+  }
+
   // The fixture generator: a deterministic stand-in that exercises the
   // IDENTICAL pipeline. Returns the same {ok, text} shape a model
   // connection returns, so nothing downstream can tell the transport
@@ -2124,6 +2285,10 @@
     // THE FIGURE EXPERIMENT HAS ITS OWN BANK, and it is emitted whole:
     // the comparison is between these eight and no others, so the
     // count control does not thin it out.
+    if (params.experiment === 'creature-mystery') {
+      return { ok: true, source: 'fixture', model: null,
+               text: JSON.stringify({ candidates: JSON.parse(JSON.stringify(CREATURE_BANK)) }) };
+    }
     if (params.experiment === 'unfinished-figure') {
       return { ok: true, source: 'fixture', model: null,
                text: JSON.stringify({ candidates: JSON.parse(JSON.stringify(FIGURE_BANK)) }) };
@@ -2151,6 +2316,9 @@
     EXPERIMENTS: EXPERIMENTS,
     FIXTURE_BANK: FIXTURE_BANK,
     FIGURE_EXPERIMENTS: FIGURE_EXPERIMENTS,
+    CREATURE_EXPERIMENTS: CREATURE_EXPERIMENTS,
+    CREATURE_BANK: CREATURE_BANK,
+    creatureNote: creatureNote,
     FIGURE_BANK: FIGURE_BANK,
     RULES_IN_WORDS: RULES_IN_WORDS,
     PRODUCT_CONTRACT: PRODUCT_CONTRACT,

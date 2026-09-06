@@ -947,3 +947,235 @@ toward ambient-star scale on either.
 `FIGURE_BANK`, the `unfinished-figure` preset, the `figure` schema
 documentation. Screenshots:
 `tools/ether-mystery-lab-test/shots/figures/`. Suite section: `UF`.
+
+## THE CREATURE MYSTERY — can you bring it to life?
+
+**A LAB EXPERIMENT. Nothing here is in the production Ether, no
+production file changed, and the Unfinished Pattern is still held at
+`status: 'experiment'`.**
+
+The Unfinished Figure asked whether an abstract arrangement could
+suggest a meaning, and answered *mostly not*: the strongest fixtures got
+as far as *"a bird? a moth?"* and the controls got as far as *"a circle
+of dots"*. **Abstract geometric arrangements are not sufficiently
+meaningful.** So this experiment stops asking the lights to carry the
+idea on their own and gives the child one short sentence before they
+look — *a creature is hidden inside this pattern* — and then asks
+whether the emotional progression the product wants actually happens:
+
+> *"What's that?"* → hint → *"Oh, maybe it's a bird…"* → experiment →
+> *"These stars go together."* → completion → **"OH! IT'S ALIVE!"** →
+> roaming → *"Where did it go?"*
+
+### The five creatures
+
+Hand-authored, one at a time, points and joins only. The creature's name
+and its hint are **Lab metadata** — the candidate that reaches the
+interpreter contains neither, and `CR3`/`CR3b` fail if either ever
+travels inside one.
+
+| fixture | lights | joins | missing | the hint the child sees |
+|---|---|---|---|---|
+| falcon | 8 | 7 | 2 | *A hunter of the open sky is waiting…* |
+| polar bear | 8 | 7 | 2 | *Something huge walks the frozen north…* |
+| whale | 7 | 6 | 1 | *A giant of the deep is waiting…* |
+| fox | 8 | 7 | 2 | *A quiet traveller of the forest is waiting…* |
+| octopus | 8 | 7 | 3 | *Something with many arms is waiting…* |
+
+**The hint names the CATEGORY, never the answer.** No hint contains its
+own creature's name, and none contains an instructional word — no
+*connect*, *join*, *tap*, *dots*, *complete*, *puzzle*. It says what
+kind of thing is waiting and leaves the whole structure to be
+discovered; `CR4`, `CR4b` and `CR4c` enforce all three properties.
+
+**The hint is rendered by the LAB, not by the interpreter.**
+`js/etherMystery.js` draws no text at all (`CR12`), and this experiment
+did not change that — the sentence lives in `preview.html`'s own `.hint`
+element, fades in on its own beat and **withdraws the moment the
+creature is whole**. So the production Ether still contains not one
+instruction, and adopting a leading hint would be its own product
+decision rather than something this sprint quietly shipped.
+
+### The findings
+
+**THE HINT DOES THE WORK THE GEOMETRY COULD NOT.** This is the result.
+The same eight lights that read as *"an abstract shape"* in the previous
+experiment read as *a bird with a loose wing* the moment the sentence
+above them says a hunter of the open sky is waiting. What changed is not
+the drawing; it is that the child now has a hypothesis to test, and the
+gaps become *the bit that is missing from the bird* rather than *the bit
+that is missing from the shape*. **"Connect the dots" became "make the
+bird whole."**
+
+**A DETACHED PART READS; A DETACHED POINT DOES NOT — and the fox proves
+it in one picture.** The previous experiment's finding, now demonstrated
+inside a single fixture rather than across two. The fox is deliberately
+authored with one gap of each kind: its loose TAIL is two lights still
+joined to each other and reads unmistakably as a piece of the animal
+sitting apart from it; its loose EAR is a single light joined to nothing
+and reads as a stray star, indistinguishable from the ambient field.
+The octopus is the extreme case — three detached arm-points — and its
+unfinished state is the weakest of the five for exactly that reason,
+while its completed state is one of the strongest.
+
+**COMPLETION MUST NEVER BE A COIN TOSS, AND IT WAS ONE.** The
+interpreter's `resolve()` draws the ending at random from the
+candidate's `possible` list, and it does so whether the child COMPLETED
+the figure or the mystery simply ran out of time — there is no notion of
+*ended because it was finished*. A creature carrying the ordinary
+`['discovery','unresolved']` therefore came alive about half the times a
+child finished it, and the other half it faded. That is the one outcome
+this progression cannot have. **Fixed Lab-side** by authoring the
+creatures with `possible: ['discovery']`, which a pattern candidate is
+already exempted from `tap-for-sure-outcome` for — a legal candidate,
+not a loosened rule. **Recorded as a product finding**, because if the
+Creature Mystery is ever wanted in production the honest fix is in the
+interpreter: `resolve()` should know that a completed arrangement has
+earned its discovery.
+
+**THE PRODUCT PROGRESSION WORKS AT ITS TWO ENDS AND IS THIN IN THE
+MIDDLE.** Seeing (hint + unfinished figure) and awakening/roaming both
+land. What no fixture can supply is the middle: *"These stars go
+together"* still depends on the child discovering, unaided, that tapping
+one light and then another joins them. Nothing in the experience
+suggests that, and the leading hint is forbidden from saying so. **This
+is the single biggest open question the experiment produced**, and it is
+an interaction-affordance question rather than a creature question.
+
+**THE LIVING CREATURE IS THE SAME THING, AND IT MOVES LIKE EVERY OTHER
+ONE.** The wanderer that leaves carries every light and every join of
+the figure the child completed (measured: 8/8 and 7/7 for the falcon),
+so *H — does the living creature look like the same thing that was
+completed?* is a clear yes. But *I — does the roaming feel
+independent/living?* is only a partial yes: it drifts, wanders, rests
+and wraps, and it does so **identically for a whale and for a falcon**.
+A bird that flew differently from a whale would be the beginning of a
+creature framework, which §17 forbids by name, so **per-creature
+movement character was deliberately not built** and is disclosed rather
+than approximated.
+
+**EIGHT LIGHTS IS NOT ENOUGH FOR A FOUR-LEGGED ANIMAL.** The bear is the
+weakest fixture and the reason is arithmetic: a back, a head, a tail and
+four legs do not fit in eight points, so what gets drawn is a back, a
+head and two legs — which reads as a bent line with two sticks hanging
+off it, whatever the hint says. Flying and swimming animals are
+silhouettes; walking animals are volumes. The schema's ceiling
+(`arrangementNodesMax: 8`) is what decides this, and whether it should
+move is a product question this experiment does not answer.
+
+### Judgement, creature by creature
+
+From looking at the rendered sky, not from reading the data. The ten
+dimensions are §15's own.
+
+| | falcon | polar bear | whale | fox | octopus |
+|---|---|---|---|---|---|
+| hint effectiveness | EXCEPTIONAL | GOOD | GOOD | GOOD | GOOD |
+| creature recognisability | EXCEPTIONAL | REJECT | GOOD | VALID BUT BORING | GOOD |
+| unfinished-state recognisability | EXCEPTIONAL | VALID BUT BORING | GOOD | GOOD | REJECT |
+| action discoverability | VALID BUT BORING | VALID BUT BORING | VALID BUT BORING | VALID BUT BORING | VALID BUT BORING |
+| completion satisfaction | EXCEPTIONAL | VALID BUT BORING | GOOD | GOOD | EXCEPTIONAL |
+| awakening quality | GOOD | GOOD | GOOD | GOOD | GOOD |
+| life / agency | GOOD | GOOD | GOOD | GOOD | GOOD |
+| roaming curiosity | GOOD | VALID BUT BORING | GOOD | GOOD | GOOD |
+| Ether-ness | EXCEPTIONAL | GOOD | EXCEPTIONAL | GOOD | GOOD |
+| **overall** | **EXCEPTIONAL** | **REJECT** | **GOOD** | **GOOD** | **GOOD** |
+
+**Notes.** *Falcon* — the symmetrical body with both wings detached as
+PAIRS is the clearest "something is missing from something" in either
+experiment; completion turns it symmetrical and that is the "oh".
+*Polar bear* — the hint is evocative and the figure cannot pay it off;
+eight lights give a back and two legs, and no amount of authoring fixes
+that at this ceiling. *Whale* — modest and honest: a tapering body and a
+forked tail read as a swimming thing, and a single gap makes it the
+simplest of the five. *Fox* — the completed animal is generic
+(four-legged, tail up) rather than specifically a fox, but it is the
+most valuable fixture in the set because of the ear/tail contrast.
+*Octopus* — the worst unfinished state and one of the best completed
+ones: radial symmetry with a head is unmistakable once whole, and three
+orphan points before that.
+
+### Against §14's research questions
+
+**A — does the hint create curiosity?** Yes, on all five. *"Something
+with many arms is waiting"* is the best of them because it describes a
+structure rather than a species.
+**B — does the unfinished pattern look like the creature the hint
+describes?** Falcon yes, whale yes, fox partly, bear no, octopus no.
+**C — does the child understand the pattern is incomplete?** Where the
+gap leaves a joined PART, yes, obviously. Where it leaves an orphan
+point, no.
+**D — does the child discover that two lights can be connected?**
+**Unanswered, and it is the gap.** Nothing teaches it and the hint may
+not.
+**E — which lights belong together?** Where the figure is symmetrical or
+tapering, yes; on the bear it is guesswork.
+**F — does completion feel like revealing something already there?**
+Yes — the arrangement never changes, it only becomes whole, which is
+exactly the intended feeling.
+**G — does it feel alive?** Yes: it blazes, holds whole for a beat,
+gathers, breathes and leaves.
+**H — is the living thing the same thing?** Yes, every light and every
+join.
+**I — does the roaming feel independent?** Partly — it is independent,
+and it is the same movement for every creature.
+**J — does the child wonder where it went?** Probably: it leaves, wraps
+with the sky and can be found again. Untestable here.
+
+### §16's product test
+
+The experience does **not** produce only *"Connect the dots"* — the hint
+demonstrably changes what the lights are about. It produces *"I know
+what this is, and I want to make it come alive"* for the falcon and the
+octopus, gets close for the whale and the fox, and fails for the bear.
+**The idea works; the authoring ceiling and the missing interaction
+affordance are what limit it.**
+
+### Mobile
+
+Measured on a 390×844 phone profile against a 1440×900 laptop: every
+creature spans more than half the short edge on both, carries the same
+lights and the same joins, and completes and awakens identically (all
+ten runs produced a wanderer with the right node count). The hint sits
+at 15px on one line at the top of the sky and never touches the figure.
+
+### What was deliberately NOT built
+
+No creature taxonomy, no procedural anatomy, no creature categories,
+rarity, collection, inventory, catalogue, progression, levels, rewards,
+ownership or persistence; no production creature framework; no new
+Challenge infrastructure; no per-creature roaming character; no
+additional Mystery type; no constellation functionality; and no change
+to Traveller navigation — the two-tap interaction is unchanged and drag
+still turns the sky.
+
+### The checks that were wrong before the product was
+
+Five of the `CR` checks failed on their first run and every one of them
+was the check. Two asserted that no candidate names its creature — false
+while the fixture ids read `lab-creature-falcon`, so **the ids were made
+opaque**, which is the stronger property. Two asserted the sky carries
+no words at all and were reading the **Story Spirits' own titles**: a
+Spirit showing its name is the Ether working, so both now measure
+whether anything CHANGED (nothing does) and whether the experiment puts
+anything on screen but the hint (it does not). One of those then read a
+`display:none` panel as words on screen, because `innerText` falls back
+to `textContent` for an element that is not rendered — **the box
+decides, not the markup**. And the last compared the sky's own text
+across a twenty-second walk, which a Spirit drifting into view changes
+without anything having been announced; it now requires every word on
+the sky to be a Spirit's own name.
+
+Four are proved by temporary reversion: a readable id put back (`CR3`,
+`CR3b` red), the figure removed from a creature so it lays out as a ring
+(`CR5`, `CR5b`, `CR6b`, `CR9b` red), the hint's withdrawal removed
+(`CR11b` red), and a creature label put on the child-facing stage
+(`CR11c` red).
+
+### Files
+
+`tools/ether-mystery-lab/labKit.js` — `CREATURE_EXPERIMENTS`,
+`CREATURE_BANK`, `creatureNote()`, the `creature-mystery` preset.
+`tools/ether-mystery-lab/preview.html` · `labPreview.js` ·
+`labPreviewHost.js` · `labUi.js` — the leading hint. Screenshots:
+`tools/ether-mystery-lab-test/shots/creatures/`. Suite section: `CR`.

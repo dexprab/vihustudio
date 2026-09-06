@@ -2556,6 +2556,394 @@ async function sectionUF() {
 }
 
 // ===================================================================
+// CR. THE CREATURE MYSTERY (Lab experiment)
+//
+// The Unfinished Figure asked whether an abstract arrangement could
+// suggest a meaning, and the answer was that it mostly could not. This
+// asks the next question: a creature is hidden inside the pattern, a
+// short leading hint says what KIND of thing is waiting, and the child
+// still has to work out the structure. Everything here is Lab-side —
+// no production file changed — so the section proves the experiment
+// exists, behaves, and is unreachable from the Ether a child meets.
+// ===================================================================
+async function sectionCR() {
+  console.log('\n== CR. the creature mystery (Lab experiment) ==');
+  const { chromium } = require('playwright');
+  const sb = kitSandbox();
+  const G = sb.EtherGrammar || (sb.window && sb.window.EtherGrammar);
+  const Kit = sb.EtherMysteryLabKit || (sb.window && sb.window.EtherMysteryLabKit);
+  const Support = sb.LabPreviewSupport || (sb.window && sb.window.LabPreviewSupport);
+  const bank = Kit.CREATURE_BANK;
+  const meta = Kit.CREATURE_EXPERIMENTS;
+
+  // ---- CR1: they are real candidates, and five different animals ----
+  const verdicts = bank.map((c) => ({ id: c.id, v: G.validate(c) }));
+  ck(bank.length === 5 && verdicts.every((r) => r.v.ok),
+    'CR1  all five hand-authored creatures are VALID through the real validator',
+    verdicts.filter((r) => !r.v.ok).map((r) => r.id + ':' + r.v.reasons).join(' ') || '5/5');
+  ck(bank.every((c) => Support.support(c).ok),
+    'CR1b every one of them is previewable by the interpreter exactly as it stands');
+
+  // FIVE SILHOUETTES, NOT ONE WEARING FIVE NAMES. The shape of a figure
+  // is the multiset of distances between its lights, so two creatures
+  // that are really the same drawing produce the same signature. This
+  // is the creature half of the reskin rule.
+  const sig = (m) => {
+    const p = m.figure.points, D = [];
+    for (let a = 0; a < p.length; a++) {
+      for (let b = a + 1; b < p.length; b++) {
+        D.push(Math.hypot(p[a][0] - p[b][0], p[a][1] - p[b][1]));
+      }
+    }
+    return D.sort((x, y) => x - y).map((d) => d.toFixed(2)).join(',');
+  };
+  const sigs = meta.map(sig);
+  ck(new Set(sigs).size === 5,
+    'CR1c the five silhouettes are five different drawings, not one reskinned',
+    new Set(sigs).size + '/5 distinct');
+  ck(new Set(meta.map((m) => m.nodes)).size >= 2 &&
+     new Set(meta.map((m) => m.figure.gaps.length)).size >= 3,
+    'CR1d and difficulty varies structurally rather than by a level setting',
+    meta.map((m) => m.nodes + 'n/' + m.figure.gaps.length + 'g').join(' '));
+
+  // ---- CR2: the pattern still reads with pieces missing ----
+  //
+  // A figure that is mostly gaps is not a figure. Every creature keeps
+  // enough of itself to be read, and at least one light of a body joins
+  // three others — the branching a ring can never express, and what
+  // makes a limbed animal rather than a loop.
+  ck(meta.every((m) => m.figure.joins.length - m.figure.gaps.length >= 2),
+    'CR2  every creature keeps enough joins to still be read while unfinished',
+    meta.map((m) => (m.figure.joins.length - m.figure.gaps.length)).join('/'));
+  const degrees = meta.map((m) => {
+    const d = {};
+    m.figure.joins.forEach((j) => {
+      const ab = j.split('-');
+      d[ab[0]] = (d[ab[0]] || 0) + 1; d[ab[1]] = (d[ab[1]] || 0) + 1;
+    });
+    return Math.max.apply(null, Object.keys(d).map((k) => d[k]));
+  });
+  ck(degrees.filter((x) => x >= 3).length >= 4,
+    'CR2b at least four of them branch — a body with limbs, which a ring cannot draw',
+    degrees.join(' '));
+
+  // ---- CR3: the evaluator's knowledge never reaches the child ----
+  //
+  // §13's own rule. The creature's NAME, the fixture id and every scrap
+  // of arrangement bookkeeping are the Lab's; what the interpreter is
+  // handed is points and relationships. The hint is the one authored
+  // sentence, and it is rendered by the LAB, never by the interpreter.
+  const NAMES = /\b(falcon|polar bear|whale|fox|octopus|creature|animal)\b/i;
+  ck(!NAMES.test(JSON.stringify(bank)),
+    'CR3  not one candidate names the creature hidden inside it');
+  ck(JSON.stringify(bank).indexOf('hint') === -1 &&
+     JSON.stringify(bank).indexOf('creature') === -1,
+    'CR3b neither the hint nor the creature travels inside a candidate — both are evaluator-side');
+  ck(meta.every((m) => typeof m.creature === 'string' && typeof m.hint === 'string'),
+    'CR3c and the Lab does know both, per fixture, for the research log');
+
+  // ---- CR4: the hint leads, and never instructs ----
+  //
+  // §4 and §11. It says what KIND of thing is waiting and nothing about
+  // what to do; "Connect the dots to make a falcon" is the sentence
+  // this experiment exists to avoid. It also never gives the answer
+  // away — the child still has to see the structure.
+  const INSTRUCTION = /\b(connect|join|tap|click|touch|press|drag|link|complete|finish|make a|dots?|puzzle|solve|try to)\b/i;
+  const bad = meta.filter((m) => INSTRUCTION.test(m.hint));
+  ck(!bad.length,
+    'CR4  no hint tells the child what to do — not one instructional word',
+    bad.map((m) => m.creature + ':' + m.hint).join(' | ') || '5/5 clean');
+  const named = meta.filter((m) => new RegExp('\\b' + m.creature.split(' ').pop() + '\\b', 'i').test(m.hint));
+  ck(!named.length,
+    'CR4b and no hint names its own creature — it points at the idea, never the answer',
+    named.map((m) => m.creature).join(' ') || '5/5');
+  ck(meta.every((m) => m.hint.length <= 56),
+    'CR4c every hint is one short line',
+    meta.map((m) => m.hint.length).join('/'));
+
+  // ---- the browser half ----
+  const server = spawn('node', ['tools/bring-it-alive/test/serve.js', String(PORT)],
+    { cwd: ROOT, stdio: 'ignore' });
+  await new Promise((res) => setTimeout(res, 900));
+  const browser = await chromium.launch({
+    executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome'
+  });
+  try {
+    // ---- CR5: the creature on the sky is the creature that was drawn ----
+    const measure = async (vp) => {
+      const page = await browser.newPage({ viewport: vp });
+      await page.goto(BASE + '/tools/ether-mystery-lab/preview.html');
+      await page.waitForFunction(() => !!window.LabPreview, null, { timeout: 20000 });
+      const out = {};
+      for (const c of bank) {
+        out[c.id] = await page.evaluate((cand) => {
+          window.LabPreview.play(cand, 'cr-seed');
+          const i = window.LabPreview.instrument();
+          if (!i || !i.arrangement) return null;
+          const els = i.elements.filter((e) => e.show === 'node');
+          const D = [];
+          for (let a = 0; a < els.length; a++) {
+            for (let b = a + 1; b < els.length; b++) {
+              D.push(Math.hypot(els[a].x - els[b].x, els[a].y - els[b].y));
+            }
+          }
+          const xs = els.map((e) => e.x);
+          return {
+            pairs: D, n: els.length,
+            w: Math.max.apply(null, xs) - Math.min.apply(null, xs),
+            short: Math.min(window.innerWidth, window.innerHeight),
+            links: i.arrangement.links.map((L) => L.a + '-' + L.b).join(' '),
+            gapPairs: i.arrangement.links
+              .map((L, k) => (L.present ? null : k)).filter((k) => k !== null).join(',')
+          };
+        }, c);
+      }
+      await page.close();
+      return out;
+    };
+    const desk = await measure({ width: 1440, height: 900 });
+    const phone = await measure({ width: 390, height: 844 });
+
+    const fidelity = meta.map((m) => {
+      const pts = m.figure.points, got = desk[m.id];
+      if (!got) return { id: m.id, drift: Infinity };
+      const want = [];
+      for (let a = 0; a < pts.length; a++) {
+        for (let b = a + 1; b < pts.length; b++) {
+          want.push(Math.hypot(pts[a][0] - pts[b][0], pts[a][1] - pts[b][1]));
+        }
+      }
+      const k = want.map((d, j) => got.pairs[j] / d);
+      return { id: m.id, drift: Math.max.apply(null, k) / Math.min.apply(null, k) };
+    });
+    ck(fidelity.every((f) => f.drift < 1.02),
+      'CR5  every creature is placed as it was drawn — one scale, no distortion',
+      fidelity.map((f) => f.id.replace('lab-cm-', '#') + ':x' + f.drift.toFixed(4)).join(' '));
+    ck(meta.every((m) => desk[m.id].links === m.figure.joins.join(' ')) &&
+       meta.every((m) => desk[m.id].gapPairs === m.figure.gaps.join(',')),
+      'CR5b its joins and its missing pieces are the authored ones, never shuffled',
+      meta.map((m) => m.creature.split(' ').pop() + ':' + desk[m.id].gapPairs).join(' '));
+
+    // MOBILE. The same creature, at Ether scale, on a phone — §19's own
+    // layout requirement, measured rather than eyeballed.
+    const smallD = meta.filter((m) => !(desk[m.id].w > desk[m.id].short * 0.5));
+    const smallP = meta.filter((m) => !(phone[m.id].w > phone[m.id].short * 0.5));
+    ck(!smallD.length && !smallP.length,
+      'CR6  every creature spans the sky on a laptop AND on a phone',
+      'desktop ' + meta.map((m) => Math.round(desk[m.id].w)).join('/') + ' on 900 · phone ' +
+      meta.map((m) => Math.round(phone[m.id].w)).join('/') + ' on 390');
+    ck(meta.every((m) => phone[m.id].links === m.figure.joins.join(' ') &&
+                          phone[m.id].n === m.nodes),
+      'CR6b and it is the same creature on the phone, not a reduced one');
+
+    // ---- CR7-CR11: one creature walked exactly as a child walks it ----
+    const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+    await page.goto(BASE + '/tools/ether-mystery-lab/preview.html');
+    await page.waitForFunction(() => !!window.LabPreview, null, { timeout: 20000 });
+    const falcon = bank.find((c) => c.id === 'lab-cm-1');
+    const hint = Kit.creatureNote('lab-cm-1').hint;
+
+    const walk = await page.evaluate(async ([cand, hintText]) => {
+      // THE SKY'S OWN WORDS ARE NOT A MESSAGE. A Story Spirit shows its
+      // name — that is the Ether working, and it is there before the
+      // mystery is posed and after it is answered. So what is measured
+      // is whether ANYTHING CHANGED, which is what "no message, no
+      // counter, no score, no failure state" actually means.
+      const txt = () => (document.querySelector('[data-universe]').innerText || '').trim();
+      // And what the EXPERIMENT itself puts on screen: everything in
+      // the stage that is neither the universe nor the evaluator's own
+      // two navigation controls.
+      // `innerText` falls back to `textContent` for an element that is
+      // not rendered, so a display:none panel reads as words on screen
+      // when there are none — the box is what decides, not the markup.
+      const own = () => Array.from(document.querySelector('.stage').children)
+        .filter((el) => !el.hasAttribute('data-universe') && !el.hasAttribute('data-chrome'))
+        .filter((el) => el.getClientRects().length > 0)
+        .map((el) => (el.innerText || '').trim()).filter(Boolean);
+      window.LabPreview.play(cand, 'cr-walk', 'play', { hint: hintText });
+      // A light is not armed in the frame it is placed in, and the hint
+      // fades in on its own beat — the check waits exactly as a child does.
+      await new Promise((r) => setTimeout(r, 1600));
+      const my = window.LabPreview.mystery();
+      let i = my.instrument();
+      const hintEl = document.querySelector('[data-hint]');
+      const shown = { text: hintEl.textContent, on: hintEl.classList.contains('on') };
+      const posedWords = txt();
+      const posedOwn = own();
+
+      // A PAIR THAT DOES NOT BELONG. Two lights with no relationship
+      // between them at all — not a present join, not a missing one.
+      const pairs = i.arrangement.links.map((L) => L.a + '-' + L.b);
+      let wrong = null;
+      for (let a = 0; a < i.elements.length && !wrong; a++) {
+        for (let b = a + 1; b < i.elements.length && !wrong; b++) {
+          if (pairs.indexOf(a + '-' + b) === -1 && pairs.indexOf(b + '-' + a) === -1) {
+            wrong = [a, b];
+          }
+        }
+      }
+      const beforeWrong = i.arrangement.links.filter((L) => L.present).length;
+      my.touchAt(i.elements[wrong[0]].x, i.elements[wrong[0]].y);
+      my.touchAt(i.elements[wrong[1]].x, i.elements[wrong[1]].y);
+      await new Promise((r) => setTimeout(r, 400));
+      i = my.instrument();
+      const afterWrong = {
+        pair: wrong.join('-'),
+        joined: i.arrangement.links.filter((L) => L.present).length,
+        missing: i.arrangement.missingLeft,
+        words: txt()
+      };
+
+      // Now the real joins, one at a time, watching whether anything
+      // wakes up before the LAST one.
+      const steps = [];
+      let guard = 40;
+      while (guard-- > 0 && i && i.arrangement && i.arrangement.missingLeft > 0) {
+        const gap = i.arrangement.links.filter((L) => !L.present)[0];
+        my.touchAt(i.elements[gap.a].x, i.elements[gap.a].y);
+        my.touchAt(i.elements[gap.b].x, i.elements[gap.b].y);
+        i = my.instrument();
+        steps.push({ left: i ? i.arrangement.missingLeft : 'gone',
+                     alive: window.LabPreview.alive().length });
+      }
+
+      // IT HOLDS WHOLE BEFORE IT GOES. Two seconds after the last join
+      // the figure is still standing there, lit.
+      await new Promise((r) => setTimeout(r, 2000));
+      const live = window.LabPreview.instrument();
+      const holding = live ? {
+        joined: live.arrangement.links.filter((L) => L.present).length,
+        lit: live.elements.filter((e) => e.alpha === undefined || e.alpha > 0.5).length
+      } : null;
+
+      await new Promise((r) => setTimeout(r, 4000));
+      const born = window.LabPreview.alive()[0] || null;
+
+      // ROAMING. Its own path, sampled — a living thing never draws a
+      // straight line, and it is still there at the end of the sample.
+      const path = [];
+      for (let s = 0; s < 24; s++) {
+        const w = window.LabPreview.alive()[0];
+        if (w) path.push([w.x, w.y]);
+        await new Promise((r) => setTimeout(r, 400));
+      }
+      let travelled = 0;
+      for (let s = 1; s < path.length; s++) {
+        travelled += Math.hypot(path[s][0] - path[s - 1][0], path[s][1] - path[s - 1][1]);
+      }
+      const straight = path.length > 1
+        ? Math.hypot(path[path.length - 1][0] - path[0][0],
+                     path[path.length - 1][1] - path[0][1]) : 0;
+      const hintAfter = {
+        on: document.querySelector('[data-hint]').classList.contains('on')
+      };
+      return {
+        shown: shown, wrong: afterWrong, steps: steps, holding: holding,
+        born: born, alive: window.LabPreview.alive().length,
+        travelled: travelled, straight: straight, samples: path.length,
+        hintAfter: hintAfter,
+        posedWords: posedWords, posedOwn: posedOwn,
+        endWords: txt(), endOwn: own(),
+        titles: window.LabPreview.stories()
+          .map((s) => (s.source && s.source.title) || s.title || '')
+          .filter(Boolean)
+      };
+    }, [falcon, hint]);
+
+    ck(walk.wrong.joined === 7 - 2 && walk.wrong.missing === 2,
+      'CR7  a pair that does not belong joins nothing at all',
+      JSON.stringify({ pair: walk.wrong.pair, joined: walk.wrong.joined, missing: walk.wrong.missing }));
+    ck(walk.wrong.words === walk.posedWords,
+      'CR7b and says nothing — not one word on screen changes',
+      JSON.stringify({ before: walk.posedWords, after: walk.wrong.words }));
+
+    ck(walk.steps.length === 2 &&
+       walk.steps[0].left === 1 && walk.steps[0].alive === 0 &&
+       walk.steps[1].left === 0,
+      'CR8  nothing comes alive a join early — completion is EVERY missing relationship',
+      JSON.stringify(walk.steps));
+    ck(walk.holding && walk.holding.joined === 7 && walk.holding.lit === 8,
+      'CR9  the completed creature holds whole and lit, and does not disappear',
+      JSON.stringify(walk.holding));
+    ck(walk.born && walk.born.nodes === 8 && walk.born.links === 7 && walk.alive === 1,
+      'CR9b then it comes alive carrying all eight of its lights and every join',
+      JSON.stringify(walk.born));
+    ck(walk.alive === 1 && walk.travelled > 60 && walk.travelled > walk.straight * 1.05,
+      'CR10 and it roams — its own path, never a straight line, still there at the end',
+      'travelled ' + Math.round(walk.travelled) + 'px, straight ' + Math.round(walk.straight) +
+      'px over ' + walk.samples + ' samples');
+
+    ck(walk.shown.text === hint && walk.shown.on === true,
+      'CR11 the leading hint is on screen, in the Lab, word for word',
+      JSON.stringify(walk.shown));
+    ck(walk.hintAfter.on === false,
+      'CR11b and it withdraws the moment the creature is whole — it led, it does not linger');
+    ck(walk.posedOwn.length === 1 && walk.posedOwn[0] === hint &&
+       walk.endOwn.length === 1 && walk.endOwn[0] === hint,
+      'CR11c the hint is the ONLY thing the experiment puts on screen — no label, no id, no creature name',
+      JSON.stringify({ posed: walk.posedOwn, end: walk.endOwn }));
+    // AND AT THE END OF THE WHOLE WALK, every word on the sky is still
+    // a Story Spirit's own name. Deliberately NOT an equality against
+    // what was there when the mystery was posed: Spirits drift, so one
+    // can come into view during a twenty-second walk and change that
+    // text without anything having been announced. What must hold is
+    // that nothing which is NOT a Spirit's name is ever on screen.
+    const strays = walk.endWords.split('\n').map((L) => L.trim()).filter(Boolean)
+      .filter((L) => walk.titles.indexOf(L) === -1);
+    ck(!strays.length,
+      'CR11d and every word on the sky is still a Story Spirit\'s own name — nothing announced, counted or scored',
+      strays.length ? JSON.stringify(strays) : JSON.stringify(walk.endWords.split('\n')));
+    await page.close();
+  } finally {
+    await browser.close();
+    server.kill();
+  }
+
+  // ---- CR12: the interpreter has no words, and no creature ----
+  const my = stripComments(read('js/etherMystery.js'));
+  ck(!/fillText|strokeText/.test(my),
+    'CR12 the interpreter draws no text, so a hint could never come from production');
+  ck(!/falcon|octopus|creature|lab-cm-/i.test(my) &&
+     !/falcon|octopus|creature|lab-cm-/i.test(stripComments(read('js/etherGrammar.js'))),
+    'CR12b and neither production file knows a creature exists');
+
+  // ---- CR13: production cannot reach any of this ----
+  const pool = sb.EtherExperiencePool || (sb.window && sb.window.EtherExperiencePool);
+  const poolSrc = read('assets/ether/experience-pool.js');
+  const active = pool.experiences.filter((e) => e.status === 'active');
+  ck(active.length > 0 && active.every((e) => !e.candidate.arrangement),
+    'CR13 no ACTIVE pool experience carries an arrangement, so no child can meet a figure at all',
+    active.length + ' active');
+  ck(poolSrc.indexOf('lab-cm-') === -1 &&
+     !pool.experiences.some((e) => e.candidate.id.indexOf('lab-cm-') === 0),
+    'CR13b not one creature is in the production pool, in any status');
+  ck(!/lab-cm-|CREATURE_BANK|creatureNote/.test(
+       require('child_process').spawnSync('grep',
+         ['-rl', '-e', 'lab-cm-', '-e', 'CREATURE_BANK', '-e', 'creatureNote',
+          path.join(ROOT, 'js'), path.join(ROOT, 'assets'), path.join(ROOT, 'vihuplanet')],
+         { encoding: 'utf8' }).stdout || ''),
+    'CR13c and nothing a child loads — js/, assets/, the runtime — names one');
+
+  // ---- CR14: the research log carries what a reviewer needs ----
+  const session = Kit.createSession();
+  bank.forEach((c) => session.add(c,
+    { source: 'fixture', params: { experiment: 'creature-mystery' } }));
+  const rows = session.items();
+  const falconRow = rows.find((r) => r.candidate.id === 'lab-cm-1');
+  session.review(falconRow.labId, 'good', [], 'reads as a bird before it is joined');
+  const log = session.exportResearch();
+  const row = log.artifact.candidates.find((r) => r.candidate.id === 'lab-cm-1');
+  ck(!!row && row.creatureExperiment && row.creatureExperiment.creature === 'falcon' &&
+     row.creatureExperiment.nodes === 8 && row.creatureExperiment.missing === 2 &&
+     typeof row.creatureExperiment.hint === 'string',
+    'CR14 the research log carries the creature, its hint, its lights and its missing pieces',
+    row ? JSON.stringify(row.creatureExperiment) : 'no row');
+  ck(log.artifact.candidates.some((r) => r.humanJudgement && r.humanJudgement.classification) &&
+     log.artifact.productionReady === false,
+    'CR14b the human judgement travels with it, and it is still marked research-only');
+}
+
+// ===================================================================
 (async () => {
   try {
     await sectionS();
@@ -2566,6 +2954,7 @@ async function sectionUF() {
     await sectionP();
     await sectionR();
     await sectionUF();
+    await sectionCR();
   } catch (e) {
     fail('suite crashed', (e && e.stack || String(e)).split('\n')[0]);
   }

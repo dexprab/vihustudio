@@ -62,7 +62,11 @@
         try {
           win.postMessage(
             { type: 'lab-preview:play', candidate: pending.candidate,
-              seed: pending.seed, mode: pending.mode, epoch: epoch },
+              seed: pending.seed, mode: pending.mode,
+              // The leading hint travels BESIDE the candidate, never
+              // inside it: a candidate carries no words, because the
+              // interpreter draws none.
+              hint: pending.hint || '', epoch: epoch },
             '*');
         } catch (e) { /* held */ }
       }
@@ -105,11 +109,13 @@
   // window.open MUST be reached synchronously from the reviewer's own
   // click or every browser refuses it, so nothing may be awaited above
   // this line.
-  function open(candidate, seed, done, mode) {
+  function open(candidate, seed, done, mode, opts) {
     if (!listening) { global.addEventListener('message', onMessage); listening = true; }
     epoch++;
     onDone = done || null;
-    pending = { candidate: candidate, seed: seed, mode: (mode === 'try') ? 'try' : 'play' };
+    pending = { candidate: candidate, seed: seed,
+                mode: (mode === 'try') ? 'try' : 'play',
+                hint: (opts && typeof opts.hint === 'string') ? opts.hint : '' };
     var w = null;
     try { w = global.open('preview.html', TARGET); } catch (e) { w = null; }
     if (!w) {
