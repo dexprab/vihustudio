@@ -12725,3 +12725,14 @@ light was MOVED away from stays the author's for the session
 reverting (five AP checks red). The unfinished pane shows the starting
 figure as lights and marks only empty places faintly; REFERENCE OFF
 keeps the lights. AP 46/46, SL 52, GL 38, AR 87.
+
+## Shape Lab — the Join tool joins the lights in their order
+
+Lab only. Asked for by the product owner: *"the join button should
+automatically join dots as per their order."* Pressing Join now makes
+the consecutive joins (1→2, 2→3, …) that are missing —
+`ShapeLab.joinInOrder()`, idempotent — keeping every existing join and
+gap, removing nothing, leaving the chain open; the click gestures still
+change, remove and gap joins afterwards, and a gap is still never
+chosen by the system. `AP4e` turned round with its reason in place;
+`AP11`–`AP11e` added. AP 51/51 · SL 52 · GL 38 · AR 87, the Join wiring proved by reverting (six AP checks red).

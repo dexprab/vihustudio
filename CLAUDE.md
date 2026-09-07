@@ -9412,9 +9412,10 @@ leads somewhere.
   as a real light carrying its feature's name (`ShapeLab.placeSuggestions`,
   one seam; `LabReference.set()` calls it). **This overrides the
   previous sprint's "a suggested point is never auto-placed" rule on the
-  product owner's instruction**, and it overrides only that: joins and
-  gaps are still never placed for anybody, a budget shrink still deletes
-  nothing, and from the instant it lands a placed light is an ordinary
+  product owner's instruction**, and it overrides only that: gaps are
+  still never placed for anybody (joins, see the Join tool clause
+  below), a budget shrink still deletes nothing, and from the instant
+  it lands a placed light is an ordinary
   authored light — movable, deletable, renameable by deleting.
 - **A PLACE THE AUTHOR MOVED A LIGHT AWAY FROM STAYS THEIRS.** Found by
   the suite, not by reading: a light moved off its landmark freed that
@@ -9435,6 +9436,22 @@ leads somewhere.
   `AP1d`, `AP3`, `AP5`–`AP5f` and `AP10`–`AP10c` were turned round with
   their reasons in place; the AR accept-by-click checks empty the
   placed figure first so the click path is still exercised from nothing.
+- **THE JOIN TOOL JOINS THE LIGHTS IN THEIR ORDER.** Asked for by the
+  product owner: *"the join button should automatically join dots as
+  per their order."* Pressing Join now makes the consecutive joins —
+  1→2, 2→3, … in the order the lights stand, which for a placed
+  starting figure is the ranking's order — and ONLY the ones that are
+  missing (`ShapeLab.joinInOrder`, idempotent). An existing join is
+  kept, a gap is kept, nothing is ever removed, and the chain is left
+  open: closing it, rearranging it and marking a gap are still the
+  author's, with the same click gestures as before (two joined lights
+  clicked again remove that join). It amends the previous clause's
+  "joins and gaps are never placed for anybody" for joins only; a GAP
+  is still never chosen by the system. `AP4e` was turned round with
+  its reason in place — it asserted the Join tool made no join by
+  itself, which is exactly the behaviour this changes — and
+  `AP11`–`AP11e` guard the order, the idempotence, the kept gap and
+  the surviving click gesture.
 - **16 → 10 DELETES NOTHING.** Changing the budget touches no authored
   point, join, gap or name. Shrinking under a bigger figure keeps every
   light and shows that the figure EXCEEDS the selected budget — header,

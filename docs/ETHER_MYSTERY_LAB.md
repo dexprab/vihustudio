@@ -2270,9 +2270,9 @@ feature — `ShapeLab.placeSuggestions()`, the one seam, called from
 `LabReference.set()` and from `setBudget()` when the budget rises, and
 offered as **Place suggested points** in the panel. This overrides the
 earlier "never auto-placed" rule on the product owner's instruction and
-nothing else: joins and gaps are never placed for anybody, a smaller
-budget still deletes nothing, and a placed light is an ordinary light
-from the moment it lands.
+nothing else: gaps are never placed for anybody (joins — see the Join
+tool below), a smaller budget still deletes nothing, and a placed light
+is an ordinary light from the moment it lands.
 
 A place the author moved a light AWAY from stays theirs for the
 session. The suite found the hole: a light moved off its landmark freed
@@ -2292,6 +2292,22 @@ OFF while the lights stay: the judging state is the authored figure
 alone. `AP3`, `AP5`–`AP5f`, `AP10`–`AP10c`; `AR2h`, `AR5d` and `AP1d`
 turned round with reasons, and the AR accept-by-click checks empty the
 placed figure first so the click path is still walked from nothing.
+
+**The Join tool joins the lights in their order.** Asked for by the
+product owner one message later: *"the join button should automatically
+join dots as per their order."* Pressing Join makes the consecutive
+joins — 1→2, 2→3, … in the order the lights stand, which for a placed
+starting figure is the ranking's order — and only the ones that are
+missing (`ShapeLab.joinInOrder()`, idempotent: a second press adds
+nothing and says so). An existing join is kept, a gap is kept, nothing
+is removed, and the chain is left open. The click gestures are
+unchanged for what follows: two joined lights clicked again remove
+that join, a line clicked removes it, the Gap tool marks a join
+missing. So the order is a starting point and never a lock, and a gap
+is still never chosen by the system. `AP4e` (which asserted the Join
+tool made no join by itself) was turned round with its reason in
+place; `AP11`–`AP11e` guard the order, the count in the status line,
+the idempotence, the kept gap and the surviving click gesture.
 
 **Feature focus.** Choosing a feature in the blueprint panel — or
 accepting one of its suggestions — exposes that feature's related

@@ -3985,11 +3985,14 @@ async function sectionSL() {
       const pts = ringPts(n);
       await tool('add');
       for (const p of pts) { const q = at(g, p); await page.mouse.click(q.x, q.y); }
+      // Pressing Join joins the lights in their order (the product owner's
+      // instruction), so the chain 0-1 … (n-2)-(n-1) is made by the press;
+      // closing the ring is the author's own click, exactly as before.
       await tool('join');
-      for (let i = 0; i < n; i++) {
-        const a = at(g, pts[i]), b = at(g, pts[(i + 1) % n]);
-        await page.mouse.click(a.x, a.y); await page.mouse.click(b.x, b.y);
-      }
+      const chained = await page.evaluate(() => window.ShapeLab.figure().joins.length);
+      if (chained !== n - 1) throw new Error('Join did not chain ' + n + ' lights in order: ' + chained + ' joins');
+      const a = at(g, pts[n - 1]), b = at(g, pts[0]);
+      await page.mouse.click(a.x, a.y); await page.mouse.click(b.x, b.y);
       return { g, pts };
     };
     const mid = (g, a, b) => { const A = at(g, a), B = at(g, b); return { x: (A.x + B.x) / 2, y: (A.y + B.y) / 2 }; };
@@ -5644,16 +5647,22 @@ async function sectionAP() {
     await tool('add');
     const third = await page.evaluate(() => LabReference.suggestions().filter((s) => s.budgeted)[0]);
     q = at(g, [third.x + 0.03, third.y - 0.03]); await page.mouse.click(q.x, q.y);
+    // Turned round on the product owner's instruction ("the join button
+    // should automatically join dots as per their order"): this check
+    // used to assert that the Join tool made NO join by itself. Pressing
+    // it now joins the lights in their order; the click gesture is still
+    // the author's for changing that, and the GAP is still theirs alone.
     await tool('join');
+    const autoJoined = await page.evaluate(() => window.ShapeLab.figure().joins.join(' '));
     let A = at(g, moved.pts[0]), Bq = at(g, moved.pts[1]); await page.mouse.click(A.x, A.y); await page.mouse.click(Bq.x, Bq.y);
-    const P2 = await page.evaluate(() => window.ShapeLab.figure().points[2]);
-    A = at(g, moved.pts[1]); Bq = at(g, P2); await page.mouse.click(A.x, A.y); await page.mouse.click(Bq.x, Bq.y);
+    const removed01 = await page.evaluate(() => window.ShapeLab.figure().joins.join(' '));
+    await page.mouse.click(A.x, A.y); await page.mouse.click(Bq.x, Bq.y);
     await tool('gap');
     const m01 = { x: (at(g, moved.pts[0]).x + at(g, moved.pts[1]).x) / 2, y: (at(g, moved.pts[0]).y + at(g, moved.pts[1]).y) / 2 };
     await page.mouse.click(m01.x, m01.y);
     const joined = await page.evaluate(() => window.ShapeLab.figure());
-    ck(joined.points.length === 3 && joined.joins.join(' ') === '0-1 1-2' && joined.gaps.join() === '0',
-      'AP4e joins and gaps stay the author\'s: two joins made with the Join tool, one marked missing with the Gap tool — the system chose none of them', JSON.stringify(joined));
+    ck(autoJoined === '0-1 1-2' && removed01 === '1-2' && joined.points.length === 3 && joined.joins.join(' ') === '1-2 0-1' && joined.gaps.map((k) => joined.joins[k]).join() === '0-1',
+      'AP4e pressing the Join tool joins the three lights in their order (0-1, 1-2); clicking two joined lights REMOVES that join and clicking them again re-makes it — the order is a starting point, the click is the author\'s — and the Gap tool marks one missing; the system chose no gap', 'auto ' + autoJoined + ' → ' + removed01 + ' → ' + JSON.stringify(joined));
     await tool('delete');
     q = at(g, moved.pts[0]); await page.mouse.click(q.x, q.y);
     const deleted = await page.evaluate(() => ({ fig: window.ShapeLab.figure(), roles: window.ShapeLab.roles(), m: window.ShapeLab.metrics() }));
@@ -5846,6 +5855,41 @@ async function sectionAP() {
     ck(paneOff.pts === 7 && paneOff.free === 0 && paneOff.flag && paneOff.lit > 7 * 20 && paneOff.lit < 7 * 400,
       'AP10c REFERENCE OFF takes the mark off that pane and keeps the seven placed lights — the judging state is the authored figure alone', 'lit px ' + paneOff.lit);
     await page.click('[data-ref-toggle]');
+    await page.evaluate(() => { localStorage.clear(); });
+
+    // ---- AP11: the Join tool joins the lights in their order ----
+    // Asked for by the product owner: "the join button should
+    // automatically join dots as per their order." The seven placed
+    // lights (one was deleted in AP10b) carry one hand-made join and one
+    // gap already; pressing Join must add only the consecutive joins
+    // that are missing, keep the hand-made join and its gap, remove
+    // nothing, leave the chain open, and do nothing on a second press.
+    const before11 = await page.evaluate(() => {
+      const S = window.ShapeLab;
+      S.toggleJoin(0, 3); S.toggleGap(0); S.toggleJoin(4, 5);
+      return { fig: S.figure(), n: S.figure().points.length };
+    });
+    await page.click('[data-mode="join"]');
+    const joined11 = await page.evaluate(() => {
+      const S = window.ShapeLab; const f = S.figure();
+      return { fig: f, mode: document.querySelector('[data-mode="join"]').classList.contains('on'), status: (document.querySelector('[data-say]') || {}).textContent || '' };
+    });
+    const consecutive = (fig, n) => { for (let i = 0; i + 1 < n; i++) if (!fig.joins.includes(i + '-' + (i + 1))) return false; return true; };
+    ck(before11.n === 7 && joined11.mode && consecutive(joined11.fig, 7) && joined11.fig.joins.length === 6 + 1 && joined11.fig.joins.includes('0-3') && joined11.fig.joins.includes('4-5') &&
+       joined11.fig.gaps.length === 1 && joined11.fig.joins[joined11.fig.gaps[0]] === '0-3' && !joined11.fig.joins.includes('0-6'),
+      'AP11 pressing Join joins the seven lights in their order (1→2→3…), adds ONLY the five consecutive joins that were missing, keeps the hand-made 0-3 join AND its gap, keeps 4-5, removes nothing and leaves the chain open', JSON.stringify(joined11.fig.joins) + ' gaps ' + JSON.stringify(joined11.fig.gaps));
+    ck(/Joined the lights in their order — 5 new joins/.test(joined11.status), 'AP11b and says so in words, naming how many joins it added', joined11.status);
+    await page.click('[data-mode="add"]');
+    await page.click('[data-mode="join"]');
+    const again = await page.evaluate(() => { const S = window.ShapeLab; return { fig: S.figure(), status: (document.querySelector('[data-say]') || {}).textContent || '' }; });
+    ck(JSON.stringify(again.fig) === JSON.stringify(joined11.fig) && /already joined in their order/.test(again.status),
+      'AP11c a second press changes nothing — the tool is idempotent, and says the lights are already joined in their order');
+    const gapKept = await page.evaluate(() => { const S = window.ShapeLab; const f = S.figure(); S.toggleGap(f.joins.indexOf('2-3')); const r = S.joinInOrder(); return { r, fig: S.figure() }; });
+    ck(gapKept.r.added === 0 && gapKept.fig.gaps.length === 2 && gapKept.fig.gaps.map((k) => gapKept.fig.joins[k]).sort().join() === '0-3,2-3',
+      'AP11d a consecutive join the author marked as a GAP is a join that already exists — Join in order never re-adds or un-gaps it');
+    const manual = await page.evaluate(() => { const S = window.ShapeLab; const n = S.figure().points.length; const r = S.toggleJoin(1, 2); return { r, joins: S.figure().joins, n }; });
+    ck(manual.r.ok && manual.r.removed && !manual.joins.includes('1-2'),
+      'AP11e the click gestures still work after it — two joined lights clicked again REMOVE that join, so the order is a starting point and never a lock');
     await page.evaluate(() => { localStorage.clear(); });
     ck(errors.length === 0, 'AP9  no page errors across the whole journey', errors.join(' | '));
     await page.close(); await context.close();

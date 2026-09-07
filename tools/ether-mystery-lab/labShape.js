@@ -241,6 +241,25 @@
     return { ok: true, added: true };
   }
 
+  // JOIN IN ORDER. Asked for by the product owner: "the join button
+  // should automatically join dots as per their order." Pressing the
+  // Join tool joins consecutive lights — 1→2, 2→3, … — in the order they
+  // stand (placement order, which for a placed starting figure is the
+  // ranking's order). It only ADDS the consecutive joins that are
+  // missing: an existing join is kept, a gap is kept, and nothing is
+  // ever removed — the chain is left open (the author closes it, or
+  // rearranges it, with the same click gestures as before).
+  function joinInOrder() {
+    var added = 0;
+    for (var i = 0; i + 1 < state.points.length; i++) {
+      if (findJoin(i, i + 1) !== -1) continue;
+      state.joins.push({ a: i, b: i + 1, gap: false });
+      added++;
+    }
+    if (added) { touch(); emit(); }
+    return { ok: true, added: added, lights: state.points.length };
+  }
+
   // A gap is EXPLICIT: the researcher names the join, nothing is
   // drawn at random.
   function toggleGap(joinIndex) {
@@ -997,7 +1016,16 @@
       });
     });
     doc.querySelectorAll('[data-mode]').forEach(function (b) {
-      b.addEventListener('click', function () { mode = b.getAttribute('data-mode'); pendingA = null; emit(); });
+      b.addEventListener('click', function () {
+        mode = b.getAttribute('data-mode'); pendingA = null;
+        if (mode === 'join') {
+          var jr = joinInOrder();
+          say(jr.lights < 2 ? 'Place two or more lights first.'
+            : jr.added ? 'Joined the lights in their order — ' + jr.added + ' new join' + (jr.added === 1 ? '' : 's') + '. Click two lights to change a join, or a line to remove it.'
+            : 'The lights are already joined in their order. Click two lights to change a join, or a line to remove it.');
+        }
+        emit();
+      });
     });
     var num = el('[data-numbers]');
     if (num) num.addEventListener('change', function () { showNumbers = num.checked; emit(); });
@@ -1087,7 +1115,7 @@
     LAB_VERSION: LAB_VERSION,
     // editing
     setBudget: setBudget, addPoint: addPoint, movePoint: movePoint, deletePoint: deletePoint,
-    toggleJoin: toggleJoin, toggleGap: toggleGap, reset: reset, demoRing: demoRing,
+    toggleJoin: toggleJoin, joinInOrder: joinInOrder, toggleGap: toggleGap, reset: reset, demoRing: demoRing,
     approve: approve, exportApproved: exportApproved, APPROVED_KIND: APPROVED_KIND,
     placeSuggestions: placeSuggestions,
     setMode: function (m) { mode = m; pendingA = null; emit(); },
