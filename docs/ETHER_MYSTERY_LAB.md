@@ -1813,3 +1813,96 @@ here** — those are the researcher's to reach with the tool.
 section `SL` (`ETHER_LAB_ONLY=SL` runs it alone). Screenshots:
 `tools/ether-mystery-lab-test/shots/shape-lab/` — the editor at 8, 12,
 16 and 20, the same ring compared across budgets, unfinished vs complete.
+
+## THE CREATURE CANDIDATE GALLERY — Phase 1, and the four phases
+
+`tools/ether-mystery-lab/gallery.html` (linked from the Lab's header and
+from the Shape Lab's). The Shape Lab asked the researcher to draw every
+creature by hand, and that is not the research workflow: the space is
+explored by LOOKING. The gallery holds authored, COMPLETED candidate
+figures for a creature at 8 · 12 · 16 · 20 points — three per creature
+per budget, ten starting creatures, 120 figures — laid side by side so a
+person can answer *does going from 8 → 12 actually make this creature
+more recognisable?* and write the answer down. It judges nothing: no
+recognisability score, no model, no ranking, no recommendation.
+
+### The four research phases
+
+| Phase | Question | Instrument |
+|---|---|---|
+| **1 — Creature representation (NOW)** | Which creatures can be recognised at which point budgets? Completed figures only. | The Candidate Gallery. |
+| 2 — Mystery construction | Which joins can be removed without destroying recognition? | The Shape Lab's Gap tool. |
+| 3 — Interaction discovery | Does the delayed dashed relationship help the child discover joining? | The Shape Lab's aid toggle, off by default. |
+| 4 — Awakening | Does completion genuinely feel like bringing the creature to life? | The existing preview. |
+
+Nothing on the gallery page has a missing join, a hint, an interaction,
+an awakening or movement. Do not jump ahead.
+
+### How to browse
+
+- **Creature.** Ten chips — butterfly · fish · whale · bird · manta ray ·
+  fox · polar bear · elephant · octopus · snake — and a free text field
+  for any other name. The ten are starting subjects, not a taxonomy; a
+  name with nothing authored invents nothing and offers ✏️ *Draw it in
+  the Shape Lab* instead.
+- **BY CREATURE** lays one creature's candidates in four columns, 8 · 12
+  · 16 · 20, so one row reads left to right across the budgets. Pick a
+  single budget to see that budget's several candidates side by side.
+- **BY POINT BUDGET** lays every creature's candidates at one budget, one
+  row per creature.
+- **Blind** hides the creature name, the candidate id and the point
+  budget on every card (and the column headers) while judging. The
+  canvas never carries the name in either mode — the suite counts text
+  draws and requires zero.
+
+### The candidate card
+
+Figure · `N points · candidate k` · the factual `N points · M joins` and
+the opaque id (`whale-12-2`) · an optional researcher name · **Open in
+Shape Lab** · **Judge** (UNMISTAKABLE · RECOGNISABLE · LOOKS LIKE
+RELATED ANIMAL · ABSTRACT · FAILS, plus *What do I see?*) · **Save as
+Fixture** · **▶ Play in Ether**, present and DISABLED with the reason
+beside it: above 8 the production validator refuses the figure and this
+tool does not change that; at 8 the figure is complete — no join is
+missing — so Phase 2 (a gap, in the Shape Lab) comes first. Judgements
+and researcher names live in one browser key, `vihu.lab.gallery`;
+loading the page writes nothing.
+
+### Opening a candidate in the editor
+
+**Open in Shape Lab** hands the exact points and joins to the existing
+editor through a one-shot note (`vihu.lab.shape.handoff`, sessionStorage,
+consumed and deleted on arrival — a refresh does not re-open it, and a
+note carrying more points than its budget is refused, never trimmed).
+The editor opens unsaved, at the candidate's budget, with the creature
+name in the metadata field and *From the Candidate Gallery — <id>* in
+the notes. From there: move, add or delete (where the budget permits),
+join, remove joins, mark missing joins (Phase 2), and Save fixture. An
+8-point candidate becomes playable the moment one join is marked
+missing — the real validator passes it. **Save as Fixture** on a card
+does the same without opening the editor, through the editor's own
+store.
+
+### The data
+
+`tools/ether-mystery-lab/labGalleryData.js` — literal `points` and
+`"a-b"` `joins` per candidate, authored, deterministic, reproducible.
+Every candidate contains exactly its advertised number of points, every
+point is joined to something, no image, SVG, silhouette or bitmap is
+referenced, no model is called, and no geometry is derived from a name
+(the suite fails on a branch on the creature name, and on any line that
+couples a name to a point). The creature name is metadata beside the
+figure and reaches no candidate, no canvas and no figure data.
+
+### Disclosed
+
+Whether any candidate reads as its creature is **not judged here** —
+that is the whole reason the gallery exists. The candidates are what
+the Ether figure language can DRAW at each budget, authored to be looked
+at, and the first real look is the researcher's.
+
+### Files
+
+`tools/ether-mystery-lab/gallery.html` · `labGallery.js` ·
+`labGalleryData.js` · `labShape.js` (the hand-off consumer). Suite
+section `GL`. Screenshots: `tools/ether-mystery-lab-test/shots/gallery/`.

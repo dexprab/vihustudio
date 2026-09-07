@@ -9172,6 +9172,63 @@ leads somewhere.
   `tools/ether-mystery-lab/labShape.js` · `docs/ETHER_MYSTERY_LAB.md` →
   *The Creature Shape Lab* · `tools/ether-mystery-lab-test/` section
   `SL` · `tools/ether-mystery-lab-test/shots/shape-lab/`
+- **THE CREATURE CANDIDATE GALLERY: THE SPACE IS EXPLORED BY LOOKING,
+  NOT BY DRAWING — LAB ONLY, ZERO PRODUCTION FILES CHANGED.** Corrected
+  by the product owner one sprint on: the Shape Lab made the researcher
+  construct every creature by hand, and *"that is not the research
+  workflow we want."* `tools/ether-mystery-lab/gallery.html` shows
+  authored, COMPLETED candidate figures for a creature at 8 · 12 · 16 ·
+  20 points — 120 literal figures, ten starting creatures × four budgets
+  × three candidates — BY CREATURE (four budget columns, one row reading
+  across 8 → 12 → 16 → 20) or BY POINT BUDGET, so the question *does
+  going from 8 → 12 actually make this creature more recognisable?* is
+  answered by a person looking. The editor stays, as the place a
+  promising candidate is opened and modified.
+- **THE FOUR PHASES ARE WRITTEN DOWN, AND THIS IS PHASE 1 ONLY.**
+  1 — creature representation (which creatures can be recognised at
+  which budgets: the gallery, completed figures only); 2 — mystery
+  construction (which joins can be removed without destroying
+  recognition: the Shape Lab's Gap tool); 3 — interaction discovery
+  (does the delayed dashed relationship help a child discover joining:
+  the aid toggle); 4 — awakening (does completion feel like bringing the
+  creature to life: the preview). Nothing on the gallery page has a
+  missing join, a hint, an interaction, an awakening or movement.
+- **THE CANDIDATES ARE LITERAL, DETERMINISTIC AND EXACT.**
+  `labGalleryData.js` holds explicit points and `"a-b"` joins; nothing
+  is generated at runtime, no model is called, no image, SVG, silhouette
+  or bitmap is referenced, and **no geometry is derived from a creature
+  name** — the suite fails on a branch on the name and on any line that
+  couples a name to a point. Every candidate contains EXACTLY its
+  advertised number of points (8 is 8, 20 is 20), every point is joined,
+  no scaling flatters a budget. The name is metadata beside the figure
+  and reaches no candidate, no canvas (zero text draws, measured) and no
+  figure data.
+- **THE PRODUCTION LIMIT IS UNTOUCHED, AND THE GALLERY SAYS SO ON EVERY
+  CARD.** Every 8-point candidate passes the real validator the moment
+  one join is marked missing; 12, 16 and 20 are refused by it and are
+  STILL VIEWABLE and judgeable. ▶ Play in Ether is present and disabled
+  on every card with the reason written beside it — refused above 8;
+  complete (no gap, Phase 2 first) at 8.
+- **ONE EDITOR, ONE STORE, ONE RENDERER.** Open in Shape Lab hands the
+  exact geometry to the existing editor through a one-shot
+  sessionStorage note, consumed and deleted on arrival (a refresh does
+  not re-open it; a note with more points than its budget is refused,
+  never trimmed); Save as Fixture goes through the editor's own
+  `importJSON()`; every figure is drawn by `ShapeLab.draw()`. The suite
+  fails if the gallery grows a canvas context, a store key or a renderer
+  of its own.
+- **HUMAN JUDGEMENT ONLY.** UNMISTAKABLE · RECOGNISABLE · LOOKS LIKE
+  RELATED ANIMAL · ABSTRACT · FAILS, plus *What do I see?* and an
+  optional researcher name, in one browser key; loading writes nothing.
+  Blind mode hides the name, the id and the budget while judging. **No
+  creature was judged, no creature was called best, and no point limit
+  was recommended** — the ten are starting subjects, not a taxonomy, and
+  any other name may be typed.
+- `tools/ether-mystery-lab/gallery.html` · `labGallery.js` ·
+  `labGalleryData.js` · `labShape.js` (hand-off) ·
+  `docs/ETHER_MYSTERY_LAB.md` → *The Creature Candidate Gallery* ·
+  `tools/ether-mystery-lab-test/` section `GL` ·
+  `tools/ether-mystery-lab-test/shots/gallery/`
 - Out of scope and not implemented: creature encounters as a reward
   system, creature dialogue, a Companion in the Ether, per-Traveller
   encounter history, more activity rows (story hunt, missing

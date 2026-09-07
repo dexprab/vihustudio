@@ -4424,6 +4424,308 @@ async function sectionSL() {
 }
 
 // ===================================================================
+// GL. THE CREATURE CANDIDATE GALLERY — Phase 1 (creature representation).
+//
+// A research instrument: authored COMPLETED figures at 8 · 12 · 16 · 20,
+// laid out to be looked at and judged by a person. Nothing here judges a
+// creature; every check is about the instrument being exact — the point
+// counts are factual, the name is metadata, the figure reaches the
+// editor unchanged, and production is untouched.
+// ===================================================================
+async function sectionGL() {
+  console.log('\n== GL. the Creature Candidate Gallery (instrument) ==');
+  const { chromium } = require('playwright');
+  const sb = kitSandbox();
+  const G = sb.EtherGrammar || (sb.window && sb.window.EtherGrammar);
+  const Kit = sb.EtherMysteryLabKit || (sb.window && sb.window.EtherMysteryLabKit);
+  const loadData = () => {
+    const s = { console }; s.window = undefined; s.global = s;
+    vm.runInNewContext(read('tools/ether-mystery-lab/labGalleryData.js'), s, { filename: 'labGalleryData.js' });
+    return s.EtherLabGalleryData;
+  };
+  const D = loadData();
+  const dataSrc = read('tools/ether-mystery-lab/labGalleryData.js');
+  const gallerySrc = read('tools/ether-mystery-lab/labGallery.js');
+  const galleryHtml = read('tools/ether-mystery-lab/gallery.html');
+  const galleryStripped = stripComments(gallerySrc);
+  const STARTERS = ['butterfly', 'fish', 'whale', 'bird', 'manta ray', 'fox', 'polar bear', 'elephant', 'octopus', 'snake'];
+
+  // ---- GL1: production untouched ----
+  const grepProd = require('child_process').spawnSync('grep',
+    ['-rl', '-e', 'CreatureGallery', '-e', 'labGallery', '-e', 'EtherLabGalleryData', '-e', 'vihu.lab.gallery', '-e', 'vihu.lab.shape.handoff',
+     path.join(ROOT, 'js'), path.join(ROOT, 'assets'), path.join(ROOT, 'vihuplanet'),
+     path.join(ROOT, 'index.html'), path.join(ROOT, 'studio.html')],
+    { encoding: 'utf8' }).stdout || '';
+  ck(grepProd.trim() === '', 'GL1  nothing a child loads names the gallery, its data, its store or the hand-off', grepProd.trim() || 'clean');
+  ck(/arrangementNodesMax:\s*8\b/.test(read('js/etherGrammar.js')), 'GL1b the production point limit is still EIGHT');
+  const stamps = (read('index.html').match(/\?v=(\d{4})/g) || []).map((s) => s.slice(3));
+  ck(stamps.length > 0 && stamps.every((s) => s === '0769'), 'GL1c the build is not bumped — every stamp still reads 0769', Array.from(new Set(stamps)).join(','));
+  ck(!/experience-pool/.test(galleryHtml) && !/experience-pool|EtherExperience\b|EtherMystery\b/.test(galleryStripped) && !/experience-pool/.test(dataSrc),
+    'GL1d the gallery never loads the production pool or the runtime, and its data names neither');
+
+  // ---- GL2: the data is exact ----
+  const byKey = {};
+  D.candidates.forEach((c) => { const k = c.creature + '|' + c.budget; (byKey[k] = byKey[k] || []).push(c); });
+  const coverage = STARTERS.map((n) => [8, 12, 16, 20].map((b) => (byKey[n + '|' + b] || []).length));
+  ck(JSON.stringify(D.creatures) === JSON.stringify(STARTERS) && coverage.every((row) => row.every((k) => k >= 3)),
+    'GL2  all ten starting creatures × four budgets × at least three candidates', D.candidates.length + ' candidates · ' + coverage.map((r) => r.join('/')).join(' '));
+  const exact = D.candidates.filter((c) => c.points.length !== c.budget);
+  ck(exact.length === 0, 'GL2b every candidate contains EXACTLY its advertised number of points — 8 is 8, 20 is 20', exact.map((c) => c.creature + '-' + c.budget + '-' + c.n + ':' + c.points.length).join(' ') || 'all exact');
+  const unsound = D.candidates.map((c) => {
+    const n = c.points.length, used = new Set(), seen = new Set(), errs = [];
+    c.joins.forEach((j) => {
+      const m = /^(\d+)-(\d+)$/.exec(j); if (!m) { errs.push('spelling ' + j); return; }
+      const a = +m[1], b = +m[2];
+      if (a >= n || b >= n) errs.push('range ' + j); if (a === b) errs.push('self ' + j);
+      if (seen.has(j)) errs.push('dup ' + j); seen.add(j); used.add(a); used.add(b);
+    });
+    for (let k = 0; k < n; k++) if (!used.has(k)) errs.push('unused point ' + k);
+    c.points.forEach((p, k) => { if (!(Math.abs(p[0]) <= 1.4 && Math.abs(p[1]) <= 1.4)) errs.push('coord ' + k); });
+    return errs.length ? c.creature + '-' + c.budget + '-' + c.n + ':' + errs.join(',') : null;
+  }).filter(Boolean);
+  ck(unsound.length === 0, 'GL2c no hidden point, no unused point, no join to nowhere, every join "a-b", every coordinate inside the sky', unsound.join(' ') || 'sound');
+  ck(JSON.stringify(loadData()) === JSON.stringify(D) && JSON.stringify(loadData()) === JSON.stringify(D),
+    'GL2d the candidates are deterministic — loading the data three times gives the same figures byte for byte');
+  ck(!/Math\.random|Date\b|fetch\(|XMLHttpRequest|<img|drawImage|\.png|\.jpg|\.svg|Image\(|url\(/.test(stripComments(dataSrc)),
+    'GL2e the data is literal: no randomness, no clock, no network, no image, no SVG, no silhouette reference');
+  ck(!/<img|drawImage|\.png|\.jpg|\.svg|Image\(|background-image|url\(|fetch\(|XMLHttpRequest|score|rank/i.test(galleryStripped) &&
+     !/<img|\.png|\.jpg|\.svg|background-image/i.test(galleryHtml.replace(/<!--[\s\S]*?-->/g, '')),
+    'GL2f the gallery draws no image, traces nothing, asks no model, scores nothing and ranks nothing');
+  ck(!/if\s*\(\s*(c\.)?creature\s*===|switch\s*\(\s*(c\.)?creature/.test(galleryStripped) &&
+     galleryStripped.split('\n').filter((l) => /\bpoints\b/.test(l) && /\bcreature\b/.test(l)).length === 0,
+    'GL2g no geometry is computed from a creature name — no branch on the name, no line couples a name to a point');
+
+  // ---- GL3: the name is metadata ----
+  const names = STARTERS.map((n) => n.toLowerCase());
+  const leak = D.candidates.filter((c) => {
+    const fig = JSON.stringify({ points: c.points, joins: c.joins }).toLowerCase();
+    const cand = JSON.stringify(Kit.creatureCandidate({ id: 'lab-gallery-x', nodes: c.points.length, title: 't', figure: { points: c.points, joins: c.joins, gaps: [0] } })).toLowerCase();
+    return names.some((n) => fig.indexOf(n) !== -1 || cand.indexOf(n) !== -1);
+  });
+  ck(leak.length === 0, 'GL3  no creature name is in any figure or in any candidate the interpreter could be handed', leak.length + ' leaks');
+  ck(!/fillText|strokeText/.test(galleryStripped) && !/fillText|strokeText/.test(stripComments(dataSrc)),
+    'GL3b neither the gallery nor its data can write text on a canvas — the only renderer is the Shape Lab\'s draw()');
+
+  // ---- GL4: the real validator ----
+  const c8 = byKey['butterfly|8'][0], c12 = byKey['butterfly|12'][0], c16 = byKey['fish|16'][0], c20 = byKey['whale|20'][0];
+  const probe = (c) => G.validate(Kit.creatureCandidate({ id: 'lab-gallery-x', nodes: c.points.length, title: 't', figure: { points: c.points, joins: c.joins, gaps: [0] } }));
+  const all8 = D.candidates.filter((c) => c.budget === 8).map((c) => ({ c, v: probe(c) }));
+  ck(all8.every((r) => r.v.ok), 'GL4  every 8-point candidate PASSES the real validator once one join is marked missing — the geometry is genuinely playable',
+    all8.filter((r) => !r.v.ok).map((r) => r.c.creature + '-' + r.c.n + ':' + r.v.reasons).join(' ') || all8.length + '/' + all8.length);
+  ck(!probe(c12).ok && !probe(c16).ok && !probe(c20).ok, 'GL4b and 12, 16 and 20 are refused by it — the research budgets are refused exactly as expected',
+    [probe(c12), probe(c16), probe(c20)].map((v) => v.reasons[0]).join(','));
+
+  // ---- the browser half ----
+  const server = spawn('node', ['tools/bring-it-alive/test/serve.js', String(PORT)], { cwd: ROOT, stdio: 'ignore' });
+  await new Promise((res) => setTimeout(res, 900));
+  const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+  try {
+    const ctx = await browser.newContext({ viewport: { width: 1500, height: 1000 } });
+    const page = await ctx.newPage();
+    const errors = [], bad = [];
+    page.on('pageerror', (e) => errors.push(String(e).split('\n')[0]));
+    page.on('response', (q) => { if (q.status() >= 400 && !/favicon/.test(q.url())) bad.push(q.status() + ' ' + q.url()); });
+    // a text spy on every canvas, installed before the page's scripts run
+    await page.addInitScript(() => {
+      window.__textDraws = 0;
+      const p = CanvasRenderingContext2D.prototype;
+      ['fillText', 'strokeText'].forEach((k) => { const o = p[k]; p[k] = function () { window.__textDraws++; return o.apply(this, arguments); }; });
+    });
+    await page.goto(BASE + '/tools/ether-mystery-lab/gallery.html');
+    await page.waitForFunction(() => !!window.CreatureGallery && !!window.ShapeLab && !!window.EtherLabGalleryData, null, { timeout: 20000 });
+
+    // ---- GL5: loads clean, writes nothing ----
+    const atLoad = await page.evaluate(() => ({ ls: Object.keys(localStorage), ss: Object.keys(sessionStorage),
+      cards: document.querySelectorAll('.gcard:not(.gnone)').length, text: window.__textDraws, title: document.querySelector('[data-gtitle]').textContent }));
+    ck(errors.length === 0 && bad.length === 0 && atLoad.ls.length === 0 && atLoad.ss.length === 0,
+      'GL5  the gallery loads clean and writes NOTHING to storage', 'errors:' + errors.length + ' http:' + bad.length + ' keys:' + (atLoad.ls.length + atLoad.ss.length));
+
+    // ---- GL6: by creature, all four budgets ----
+    const grid = async () => page.evaluate(() => {
+      const cards = Array.from(document.querySelectorAll('.gcard:not(.gnone)'));
+      const heads = Array.from(document.querySelectorAll('.ghead div')).map((d) => d.textContent.trim());
+      const D = window.EtherLabGalleryData, G = window.CreatureGallery;
+      const byId = {}; D.candidates.forEach((c) => { byId[G.idOf(c)] = c; });
+      return { heads, headVisible: Array.from(document.querySelectorAll('.ghead div')).map((d) => getComputedStyle(d).visibility),
+        cards: cards.map((el) => {
+          const id = el.getAttribute('data-card'), c = byId[id];
+          const cv = el.querySelector('canvas');
+          const g = cv.getContext('2d'); const d = g.getImageData(0, 0, cv.width, cv.height).data;
+          let lit = 0; for (let i = 0; i < d.length; i += 4) if (d[i] > 120 && d[i + 1] > 120) lit++;
+          const play = Array.from(el.querySelectorAll('button')).filter((b) => /Play in Ether/.test(b.textContent))[0];
+          return { id, budget: c && c.budget, pts: c && c.points.length, joins: c && c.joins.length, meta: el.querySelector('.gmeta').textContent,
+                   lit, playDisabled: !!(play && play.disabled), why: el.querySelector('.gwhy').textContent, text: el.textContent };
+        }), textDraws: window.__textDraws, title: document.querySelector('[data-gtitle]').textContent };
+    });
+    let g = await grid();
+    ck(g.heads.length === 4 && /^8 POINTS/.test(g.heads[0]) && /production/.test(g.heads[0]) && /^20 POINTS/.test(g.heads[3]) &&
+       g.cards.length === 12 && [8, 12, 16, 20].every((b) => g.cards.filter((c) => c.budget === b).length === 3),
+      'GL6  BY CREATURE lays one creature in four budget columns — 8 · 12 · 16 · 20, three candidates each', g.heads.join(' | '));
+    ck(g.cards.every((c) => new RegExp('^' + c.budget + ' points · candidate \\d').test(c.meta) && new RegExp(c.pts + ' points · ' + c.joins + ' joins').test(c.meta)),
+      'GL6b each card states its point count, its candidate number and the factual point/join counts, and they agree with the data');
+    ck(g.cards.every((c) => c.lit > 200) && g.textDraws === 0,
+      'GL6c every figure is painted, and not one character of text was drawn on any canvas', 'min lit ' + Math.min.apply(null, g.cards.map((c) => c.lit)) + ' · text draws ' + g.textDraws);
+    ck(g.cards.every((c) => c.playDisabled) &&
+       g.cards.filter((c) => c.budget > 8).every((c) => /production validator refuses/.test(c.why) && /limit is 8/.test(c.why)) &&
+       g.cards.filter((c) => c.budget === 8).every((c) => /COMPLETE figure/.test(c.why) && /Phase 2/.test(c.why)),
+      'GL6d Play in Ether is disabled on every card and says why — refused above 8, complete (no gap) at 8');
+
+    // ---- GL7: one budget, several candidates; and BY POINT BUDGET ----
+    await page.click('[data-gbudget="12"]');
+    g = await grid();
+    ck(g.cards.length === 3 && g.cards.every((c) => c.budget === 12 && c.pts === 12) && /12 POINTS/.test(g.title),
+      'GL7  choosing one budget shows that budget\'s several candidates side by side', g.title);
+    await page.click('[data-gbudget="8"]');
+    await page.click('[data-gview="budget"]');
+    g = await grid();
+    const rowNames = await page.evaluate(() => Array.from(document.querySelectorAll('.gcreature-name')).map((d) => d.textContent.trim()));
+    ck(g.cards.length === 30 && g.cards.every((c) => c.budget === 8) && rowNames.join('|') === STARTERS.join('|'),
+      'GL7b BY POINT BUDGET lays every creature\'s candidates at one budget, in the starting order', g.cards.length + ' cards · ' + rowNames.length + ' rows');
+    await page.click('[data-gview="creature"]');
+    await page.click('[data-gbudget="all"]');
+
+    // ---- GL8: blind ----
+    await page.click('[data-gblind]');
+    g = await grid();
+    const blindLeak = g.cards.filter((c) => /candidate|points|butterfly/i.test(c.text.replace(/Play in Ether[^]*$/, '')) || c.text.indexOf(c.id) !== -1);
+    ck(g.cards.length === 12 && blindLeak.length === 0 && g.headVisible.every((v) => v === 'hidden') && /^BLIND/.test(g.title) && g.textDraws === 0,
+      'GL8  blind mode hides the creature name, the candidate id and the point budget on every card — the figures stay', blindLeak.length + ' leaks · title ' + g.title);
+    await page.click('[data-gblind]');
+
+    // ---- GL9: any creature name; nothing invented ----
+    await page.fill('[data-gcreature-input]', 'dragon');
+    await page.press('[data-gcreature-input]', 'Enter');
+    await page.waitForTimeout(100);
+    const empty = await page.evaluate(() => ({
+      cards: document.querySelectorAll('.gcard:not(.gnone)').length,
+      draw: !!document.querySelector('[data-gdraw]'),
+      text: document.querySelector('[data-ggrid]').textContent,
+      n: window.CreatureGallery.candidatesFor('dragon', 'all').length }));
+    ck(empty.cards === 0 && empty.n === 0 && empty.draw && /No authored candidates/.test(empty.text) && /starting set/.test(empty.text),
+      'GL9  any creature name may be entered; one with nothing authored invents nothing and offers the Shape Lab instead');
+    await page.click('[data-gcreature="whale"]');
+
+    // ---- GL10: judgement persists, only the gallery key is written ----
+    const jid = await page.evaluate(() => {
+      const id = document.querySelector('.gcard:not(.gnone)').getAttribute('data-card');
+      document.querySelector('[data-gjudgebtn="' + id + '"]').click();
+      return id;
+    });
+    await page.check('input[name="v-' + jid + '"][value="recognisable"]');
+    await page.fill('[data-gsee="' + jid + '"]', 'a long body with a tail');
+    await page.fill('[data-gresearcher="' + jid + '"]', 'Vihaan');
+    await page.reload();
+    await page.waitForFunction(() => !!window.CreatureGallery, null, { timeout: 20000 });
+    const jud = await page.evaluate((id) => ({ j: window.CreatureGallery.judgementOf(id), keys: Object.keys(localStorage),
+      shown: document.querySelector('[data-card="' + id + '"] .gverdict') && document.querySelector('[data-card="' + id + '"] .gverdict').textContent,
+      researcher: document.querySelector('[data-gresearcher="' + id + '"]').value,
+      verdicts: window.CreatureGallery.VERDICTS }), jid);
+    ck(jud.j && jud.j.verdict === 'recognisable' && jud.j.see === 'a long body with a tail' && jud.j.researcher === 'Vihaan' &&
+       jud.keys.length === 1 && jud.keys[0] === 'vihu.lab.gallery' && jud.shown === 'RECOGNISABLE' && jud.researcher === 'Vihaan',
+      'GL10 a judgement, "what do I see" and the researcher name survive a reload in ONE key of their own', JSON.stringify(jud.keys));
+    ck(jud.verdicts.join('|') === 'unmistakable|recognisable|looks like a related animal|abstract|fails' &&
+       Object.keys(jud.j).every((k) => typeof jud.j[k] === 'string'),
+      'GL10b the five verdicts are the brief\'s own words, and nothing in a judgement is a number');
+
+    // ---- GL11: Open in Shape Lab carries the EXACT geometry ----
+    const pick = await page.evaluate(() => {
+      const G = window.CreatureGallery;
+      const c = window.EtherLabGalleryData.candidates.filter((x) => x.creature === 'whale' && x.budget === 12)[1];
+      return { id: G.idOf(c), c, note: G.handoffNote(c) };
+    });
+    await page.click('[data-gopen="' + pick.id + '"]');
+    await page.waitForURL(/shape\.html/, { timeout: 20000 });
+    await page.waitForFunction(() => !!window.ShapeLab, null, { timeout: 20000 });
+    const opened = await page.evaluate(() => ({ s: window.ShapeLab.state(), opened: document.querySelector('[data-opened]').textContent,
+      say: document.querySelector('[data-say]').textContent, nameField: document.querySelector('[data-name]').value,
+      ss: Object.keys(sessionStorage), ls: Object.keys(localStorage), label: document.querySelector('[data-budget-label]').textContent,
+      cand: JSON.stringify(window.ShapeLab.candidateFor()), m: window.ShapeLab.metrics() }));
+    ck(/shape\.html/.test(page.url()) && JSON.stringify(opened.s.points) === JSON.stringify(pick.c.points) &&
+       JSON.stringify(opened.s.joins) === JSON.stringify(pick.c.joins) && opened.s.budget === 12 && opened.s.missing.length === 0 &&
+       opened.s.id === null && /unsaved/.test(opened.opened) && /TESTING 12 POINTS/.test(opened.label),
+      'GL11 Open in Shape Lab lands in the existing editor with the candidate\'s exact points and joins, unsaved, at its own budget', opened.label);
+    ck(opened.s.name === 'whale' && opened.nameField === 'whale' && !/whale/i.test(opened.cand) && /Candidate Gallery/.test(opened.s.notes),
+      'GL11b the creature name arrives as METADATA in the editor and still never in a candidate');
+    ck(opened.ss.length === 0 && opened.ls.length === 1 && opened.ls[0] === 'vihu.lab.gallery' && /Opened from the Candidate Gallery/.test(opened.say),
+      'GL11c the hand-off note is consumed — one shot, no fixture written, nothing left in storage', JSON.stringify(opened.ss.concat(opened.ls)));
+    ck(opened.m.points === 12 && opened.m.connections === pick.c.joins.length && opened.m.missing === 0 && !opened.m.validator.ok,
+      'GL11d the editor\'s metrics read the transferred figure — 12 points, every join, no gap, and the validator\'s honest refusal');
+    await page.reload();
+    await page.waitForFunction(() => !!window.ShapeLab, null, { timeout: 20000 });
+    const afterReload = await page.evaluate(() => window.ShapeLab.state().points.length);
+    ck(afterReload === 0, 'GL11e a refresh of the editor does not re-open the note — it was one shot');
+    // an over-budget note is refused, never trimmed
+    const smuggled = await page.evaluate((c) => {
+      const pts = c.points.concat([[0.11, 0.13]]);
+      sessionStorage.setItem(window.ShapeLab.HANDOFF_KEY, JSON.stringify({ budget: 12, points: pts, joins: c.joins, missing: [], name: 'x' }));
+      return pts.length;
+    }, pick.c);
+    await page.reload();
+    await page.waitForFunction(() => !!window.ShapeLab, null, { timeout: 20000 });
+    const refused = await page.evaluate(() => ({ n: window.ShapeLab.state().points.length, say: document.querySelector('[data-say]').textContent, ss: Object.keys(sessionStorage).length }));
+    ck(smuggled === 13 && refused.n === 0 && /could not be opened/.test(refused.say) && /exceeds budget/.test(refused.say) && refused.ss === 0,
+      'GL11f a hand-off carrying more points than its budget is refused on arrival and never trimmed', refused.say);
+    // the 8-point candidate becomes playable the moment one gap is chosen — the real validator, in the editor
+    await page.goto(BASE + '/tools/ether-mystery-lab/gallery.html#creature=fish&budget=8&view=creature');
+    await page.waitForFunction(() => !!window.CreatureGallery && !!window.ShapeLab, null, { timeout: 20000 });
+    const id8 = await page.evaluate(() => document.querySelector('.gcard:not(.gnone)').getAttribute('data-card'));
+    await page.click('[data-gopen="' + id8 + '"]');
+    await page.waitForURL(/shape\.html/, { timeout: 20000 });
+    await page.waitForFunction(() => !!window.ShapeLab, null, { timeout: 20000 });
+    const play8 = await page.evaluate(() => {
+      const S = window.ShapeLab; const before = S.playable(); S.toggleGap(0);
+      return { before, after: S.playable(), m: S.metrics(), disabled: document.querySelector('[data-play]').disabled };
+    });
+    ck(play8.before === false && play8.after === true && play8.m.validator.ok && play8.disabled === false,
+      'GL11g an 8-point candidate opened in the editor becomes playable the moment one join is marked missing — Phase 2 is one click away, on the real validator');
+
+    // ---- GL12: Save as Fixture, and the fixture tools still work ----
+    await page.goto(BASE + '/tools/ether-mystery-lab/gallery.html#creature=manta%20ray&budget=all&view=creature');
+    await page.waitForFunction(() => !!window.CreatureGallery && !!window.ShapeLab, null, { timeout: 20000 });
+    const saved = await page.evaluate(() => {
+      const G = window.CreatureGallery;
+      const c = window.EtherLabGalleryData.candidates.filter((x) => x.creature === 'manta ray' && x.budget === 16)[2];
+      const id = G.idOf(c);
+      G.setJudgement(id, { verdict: 'abstract', see: 'a kite' });
+      document.querySelector('[data-gsave="' + id + '"]').click();
+      const list = window.ShapeLab.list();
+      return { id, c, say: document.querySelector('[data-gsay]').textContent, list, keys: Object.keys(localStorage) };
+    });
+    const rec = saved.list[0];
+    ck(saved.list.length === 1 && rec && rec.name === 'manta ray' && rec.budget === 16 &&
+       JSON.stringify(rec.points) === JSON.stringify(saved.c.points) && JSON.stringify(rec.joins) === JSON.stringify(saved.c.joins) &&
+       rec.missing.length === 0 && rec.judgement && rec.judgement.complete === 'abstract' && /Candidate Gallery/.test(rec.notes) && /^shape-/.test(rec.id) &&
+       /Saved/.test(saved.say) && saved.keys.sort().join(',') === 'vihu.lab.gallery,vihu.lab.shapes',
+      'GL12 Save as Fixture writes the exact geometry, the name and the judgement into the Shape Lab\'s own store — one fixture implementation', saved.say);
+    const tools = await page.evaluate((id) => {
+      const S = window.ShapeLab;
+      const d = S.duplicate(id, 20), tooSmall = S.duplicate(id, 12);
+      const out = S.exportJSON();
+      S.list().forEach((r) => S.remove(r.id));
+      const imp = S.importJSON(out);
+      return { d, tooSmall, imp, after: S.list().length, budgets: S.compare('manta ray').map((r) => r.budget) };
+    }, rec.id);
+    ck(tools.d.ok && !tools.tooSmall.ok && /figure-has-16-lights/.test(tools.tooSmall.reason) && tools.imp.ok && tools.imp.added === 2 && tools.after === 2 &&
+       tools.budgets.join(',') === '16,20',
+      'GL12b duplicate INTO a budget, refuse a budget too small, export and import all still work on a gallery-saved fixture', JSON.stringify(tools.budgets));
+    await page.evaluate(() => { localStorage.clear(); sessionStorage.clear(); });
+    await page.close();
+    await ctx.close();
+  } finally {
+    await browser.close();
+    server.kill();
+  }
+
+  // ---- GL13: the seams are the existing ones ----
+  ck(/S\.draw\(canvas, s, \{\}\)/.test(gallerySrc) && !/getContext\('2d'\)/.test(galleryStripped),
+    'GL13 the gallery has no renderer of its own — every figure goes through ShapeLab.draw()');
+  ck(/S\.importJSON\(/.test(gallerySrc) && !/localStorage\.setItem\(['"]vihu\.lab\.shapes/.test(galleryStripped),
+    'GL13b and no fixture store of its own — Save as Fixture goes through the editor\'s importJSON()');
+  const pool = read('assets/ether/experience-pool.js');
+  ck(!/lab-gallery|labGallery|gallery/i.test(pool), 'GL13c the production pool holds nothing from the gallery');
+}
+
+// ===================================================================
 (async () => {
   try {
     // ETHER_LAB_ONLY=SL runs one section alone while it is being built;
@@ -4443,6 +4745,7 @@ async function sectionSL() {
     await run('FR', sectionFR);
     await run('EP', sectionEP);
     await run('SL', sectionSL);
+    await run('GL', sectionGL);
   } catch (e) {
     fail('suite crashed', (e && e.stack || String(e)).split('\n')[0]);
   }

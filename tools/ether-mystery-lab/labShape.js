@@ -779,6 +779,28 @@
     global.addEventListener('resize', render);
     listeners.push(render);
     render();
+    consumeHandoff();
+  }
+
+  // A ONE-SHOT NOTE FROM THE CANDIDATE GALLERY. The gallery hands the
+  // exact geometry of a candidate here to be edited; the note is read
+  // once and deleted, so a refresh never re-opens it, and it is never
+  // saved until the researcher presses Save. Loading the page with no
+  // note writes nothing and changes nothing.
+  var HANDOFF_KEY = 'vihu.lab.shape.handoff';
+  function consumeHandoff() {
+    var raw = null;
+    try { raw = global.sessionStorage.getItem(HANDOFF_KEY); } catch (e) { return; }
+    if (!raw) return;
+    try { global.sessionStorage.removeItem(HANDOFF_KEY); } catch (e) {}
+    var rec;
+    try { rec = JSON.parse(raw); } catch (e) { return; }
+    if (!rec || typeof rec !== 'object') return;
+    rec.id = null;
+    var r = hydrate(rec);
+    emit();
+    say(r.ok ? 'Opened from the Candidate Gallery — an unsaved figure until you press Save fixture.'
+             : 'The gallery note could not be opened: ' + r.reason.replace(/-/g, ' ') + '.');
   }
 
   if (doc) {
@@ -790,6 +812,7 @@
     BUDGETS: BUDGETS.slice(),
     PRODUCTION_BUDGET: PRODUCTION_BUDGET,
     STORE_KEY: STORE_KEY,
+    HANDOFF_KEY: HANDOFF_KEY,
     LAB_VERSION: LAB_VERSION,
     // editing
     setBudget: setBudget, addPoint: addPoint, movePoint: movePoint, deletePoint: deletePoint,

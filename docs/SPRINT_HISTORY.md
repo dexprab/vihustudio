@@ -12601,3 +12601,26 @@ loaded by the page. Lab suite 456/456 — section `SL` (51 checks)
 drives the real page with real clicks at 1500×1000 and the real preview.
 How to use it: `docs/ETHER_MYSTERY_LAB.md` → *The Creature Shape Lab*;
 shots in `tools/ether-mystery-lab-test/shots/shape-lab/`.
+
+## The Creature Candidate Gallery — Phase 1, creature representation (Lab)
+
+The Shape Lab made the researcher draw every creature; the research
+workflow is to LOOK. `tools/ether-mystery-lab/gallery.html` shows
+authored, COMPLETED candidate figures for a creature at 8 · 12 · 16 · 20
+points — 120 literal figures across the ten starting creatures, three
+per budget — BY CREATURE (four budget columns, so one row reads across
+8 → 12 → 16 → 20) or BY POINT BUDGET (every creature at one budget), with
+a blind mode that hides name, id and budget while judging. Cards carry
+the factual point/join counts, the five human verdicts and *What do I
+see?*, Open in Shape Lab (a one-shot hand-off of the exact geometry into
+the existing editor), Save as Fixture (through the editor's own store),
+and a disabled Play in Ether that says why. Any creature name may be
+typed; one with nothing authored offers the editor. The four research
+phases are written down and this is Phase 1 only: no gaps, no hint, no
+interaction, no awakening. No image, no tracing, no model, no score, no
+geometry from a name. Zero production files changed, the production
+limit untouched (every 8-point candidate passes the real validator once
+a gap is chosen; 12/16/20 are refused and still viewable), no build
+bump. Lab suite 494/494, section `GL`. Doc:
+`docs/ETHER_MYSTERY_LAB.md` → *The Creature Candidate Gallery*; shots in
+`tools/ether-mystery-lab-test/shots/gallery/`.
