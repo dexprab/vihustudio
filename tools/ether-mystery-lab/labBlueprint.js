@@ -1,0 +1,285 @@
+// CREATE FROM CREATURE — the authoring BLUEPRINT. LAB ONLY.
+//
+// The eventual product: a child enters "Tiger", the system helps with a
+// visual reference, and the CHILD builds the Ether figure over it —
+// place points, connect, simplify, choose gaps, add a hint, test, save.
+// The child is the author. The model is an assistant.
+//
+// What this file owns is the contract between the two:
+//
+//   - THE MODEL IS RESPONSIBLE FOR SEMANTIC HELP ONLY. "What makes a
+//     tiger recognisable?" It answers with a structured blueprint — the
+//     creature's identity, its primary silhouette, its diagnostic
+//     features with their relative importance, which features to spend
+//     an 8 / 12 / 16 / 20 point budget on — and a temporary VISUAL
+//     REFERENCE: a rough sketch made of ellipses, polygons and lines in
+//     the editor's own unit space.
+//   - THE MODEL IS NOT RESPONSIBLE FOR THE FINAL CREATURE. The schema has
+//     no field for final points, final joins or final gaps, and a reply
+//     carrying any is refused as an unknown key. Nothing the model
+//     returns can become the Ether figure; only the author's own lights
+//     and joins can.
+//   - THE REFERENCE IS AUTHORING-ONLY. It is drawn behind the editor,
+//     never on the unfinished pane, never in a fixture, never in a
+//     candidate, never in the preview, never in the Ether. It is
+//     discarded when the author is done.
+//   - THE ONLY THING SENT TO A MODEL IS THE SUBJECT plus this generic
+//     contract. No card, no Stars, no memory, no Story, no name of a
+//     child: `messagesFor(subject)` takes one string and the suite
+//     proves the request contains nothing else.
+//   - NOTHING HERE KNOWS ANY CREATURE. There is no creature list, no
+//     `if (subject === …)`, no rendering branch per animal. A fixture
+//     blueprint — for a session with no model — is one deliberately
+//     GENERIC body plan, the same for "tiger" and "wibble", and it says so.
+//   - NO RECOGNISABILITY SCORE. A blueprint may name features; nothing
+//     in it, and nothing here, says whether the author's figure is good.
+(function (global) {
+  'use strict';
+
+  var COORD = 1.3;                              // the editor's own reach
+  var BUDGETS = [8, 12, 16, 20];
+  var LIMITS = {
+    subjectChars: 40,
+    textChars: 240,
+    nameChars: 24,
+    featuresMin: 3, featuresMax: 12,
+    sketchMax: 24, polyPointsMax: 24,
+    importanceMin: 1, importanceMax: 3
+  };
+
+  // Keys a blueprint may never carry, at any depth — the product's own
+  // boundary words (Stars, cards, memories…) and everything that would
+  // smuggle an image or a link into authoring data.
+  var FORBIDDEN_KEYS = ['pattern', 'cells', 'constellation', 'stars', 'card', 'cardId', 'owner', 'ownerId',
+    'email', 'memories', 'memory', 'orbit', 'circle', 'username', 'url', 'href', 'src', 'image', 'img',
+    'data', 'base64', 'svg', 'html', 'joins', 'gaps', 'missing', 'hint', 'tease', 'candidate'];
+
+  // The schema, written down so the contract and the validator cannot
+  // drift: every key, its type, and what may go in it.
+  var SCHEMA = {
+    top: {
+      subject: 'string — the subject as understood, ≤ 40 chars',
+      silhouette: 'string — one sentence: the primary silhouette and the viewing angle (side / top / front)',
+      features: 'array of 3–12 feature objects, most diagnostic first',
+      budgets: 'object with exactly the keys "8", "12", "16", "20": for each, an array of feature names (from features[].name) worth spending that budget on, ≤ budget entries',
+      sketch: 'array of ≤ 24 primitives — the temporary visual reference'
+    },
+    feature: {
+      name: 'string — a short body-part label in capitals, letters/spaces only, ≤ 24 chars (HEAD, EAR, TAIL, WING…)',
+      importance: 'integer 1–3 — 3 = the creature is not itself without it',
+      why: 'string — one short sentence on why it is diagnostic',
+      anchor: '[x, y] — where on the reference this feature sits; unit space, x right, y DOWN, |x|,|y| ≤ 1.3'
+    },
+    primitive: {
+      kind: '"ellipse" | "polygon" | "line"',
+      c: 'ellipse only — [cx, cy] centre',
+      r: 'ellipse only — [rx, ry] radii, each 0.02–1.3',
+      rot: 'ellipse only, optional — rotation in radians',
+      points: 'polygon/line only — 2–24 [x, y] points',
+      closed: 'polygon only, optional boolean'
+    }
+  };
+
+  // ---------------------------------------------------------------
+  // THE REQUEST. One string in; two messages out; nothing else.
+  // ---------------------------------------------------------------
+  function cleanSubject(s) {
+    s = String(s == null ? '' : s).trim().replace(/\s+/g, ' ');
+    if (!s || s.length > LIMITS.subjectChars) return null;
+    if (!/^[A-Za-z][A-Za-z0-9 '\-]*$/.test(s)) return null;
+    return s;
+  }
+
+  function messagesFor(subject) {
+    var s = cleanSubject(subject);
+    if (!s) return { ok: false, reason: 'bad-subject' };
+    var system = [
+      'You are an authoring assistant for a night-sky drawing tool. A person will build a creature as a small figure of lights: a few bright points joined by straight lines. Your job is SEMANTIC HELP — what makes the subject recognisable — plus a rough visual reference to draw over. You do NOT draw the final figure; the person does. Never return final points, joins, gaps or hints.',
+      '',
+      'Answer with ONE JSON object and nothing else, exactly this shape:',
+      '{',
+      '  "subject": string (≤ 40 chars, the subject as you understood it),',
+      '  "silhouette": string (one sentence: the primary silhouette and the best viewing angle — side, top or front — for a line drawing),',
+      '  "features": [ 3 to 12 of { "name": CAPITALS ≤ 24 chars (HEAD, EAR, TAIL, WING…), "importance": 1|2|3, "why": one short sentence, "anchor": [x, y] } ], most diagnostic first,',
+      '  "budgets": { "8": [feature names], "12": [feature names], "16": [feature names], "20": [feature names] } — which features are worth spending that many points on; each list at most that many names, all taken from features[].name,',
+      '  "sketch": [ up to 24 of { "kind": "ellipse", "c": [x, y], "r": [rx, ry], "rot": radians } | { "kind": "polygon", "points": [[x, y], …], "closed": true } | { "kind": "line", "points": [[x, y], …] } ] — a rough outline of the whole creature, big and simple, made of these primitives only.',
+      '}',
+      '',
+      'Coordinates: unit space, x to the right, y DOWNWARD, every |x| and |y| ≤ 1.3; use most of that range so the figure is large. Every feature anchor must lie on the sketch. No other keys. No URLs, no images, no markup, no text outside the JSON. Do not judge or rate anything; describe what is there.'
+    ].join('\n');
+    var user = 'Subject: ' + s;
+    return { ok: true, subject: s, messages: [{ role: 'system', content: system }, { role: 'user', content: user }] };
+  }
+
+  // ---------------------------------------------------------------
+  // THE VALIDATOR — deny by shape (Decision 33's discipline). A key not
+  // in the schema is refused by name; a value that looks like a link,
+  // an image or markup is refused; a bound is a bound. What comes out is
+  // a CLEAN copy built field by field, never the model's object.
+  // ---------------------------------------------------------------
+  function isNum(v) { return typeof v === 'number' && isFinite(v); }
+  function pt(v) { return Array.isArray(v) && v.length === 2 && isNum(v[0]) && isNum(v[1]) && Math.abs(v[0]) <= COORD && Math.abs(v[1]) <= COORD; }
+  function badText(s) {
+    return typeof s !== 'string' || !s.trim() || s.length > LIMITS.textChars ||
+      /https?:|data:|vihu-asset:|<[a-z!\/]|base64|\.(png|jpg|jpeg|gif|svg|webp)\b/i.test(s);
+  }
+  function walkKeys(o, path, out) {
+    if (!o || typeof o !== 'object') return;
+    if (Array.isArray(o)) { o.forEach(function (v, i) { walkKeys(v, path + '[' + i + ']', out); }); return; }
+    Object.keys(o).forEach(function (k) {
+      if (FORBIDDEN_KEYS.indexOf(k) !== -1) out.push('forbidden-key:' + path + '.' + k);
+      walkKeys(o[k], path + '.' + k, out);
+    });
+  }
+
+  function validate(raw) {
+    var reasons = [];
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return { ok: false, reasons: ['not-an-object'] };
+    walkKeys(raw, '', reasons);
+    if (reasons.length) return { ok: false, reasons: reasons };
+
+    var allowedTop = Object.keys(SCHEMA.top);
+    Object.keys(raw).forEach(function (k) { if (allowedTop.indexOf(k) === -1) reasons.push('unknown-key:' + k); });
+    if (badText(raw.subject) || raw.subject.length > LIMITS.subjectChars) reasons.push('bad-subject');
+    if (badText(raw.silhouette)) reasons.push('bad-silhouette');
+
+    var names = {};
+    var features = [];
+    if (!Array.isArray(raw.features) || raw.features.length < LIMITS.featuresMin || raw.features.length > LIMITS.featuresMax) {
+      reasons.push('bad-features-count');
+    } else {
+      raw.features.forEach(function (f, i) {
+        if (!f || typeof f !== 'object' || Array.isArray(f)) { reasons.push('bad-feature:' + i); return; }
+        Object.keys(f).forEach(function (k) { if (!SCHEMA.feature[k]) reasons.push('unknown-key:features[' + i + '].' + k); });
+        var name = typeof f.name === 'string' ? f.name.trim().toUpperCase() : '';
+        if (!name || name.length > LIMITS.nameChars || !/^[A-Z][A-Z ]*$/.test(name)) reasons.push('bad-feature-name:' + i);
+        if (names[name]) reasons.push('duplicate-feature:' + name);
+        names[name] = true;
+        var imp = f.importance;
+        if (!(Number.isInteger(imp) && imp >= LIMITS.importanceMin && imp <= LIMITS.importanceMax)) reasons.push('bad-importance:' + i);
+        if (badText(f.why)) reasons.push('bad-why:' + i);
+        if (!pt(f.anchor)) reasons.push('bad-anchor:' + i);
+        features.push({ name: name, importance: imp, why: String(f.why || '').trim(), anchor: pt(f.anchor) ? [f.anchor[0], f.anchor[1]] : [0, 0] });
+      });
+    }
+
+    var budgets = {};
+    if (!raw.budgets || typeof raw.budgets !== 'object' || Array.isArray(raw.budgets)) {
+      reasons.push('bad-budgets');
+    } else {
+      var keys = Object.keys(raw.budgets).sort(function (a, b) { return Number(a) - Number(b); });
+      if (keys.join(',') !== BUDGETS.join(',')) reasons.push('bad-budget-keys:' + keys.join('/'));
+      BUDGETS.forEach(function (b) {
+        var list = raw.budgets[String(b)];
+        if (!Array.isArray(list) || list.length > b) { reasons.push('bad-budget-list:' + b); budgets[String(b)] = []; return; }
+        var seen = {}, out = [];
+        list.forEach(function (n) {
+          var u = typeof n === 'string' ? n.trim().toUpperCase() : '';
+          if (!names[u]) { reasons.push('budget-names-unknown-feature:' + b); return; }
+          if (!seen[u]) { seen[u] = true; out.push(u); }
+        });
+        budgets[String(b)] = out;
+      });
+    }
+
+    var sketch = [];
+    if (!Array.isArray(raw.sketch) || !raw.sketch.length || raw.sketch.length > LIMITS.sketchMax) {
+      reasons.push('bad-sketch-count');
+    } else {
+      raw.sketch.forEach(function (p, i) {
+        if (!p || typeof p !== 'object' || Array.isArray(p)) { reasons.push('bad-primitive:' + i); return; }
+        Object.keys(p).forEach(function (k) { if (!SCHEMA.primitive[k]) reasons.push('unknown-key:sketch[' + i + '].' + k); });
+        if (p.kind === 'ellipse') {
+          var rOk = Array.isArray(p.r) && p.r.length === 2 && isNum(p.r[0]) && isNum(p.r[1]) &&
+            p.r[0] >= 0.02 && p.r[1] >= 0.02 && p.r[0] <= COORD && p.r[1] <= COORD;
+          if (!pt(p.c) || !rOk || (p.rot !== undefined && !isNum(p.rot))) { reasons.push('bad-ellipse:' + i); return; }
+          sketch.push({ kind: 'ellipse', c: [p.c[0], p.c[1]], r: [p.r[0], p.r[1]], rot: isNum(p.rot) ? p.rot : 0 });
+        } else if (p.kind === 'polygon' || p.kind === 'line') {
+          var ptsOk = Array.isArray(p.points) && p.points.length >= 2 && p.points.length <= LIMITS.polyPointsMax && p.points.every(pt);
+          if (!ptsOk || (p.closed !== undefined && typeof p.closed !== 'boolean')) { reasons.push('bad-' + p.kind + ':' + i); return; }
+          sketch.push({ kind: p.kind, points: p.points.map(function (q) { return [q[0], q[1]]; }), closed: p.kind === 'polygon' ? p.closed !== false : false });
+        } else {
+          reasons.push('bad-primitive-kind:' + i);
+        }
+      });
+    }
+
+    if (reasons.length) return { ok: false, reasons: reasons };
+    return { ok: true, reasons: [], blueprint: {
+      subject: String(raw.subject).trim(),
+      silhouette: String(raw.silhouette).trim(),
+      features: features,
+      budgets: budgets,
+      sketch: sketch
+    } };
+  }
+
+  // A model's reply is TEXT until proven otherwise.
+  function parse(text) {
+    if (typeof text !== 'string' || !text.trim()) return { ok: false, reasons: ['empty'] };
+    var t = text.trim().replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '');
+    var obj;
+    try { obj = JSON.parse(t); } catch (e) {
+      var a = t.indexOf('{'), b = t.lastIndexOf('}');
+      if (a === -1 || b <= a) return { ok: false, reasons: ['not-json'] };
+      try { obj = JSON.parse(t.slice(a, b + 1)); } catch (e2) { return { ok: false, reasons: ['not-json'] }; }
+    }
+    return validate(obj);
+  }
+
+  // ---------------------------------------------------------------
+  // THE FIXTURE — for a session with no model. Deliberately GENERIC:
+  // one body plan, the same for every subject, that says what it is.
+  // It exercises the pipeline; it does not pretend to know the animal.
+  // ---------------------------------------------------------------
+  function fixture(subject) {
+    var s = cleanSubject(subject) || 'creature';
+    return validate({
+      subject: s,
+      silhouette: 'FIXTURE — a generic side-on body plan standing in for "' + s + '"; not the creature, only the pipeline.',
+      features: [
+        { name: 'HEAD', importance: 3, why: 'Where a creature is looked at first.', anchor: [-0.85, -0.45] },
+        { name: 'BODY', importance: 3, why: 'The mass everything else hangs from.', anchor: [0.1, 0.0] },
+        { name: 'TAIL', importance: 2, why: 'Often the second thing that names an animal.', anchor: [1.05, -0.35] },
+        { name: 'FRONT LEG', importance: 2, why: 'A leg says it stands.', anchor: [-0.45, 0.75] },
+        { name: 'BACK LEG', importance: 2, why: 'A second leg says it walks.', anchor: [0.6, 0.75] },
+        { name: 'EAR', importance: 1, why: 'A small mark that helps a head read as a head.', anchor: [-0.95, -0.85] }
+      ],
+      budgets: {
+        '8': ['HEAD', 'BODY', 'TAIL', 'FRONT LEG', 'BACK LEG'],
+        '12': ['HEAD', 'BODY', 'TAIL', 'FRONT LEG', 'BACK LEG', 'EAR'],
+        '16': ['HEAD', 'BODY', 'TAIL', 'FRONT LEG', 'BACK LEG', 'EAR'],
+        '20': ['HEAD', 'BODY', 'TAIL', 'FRONT LEG', 'BACK LEG', 'EAR']
+      },
+      sketch: [
+        { kind: 'ellipse', c: [0.1, 0.0], r: [0.75, 0.42], rot: 0 },
+        { kind: 'ellipse', c: [-0.85, -0.45], r: [0.3, 0.26], rot: 0 },
+        { kind: 'polygon', points: [[-0.95, -0.85], [-1.05, -0.62], [-0.8, -0.68]], closed: true },
+        { kind: 'line', points: [[-0.5, 0.35], [-0.45, 0.85]] },
+        { kind: 'line', points: [[0.55, 0.35], [0.6, 0.85]] },
+        { kind: 'line', points: [[0.8, -0.15], [1.05, -0.35], [1.2, -0.7]] }
+      ]
+    });
+  }
+
+  // ---------------------------------------------------------------
+  // SUGGESTIONS — where a point COULD go for a budget: the anchors of
+  // the features the blueprint names for that budget. Faint, optional,
+  // accepted by a click and then the author's to move or delete. Pure.
+  // ---------------------------------------------------------------
+  function suggestions(bp, budget) {
+    if (!bp || !bp.features) return [];
+    var wanted = (bp.budgets && bp.budgets[String(budget)]) || [];
+    var byName = {};
+    bp.features.forEach(function (f) { byName[f.name] = f; });
+    var out = [];
+    wanted.forEach(function (n) { var f = byName[n]; if (f) out.push({ name: f.name, x: f.anchor[0], y: f.anchor[1], importance: f.importance }); });
+    return out.slice(0, budget);
+  }
+
+  global.LabBlueprint = {
+    SCHEMA: SCHEMA, LIMITS: LIMITS, BUDGETS: BUDGETS.slice(), FORBIDDEN_KEYS: FORBIDDEN_KEYS.slice(), COORD: COORD,
+    cleanSubject: cleanSubject, messagesFor: messagesFor, validate: validate, parse: parse,
+    fixture: fixture, suggestions: suggestions
+  };
+})(typeof window !== 'undefined' ? window : this);

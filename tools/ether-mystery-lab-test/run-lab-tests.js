@@ -4726,6 +4726,457 @@ async function sectionGL() {
 }
 
 // ===================================================================
+// AR. CREATE FROM CREATURE — the AI-assisted REFERENCE mode of the
+// Shape Lab.
+//
+// The assistant gives SEMANTIC help (what makes the subject recognisable,
+// a rough vector sketch to draw over); the author places every light,
+// every join and every gap. Nothing the assistant returns can become the
+// Ether creature: the schema has no field for final geometry, the
+// reference has no place in a fixture, a candidate, the preview or the
+// Ether, and the underlay it is drawn on takes no pointer. Every check
+// here is about that boundary being real, the existing Shape Lab being
+// intact, and arbitrary subjects being accepted without any creature
+// being known.
+// ===================================================================
+async function sectionAR() {
+  console.log('\n== AR. Create from creature (AI-assisted reference) ==');
+  const { chromium } = require('playwright');
+  const SUBJECTS = ['Tiger', 'Falcon', 'Elephant', 'Dragon', 'Penguin'];
+  const bpSrc = read('tools/ether-mystery-lab/labBlueprint.js');
+  const refSrc = read('tools/ether-mystery-lab/labReference.js');
+  const shapeSrc = read('tools/ether-mystery-lab/labShape.js');
+  const shapeHtml = read('tools/ether-mystery-lab/shape.html');
+  const bpStripped = stripComments(bpSrc), refStripped = stripComments(refSrc), shapeStripped = stripComments(shapeSrc);
+  const htmlNoComments = shapeHtml.replace(/<!--[\s\S]*?-->/g, '');
+
+  // ---- AR1: PRODUCTION IS UNTOUCHED ----
+  const grepProd = require('child_process').spawnSync('grep',
+    ['-rl', '-e', 'LabReference', '-e', 'LabBlueprint', '-e', 'labReference', '-e', 'labBlueprint', '-e', 'Create from creature',
+     path.join(ROOT, 'js'), path.join(ROOT, 'assets'), path.join(ROOT, 'vihuplanet'), path.join(ROOT, 'supabase'),
+     path.join(ROOT, 'index.html'), path.join(ROOT, 'studio.html')],
+    { encoding: 'utf8' }).stdout || '';
+  ck(grepProd.trim() === '',
+    'AR1  nothing a child loads — js/, assets/, the runtime, supabase/, the two entry pages — names the reference mode', grepProd.trim() || 'clean');
+  ck(/arrangementNodesMax:\s*8\b/.test(read('js/etherGrammar.js')), 'AR1b the validator is unchanged — the production point limit is still EIGHT');
+  const stamps = (read('index.html').match(/\?v=(\d{4})/g) || []).map((s) => s.slice(3));
+  ck(stamps.length > 0 && stamps.every((s) => s === '0769'), 'AR1c no build bump — every stamp on index.html still reads 0769', Array.from(new Set(stamps)).join(','));
+  const pool = read('assets/ether/experience-pool.js');
+  const statuses = (pool.match(/status:\s*'([a-z]+)'/g) || []).map((s) => s.replace(/.*'([a-z]+)'/, '$1'));
+  const counts = statuses.reduce((m, s) => { m[s] = (m[s] || 0) + 1; return m; }, {});
+  ck(!/reference|blueprint|sketch|silhouette/i.test(pool) && counts.active === 5 && counts.experiment === 1 && counts.retired === 1,
+    'AR1d the production pool is unchanged — no reference in it, no new creature activated', JSON.stringify(counts));
+  const previewHtml = read('tools/ether-mystery-lab/preview.html');
+  ck(!/labReference|labBlueprint|labConnection|labShape/.test(previewHtml) &&
+     !/LabReference|LabBlueprint/.test(read('tools/ether-mystery-lab/labPreview.js') + read('tools/ether-mystery-lab/labPreviewHost.js')),
+    'AR1e the child-facing preview loads neither the reference nor the blueprint module, and cannot render a reference');
+  ck(/labConnection\.js/.test(shapeHtml) && /labBlueprint\.js/.test(shapeHtml) && /labReference\.js/.test(shapeHtml) &&
+     shapeHtml.indexOf('labShape.js') < shapeHtml.indexOf('labReference.js') && shapeHtml.indexOf('labBlueprint.js') < shapeHtml.indexOf('labShape.js'),
+    'AR1f the Shape Lab page loads the reference layer AFTER the editor — the mode is additive to it');
+
+  // ---- AR2: no creature is known, no image is hidden, no key is kept ----
+  const creatureWords = /\b(tiger|falcon|elephant|dragon|penguin|whale|bird|lion|fox|bear|octopus|cat|dog|fish|butterfly|snake|horse)\b/i;
+  ck(!creatureWords.test(bpStripped) && !creatureWords.test(refStripped),
+    'AR2  no creature name anywhere in the blueprint or reference code — arbitrary subjects, no taxonomy');
+  ck(!/subject\s*===|===\s*subject|switch\s*\(\s*(subject|s|name|creature)\b/.test(bpStripped + refStripped),
+    'AR2b no creature-specific rendering branch — nothing compares a subject to a literal');
+  // (The blueprint validator's own REFUSAL vocabulary names png, svg, base64
+  // and data: — the strings it refuses — so it is scanned for the acts, not
+  // the words: no image element, no bitmap draw, no element creation.)
+  ck(!/<img|drawImage|new Image|Image\(|\.png|\.jpg|\.svg|url\(|base64|background-image/i.test(refStripped) &&
+     !/drawImage|new Image|Image\(|createElement|innerHTML/i.test(bpStripped) &&
+     !/<img|\.png|\.jpg|\.svg|background-image/i.test(htmlNoComments),
+    'AR2c no bitmap, no image element, no URL — the reference is vector primitives from a validated blueprint');
+  ck(!/fetch\(|XMLHttpRequest|WebSocket|api\.openai|sk-/.test(bpStripped + refStripped),
+    'AR2d neither module reaches the network itself — the transport is LabConnection, the same three modes the Mystery Lab has');
+  ck(!/localStorage|sessionStorage|indexedDB|document\.cookie/.test(bpStripped + refStripped),
+    'AR2e the reference layer writes nothing to storage — a reference lives for the page and is discarded');
+  ck(!/\bscore\b|recognisability|rating/i.test(bpStripped + refStripped),
+    'AR2f no recognisability score — the judgement stays the author\'s');
+  ck(!/\bmodel\b/i.test(shapeStripped) && !/fetch\(|XMLHttpRequest/.test(shapeStripped),
+    'AR2g the editor itself still knows no model and no network — the existing SL2b property survives the extension');
+  const drawSlice = stripComments(shapeSrc.slice(shapeSrc.indexOf('function draw('), shapeSrc.indexOf('function pointAt(')));
+  ck(!/LabReference|sketch|blueprint|authoring/.test(drawSlice),
+    'AR2h the editor\'s drawing code never reads the reference — it paints a transparent sky or an opaque one, nothing else changed');
+
+  // ---- AR3: the blueprint contract, in Node ----
+  const sb = { console };
+  sb.window = undefined; sb.global = sb;
+  vm.runInNewContext(bpSrc, sb, { filename: 'labBlueprint.js' });
+  const B = sb.LabBlueprint;
+  ck(!!B && typeof B.messagesFor === 'function' && typeof B.validate === 'function', 'AR3  LabBlueprint loads standalone');
+  const sysTexts = new Set();
+  let msgOk = true, privateWords = false;
+  SUBJECTS.forEach((s) => {
+    const m = B.messagesFor(s);
+    if (!m.ok || m.messages.length !== 2 || m.messages[0].role !== 'system' || m.messages[1].role !== 'user' || m.messages[1].content !== 'Subject: ' + s) msgOk = false;
+    sysTexts.add(m.messages[0].content);
+    if (/\b(card|stars|constellation|memor|story|email|orbit|username|creator|traveller|companion)\b/i.test(JSON.stringify(m.messages))) privateWords = true;
+  });
+  ck(msgOk && sysTexts.size === 1 && !privateWords,
+    'AR3b the request is the subject plus ONE fixed contract — two messages, identical system text for all five subjects, no private vocabulary',
+    'contracts:' + sysTexts.size);
+  const sysText = Array.from(sysTexts)[0] || '';
+  ck(/do NOT draw the final figure/.test(sysText) && /Never return final points, joins, gaps or hints/.test(sysText),
+    'AR3c the contract tells the assistant it does not draw the final creature');
+  const arbitrary = ['Wibble Fnord 7', "O'Malley's Beast", 'Moon-Deer'].map((s) => B.cleanSubject(s));
+  const refused = ['', '   ', 'x'.repeat(41), '<script>', 'http://x', '{"a":1}', '7 dwarves'].map((s) => B.cleanSubject(s));
+  ck(arbitrary.every(Boolean) && refused.every((v) => v === null),
+    'AR3d an arbitrary subject is accepted and a non-subject is refused before any request is built', JSON.stringify(refused));
+  const fixtures = SUBJECTS.map((s) => B.fixture(s));
+  const sketches = new Set(fixtures.map((f) => JSON.stringify(f.ok ? f.blueprint.sketch : null)));
+  ck(fixtures.every((f) => f.ok) && sketches.size === 1 && fixtures.every((f, i) => f.blueprint.subject === SUBJECTS[i]) &&
+     fixtures.every((f) => /FIXTURE/.test(f.blueprint.silhouette)),
+    'AR3e the fixture is ONE generic body plan for every subject, validated by the real validator, and says it is a fixture');
+  const good = fixtures[0].blueprint;
+  const mutate = (fn) => { const c = JSON.parse(JSON.stringify(good)); fn(c); return B.validate(c); };
+  const bad = {
+    notObject: B.validate('nope'),
+    unknownTop: mutate((c) => { c.points = [[0, 0]]; }),
+    forbiddenJoins: mutate((c) => { c.joins = ['0-1']; }),
+    forbiddenDeep: mutate((c) => { c.features[0].constellation = [1, 2]; }),
+    urlInText: mutate((c) => { c.silhouette = 'see http://example.com/tiger.png'; }),
+    dataUri: mutate((c) => { c.features[0].why = 'data:image/png;base64,AAAA'; }),
+    markup: mutate((c) => { c.subject = '<b>x</b>'; }),
+    fewFeatures: mutate((c) => { c.features = c.features.slice(0, 2); c.budgets = { 8: [], 12: [], 16: [], 20: [] }; }),
+    importance: mutate((c) => { c.features[0].importance = 5; }),
+    anchorRange: mutate((c) => { c.features[0].anchor = [2, 0]; }),
+    budgetKeys: mutate((c) => { delete c.budgets['12']; }),
+    budgetOver: mutate((c) => { c.budgets['8'] = new Array(9).fill('HEAD'); }),
+    budgetUnknown: mutate((c) => { c.budgets['8'] = ['HORN']; }),
+    sketchEmpty: mutate((c) => { c.sketch = []; }),
+    sketchKind: mutate((c) => { c.sketch[0] = { kind: 'bitmap' }; }),
+    sketchUnknownKey: mutate((c) => { c.sketch[0].src = 'x'; }),
+    hintSmuggled: mutate((c) => { c.hint = 'a tiger waits'; })
+  };
+  const allRefused = Object.keys(bad).filter((k) => bad[k].ok);
+  ck(allRefused.length === 0, 'AR3f a malformed or over-reaching blueprint is refused safely — ' + Object.keys(bad).length + ' shapes, every one named',
+    allRefused.join(',') || Object.keys(bad).map((k) => k + ':' + bad[k].reasons[0]).slice(0, 4).join(' '));
+  ck(/forbidden-key/.test(bad.forbiddenJoins.reasons[0]) && /forbidden-key/.test(bad.forbiddenDeep.reasons[0]) && /unknown-key:points/.test(bad.unknownTop.reasons[0]),
+    'AR3g a key that would carry final geometry — joins, points, a constellation at any depth — is refused BY NAME');
+  const fenced = B.parse('```json\n' + JSON.stringify(good) + '\n```');
+  const prose = B.parse('Here you go: ' + JSON.stringify(good) + ' — enjoy');
+  ck(fenced.ok && prose.ok && !B.parse('not json at all').ok && !B.parse('').ok,
+    'AR3h a reply is text until proven a blueprint — fences and prose are tolerated, garbage is refused');
+  const cleaned = B.validate(good).blueprint;
+  ck(cleaned !== good && cleaned.features !== good.features && JSON.stringify(Object.keys(cleaned).sort()) === JSON.stringify(Object.keys(B.SCHEMA.top).sort()),
+    'AR3i what comes out is a CLEAN copy built field by field, with exactly the schema\'s keys');
+  const sug8 = B.suggestions(good, 8), sug12 = B.suggestions(good, 12);
+  ck(sug8.length <= 8 && sug12.length <= 12 && sug8.every((s) => good.budgets['8'].indexOf(s.name) !== -1) && sug8.every((s) => typeof s.x === 'number'),
+    'AR3j suggestions are the anchors of the features the blueprint names for that budget, never more than the budget');
+  ck(JSON.stringify(Object.keys(B.SCHEMA.top).sort()) === JSON.stringify(['budgets', 'features', 'silhouette', 'sketch', 'subject']) &&
+     ['joins', 'gaps', 'missing', 'hint', 'tease', 'candidate'].every((k) => B.FORBIDDEN_KEYS.indexOf(k) !== -1),
+    'AR3k the schema has no field for final points, joins, gaps or a hint — and those very keys are forbidden');
+
+  // ---- the browser half ----
+  const server = spawn('node', ['tools/bring-it-alive/test/serve.js', String(PORT)], { cwd: ROOT, stdio: 'ignore' });
+  await new Promise((res) => setTimeout(res, 900));
+  const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+  try {
+    const ctx = await browser.newContext({ viewport: { width: 1500, height: 1100 } });
+    const page = await ctx.newPage();
+    const errors = [];
+    page.on('pageerror', (e) => errors.push(String(e).split('\n')[0]));
+    const requests = [];
+    page.on('request', (q) => { if (!/127\.0\.0\.1/.test(q.url())) requests.push(q.url()); });
+    const open = async () => {
+      await page.goto(BASE + '/tools/ether-mystery-lab/shape.html');
+      await page.waitForFunction(() => !!window.ShapeLab && !!window.LabReference && !!window.LabBlueprint && !!window.LabConnection, null, { timeout: 20000 });
+    };
+    await open();
+
+    // ---- AR4: the existing Shape Lab is intact ----
+    const intact = await page.evaluate(() => {
+      const S = window.ShapeLab;
+      const api = ['setBudget', 'addPoint', 'movePoint', 'deletePoint', 'toggleJoin', 'toggleGap', 'reset', 'demoRing', 'setMode',
+        'setName', 'setHint', 'setNotes', 'setTease', 'setJudgement', 'state', 'figure', 'metrics', 'playable', 'candidateFor',
+        'save', 'load', 'duplicate', 'remove', 'list', 'compare', 'names', 'exportJSON', 'importJSON', 'draw', 'render'];
+      const controls = ['[data-budget="8"]', '[data-budget="12"]', '[data-budget="16"]', '[data-budget="20"]', '[data-mode="add"]', '[data-mode="move"]',
+        '[data-mode="delete"]', '[data-mode="join"]', '[data-mode="gap"]', '[data-reset]', '[data-demo]', '[data-name]', '[data-hint]', '[data-notes]',
+        '[data-save]', '[data-new]', '[data-play]', '[data-tease]', '[data-compare-name]', '[data-judgement]', '[data-fixtures]', '[data-export]', '[data-import]',
+        '[data-canvas-complete]', '[data-canvas-unfinished]'];
+      return { api: api.filter((k) => typeof S[k] !== 'function'), controls: controls.filter((c) => !document.querySelector(c)),
+        keys: Object.keys(localStorage), budgets: S.BUDGETS.join(','), prod: S.PRODUCTION_BUDGET, ref: LabReference.current() };
+    });
+    ck(intact.api.length === 0 && intact.controls.length === 0 && intact.keys.length === 0 && errors.length === 0 && intact.budgets === '8,12,16,20' && intact.prod === 8 && intact.ref === null,
+      'AR4  the existing Shape Lab is intact — every API function and control still there, budgets 8·12·16·20, nothing written, no reference on load',
+      'missing api:' + intact.api.join(',') + ' controls:' + intact.controls.join(','));
+    // the manual editor with NO reference behaves exactly as before: a click lands where pressed
+    await page.evaluate(() => { window.ShapeLab.setBudget(8); });
+    const plain = await page.evaluate(() => {
+      const ed = document.querySelector('[data-canvas-complete]'); const b = ed.getBoundingClientRect();
+      const q = window.ShapeLab.project([0.4, -0.3], b.width, b.height);
+      return { x: b.left + q[0], y: b.top + q[1] };
+    });
+    await page.mouse.click(plain.x, plain.y);
+    const plainPts = await page.evaluate(() => window.ShapeLab.figure().points);
+    ck(plainPts.length === 1 && Math.abs(plainPts[0][0] - 0.4) < 0.03 && Math.abs(plainPts[0][1] + 0.3) < 0.03,
+      'AR4b with no reference a light lands exactly where the author pressed — the manual editor is unchanged', JSON.stringify(plainPts));
+    await page.evaluate(() => window.ShapeLab.reset());
+
+    // ---- AR5: five subjects through fixture mode ----
+    const before = requests.length;
+    const gens = {};
+    for (const s of SUBJECTS) {
+      await page.fill('[data-ref-subject]', s);
+      await page.click('[data-ref-generate]');
+      await page.waitForFunction((subj) => { const c = window.LabReference.current(); return !!c && c.subject === subj; }, s, { timeout: 5000 });
+      gens[s] = await page.evaluate(() => ({ subject: LabReference.current().subject, meta: LabReference.meta(), status: document.querySelector('[data-ref-status]').textContent,
+        name: ShapeLab.state().name, authoring: ShapeLab.state().authoring, sugg: LabReference.suggestions().length, showing: LabReference.isShowing() }));
+    }
+    ck(SUBJECTS.every((s) => gens[s].subject === s && gens[s].meta.source === 'fixture' && /Fixture reference/.test(gens[s].status) && gens[s].showing && gens[s].sugg > 0),
+      'AR5  Tiger · Falcon · Elephant · Dragon · Penguin each produce a reference in fixture mode, honestly labelled FIXTURE, with suggestions for the budget');
+    ck(requests.length === before, 'AR5b and fixture mode made NO network request for any of them', requests.slice(before).join(',') || 'none');
+    ck(gens.Tiger.name === 'Tiger' && gens.Penguin.name === 'Tiger' && gens.Penguin.authoring.subject === 'Penguin' && gens.Penguin.authoring.referenceUsed === true && gens.Penguin.authoring.source === 'fixture',
+      'AR5c the typed subject fills the researcher name only while it is empty, and the authoring note records the last subject used');
+    ck(await page.evaluate(() => !!LabReference.previous() && LabReference.previous().subject === 'Dragon'),
+      'AR5d the previous reference is kept until replaced — "Try another interpretation" is one step back, not a history');
+
+    // ---- AR6: the underlay is under, inert and aligned ----
+    const under = await page.evaluate(() => {
+      const c = document.querySelector('[data-reference]'), ed = document.querySelector('[data-canvas-complete]');
+      const cs = getComputedStyle(c), es = getComputedStyle(ed);
+      const cb = c.getBoundingClientRect(), eb = ed.getBoundingClientRect();
+      const mid = document.elementFromPoint(eb.left + eb.width / 2, eb.top + eb.height / 2);
+      const editorAlpha = ed.getContext('2d').getImageData(3, 3, 1, 1).data[3];
+      return { pe: cs.pointerEvents, aria: c.getAttribute('aria-hidden'), z: [Number(cs.zIndex), Number(es.zIndex)], hidden: c.hidden,
+        align: Math.max(Math.abs(cb.left - eb.left), Math.abs(cb.top - eb.top), Math.abs(cb.width - eb.width), Math.abs(cb.height - eb.height)),
+        midIsEditor: mid === ed, editorAlpha, underAlpha: c.getContext('2d').getImageData(3, 3, 1, 1).data[3],
+        siblingOrder: c.nextElementSibling === ed, inUnfinishedPane: !!document.querySelector('[data-canvas-unfinished]').parentNode.querySelector('[data-reference]') };
+    });
+    ck(under.pe === 'none' && under.aria === 'true' && under.z[0] < under.z[1] && under.siblingOrder && under.midIsEditor,
+      'AR6  the reference is a separate canvas UNDER the editor: pointer-events none, aria-hidden, below it in z-order, and a hit at the centre lands on the editor',
+      JSON.stringify({ pe: under.pe, z: under.z }));
+    ck(under.align <= 2, 'AR6b it is aligned with the editor canvas to the pixel', 'max offset ' + under.align + 'px');
+    ck(under.editorAlpha === 0 && under.underAlpha === 255 && !under.hidden,
+      'AR6c while the reference shows, the editor paints a transparent sky and the underlay paints the opaque one — the figure is drawn ON TOP of the reference');
+    ck(!under.inUnfinishedPane, 'AR6d the unfinished pane — what a child would meet — never carries the reference');
+    // a click through the underlay reaches the editor and adds a light
+    const through = await page.evaluate(() => {
+      const ed = document.querySelector('[data-canvas-complete]'); const b = ed.getBoundingClientRect();
+      const q = window.ShapeLab.project([-1.15, 1.1], b.width, b.height);   // far from every suggestion
+      return { x: b.left + q[0], y: b.top + q[1] };
+    });
+    await page.mouse.click(through.x, through.y);
+    const throughPts = await page.evaluate(() => window.ShapeLab.figure().points);
+    ck(throughPts.length === 1 && Math.abs(throughPts[0][0] + 1.15) < 0.03 && Math.abs(throughPts[0][1] - 1.1) < 0.03,
+      'AR6e a click over the reference passes straight through to the editor, and a light far from any suggestion lands exactly where pressed', JSON.stringify(throughPts));
+
+    // ---- AR7: suggestions are suggestions ----
+    const near = await page.evaluate(() => {
+      const ed = document.querySelector('[data-canvas-complete]'); const b = ed.getBoundingClientRect();
+      const s = LabReference.suggestions()[0];
+      const q = window.ShapeLab.project([s.x + 0.05, s.y + 0.04], b.width, b.height);
+      return { x: b.left + q[0], y: b.top + q[1], want: [s.x, s.y], name: s.name, count: LabReference.suggestions().length };
+    });
+    await page.mouse.click(near.x, near.y);
+    const snapped = await page.evaluate(() => ({ pts: window.ShapeLab.figure().points, sugg: LabReference.suggestions().map((s) => s.name) }));
+    ck(snapped.pts.length === 2 && snapped.pts[1][0] === near.want[0] && snapped.pts[1][1] === near.want[1],
+      'AR7  a click near a suggested point ACCEPTS it — the light snaps to the suggestion', JSON.stringify(snapped.pts[1]) + ' wanted ' + JSON.stringify(near.want));
+    ck(snapped.sugg.length === near.count - 1 && snapped.sugg.indexOf(near.name) === -1,
+      'AR7b and the accepted suggestion is no longer suggested — a mark is never drawn where a light already stands');
+    const edited = await page.evaluate(() => {
+      const S = window.ShapeLab;
+      const mv = S.movePoint(1, 0.9, 0.9);
+      const after = S.figure().points[1].slice();
+      const del = S.deletePoint(1);
+      return { mv: mv.ok, after, del: del.ok, n: S.figure().points.length, back: LabReference.suggestions().length };
+    });
+    ck(edited.mv && edited.after[0] === 0.9 && edited.after[1] === 0.9 && edited.del && edited.n === 1 && edited.back === near.count,
+      'AR7c an accepted point is an ordinary light — moved, then deleted, and the suggestion returns when the place is free again');
+    await page.evaluate(() => { document.querySelector('[data-ref-suggest]').click(); });
+    await page.mouse.click(near.x, near.y);
+    const noSnap = await page.evaluate(() => ({ pts: window.ShapeLab.figure().points, sugg: LabReference.suggestions().length }));
+    ck(noSnap.sugg === 0 && noSnap.pts.length === 2 && Math.abs(noSnap.pts[1][0] - (near.want[0] + 0.05)) < 0.03,
+      'AR7d suggestions off: nothing is suggested and the same click lands where it was pressed — the author is in control');
+    await page.evaluate(() => { document.querySelector('[data-ref-suggest]').click(); window.ShapeLab.deletePoint(1); });
+
+    // ---- AR8: REFERENCE ON / OFF, labels, dismissal ----
+    await page.click('[data-ref-toggle]');
+    const off = await page.evaluate(() => {
+      const c = document.querySelector('[data-reference]'), ed = document.querySelector('[data-canvas-complete]');
+      return { showing: LabReference.isShowing(), hidden: c.hidden, display: getComputedStyle(c).display, editorAlpha: ed.getContext('2d').getImageData(3, 3, 1, 1).data[3],
+        txt: document.querySelector('[data-ref-toggle]').textContent, pts: window.ShapeLab.figure().points.length, current: !!LabReference.current() };
+    });
+    ck(!off.showing && off.hidden && off.display === 'none' && off.editorAlpha === 255 && /OFF/.test(off.txt) && off.pts === 1 && off.current,
+      'AR8  REFERENCE OFF: the underlay is gone, the editor paints its own opaque sky — only the Ether figure — and the reference is kept for turning back on');
+    await page.screenshot({ path: path.join(SHOTS, 'shape-lab', 'reference-off.png') });
+    const offSnap = await page.evaluate(() => LabReference.snap([-0.85, -0.45]));
+    ck(offSnap === null, 'AR8b and while it is off nothing snaps — a hidden reference cannot steer a light');
+    await page.click('[data-ref-toggle]');
+    const on = await page.evaluate(() => ({ showing: LabReference.isShowing(), hidden: document.querySelector('[data-reference]').hidden, txt: document.querySelector('[data-ref-toggle]').textContent }));
+    ck(on.showing && !on.hidden && /ON/.test(on.txt), 'AR8c REFERENCE ON brings it straight back');
+    await page.screenshot({ path: path.join(SHOTS, 'shape-lab', 'reference-on.png') });
+    // labels: a pixel at a feature label goes dark when the annotation is dismissed
+    const lab = await page.evaluate(() => {
+      const c = document.querySelector('[data-reference]'); const b = c.getBoundingClientRect();
+      const f = LabReference.current().features[0];
+      const ed = document.querySelector('[data-canvas-complete]');
+      const q = window.ShapeLab.project(f.anchor, ed.clientWidth, ed.clientHeight);
+      const g = c.getContext('2d'); const dpr = Math.min(2, devicePixelRatio || 1);
+      const fs = Math.max(10, Math.min(ed.clientWidth, ed.clientHeight) / 40);
+      // the label's own text box, to the right of the anchor ring
+      function lit() { const x0 = Math.round((q[0] + fs * 0.8) * dpr), y0 = Math.round((q[1] - fs * 0.45) * dpr);
+        const d = g.getImageData(x0, y0, Math.round(fs * 1.8 * dpr), Math.round(fs * 0.9 * dpr)).data; let m = 0;
+        for (let i = 0; i < d.length; i += 4) m = Math.max(m, d[i] + d[i + 1] + d[i + 2]); return m; }
+      const before = lit();
+      document.querySelector('[data-ref-dismiss="' + f.name + '"]').click();
+      const after = lit();
+      return { name: f.name, before, after, dismissed: LabReference.dismissed(), panelOff: !!document.querySelector('.bp-f.off') };
+    });
+    ck(lab.before > lab.after + 60 && lab.dismissed.length === 1 && lab.dismissed[0] === lab.name && lab.panelOff,
+      'AR8d a feature annotation is dismissible — its ring leaves the canvas and the panel marks it', lab.name + ' ' + lab.before + '→' + lab.after);
+    await page.evaluate(() => { document.querySelector('[data-ref-labels]').click(); });
+    const labelsOff = await page.evaluate(() => LabReference.labels());
+    ck(labelsOff === false, 'AR8e and all labels can be switched off at once');
+    await page.evaluate(() => { document.querySelector('[data-ref-labels]').click(); });
+
+    // ---- AR9: budgets ----
+    const budgets = {};
+    for (const b of [8, 12, 16, 20]) {
+      budgets[b] = await page.evaluate((bb) => { window.ShapeLab.setBudget(bb); return { label: document.querySelector('[data-budget-label]').textContent, sugg: LabReference.suggestions().length }; }, b);
+    }
+    ck([8, 12, 16, 20].every((b) => new RegExp('TESTING ' + b + ' POINTS').test(budgets[b].label)) &&
+       [12, 16, 20].every((b) => /authoring/.test(budgets[b].label) && /production currently supports 8/.test(budgets[b].label)) && /production budget/.test(budgets[8].label),
+      'AR9  the four budgets stay 8 · 12 · 16 · 20 and the header says TESTING N POINTS · Lab authoring budget · production currently supports 8', budgets[12].label);
+    ck([8, 12, 16, 20].every((b) => budgets[b].sugg <= b), 'AR9b suggestions never exceed the budget');
+    const shrink = await page.evaluate(() => {
+      const S = window.ShapeLab;
+      S.setBudget(12); S.reset(); S.setBudget(12);
+      for (let i = 0; i < 10; i++) S.addPoint(-1 + i * 0.2, 0.5);
+      const r = S.setBudget(8);
+      return { r, n: S.figure().points.length, budget: S.state().budget };
+    });
+    ck(!shrink.r.ok && /figure-has-10-lights/.test(shrink.r.reason) && shrink.n === 10 && shrink.budget === 12,
+      'AR9c reducing the budget under a bigger figure is refused and deletes nothing', shrink.r.reason);
+    await page.evaluate(() => { window.ShapeLab.reset(); window.ShapeLab.setBudget(8); });
+
+    // ---- AR10: what the fixture holds, and what it does not ----
+    await page.fill('[data-ref-subject]', 'Tiger');
+    await page.click('[data-ref-generate]');
+    await page.waitForFunction(() => LabReference.current() && LabReference.current().subject === 'Tiger');
+    const saved = await page.evaluate(() => {
+      const S = window.ShapeLab;
+      const sug = LabReference.suggestions();
+      sug.slice(0, 5).forEach((s) => S.addPoint(s.x, s.y));
+      S.toggleJoin(0, 1); S.toggleJoin(1, 2); S.toggleJoin(2, 3); S.toggleGap(1);
+      const r = S.save();
+      const rec = S.list().filter((x) => x.id === r.id)[0];
+      return { ok: r.ok, keys: Object.keys(rec).sort(), authoring: rec.authoring, json: JSON.stringify(rec), storeKeys: Object.keys(localStorage), exportHas: /sketch|anchor|silhouette|feature|ellipse|polygon/i.test(S.exportJSON()) };
+    });
+    const allowedKeys = ['authoring', 'budget', 'createdAt', 'hint', 'id', 'joins', 'judgement', 'labVersion', 'missing', 'name', 'notes', 'points', 'tease', 'updatedAt'];
+    ck(saved.ok && saved.keys.every((k) => allowedKeys.indexOf(k) !== -1) && JSON.stringify(Object.keys(saved.authoring).sort()) === JSON.stringify(['referenceUsed', 'source', 'subject']),
+      'AR10 the saved fixture is the author\'s geometry plus allowed metadata — and the authoring note is three words about HOW, never geometry', saved.keys.join(','));
+    ck(!/sketch|anchor|silhouette|feature|ellipse|polygon/i.test(saved.json) && !saved.exportHas && saved.storeKeys.length === 1 && saved.storeKeys[0] === 'vihu.lab.shapes',
+      'AR10b no sketch, no anchor, no feature list in the fixture or the export — the reference cannot enter final creature data; still ONE storage key');
+    const cands = await page.evaluate(() => {
+      const S = window.ShapeLab;
+      const norm = (c) => JSON.stringify(c).replace(/lab-shape-\d+/g, 'lab-shape-N');
+      const withRef = norm(S.candidateFor());
+      LabReference.discard();
+      const without = norm(S.candidateFor());
+      return { withRef, without, same: withRef === without, words: /sketch|silhouette|feature|reference|anchor|authoring|subject/i.test(withRef), pts: S.figure().points.length };
+    });
+    ck(cands.same && !cands.words && cands.pts === 5,
+      'AR10c the candidate is byte-identical with and without the reference — nothing of it reaches what the interpreter performs — and discarding leaves every light in place');
+    await page.reload();
+    await page.waitForFunction(() => !!window.ShapeLab && !!window.LabReference);
+    const reopened = await page.evaluate(() => { const S = window.ShapeLab; const id = S.list()[0].id; S.load(id); return { authoring: S.state().authoring, ref: LabReference.current(), pts: S.figure().points.length }; });
+    ck(reopened.authoring && reopened.authoring.subject === 'Tiger' && reopened.ref === null && reopened.pts === 5,
+      'AR10d reopened after a reload: the authoring note survives, the geometry survives, and NO reference comes back with it — it was never stored');
+    await page.evaluate(() => { localStorage.clear(); window.ShapeLab.reset(); });
+
+    // ---- AR11: the GENERATED path against a stubbed endpoint ----
+    let hits = 0, lastBody = null, answer = 'good';
+    const generated = {
+      subject: 'Dragon', silhouette: 'Side on: a long body, a big head, wings spread up and back, a spiked tail.',
+      features: [
+        { name: 'WING', importance: 3, why: 'Wings are what make it a dragon rather than a lizard.', anchor: [0.1, -0.9] },
+        { name: 'HEAD', importance: 3, why: 'Long jaw, horns.', anchor: [-1.0, -0.3] },
+        { name: 'TAIL', importance: 2, why: 'Long and tapering.', anchor: [1.1, 0.4] },
+        { name: 'LEG', importance: 1, why: 'Shows it stands.', anchor: [-0.2, 0.8] }
+      ],
+      budgets: { 8: ['WING', 'HEAD', 'TAIL'], 12: ['WING', 'HEAD', 'TAIL', 'LEG'], 16: ['WING', 'HEAD', 'TAIL', 'LEG'], 20: ['WING', 'HEAD', 'TAIL', 'LEG'] },
+      sketch: [
+        { kind: 'ellipse', c: [0.1, 0.1], r: [0.8, 0.35], rot: 0.1 },
+        { kind: 'polygon', points: [[-0.3, -0.2], [0.1, -1.1], [0.7, -0.9], [0.5, -0.2]], closed: true },
+        { kind: 'line', points: [[0.8, 0.2], [1.1, 0.4], [1.25, 0.9]] },
+        { kind: 'ellipse', c: [-1.0, -0.3], r: [0.28, 0.2], rot: -0.3 }
+      ]
+    };
+    await page.route('https://fn.local/lab-generate', (route) => {
+      hits++;
+      const body = JSON.parse(route.request().postData() || '{}');
+      lastBody = body;
+      if (body.action === 'ping') return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, build: 'LAB1', provider: 'configured', model: 'gpt-4o-mini' }) });
+      if (answer === 'down') return route.abort();
+      let text;
+      if (answer === 'good') text = JSON.stringify(generated);
+      else if (answer === 'geometry') text = JSON.stringify(Object.assign({}, generated, { points: [[0, 0], [1, 1]], joins: ['0-1'] }));
+      else if (answer === 'stars') { const g = JSON.parse(JSON.stringify(generated)); g.features[0].constellation = [[1, 2]]; text = JSON.stringify(g); }
+      else text = 'the dragon is mighty and I refuse to answer in JSON';
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, model: 'gpt-4o-mini', build: 'LAB1', text }) });
+    });
+    await page.evaluate(() => { document.querySelector('[data-ref-section] details').open = true; });
+    await page.check('[data-conn-mode="endpoint"]');
+    await page.fill('[data-conn-url]', 'https://fn.local/lab-generate');
+    await page.fill('[data-conn-token]', 'admin-session-token');
+    await page.click('[data-conn-test]');
+    await page.waitForFunction(() => /CONNECTED/.test(document.querySelector('[data-conn-status]').textContent));
+    await page.fill('[data-ref-subject]', 'Dragon');
+    await page.click('[data-ref-generate]');
+    await page.waitForFunction(() => LabReference.current() && LabReference.current().subject === 'Dragon');
+    const gen = await page.evaluate(() => ({ meta: LabReference.meta(), status: document.querySelector('[data-ref-status]').textContent, sketch: LabReference.current().sketch.length,
+      authoring: ShapeLab.state().authoring, src: document.querySelector('[data-ref-source]').textContent, sugg: LabReference.suggestions().map((s) => s.name) }));
+    ck(gen.meta.source === 'generated' && /Reference in place for "Dragon"/.test(gen.status) && gen.sketch === 4 && gen.authoring.source === 'generated' && /Generated for "Dragon"/.test(gen.src) && gen.sugg.join(',') === 'WING,HEAD,TAIL',
+      'AR11 a generated reply becomes the reference, labelled generated, with the assistant\'s own sketch and its budget-8 suggestions', gen.sugg.join(','));
+    const reqJson = JSON.stringify(lastBody);
+    ck(lastBody && lastBody.action === 'generate' && Array.isArray(lastBody.messages) && lastBody.messages.length === 2 && lastBody.messages[1].content === 'Subject: Dragon' &&
+       !/\b(card|cardId|stars|constellation|memor|story|email|orbit|username|creator|companion|owner)\b/i.test(reqJson) && !/points|joins|gaps/.test(JSON.stringify(lastBody.messages[1])),
+      'AR11b what left the browser was the subject and the fixed contract — no card, no Stars, no memory, no Story, no name of anybody, no geometry');
+    await page.screenshot({ path: path.join(SHOTS, 'shape-lab', 'reference-generated.png') });
+    for (const mode of ['geometry', 'stars', 'prose', 'down']) {
+      answer = mode;
+      await page.click('[data-ref-another]');
+      await page.waitForFunction(() => /still here|Nothing changed/.test(document.querySelector('[data-ref-status]').textContent), null, { timeout: 8000 });
+      const r = await page.evaluate(() => ({ subj: LabReference.current().subject, sketch: LabReference.current().sketch.length, status: document.querySelector('[data-ref-status]').textContent, prev: LabReference.previous() }));
+      ck(r.subj === 'Dragon' && r.sketch === 4 && /still here/.test(r.status) && r.prev === null,
+        'AR11c a ' + (mode === 'geometry' ? 'reply smuggling final geometry' : mode === 'stars' ? 'reply carrying a constellation' : mode === 'prose' ? 'reply that is not a blueprint' : 'transport that fails') + ' is refused safely: the reference in use is unchanged', r.status.slice(0, 70));
+    }
+    answer = 'good';
+    ck(hits >= 6, 'AR11d and every one of those was a real request to the stubbed endpoint', 'hits ' + hits);
+    // try another interpretation → previous kept → bring back → discard
+    await page.click('[data-ref-another]');
+    await page.waitForFunction(() => !!LabReference.previous());
+    const multi = await page.evaluate(() => {
+      const a = LabReference.current().subject, p = LabReference.previous().subject;
+      const rb = LabReference.restorePrevious();
+      const after = { cur: LabReference.current().subject, prev: !!LabReference.previous() };
+      LabReference.discard();
+      return { a, p, rb: rb.ok, after, cleared: LabReference.current() === null && LabReference.previous() === null, editorOpaque: document.querySelector('[data-canvas-complete]').getContext('2d').getImageData(3, 3, 1, 1).data[3] };
+    });
+    ck(multi.a === 'Dragon' && multi.p === 'Dragon' && multi.rb && multi.after.cur === 'Dragon' && multi.after.prev && multi.cleared && multi.editorOpaque === 255,
+      'AR11e another interpretation keeps the previous one, the previous one can be brought back, and discard clears both and returns the editor to its opaque sky');
+
+    // ---- AR12: the direct key lives in a closure and nowhere else ----
+    await page.check('[data-conn-mode="direct"]');
+    await page.fill('[data-conn-key]', 'sk-test-never-stored-9f9f9f');
+    const keyState = await page.evaluate(() => ({ holds: window.LabConnection._holdsDirectKey(), ls: JSON.stringify(localStorage), ss: JSON.stringify(sessionStorage), exp: window.ShapeLab.exportJSON(), cookie: document.cookie }));
+    ck(keyState.holds && !/sk-test/.test(keyState.ls + keyState.ss + keyState.exp + keyState.cookie),
+      'AR12 a direct key is held in memory for the page and reaches no storage, no export and no cookie');
+    await page.click('[data-conn-clear]');
+    const cleared = await page.evaluate(() => ({ holds: window.LabConnection._holdsDirectKey(), field: document.querySelector('[data-conn-key]').value, status: document.querySelector('[data-conn-status]').textContent }));
+    ck(!cleared.holds && cleared.field === '' && /FIXTURE MODE/.test(cleared.status), 'AR12b Disconnect / clear forgets it and returns to fixture mode');
+    ck(errors.length === 0, 'AR12c no page errors across the whole journey', errors.join(' | '));
+    await page.evaluate(() => { localStorage.clear(); sessionStorage.clear(); });
+    await page.close(); await ctx.close();
+  } finally {
+    await browser.close();
+    server.kill();
+  }
+}
+
+// ===================================================================
 (async () => {
   try {
     // ETHER_LAB_ONLY=SL runs one section alone while it is being built;
@@ -4746,6 +5197,7 @@ async function sectionGL() {
     await run('EP', sectionEP);
     await run('SL', sectionSL);
     await run('GL', sectionGL);
+    await run('AR', sectionAR);
   } catch (e) {
     fail('suite crashed', (e && e.stack || String(e)).split('\n')[0]);
   }

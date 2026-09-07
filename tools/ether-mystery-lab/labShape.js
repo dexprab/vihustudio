@@ -11,9 +11,15 @@
 // nothing. It shows.
 //
 // WHAT IT DELIBERATELY DOES NOT DO.
-//   - It holds no animal image, no SVG, no silhouette under the canvas
-//     and no tracing of any kind (the suite scans for them). The whole
-//     question is what the point/line language can express on its own.
+//   - It holds no animal image, no SVG and no tracing of any kind (the
+//     suite scans for them). The whole question is what the point/line
+//     language can express on its own. CREATE FROM CREATURE (a later
+//     sprint, labReference.js) may lay a rough VECTOR sketch under this
+//     canvas while a person is authoring — a validated blueprint of
+//     ellipses and lines, never a bitmap — and that layer is hidden with
+//     one press, is never on the unfinished pane, and has no field in a
+//     fixture or a candidate to travel in. The judging state is still
+//     the Ether figure alone.
 //   - It computes no recognisability score and asks no model. The
 //     judgement panel is checkboxes and words a researcher writes.
 //   - It generates no geometry from a creature's name. The name is
@@ -73,7 +79,8 @@
     joins: [],                   // [{a,b,gap}]
     name: '', hint: '', notes: '',
     judgement: null,
-    tease: false                 // the delayed aid, OFF by default
+    tease: false,                // the delayed aid, OFF by default
+    authoring: null              // { subject, referenceUsed, source } — how the figure was made; never geometry
   };
   var mode = 'add';              // add · move · delete · join · gap
   var pendingA = null;           // join mode: the first light chosen
@@ -171,7 +178,7 @@
     state.id = null;
     state.points = []; state.joins = [];
     state.name = ''; state.hint = ''; state.notes = '';
-    state.judgement = null; state.tease = false;
+    state.judgement = null; state.tease = false; state.authoring = null;
     pendingA = null; dragging = null;
     emit();
   }
@@ -298,9 +305,16 @@
     if (canvas.height !== Math.round(h * dpr)) canvas.height = Math.round(h * dpr);
     var g = canvas.getContext('2d');
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
-    var grad = g.createLinearGradient(0, 0, 0, h);
-    grad.addColorStop(0, '#161C33'); grad.addColorStop(1, '#1E2440');
-    g.fillStyle = grad; g.fillRect(0, 0, w, h);
+    if (opts.transparent) {
+      // A reference underlay is showing beneath this canvas: paint no
+      // sky, so it shows through. Everything else draws exactly as it does
+      // on an opaque sky.
+      g.clearRect(0, 0, w, h);
+    } else {
+      var grad = g.createLinearGradient(0, 0, 0, h);
+      grad.addColorStop(0, '#161C33'); grad.addColorStop(1, '#1E2440');
+      g.fillStyle = grad; g.fillRect(0, 0, w, h);
+    }
 
     var P = s.points.map(function (p) { return toScreen(p, w, h); });
     var lw = Math.max(1.2, Math.min(w, h) / 420);
@@ -378,9 +392,21 @@
       points: fig.points, joins: fig.joins, missing: fig.gaps,
       hint: state.hint || '', notes: state.notes || '',
       judgement: state.judgement || null,
-      tease: !!state.tease
+      tease: !!state.tease,
+      // How the figure was made — a subject the author typed and whether
+      // a reference was used. Words only: no sketch, no anchors, no
+      // feature list ever lands here.
+      authoring: authoringOf(state.authoring)
     };
   }
+
+  function authoringOf(a) {
+    if (!a || typeof a !== 'object') return null;
+    var subject = String(a.subject || '').slice(0, 40);
+    if (!subject) return null;
+    return { subject: subject, referenceUsed: !!a.referenceUsed, source: a.source === 'generated' ? 'generated' : 'fixture' };
+  }
+  function setAuthoring(a) { state.authoring = authoringOf(a); emit(); }
 
   function save() {
     var arr = readStore();
@@ -423,6 +449,7 @@
     state.name = rec.name || ''; state.hint = rec.hint || ''; state.notes = rec.notes || '';
     state.judgement = rec.judgement || null;
     state.tease = !!rec.tease;
+    state.authoring = authoringOf(rec.authoring);
     pendingA = null;
     return { ok: true };
   }
@@ -523,6 +550,13 @@
       if (mode === 'add') {
         if (pi === -1) {
           var u = toUnit(x, y, w, h);
+          // A suggested point within reach (the reference layer's, when
+          // one is showing) answers with its own place; otherwise the
+          // light lands exactly where the author pressed. From here on
+          // it is an ordinary light either way.
+          var Ref = global.LabReference;
+          var sn = (Ref && Ref.snap) ? Ref.snap(u) : null;
+          if (sn) u = sn;
           var r = addPoint(u[0], u[1]);
           if (!r.ok) say('This budget is full — ' + state.budget + ' lights. Choose a larger budget or take one away.');
         }
@@ -707,13 +741,15 @@
 
   function render() {
     var cc = el('[data-canvas-complete]'), cu = el('[data-canvas-unfinished]');
-    if (cc) draw(cc, state, { editing: true, numbers: showNumbers });
-    if (cu) draw(cu, state, { unfinished: true });
+    var Ref = global.LabReference;
+    var under = !!(Ref && Ref.isShowing && Ref.isShowing());
+    if (cc) draw(cc, state, { editing: true, numbers: showNumbers, transparent: under });
+    if (cu) draw(cu, state, { unfinished: true });                  // never the reference: this is what a child meets
     doc.querySelectorAll('[data-budget]').forEach(function (b) {
       b.classList.toggle('on', Number(b.getAttribute('data-budget')) === state.budget);
     });
     var bl = el('[data-budget-label]');
-    if (bl) bl.textContent = 'TESTING ' + state.budget + ' POINTS' + (state.budget > PRODUCTION_BUDGET ? ' — Lab research budget (production is ' + PRODUCTION_BUDGET + ')' : ' — the production budget');
+    if (bl) bl.textContent = 'TESTING ' + state.budget + ' POINTS' + (state.budget > PRODUCTION_BUDGET ? ' — Lab authoring / research budget · production currently supports ' + PRODUCTION_BUDGET : ' — the production budget');
     doc.querySelectorAll('[data-mode]').forEach(function (b) {
       b.classList.toggle('on', b.getAttribute('data-mode') === mode);
     });
@@ -819,7 +855,10 @@
     toggleJoin: toggleJoin, toggleGap: toggleGap, reset: reset, demoRing: demoRing,
     setMode: function (m) { mode = m; pendingA = null; emit(); },
     setName: setName, setHint: setHint, setNotes: setNotes, setTease: setTease,
-    setJudgement: setJudgement,
+    setJudgement: setJudgement, setAuthoring: setAuthoring,
+    // the one projection, for anything that must line up with the editor
+    scaleFor: scaleFor, project: toScreen, unproject: toUnit,
+    observe: function (fn) { if (typeof fn === 'function') listeners.push(fn); },
     // reading
     state: function () { return JSON.parse(JSON.stringify(serialize())); },
     figure: function () { return figureOf(state); },

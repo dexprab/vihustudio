@@ -12624,3 +12624,25 @@ a gap is chosen; 12/16/20 are refused and still viewable), no build
 bump. Lab suite 494/494, section `GL`. Doc:
 `docs/ETHER_MYSTERY_LAB.md` → *The Creature Candidate Gallery*; shots in
 `tools/ether-mystery-lab-test/shots/gallery/`.
+
+## Create from creature — the AI-assisted reference mode of the Shape Lab
+
+The Shape Lab gains an additive mode: enter any creature or subject, an
+assistant returns a structured BLUEPRINT (identity, silhouette,
+diagnostic features with importance and anchors, which features to
+spend 8/12/16/20 points on, and a rough vector sketch), and the sketch
+is laid UNDER the editor on a pointer-inert canvas with a REFERENCE
+ON/OFF toggle, dismissible feature labels and suggested points a click
+accepts. The author still places every light, join and gap; the schema
+has no field for final geometry and refuses one by name; the reference
+reaches no fixture, no candidate, no preview and no Ether (a fixture
+gains only `authoring: {subject, referenceUsed, source}`). Generation
+rides the existing `LabConnection` transports (fixture / endpoint /
+direct — no key in browser code, one additive hook); the request is the
+subject plus a fixed contract and nothing else. No creature names, no
+taxonomy, no image, no score. Zero production files changed, the
+validator's 8-point limit untouched, no build bump, no pool change.
+Lab suite 557/557 — section `AR` (63 checks), with seven revert-proofs.
+Doc: `docs/ETHER_MYSTERY_LAB.md` → *Create from creature*; shots in
+`tools/ether-mystery-lab-test/shots/shape-lab/reference-*.png`.
+

@@ -1906,3 +1906,153 @@ at, and the first real look is the researcher's.
 `tools/ether-mystery-lab/gallery.html` · `labGallery.js` ·
 `labGalleryData.js` · `labShape.js` (the hand-off consumer). Suite
 section `GL`. Screenshots: `tools/ether-mystery-lab-test/shots/gallery/`.
+
+## CREATE FROM CREATURE — the AI-assisted reference mode of the Shape Lab
+
+The Shape Lab's manual editor, fixtures, comparison, judgement and
+import/export are exactly as they were. This is an ADDITIVE mode on the
+same page: a person enters any creature or subject, an assistant gives
+SEMANTIC help — what makes it recognisable, where each point budget is
+best spent — and a rough visual reference to draw over, and the person
+places every light, every join and every gap themselves. The eventual
+product is a child doing this; the Lab is where the authoring flow is
+worked out first.
+
+**The assistant never draws the final creature.** The blueprint schema
+has no field for final points, joins, gaps or a hint — those very keys
+are on its forbidden list, so a reply carrying one is refused by name.
+The only thing the assistant's output can become is a faint picture
+under the editor and a set of suggestions a click may accept.
+
+### What is added
+
+- **`labBlueprint.js`** — the contract: `messagesFor(subject)` builds the
+  request (one fixed system contract plus `Subject: <what was typed>`,
+  nothing else); `validate()` refuses by shape — an unknown key at any
+  depth, a forbidden key (Stars, card, memories, joins, gaps, hint…), a
+  URL, a data URI, markup, a wrong bound — and returns a CLEAN copy built
+  field by field; `parse()` treats a reply as text until proven a
+  blueprint; `fixture(subject)` is one deliberately GENERIC body plan
+  (head, body, tail, two legs, ear), the same for "Tiger" and "Wibble",
+  which says in its own silhouette line that it is a fixture;
+  `suggestions(bp, budget)` returns the anchors of the features the
+  blueprint names for that budget.
+- **`labReference.js`** — the underlay: a second canvas inserted UNDER
+  the editor's "Complete — as drawn" canvas, `pointer-events: none`,
+  aria-hidden, aligned to the pixel through the editor's own
+  `project()`. It draws the sketch primitives faintly, the feature rings
+  and labels, and the suggested points; it holds the current reference
+  and the one before it; it writes no storage and makes no request.
+- **`labShape.js`, additively** — `draw()` gains a `transparent` option
+  (used only while a reference shows); add mode asks
+  `LabReference.snap()` before placing a light; `project` / `unproject`
+  / `scaleFor` / `observe` are exported; a fixture gains an optional
+  `authoring: { subject, referenceUsed, source }` note — three words
+  about HOW, never geometry; the header reads *TESTING 12 POINTS — Lab
+  authoring / research budget · production currently supports 8*.
+- **`shape.html`** — the *Create from creature* section (subject,
+  Generate reference, REFERENCE ON/OFF, Try another interpretation,
+  Bring back the previous one, Discard reference, feature-label and
+  suggested-point toggles, the ten-step flow as a note rather than a
+  wizard, and a compact *Where the help comes from* panel), and a
+  *Reference blueprint* panel on the right.
+
+### How the reference is generated
+
+Through `labConnection.js` — the SAME three transports the Mystery Lab
+already has, unchanged: **Fixture** (the default; no network at all, the
+generic body plan), **Endpoint** (`supabase/functions/lab-generate`, the
+provider key in that function's own environment, administrators only,
+rate-limited), and **Direct** (development only; a key typed at runtime
+into a closure, never stored, never exported, cleared by Disconnect).
+`LabConnection.generate()` gained one additive hook — a caller may bring
+its own fixture producer — and nothing else in it changed. No key is in
+browser code and no production secret mechanism was invented. The reply
+is `source: 'fixture'` or `source: 'generated'` and the status line and
+the fixture's authoring note both say which. A failed or malformed reply
+changes nothing: the reference in use stays, and the status says so.
+
+### What the blueprint contains
+
+`subject` (as understood) · `silhouette` (one sentence, and the viewing
+angle) · `features[]` (name in capitals, `importance` 1–3, `why`, an
+`anchor` in the editor's unit space) · `budgets` — for exactly 8, 12,
+16 and 20, which feature names are worth spending that budget on ·
+`sketch[]` — up to 24 ellipses, polygons and lines. Vector primitives
+only: no image, no URL, no markup, and the validator refuses a value
+that looks like any of them. It is semantic help and a picture to draw
+over; it is not a score, and nothing in it says whether the author's
+figure is good.
+
+### How the author places and edits points over it
+
+Exactly as before: Add / Move / Delete / Join / Gap on the editor canvas.
+While a reference shows, the editor paints a transparent sky so the
+sketch shows through underneath, and the lights and joins are drawn on
+top. A click near a suggested point (within 0.12 units) accepts it — the
+light snaps to the anchor — and from that instant it is an ordinary
+light, movable and deletable; a click anywhere else lands exactly where
+pressed; a suggestion is not drawn where a light already stands.
+Suggested points can be switched off, feature labels can be switched off
+or dismissed one by one, and none of it ever reaches the unfinished pane.
+
+### REFERENCE ON / OFF
+
+One button. OFF hides the underlay and the editor paints its own opaque
+sky — byte for byte the render the Shape Lab always had — so what is
+judged is the Ether figure alone. The reference is kept for turning back
+on; nothing snaps while it is off. Discard clears the current and the
+previous reference and leaves every light where it was.
+
+### Arbitrary names
+
+Any subject the pattern `letters, digits, spaces, apostrophes, hyphens,
+≤ 40 characters` allows is sent as typed. There is no creature list, no
+taxonomy and no branch on a subject anywhere in the blueprint or the
+reference code; the suite scans for creature names and for
+`subject === …`. In fixture mode every subject gets the same generic body
+plan and the status says so.
+
+### Privacy and security
+
+The only input to the assistant is the subject plus the fixed contract
+(suite-checked against the request body: no card, no Stars, no
+constellation, no memory, no Story, no email, no username, no
+Creator/Companion vocabulary, no geometry). Keys never reach browser
+code beyond the existing dev-only closure. The reference reaches no
+fixture (the suite scans the saved record and the export), no candidate
+(the candidate is byte-identical with and without a reference), no
+preview (`preview.html` loads neither module) and no Ether.
+
+### A short research procedure
+
+1. Open `tools/ether-mystery-lab/shape.html`. Leave *Where the help
+   comes from* on Fixture to walk the pipeline, or connect the endpoint
+   for a real reference.
+2. Enter **Tiger** → Generate reference.
+3. At budget 8, place lights over the reference (accept suggestions or
+   not), join them, mark a gap. Toggle REFERENCE OFF. Judge. Save.
+4. Switch to 12, then 16 (Save as new… each time), and compare across
+   budgets.
+5. Repeat with **Falcon**, **Elephant**, **Dragon**, **Penguin**.
+6. Export the fixtures. The judgement is yours; nothing here scores.
+
+### Disclosed
+
+No child has used it and no creature was judged. This environment cannot
+reach a provider, so the generated path is proved against a stubbed
+endpoint returning a valid blueprint (and four kinds of bad one); a real
+model's blueprints are the product owner's to look at. The fixture
+reference is a generic body plan by design, not a picture of the subject.
+The saved fixture already holds the first stages of the eventual creature
+record (creature → complete → unfinished → missing joins → hint →
+delayed help); nothing beyond those is activated.
+
+### Files
+
+`tools/ether-mystery-lab/labBlueprint.js` · `labReference.js` ·
+`labShape.js` (additive) · `shape.html` · `labConnection.js` (one hook).
+Suite section `AR` (63 checks). Screenshots:
+`tools/ether-mystery-lab-test/shots/shape-lab/reference-on.png`,
+`reference-off.png`, `reference-generated.png`.
+

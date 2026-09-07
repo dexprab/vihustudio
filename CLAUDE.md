@@ -9229,6 +9229,79 @@ leads somewhere.
   `docs/ETHER_MYSTERY_LAB.md` → *The Creature Candidate Gallery* ·
   `tools/ether-mystery-lab-test/` section `GL` ·
   `tools/ether-mystery-lab-test/shots/gallery/`
+- **CREATE FROM CREATURE: THE ASSISTANT HELPS; THE AUTHOR DRAWS — LAB
+  ONLY, ZERO PRODUCTION FILES CHANGED.** The Shape Lab gains an additive
+  mode (its manual editor, fixtures, comparison, judgement and
+  import/export untouched — suite-checked control by control): enter any
+  creature or subject, an assistant answers with a structured BLUEPRINT
+  — identity, primary silhouette, diagnostic features with importance
+  and anchors, which features to spend 8 / 12 / 16 / 20 points on, and a
+  rough VECTOR sketch — and the sketch is drawn faintly UNDER the
+  editor's canvas with a REFERENCE ON/OFF toggle, dismissible feature
+  labels and suggested points. The person places every light, every join
+  and every gap. The eventual product is a child doing this; the Lab is
+  where the flow is worked out.
+- **THE ASSISTANT NEVER DRAWS THE FINAL CREATURE, BY SCHEMA.**
+  `labBlueprint.js`'s schema has no field for final points, joins, gaps
+  or a hint, and those keys are on its FORBIDDEN list beside the Stars,
+  card and memory vocabulary — a reply carrying one is refused BY NAME
+  (deny by shape, Decision 33's discipline), a URL, a data URI or markup
+  in any value is refused, and what comes out is a clean copy built
+  field by field. A reply is text until proven a blueprint; a refused
+  one changes nothing and the reference in use stays.
+- **THE REFERENCE IS NOT THE CREATURE, STRUCTURALLY.** It lives on a
+  second canvas inserted under the editor — `pointer-events: none`,
+  aria-hidden, below in z-order, aligned through the editor's own
+  projection — so every tap reaches the editor. It is never drawn on the
+  unfinished pane, has no place in a fixture (the saved record gains
+  only `authoring: {subject, referenceUsed, source}` — three words about
+  HOW, never geometry — and the suite scans the record and the export),
+  produces a candidate byte-identical to one built with no reference,
+  and `preview.html` loads neither module. OFF hides the underlay and
+  the editor paints its own opaque sky — byte for byte the render it
+  always had — which is the judging state.
+- **SUGGESTIONS ARE SUGGESTIONS.** A faint mark at a feature's anchor
+  for the current budget; a click within reach accepts it and from that
+  instant it is an ordinary light, movable and deletable; a mark is
+  never drawn where a light already stands; switched off, nothing
+  snaps; hidden, nothing snaps. A click anywhere else lands exactly where
+  pressed.
+- **GENERATION RIDES THE EXISTING TRANSPORTS, AND THE REQUEST IS THE
+  SUBJECT.** `labConnection.js`'s three modes (fixture / endpoint /
+  direct) are reused with ONE additive hook — a caller may bring its own
+  fixture producer. No key is in browser code beyond the existing
+  dev-only closure and no production secret mechanism was invented. What
+  leaves the browser is two messages: one fixed contract and `Subject:
+  <what was typed>` — measured against the request body: no card, no
+  Stars, no constellation, no memory, no Story, no email, no username,
+  no Creator or Companion vocabulary, no geometry. The contract's own
+  first draft said "constellation" for the drawing style and the private-
+  vocabulary check went red on it; the word moved, the check did not.
+- **NO CREATURE IS KNOWN.** Any subject the pattern allows is sent as
+  typed; there is no creature list, no taxonomy and no
+  `subject === …` anywhere (suite-scanned). The fixture reference is ONE
+  deliberately GENERIC body plan — the same for "Tiger" and "Wibble" —
+  whose own silhouette line says it is a fixture; every status line and
+  the fixture's authoring note say `fixture` or `generated`, never
+  mislabelled. No recognisability score anywhere: the judgement panel is
+  unchanged and is the author's.
+- **BUDGETS STAY 8 · 12 · 16 · 20, the validator is untouched, and
+  reducing a budget under a bigger figure is refused and deletes
+  nothing.** The header reads *TESTING 12 POINTS — Lab authoring /
+  research budget · production currently supports 8*.
+- **DISCLOSED: no child has used it, no creature was judged, and no real
+  model produced a blueprint here** — the environment cannot reach a
+  provider, so the generated path is proved against a stubbed endpoint
+  (a valid blueprint, then one smuggling geometry, one carrying a
+  constellation, one that is prose, and a transport that dies — each
+  refused with the reference in use unchanged). No pool entry, no build
+  bump, nothing activated; the seven revert-proofs each turn their own
+  checks red.
+- `tools/ether-mystery-lab/labBlueprint.js` · `labReference.js` ·
+  `labShape.js` (additive) · `shape.html` · `labConnection.js` (one
+  hook) · `docs/ETHER_MYSTERY_LAB.md` → *Create from creature* ·
+  `tools/ether-mystery-lab-test/` section `AR` ·
+  `tools/ether-mystery-lab-test/shots/shape-lab/reference-*.png`
 - Out of scope and not implemented: creature encounters as a reward
   system, creature dialogue, a Companion in the Ether, per-Traveller
   encounter history, more activity rows (story hunt, missing

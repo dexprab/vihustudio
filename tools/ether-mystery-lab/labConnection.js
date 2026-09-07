@@ -169,6 +169,11 @@
   function generate(opts) {
     opts = opts || {};
     if (state.mode === 'fixture') {
+      // A caller may bring its own fixture producer (the Shape Lab's
+      // blueprint does); the Mystery Lab's candidates stay the default.
+      if (typeof opts.fixture === 'function') {
+        return Promise.resolve({ ok: true, text: String(opts.fixture()), model: null, source: 'fixture' });
+      }
       var kit = global.EtherMysteryLabKit;
       var fx = kit.fixtureGenerate(opts.params || {});
       return Promise.resolve({ ok: true, text: fx.text, model: null, source: 'fixture' });
