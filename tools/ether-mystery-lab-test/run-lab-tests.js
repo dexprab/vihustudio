@@ -3194,6 +3194,391 @@ async function sectionFV() {
     'FV11b and it is still marked research-only');
 }
 
+async function sectionFR() {
+  console.log('\n== FR. the falcon redrawn — recognition / mystery / guided discovery ==');
+  const { chromium } = require('playwright');
+  const sb = kitSandbox();
+  const G = sb.EtherGrammar || (sb.window && sb.window.EtherGrammar);
+  const Kit = sb.EtherMysteryLabKit || (sb.window && sb.window.EtherMysteryLabKit);
+  const Support = sb.LabPreviewSupport || (sb.window && sb.window.LabPreviewSupport);
+  const bank = Kit.FALCON_REDESIGN_BANK;
+  const meta = Kit.FALCON_REDESIGN;
+
+  // ---- FR1: three real candidates the runtime will actually perform ----
+  const verdicts = bank.map((c) => ({ id: c.id, v: G.validate(c) }));
+  ck(bank.length === 3 && verdicts.every((r) => r.v.ok) &&
+     bank.every((c) => Support.support(c).ok),
+    'FR1  F1, F2 and F3 are VALID through the real validator and previewable',
+    verdicts.filter((r) => !r.v.ok).map((r) => r.id + ':' + r.v.reasons).join(' ') || '3/3');
+  ck(meta.map((m) => m.variation).join(' ') === 'F1 F2 F3',
+    'FR1b they are F1, F2 and F3, in that order');
+  ck(meta.every((m) => m.nodes === 8 && m.figure.points.length === 8) &&
+     meta[0].figure.gaps.length === 2 &&
+     meta[1].figure.gaps.length === 3 && meta[2].figure.gaps.length === 3,
+    'FR1c eight lights each; F1 is two joins short and F2/F3 are three',
+    meta.map((m) => m.nodes + 'n/' + m.figure.gaps.length + 'g').join(' '));
+
+  // ---- FR2: THE CEILING, reported rather than worked around ----
+  //
+  // The brief asked for fourteen to twenty lights. The validator caps
+  // an arrangement at eight and requires the figure's points array to
+  // be exactly that long, and the interpreter's own LIMITS.pieces is
+  // ten and CLAMPS instead of refusing — so a sixteen-light figure is
+  // not rejected, it is truncated and drawn with joins pointing at
+  // lights that were never placed. Both are production files this
+  // experiment may not edit. Measured here so the wall is a fact in
+  // the suite rather than a claim in a report.
+  const ceiling = Kit.RUNTIME_NODE_CEILING;
+  const gSrc = read('js/etherGrammar.js'), mSrc = read('js/etherMystery.js');
+  const gMax = Number((gSrc.match(/arrangementNodesMax:\s*(\d+)/) || [])[1]);
+  const mPieces = Number((mSrc.match(/pieces:\s*(\d+),\s*\/\/\s*total placed things, hard ceiling/) || [])[1]);
+  ck(gMax === ceiling.validatorMax && mPieces === ceiling.interpreterPieces,
+    'FR2  the Lab\'s recorded ceiling is read back out of the two production files',
+    JSON.stringify({ validator: gMax, pieces: mPieces }));
+  const tooMany = JSON.parse(JSON.stringify(bank[0]));
+  tooMany.arrangement.nodes = 16;
+  tooMany.elements[0].count = 16;
+  tooMany.arrangement.figure.points = tooMany.arrangement.figure.points
+    .concat(tooMany.arrangement.figure.points.map((p) => [p[0] * 0.5, p[1] * 0.5]));
+  ck(G.validate(tooMany).ok === false,
+    'FR2b sixteen lights is a REFUSED candidate — the brief\'s node count is unreachable here',
+    JSON.stringify(G.validate(tooMany).reasons));
+
+  // ---- FR3: F3 is F2 and nothing else ----
+  ck(bank[1].arrangement.figure === bank[2].arrangement.figure,
+    'FR3  F3 holds F2\'s own figure object — byte-for-byte the same creature');
+  const strip = (c) => JSON.stringify(Object.assign({}, c, { id: 0 }));
+  ck(strip(bank[1]) === strip(bank[2]),
+    'FR3b and the candidate the Ether performs is IDENTICAL — the aid is not in it');
+  ck(new Set(meta.map((m) => m.hint)).size === 1 &&
+     meta[0].hint === Kit.creatureNote('lab-cm-1').hint,
+    'FR3c all three carry the shipped falcon\'s hint, word for word',
+    JSON.stringify(meta[0].hint));
+
+  // ---- FR4: the geometry, and what may never be a gap ----
+  //
+  // §3 designed the finished creature first: four lights on the axis
+  // and two per wing, each wing OUTLINED shoulder → wrist → tip → hip.
+  // §4's rule is that the joins carrying the identity — the leading
+  // edges out to the tips — are never taken away.
+  const F = meta[0].figure;
+  const has = (a, b) => F.joins.indexOf(a + '-' + b) !== -1;
+  ck(has(1, 4) && has(4, 5) && has(5, 2) && has(1, 6) && has(6, 7) && has(7, 2),
+    'FR4  each wing is a closed outline — shoulder → wrist → tip → hip');
+  ck(F.points[5][1] > F.points[4][1] && F.points[7][1] > F.points[6][1],
+    'FR4b and the tips are swept BEHIND the wrists, which is what a moth does not do',
+    JSON.stringify({ wrist: F.points[4][1], tip: F.points[5][1] }));
+  const defining = ['1-4', '4-5', '1-6', '6-7'];
+  ck(meta.every((m) => m.figure.gaps
+       .map((i) => m.figure.joins[i])
+       .every((j) => defining.indexOf(j) === -1)),
+    'FR4c no variation ever removes a join that carries the identity',
+    meta.map((m) => m.figure.gaps.map((i) => m.figure.joins[i]).join(',')).join(' | '));
+
+  // ---- FR5: the evaluator's knowledge stays out of the experience ----
+  ck(!/falcon|creature|variation|tease|hint|guided/i.test(JSON.stringify(bank)),
+    'FR5  no candidate names the creature, the variation, the aid or the hint');
+
+  // ---- the browser half ----
+  const server = spawn('node', ['tools/bring-it-alive/test/serve.js', String(PORT)],
+    { cwd: ROOT, stdio: 'ignore' });
+  await new Promise((res) => setTimeout(res, 900));
+  const browser = await chromium.launch({
+    executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome'
+  });
+  try {
+    const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+    await page.goto(BASE + '/tools/ether-mystery-lab/preview.html');
+    await page.waitForFunction(() => !!window.LabPreview, null, { timeout: 20000 });
+
+    const walk = async (c) => {
+      const note = Kit.creatureNote(c.id);
+      return page.evaluate(async ([cand, hint, tease]) => {
+        const step = () => new Promise((r) =>
+          requestAnimationFrame(() => requestAnimationFrame(r)));
+        const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+        const canvas = document.querySelector('[data-tease]');
+        const my0 = () => window.LabPreview.mystery();
+
+        // The brightest thing the AID canvas paints in a small box.
+        // Nothing else draws on it, so anything found here is the aid.
+        function lit(x, y, r) {
+          if (canvas.hidden || !canvas.width) return 0;
+          const g = canvas.getContext('2d');
+          const d = g.getImageData(Math.max(0, x - r), Math.max(0, y - r), r * 2, r * 2).data;
+          let m = 0;
+          for (let i = 3; i < d.length; i += 4) if (d[i] > m) m = d[i];
+          return m;
+        }
+        function at(L, u, inst) {
+          const A = inst.elements[L.a], B = inst.elements[L.b];
+          return { x: A.x + (B.x - A.x) * u, y: A.y + (B.y - A.y) * u };
+        }
+        // AN ATTEMPT A CHILD WOULD MAKE: two lights that are not a
+        // missing join, chosen and released ACROSS FRAMES. Both taps
+        // in one tick is not a child — nothing ever sees the first
+        // light held.
+        async function tryWrong(n) {
+          for (let k = 0; k < n; k++) {
+            const my = my0(), i = my.instrument();
+            const missing = i.arrangement.links.filter((L) => !L.present);
+            const isGap = (a, b) => missing.some((L) =>
+              (L.a === a && L.b === b) || (L.a === b && L.b === a));
+            const pairs = [];
+            for (let a = 0; a < i.elements.length; a++)
+              for (let b = a + 1; b < i.elements.length; b++)
+                if (!isGap(a, b)) pairs.push([a, b]);
+            const p = pairs[k % pairs.length];
+            my.touchAt(i.elements[p[0]].x, i.elements[p[0]].y);
+            await step();
+            my.touchAt(i.elements[p[1]].x, i.elements[p[1]].y);
+            await step();
+          }
+        }
+
+        window.LabPreview.play(cand, 'fr-seed', 'play', { hint: hint, tease: tease });
+        await wait(1800);
+
+        const posed = {
+          hidden: canvas.hidden,
+          inert: getComputedStyle(canvas).pointerEvents === 'none',
+          w: canvas.width, h: canvas.height,
+          state: window.LabPreview.tease()
+        };
+        // NOTHING IS SHOWN AT FIRST. Even after ONE attempt.
+        let i = my0().instrument();
+        const gaps0 = i.arrangement.links.filter((L) => !L.present);
+        const beforeAny = gaps0.map((L) => { const p = at(L, 0.3, i); return lit(p.x, p.y, 22); });
+        await tryWrong(1);
+        await wait(300);
+        const afterOne = {
+          state: window.LabPreview.tease(),
+          paint: gaps0.map((L) => { const p = at(L, 0.3, i); return lit(p.x, p.y, 22); })
+        };
+
+        // ...and after the second, the world leans in.
+        await tryWrong(1);
+        let guard = 200;
+        while (guard-- > 0) {
+          const s = window.LabPreview.tease();
+          if (!s || s.phase === 'hold') break;
+          await step();
+        }
+        await wait(120);
+        i = my0().instrument();
+        const s = window.LabPreview.tease();
+        const target = (s && s.target !== null) ? i.arrangement.links[s.target] : null;
+        const others = i.arrangement.links.filter((L, n) => !L.present && n !== (s && s.target));
+        const shown = {
+          state: s,
+          near: target ? [lit(at(target, 0.18, i).x, at(target, 0.18, i).y, 16),
+                          lit(at(target, 0.82, i).x, at(target, 0.82, i).y, 16)] : null,
+          middle: target ? lit(at(target, 0.5, i).x, at(target, 0.5, i).y, 9) : null,
+          others: others.map((L) => lit(at(L, 0.35, i).x, at(L, 0.35, i).y, 16)),
+          words: (canvas.textContent || '').trim(),
+          onTop: (function () {
+            const el = document.elementFromPoint(
+              Math.round(i.elements[0].x), Math.round(i.elements[0].y));
+            return !!(el && el.hasAttribute && el.hasAttribute('data-tease'));
+          })()
+        };
+
+        // THE JOIN IT WAS ABOUT — and the aid goes at once.
+        let goneOnJoin = null;
+        if (target) {
+          const my = my0();
+          my.touchAt(i.elements[target.a].x, i.elements[target.a].y);
+          await step();
+          my.touchAt(i.elements[target.b].x, i.elements[target.b].y);
+          await step();
+          const st = window.LabPreview.tease();
+          const j = my.instrument();
+          goneOnJoin = {
+            phase: st && st.phase, alpha: st && st.alpha,
+            paint: j.arrangement.links.filter((L) => !L.present)
+              .map((L) => { const p = at(L, 0.3, j); return lit(p.x, p.y, 22); })
+          };
+        }
+
+        // ...and the rest of it completes, comes alive and roams.
+        const my = my0();
+        i = my.instrument();
+        guard = 40;
+        while (guard-- > 0 && i && i.arrangement && i.arrangement.missingLeft > 0) {
+          const gap = i.arrangement.links.filter((L) => !L.present)[0];
+          my.touchAt(i.elements[gap.a].x, i.elements[gap.a].y);
+          my.touchAt(i.elements[gap.b].x, i.elements[gap.b].y);
+          i = my.instrument();
+        }
+        const live = window.LabPreview.instrument();
+        const whole = live ? live.arrangement.links.filter((L) => L.present).length : -1;
+        await wait(600);
+        const afterWhole = { hidden: canvas.hidden, state: window.LabPreview.tease() };
+        await wait(6200);
+        const w = window.LabPreview.alive()[0] || null;
+        return { posed, beforeAny, afterOne, shown, goneOnJoin, whole, afterWhole,
+                 alive: window.LabPreview.alive().length, born: w };
+      }, [c, note.hint, note.tease]);
+    };
+
+    const F1 = await walk(bank[0]);
+    const F2 = await walk(bank[1]);
+    const F3 = await walk(bank[2]);
+
+    // ANY JOIN RETIRES THE AID, not only the one it was about. A child
+    // who was leaning on a suggestion about the left wing and then
+    // worked out the tail on their own is no longer stuck, and the
+    // suggestion should not be left hanging over the sky. Its own
+    // probe, because the walk above joins the AIDED pair and the two
+    // paths are answered by different branches.
+    const other = await page.evaluate(async ([cand, hint, tease]) => {
+      const step = () => new Promise((r) =>
+        requestAnimationFrame(() => requestAnimationFrame(r)));
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      const canvas = document.querySelector('[data-tease]');
+      window.LabPreview.play(cand, 'fr-other', 'play', { hint: hint, tease: tease });
+      await wait(1800);
+      for (let k = 0; k < 2; k++) {
+        const my = window.LabPreview.mystery(), i = my.instrument();
+        const missing = i.arrangement.links.filter((L) => !L.present);
+        const isGap = (a, b) => missing.some((L) =>
+          (L.a === a && L.b === b) || (L.a === b && L.b === a));
+        const pairs = [];
+        for (let a = 0; a < i.elements.length; a++)
+          for (let b = a + 1; b < i.elements.length; b++)
+            if (!isGap(a, b)) pairs.push([a, b]);
+        const p = pairs[k % pairs.length];
+        my.touchAt(i.elements[p[0]].x, i.elements[p[0]].y);
+        await step();
+        my.touchAt(i.elements[p[1]].x, i.elements[p[1]].y);
+        await step();
+      }
+      let guard = 200;
+      while (guard-- > 0) {
+        const st = window.LabPreview.tease();
+        if (!st || st.phase === 'hold') break;
+        await step();
+      }
+      const before = window.LabPreview.tease();
+      const my = window.LabPreview.mystery();
+      const i = my.instrument();
+      const notTarget = i.arrangement.links
+        .map((L, n) => ({ L: L, n: n }))
+        .filter((r) => !r.L.present && r.n !== before.target)[0];
+      my.touchAt(i.elements[notTarget.L.a].x, i.elements[notTarget.L.a].y);
+      await step();
+      my.touchAt(i.elements[notTarget.L.b].x, i.elements[notTarget.L.b].y);
+      await step();
+      const after = window.LabPreview.tease();
+      let brightest = 0;
+      if (!canvas.hidden && canvas.width) {
+        const d = canvas.getContext('2d')
+          .getImageData(0, 0, canvas.width, canvas.height).data;
+        for (let q = 3; q < d.length; q += 4) if (d[q] > brightest) brightest = d[q];
+      }
+      return { before: before, after: after, joined: notTarget.n, brightest: brightest };
+    }, [bank[2], Kit.creatureNote(bank[2].id).hint, Kit.creatureNote(bank[2].id).tease]);
+
+    // ---- FR6: F1 and F2 are the Ether exactly as it is ----
+    ck(F1.posed.hidden === true && F2.posed.hidden === true &&
+       F1.posed.state === null && F2.posed.state === null,
+      'FR6  F1 and F2 have no aid at all — not before, not after, not ever',
+      JSON.stringify({ F1: F1.posed.hidden, F2: F2.posed.hidden }));
+    ck(F1.shown.others.every((v) => v === 0) && F2.shown.others.every((v) => v === 0) &&
+       F1.shown.state === null && F2.shown.state === null,
+      'FR6b and two attempts change nothing for them');
+
+    // ---- FR7: the aid waits, and answers effort ----
+    ck(F3.posed.hidden === false && F3.posed.state &&
+       F3.posed.state.phase === 'waiting' && F3.posed.state.shown === 0 &&
+       F3.beforeAny.every((v) => v === 0),
+      'FR7  F3 shows nothing when the mystery is posed — the sky is unmarked',
+      JSON.stringify(F3.posed.state));
+    ck(F3.afterOne.state && F3.afterOne.state.tries === 1 &&
+       F3.afterOne.state.shown === 0 && F3.afterOne.paint.every((v) => v === 0),
+      'FR7b nor after ONE attempt — one try is not being stuck',
+      JSON.stringify(F3.afterOne.state));
+    ck(F3.shown.state && F3.shown.state.shown === 1 &&
+       F3.shown.state.tries >= 2 && F3.shown.state.target !== null,
+      'FR7c after the second, the world leans toward ONE gap',
+      JSON.stringify(F3.shown.state));
+
+    // ---- FR8: what it is, and what it can never become ----
+    ck(F3.shown.near && F3.shown.near.every((v) => v > 6),
+      'FR8  a dashed line reaches in from BOTH lights',
+      JSON.stringify(F3.shown.near));
+    ck(F3.shown.middle === 0,
+      'FR8b and the middle of it is never painted — it cannot close the join it is about',
+      JSON.stringify({ middle: F3.shown.middle }));
+    ck(F3.shown.others.every((v) => v === 0),
+      'FR8c the other missing joins are untouched — never every possible connection',
+      JSON.stringify(F3.shown.others));
+    ck(F3.shown.words === '' && F3.posed.inert && !F3.shown.onTop,
+      'FR8d not one word, and it never catches a touch meant for a light',
+      JSON.stringify({ words: F3.shown.words, inert: F3.posed.inert, onTop: F3.shown.onTop }));
+
+    // ---- FR9: it goes the moment the join is made ----
+    ck(F3.goneOnJoin && F3.goneOnJoin.phase === 'waiting' && F3.goneOnJoin.alpha === 0 &&
+       F3.goneOnJoin.paint.every((v) => v === 0),
+      'FR9  the join lands and the aid is gone in the same breath',
+      JSON.stringify(F3.goneOnJoin && { phase: F3.goneOnJoin.phase, paint: F3.goneOnJoin.paint }));
+    ck(F3.afterWhole.hidden === true && F3.afterWhole.state === null,
+      'FR9b and the whole overlay is gone once the shape is whole');
+    ck(other.before && other.before.phase === 'hold' &&
+       other.joined !== other.before.target &&
+       other.after && other.after.phase === 'waiting' && other.after.alpha === 0 &&
+       other.brightest === 0,
+      'FR9c ANY join retires it, not just the one it was about — the sky is left clean',
+      JSON.stringify({ aided: other.before && other.before.target, joined: other.joined,
+                       then: other.after && other.after.phase, painted: other.brightest }));
+
+    // ---- FR10: completion is deterministic, and the falcon lives ----
+    ck(F1.whole === 9 && F2.whole === 9 && F3.whole === 9,
+      'FR10 all three complete to the same nine joins',
+      JSON.stringify({ F1: F1.whole, F2: F2.whole, F3: F3.whole }));
+    ck([F1, F2, F3].every((r) => r.alive === 1 && r.born &&
+        r.born.nodes === 8 && r.born.links === 9),
+      'FR10b each one comes alive with every light and every join, and roams',
+      JSON.stringify([F1, F2, F3].map((r) => r.born && (r.born.nodes + '/' + r.born.links))));
+    ck([F1, F2, F3].every((r) => r.born && (r.born.x !== undefined)),
+      'FR10c and what roams is the figure the child completed, not a new object');
+    await page.close();
+  } finally {
+    await browser.close();
+    server.kill();
+  }
+
+  // ---- FR11: production knows nothing about any of it ----
+  ck(!/lab-fr-|FALCON_REDESIGN/.test(
+       require('child_process').spawnSync('grep',
+         ['-rl', '-e', 'lab-fr-', '-e', 'FALCON_REDESIGN',
+          path.join(ROOT, 'js'), path.join(ROOT, 'assets'), path.join(ROOT, 'vihuplanet')],
+         { encoding: 'utf8' }).stdout || ''),
+    'FR11 nothing a child loads — js/, assets/, the runtime — names one');
+  const pool = read('assets/ether/experience-pool.js');
+  ck(!/lab-fr-/.test(pool) && !/arrangement/.test(
+       (pool.match(/status:\s*'active'[\s\S]{0,40}/g) || []).join('')),
+    'FR11b and no ACTIVE production experience carries an arrangement at all');
+
+  // ---- FR12: the research log ----
+  const session = Kit.createSession();
+  bank.forEach((c) => session.add(c,
+    { source: 'fixture', params: { experiment: 'falcon-redesign' } }));
+  const rows = session.items();
+  session.review(rows[0].labId, 'ok', ['not-recognisable'],
+    'reads as a bird, never as a falcon — judgement C');
+  const log = session.exportResearch();
+  const got = log.artifact.candidates
+    .filter((r) => (r.candidate.id || '').indexOf('lab-fr-') === 0)
+    .map((r) => r.creatureExperiment && (r.creatureExperiment.variation +
+      (r.creatureExperiment.tease ? ':' + r.creatureExperiment.tease : '')));
+  ck(got.length === 3 && got.join(' ') === 'F1 F2 F3:delayed',
+    'FR12 the research log carries which variation each one is, and which carries the aid',
+    got.join(' '));
+  ck(log.artifact.productionReady === false,
+    'FR12b and it is still marked research-only');
+}
+
 // ===================================================================
 (async () => {
   try {
@@ -3207,6 +3592,7 @@ async function sectionFV() {
     await sectionUF();
     await sectionCR();
     await sectionFV();
+    await sectionFR();
   } catch (e) {
     fail('suite crashed', (e && e.stack || String(e)).split('\n')[0]);
   }

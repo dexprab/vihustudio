@@ -1711,6 +1711,12 @@
       count: 5,
       emphasis: 'The mystery comes first; the world itself quietly suggests one optional possibility; taking it leads to a discovery. Nothing is announced, framed as an objective, or required.'
     },
+    'falcon-redesign': {
+      title: 'Three Falcons — Recognition / Mystery / Guided Discovery',
+      brief: 'LAB EXPERIMENT (fixtures only). One falcon, redesigned from scratch with outlined wings and tips swept behind the shoulder, shown three ways: F1 has the fewest gaps, F2 has one more, and F3 is F2 exactly plus a delayed aid that appears only after a child has tried twice without success.',
+      count: 3, needsCreation: true, fixturesOnly: true,
+      emphasis: 'Judge the COMPLETED figure first, with the hint hidden: if it does not read as a falcon on its own, the geometry is rejected however good the interaction is. F2 vs F3 is the only interaction question — whether the world may lean toward a gap AFTER a child has tried, without instructing them. Run it in FIXTURE MODE.'
+    },
     'falcon-variations': {
       title: 'Three Falcons — which one reads as a bird?',
       brief: 'LAB EXPERIMENT (fixtures only). The same falcon three ways: A is the shipped one, B redraws the same eight lights so the wings rise like a bird in flight, C is B with the world quietly leaning toward the two missing joins. Same hint, same node count, same difficulty.',
@@ -2345,19 +2351,134 @@
 
   var FALCON_BANK = FALCON_VARIATIONS.map(creatureCandidate);
 
+  // ---------------------------------------------------------------
+  // THE FALCON, REDESIGNED FROM SCRATCH — F1 / F2 / F3
+  //
+  // The brief's finding was that A, B and C all read as constellation
+  // stick figures rather than as a falcon, and its instruction was to
+  // stop trimming the old topology and design the FINISHED creature
+  // first. Nine rounds of completed silhouettes were drawn and looked
+  // at before a single gap was placed; the sheets are committed under
+  // tools/ether-mystery-lab-test/shots/falcon-study/.
+  //
+  // TWO FINDINGS CARRIED THE REDESIGN.
+  //
+  //   OUTLINE THE WING. Every earlier falcon drew each wing as an ARM
+  //   — one line out from the shoulder with a bend in it — and an arm
+  //   is a skeleton. Give the wing a leading edge AND a trailing edge
+  //   that closes back onto the body and it stops being a line and
+  //   starts being a shape. This is the single biggest improvement of
+  //   the whole study.
+  //
+  //   SWEEP THE TIPS BEHIND THE SHOULDER. Outlined but level, the
+  //   wings close into a trapezoid and the thing reads as a moth. Put
+  //   the tips lower than the wing roots and the trailing edge rises
+  //   back inward, which is the one line a falcon has and a moth does
+  //   not.
+  //
+  // The cost of outlining is the node budget, and that is where this
+  // experiment meets its wall. See RUNTIME_NODE_CEILING below.
+  // ---------------------------------------------------------------
+
+  // EIGHT NODES, SPENT AS FOUR ON THE AXIS AND TWO PER WING.
+  // head → shoulder → hip → tail is the body; each wing is
+  // shoulder → wrist → tip → HIP, and using the hip as the trailing
+  // root is what buys an outlined wing without a ninth light.
+  var FALCON_R_POINTS = [
+    [ 0.00, -1.08],   // 0 head
+    [ 0.00, -0.84],   // 1 shoulder — both wings root here
+    [ 0.00, -0.10],   // 2 hip — and the trailing edges close here
+    [ 0.00,  0.96],   // 3 tail
+    [-0.70, -0.94],   // 4 left wrist, forward of the shoulder
+    [-1.28,  0.38],   // 5 left tip, swept out and BEHIND
+    [ 0.70, -0.94],   // 6 right wrist
+    [ 1.28,  0.38]    // 7 right tip
+  ];
+  var FALCON_R_JOINS = [
+    '0-1', '1-2', '2-3',                // the body, head to tail
+    '1-4', '4-5', '5-2',                // the left wing, outlined
+    '1-6', '6-7', '7-2'                 // the right wing, outlined
+  ];
+
+  // §4: TAKE OUT WHAT IS MISSING, NEVER WHAT IS DEFINING. Four of the
+  // nine joins carry the identity — the two leading edges out to the
+  // tips — and none of them is ever a gap. What is taken instead is
+  // the neck, the tail spike and (F2/F3) one trailing edge: three
+  // things a person can see are absent from a shape that is already
+  // plainly a bird.
+  var FALCON_F1_FIGURE = {
+    points: FALCON_R_POINTS, joins: FALCON_R_JOINS,
+    gaps: [0, 2]            // the neck, and the tail
+  };
+  var FALCON_F2_FIGURE = {
+    points: FALCON_R_POINTS, joins: FALCON_R_JOINS,
+    gaps: [0, 2, 5]         // the neck, the tail, and one trailing edge
+  };
+
+  var FALCON_REDESIGN = [
+    { variation: 'F1', creature: 'falcon',
+      hint: 'A hunter of the open sky is waiting…',
+      id: 'lab-fr-1', nodes: 8, complexity: 'moderate',
+      title: 'a shape of lights, two joins short',
+      figure: FALCON_F1_FIGURE },
+    { variation: 'F2', creature: 'falcon',
+      hint: 'A hunter of the open sky is waiting…',
+      id: 'lab-fr-2', nodes: 8, complexity: 'moderate',
+      title: 'a shape of lights, three joins short',
+      figure: FALCON_F2_FIGURE },
+    // F3 IS F2 AND NOTHING ELSE. It holds F2's own figure object, so
+    // the two cannot drift; the candidate the Ether performs differs
+    // in the id and in nothing else. The delayed aid is drawn by the
+    // LAB over the real interpreter, exactly as the leading hint
+    // already is — so whether the world may lean toward a gap after a
+    // child has tried stays a question this experiment asks rather
+    // than one it has answered.
+    { variation: 'F3', creature: 'falcon', tease: 'delayed',
+      hint: 'A hunter of the open sky is waiting…',
+      id: 'lab-fr-3', nodes: 8, complexity: 'moderate',
+      title: 'a shape of lights, three joins short',
+      figure: FALCON_F2_FIGURE }
+  ];
+
+  var FALCON_REDESIGN_BANK = FALCON_REDESIGN.map(creatureCandidate);
+
+  // WHAT THE RUNTIME WILL ACTUALLY PLACE, measured rather than
+  // assumed, and the reason this experiment is EIGHT lights and not
+  // the fourteen to twenty the brief asked for:
+  //
+  //   js/etherGrammar.js  arrangementNodesMax: 8, and the figure's
+  //                       points array must be EXACTLY that long —
+  //                       so nine lights is a refused candidate.
+  //   js/etherMystery.js  LIMITS.pieces = 10, a hard ceiling applied
+  //                       by CLAMPING rather than refusing, so a
+  //                       sixteen-light figure is not rejected, it is
+  //                       truncated to ten with joins pointing at
+  //                       lights that were never placed.
+  //
+  // Both are production files and this experiment may not edit one.
+  // The eight-light constraint is therefore not a Lab habit left over
+  // from the last experiment — it is the product's own bound, and
+  // lifting it is a product decision with a suite and a canon entry
+  // behind it. Reported rather than worked around.
+  var RUNTIME_NODE_CEILING = {
+    validatorMax: 8,        // js/etherGrammar.js → BOUNDS.arrangementNodesMax
+    interpreterPieces: 10,  // js/etherMystery.js → LIMITS.pieces
+    interpreterClamps: true // ...silently, which is why it cannot be tried
+  };
+
   // What the LAB knows about a creature fixture and the sky never
   // does: which creature it is, and the leading hint the preview
   // renders over it. Looked up by candidate id, so nothing has to
   // travel inside a candidate to get here.
   function creatureNote(id) {
-    var all = CREATURE_EXPERIMENTS.concat(FALCON_VARIATIONS);
+    var all = CREATURE_EXPERIMENTS.concat(FALCON_VARIATIONS, FALCON_REDESIGN);
     for (var i = 0; i < all.length; i++) {
       var c = all[i];
       if (c.id !== id) continue;
       return {
         creature: c.creature, hint: c.hint, nodes: c.nodes,
         joins: c.figure.joins.length, missing: c.figure.gaps.length,
-        variation: c.variation || null, tease: !!c.tease
+        variation: c.variation || null, tease: c.tease || false
       };
     }
     return null;
@@ -2372,6 +2493,10 @@
     // THE FIGURE EXPERIMENT HAS ITS OWN BANK, and it is emitted whole:
     // the comparison is between these eight and no others, so the
     // count control does not thin it out.
+    if (params.experiment === 'falcon-redesign') {
+      return { ok: true, source: 'fixture',
+               text: JSON.stringify({ candidates: JSON.parse(JSON.stringify(FALCON_REDESIGN_BANK)) }) };
+    }
     if (params.experiment === 'falcon-variations') {
       return { ok: true, source: 'fixture', model: null,
                text: JSON.stringify({ candidates: JSON.parse(JSON.stringify(FALCON_BANK)) }) };
@@ -2410,6 +2535,9 @@
     CREATURE_EXPERIMENTS: CREATURE_EXPERIMENTS,
     FALCON_VARIATIONS: FALCON_VARIATIONS,
     FALCON_BANK: FALCON_BANK,
+    FALCON_REDESIGN: FALCON_REDESIGN,
+    FALCON_REDESIGN_BANK: FALCON_REDESIGN_BANK,
+    RUNTIME_NODE_CEILING: RUNTIME_NODE_CEILING,
     CREATURE_BANK: CREATURE_BANK,
     creatureNote: creatureNote,
     FIGURE_BANK: FIGURE_BANK,

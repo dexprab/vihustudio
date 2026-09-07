@@ -12489,3 +12489,47 @@ Judgement, the five rendered alternatives and the disclosure:
 `docs/ETHER_MYSTERY_LAB.md` → *Three Falcons*. Suite section `FV` in
 `tools/ether-mystery-lab-test/`; shots in
 `tools/ether-mystery-lab-test/shots/falcons/`.
+
+## The falcon redrawn — recognition, mystery, guided discovery (Lab)
+
+Three Falcons had answered honestly that A, B and C all read as
+constellation stick figures, so this sprint was asked to design the
+FINISHED falcon first and reject the geometry if it did not read as one.
+Nine rounds of completed silhouettes were drawn and looked at before a
+gap was placed. Two transferable findings: **outline the wing** (a
+leading edge and a trailing edge closing back onto the body — an arm is
+a skeleton, an outline is a shape; the single biggest improvement), and
+**sweep the tips behind the shoulder**, or the outlined wings close into
+a trapezoid and it reads as a moth.
+
+**The verdict is a rejection.** At the node count the product actually
+allows, the best figure reads as *a bird* and never as *a falcon* —
+which is a real gain over a stick figure and is not the bar. Two
+independent reasons: eight lights cannot carry a species (everything
+that read as more than a bird needed 12–16), and *falcon* may not be a
+silhouette a six-year-old separates from *bird* at all.
+
+**And the node count is a wall in production code.** The brief asked for
+14–20; `js/etherGrammar.js` caps an arrangement at eight and requires
+`figure.points` to be exactly that long, and `js/etherMystery.js`'s
+`LIMITS.pieces = 10` **clamps rather than refuses**, so a sixteen-light
+figure is not rejected, it is truncated and drawn with joins pointing at
+lights that were never placed. Both are production files the sprint may
+not edit, so the experiment ran at eight and the wall is measured in the
+suite (`FR2`/`FR2b`) rather than asserted. §9's falcon-specific roaming
+is not delivered for the same reason: the wanderer lives in
+`js/etherMystery.js` and has no Lab-side seam.
+
+F1/F2/F3 are one creature with two, three and three gaps; F3 holds F2's
+own figure object, so the only difference is a **delayed aid** the Lab
+draws over the real interpreter — absent when the mystery is posed,
+absent after one attempt, and after two it leans toward **one** gap with
+a dashed line whose middle is never painted, so it cannot close the join
+it is about. It goes the instant the join lands. Not a word, no arrow,
+no count, and it never catches a touch.
+
+Zero production files changed, nothing activated, no build bump. Lab
+suite 375/375; six load-bearing checks proved by temporary reversion.
+Judgement, the study sheets and what raising the ceiling would take:
+`docs/ETHER_MYSTERY_LAB.md` → *The falcon redrawn*. Suite section `FR`;
+shots in `tools/ether-mystery-lab-test/shots/falcon-redesign/`.

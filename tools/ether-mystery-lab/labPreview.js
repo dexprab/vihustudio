@@ -218,7 +218,7 @@
     finished = false;
     mode = (mode === 'try') ? 'try' : 'play';
     var hintText = (opts && typeof opts.hint === 'string') ? opts.hint : '';
-    var teasing = !!(opts && opts.tease);
+    var teasing = (opts && opts.tease) || false;   // false | 'always' | 'delayed'
     var box = el('[data-unavailable]');
     if (box) box.classList.remove('on');
     var badge = el('[data-try-badge]');
@@ -408,7 +408,7 @@
         });
       }
     }
-    if (teasing) startTease(mystery, universe);
+    if (teasing) startTease(mystery, universe, teasing === true ? 'always' : teasing);
     post('playing', { id: candidate.id, elements: report.happened.elements });
   }
 
@@ -439,6 +439,7 @@
   };
 
   function stopTease() {
+    teaseState = null;
     var c = el('[data-tease]');
     if (!c) return;
     c.hidden = true;
@@ -448,11 +449,56 @@
     } catch (e) {}
   }
 
-  function startTease(mystery, universe) {
+  // ---------------------------------------------------------------
+  // THE DELAYED AID — the world leaning in only AFTER a child has
+  // tried, and only ever toward ONE gap.
+  //
+  // Five rules, and each is a refusal as much as a behaviour:
+  //   it is not there at first, so nothing is explained in advance;
+  //   it waits for two genuine attempts that did not land, so it
+  //     answers effort rather than arrival;
+  //   it names ONE missing join and never every possible connection;
+  //   the dashes stop well short of the middle, so it can never
+  //     close the join it is about — it says "these two", never "do
+  //     this";
+  //   it goes the instant the join is made, and fades on its own if
+  //     it is not — then waits for two more tries before returning.
+  //
+  // Not a word, not an arrow, not a marker, nothing to press, and no
+  // count of tries anywhere on screen. What the interpreter does with
+  // a wrong pair — a small shiver, and nothing said — is untouched.
+  //
+  // AN ATTEMPT IS A SELECTION THAT ENDED WITHOUT A JOIN, and that is
+  // read from the interpreter's own instrument() rather than from an
+  // event, because the interpreter deliberately emits nothing when a
+  // pair does not belong ("NOTHING BLAMES"). A child who chooses one
+  // light and lets it go again counts, which is right: they tried.
+  // ---------------------------------------------------------------
+  var DELAY = {
+    afterTries: 2,      // genuine attempts before the world leans in
+    inMs: 1100,         // grows
+    holdMs: 4500,
+    outMs: 1600,        // and fades
+    dashes: 7,          // per half — the middle is never drawn
+    from: 0.12,         // where the dashes start, short of the light
+    clear: 0.20         // half-width of the untouched middle, in u
+  };
+
+  var teaseState = null;
+
+  function teaseReport() { return teaseState ? {
+    mode: teaseState.mode, tries: teaseState.tries, phase: teaseState.phase,
+    target: teaseState.target, alpha: Math.round(teaseState.alpha * 1000) / 1000,
+    shown: teaseState.shown
+  } : null; }
+
+  function startTease(mystery, universe, mode) {
     var canvas = el('[data-tease]');
     if (!canvas || !canvas.getContext) return;
     var ctx = canvas.getContext('2d');
     canvas.hidden = false;
+    teaseState = { mode: mode, tries: 0, phase: 'waiting', target: null,
+                   alpha: 0, shown: 0, since: 0, sel: null, left: null };
 
     // The interpreter holds its lights in FIELD coordinates and the
     // sky wraps, so a screen position is the same three lines it uses
@@ -480,6 +526,67 @@
         return;
       }
 
+      // ---- what this mode is allowed to draw, and when ----
+      var links = inst.arrangement.links;
+      var envelope = 1;
+      if (teaseState && teaseState.mode === 'delayed') {
+        var st = teaseState;
+        var sel = inst.arrangement.selected;
+        var left = inst.arrangement.missingLeft;
+
+        // An attempt that did not land: a light was chosen, it is no
+        // longer chosen, and nothing was joined by it.
+        if (st.left === null) st.left = left;
+        if (st.sel !== null && sel === null && left === st.left) st.tries++;
+        st.sel = sel;
+
+        // A JOIN LANDED — the aid goes at once, whichever join it was.
+        if (left < st.left) {
+          st.phase = 'waiting'; st.target = null; st.alpha = 0;
+          st.tries = 0; st.since = t;
+        }
+        st.left = left;
+
+        if (st.phase === 'waiting') {
+          if (st.tries >= DELAY.afterTries) {
+            // THE WIDEST GAP, NOT THE FIRST ONE. Two lights a finger's
+            // width apart already look like a pair; two on opposite
+            // sides of the shape do not, and that is where a child who
+            // has tried twice is actually stuck. Deterministic, so the
+            // same sky always leans the same way.
+            var pick = null, far = -1;
+            for (var q = 0; q < links.length; q++) {
+              if (links[q].present) continue;
+              var EA = inst.elements[links[q].a], EB = inst.elements[links[q].b];
+              if (!EA || !EB) continue;
+              var dd = (EA.x - EB.x) * (EA.x - EB.x) + (EA.y - EB.y) * (EA.y - EB.y);
+              if (dd > far) { far = dd; pick = q; }
+            }
+            if (pick !== null) {
+              st.phase = 'in'; st.target = pick; st.since = t; st.shown++;
+            }
+          }
+        } else if (st.target === null || !links[st.target] || links[st.target].present) {
+          st.phase = 'waiting'; st.target = null; st.alpha = 0; st.tries = 0;
+        } else {
+          var since = t - st.since;
+          if (st.phase === 'in') {
+            envelope = Math.min(1, since / DELAY.inMs);
+            if (since >= DELAY.inMs) { st.phase = 'hold'; st.since = t; envelope = 1; }
+          } else if (st.phase === 'hold') {
+            envelope = 1;
+            if (since >= DELAY.holdMs) { st.phase = 'out'; st.since = t; }
+          } else {
+            envelope = Math.max(0, 1 - since / DELAY.outMs);
+            if (since >= DELAY.outMs) {
+              st.phase = 'waiting'; st.target = null; st.tries = 0; envelope = 0;
+            }
+          }
+        }
+        st.alpha = (st.phase === 'waiting') ? 0 : envelope;
+        if (st.phase === 'waiting') return;      // nothing on screen at all
+      }
+
       var cam = { x: 0 }, span = 0;
       try {
         cam = universe.camera.offsetFor(universe.ether.depth.stories, { x: 0, y: 0 });
@@ -491,31 +598,66 @@
       var pulse = 0.5 + 0.5 * Math.sin((t / 1000) * TEASE.breathe);
       var lift = 0.35 + 0.65 * pulse;
 
-      inst.arrangement.links.forEach(function (L) {
-        if (L.present) return;
+      // ONE GAP, NEVER ALL OF THEM, in delayed mode. The always-on
+      // variation (Falcon C) is unchanged and still answers every
+      // missing join, because that is the thing it was built to ask.
+      var drawable = (teaseState && teaseState.mode === 'delayed')
+        ? [links[teaseState.target]]
+        : links;
+
+      drawable.forEach(function (L) {
+        if (!L || L.present) return;
         var A = inst.elements[L.a], B = inst.elements[L.b];
         if (!A || !B || A.hidden || B.hidden) return;
         var ax = nearestCopy(A.x + cam.x, span, w * 0.5), ay = A.y;
         var bx = nearestCopy(B.x + cam.x, span, w * 0.5), by = B.y;
 
-        // The almost-line: dots from both ends, palest in the middle,
-        // and no dot is ever placed at the midpoint itself.
-        for (var i = 0; i < TEASE.dots; i++) {
-          var u = TEASE.inset + (i / (TEASE.dots - 1)) * (1 - TEASE.inset * 2);
-          var mid = 1 - Math.abs(u - 0.5) * 2;          // 0 at the ends, 1 in the middle
-          var a = TEASE.lineAlpha * lift * (1 - mid * 0.82);
-          if (a <= 0.005) continue;
-          ctx.beginPath();
-          ctx.arc(ax + (bx - ax) * u, ay + (by - ay) * u, 1.5, 0, Math.PI * 2);
-          ctx.fillStyle = 'rgba(241,234,208,' + a.toFixed(3) + ')';
-          ctx.fill();
+        if (teaseState && teaseState.mode === 'delayed') {
+          // A DASHED LINE THAT CANNOT CLOSE. The dashes run in from
+          // each light and stop DELAY.clear short of the midpoint, so
+          // the middle of the segment is never painted at any alpha —
+          // it is an unfinished line about an unfinished join, and it
+          // could not be mistaken for the join itself. Drawn from both
+          // ends inward and thinning as it goes, so it reads as two
+          // lights reaching for each other rather than as an arrow
+          // pointing one way.
+          ctx.lineCap = 'butt';
+          for (var d = 0; d < DELAY.dashes; d++) {
+            var span = (0.5 - DELAY.clear) - DELAY.from;
+            var u0 = DELAY.from + (d / DELAY.dashes) * span;
+            var u1 = u0 + span / DELAY.dashes * 0.55;
+            var fade = 1 - (d / DELAY.dashes) * 0.72;
+            var da = TEASE.lineAlpha * lift * envelope * fade;
+            if (da <= 0.004) continue;
+            ctx.strokeStyle = 'rgba(241,234,208,' + da.toFixed(3) + ')';
+            ctx.lineWidth = 1.3;
+            [[u0, u1], [1 - u1, 1 - u0]].forEach(function (seg) {
+              ctx.beginPath();
+              ctx.moveTo(ax + (bx - ax) * seg[0], ay + (by - ay) * seg[0]);
+              ctx.lineTo(ax + (bx - ax) * seg[1], ay + (by - ay) * seg[1]);
+              ctx.stroke();
+            });
+          }
+        } else {
+          // The almost-line: dots from both ends, palest in the middle,
+          // and no dot is ever placed at the midpoint itself.
+          for (var i = 0; i < TEASE.dots; i++) {
+            var u = TEASE.inset + (i / (TEASE.dots - 1)) * (1 - TEASE.inset * 2);
+            var mid = 1 - Math.abs(u - 0.5) * 2;        // 0 at the ends, 1 in the middle
+            var a = TEASE.lineAlpha * lift * (1 - mid * 0.82);
+            if (a <= 0.005) continue;
+            ctx.beginPath();
+            ctx.arc(ax + (bx - ax) * u, ay + (by - ay) * u, 1.5, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(241,234,208,' + a.toFixed(3) + ')';
+            ctx.fill();
+          }
         }
 
         // And the two lights answer each other.
         [[ax, ay], [bx, by]].forEach(function (p) {
           var r = TEASE.haloR * (0.72 + 0.28 * pulse);
           var g = ctx.createRadialGradient(p[0], p[1], 0, p[0], p[1], r);
-          g.addColorStop(0, 'rgba(241,234,208,' + (TEASE.haloAlpha * lift).toFixed(3) + ')');
+          g.addColorStop(0, 'rgba(241,234,208,' + (TEASE.haloAlpha * lift * envelope).toFixed(3) + ')');
           g.addColorStop(1, 'rgba(241,234,208,0)');
           ctx.beginPath();
           ctx.arc(p[0], p[1], r, 0, Math.PI * 2);
@@ -603,7 +745,7 @@
       var d = ev && ev.data;
       if (!d || d.type !== 'lab-preview:play') return;
       epoch = (typeof d.epoch === 'number') ? d.epoch : null;
-      play(d.candidate, d.seed, d.mode, { hint: d.hint, tease: !!d.tease });
+      play(d.candidate, d.seed, d.mode, { hint: d.hint, tease: d.tease || false });
     });
     post('ready', {});
   }
@@ -632,6 +774,7 @@
     ripple: function () { return run ? run.ripple : null; },
     candidate: function () { return current ? current.candidate : null; },
     mode: function () { return current ? (current.mode || 'play') : null; },
+    tease: teaseReport,
     stories: function () {
       if (!run || !run.universe) return [];
       try { return run.universe.stories.all(); } catch (e) { return []; }

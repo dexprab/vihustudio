@@ -659,7 +659,7 @@
       var opened = PreviewHost.open(candidate, previewSeed, function (report) {
         if (report) demonstrated[item.labId] = report;
         renderCandidates();
-      }, mode, { hint: note ? note.hint : '', tease: !!(note && note.tease) });
+      }, mode, { hint: note ? note.hint : '', tease: (note && note.tease) || false });
       if (opened && opened.ok === false && b.parentNode) {
         var n = document.createElement('div');
         n.className = 'hint';

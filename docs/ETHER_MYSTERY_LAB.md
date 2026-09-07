@@ -1304,3 +1304,242 @@ from the Lab.
 `tools/ether-mystery-lab/preview.html` · `labPreview.js` (`TEASE`,
 `startTease`) · `labPreviewHost.js` · `labUi.js`. Screenshots:
 `tools/ether-mystery-lab-test/shots/falcons/`. Suite section: `FV`.
+
+---
+
+## THE FALCON REDRAWN — recognition · mystery · guided discovery
+
+**A LAB EXPERIMENT. Nothing here is in the production Ether, no
+production file changed, no pool entry was activated, and the build was
+not bumped.**
+
+Three Falcons answered its own question honestly: A, B and C all read as
+constellation stick figures rather than as a falcon. This experiment was
+asked to stop trimming that topology, design the FINISHED creature
+first, and then take joins out of it — and to reject the geometry if the
+completed figure does not read as a falcon, however good the interaction
+is.
+
+### THE FIRST RESULT IS A WALL, AND IT IS IN PRODUCTION CODE
+
+The brief asked for **14–20 lights**, explicitly removing the eight-light
+constraint. That constraint is not a Lab habit. It is the product's:
+
+| | | |
+|---|---|---|
+| `js/etherGrammar.js` | `arrangementNodesMax: 8` | *"more than eight is a chore, not a mystery"* — and a figure's `points` array must be **exactly** `arrangement.nodes` long, so nine lights is a **refused candidate** |
+| `js/etherMystery.js` | `LIMITS.pieces = 10` | a hard ceiling applied by **clamping, not refusing** — `if (total + n > LIMITS.pieces) n = LIMITS.pieces - total` |
+
+The second is the worse of the two. A sixteen-light figure is not
+rejected by the interpreter; it is **silently truncated to ten**, and
+`layoutFigure` then iterates the ten lights that exist while the figure's
+joins still refer to sixteen — so what would render is a broken drawing,
+not a large one.
+
+Both files are production and this experiment may not edit either.
+**So the experiment was run at eight**, and `FR2`/`FR2b` read the two
+numbers back out of the real files and prove that sixteen is refused, so
+the wall is a measured fact in the suite rather than a claim here.
+Raising it is a product decision with a suite and a canon entry behind
+it — see *What it would take* below.
+
+### THE GEOMETRY, DESIGNED FORWARDS
+
+Nine rounds of **completed silhouettes** were drawn and looked at before
+a single gap was placed. Two findings carried the redesign, and both are
+transferable to any creature:
+
+**OUTLINE THE WING.** Every earlier falcon drew each wing as an *arm* —
+one line out from the shoulder with a bend in it — and an arm is a
+skeleton. Give the wing a leading edge **and** a trailing edge that
+closes back onto the body and it stops being a line and becomes a shape.
+This is the single biggest improvement of the whole study.
+(`shots/falcon-redesign/study-outlined-wing.png` — the shipped Falcon B
+beside three outlined ones.)
+
+**SWEEP THE TIPS BEHIND THE SHOULDER.** Outlined but level, the wings
+close into a trapezoid and the thing reads as a **moth**. Put the tips
+lower than the wing roots so the trailing edge rises back inward — that
+is the one line a falcon has and a moth does not.
+(`shots/falcon-redesign/study-swept-tips.png`.)
+
+Two earlier findings held and are worth keeping: **a two-pronged tail
+under a vertical body reads as legs**, which killed six designs across
+rounds 3–5; and **a perched side profile fails completely** as a line
+constellation — it reads as an abstract curved blob.
+
+The eight lights are spent four on the axis and two per wing:
+
+```
+0 head      1 shoulder    2 hip     3 tail
+4 L wrist   5 L tip       6 R wrist 7 R tip
+
+body   0-1  1-2  2-3
+wings  1-4  4-5  5-2      1-6  6-7  7-2
+```
+
+Using the **hip** as the trailing root is what buys an outlined wing
+without a ninth light.
+
+### THE THREE VARIATIONS
+
+| | | gaps | the one thing that changed |
+|---|---|---|---|
+| **F1 recognition** | `lab-fr-1` | neck, tail | the fewest gaps — most readable while unfinished |
+| **F2 mystery** | `lab-fr-2` | neck, tail, one trailing edge | one more gap, same creature |
+| **F3 guided discovery** | `lab-fr-3` | *(F2's own figure object)* | F2 exactly, plus a delayed aid |
+
+**§4's rule is enforced rather than intended:** the four joins that carry
+the identity — the two leading edges out to the tips — are never a gap in
+any variation (`FR4c`). What is taken instead is the neck, the tail spike
+and one trailing edge: three things a person can see are absent from a
+shape that is already plainly a bird.
+
+**F3 holds F2's own figure object**, so the two cannot drift; `FR3`
+checks identity rather than equality and `FR3b` checks that the candidate
+the interpreter is handed is **identical apart from the id** — the aid is
+not in it. Same hint for all three, word for word.
+
+### THE DELAYED AID
+
+Drawn by the **Lab** over the real interpreter, exactly as the leading
+hint already is. `js/etherMystery.js` still renders no text and no aid,
+and still says nothing at all when a pair does not belong.
+
+Five rules, each a refusal as much as a behaviour:
+
+- **It is not there at first**, so nothing is explained in advance.
+- **It waits for two genuine attempts that did not land** — it answers
+  effort, never arrival. One try is not being stuck (`FR7b`).
+- **It names ONE missing join**, never every possible connection
+  (`FR8c`) — and it picks the **widest** gap, because two lights a
+  finger's width apart already look like a pair and two on opposite
+  sides of the shape do not.
+- **The dashes stop short of the middle**, so the middle of the segment
+  is never painted at any alpha (`FR8b`, measured as 0). It is an
+  unfinished line about an unfinished join; it says *these two*, never
+  *do this*.
+- **It goes the instant the join is made** (`FR9`), and fades on its own
+  if it is not — then waits for two more tries before returning. **Any**
+  join retires it, not only the one it was about (`FR9c`): a child who
+  was leaning on a suggestion about the left wing and then worked the
+  tail out on their own is no longer stuck.
+
+**A check that could not fail for one of those branches**, and the
+reversion pass is what found it. `FR9` joins the AIDED pair — and that
+is also caught by the *target became present* branch, so removing the
+*any join landed* branch left `FR9` green. `FR9c` joins a **different**
+missing pair, which only the removed branch answers, and it goes red on
+the reversion (`then: hold, painted: 83`). Six load-bearing checks are
+proved by temporary reversion in all: the two-attempt gate, the
+one-gap-only rule, the untouched middle, the any-join retirement, and
+F3 holding F2's own figure object.
+
+Not a word, not an arrow, not a marker, nothing to press, no count of
+tries anywhere on screen, and it never catches a touch meant for a light
+(`FR8d`).
+
+**An attempt is a selection that ended without a join**, read from the
+interpreter's own `instrument()` rather than from an event — because the
+interpreter deliberately emits nothing when a pair does not belong
+("NOTHING BLAMES"). A child who chooses one light and lets it go again
+counts, which is right: they tried. *A harness that fires both taps in
+one tick is not a child* — nothing ever sees the first light held — so
+the suite taps across frames.
+
+### JUDGEMENT
+
+**C — does the completed creature read as a falcon? NO. The geometry is
+rejected.**
+
+That is this experiment's most important judgement and it is the one it
+fails. At eight lights the best achievable figure reads as **a bird** —
+head up, swept wings, tail down — and never as a falcon. Nine rounds of
+redesign moved it from *a stick figure* to *a bird*, which is a real
+gain, and stopped there.
+
+Two independent reasons, and they should not be run together:
+
+1. **Eight lights cannot carry a species.** Everything that read as more
+   than a bird in the study needed 12–16 (`study-sixteen-vs-ten.png` —
+   the 16-light stoop beside five 10-light attempts; every 10-light
+   variant degrades toward a stick). And even ten is unreachable: the
+   validator stops at eight.
+2. **"Falcon" may not be a shape at all.** A falcon is distinguished from
+   a hawk by proportion, plumage and behaviour, not by a silhouette a
+   six-year-old separates from *bird*. The honest ceiling for this visual
+   language is **"OH! IT'S A BIRD!"**, and the brief's bar is *"OH! IT'S
+   A FALCON!"*. Raising the node count would buy a better bird; it is not
+   established that it buys a falcon.
+
+Per §14 the response was to redesign the topology and not to compensate:
+nothing was brightened, no glow was added, no animation was leaned on and
+the hint was not strengthened.
+
+The remaining judgements, for completeness:
+
+- **A** — a clear something is waiting, in all three. F1 reads best
+  unfinished: the bird stands whole with only the head and the tail
+  loose, which is *obviously incomplete and still recognisable*.
+- **B** — the unfinished figure is obviously incomplete in all three.
+- **D** — F1 vs F2 is a real difficulty difference and neither is a wall.
+- **E** — the aid reads as the world leaning in, not as an instruction:
+  it is late, faint, single, and cannot close the join.
+- **F** — no, it does not give the answer away. It says which two, never
+  what to do.
+- **G** — the completion is deterministic and identical across all three
+  (`FR10`): nine joins, alive with eight lights, roaming.
+- **H** — the awakening is at Ether scale and the figure stays whole and
+  visible.
+- **I** — **not delivered.** See below.
+- **J** — the experiment should not be promoted. The interaction is
+  sound; the geometry is not.
+
+### §9 IS NOT DELIVERED, AND THAT IS THE SECOND WALL
+
+Falcon-specific movement — wing-like motion, gliding, resting — would
+live in the **wanderer**, and the wanderer is inside
+`js/etherMystery.js`. There is no Lab-side seam for how a completed
+figure moves, so a "Lab-only" version of §9 does not exist: it would be
+an edit to a production file, which §1 forbids. What roams is the
+generic wanderer: it drifts, rests and wraps, identically for a falcon
+and for a whale. Reported rather than approximated.
+
+### WHAT IT WOULD TAKE
+
+If a larger figure is wanted, it is three changes and they are a product
+decision, not this experiment's:
+
+1. `js/etherGrammar.js` — raise `arrangementNodesMax` (and with it the
+   `jns.length <= max * 2` join bound). The comment there records a real
+   design judgement — *"more than eight is a chore, not a mystery"* —
+   which is about how many taps a child is asked for, not about how many
+   lights they look at. **A figure completed by three joins can hold
+   sixteen lights**, so the two are separable, and separating them is
+   the actual proposal.
+2. `js/etherMystery.js` — raise `LIMITS.pieces`, and make it **refuse
+   rather than clamp**: silently truncating a figure is a bug waiting
+   for the first candidate that asks for it, whatever the ceiling is.
+3. A canon entry, since it changes what a child can meet.
+
+### Disclosed
+
+**No child has played it.** What is measured is the geometry, the gap
+placement, what the aid paints and where, that it waits, that it names
+one gap, that it cannot close, that it goes when the join lands, that all
+three complete, awaken and roam identically, and that none of it is
+reachable from production. **Whether the completed figure says "falcon"
+is the judgement above, made by looking**, and the product owner's to
+confirm — the study sheets are committed so it can be argued with.
+
+Desktop 1440×900 and phone 390×844 both shot; the figure holds Ether
+scale on both.
+
+### Files
+
+`tools/ether-mystery-lab/labKit.js` — `FALCON_REDESIGN`,
+`FALCON_REDESIGN_BANK`, `RUNTIME_NODE_CEILING`, the `falcon-redesign`
+preset. `tools/ether-mystery-lab/labPreview.js` — `DELAY`, the delayed
+branch of `startTease`, `LabPreview.tease()`. Screenshots and study
+sheets: `tools/ether-mystery-lab-test/shots/falcon-redesign/`. Suite
+section: `FR`.

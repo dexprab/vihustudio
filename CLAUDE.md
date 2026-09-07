@@ -8929,6 +8929,116 @@ leads somewhere.
   `docs/ETHER_MYSTERY_LAB.md` → *Three Falcons* ·
   `tools/ether-mystery-lab-test/` section `FV` ·
   `tools/ether-mystery-lab-test/shots/falcons/`
+- **THE FALCON WAS REDRAWN FROM SCRATCH, AND THE GEOMETRY IS REJECTED —
+  A LAB EXPERIMENT, ZERO PRODUCTION FILES CHANGED.** Three Falcons
+  answered its own question honestly: A, B and C all read as
+  constellation stick figures rather than as a falcon. This experiment
+  was told to design the FINISHED creature first and to reject the
+  geometry if the completed figure does not read as one, however good
+  the interaction is. Nine rounds of completed silhouettes were drawn
+  and LOOKED AT before a single gap was placed; the sheets are
+  committed. **The verdict is a rejection.**
+- **TWO TRANSFERABLE FINDINGS CAME OUT OF THE STUDY.** *Outline the
+  wing* — every earlier falcon drew each wing as an ARM, one line out
+  from the shoulder with a bend in it, and an arm is a skeleton; give
+  it a leading edge AND a trailing edge that closes back onto the body
+  and it becomes a shape. That is the single biggest improvement of the
+  whole study. And *sweep the tips behind the shoulder* — outlined but
+  level, the wings close into a trapezoid and the thing reads as a
+  MOTH; the tips falling below the wing roots is the one line a falcon
+  has and a moth does not. Two earlier findings held: a two-pronged
+  tail under a vertical body reads as LEGS, and a perched side profile
+  fails completely as a line constellation.
+- **AT THE NODE COUNT THE PRODUCT ALLOWS, THE ANSWER IS "A BIRD".**
+  Nine rounds moved it from a stick figure to a bird, which is a real
+  gain, and stopped there. Two independent reasons, not to be run
+  together: eight lights cannot carry a species — everything that read
+  as more than a bird needed twelve to sixteen — and *falcon* may not
+  be a silhouette a six-year-old separates from *bird* at all, since a
+  falcon is told from a hawk by proportion, plumage and behaviour. The
+  honest ceiling for this visual language is **"OH! IT'S A BIRD!"**.
+  Per the brief nothing was brightened, no glow was added and the hint
+  was not strengthened to compensate.
+- **AND THE BRIEF'S NODE COUNT IS A WALL IN PRODUCTION CODE.** It asked
+  for fourteen to twenty lights, explicitly lifting the eight-light
+  constraint — and that constraint is the product's own, not a Lab
+  habit: `js/etherGrammar.js` caps `arrangementNodesMax` at 8 and
+  requires a figure's `points` array to be EXACTLY that long, so nine
+  lights is a refused candidate. Worse, `js/etherMystery.js`'s
+  `LIMITS.pieces = 10` **clamps rather than refuses**, so a sixteen-
+  light figure is not rejected — it is silently truncated to ten and
+  drawn with joins pointing at lights that were never placed. Both are
+  production files this experiment may not edit, so it ran at eight and
+  the wall is MEASURED in the suite (`FR2`/`FR2b` read the two numbers
+  back out of the real files) rather than claimed in a report.
+- **RAISING IT IS A PRODUCT DECISION, AND THE TWO BOUNDS ARE
+  SEPARABLE.** The validator's comment records a real judgement —
+  *"more than eight is a chore, not a mystery"* — which is about how
+  many TAPS a child is asked for, not how many lights they LOOK AT, and
+  a figure completed by three joins can hold sixteen lights. Whatever
+  the new ceiling, `LIMITS.pieces` should REFUSE rather than clamp:
+  silent truncation is a bug waiting for the first candidate that asks
+  for it.
+- **§9 IS NOT DELIVERED, FOR THE SAME REASON.** Falcon-specific
+  movement lives in the wanderer and the wanderer is inside
+  `js/etherMystery.js`, which has no Lab-side seam for how a completed
+  figure moves — so a "Lab-only" version of it does not exist. What
+  roams is the generic wanderer, identically for a falcon and for a
+  whale. Reported rather than approximated.
+- **THE IDENTITY-CARRYING JOINS ARE NEVER A GAP, AND IT IS ENFORCED.**
+  Four of the nine joins carry the creature — the two leading edges out
+  to the tips — and no variation removes one (`FR4c`). What is taken
+  instead is the neck, the tail spike and (F2/F3) one trailing edge:
+  three things a person can see are absent from a shape that is already
+  plainly a bird. F1 is two gaps, F2 and F3 are three, and **F3 holds
+  F2's own figure object**, so the candidate the interpreter performs
+  is identical apart from the id.
+- **THE DELAYED AID: FIVE RULES, EACH A REFUSAL AS MUCH AS A
+  BEHAVIOUR.** It is not there when the mystery is posed, so nothing is
+  explained in advance; it waits for TWO genuine attempts that did not
+  land, so it answers effort rather than arrival, and one try is not
+  being stuck; it names ONE missing join and never every possible
+  connection — the WIDEST one, because two lights a finger's width
+  apart already look like a pair and two on opposite sides of the shape
+  do not; its dashes stop short of the middle, so the middle of the
+  segment is **never painted at any alpha** and it cannot close the
+  join it is about; and it goes the instant the join lands — ANY join,
+  not only the one it was about — then waits for two more tries before
+  returning. Not a word, no arrow, no marker,
+  nothing to press, no count of tries on screen, and it never catches a
+  touch meant for a light. Drawn by the LAB over the real interpreter,
+  exactly as the leading hint already is — `js/etherMystery.js` still
+  renders no text and still says nothing at all when a pair does not
+  belong.
+- **A CHECK THAT COULD NOT FAIL FOR ONE BRANCH, FOUND BY THE REVERSION
+  PASS.** `FR9` joins the AIDED pair, which is also answered by the
+  *target became present* branch — so deleting the *any join landed*
+  branch left it green. `FR9c` joins a DIFFERENT missing pair, which
+  only the deleted branch answers, and goes red. Six load-bearing
+  checks are proved by temporary reversion in all.
+- **AN ATTEMPT IS A SELECTION THAT ENDED WITHOUT A JOIN**, read from
+  the interpreter's own `instrument()` rather than from an event,
+  because the interpreter deliberately emits nothing for a pair that
+  does not belong. A child who chooses one light and lets it go again
+  counts — they tried. **A harness that fires both taps in one tick is
+  not a child**: nothing ever sees the first light held, so the first
+  run of the driver reported zero attempts against a working aid. The
+  suite taps across frames.
+- **DISCLOSED: no child has played it.** What is measured is the
+  geometry, the gap placement, what the aid paints and where, that it
+  waits, names one gap, cannot close and goes when the join lands, that
+  all three complete, awaken and roam identically at 1440×900 and at
+  390×844, and that none of it is reachable from production — no ACTIVE
+  pool experience carries an arrangement, nothing under `js/`,
+  `assets/` or the runtime names one, and the build was not bumped.
+  Whether the completed figure says *falcon* is the judgement above,
+  made by looking, and the study sheets are committed so it can be
+  argued with.
+- `tools/ether-mystery-lab/labKit.js` → `FALCON_REDESIGN` ·
+  `RUNTIME_NODE_CEILING` · `labPreview.js` → `DELAY` ·
+  `docs/ETHER_MYSTERY_LAB.md` → *The falcon redrawn* ·
+  `tools/ether-mystery-lab-test/` section `FR` ·
+  `tools/ether-mystery-lab-test/shots/falcon-redesign/`
 - Out of scope and not implemented: creature encounters as a reward
   system, creature dialogue, a Companion in the Ether, per-Traveller
   encounter history, more activity rows (story hunt, missing
