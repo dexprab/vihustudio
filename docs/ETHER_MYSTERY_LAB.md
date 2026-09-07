@@ -2309,6 +2309,25 @@ tool made no join by itself) was turned round with its reason in
 place; `AP11`–`AP11e` guard the order, the count in the status line,
 the idempotence, the kept gap and the surviving click gesture.
 
+**Every Lab script carries a content stamp, and the stamper is part of
+every Lab change.** The product owner pressed the new Join tool and
+nothing joined: his screenshot showed the new help text (the page had
+arrived fresh) and the old behaviour (`labShape.js` had not — a
+versionless script the browser was still holding). Every `<script
+src>` on the four Lab pages now carries `?lab=<stamp>`, a hash of the
+contents of every file those pages load, written by
+`tools/ether-mystery-lab/stamp.js`. **After changing any Lab file, or
+any production file a Lab page loads, run**
+
+```
+node tools/ether-mystery-lab/stamp.js          # rewrite the four pages
+node tools/ether-mystery-lab/stamp.js --check  # report only; exit 1 on drift
+```
+
+The suite's `S3c` runs the check and fails on drift or on a bare tag,
+so a change that forgot to restamp cannot pass. The product build
+stamp (`?v=0769`) is untouched; the Lab ships nothing to a child.
+
 **Feature focus.** Choosing a feature in the blueprint panel — or
 accepting one of its suggestions — exposes that feature's related
 landmarks at every level in gold beside the budgeted ones (a wing: its

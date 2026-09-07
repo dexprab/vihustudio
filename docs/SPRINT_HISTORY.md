@@ -12736,3 +12736,13 @@ gap, removing nothing, leaving the chain open; the click gestures still
 change, remove and gap joins afterwards, and a gap is still never
 chosen by the system. `AP4e` turned round with its reason in place;
 `AP11`–`AP11e` added. AP 51/51 · SL 52 · GL 38 · AR 87, the Join wiring proved by reverting (six AP checks red).
+
+## Lab — every script carries a content stamp
+
+Lab only. Reported by the product owner: *"i pressed join, nothing
+joined"* — the page had arrived fresh and `labShape.js` had not (a
+versionless script the browser kept). `tools/ether-mystery-lab/stamp.js`
+rewrites every Lab script tag with `?lab=<hash of everything the four
+pages load>`; `S3c` asks the generator for drift and fails on a bare
+tag, proved by reverting both ways. Build stamp untouched. S 21/21, AP
+and GL green on the stamped pages.
