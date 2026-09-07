@@ -3858,20 +3858,591 @@ async function sectionEP() {
 }
 
 // ===================================================================
+// SL. THE CREATURE SHAPE LAB — a research INSTRUMENT, not an experiment.
+//
+// The instrument is judged on whether a person can use it to explore
+// the creature/point-count design space themselves. Nothing here judges
+// a creature: there are no creatures in this section at all, only a
+// neutral ring and figures the suite draws with real clicks. Every
+// check is one of the brief's own §15 items.
+// ===================================================================
+async function sectionSL() {
+  console.log('\n== SL. the Creature Shape Lab (instrument) ==');
+  const { chromium } = require('playwright');
+  const sb = kitSandbox();
+  const G = sb.EtherGrammar || (sb.window && sb.window.EtherGrammar);
+  const Kit = sb.EtherMysteryLabKit || (sb.window && sb.window.EtherMysteryLabKit);
+  const shapeSrc = read('tools/ether-mystery-lab/labShape.js');
+  const shapeHtml = read('tools/ether-mystery-lab/shape.html');
+  const shapeStripped = stripComments(shapeSrc);
+
+  // ---- SL1: PRODUCTION IS UNTOUCHED, three ways ----
+  const grepProd = require('child_process').spawnSync('grep',
+    ['-rl', '-e', 'ShapeLab', '-e', 'lab-shape-', '-e', 'shape-lab', '-e', 'vihu.lab.shapes',
+     path.join(ROOT, 'js'), path.join(ROOT, 'assets'), path.join(ROOT, 'vihuplanet'),
+     path.join(ROOT, 'index.html'), path.join(ROOT, 'studio.html')],
+    { encoding: 'utf8' }).stdout || '';
+  ck(grepProd.trim() === '',
+    'SL1  nothing a child loads — js/, assets/, the runtime, the two entry pages — names the Shape Lab',
+    grepProd.trim() || 'clean');
+  const grammarSrc = read('js/etherGrammar.js');
+  ck(/arrangementNodesMax:\s*8\b/.test(grammarSrc),
+    'SL1b the production point limit is still EIGHT in the validator');
+  // A nine-light figure is refused by the REAL validator — the ceiling is
+  // asked of the grammar, and the Lab's research budgets change nothing
+  // about the answer.
+  function ringFigure(n, gaps) {
+    const pts = [], joins = [];
+    for (let i = 0; i < n; i++) {
+      const t = -Math.PI / 2 + (i / n) * Math.PI * 2;
+      pts.push([Math.round(Math.cos(t) * 100) / 100, Math.round(Math.sin(t) * 100) / 100]);
+    }
+    for (let k = 0; k < n; k++) joins.push(Math.min(k, (k + 1) % n) + '-' + Math.max(k, (k + 1) % n));
+    return { points: pts, joins: joins, gaps: gaps || [0] };
+  }
+  const nineV = G.validate(Kit.creatureCandidate({ id: 'lab-shape-x', nodes: 9, title: 't', figure: ringFigure(9) }));
+  const eightV = G.validate(Kit.creatureCandidate({ id: 'lab-shape-x', nodes: 8, title: 't', figure: ringFigure(8) }));
+  ck(!nineV.ok && eightV.ok,
+    'SL1c the real validator still takes eight lights and refuses nine — the 8-point rule is untouched',
+    'nine:' + nineV.reasons.join(',') + ' eight:ok');
+  [12, 16, 20].forEach((n) => {
+    const v = G.validate(Kit.creatureCandidate({ id: 'lab-shape-x', nodes: n, title: 't', figure: ringFigure(n) }));
+    ck(!v.ok, 'SL1d a ' + n + '-light figure is a Lab research budget only — the validator refuses it', v.reasons.join(','));
+  });
+  ck(!/experience-pool/.test(shapeHtml) && !/experience-pool|EtherExperience\b/.test(shapeStripped),
+    'SL1e the Shape Lab never loads the production pool, and cannot reach it');
+  const stamps = (read('index.html').match(/\?v=(\d{4})/g) || []).map((s) => s.slice(3));
+  ck(stamps.length > 0 && stamps.every((s) => s === '0769'),
+    'SL1f the build is not bumped — every stamp on index.html still reads 0769',
+    Array.from(new Set(stamps)).join(','));
+
+  // ---- SL2: what the instrument REFUSES to be ----
+  ck(!/<img|drawImage|\.png|\.jpg|\.jpeg|\.svg|new Image|Image\(|background-image|url\(/i.test(shapeStripped) &&
+     !/<img|\.png|\.jpg|\.svg|background-image/i.test(shapeHtml.replace(/<!--[\s\S]*?-->/g, '')),
+    'SL2  no hidden animal image, no SVG tracing, no imported silhouette — nothing but lights and lines');
+  ck(!/score|fetch\(|XMLHttpRequest|WebSocket|openai|model\b/i.test(shapeStripped),
+    'SL2b no recognisability score, no model, no network — the judgement is the researcher\'s');
+  ck(!/curve|bezier|quadratic|arcTo/i.test(shapeStripped) && /no curved connection/i.test(shapeHtml),
+    'SL2c no curved connection is offered, and the page says why (the Ether figure system has none)');
+  const rndLines = shapeSrc.split('\n').filter((l) => /Math\.random/.test(l));
+  ck(rndLines.length > 0 && rndLines.every((l) => /'shape-'/.test(l)),
+    'SL2d Math.random mints fixture ids and nothing else — a missing join is never chosen at random',
+    rndLines.length + ' line(s)');
+  ck(/BUDGETS\s*=\s*\[\s*8,\s*12,\s*16,\s*20\s*\]/.test(shapeSrc) && /PRODUCTION_BUDGET\s*=\s*8\b/.test(shapeSrc),
+    'SL2e the four budgets 8 · 12 · 16 · 20 live in the Lab file alone, with 8 named as production');
+
+  // ---- the browser half: the real page, driven the way a person drives it ----
+  const server = spawn('node', ['tools/bring-it-alive/test/serve.js', String(PORT)],
+    { cwd: ROOT, stdio: 'ignore' });
+  await new Promise((res) => setTimeout(res, 900));
+  const browser = await chromium.launch({
+    executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome'
+  });
+  try {
+    const ctx = await browser.newContext({ viewport: { width: 1500, height: 1000 } });
+    const page = await ctx.newPage();
+    const errors = [];
+    page.on('pageerror', (e) => errors.push(String(e).split('\n')[0]));
+    const bad = [];
+    page.on('response', (q) => { if (q.status() >= 400 && !/favicon/.test(q.url())) bad.push(q.status() + ' ' + q.url()); });
+    const open = async () => {
+      await page.goto(BASE + '/tools/ether-mystery-lab/shape.html');
+      await page.waitForFunction(() => !!window.ShapeLab, null, { timeout: 20000 });
+    };
+    await open();
+
+    // ---- SL3: loading writes nothing ----
+    const keysAtLoad = await page.evaluate(() => Object.keys(localStorage));
+    ck(keysAtLoad.length === 0 && errors.length === 0 && bad.length === 0,
+      'SL3  the page loads clean and writes NOTHING to storage until a save',
+      'keys:' + JSON.stringify(keysAtLoad) + ' errors:' + errors.length + ' http:' + bad.length);
+
+    // Real clicks on the real canvas. The figure is placed on a ring at
+    // unit radius, through the editor's own fixed scale — nothing here
+    // reaches into the module to place a light.
+    const geom = async () => page.evaluate(() => {
+      const c = document.querySelector('[data-canvas-complete]');
+      const r = c.getBoundingClientRect();
+      return { x: r.left, y: r.top, w: r.width, h: r.height };
+    });
+    const at = (g, p) => {
+      const k = (Math.min(g.w, g.h) * 0.46) / 1.4;
+      return { x: g.x + g.w / 2 + p[0] * k, y: g.y + g.h / 2 + p[1] * k };
+    };
+    const ringPts = (n, rad) => {
+      const out = [];
+      for (let i = 0; i < n; i++) {
+        const t = -Math.PI / 2 + (i / n) * Math.PI * 2;
+        out.push([Math.cos(t) * (rad || 1), Math.sin(t) * (rad || 1)]);
+      }
+      return out;
+    };
+    const tool = async (m) => page.click('[data-mode="' + m + '"]');
+    const drawRing = async (n) => {
+      const g = await geom();
+      const pts = ringPts(n);
+      await tool('add');
+      for (const p of pts) { const q = at(g, p); await page.mouse.click(q.x, q.y); }
+      await tool('join');
+      for (let i = 0; i < n; i++) {
+        const a = at(g, pts[i]), b = at(g, pts[(i + 1) % n]);
+        await page.mouse.click(a.x, a.y); await page.mouse.click(b.x, b.y);
+      }
+      return { g, pts };
+    };
+    const mid = (g, a, b) => { const A = at(g, a), B = at(g, b); return { x: (A.x + B.x) / 2, y: (A.y + B.y) / 2 }; };
+    const readState = async () => page.evaluate(() => ({
+      s: window.ShapeLab.state(), m: window.ShapeLab.metrics(), playable: window.ShapeLab.playable(),
+      label: document.querySelector('[data-budget-label]').textContent,
+      say: document.querySelector('[data-say]').textContent,
+      playDisabled: document.querySelector('[data-play]').disabled,
+      why: document.querySelector('[data-play-why]').textContent
+    }));
+
+    // ---- SL4: a figure at every budget, by clicking ----
+    const built = {};
+    for (const n of [8, 12, 16, 20]) {
+      await page.click('[data-reset]');
+      await page.click('[data-budget="' + n + '"]');
+      const { g, pts } = await drawRing(n);
+      await tool('gap');
+      const m0 = mid(g, pts[0], pts[1]);
+      await page.mouse.click(m0.x, m0.y);
+      built[n] = await readState();
+    }
+    ck([8, 12, 16, 20].every((n) => built[n].s.points.length === n && built[n].s.budget === n &&
+         built[n].m.connections === n && built[n].m.missing === 1 && built[n].m.components === 1 &&
+         built[n].m.allPlaced && built[n].m.percentUsed === 100),
+      'SL4  a figure is drawn with real clicks at 8, 12, 16 and 20 — N lights, N joins, one gap, one piece',
+      [8, 12, 16, 20].map((n) => n + ':' + built[n].s.points.length + '/' + built[n].m.connections + '/' + built[n].m.missing).join(' '));
+    ck([8, 12, 16, 20].every((n) => new RegExp('TESTING ' + n + ' POINTS').test(built[n].label)) &&
+       /production budget/.test(built[8].label) && [12, 16, 20].every((n) => /research budget/.test(built[n].label)),
+      'SL4b it is obvious which budget is being tested, and which one is production',
+      built[12].label);
+    ck(built[8].m.validator.ok && built[8].playable && !built[8].playDisabled &&
+       [12, 16, 20].every((n) => !built[n].m.validator.ok && !built[n].playable && built[n].playDisabled),
+      'SL4c the 8-light figure passes the REAL validator and can be played; 12, 16 and 20 are refused and cannot',
+      [12, 16, 20].map((n) => n + ':' + built[n].m.validator.reasons.join('|')).join(' '));
+    ck([12, 16, 20].every((n) => /performs up to 8 lights/.test(built[n].why) && /not changed/.test(built[n].why)),
+      'SL4d and the refusal says so in words beside the figure — the runtime is not changed by the tool');
+    ck(built[8].s.missing.length === 1 && built[8].s.joins[built[8].s.missing[0]] === '0-1',
+      'SL4e the missing join is the one that was clicked, and no other', JSON.stringify(built[8].s.missing));
+
+    // ---- SL5: the budget cannot be exceeded, silently or otherwise ----
+    await page.click('[data-reset]');
+    await page.click('[data-budget="8"]');
+    const eight = await drawRing(8);
+    await tool('add');
+    const spare = at(eight.g, [0.3, 0.2]);
+    await page.mouse.click(spare.x, spare.y);
+    const afterNinth = await readState();
+    const apiNinth = await page.evaluate(() => window.ShapeLab.addPoint(0.1, 0.1));
+    ck(afterNinth.s.points.length === 8 && /full/.test(afterNinth.say) && !apiNinth.ok && /budget-full:8/.test(apiNinth.reason),
+      'SL5  a ninth light at budget 8 is refused — on the canvas with a sentence, and at the API by name',
+      afterNinth.say + ' / ' + apiNinth.reason);
+    // Shrinking under a bigger figure is refused, never trimmed.
+    await page.click('[data-reset]');
+    await page.click('[data-budget="12"]');
+    await drawRing(12);
+    await page.click('[data-budget="8"]');
+    const shrunk = await readState();
+    ck(shrunk.s.budget === 12 && shrunk.s.points.length === 12 && /nothing is trimmed/i.test(shrunk.say),
+      'SL5b shrinking the budget under a 12-light figure is refused, and nothing is trimmed',
+      'budget:' + shrunk.s.budget + ' points:' + shrunk.s.points.length);
+    const badRec = await page.evaluate(() => {
+      const S = window.ShapeLab;
+      const pts = []; for (let i = 0; i < 13; i++) pts.push([Math.cos(i) * 0.9, Math.sin(i) * 0.9]);
+      const rec = { id: 'shape-hand-edited', labVersion: S.LAB_VERSION, name: 'Smuggled', budget: 12,
+                    points: pts, joins: ['0-1'], missing: [] };
+      localStorage.setItem(S.STORE_KEY, JSON.stringify([rec]));
+      const r = S.load('shape-hand-edited');
+      const s = S.state();
+      const imp = S.importJSON(JSON.stringify([Object.assign({}, rec, { id: 'shape-other' })]));
+      localStorage.removeItem(S.STORE_KEY);
+      return { r, points: s.points.length, imp };
+    });
+    ck(!badRec.r.ok && badRec.r.reason === 'fixture-exceeds-budget' && badRec.points === 0 &&
+       badRec.imp.added === 0 && badRec.imp.refused === 1,
+      'SL5c a hand-edited fixture with more lights than its budget is REFUSED on open and on import, never trimmed',
+      badRec.r.reason + ' import:' + JSON.stringify(badRec.imp));
+
+    // ---- SL6: connections are editable — add, remove, delete a light, move a light ----
+    await page.click('[data-reset]');
+    await page.click('[data-budget="8"]');
+    const ed = await drawRing(8);
+    await tool('join');
+    // the same pair again REMOVES the join
+    let A = at(ed.g, ed.pts[2]), B = at(ed.g, ed.pts[3]);
+    await page.mouse.click(A.x, A.y); await page.mouse.click(B.x, B.y);
+    const afterRemovePair = await readState();
+    // clicking a LINE in Join removes it
+    const m45 = mid(ed.g, ed.pts[4], ed.pts[5]);
+    await page.mouse.click(m45.x, m45.y);
+    const afterRemoveLine = await readState();
+    // and the pair once more puts it back
+    await page.mouse.click(A.x, A.y); await page.mouse.click(B.x, B.y);
+    const afterReadd = await readState();
+    ck(afterRemovePair.m.connections === 7 && afterRemovePair.s.joins.indexOf('2-3') === -1 &&
+       afterRemoveLine.m.connections === 6 && afterRemoveLine.s.joins.indexOf('4-5') === -1 &&
+       afterReadd.m.connections === 7 && afterReadd.s.joins.indexOf('2-3') !== -1,
+      'SL6  a connection is added, removed by its pair, removed by clicking the line, and added back',
+      [afterRemovePair.m.connections, afterRemoveLine.m.connections, afterReadd.m.connections].join('→'));
+    ck(afterRemoveLine.m.components === 2,
+      'SL6b the components metric follows: two joins gone from a ring leaves TWO pieces', String(afterRemoveLine.m.components));
+    // delete a light: its joins go, every index above it steps down
+    await tool('delete');
+    const d = at(ed.g, ed.pts[7]);
+    await page.mouse.click(d.x, d.y);
+    const afterDelete = await readState();
+    ck(afterDelete.s.points.length === 7 &&
+       afterDelete.s.joins.every((j) => j.split('-').every((n) => Number(n) < 7)) &&
+       afterDelete.s.joins.indexOf('6-7') === -1 && afterDelete.s.joins.indexOf('0-7') === -1,
+      'SL6c deleting a light takes its joins with it and renumbers the rest — no join points past the end',
+      afterDelete.s.joins.join(' '));
+    // move a light by dragging
+    const before = afterDelete.s.points[0].slice();
+    const from = at(ed.g, ed.pts[0]), to = at(ed.g, [0, -0.4]);
+    await tool('move');
+    await page.mouse.move(from.x, from.y); await page.mouse.down();
+    await page.mouse.move((from.x + to.x) / 2, (from.y + to.y) / 2, { steps: 4 });
+    await page.mouse.move(to.x, to.y, { steps: 4 }); await page.mouse.up();
+    const afterMove = await readState();
+    ck(Math.abs(afterMove.s.points[0][1] - (-0.4)) < 0.06 && Math.abs(before[1] - (-1)) < 0.06 &&
+       afterMove.s.points.length === 7 && afterMove.m.connections === afterDelete.m.connections,
+      'SL6d dragging a light moves it, and its joins come with it',
+      before.join(',') + ' → ' + afterMove.s.points[0].join(','));
+    // point numbers are drawn while editing (the toggle), never on the unfinished state
+    const numbersDrawn = await page.evaluate(() => {
+      const src = window.ShapeLab.draw.toString();
+      return /fillText/.test(src) && /numbers/.test(src);
+    });
+    ck(numbersDrawn, 'SL6e light numbers are drawn while editing, behind a toggle');
+
+    // ---- SL7: a missing join is EXPLICIT, and the two states differ exactly there ----
+    await page.click('[data-reset]');
+    await page.click('[data-budget="8"]');
+    const sv = await drawRing(8);
+    await tool('gap');
+    const gm = mid(sv.g, sv.pts[3], sv.pts[4]);
+    await page.mouse.click(gm.x, gm.y);
+    const paint = await page.evaluate((pts) => {
+      const S = window.ShapeLab, s = S.state();
+      // "lit" is brightness ABOVE the sky behind it. The canvas paints a
+      // vertical gradient, so the reference is the same row at the left
+      // edge, where nothing is ever drawn.
+      function lit(sel, u) {
+        const c = document.querySelector(sel), r = c.getBoundingClientRect();
+        const dpr = c.width / r.width;
+        const k = (Math.min(r.width, r.height) * 0.46) / 1.4;
+        const x = (r.width / 2 + u[0] * k) * dpr, y = (r.height / 2 + u[1] * k) * dpr;
+        const g = c.getContext('2d');
+        const px = (xx) => {
+          const d = g.getImageData(Math.round(xx) - 4, Math.round(y) - 4, 8, 8).data;
+          let m = 0; for (let i = 0; i < d.length; i += 4) m = Math.max(m, d[i], d[i + 1], d[i + 2]);
+          return m;
+        };
+        return Math.max(0, px(x) - px(6));
+      }
+      // sample a little off the midpoint so a dash (not a dash gap) is under the box
+            const keptU = [(pts[5][0] + pts[6][0]) / 2, (pts[5][1] + pts[6][1]) / 2];
+      // A dashed line is mostly gap, so the segment is sampled along
+      // its middle half and the brightest sample is what counts.
+      const along = (sel) => {
+        let m = 0;
+        for (let t = 0.3; t <= 0.7; t += 0.04) {
+          m = Math.max(m, lit(sel, [pts[3][0] * (1 - t) + pts[4][0] * t, pts[3][1] * (1 - t) + pts[4][1] * t]));
+        }
+        return m;
+      };
+      const gapMax = along('[data-canvas-complete]');
+      const unfGap = along('[data-canvas-unfinished]');
+      return { missing: s.missing, joinAt: s.joins[s.missing[0]],
+               completeGap: gapMax, unfinishedGap: unfGap,
+               completeKept: lit('[data-canvas-complete]', keptU), unfinishedKept: lit('[data-canvas-unfinished]', keptU) };
+    }, sv.pts);
+    ck(paint.missing.length === 1 && paint.joinAt === '3-4',
+      'SL7  the missing join is exactly the one the researcher clicked — never chosen for them', paint.joinAt);
+    ck(paint.completeGap > 10 && paint.unfinishedGap <= 2 && paint.completeKept > 40 && paint.unfinishedKept > 40,
+      'SL7b COMPLETE shows the gap dashed; UNFINISHED shows nothing there at all — and a kept join is lit on both',
+      JSON.stringify({ cg: paint.completeGap, ug: paint.unfinishedGap, ck: paint.completeKept, uk: paint.unfinishedKept }));
+
+    // ---- SL8: the creature name is researcher metadata, and travels nowhere ----
+    await page.fill('[data-name]', 'Falcon');
+    await page.fill('[data-hint]', 'Something with wings is waiting…');
+    await page.fill('[data-notes]', 'research notes only');
+    const cand = await page.evaluate(() => {
+      const S = window.ShapeLab;
+      const c = S.candidateFor();
+      return { json: JSON.stringify(c), id: c.id, nodes: c.arrangement.nodes, pts: c.arrangement.figure.points.length,
+               stateName: S.state().name };
+    });
+    ck(cand.stateName === 'Falcon' && !/falcon|wings|research notes/i.test(cand.json) && /^lab-shape-\d+$/.test(cand.id),
+      'SL8  the name, the hint and the notes are in the fixture and NOT in the candidate; the id is opaque',
+      cand.id);
+    ck(!/state\.name|\.name\b/.test(stripComments(shapeSrc.slice(shapeSrc.indexOf('function draw('), shapeSrc.indexOf('function pointAt(')))),
+      'SL8b the drawing code never reads the name — it cannot alter rendering');
+    // (A word-match for "generate" would catch the module's own comment
+    // saying it generates nothing, and `byName` — a grouping variable in
+    // the fixture list. The honest test is structural: no line of code
+    // couples a light's coordinates to the name.)
+    const coupled = shapeStripped.split('\n').filter((l) => /\bpoints\b/.test(l) && /\bname\b/.test(l));
+    ck(coupled.length === 0 && !/function\s+generate/i.test(shapeStripped),
+      'SL8c no geometry is ever generated from a name — no line couples the two', coupled.join(' | ') || 'clean');
+
+    // ---- SL9: save, reopen after a reload, and only ONE key is ever written ----
+    const saved = await page.evaluate(() => {
+      const S = window.ShapeLab;
+      const g1 = document.querySelector('[data-judgement] input[name="jComplete"]');
+      const g2 = document.querySelector('[data-judgement] input[name="jUnfinished"]');
+      if (g1) { g1.checked = true; g1.dispatchEvent(new Event('change', { bubbles: true })); }
+      if (g2) { g2.checked = true; g2.dispatchEvent(new Event('change', { bubbles: true })); }
+      const ta = document.querySelectorAll('[data-judgement] textarea');
+      if (ta[0]) { ta[0].value = 'a ring of lights'; ta[0].dispatchEvent(new Event('input', { bubbles: true })); }
+      const r = S.save();
+      return { r, keys: Object.keys(localStorage), state: S.state(), radios: !!(g1 && g2), tas: ta.length };
+    });
+    ck(saved.r.ok && /^shape-/.test(saved.r.id) && saved.keys.length === 1 && saved.keys[0] === 'vihu.lab.shapes',
+      'SL9  a save writes ONE key, vihu.lab.shapes, and nothing else', JSON.stringify(saved.keys));
+    ck(saved.radios && saved.tas === 3 && saved.state.judgement && typeof saved.state.judgement === 'object' &&
+       Object.keys(saved.state.judgement).every((k) => typeof saved.state.judgement[k] === 'string'),
+      'SL9b the judgement panel is two choices and three sentences — every value a word, never a number',
+      JSON.stringify(saved.state.judgement));
+    await page.reload();
+    await page.waitForFunction(() => !!window.ShapeLab, null, { timeout: 20000 });
+    const reopened = await page.evaluate((id) => {
+      const S = window.ShapeLab;
+      const fresh = S.state();
+      const inList = S.list().some((r) => r.id === id);
+      const r = S.load(id);
+      const rec = S.list().filter((x) => x.id === id)[0];
+      return { fresh, inList, r, s: S.state(), rec,
+               opened: document.querySelector('[data-opened]').textContent,
+               nameField: document.querySelector('[data-name]').value,
+               teaseBox: document.querySelector('[data-tease]').checked };
+    }, saved.r.id);
+    ck(reopened.fresh.points.length === 0 && reopened.inList && reopened.r.ok &&
+       JSON.stringify(reopened.s.points) === JSON.stringify(saved.state.points) &&
+       JSON.stringify(reopened.s.joins) === JSON.stringify(saved.state.joins) &&
+       JSON.stringify(reopened.s.missing) === JSON.stringify(saved.state.missing) &&
+       reopened.s.name === 'Falcon' && reopened.s.hint === saved.state.hint && reopened.s.notes === saved.state.notes &&
+       JSON.stringify(reopened.s.judgement) === JSON.stringify(saved.state.judgement) &&
+       reopened.nameField === 'Falcon' && new RegExp(saved.r.id).test(reopened.opened),
+      'SL9c after a reload the page opens EMPTY, the fixture is listed, and reopening restores every field',
+      reopened.opened);
+    ck(reopened.rec && reopened.rec.labVersion === 'shape-lab-1' && /^\d{4}-\d{2}-\d{2}T/.test(reopened.rec.createdAt) &&
+       /^\d{4}-\d{2}-\d{2}T/.test(reopened.rec.updatedAt) && reopened.rec.budget === 8 &&
+       Array.isArray(reopened.rec.missing) && typeof reopened.rec.hint === 'string',
+      'SL9d the record carries name, budget, points, joins, missing, hint, notes, a timestamp and a Lab version');
+    ck(reopened.s.tease === false && reopened.teaseBox === false,
+      'SL10 the delayed dashed-line aid is OFF by default — on the fixture and on the checkbox');
+
+    // ---- SL11: comparison fixtures are INDEPENDENT ----
+    const cmp = await page.evaluate((id) => {
+      const S = window.ShapeLab;
+      const d12 = S.duplicate(id, 12), d16 = S.duplicate(id, 16), d20 = S.duplicate(id, 20);
+      const tooSmall = (function () {
+        const rec = S.list().filter((x) => x.id === d12.id)[0];
+        // make the 12-copy genuinely 12 lights, then ask for it at 8
+        S.load(d12.id);
+        for (let i = 0; i < 4; i++) S.addPoint(0.2 * i - 0.3, 0.1);
+        S.save();
+        return S.duplicate(d12.id, 8);
+      })();
+      // edit the ORIGINAL: one more gap, and save
+      S.load(id);
+      S.toggleGap(2);
+      S.save();
+      const orig = S.list().filter((x) => x.id === id)[0];
+      const c16 = S.list().filter((x) => x.id === d16.id)[0];
+      const c20 = S.list().filter((x) => x.id === d20.id)[0];
+      return { ids: [id, d12.id, d16.id, d20.id], tooSmall,
+               origMissing: orig.missing, c16Missing: c16.missing, c20Missing: c20.missing,
+               c16Judgement: c16.judgement, budgets: S.compare('Falcon').map((r) => r.budget),
+               names: S.names() };
+    }, saved.r.id);
+    ck(new Set(cmp.ids).size === 4 && cmp.budgets.join(',') === '8,12,16,20' && cmp.names.indexOf('Falcon') !== -1,
+      'SL11 one figure duplicated to 12, 16 and 20 is four independent fixtures, compared in budget order',
+      cmp.budgets.join(','));
+    ck(cmp.origMissing.length === 2 && cmp.c16Missing.length === 1 && cmp.c20Missing.length === 1 && cmp.c16Judgement === null,
+      'SL11b editing the original changes nothing in a copy, and a copy carries no judgement of its own',
+      'orig:' + cmp.origMissing.length + ' c16:' + cmp.c16Missing.length);
+    ck(!cmp.tooSmall.ok && /figure-has-12-lights/.test(cmp.tooSmall.reason),
+      'SL11c duplicating a 12-light figure INTO budget 8 is refused — the copy is never trimmed to fit', cmp.tooSmall.reason);
+    // the comparison strip renders every budget at ONE scale
+    const tiles = await page.evaluate(() => {
+      const sel = document.querySelector('[data-compare-name]');
+      sel.value = 'Falcon'; sel.dispatchEvent(new Event('change'));
+      const t = Array.from(document.querySelectorAll('[data-compare] .ctile'));
+      return t.map((x) => ({ title: x.querySelector('.ctitle').textContent,
+                             canvases: x.querySelectorAll('canvas').length }));
+    });
+    ck(tiles.length === 4 && tiles.every((t) => t.canvases === 2) &&
+       tiles.map((t) => t.title.replace(/\D/g, '')).join(',') === '8,12,16,20',
+      'SL11d the comparison lays the four side by side, complete and unfinished each, in budget order',
+      tiles.map((t) => t.title).join(' | '));
+    ck(/one fixed scale/i.test(shapeHtml) && /scaleFor/.test(shapeSrc) && !/autoFit|fitTo|bounding/.test(shapeStripped),
+      'SL11e and every canvas uses ONE fixed scale — nothing auto-fits a figure to flatter a budget');
+
+    // ---- SL12: reset ----
+    const rs = await page.evaluate(() => {
+      const S = window.ShapeLab;
+      document.querySelector('[data-reset]').click();
+      return { s: S.state(), opened: document.querySelector('[data-opened]').textContent,
+               name: document.querySelector('[data-name]').value, count: S.list().length };
+    });
+    ck(rs.s.points.length === 0 && rs.s.joins.length === 0 && rs.s.name === '' && rs.s.hint === '' &&
+       rs.s.judgement === null && rs.s.tease === false && rs.s.id === null && /unsaved/.test(rs.opened) &&
+       rs.name === '' && rs.count === 4,
+      'SL12 Reset clears the workspace and every field, detaches from the fixture, and deletes nothing saved',
+      'fixtures still:' + rs.count);
+
+    // ---- SL13: export / import round trip ----
+    const rt = await page.evaluate(() => {
+      const S = window.ShapeLab;
+      const before = S.list().length;
+      const out = S.exportJSON();
+      S.list().forEach((r) => S.remove(r.id));
+      const gone = S.list().length;
+      const imp = S.importJSON(out);
+      return { before, gone, imp, after: S.list().length, kind: JSON.parse(out).kind };
+    });
+    ck(rt.before === 4 && rt.gone === 0 && rt.imp.ok && rt.imp.added === 4 && rt.after === 4 && rt.kind === 'vihu-shape-lab-fixtures',
+      'SL13 fixtures export as JSON and import back — research artifacts a person can keep, never the pool',
+      JSON.stringify(rt.imp));
+
+    // ---- SL14: PLAY IN ETHER uses the actual figure data ----
+    // Take a saved 8-light fixture through the real preview, exactly as
+    // the Play button does — the same candidate builder, the hint beside
+    // it, the name nowhere.
+    const fx = await page.evaluate(() => {
+      const S = window.ShapeLab;
+      const rec = S.list().filter((r) => r.budget === 8)[0];
+      return { rec, cand: S.candidateFor(rec) };
+    });
+    const pv = await ctx.newPage();
+    await pv.goto(BASE + '/tools/ether-mystery-lab/preview.html');
+    await pv.waitForFunction(() => !!window.LabPreview, null, { timeout: 20000 });
+    const played = await pv.evaluate(async ([cand, rec, tease]) => {
+      const step = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      window.LabPreview.play(cand, 'shape-suite', 'play', { hint: rec.hint, tease: tease });
+      await wait(1800);
+      const i = window.LabPreview.instrument();
+      const links = i.arrangement.links.map((L) => Math.min(L.a, L.b) + '-' + Math.max(L.a, L.b)).sort();
+      const missingLinks = i.arrangement.links.filter((L) => !L.present)
+        .map((L) => Math.min(L.a, L.b) + '-' + Math.max(L.a, L.b)).sort();
+      const teaseCanvas = document.querySelector('[data-tease]');
+      const posed = { elements: i.elements.length, links, missingLinks, missingLeft: i.arrangement.missingLeft,
+                      teaseState: window.LabPreview.tease(), teaseHidden: teaseCanvas ? teaseCanvas.hidden : null,
+                      teaseInert: teaseCanvas ? getComputedStyle(teaseCanvas).pointerEvents === 'none' : null };
+      await wait(1400);
+      const words = (document.body.innerText || '');
+      // two wrong pairs, then look for any aid at all
+      const my = window.LabPreview.mystery();
+      const isGap = (a, b) => i.arrangement.links.some((L) => !L.present &&
+        ((L.a === a && L.b === b) || (L.a === b && L.b === a)));
+      let tried = 0;
+      for (let a = 0; a < i.elements.length && tried < 2; a++)
+        for (let b = a + 1; b < i.elements.length && tried < 2; b++) {
+          if (isGap(a, b)) continue;
+          my.touchAt(i.elements[a].x, i.elements[a].y); await step();
+          my.touchAt(i.elements[b].x, i.elements[b].y); await step();
+          tried++;
+        }
+      await wait(1500);
+      const afterWrong = { teaseState: window.LabPreview.tease(),
+                           teaseHidden: teaseCanvas ? teaseCanvas.hidden : null };
+      // complete it
+      let j = my.instrument(), guard = 40;
+      while (guard-- > 0 && j && j.arrangement && j.arrangement.missingLeft > 0) {
+        const gap = j.arrangement.links.filter((L) => !L.present)[0];
+        my.touchAt(j.elements[gap.a].x, j.elements[gap.a].y); await step();
+        my.touchAt(j.elements[gap.b].x, j.elements[gap.b].y); await step();
+        j = my.instrument();
+      }
+      const live = window.LabPreview.instrument();
+      const whole = live ? live.arrangement.links.filter((L) => L.present).length : -1;
+      await wait(6800);
+      return { posed, words, afterWrong, whole, alive: window.LabPreview.alive().length };
+    }, [fx.cand, fx.rec, false]);
+    ck(played.posed.elements === fx.rec.points.length &&
+       played.posed.links.join(' ') === fx.rec.joins.slice().sort().join(' ') &&
+       played.posed.missingLinks.join(' ') === fx.rec.missing.map((k) => fx.rec.joins[k]).sort().join(' ') &&
+       played.posed.missingLeft === fx.rec.missing.length,
+      'SL14 the preview poses EXACTLY the fixture — its lights, its joins, its missing joins — through the real interpreter',
+      played.posed.elements + ' lights, ' + played.posed.links.length + ' joins, gaps ' + played.posed.missingLinks.join(','));
+    ck(played.words.indexOf(fx.rec.hint) !== -1 && !/falcon/i.test(played.words),
+      'SL14b the hint is on the stage and the creature name is not — anywhere');
+    ck(played.posed.teaseState === null && played.afterWrong.teaseState === null && played.afterWrong.teaseHidden === true,
+      'SL14c with the aid OFF, two wrong pairs bring no dashed line — nothing leans');
+    ck(played.whole === fx.rec.joins.length && played.alive === 1,
+      'SL14d completing it through the real two-tap interaction wakes it, and it roams — the existing awakening, unchanged',
+      played.whole + '/' + fx.rec.joins.length + ' alive:' + played.alive);
+    // and with the aid ON it is the existing delayed aid: shown after two tries, inert
+    const aided = await pv.evaluate(async ([cand, rec]) => {
+      const step = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      window.LabPreview.play(cand, 'shape-suite-2', 'play', { hint: rec.hint, tease: 'delayed' });
+      await wait(1800);
+      const i = window.LabPreview.instrument();
+      const my = window.LabPreview.mystery();
+      const isGap = (a, b) => i.arrangement.links.some((L) => !L.present &&
+        ((L.a === a && L.b === b) || (L.a === b && L.b === a)));
+      let tried = 0;
+      for (let a = 0; a < i.elements.length && tried < 2; a++)
+        for (let b = a + 1; b < i.elements.length && tried < 2; b++) {
+          if (isGap(a, b)) continue;
+          my.touchAt(i.elements[a].x, i.elements[a].y); await step();
+          my.touchAt(i.elements[b].x, i.elements[b].y); await step();
+          tried++;
+        }
+      let guard = 240;
+      while (guard-- > 0) { const s = window.LabPreview.tease(); if (!s || s.phase === 'hold') break; await step(); }
+      const c = document.querySelector('[data-tease]');
+      return { state: window.LabPreview.tease(), inert: getComputedStyle(c).pointerEvents === 'none',
+               words: (c.textContent || '').trim() };
+    }, [fx.cand, fx.rec]);
+    ck(aided.state && aided.state.mode === 'delayed' && aided.state.shown === 1 && aided.inert && aided.words === '',
+      'SL14e with the aid ON it is the existing delayed aid — one gap after two tries, inert, wordless — and nothing new',
+      JSON.stringify(aided.state));
+    await pv.close();
+    await page.close();
+    await ctx.close();
+  } finally {
+    await browser.close();
+    server.kill();
+  }
+
+  // ---- SL15: what the Play button actually sends ----
+  const playHandler = shapeSrc.slice(shapeSrc.lastIndexOf("el('[data-play]')"), shapeSrc.indexOf("global.addEventListener('resize'"));
+  ck(/Host\.open\(cand,/.test(playHandler) && /hint:\s*state\.hint/.test(playHandler) &&
+     /tease:\s*state\.tease\s*\?\s*'delayed'\s*:\s*false/.test(playHandler) && !/state\.name/.test(playHandler),
+    'SL15 the Play button hands the preview the candidate, the hint beside it and the aid as chosen — never the name');
+  ck(!/labShape|shape\.html/.test(read('tools/ether-mystery-lab/preview.html')) &&
+     !/ShapeLab/.test(read('tools/ether-mystery-lab/labPreview.js')),
+    'SL15b the preview knows nothing about the Shape Lab — it performs a candidate, whoever built it');
+}
+
+// ===================================================================
 (async () => {
   try {
-    await sectionS();
-    sectionF();
-    sectionC();
-    await sectionE();
-    await sectionB();
-    await sectionP();
-    await sectionR();
-    await sectionUF();
-    await sectionCR();
-    await sectionFV();
-    await sectionFR();
-    await sectionEP();
+    // ETHER_LAB_ONLY=SL runs one section alone while it is being built;
+    // the full suite is what a ship is judged on.
+    const ONLY = (process.env.ETHER_LAB_ONLY || '').split(',').filter(Boolean);
+    const run = async (name, fn) => { if (!ONLY.length || ONLY.indexOf(name) !== -1) await fn(); };
+    await run('S', sectionS);
+    await run('F', sectionF);
+    await run('C', sectionC);
+    await run('E', sectionE);
+    await run('B', sectionB);
+    await run('P', sectionP);
+    await run('R', sectionR);
+    await run('UF', sectionUF);
+    await run('CR', sectionCR);
+    await run('FV', sectionFV);
+    await run('FR', sectionFR);
+    await run('EP', sectionEP);
+    await run('SL', sectionSL);
   } catch (e) {
     fail('suite crashed', (e && e.stack || String(e)).split('\n')[0]);
   }

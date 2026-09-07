@@ -12574,3 +12574,30 @@ suite 405/405; four load-bearing checks proved by temporary reversion.
 Verdicts, the hint-free comparison and the four framings tried per
 reject: `docs/ETHER_MYSTERY_LAB.md` → *Eight-point creatures*. Suite
 section `EP`; shots in `tools/ether-mystery-lab-test/shots/eight-point/`.
+
+## The Creature Shape Lab — an instrument, not an experiment (Lab)
+
+Two creature experiments in a row ended with somebody else's drawings
+being judged, so the research method changed: `tools/ether-mystery-lab/
+shape.html` is a tool a person uses to explore the creature / point-count
+design space themselves. Four budgets (8 · 12 · 16 · 20, always labelled,
+8 named as production and the only one the real Ether performs); an
+editor in the Ether's own language (add · move · delete · join · gap,
+straight joins only — the figure system has no curves); COMPLETE and
+UNFINISHED side by side at one fixed scale; explicit missing joins,
+never random; live metrics that are facts only (no recognisability
+score, no model); a human judgement panel; fixtures in one storage key
+with duplicate-into-budget and a side-by-side comparison; ▶ Play in
+Ether through the existing preview with the exact figure data, available
+only where the real validator passes; the delayed dashed aid as an
+optional toggle, off by default. The creature name is researcher
+metadata and never reaches a candidate, the canvas or the preview.
+
+**No creatures ship with it** — the only shape it draws by itself is a
+neutral ring — no verdict was formed and no change to the production
+limit is recommended. Zero production files changed, nothing activated,
+no build bump (every stamp still 0769); the production pool is never
+loaded by the page. Lab suite 456/456 — section `SL` (51 checks)
+drives the real page with real clicks at 1500×1000 and the real preview.
+How to use it: `docs/ETHER_MYSTERY_LAB.md` → *The Creature Shape Lab*;
+shots in `tools/ether-mystery-lab-test/shots/shape-lab/`.

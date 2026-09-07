@@ -1685,3 +1685,131 @@ species-specific movement was built.
 `EIGHT_POINT_BANK`, `figureGuard`, the `eight-point-creatures` preset.
 Screenshots and the comparison sheet:
 `tools/ether-mystery-lab-test/shots/eight-point/`. Suite section: `EP`.
+
+## THE CREATURE SHAPE LAB — an instrument, not an experiment
+
+`tools/ether-mystery-lab/shape.html` (linked from the Lab's header).
+Every Lab experiment before this one handed the product owner a set of
+creatures somebody else had already drawn and asked him to judge them.
+This changes the research method: the Shape Lab is a tool a person uses
+to explore the creature / point-count design space **themselves** — draw
+a figure in the Ether's own language, mark which joins are missing,
+compare it across point budgets, play it in the real Ether, and write
+down what they see. It answers no question about creatures and ships no
+creatures. **The only shape it can put on the canvas by itself is a
+neutral ring**, so the tool can be shown working without anybody having
+chosen an animal for the researcher.
+
+### What it can do
+
+- **Four point budgets — 8 · 12 · 16 · 20 — switchable, and it is always
+  obvious which is being tested.** The header reads *TESTING 16 POINTS —
+  Lab research budget (production is 8)*. 8 is the production budget and
+  the only one the real Ether performs; 12, 16 and 20 exist so a person
+  can find out what a creature needs, and the real validator's refusal
+  is shown beside any figure above 8. **The production limit is not
+  changed by the tool** — `js/etherGrammar.js` still refuses a ninth
+  light, and the suite asks it (`SL1c`).
+- **An editor in the Ether's visual language**: Add (click empty sky),
+  Move (drag a light), Delete, Join (one light, then another; the same
+  pair again removes; clicking a line removes it), Gap (click a line to
+  mark it missing, again to restore). Light numbers while editing,
+  behind a toggle. Reset. Joins are straight — the Ether figure system
+  has no curved connection, so none is offered and the page says why.
+  **No hidden animal image, no SVG tracing, no imported silhouette**;
+  the suite scans for every way one could arrive.
+- **Two states side by side, always**: COMPLETE as drawn (a missing join
+  shows dashed) and UNFINISHED (the missing joins simply absent — what a
+  child would meet). Both at ONE fixed scale for every budget, so
+  figures stay comparable and nothing auto-fits a figure to flatter a
+  budget.
+- **Missing joins are explicit.** The researcher names each one; nothing
+  is ever chosen at random. `Math.random` appears in the file for
+  minting fixture ids and nothing else (`SL2d`).
+- **Live metrics, facts only**: point count, connection count, missing
+  count, connected components of the unfinished figure, % of the budget
+  used, all-points-placed, and whether the REAL validator accepts the
+  figure at this budget. **There is no recognisability score and no
+  model is asked** — the judgement is the person's, in the panel below.
+- **The judgement panel** — COMPLETED (unmistakable · recognisable ·
+  looks like a related animal · abstract · fails), UNFINISHED
+  (recognisable and incomplete · recognisable but weak · abstract ·
+  fails), and three sentences: *What do I see? · What's missing? · Would
+  I use this as a Creature Mystery?* Every value is a word; the record
+  holds no number.
+- **The creature name is researcher metadata.** It is saved with the
+  fixture, shown in the fixture list, and **never rendered, never in a
+  candidate, never in the preview**, and never used to alter rendering
+  or to generate geometry. The drawing code does not read it (`SL8b`).
+- **Fixtures**: save, save-as-new, open, duplicate INTO another budget,
+  delete, export all as JSON, import. One `localStorage` key
+  (`vihu.lab.shapes`); loading the page writes nothing. A record carries
+  name, budget, points, joins, missing, hint, notes, judgement, tease,
+  `createdAt`/`updatedAt` and `labVersion: 'shape-lab-1'`. Fixtures are
+  research artifacts — they are not in the production pool, carry no
+  production ids and imply no taxonomy.
+- **Compare across budgets**: every fixture carrying one name, laid side
+  by side in budget order, complete and unfinished each, at the same
+  fixed scale. Comparison fixtures are independent: editing the 8-light
+  one changes nothing in the 12-light copy.
+- **▶ Play in Ether** opens the existing Lab preview with the figure's
+  EXACT points, joins and gaps — unfinished figure, optional leading
+  hint, the two-tap interaction, completion, and the existing awakening
+  and roaming. Available only where the real Ether can perform the
+  figure (the validator passes AND at least one join is missing) — a
+  16-light figure can be judged here and cannot be played there, and
+  the panel says so in words. No species-specific movement, no new
+  production behaviour.
+- **The delayed dashed-line aid** from the falcon experiments is an
+  optional toggle, **OFF by default**, on the fixture and on the
+  checkbox. When on, it is the existing aid unchanged — one gap after
+  two tries, inert, wordless.
+
+### How to create and compare a figure
+
+1. Open `tools/ether-mystery-lab/shape.html` (any static server that
+   serves the repository root; `node tools/bring-it-alive/test/serve.js
+   <port>` is what the suites use). Loading it does nothing.
+2. Choose a budget. Press **Add** and click the sky to place lights;
+   **Join** and click pairs; **Gap** and click the joins that should be
+   missing when a child meets it. Watch the UNFINISHED pane — that is
+   the test.
+3. Type the creature name (metadata), an optional leading hint for the
+   preview (never the creature's name), and notes. Fill in the judgement.
+   **Save fixture.**
+4. To compare across budgets: in the fixture list, **Duplicate to…** a
+   larger budget, open the copy, add what the extra lights buy, save;
+   then choose the name under **Compare across budgets**. Keep two
+   questions apart while judging — *does the point count make it
+   recognisable?* and *do these missing joins make a good mystery?* —
+   they are different dimensions and the tool never merges them.
+5. **▶ Play in Ether** on any 8-light figure with a gap, to see it posed
+   for real; tick the aid only when that is what is being studied.
+
+### What it refuses, by construction
+
+A ninth light at budget 8 is refused on the canvas with a sentence and
+at the API by name; shrinking a budget under a bigger figure is refused
+and nothing is trimmed; a hand-edited fixture with more lights than its
+budget is refused on open and on import; duplicating a 12-light figure
+INTO budget 8 is refused. The preview knows nothing about the Shape Lab
+— it performs a candidate, whoever built it — and the candidate is built
+through the same `creatureCandidate()` every creature experiment uses,
+with an opaque `lab-shape-<n>` id.
+
+### Disclosed
+
+The Shape Lab was verified as an instrument, not as research: the suite
+proves it draws what is clicked, refuses what it must, saves and
+reopens, compares independently, and poses the exact figure in the real
+Ether. **No creature was drawn in it by this sprint, no verdict was
+formed, and no recommendation about the production point limit is made
+here** — those are the researcher's to reach with the tool.
+
+### Files
+
+`tools/ether-mystery-lab/shape.html` · `tools/ether-mystery-lab/labShape.js`
+(`window.ShapeLab`) · `labKit.js` → `creatureCandidate` exported. Suite
+section `SL` (`ETHER_LAB_ONLY=SL` runs it alone). Screenshots:
+`tools/ether-mystery-lab-test/shots/shape-lab/` — the editor at 8, 12,
+16 and 20, the same ring compared across budgets, unfinished vs complete.

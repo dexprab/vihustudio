@@ -9106,6 +9106,72 @@ leads somewhere.
   `figureGuard` · `docs/ETHER_MYSTERY_LAB.md` → *Eight-point
   creatures* · `tools/ether-mystery-lab-test/` section `EP` ·
   `tools/ether-mystery-lab-test/shots/eight-point/`
+- **THE CREATURE SHAPE LAB: THE RESEARCH METHOD CHANGED, AND THE
+  ANSWER IS NOW THE RESEARCHER'S TO FIND — LAB ONLY, ZERO PRODUCTION
+  FILES CHANGED.** Two creature experiments in a row ended with the
+  product owner judging drawings somebody else had made. So instead of
+  a fourth set of creatures, this ships an INSTRUMENT:
+  `tools/ether-mystery-lab/shape.html`, where a person draws a figure in
+  the Ether's own language, names which joins are missing, compares it
+  across point budgets, plays it in the real Ether and writes down what
+  they see. **It answers no question about creatures and ships none** —
+  the only shape it draws by itself is a neutral ring, so the tool can
+  be demonstrated without anybody having chosen an animal for the
+  researcher.
+- **FOUR BUDGETS, ALWAYS LABELLED, AND THE PRODUCTION LIMIT IS NOT
+  TOUCHED.** 8 · 12 · 16 · 20, with the header reading *TESTING 16
+  POINTS — Lab research budget (production is 8)*. A figure above 8 can
+  be drawn and judged and the REAL validator's refusal is shown beside
+  it; it cannot be played, and the panel says so in words. The four
+  numbers live in the Lab file alone; `js/etherGrammar.js` still refuses
+  a ninth light and the suite asks it rather than assuming it.
+- **A BUDGET CAN NEVER BE EXCEEDED SILENTLY.** A ninth light at 8 is
+  refused on the canvas with a sentence and at the API by name;
+  shrinking a budget under a bigger figure is refused and nothing is
+  trimmed; a hand-edited fixture with more lights than its budget is
+  refused on open and on import; duplicating a 12-light figure INTO
+  budget 8 is refused. The clamping `LIMITS.pieces` in the interpreter
+  is never reached, because nothing over 8 can be played.
+- **THE CREATURE NAME IS RESEARCHER METADATA AND TRAVELS NOWHERE.**
+  Saved with the fixture, shown in the fixture list, and never in a
+  candidate (ids are opaque `lab-shape-<n>`), never on a canvas, never
+  in the preview; the drawing code does not read it and no line of the
+  module couples a light's coordinates to it. No hidden animal image,
+  no SVG tracing, no imported silhouette, no curved joins (the Ether
+  figure system has none), no recognisability score, no model.
+- **MISSING JOINS ARE EXPLICIT; THE TWO STATES ARE ALWAYS SIDE BY SIDE;
+  ONE FIXED SCALE.** The researcher names each gap and `Math.random`
+  mints fixture ids and nothing else. COMPLETE shows the gap dashed and
+  UNFINISHED shows nothing there at all — measured by pixel — and every
+  canvas, the comparison tiles included, uses one scale so a 20-light
+  figure is never auto-fitted to flatter its budget.
+- **PLAY IN ETHER POSES THE EXACT FIGURE, THROUGH THE EXISTING
+  PREVIEW.** The candidate goes through the same `creatureCandidate()`
+  every creature experiment uses; the interpreter places exactly the
+  fixture's lights, joins and missing joins (`SL14`); the hint travels
+  beside it; the two-tap interaction, completion and the existing
+  awakening are unchanged. The delayed dashed aid is an optional
+  toggle, OFF by default on the fixture and on the checkbox, and when
+  on it is the falcon experiments' own aid unchanged.
+- **FIXTURES ARE RESEARCH ARTIFACTS IN ONE STORAGE KEY, AND LOADING
+  WRITES NOTHING.** `vihu.lab.shapes` holds name, budget, points, joins,
+  missing, hint, notes, judgement, tease, timestamps and a Lab version;
+  export/import as JSON; comparison copies are independent (editing the
+  original changes nothing in a copy, and a copy carries no judgement).
+  Never the production pool, which the page does not even load.
+- **THE TWO DIMENSIONS ARE KEPT APART.** Point count ↔ recognisability
+  and missing joins ↔ mystery quality are judged separately — two
+  radio groups and three sentences, every value a word — and the tool
+  never merges them into anything.
+- **STOPPED, AS INSTRUCTED.** No creatures were drawn in it by this
+  sprint, no verdict was formed, and no change to the production point
+  limit is recommended. Build not bumped (every stamp still 0769); the
+  Lab index links to it. `ETHER_LAB_ONLY=<section>` runs one suite
+  section alone while it is being built.
+- `tools/ether-mystery-lab/shape.html` ·
+  `tools/ether-mystery-lab/labShape.js` · `docs/ETHER_MYSTERY_LAB.md` →
+  *The Creature Shape Lab* · `tools/ether-mystery-lab-test/` section
+  `SL` · `tools/ether-mystery-lab-test/shots/shape-lab/`
 - Out of scope and not implemented: creature encounters as a reward
   system, creature dialogue, a Companion in the Ether, per-Traveller
   encounter history, more activity rows (story hunt, missing
