@@ -93,6 +93,7 @@
     budget: 8,
     points: [],                  // [[x,y]] in unit space
     roles: [],                   // per light: the feature name it was accepted for, or null — never geometry
+    origins: [],                 // per light: the suggested PLACE it was accepted at ([x,y]) or null — SESSION ONLY, never serialized
     joins: [],                   // [{a,b,gap}]
     approved: null,              // the frozen research artifact, or null once the figure changes
     name: '', hint: '', notes: '',
@@ -118,6 +119,42 @@
   // The figure changed: an approval no longer describes it.
   function touch() { state.approved = null; }
 
+  // THE SUGGESTED POINTS ARE THE STARTING FIGURE. Decided by the product
+  // owner after the first real lion: "the suggested points are also part
+  // of authored figure only." So the budgeted suggestions are PLACED as
+  // real lights — each carrying the feature name it stands for — when a
+  // reference arrives and when the budget grows, and from that instant
+  // they are the author's: move them, delete them, add to them. This is
+  // the ONE seam through which a suggestion becomes a light without a
+  // press; joins and gaps are never placed for anybody, a light already
+  // standing is never moved, and the budget still bounds it. Shrinking a
+  // budget still deletes nothing.
+  // A suggested place a light was accepted at, whether the light still
+  // stands there or the author has since moved it. Session-only: it is
+  // never serialized, so a reopened fixture starts with no origins.
+  function originTaken(x, y) {
+    return state.origins.some(function (o) { return o && Math.hypot(o[0] - x, o[1] - y) < 0.03; });
+  }
+
+  function placeSuggestions() {
+    var Ref = global.LabReference;
+    if (!Ref || !Ref.suggestions || !Ref.isShowing || !Ref.isShowing()) return { ok: false, reason: 'no-reference', placed: 0 };
+    var placed = 0;
+    Ref.suggestions().filter(function (x) { return x.budgeted; }).forEach(function (x) {
+      if (state.points.length >= state.budget) return;
+      if (state.points.some(function (p) { return Math.hypot(p[0] - x.x, p[1] - x.y) < 0.03; })) return;
+      // A place the author accepted a light at and then MOVED it away
+      // from is theirs: it is never re-placed behind them.
+      if (originTaken(x.x, x.y)) return;
+      state.points.push([clamp(x.x), clamp(x.y)]);
+      state.roles.push(x.name ? String(x.name).toUpperCase().slice(0, 24) : null);
+      state.origins.push([x.x, x.y]);
+      placed++;
+    });
+    if (placed) { touch(); emit(); }
+    return { ok: true, placed: placed };
+  }
+
   function overBudget(s) { s = s || state; return Math.max(0, s.points.length - s.budget); }
 
   // A budget change is NEVER destructive. Choosing a smaller budget under
@@ -130,9 +167,16 @@
     var was = state.budget;
     state.budget = b;
     if (was !== b) touch();
+    // A bigger budget opens more suggested places, and they are placed as
+    // lights at once (the seam above); a smaller one places nothing and
+    // deletes nothing.
+    var placed = (b > was) ? placeSuggestions().placed : 0;
     var over = overBudget();
     emit();
-    return over ? { ok: true, overBudget: over, lights: state.points.length } : { ok: true };
+    var out = { ok: true };
+    if (placed) out.placed = placed;
+    if (over) { out.overBudget = over; out.lights = state.points.length; }
+    return out;
   }
 
   // `role` — the feature name a light was accepted for (from a suggested
@@ -143,6 +187,7 @@
     }
     state.points.push([clamp(x), clamp(y)]);
     state.roles.push(role ? String(role).toUpperCase().slice(0, 24) : null);
+    state.origins.push(role ? [clamp(x), clamp(y)] : null);
     touch();
     emit();
     return { ok: true, index: state.points.length - 1 };
@@ -160,6 +205,7 @@
     if (!state.points[i]) return { ok: false, reason: 'no-such-light' };
     state.points.splice(i, 1);
     state.roles.splice(i, 1);
+    state.origins.splice(i, 1);
     touch();
     // Joins touching the light go; every index above it steps down,
     // and a gap follows its own join.
@@ -209,7 +255,7 @@
   function reset() {
     figureEpoch++;
     state.id = null;
-    state.points = []; state.roles = []; state.joins = []; state.approved = null;
+    state.points = []; state.roles = []; state.origins = []; state.joins = []; state.approved = null;
     state.name = ''; state.hint = ''; state.notes = '';
     state.judgement = null; state.tease = false; state.authoring = null;
     pendingA = null; dragging = null;
@@ -221,7 +267,7 @@
   // without anybody having chosen an animal for the researcher.
   function demoRing() {
     figureEpoch++;
-    state.points = []; state.roles = []; state.joins = []; state.approved = null; pendingA = null;
+    state.points = []; state.roles = []; state.origins = []; state.joins = []; state.approved = null; pendingA = null;
     var n = state.budget;
     for (var i = 0; i < n; i++) {
       var t = -Math.PI / 2 + (i / n) * Math.PI * 2;
@@ -364,6 +410,18 @@
     });
     g.setLineDash([]);
     var r = Math.max(9, Math.min(w, h) / 34), core = Math.max(2.6, Math.min(w, h) / 130);
+    // THE STARTING POINT ON THE BARE SKY. Asked for by the product owner:
+    // the unfinished pane was empty until a light was placed, while the
+    // suggested points stood only on the reference layer — so there was
+    // no way to see how the suggested figure reads WITHOUT the outline
+    // under it. The pane now marks the current suggestions faintly on its
+    // own opaque sky: no outline, no labels, plainly not lights (a dashed
+    // ring, never a solid core), gone one by one as they are accepted,
+    // and gone altogether with the reference or the suggestions switch.
+    // They are still never placed, never in the figure, never in a
+    // fixture or a candidate: what the pane draws is a preview of where a
+    // light COULD go, and only the author's press makes one.
+    if (opts.suggest) drawSuggestedMarks(g, w, h);
     P.forEach(function (p, i) {
       var rg = g.createRadialGradient(p[0], p[1], 0, p[0], p[1], r);
       rg.addColorStop(0, HALO + '.34)'); rg.addColorStop(1, HALO + '0)');
@@ -376,6 +434,23 @@
         g.textAlign = 'left';
         g.fillText(String(i), p[0] + core + 4, p[1] - core - 3);
       }
+    });
+  }
+
+  function drawSuggestedMarks(g, w, h) {
+    var Ref = global.LabReference;
+    if (!Ref || !Ref.suggestions) return;
+    var sg = Ref.suggestions();
+    var base = Math.max(5, Math.min(w, h) / 66);
+    sg.forEach(function (s) {
+      var q = toScreen([s.x, s.y], w, h);
+      var lv = s.level || 1, rr = base * (lv === 1 ? 1.0 : lv === 2 ? 0.85 : 0.7);
+      g.setLineDash([3, 4]);
+      g.strokeStyle = 'rgba(206,222,255,' + (lv === 1 ? 0.5 : 0.36) + ')'; g.lineWidth = 1;
+      g.beginPath(); g.arc(q[0], q[1], rr, 0, Math.PI * 2); g.stroke();
+      g.setLineDash([]);
+      g.fillStyle = 'rgba(206,222,255,.3)';
+      g.beginPath(); g.arc(q[0], q[1], Math.max(1.4, rr / 3.4), 0, Math.PI * 2); g.fill();
     });
   }
 
@@ -502,6 +577,7 @@
     state.tease = !!rec.tease;
     state.authoring = authoringOf(rec.authoring);
     state.roles = rolesOf({ points: state.points, roles: Array.isArray(rec.roles) ? rec.roles : [] });
+    state.origins = state.points.map(function () { return null; });
     state.approved = approvedOf(rec.approved, state);
     pendingA = null;
     return { ok: true };
@@ -883,7 +959,11 @@
     var Ref = global.LabReference;
     var under = !!(Ref && Ref.isShowing && Ref.isShowing());
     if (cc) draw(cc, state, { editing: true, numbers: showNumbers, transparent: under });
-    if (cu) draw(cu, state, { unfinished: true });                  // never the reference: this is what a child meets
+    // never the reference OUTLINE: this is what a child meets — but the
+    // suggested points are marked on it faintly, as the starting point on
+    // the bare sky (see drawSuggestedMarks)
+    if (cu) draw(cu, state, { unfinished: true, suggest: true });
+    var sf = el('[data-suggest-flag]'); if (sf) sf.hidden = !(Ref && Ref.suggestions && Ref.suggestions().length);
     doc.querySelectorAll('[data-budget]').forEach(function (b) {
       b.classList.toggle('on', Number(b.getAttribute('data-budget')) === state.budget);
     });
@@ -944,6 +1024,10 @@
       say(r.ok ? 'Imported ' + r.added + ' fixture(s)' + (r.refused ? ', refused ' + r.refused : '') + '.' : 'Not imported: ' + r.reason + '.');
     });
     var cs = el('[data-compare-name]'); if (cs) cs.addEventListener('change', renderCompare);
+    var ps = el('[data-ref-place]'); if (ps) ps.addEventListener('click', function () {
+      var r = placeSuggestions();
+      say(r.ok ? (r.placed ? 'Placed ' + r.placed + ' suggested point' + (r.placed === 1 ? '' : 's') + ' as lights — yours to move, delete or add to.' : 'Every suggested place already holds a light, or the budget is full.') : 'No reference is showing — nothing to place.');
+    });
     var ap = el('[data-approve]'); if (ap) ap.addEventListener('click', function () {
       var r = approve();
       say(r.ok ? 'Figure approved — frozen as the research artifact. Save fixture keeps it with the fixture.' : 'Not approved: ' + String(r.reason).replace(/-/g, ' ') + '.');
@@ -1005,6 +1089,7 @@
     setBudget: setBudget, addPoint: addPoint, movePoint: movePoint, deletePoint: deletePoint,
     toggleJoin: toggleJoin, toggleGap: toggleGap, reset: reset, demoRing: demoRing,
     approve: approve, exportApproved: exportApproved, APPROVED_KIND: APPROVED_KIND,
+    placeSuggestions: placeSuggestions,
     setMode: function (m) { mode = m; pendingA = null; emit(); },
     setName: setName, setHint: setHint, setNotes: setNotes, setTease: setTease,
     setJudgement: setJudgement, setAuthoring: setAuthoring,
@@ -1015,6 +1100,7 @@
     state: function () { return JSON.parse(JSON.stringify(serialize())); },
     figure: function () { return figureOf(state); },
     roles: function () { return rolesOf(state); },
+    originTaken: originTaken,
     approved: function () { return state.approved ? JSON.parse(JSON.stringify(state.approved)) : null; },
     metrics: function () { return metrics(); },
     playable: function () { return playable(); },

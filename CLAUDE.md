@@ -9392,7 +9392,7 @@ leads somewhere.
   tips, tail tip. Nothing is hard-coded per creature and there is still
   no `subject ===` anywhere; a feature the outline cannot draw keeps the
   blueprint's own anchor.
-- **SEEN, NEVER PLACED.** A mark is a dashed ring with a glow and a dot,
+- ~~**SEEN, NEVER PLACED.**~~ **Superseded two clauses below**, on the product owner's instruction: the budgeted suggestions are now PLACED as the starting figure, and a MARK is drawn only where no light stands. A mark is a dashed ring with a glow and a dot,
   sized by level, labelled beside it — on the underlay, beneath the
   author's solid lights, so the hierarchy *authored light > suggested
   point > outline > sky* holds and is measured in luminance. A click near
@@ -9401,6 +9401,40 @@ leads somewhere.
   exactly there. Choosing a feature in the panel, or accepting one of its
   points, exposes that feature's related landmarks at every level in
   gold — a light focus, one name, cleared by choosing it again.
+- **THE SUGGESTED POINTS ARE THE STARTING FIGURE, AND THE UNFINISHED
+  PANE SHOWS IT.** Two corrections from the product owner on the first
+  real lion, one sprint on. First: *"why the right pane is empty. it
+  should be showing the same points with reference off as starting
+  point."* Then, having seen faint marks drawn there: *"the suggested
+  points are also part of authored figure only."* Asked which form that
+  should take, he chose **placing them as lights**. So on Generate — and
+  again whenever the budget GROWS — every budgeted suggestion is placed
+  as a real light carrying its feature's name (`ShapeLab.placeSuggestions`,
+  one seam; `LabReference.set()` calls it). **This overrides the
+  previous sprint's "a suggested point is never auto-placed" rule on the
+  product owner's instruction**, and it overrides only that: joins and
+  gaps are still never placed for anybody, a budget shrink still deletes
+  nothing, and from the instant it lands a placed light is an ordinary
+  authored light — movable, deletable, renameable by deleting.
+- **A PLACE THE AUTHOR MOVED A LIGHT AWAY FROM STAYS THEIRS.** Found by
+  the suite, not by reading: a light moved off its landmark freed that
+  place, so the next budget growth put a new light back exactly where
+  the author had just taken one away. Each light now remembers, for the
+  SESSION only, the suggested place it was accepted at (`state.origins`
+  — never serialized, never in a fixture, gone on reopen), and
+  `occupied()` treats an origin as taken whether or not a light still
+  stands there. Deleting the light is what gives the place back.
+  Proved by reverting `occupied()`'s origin check: five AP checks red.
+- **THE UNFINISHED PANE MARKS ONLY WHAT IS EMPTY.** It shows the
+  starting figure as solid lights on its own opaque sky — never the
+  outline — and a suggested place with no light on it (one the author
+  deleted, or a budgeted place beyond a full figure) as a faint dashed
+  MARK with a caption saying so. A mark is never a light and enters no
+  fixture or candidate; REFERENCE OFF takes every mark with it and
+  keeps every light, which is the judging state. `AR2h`, `AR5d`,
+  `AP1d`, `AP3`, `AP5`–`AP5f` and `AP10`–`AP10c` were turned round with
+  their reasons in place; the AR accept-by-click checks empty the
+  placed figure first so the click path is still exercised from nothing.
 - **16 → 10 DELETES NOTHING.** Changing the budget touches no authored
   point, join, gap or name. Shrinking under a bigger figure keeps every
   light and shows that the figure EXCEEDS the selected budget — header,

@@ -217,12 +217,13 @@
       <button data-ref-another disabled class="quiet">Try another interpretation</button>
       <button data-ref-restore disabled class="quiet">Bring back the previous one</button>
       <button data-ref-discard disabled class="quiet">Discard reference</button>
+      <button data-ref-place class="quiet">Place suggested points</button>
     </div>
     <div class="row">
       <label style="margin:0"><input type="checkbox" data-ref-labels checked disabled> feature labels</label>
       <label style="margin:0"><input type="checkbox" data-ref-suggest checked disabled> suggested points</label>
     </div>
-    <div class="note">The <b>Creature Outline Reference</b> is a simple monochrome silhouette to draw over — composed from the blueprint's features as a visual authoring guide, never the creature. It is drawn under your lights, takes no clicks, is never on the unfinished pane, and has no place in a fixture, a candidate, the preview or the Ether. <b>Suggested points</b> are marked places on the outline — each one a feature or a structural spot (a head, a shoulder, a wing tip, a wing root) — ranked by how diagnostic the blueprint says the feature is, and cut to the budget you have chosen: change the budget and they are recomputed. A click near one accepts it; once placed it is an ordinary light, yours to move or delete, and nothing is ever placed for you. Choose a feature in the blueprint panel (or accept one of its points) to see that feature's related points in gold. Turn the reference OFF to judge the Ether figure alone: the outline and every suggestion go, your lights and joins stay. A failed or rejected LLM result never becomes a Fixture and never replaces the reference you had.</div>
+    <div class="note">The <b>Creature Outline Reference</b> is a simple monochrome silhouette to draw over — composed from the blueprint's features as a visual authoring guide, never the creature. It is drawn under your lights, takes no clicks, is never on the unfinished pane, and has no place in a fixture, a candidate, the preview or the Ether. <b>Suggested points</b> are marked places on the outline — each one a feature or a structural spot (a head, a shoulder, a wing tip, a wing root) — ranked by how diagnostic the blueprint says the feature is, and cut to the budget you have chosen: change the budget and they are recomputed. The budgeted ones are <b>placed as your starting figure</b> when the reference arrives and when the budget grows — real lights, each carrying its feature's name, yours to move, delete or add to; joins and gaps are never made for you, and a light you delete stands as a mark again until you accept it back (a click near it) or press <b>Place suggested points</b>. Choose a feature in the blueprint panel (or accept one of its points) to see that feature's related points in gold. Turn the reference OFF to judge the Ether figure alone: the outline and every suggestion go, your lights and joins stay. A failed or rejected LLM result never becomes a Fixture and never replaces the reference you had.</div>
     <details><summary>The flow, in ten steps</summary>
     <ol class="flow">
       <li>Enter a creature</li><li>Generate a reference</li><li>Choose a budget</li>
@@ -257,11 +258,11 @@
         <canvas class="figure" data-canvas-complete></canvas>
       </div>
       <div class="pane">
-        <h3>Unfinished — missing joins removed</h3>
+        <h3>Unfinished — missing joins removed <span class="note" style="text-transform:none;letter-spacing:0" data-suggest-flag hidden>· empty suggested places marked faintly</span></h3>
         <canvas class="figure readonly" data-canvas-unfinished></canvas>
       </div>
     </div>
-    <div class="note" style="margin-top:8px">Both are drawn at one fixed scale for every budget, so figures stay comparable. A missing join shows dashed on the left and is simply absent on the right — which is exactly what a child would meet.</div>
+    <div class="note" style="margin-top:8px">Both are drawn at one fixed scale for every budget, so figures stay comparable. A missing join shows dashed on the left and is simply absent on the right — which is exactly what a child would meet. While a reference is in use the right pane is the starting figure on the bare sky — the suggested points placed as lights — and any suggested place you have left empty is marked faintly there.</div>
   </section>
 
   <section>

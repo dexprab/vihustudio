@@ -2250,10 +2250,48 @@ draw keeps the blueprint's anchor as its one defining point.
 small dot, sized by level, its label beside it when feature labels are
 on — and always on the underlay, beneath the author's own solid lights,
 so the hierarchy *authored light > suggested point > outline > sky*
-holds (the suite measures it in luminance). Nothing is ever placed
-automatically: a click near a mark accepts it and the light lands there
+holds (the suite measures it in luminance). ~~Nothing is ever placed
+automatically~~ (superseded below, on the product owner's instruction:
+the budgeted suggestions are now placed as the starting figure, and a
+mark is drawn only where no light stands). A click near a mark accepts
+it and the light lands there
 carrying only the *name* of the feature (a word — `roles` on the fixture,
 never a place); a click anywhere else lands exactly where pressed.
+
+**The suggested points are the starting figure.** Two corrections from
+the product owner on the first real lion. The UNFINISHED pane stood
+empty until a light was placed (it drew only the authored figure, and
+the suggestions lived on the reference layer alone), and when faint
+marks were then drawn there he said the suggested points *are* part of
+the authored figure. Asked which form that should take, he chose
+placing them as lights. So on Generate, and whenever the budget grows,
+every budgeted suggestion is placed as a real light named for its
+feature — `ShapeLab.placeSuggestions()`, the one seam, called from
+`LabReference.set()` and from `setBudget()` when the budget rises, and
+offered as **Place suggested points** in the panel. This overrides the
+earlier "never auto-placed" rule on the product owner's instruction and
+nothing else: joins and gaps are never placed for anybody, a smaller
+budget still deletes nothing, and a placed light is an ordinary light
+from the moment it lands.
+
+A place the author moved a light AWAY from stays theirs for the
+session. The suite found the hole: a light moved off its landmark freed
+that landmark, and the next budget growth placed a new light back on
+it. Each light now remembers the suggested place it was accepted at
+(`state.origins`, session-only, never serialized — a reopened fixture
+starts with none), and `LabReference.occupied()` treats an origin as
+taken whether or not a light still stands there. Deleting the light
+gives the place back, and it can be placed again under the same name.
+
+The UNFINISHED pane shows the starting figure as solid lights on its
+own opaque sky, never the outline, and marks only what is EMPTY — a
+suggested place the author deleted a light from, or a budgeted place
+beyond a full figure — as a faint dashed ring with a caption. A mark is
+never a light, enters no fixture or candidate, and goes with REFERENCE
+OFF while the lights stay: the judging state is the authored figure
+alone. `AP3`, `AP5`–`AP5f`, `AP10`–`AP10c`; `AR2h`, `AR5d` and `AP1d`
+turned round with reasons, and the AR accept-by-click checks empty the
+placed figure first so the click path is still walked from nothing.
 
 **Feature focus.** Choosing a feature in the blueprint panel — or
 accepting one of its suggestions — exposes that feature's related

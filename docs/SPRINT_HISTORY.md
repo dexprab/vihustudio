@@ -12710,3 +12710,18 @@ outline, no sketch, nothing private), cleared by any edit, activating
 nothing. Suite section `AP` (40) walks lion, tiger, falcon, elephant and
 octopus through all six budgets in Node and on the real page. Doc:
 `docs/ETHER_MYSTERY_LAB.md` → *Adaptive suggested points*.
+
+## Shape Lab — the suggested points are the starting figure
+
+Lab only. Two product-owner corrections on the first real lion: the
+UNFINISHED pane was empty until a light was placed, and the suggested
+points are part of the authored figure. He chose placing them as
+lights: on Generate and on every budget growth the budgeted suggestions
+become real named lights (`ShapeLab.placeSuggestions`, one seam),
+overriding the earlier never-auto-placed rule on his instruction; joins
+and gaps still never placed, a shrink still deletes nothing. A place a
+light was MOVED away from stays the author's for the session
+(`state.origins`, never serialized) — found by the suite, proved by
+reverting (five AP checks red). The unfinished pane shows the starting
+figure as lights and marks only empty places faintly; REFERENCE OFF
+keeps the lights. AP 46/46, SL 52, GL 38, AR 87.

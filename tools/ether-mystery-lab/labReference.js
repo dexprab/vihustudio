@@ -35,8 +35,12 @@
 // that instant it is an ordinary light: movable, deletable, the
 // author's, carrying only the NAME of the feature it was accepted for.
 // A mark near an existing light is not drawn, so a suggestion never
-// nags about a place already taken. Nothing is ever auto-placed. Off by
-// one checkbox; gone with the reference.
+// nags about a place already taken. THE BUDGETED SUGGESTIONS ARE PLACED
+// AS THE STARTING FIGURE when a reference arrives and when the budget
+// grows — the product owner's rule — through the editor's own
+// `placeSuggestions()` seam, never by this layer; a suggestion the
+// author deleted stands as a mark again and is not re-placed behind
+// them. Off by one checkbox; gone with the reference.
 //
 // FEATURE FOCUS. Choosing a feature — a row in the blueprint panel, or
 // accepting one of its suggestions — exposes that feature's related
@@ -106,7 +110,12 @@
     state.dismissed = {}; state.focus = null;
     state.visible = true;
     sync();
-    return { ok: true };
+    // The suggested points are the starting figure (the product owner's
+    // rule): the editor places the budgeted ones as lights through its own
+    // seam. This layer still places nothing itself.
+    var S = global.ShapeLab;
+    var placed = (S && S.placeSuggestions) ? S.placeSuggestions() : null;
+    return { ok: true, placed: placed ? placed.placed : 0 };
   }
 
   // "Try another interpretation" keeps the one before it, until it is
@@ -152,7 +161,11 @@
     var S = global.ShapeLab;
     if (!S) return false;
     var fig = S.figure();
-    return fig.points.some(function (p) { return Math.hypot(p[0] - x, p[1] - y) < NEAR; });
+    if (fig.points.some(function (p) { return Math.hypot(p[0] - x, p[1] - y) < NEAR; })) return true;
+    // A place the author accepted a light at and then MOVED it away from
+    // is still theirs for the session: it is neither re-suggested nor
+    // re-placed behind them. (Deleting the light gives the place back.)
+    return !!(S.originTaken && S.originTaken(x, y));
   }
 
   // THE OUTLINE is composed from the blueprint's features by LabOutline —
