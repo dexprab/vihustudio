@@ -12688,3 +12688,25 @@ stripes are texture and are not drawn). AR 71 → 86; Lab suite 580/580.
 Zero production files changed. Doc: `docs/ETHER_MYSTERY_LAB.md` → *The
 Creature Outline Reference*.
 
+## Shape Lab — Adaptive Suggested Points & Author-Controlled Creature Geometry
+
+Lab only; zero production files changed (`arrangementNodesMax` still 8,
+validator, pool, runtime, canon and build untouched). Budgets are now
+`8 · 10 · 12 · 16 · 18 · 20`, all authoring budgets, 8 still production.
+The outline composer emits leveled LANDMARKS per part (defining point ·
+structural place · detail place) mapped to the blueprint's feature names,
+and `LabBlueprint.suggestions()` ranks them by importance then level (a
+feature's extra marks count a little less) and cuts to the budget — one
+ranking for every budget, so budgets nest, high-importance features
+survive 8, and a bigger budget adds structure then detail. Marks are
+visibly ringed and labelled beneath the author's lights; a click near one
+accepts it (the light carries only the feature NAME as `roles`); a
+feature focus exposes one feature's related landmarks. A budget change is
+never destructive: 16 → 10 keeps all twelve lights and shows FIGURE
+EXCEEDS BUDGET (no add, no save, no approve until the researcher deletes
+by hand) — SL5b and AR9c turned round with reasons. APPROVE FIGURE
+freezes points/joins/gaps/budget/roles as `approved` on the fixture (no
+outline, no sketch, nothing private), cleared by any edit, activating
+nothing. Suite section `AP` (40) walks lion, tiger, falcon, elephant and
+octopus through all six budgets in Node and on the real page. Doc:
+`docs/ETHER_MYSTERY_LAB.md` → *Adaptive suggested points*.

@@ -1702,14 +1702,18 @@ chosen an animal for the researcher.
 
 ### What it can do
 
-- **Four point budgets — 8 · 12 · 16 · 20 — switchable, and it is always
-  obvious which is being tested.** The header reads *TESTING 16 POINTS —
-  Lab research budget (production is 8)*. 8 is the production budget and
-  the only one the real Ether performs; 12, 16 and 20 exist so a person
-  can find out what a creature needs, and the real validator's refusal
-  is shown beside any figure above 8. **The production limit is not
-  changed by the tool** — `js/etherGrammar.js` still refuses a ninth
-  light, and the suite asks it (`SL1c`).
+- **Six point budgets — 8 · 10 · 12 · 16 · 18 · 20 — switchable, and it
+  is always obvious which is being tested.** (Four when the Lab shipped;
+  10 and 18 joined in the Adaptive Suggested Points sprint, below.) The
+  header reads *TESTING 16 POINTS — Lab authoring / research budget ·
+  production currently supports 8*. 8 is the production budget and the
+  only one the real Ether performs; the rest exist so a person can find
+  out what a creature needs, and the real validator's refusal is shown
+  beside any figure above 8. **The production limit is not changed by
+  the tool** — `js/etherGrammar.js` still refuses a ninth light, and the
+  suite asks it (`SL1c`). A budget is an authoring target, never a
+  destructive operation: shrinking it under a bigger figure keeps every
+  light and says the figure exceeds it.
 - **An editor in the Ether's visual language**: Add (click empty sky),
   Move (drag a light), Delete, Join (one light, then another; the same
   pair again removes; clicking a line removes it), Gap (click a line to
@@ -1789,8 +1793,11 @@ chosen an animal for the researcher.
 ### What it refuses, by construction
 
 A ninth light at budget 8 is refused on the canvas with a sentence and
-at the API by name; shrinking a budget under a bigger figure is refused
-and nothing is trimmed; a hand-edited fixture with more lights than its
+at the API by name; shrinking a budget under a bigger figure keeps every
+light and shows the figure exceeds it (it was refused outright before the
+Adaptive Suggested Points sprint — nothing is trimmed either way, and an
+over-budget figure cannot be added to, saved or approved until the
+researcher deletes by hand); a hand-edited fixture with more lights than its
 budget is refused on open and on import; duplicating a 12-light figure
 INTO budget 8 is refused. The preview knows nothing about the Shape Lab
 — it performs a candidate, whoever built it — and the candidate is built
@@ -2198,6 +2205,110 @@ rather than a cat is the texture limit above, and the Ether figure
 language cannot draw stripes either — so the remaining gap is the
 geometry language, not the outline.
 
+
+### Adaptive suggested points, and geometry that stays the author's
+
+The Adaptive Suggested Points sprint changed three things about the Shape
+Lab and nothing about production (`arrangementNodesMax` is still 8; the
+validator, the pool, the runtime, the Mystery, Composer, Discovery and
+Life layers, the canon and the build are untouched).
+
+**Six authoring budgets.** `8 · 10 · 12 · 16 · 18 · 20`. All six are
+Lab authoring / research budgets; 8 is still the only one production
+performs, and the header, the metrics and the Play reason still say so.
+A blueprint reply still needs only the four canonical lists (`8`, `12`,
+`16`, `20`); `10` and `18` are accepted when present and otherwise read
+the nearest smaller list.
+
+**Suggested points are RANKED, and recomputed on every budget change.**
+The outline composer now names, for every part it draws, the places a
+light could usefully stand — each with a *level*: 1 the part's defining
+point (a head, a foot, a wing tip, a beak tip, a trunk tip), 2 a
+structural place (a shoulder, a rump, a wing root, a tail base, a trunk
+base), 3 a detail place (a knee, a crown, a leading or trailing edge, the
+middle of a tail). `LabOutline.compose()` returns them as `landmarks`,
+mapped onto the blueprint's own feature names. `LabBlueprint.suggestions
+(bp, budget, outline)` ranks every landmark of the features the
+blueprint lists for that budget by
+
+    priority = importance × 10 − (level − 1) × 14 − (nth mark of one feature at one level) × 3
+
+and takes the first *budget* of them (two landmarks closer than 0.07
+units are one place). One ranking serves every budget, so 8 → 12 only
+adds marks and 12 → 8 only removes them, and what survives the lowest
+budget is what the blueprint itself calls diagnostic: for the
+constructed test creatures, the tiger's eight are its head, body, feet,
+tail tip, rump and shoulder; the elephant's its trunk tip, an ear, body,
+head, tusk tip, two feet and the trunk base; the falcon's its beak tip,
+head, body, both wing tips, tail tip, breast and a wing root. A larger
+budget adds structure and then detail — never filler. Nothing here is
+hard-coded per creature: a subject the composer has never met gets the
+same treatment from its own features, and a feature the outline cannot
+draw keeps the blueprint's anchor as its one defining point.
+
+**They are marked to be seen.** A dashed ring with a soft glow and a
+small dot, sized by level, its label beside it when feature labels are
+on — and always on the underlay, beneath the author's own solid lights,
+so the hierarchy *authored light > suggested point > outline > sky*
+holds (the suite measures it in luminance). Nothing is ever placed
+automatically: a click near a mark accepts it and the light lands there
+carrying only the *name* of the feature (a word — `roles` on the fixture,
+never a place); a click anywhere else lands exactly where pressed.
+
+**Feature focus.** Choosing a feature in the blueprint panel — or
+accepting one of its suggestions — exposes that feature's related
+landmarks at every level in gold beside the budgeted ones (a wing: its
+tip, its root, its leading and trailing edges). One name, cleared by
+choosing it again. Not an inspector.
+
+**A budget is an authoring target, never a destructive operation.**
+Changing the budget touches no authored point, join, gap or name. Going
+up simply opens more suggestions. Going DOWN under a bigger figure keeps
+every light and shows that the figure **exceeds the selected budget** —
+in the header (`FIGURE EXCEEDS BUDGET (12 lights)`), in the metrics
+(`EXCEEDS the selected budget by 2`), beside Play, and in the Say line
+(*nothing is trimmed for you*). While it exceeds the budget the Lab's
+existing refusal convention holds: no light can be added, the figure
+cannot be saved (a stored fixture stays at or under its budget, so a
+hand-edited one over its budget is still refused on open and on import)
+and it cannot be approved, and nothing is suggested. The researcher
+deletes lights by hand; the moment it fits, the state clears. (Before
+this sprint the shrink itself was refused; SL5b and AR9c were turned
+round with the reason in place.)
+
+**MOVE, ADD, DELETE, JOIN, GAP stay the author's.** A moved light keeps
+its index, its joins and its name and never snaps back to the outline; a
+deleted light takes its joins and gaps with it and the rest renumber;
+the system never chooses a gap.
+
+**APPROVE FIGURE.** `ShapeLab.approve()` freezes the authored figure as
+the research artifact:
+
+    { kind: 'vihu-shape-lab-approved-figure', labVersion, approvedAt,
+      name, subject, budget, points, joins, missing,
+      roles: [{ light, feature }] }
+
+— the points, the joins, which joins are gaps, the selected budget, and
+per accepted light the feature it stands for. No outline, no sketch, no
+landmark, no blueprint, nothing private, no key. The page enters a
+clear **APPROVED FIGURE** state; *Show approved artifact* prints it; it
+is stored on the fixture (`approved`) and travels through the existing
+export. Any later edit to the figure clears it — a frozen artifact never
+describes a figure it does not match — and a stored approval is honoured
+on reopen only while it still matches the stored geometry. Approving
+activates nothing and publishes nothing: no hint, no gap, no challenge,
+no completion, no awakening, no roaming, no pool entry.
+
+Suite section `AP` (40): statics; the ranking across lion, tiger,
+falcon, elephant and octopus through all six budgets in Node
+(bounded, monotonic, high-importance features surviving 8, extras
+structural, distinct, pure); the real page through the stubbed endpoint
+for the same five creatures (screenshots at 8 and 20 under
+`shots/shape-lab/adaptive/`); accept · freehand · move · join · gap ·
+delete as a person does them; 12 → 16 and 16 → 10 with twelve lights
+placed; feature focus; the visual hierarchy measured; REFERENCE OFF;
+judge, approve, inspect, save, reload, edit-clears.
+
 ### A short research procedure
 
 1. Open `tools/ether-mystery-lab/shape.html`. Under *Reference source*
@@ -2209,10 +2320,13 @@ geometry language, not the outline.
    badged **LLM — Endpoint (…)**, never FIXTURE, and open *What happened
    on the last generation* to see the request, the model, the validator's
    verdict and the outcome.
-3. At budget 8, place lights over the reference (accept suggestions or
-   not), join them, mark a gap. Toggle REFERENCE OFF. Judge. Save.
-4. Switch to 12, then 16 (Save as new… each time), and compare across
-   budgets.
+3. At budget 8, place lights over the reference (accept the ranked
+   suggestions or not — choose a feature in the panel to see its
+   related points), join them, mark a gap. Toggle REFERENCE OFF. Judge.
+   **Approve figure**, then Save.
+4. Switch to 10, 12, 16, 18, 20 (Save as new… each time) and compare
+   across budgets. Shrinking a budget under a bigger figure keeps every
+   light and says the figure exceeds it — delete by hand.
 5. Repeat with **tiger**, **falcon**, **elephant**, **octopus**. Each
    should arrive with its own diagnostic features and its own sketch —
    the assistant's semantic reading, never a body plan the Lab knows.
@@ -2232,8 +2346,10 @@ delayed help); nothing beyond those is activated.
 ### Files
 
 `tools/ether-mystery-lab/labBlueprint.js` · `labReference.js` ·
-`labShape.js` (additive) · `shape.html` · `labConnection.js` (one hook).
-Suite section `AR` (71 checks). Screenshots:
+`labOutline.js` · `labShape.js` (additive) · `shape.html` ·
+`labConnection.js` (one hook). Suite sections `AR` (86 checks) and `AP`
+(40). Screenshots:
 `tools/ether-mystery-lab-test/shots/shape-lab/reference-on.png`,
-`reference-off.png`, `reference-generated.png`.
+`reference-off.png`, `reference-generated.png`, and
+`shots/shape-lab/adaptive/*.png`.
 

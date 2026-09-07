@@ -9368,6 +9368,75 @@ leads somewhere.
   *Create from creature* ·
   `tools/ether-mystery-lab-test/` section `AR` ·
   `tools/ether-mystery-lab-test/shots/shape-lab/reference-*.png`
+- **A BUDGET IS AN AUTHORING TARGET, NEVER A DESTRUCTIVE OPERATION — AND
+  THE SUGGESTIONS FOLLOW IT** (the Adaptive Suggested Points sprint, Lab
+  only, zero production files changed). Six authoring budgets now —
+  `8 · 10 · 12 · 16 · 18 · 20` — and 8 is still the only one production
+  performs; the header, the metrics and Play still say so, and a
+  blueprint reply still needs only the four canonical lists.
+- **SUGGESTED POINTS ARE RANKED LANDMARKS, RECOMPUTED ON EVERY BUDGET
+  CHANGE.** The outline composer names, for every part it draws, the
+  places a light could usefully stand, each with a LEVEL — the part's
+  defining point, a structural place (shoulder, rump, wing root, tail
+  base, trunk base), a detail place (knee, crown, leading or trailing
+  edge) — mapped onto the blueprint's own feature names.
+  `LabBlueprint.suggestions()` ranks them by the blueprint's importance
+  first and the level second (a feature's second and third marks at one
+  level count a little less, so four feet do not crowd out a tail) and
+  cuts to the budget. ONE ranking serves every budget, so 8 → 12 only
+  adds and 12 → 8 only removes, and what survives the lowest budget is
+  what the blueprint itself calls diagnostic — measured across five
+  constructed creatures: the tiger's eight are head, body, feet, tail
+  tip, rump, shoulder; the elephant's trunk tip, ear, body, head, tusk
+  tip, feet, trunk base; the falcon's beak tip, head, body, both wing
+  tips, tail tip. Nothing is hard-coded per creature and there is still
+  no `subject ===` anywhere; a feature the outline cannot draw keeps the
+  blueprint's own anchor.
+- **SEEN, NEVER PLACED.** A mark is a dashed ring with a glow and a dot,
+  sized by level, labelled beside it — on the underlay, beneath the
+  author's solid lights, so the hierarchy *authored light > suggested
+  point > outline > sky* holds and is measured in luminance. A click near
+  one accepts it and the light carries only the feature's NAME (`roles`
+  on the fixture — a word, never a place); a click anywhere else lands
+  exactly there. Choosing a feature in the panel, or accepting one of its
+  points, exposes that feature's related landmarks at every level in
+  gold — a light focus, one name, cleared by choosing it again.
+- **16 → 10 DELETES NOTHING.** Changing the budget touches no authored
+  point, join, gap or name. Shrinking under a bigger figure keeps every
+  light and shows that the figure EXCEEDS the selected budget — header,
+  metrics, Play, and *nothing is trimmed for you* — and while it does the
+  existing refusal convention holds: no add, no save (a stored fixture
+  stays at or under its budget, so a hand-edited one over its budget is
+  still refused on open and on import), no approve, and nothing is
+  suggested. The researcher deletes by hand and the state clears when it
+  fits. **SL5b and AR9c asserted the old refusal of the shrink itself and
+  were turned round with the reason in place** — "nothing is ever
+  trimmed" is what they always guarded, and it is still asserted.
+- **APPROVE FIGURE FREEZES THE AUTHORED FIGURE AND NOTHING ELSE.**
+  `ShapeLab.approve()` captures points, joins, which joins are gaps, the
+  selected budget, and per accepted light the feature it stands for —
+  `kind: vihu-shape-lab-approved-figure`, stored on the fixture as
+  `approved`, shown in a clear APPROVED FIGURE state, inspectable and
+  exported through the existing export. No outline, no sketch, no
+  landmark, no blueprint, nothing private, no key; the suite scans the
+  artifact for every one of those words. Any later edit clears it, and a
+  stored approval is honoured on reopen only while it still matches the
+  stored geometry. Approving activates nothing and publishes nothing: no
+  hint, no gap, no challenge, no completion, no awakening, no roaming, no
+  pool entry.
+- **DISCLOSED: no child has used it and no creature was judged.** The
+  five creatures the suite walks — lion, tiger, falcon, elephant, octopus
+  — are constructed blueprints through the stubbed endpoint, the real
+  provider being unreachable from this environment. What is proved is
+  the ranking, the budget behaviour, the editing freedoms, the hierarchy
+  and the artifact; whether a six-year-old's figure is better for it is
+  the researcher's to find. No production point limit was decided.
+- `tools/ether-mystery-lab/labOutline.js` (landmarks) ·
+  `labBlueprint.js` (ranking) · `labReference.js` (marks, focus) ·
+  `labShape.js` (six budgets, roles, approve) · `shape.html` ·
+  `docs/ETHER_MYSTERY_LAB.md` → *Adaptive suggested points* ·
+  `tools/ether-mystery-lab-test/` section `AP` ·
+  `tools/ether-mystery-lab-test/shots/shape-lab/adaptive/`
 - Out of scope and not implemented: creature encounters as a reward
   system, creature dialogue, a Companion in the Ether, per-Traveller
   encounter history, more activity rows (story hunt, missing

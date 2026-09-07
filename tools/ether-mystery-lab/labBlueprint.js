@@ -37,7 +37,12 @@
   'use strict';
 
   var COORD = 1.3;                              // the editor's own reach
-  var BUDGETS = [8, 12, 16, 20];
+  // The Lab's six authoring budgets. A blueprint's own budget lists name
+  // the four canonical ones (8 · 12 · 16 · 20); 10 and 18 are optional in
+  // a reply and, when absent, read the nearest smaller list. Production
+  // is still 8, and none of this touches it.
+  var BUDGETS = [8, 10, 12, 16, 18, 20];
+  var REQUIRED_BUDGETS = [8, 12, 16, 20];
   var LIMITS = {
     subjectChars: 40,
     textChars: 240,
@@ -61,7 +66,7 @@
       subject: 'string — the subject as understood, ≤ 40 chars',
       silhouette: 'string — one sentence: the primary silhouette and the viewing angle (side / top / front)',
       features: 'array of 3–12 feature objects, most diagnostic first',
-      budgets: 'object with exactly the keys "8", "12", "16", "20": for each, an array of feature names (from features[].name) worth spending that budget on, ≤ budget entries',
+      budgets: 'object with the keys "8", "12", "16", "20" (optionally "10" and "18"): for each, an array of feature names (from features[].name) worth spending that budget on, ≤ budget entries',
       sketch: 'DEPRECATED — optional, ≤ 24 primitives, validated for compatibility and NOT shown: the visual reference is the Creature Outline (labOutline.js), composed from the features'
     },
     feature: {
@@ -168,8 +173,11 @@
       reasons.push('bad-budgets');
     } else {
       var keys = Object.keys(raw.budgets).sort(function (a, b) { return Number(a) - Number(b); });
-      if (keys.join(',') !== BUDGETS.join(',')) reasons.push('bad-budget-keys:' + keys.join('/'));
+      var keysOk = REQUIRED_BUDGETS.every(function (b) { return keys.indexOf(String(b)) !== -1; }) &&
+                   keys.every(function (k) { return BUDGETS.indexOf(Number(k)) !== -1; });
+      if (!keysOk) reasons.push('bad-budget-keys:' + keys.join('/'));
       BUDGETS.forEach(function (b) {
+        if (keys.indexOf(String(b)) === -1) return;          // 10 and 18 are optional
         var list = raw.budgets[String(b)];
         if (!Array.isArray(list) || list.length > b) { reasons.push('bad-budget-list:' + b); budgets[String(b)] = []; return; }
         var seen = {}, out = [];
@@ -265,30 +273,109 @@
   }
 
   // ---------------------------------------------------------------
-  // SUGGESTIONS — where a point COULD go for a budget: the anchors of
-  // the features the blueprint names for that budget. Faint, optional,
-  // accepted by a click and then the author's to move or delete. Pure.
+  // SUGGESTIONS — where a point COULD go for a budget, RANKED.
+  //
+  // The blueprint says WHICH features a budget is worth spending on (its
+  // own budget lists) and HOW MUCH each matters (importance); the outline
+  // says WHERE those features are, as landmarks with a level — 1 the
+  // part's defining point, 2 a structural place, 3 a detail place. A
+  // suggestion's priority is the feature's importance first and the
+  // landmark's level second, so:
+  //   - budget 8 takes the defining points of the most diagnostic
+  //     features (a head, a body, a beak, a trunk, the wing tips);
+  //   - a larger budget ADDS structure (a shoulder, a rump, a wing root)
+  //     and then detail (a knee, a trailing edge) — useful places, never
+  //     filler;
+  //   - a smaller budget drops the lowest-priority marks first, so what
+  //     survives is what the blueprint itself calls diagnostic.
+  // One ranking serves every budget: budget N is the first N of it, so
+  // going 8 → 12 only ever adds marks and 12 → 8 only ever removes them.
+  // Pure: it places nothing, stores nothing, and never reads the figure.
   // ---------------------------------------------------------------
-  // `anchors` — an optional map of feature name → [[x,y],…] from the
-  // outline composer, so the marks land ON the outline; a feature the
-  // outline did not draw falls back to the blueprint's own anchor.
-  function suggestions(bp, budget, anchors) {
-    if (!bp || !bp.features) return [];
-    var wanted = (bp.budgets && bp.budgets[String(budget)]) || [];
-    var byName = {};
-    bp.features.forEach(function (f) { byName[f.name] = f; });
-    var out = [];
-    wanted.forEach(function (n) {
-      var f = byName[n]; if (!f) return;
-      var list = (anchors && anchors[f.name]) ? anchors[f.name] : [f.anchor];
-      list.forEach(function (q) { out.push({ name: f.name, x: q[0], y: q[1], importance: f.importance }); });
+  var DEDUPE = 0.07;                 // two landmarks this close are one place
+
+  // The blueprint's own list for this budget: its own if it named one,
+  // else the nearest smaller budget it did name; no lists → every feature.
+  function listFor(bp, budget) {
+    var lists = bp.budgets || {};
+    var have = Object.keys(lists).map(Number).filter(function (b) { return Array.isArray(lists[b]) && lists[b].length; }).sort(function (a, b) { return a - b; });
+    if (!have.length) return null;
+    var pick = null;
+    have.forEach(function (b) { if (b <= budget) pick = b; });
+    if (pick === null) pick = have[0];
+    return lists[String(pick)];
+  }
+
+  function candidates(bp, outline) {
+    if (!bp || !Array.isArray(bp.features)) return [];
+    var order = {}, byName = {};
+    bp.features.forEach(function (f, i) { order[f.name] = i; byName[f.name] = f; });
+    var lm = (outline && Array.isArray(outline.landmarks)) ? outline.landmarks : [];
+    var covered = {};
+    var out = lm.filter(function (l) { return byName[l.name]; }).map(function (l, i) {
+      covered[l.name] = true;
+      return { name: l.name, label: l.label || l.name.toLowerCase(), x: l.x, y: l.y, level: l.level || 1, importance: byName[l.name].importance, seq: i };
     });
-    return out.slice(0, budget);
+    // A feature the outline could not place keeps the blueprint's own
+    // anchor as its one defining point.
+    bp.features.forEach(function (f, i) {
+      if (covered[f.name]) return;
+      out.push({ name: f.name, label: f.name.toLowerCase(), x: f.anchor[0], y: f.anchor[1], level: 1, importance: f.importance, seq: 1000 + i });
+    });
+    // importance first; a structural place is worth less than a defining
+    // point and a detail place less again; a feature's second, third and
+    // fourth marks at one level each count a little less than its first,
+    // so four feet do not crowd out a tail.
+    var seen = {};
+    out.forEach(function (c) {
+      var k = c.name + '#' + c.level, dup = seen[k] || 0; seen[k] = dup + 1;
+      c.priority = c.importance * 10 - (c.level - 1) * 14 - dup * 3;
+    });
+    out.sort(function (a, b) {
+      return (b.priority - a.priority) || (order[a.name] - order[b.name]) || (a.level - b.level) || (a.seq - b.seq);
+    });
+    // Two marks on one place are one mark: the higher-ranked stays.
+    var kept = [];
+    out.forEach(function (c) {
+      if (kept.some(function (k) { return Math.hypot(k.x - c.x, k.y - c.y) < DEDUPE; })) return;
+      kept.push(c);
+    });
+    return kept;
+  }
+
+  // `outline` — the composed Creature Outline (with `landmarks`), or, for
+  // compatibility, the old anchors map {NAME: [[x,y],…]}, or nothing.
+  function suggestions(bp, budget, outline) {
+    if (!bp || !bp.features) return [];
+    budget = Number(budget) || 0;
+    var o = outline;
+    if (outline && !outline.landmarks && !outline.paths && typeof outline === 'object') {
+      // an anchors map: every entry is a level-1 landmark
+      var lmk = [];
+      Object.keys(outline).forEach(function (n) { (outline[n] || []).forEach(function (q) { lmk.push({ name: n, label: n.toLowerCase(), x: q[0], y: q[1], level: 1 }); }); });
+      o = { landmarks: lmk };
+    }
+    var allowed = listFor(bp, budget);
+    var ranked = candidates(bp, o).filter(function (c) { return !allowed || allowed.indexOf(c.name) !== -1; });
+    return ranked.slice(0, budget).map(function (c, i) {
+      return { name: c.name, label: c.label, x: c.x, y: c.y, importance: c.importance, level: c.level, rank: i + 1 };
+    });
+  }
+
+  // Every landmark of ONE feature, in rank order and at every level —
+  // what a light focus on a feature exposes (a wing: its tip, its root,
+  // its leading and trailing edges). Not bounded by the budget: the
+  // budget bounds what is suggested unasked, not what may be looked at.
+  function related(bp, outline, name) {
+    var n = String(name || '').toUpperCase();
+    return candidates(bp, outline).filter(function (c) { return c.name === n; }).map(function (c) {
+      return { name: c.name, label: c.label, x: c.x, y: c.y, importance: c.importance, level: c.level };
+    });
   }
 
   global.LabBlueprint = {
-    SCHEMA: SCHEMA, LIMITS: LIMITS, BUDGETS: BUDGETS.slice(), FORBIDDEN_KEYS: FORBIDDEN_KEYS.slice(), COORD: COORD,
+    SCHEMA: SCHEMA, LIMITS: LIMITS, BUDGETS: BUDGETS.slice(), REQUIRED_BUDGETS: REQUIRED_BUDGETS.slice(), FORBIDDEN_KEYS: FORBIDDEN_KEYS.slice(), COORD: COORD,
     cleanSubject: cleanSubject, messagesFor: messagesFor, validate: validate, parse: parse,
-    fixture: fixture, suggestions: suggestions
+    fixture: fixture, suggestions: suggestions, related: related, listFor: listFor
   };
 })(typeof window !== 'undefined' ? window : this);

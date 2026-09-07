@@ -29,13 +29,29 @@
 //     a straight segment between two lights — so offering one here
 //     would show something the runtime cannot perform.
 //
-// THE PRODUCTION CEILING IS NOT CHANGED, AND IT IS NOT HIDDEN. Four
-// research budgets — 8, 12, 16, 20 — and the product performs one of
-// them. A figure above eight is drawn here in the Ether's language so
-// it can be JUDGED, and the real validator's refusal is shown beside it
-// in as many words. It can be played in the real Ether only when the
-// real Ether can perform it; the tool never truncates, never clamps and
-// never pretends.
+// THE PRODUCTION CEILING IS NOT CHANGED, AND IT IS NOT HIDDEN. Six
+// authoring budgets — 8, 10, 12, 16, 18, 20 — and the product performs
+// one of them. A figure above eight is drawn here in the Ether's
+// language so it can be JUDGED, and the real validator's refusal is
+// shown beside it in as many words. It can be played in the real Ether
+// only when the real Ether can perform it; the tool never truncates,
+// never clamps and never pretends.
+//
+// A BUDGET IS AN AUTHORING TARGET, NEVER A DESTRUCTIVE OPERATION.
+// Choosing a smaller budget under a bigger figure keeps every light: the
+// figure is shown to EXCEED the selected budget — in the header, in the
+// metrics, beside Play — and the researcher takes lights away by hand if
+// they want it to fit. Nothing is ever deleted or trimmed by a budget
+// change. What a budget does bound is ADDING: a light beyond it is
+// refused, and a fixture is saved only at or under its budget, which is
+// what keeps a stored fixture honest (a hand-edited one over its budget
+// is still refused on open and on import).
+//
+// APPROVE FIGURE freezes the authored figure as the research artifact:
+// points, joins, gaps, the budget, and the semantic feature each light
+// was accepted for — and nothing else. No outline, no sketch, no
+// blueprint, no subject beyond the one word the author typed, nothing
+// private. It activates nothing, publishes nothing and enters no pool.
 //
 // ONE UNIT SPACE, ONE SCALE, EVERY BUDGET. A figure is authored in the
 // validator's own coordinate box (±1.4) and drawn at ONE fixed scale in
@@ -52,7 +68,7 @@
 (function (global) {
   'use strict';
 
-  var BUDGETS = [8, 12, 16, 20];
+  var BUDGETS = [8, 10, 12, 16, 18, 20];
   var PRODUCTION_BUDGET = 8;       // shown, never enforced here — the validator says so
   var STORE_KEY = 'vihu.lab.shapes';
   var LAB_VERSION = 'shape-lab-1';
@@ -76,7 +92,9 @@
     id: null,                    // the fixture this was opened from, or null
     budget: 8,
     points: [],                  // [[x,y]] in unit space
+    roles: [],                   // per light: the feature name it was accepted for, or null — never geometry
     joins: [],                   // [{a,b,gap}]
+    approved: null,              // the frozen research artifact, or null once the figure changes
     name: '', hint: '', notes: '',
     judgement: null,
     tease: false,                // the delayed aid, OFF by default
@@ -97,25 +115,35 @@
   // ---------------------------------------------------------------
   // EDITING
   // ---------------------------------------------------------------
+  // The figure changed: an approval no longer describes it.
+  function touch() { state.approved = null; }
+
+  function overBudget(s) { s = s || state; return Math.max(0, s.points.length - s.budget); }
+
+  // A budget change is NEVER destructive. Choosing a smaller budget under
+  // a bigger figure keeps every light and reports how many the figure is
+  // over; the header, the metrics and Play say so, and the researcher
+  // takes lights away by hand. Nothing is deleted, nothing is trimmed.
   function setBudget(b) {
     b = Number(b);
     if (BUDGETS.indexOf(b) === -1) return { ok: false, reason: 'not-a-budget' };
-    // A figure never silently exceeds its budget — shrinking under a
-    // figure that has more lights than the new budget is refused,
-    // never trimmed.
-    if (state.points.length > b) {
-      return { ok: false, reason: 'figure-has-' + state.points.length + '-lights' };
-    }
+    var was = state.budget;
     state.budget = b;
+    if (was !== b) touch();
+    var over = overBudget();
     emit();
-    return { ok: true };
+    return over ? { ok: true, overBudget: over, lights: state.points.length } : { ok: true };
   }
 
-  function addPoint(x, y) {
+  // `role` — the feature name a light was accepted for (from a suggested
+  // point), or nothing for a light placed freehand. A word, never a place.
+  function addPoint(x, y, role) {
     if (state.points.length >= state.budget) {
       return { ok: false, reason: 'budget-full:' + state.budget };
     }
     state.points.push([clamp(x), clamp(y)]);
+    state.roles.push(role ? String(role).toUpperCase().slice(0, 24) : null);
+    touch();
     emit();
     return { ok: true, index: state.points.length - 1 };
   }
@@ -123,6 +151,7 @@
   function movePoint(i, x, y) {
     if (!state.points[i]) return { ok: false, reason: 'no-such-light' };
     state.points[i] = [clamp(x), clamp(y)];
+    touch();
     emit();
     return { ok: true };
   }
@@ -130,6 +159,8 @@
   function deletePoint(i) {
     if (!state.points[i]) return { ok: false, reason: 'no-such-light' };
     state.points.splice(i, 1);
+    state.roles.splice(i, 1);
+    touch();
     // Joins touching the light go; every index above it steps down,
     // and a gap follows its own join.
     state.joins = state.joins.filter(function (j) { return j.a !== i && j.b !== i; })
@@ -157,6 +188,7 @@
       return { ok: false, reason: 'not-two-lights' };
     }
     var i = findJoin(a, b);
+    touch();
     if (i !== -1) { state.joins.splice(i, 1); emit(); return { ok: true, removed: true }; }
     state.joins.push({ a: Math.min(a, b), b: Math.max(a, b), gap: false });
     emit();
@@ -169,6 +201,7 @@
     var j = state.joins[joinIndex];
     if (!j) return { ok: false, reason: 'no-such-join' };
     j.gap = !j.gap;
+    touch();
     emit();
     return { ok: true, gap: j.gap };
   }
@@ -176,7 +209,7 @@
   function reset() {
     figureEpoch++;
     state.id = null;
-    state.points = []; state.joins = [];
+    state.points = []; state.roles = []; state.joins = []; state.approved = null;
     state.name = ''; state.hint = ''; state.notes = '';
     state.judgement = null; state.tease = false; state.authoring = null;
     pendingA = null; dragging = null;
@@ -188,11 +221,12 @@
   // without anybody having chosen an animal for the researcher.
   function demoRing() {
     figureEpoch++;
-    state.points = []; state.joins = []; pendingA = null;
+    state.points = []; state.roles = []; state.joins = []; state.approved = null; pendingA = null;
     var n = state.budget;
     for (var i = 0; i < n; i++) {
       var t = -Math.PI / 2 + (i / n) * Math.PI * 2;
       state.points.push([clamp(Math.cos(t) * 1.0), clamp(Math.sin(t) * 1.0)]);
+      state.roles.push(null);
     }
     for (var k = 0; k < n; k++) state.joins.push({ a: Math.min(k, (k + 1) % n), b: Math.max(k, (k + 1) % n), gap: false });
     state.joins[0].gap = true;
@@ -260,6 +294,7 @@
       components: components(s),
       percentUsed: s.budget ? Math.round((fig.points.length / s.budget) * 100) : 0,
       allPlaced: fig.points.length === s.budget,
+      overBudget: overBudget(s),
       productionBudget: PRODUCTION_BUDGET,
       aboveProduction: s.budget > PRODUCTION_BUDGET,
       validator: null
@@ -279,7 +314,7 @@
   // it has at least one gap to complete. Nothing else is asked.
   function playable(s) {
     var m = metrics(s || state);
-    return !!(m.validator && m.validator.ok && m.missing > 0);
+    return !!(m.validator && m.validator.ok && m.missing > 0 && !m.overBudget);
   }
 
   // ---------------------------------------------------------------
@@ -396,8 +431,19 @@
       // How the figure was made — a subject the author typed and whether
       // a reference was used. Words only: no sketch, no anchors, no
       // feature list ever lands here.
-      authoring: authoringOf(state.authoring)
+      authoring: authoringOf(state.authoring),
+      // Per light, the feature it was accepted for — a word or null.
+      roles: rolesOf(state),
+      // The frozen research artifact, when the figure has been approved
+      // and not changed since.
+      approved: state.approved ? JSON.parse(JSON.stringify(state.approved)) : null
     };
+  }
+
+  function rolesOf(s) {
+    var out = [];
+    for (var i = 0; i < s.points.length; i++) out.push(s.roles && s.roles[i] ? String(s.roles[i]).toUpperCase().slice(0, 24) : null);
+    return out;
   }
 
   function authoringOf(a) {
@@ -409,6 +455,11 @@
   function setAuthoring(a) { state.authoring = authoringOf(a); emit(); }
 
   function save() {
+    // A fixture is saved only at or under its budget. A figure that
+    // exceeds the budget is kept whole on screen — that is what a budget
+    // change promises — and Save says so rather than storing something a
+    // reopen would refuse.
+    if (overBudget()) return { ok: false, reason: 'figure-exceeds-budget:' + state.points.length + '>' + state.budget };
     var arr = readStore();
     var now = new Date().toISOString();
     var rec = serialize();
@@ -450,8 +501,20 @@
     state.judgement = rec.judgement || null;
     state.tease = !!rec.tease;
     state.authoring = authoringOf(rec.authoring);
+    state.roles = rolesOf({ points: state.points, roles: Array.isArray(rec.roles) ? rec.roles : [] });
+    state.approved = approvedOf(rec.approved, state);
     pendingA = null;
     return { ok: true };
+  }
+
+  // A stored approval is honoured only while it still describes the
+  // stored figure; anything else is dropped rather than trusted.
+  function approvedOf(a, s) {
+    if (!a || typeof a !== 'object' || a.kind !== APPROVED_KIND) return null;
+    var fig = figureOf(s);
+    if (JSON.stringify(a.points) !== JSON.stringify(fig.points) || JSON.stringify(a.joins) !== JSON.stringify(fig.joins) ||
+        JSON.stringify(a.missing) !== JSON.stringify(fig.gaps) || Number(a.budget) !== s.budget) return null;
+    return JSON.parse(JSON.stringify(a));
   }
 
   function load(id) {
@@ -490,6 +553,46 @@
   }
 
   function list() { return readStore(); }
+
+  // ---------------------------------------------------------------
+  // APPROVE FIGURE — freeze the authored figure as the research artifact.
+  // What it holds: the points, the joins, which joins are gaps, the
+  // budget it was authored at, and per light the feature it was accepted
+  // for (a word), plus the researcher's name for it and the subject they
+  // typed. What it cannot hold, by construction: an outline, a sketch,
+  // a blueprint, a landmark, an anchor, anything private, anything of the
+  // Ether's. It is stored ON the fixture, exported through the existing
+  // export, and shown in an APPROVED FIGURE state. Approving activates
+  // nothing, publishes nothing, and makes no hint, gap, challenge,
+  // completion, awakening, roaming or pool entry.
+  // ---------------------------------------------------------------
+  var APPROVED_KIND = 'vihu-shape-lab-approved-figure';
+
+  function approve() {
+    if (!state.points.length) return { ok: false, reason: 'no-lights' };
+    if (overBudget()) return { ok: false, reason: 'figure-exceeds-budget:' + state.points.length + '>' + state.budget };
+    var fig = figureOf(state);
+    var roles = rolesOf(state);
+    var art = {
+      kind: APPROVED_KIND,
+      labVersion: LAB_VERSION,
+      approvedAt: new Date().toISOString(),
+      name: state.name || '',
+      subject: state.authoring && state.authoring.subject ? state.authoring.subject : '',
+      budget: state.budget,
+      points: fig.points, joins: fig.joins, missing: fig.gaps,
+      // semantic feature associations: light index → feature name
+      roles: roles.map(function (r, i) { return r ? { light: i, feature: r } : null; }).filter(Boolean)
+    };
+    state.approved = art;
+    emit();
+    return { ok: true, approved: JSON.parse(JSON.stringify(art)) };
+  }
+
+  function exportApproved() {
+    if (!state.approved) return null;
+    return JSON.stringify(state.approved, null, 2);
+  }
 
   function setJudgement(j) { state.judgement = j || null; emit(); }
   function setName(v) { state.name = String(v || ''); emit(); }
@@ -556,9 +659,15 @@
           // it is an ordinary light either way.
           var Ref = global.LabReference;
           var sn = (Ref && Ref.snap) ? Ref.snap(u) : null;
-          if (sn) u = sn;
-          var r = addPoint(u[0], u[1]);
-          if (!r.ok) say('This budget is full — ' + state.budget + ' lights. Choose a larger budget or take one away.');
+          var role = null;
+          if (sn) { u = [sn.x, sn.y]; role = sn.name || null; }
+          var r = addPoint(u[0], u[1], role);
+          if (!r.ok) say(overBudget()
+            ? 'The figure already has ' + state.points.length + ' lights — more than this ' + state.budget + '-light budget holds. Take some away, or choose a larger budget.'
+            : 'This budget is full — ' + state.budget + ' lights. Choose a larger budget or take one away.');
+          // Accepting a feature's suggestion brings that feature into
+          // focus, so its related points appear for the next press.
+          else if (role && Ref && Ref.focus && Ref.focused && Ref.focused() !== role) Ref.focus(role);
         }
       } else if (mode === 'move') {
         if (pi !== -1) { dragging = pi; canvas.setPointerCapture(ev.pointerId); }
@@ -606,8 +715,8 @@
     if (!box) return;
     var rows = [
       ['budget', m.budget + (m.aboveProduction ? ' — Lab research budget; the product performs ' + m.productionBudget : ' — the production budget')],
-      ['points', m.points + ' / ' + m.budget + ' (' + m.percentUsed + '%)'],
-      ['all points placed', m.allPlaced ? 'yes' : 'no'],
+      ['points', m.points + ' / ' + m.budget + ' (' + m.percentUsed + '%)' + (m.overBudget ? ' — EXCEEDS the selected budget by ' + m.overBudget : '')],
+      ['all points placed', m.allPlaced ? 'yes' : (m.overBudget ? 'over budget' : 'no')],
       ['connections', String(m.connections)],
       ['missing joins', String(m.missing)],
       ['connected components (unfinished)', String(m.components)],
@@ -623,12 +732,42 @@
       var why = el('[data-play-why]');
       if (why) {
         why.textContent = can ? '' :
-          (m.aboveProduction
+          (m.overBudget
+            ? 'The figure has ' + m.points + ' lights and the selected budget is ' + m.budget + ' — it exceeds the budget by ' + m.overBudget + '. Nothing was removed; take lights away by hand, or choose a larger budget.'
+            : m.aboveProduction
             ? 'The real Ether performs up to ' + m.productionBudget + ' lights. A ' + m.budget + '-light figure can be judged here and cannot be played there — the runtime is not changed by this tool.'
             : (m.missing === 0 ? 'Mark at least one join as missing — a figure with no gap is not unfinished.'
                                : 'The real validator refuses this figure: ' + (m.validator ? m.validator.reasons.join(', ') : '')));
       }
     }
+    renderApproval(m);
+  }
+
+  function renderApproval(m) {
+    var btn = el('[data-approve]'), box = el('[data-approved]'), why = el('[data-approve-why]');
+    if (btn) btn.disabled = !state.points.length || !!m.overBudget || !!state.approved;
+    if (why) {
+      why.textContent = state.approved ? '' :
+        (!state.points.length ? 'Place at least one light to have a figure to approve.'
+          : m.overBudget ? 'The figure exceeds the selected budget by ' + m.overBudget + ' — take lights away or choose a larger budget before approving.'
+          : '');
+    }
+    var sec = el('[data-approve-section]');
+    if (sec) sec.setAttribute('data-approve-state', state.approved ? 'approved' : 'unapproved');
+    if (!box) return;
+    if (!state.approved) {
+      box.hidden = true; box.innerHTML = '';
+      var out = el('[data-approved-out]'); if (out) { out.hidden = true; out.value = ''; }
+      return;
+    }
+    var a = state.approved;
+    box.hidden = false;
+    box.innerHTML = '<div class="approved-head">APPROVED FIGURE</div>' +
+      '<div class="mrow"><span class="mk">approved</span><span class="mv">' + esc(a.approvedAt) + '</span></div>' +
+      '<div class="mrow"><span class="mk">budget</span><span class="mv">' + a.budget + '</span></div>' +
+      '<div class="mrow"><span class="mk">lights · joins · missing</span><span class="mv">' + a.points.length + ' · ' + a.joins.length + ' · ' + a.missing.length + '</span></div>' +
+      '<div class="mrow"><span class="mk">feature associations</span><span class="mv">' + (a.roles.length ? esc(a.roles.map(function (r) { return r.light + ':' + r.feature; }).join(' · ')) : '— (every light placed freehand)') + '</span></div>' +
+      '<div class="note">Frozen as authored. Nothing was activated, published or put in a pool; no hint, gap, challenge or awakening was made. Any edit to the figure clears the approval — approve again to refreeze it.</div>';
   }
 
   function esc(s) {
@@ -749,7 +888,9 @@
       b.classList.toggle('on', Number(b.getAttribute('data-budget')) === state.budget);
     });
     var bl = el('[data-budget-label]');
-    if (bl) bl.textContent = 'TESTING ' + state.budget + ' POINTS' + (state.budget > PRODUCTION_BUDGET ? ' — Lab authoring / research budget · production currently supports ' + PRODUCTION_BUDGET : ' — the production budget');
+    if (bl) bl.textContent = 'TESTING ' + state.budget + ' POINTS' + (state.budget > PRODUCTION_BUDGET ? ' — Lab authoring / research budget · production currently supports ' + PRODUCTION_BUDGET : ' — the production budget') +
+      (overBudget() ? ' · FIGURE EXCEEDS BUDGET (' + state.points.length + ' lights)' : '');
+    doc.body.classList.toggle('over-budget', overBudget() > 0);
     doc.querySelectorAll('[data-mode]').forEach(function (b) {
       b.classList.toggle('on', b.getAttribute('data-mode') === mode);
     });
@@ -770,7 +911,9 @@
     doc.querySelectorAll('[data-budget]').forEach(function (b) {
       b.addEventListener('click', function () {
         var r = setBudget(Number(b.getAttribute('data-budget')));
-        say(r.ok ? '' : 'The figure has ' + state.points.length + ' lights — more than that budget holds. Take some away first; nothing is trimmed for you.');
+        say(!r.ok ? 'Not a budget.' : r.overBudget
+          ? 'The figure has ' + r.lights + ' lights — ' + r.overBudget + ' more than this ' + state.budget + '-light budget holds. It is kept whole; nothing is trimmed for you. Take lights away by hand if you want it to fit.'
+          : '');
       });
     });
     doc.querySelectorAll('[data-mode]').forEach(function (b) {
@@ -785,7 +928,7 @@
     var rs = el('[data-reset]'); if (rs) rs.addEventListener('click', function () { reset(); say(''); });
     var dm = el('[data-demo]'); if (dm) dm.addEventListener('click', function () { demoRing(); say('A neutral ring at this budget — not a creature, only the tool working.'); });
     var sv = el('[data-save]'); if (sv) sv.addEventListener('click', function () {
-      var r = save(); say(r.ok ? 'Saved as ' + r.id + '.' : 'Could not save — this browser refused storage.');
+      var r = save(); say(r.ok ? 'Saved as ' + r.id + '.' : (/exceeds-budget/.test(r.reason || '') ? 'Not saved: the figure exceeds the selected budget. Take lights away or choose a larger budget first — nothing is trimmed for you.' : 'Could not save — this browser refused storage.'));
     });
     var nw = el('[data-new]'); if (nw) nw.addEventListener('click', function () {
       // The same figure, unsaved, so a variation can be saved beside
@@ -801,6 +944,14 @@
       say(r.ok ? 'Imported ' + r.added + ' fixture(s)' + (r.refused ? ', refused ' + r.refused : '') + '.' : 'Not imported: ' + r.reason + '.');
     });
     var cs = el('[data-compare-name]'); if (cs) cs.addEventListener('change', renderCompare);
+    var ap = el('[data-approve]'); if (ap) ap.addEventListener('click', function () {
+      var r = approve();
+      say(r.ok ? 'Figure approved — frozen as the research artifact. Save fixture keeps it with the fixture.' : 'Not approved: ' + String(r.reason).replace(/-/g, ' ') + '.');
+    });
+    var ax = el('[data-approved-export]'); if (ax) ax.addEventListener('click', function () {
+      var out = el('[data-approved-out]'); var txt = exportApproved();
+      if (out && txt) { out.value = txt; out.hidden = false; out.select(); }
+    });
     var play = el('[data-play]'); if (play) play.addEventListener('click', function () {
       if (!playable()) return;
       var cand = candidateFor(state);
@@ -853,6 +1004,7 @@
     // editing
     setBudget: setBudget, addPoint: addPoint, movePoint: movePoint, deletePoint: deletePoint,
     toggleJoin: toggleJoin, toggleGap: toggleGap, reset: reset, demoRing: demoRing,
+    approve: approve, exportApproved: exportApproved, APPROVED_KIND: APPROVED_KIND,
     setMode: function (m) { mode = m; pendingA = null; emit(); },
     setName: setName, setHint: setHint, setNotes: setNotes, setTease: setTease,
     setJudgement: setJudgement, setAuthoring: setAuthoring,
@@ -862,6 +1014,8 @@
     // reading
     state: function () { return JSON.parse(JSON.stringify(serialize())); },
     figure: function () { return figureOf(state); },
+    roles: function () { return rolesOf(state); },
+    approved: function () { return state.approved ? JSON.parse(JSON.stringify(state.approved)) : null; },
     metrics: function () { return metrics(); },
     playable: function () { return playable(); },
     candidateFor: function (rec) {

@@ -109,6 +109,18 @@
   .tk { color: var(--dim); min-width: 92px; } .tv { color: var(--ink); word-break: break-word; }
   .tv.bad { color: var(--warn); } .tv.good { color: var(--good); }
   .flow { color: var(--dim); font-size: 12px; margin: 6px 0 0; padding-left: 18px; }
+  .approved { border: 1px solid var(--good); border-radius: 8px; padding: 8px 10px; margin: 6px 0; }
+  .approved-head { color: var(--good); font-weight: 700; letter-spacing: .08em; font-size: 12px; margin-bottom: 4px; }
+  [data-approve-state="approved"] h2 { color: var(--good); }
+  body.over-budget #budgetLabel { color: var(--warn); border-color: var(--warn); }
+  [data-budget] { min-width: 0; padding: 6px 9px; }
+  .bp-focus { background: none; border: none; padding: 0; color: var(--ink); font: inherit; font-weight: 700; cursor: pointer; text-align: left; }
+  .bp-focus:hover { color: var(--gold); border: none; }
+  .bp-f.focus .bp-focus { color: var(--mid); font-weight: 700; }
+  .bp-sugg { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0 6px; }
+  .bp-s { font-size: 11px; padding: 1px 6px; border-radius: 10px; border: 1px dashed var(--line); color: var(--ink); }
+  .bp-s.l2 { color: var(--dim); } .bp-s.l3 { color: var(--dim); opacity: .75; }
+  .bp-s.focus { border-color: var(--mid); color: var(--mid); }
   .flow li { margin: 1px 0; }
 </style>
 </head>
@@ -127,11 +139,13 @@
     <h2>Point budget</h2>
     <div class="row">
       <button data-budget="8" class="on">8</button>
+      <button data-budget="10">10</button>
       <button data-budget="12">12</button>
       <button data-budget="16">16</button>
+      <button data-budget="18">18</button>
       <button data-budget="20">20</button>
     </div>
-    <div class="note">8 is the production budget. 12, 16 and 20 are Lab authoring / research budgets: a figure above 8 can be drawn and judged here, and the real validator's refusal is shown beside it. Shrinking a budget under a bigger figure is refused — nothing is trimmed for you. Nothing here changes the runtime.</div>
+    <div class="note">8 is the production budget; 10–20 are Lab authoring budgets, judged here and refused by the real validator beside the figure. A budget is an authoring target: shrinking it under a bigger figure keeps every light and says the figure <b>exceeds</b> it. Nothing is trimmed, and nothing here changes the runtime.</div>
   </section>
 
   <section>
@@ -208,12 +222,12 @@
       <label style="margin:0"><input type="checkbox" data-ref-labels checked disabled> feature labels</label>
       <label style="margin:0"><input type="checkbox" data-ref-suggest checked disabled> suggested points</label>
     </div>
-    <div class="note">The <b>Creature Outline Reference</b> is a simple monochrome silhouette to draw over — composed from the blueprint's features as a visual authoring guide, never the creature. It is drawn under your lights, takes no clicks, is never on the unfinished pane, and has no place in a fixture, a candidate, the preview or the Ether. Suggested points are faint marks on the outline a click accepts; once placed they are ordinary lights, yours to move or delete. Turn the reference OFF to judge the Ether figure alone. A failed or rejected LLM result never becomes a Fixture and never replaces the reference you had.</div>
+    <div class="note">The <b>Creature Outline Reference</b> is a simple monochrome silhouette to draw over — composed from the blueprint's features as a visual authoring guide, never the creature. It is drawn under your lights, takes no clicks, is never on the unfinished pane, and has no place in a fixture, a candidate, the preview or the Ether. <b>Suggested points</b> are marked places on the outline — each one a feature or a structural spot (a head, a shoulder, a wing tip, a wing root) — ranked by how diagnostic the blueprint says the feature is, and cut to the budget you have chosen: change the budget and they are recomputed. A click near one accepts it; once placed it is an ordinary light, yours to move or delete, and nothing is ever placed for you. Choose a feature in the blueprint panel (or accept one of its points) to see that feature's related points in gold. Turn the reference OFF to judge the Ether figure alone: the outline and every suggestion go, your lights and joins stay. A failed or rejected LLM result never becomes a Fixture and never replaces the reference you had.</div>
     <details><summary>The flow, in ten steps</summary>
     <ol class="flow">
       <li>Enter a creature</li><li>Generate a reference</li><li>Choose a budget</li>
       <li>Place points over the reference</li><li>Move points</li><li>Join points</li>
-      <li>Toggle the reference OFF</li><li>Judge</li><li>Optionally switch budget</li><li>Save fixture</li>
+      <li>Toggle the reference OFF</li><li>Judge</li><li>Optionally switch budget</li><li>Approve the figure, then save the fixture</li>
     </ol>
     </details>
   </section>
@@ -258,6 +272,18 @@
     </div>
     <div class="note" data-play-why></div>
     <div class="note">Opens the real Ether preview with this figure's exact points, joins and gaps: two-tap interaction, completion, and the existing awakening. The creature name never travels; the hint travels beside the figure. Available only where the real Ether can perform the figure.</div>
+  </section>
+
+  <section data-approve-section data-approve-state="unapproved">
+    <h2>Approve figure</h2>
+    <div class="row">
+      <button data-approve class="primary" disabled>✓ Approve figure</button>
+      <button data-approved-export class="quiet">Show approved artifact</button>
+    </div>
+    <div class="note" data-approve-why></div>
+    <div class="approved" data-approved hidden></div>
+    <textarea data-approved-out hidden readonly style="min-height:90px;font-family:ui-monospace,monospace;font-size:11px"></textarea>
+    <div class="note">Freezes the authored figure as the research artifact: points, joins, gaps, the selected budget, and which feature each light was accepted for. Never the outline, the sketch, the blueprint or anything private. Approving activates nothing and publishes nothing — no hint, no gaps, no challenge, no completion, no awakening, no pool entry. Saved with the fixture; any later edit clears it.</div>
   </section>
 
   <section>

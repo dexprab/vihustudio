@@ -3928,8 +3928,10 @@ async function sectionSL() {
   ck(rndLines.length > 0 && rndLines.every((l) => /'shape-'/.test(l)),
     'SL2d Math.random mints fixture ids and nothing else — a missing join is never chosen at random',
     rndLines.length + ' line(s)');
-  ck(/BUDGETS\s*=\s*\[\s*8,\s*12,\s*16,\s*20\s*\]/.test(shapeSrc) && /PRODUCTION_BUDGET\s*=\s*8\b/.test(shapeSrc),
-    'SL2e the four budgets 8 · 12 · 16 · 20 live in the Lab file alone, with 8 named as production');
+  // (Six budgets since the Adaptive Suggested Points sprint: 10 and 18
+  // joined the four. Still the Lab file alone, still 8 named production.)
+  ck(/BUDGETS\s*=\s*\[\s*8,\s*10,\s*12,\s*16,\s*18,\s*20\s*\]/.test(shapeSrc) && /PRODUCTION_BUDGET\s*=\s*8\b/.test(shapeSrc),
+    'SL2e the six budgets 8 · 10 · 12 · 16 · 18 · 20 live in the Lab file alone, with 8 named as production');
 
   // ---- the browser half: the real page, driven the way a person drives it ----
   const server = spawn('node', ['tools/bring-it-alive/test/serve.js', String(PORT)],
@@ -4040,15 +4042,25 @@ async function sectionSL() {
     ck(afterNinth.s.points.length === 8 && /full/.test(afterNinth.say) && !apiNinth.ok && /budget-full:8/.test(apiNinth.reason),
       'SL5  a ninth light at budget 8 is refused — on the canvas with a sentence, and at the API by name',
       afterNinth.say + ' / ' + apiNinth.reason);
-    // Shrinking under a bigger figure is refused, never trimmed.
+    // TURNED ROUND (Adaptive Suggested Points sprint). This read "shrinking
+    // the budget under a 12-light figure is refused" — a budget change was
+    // a refusal. The brief makes the budget an authoring TARGET, never a
+    // destructive operation: shrinking is ALLOWED, every light is kept,
+    // and the figure is shown to EXCEED the selected budget. What the old
+    // check was protecting — nothing is ever trimmed — is still asserted.
     await page.click('[data-reset]');
     await page.click('[data-budget="12"]');
     await drawRing(12);
     await page.click('[data-budget="8"]');
     const shrunk = await readState();
-    ck(shrunk.s.budget === 12 && shrunk.s.points.length === 12 && /nothing is trimmed/i.test(shrunk.say),
-      'SL5b shrinking the budget under a 12-light figure is refused, and nothing is trimmed',
-      'budget:' + shrunk.s.budget + ' points:' + shrunk.s.points.length);
+    ck(shrunk.s.budget === 8 && shrunk.s.points.length === 12 && shrunk.m.overBudget === 4 && /nothing is trimmed/i.test(shrunk.say) &&
+       /EXCEEDS BUDGET \(12 lights\)/.test(shrunk.label) && /exceeds the budget by 4/.test(shrunk.why) && shrunk.playDisabled,
+      'SL5b shrinking the budget under a 12-light figure is ALLOWED and deletes nothing — the figure is kept whole and shown to exceed the 8-light budget, in the header, the metrics and beside Play',
+      'budget:' + shrunk.s.budget + ' points:' + shrunk.s.points.length + ' over:' + shrunk.m.overBudget);
+    const overSave = await page.evaluate(() => { const S = window.ShapeLab; return { save: S.save(), add: S.addPoint(0, 0), n: S.figure().points.length, stored: S.list().length }; });
+    ck(!overSave.save.ok && /figure-exceeds-budget:12>8/.test(overSave.save.reason) && !overSave.add.ok && overSave.n === 12 && overSave.stored === 0,
+      'SL5b2 while it exceeds the budget nothing can be ADDED and it cannot be SAVED (a stored fixture stays at or under its budget) — and still nothing is deleted', overSave.save.reason);
+    await page.click('[data-budget="12"]');
     const badRec = await page.evaluate(() => {
       const S = window.ShapeLab;
       const pts = []; for (let i = 0; i < 13; i++) pts.push([Math.cos(i) * 0.9, Math.sin(i) * 0.9]);
@@ -4901,15 +4913,15 @@ async function sectionAR() {
       const api = ['setBudget', 'addPoint', 'movePoint', 'deletePoint', 'toggleJoin', 'toggleGap', 'reset', 'demoRing', 'setMode',
         'setName', 'setHint', 'setNotes', 'setTease', 'setJudgement', 'state', 'figure', 'metrics', 'playable', 'candidateFor',
         'save', 'load', 'duplicate', 'remove', 'list', 'compare', 'names', 'exportJSON', 'importJSON', 'draw', 'render'];
-      const controls = ['[data-budget="8"]', '[data-budget="12"]', '[data-budget="16"]', '[data-budget="20"]', '[data-mode="add"]', '[data-mode="move"]',
+      const controls = ['[data-budget="8"]', '[data-budget="10"]', '[data-budget="12"]', '[data-budget="16"]', '[data-budget="18"]', '[data-budget="20"]', '[data-mode="add"]', '[data-mode="move"]',
         '[data-mode="delete"]', '[data-mode="join"]', '[data-mode="gap"]', '[data-reset]', '[data-demo]', '[data-name]', '[data-hint]', '[data-notes]',
         '[data-save]', '[data-new]', '[data-play]', '[data-tease]', '[data-compare-name]', '[data-judgement]', '[data-fixtures]', '[data-export]', '[data-import]',
         '[data-canvas-complete]', '[data-canvas-unfinished]'];
       return { api: api.filter((k) => typeof S[k] !== 'function'), controls: controls.filter((c) => !document.querySelector(c)),
         keys: Object.keys(localStorage), budgets: S.BUDGETS.join(','), prod: S.PRODUCTION_BUDGET, ref: LabReference.current() };
     });
-    ck(intact.api.length === 0 && intact.controls.length === 0 && intact.keys.length === 0 && errors.length === 0 && intact.budgets === '8,12,16,20' && intact.prod === 8 && intact.ref === null,
-      'AR4  the existing Shape Lab is intact — every API function and control still there, budgets 8·12·16·20, nothing written, no reference on load',
+    ck(intact.api.length === 0 && intact.controls.length === 0 && intact.keys.length === 0 && errors.length === 0 && intact.budgets === '8,10,12,16,18,20' && intact.prod === 8 && intact.ref === null,
+      'AR4  the existing Shape Lab is intact — every API function and control still there, budgets 8·10·12·16·18·20, nothing written, no reference on load',
       'missing api:' + intact.api.join(',') + ' controls:' + intact.controls.join(','));
     // the manual editor with NO reference behaves exactly as before: a click lands where pressed
     await page.evaluate(() => { window.ShapeLab.setBudget(8); });
@@ -4980,17 +4992,20 @@ async function sectionAR() {
       return { x: b.left + q[0], y: b.top + q[1], want: [s.x, s.y], name: s.name, count: LabReference.suggestions().length };
     });
     await page.mouse.click(near.x, near.y);
-    const snapped = await page.evaluate(() => ({ pts: window.ShapeLab.figure().points, sugg: LabReference.suggestions().map((s) => s.name) }));
+    // (Accepting a feature's suggestion brings that feature into FOCUS,
+    // which exposes its related landmarks beside the budgeted list — so the
+    // count and the name are read from the BUDGETED suggestions alone.)
+    const snapped = await page.evaluate(() => ({ pts: window.ShapeLab.figure().points, sugg: LabReference.suggestions().filter((s) => s.budgeted).map((s) => s.name), role: window.ShapeLab.roles()[1], focus: LabReference.focused() }));
     ck(snapped.pts.length === 2 && snapped.pts[1][0] === near.want[0] && snapped.pts[1][1] === near.want[1],
       'AR7  a click near a suggested point ACCEPTS it — the light snaps to the suggestion', JSON.stringify(snapped.pts[1]) + ' wanted ' + JSON.stringify(near.want));
-    ck(snapped.sugg.length === near.count - 1 && snapped.sugg.indexOf(near.name) === -1,
-      'AR7b and the accepted suggestion is no longer suggested — a mark is never drawn where a light already stands');
+    ck(snapped.sugg.length === near.count - 1 && !snapped.sugg.some((n, i) => n === near.name && i === 0) && snapped.role === near.name && snapped.focus === near.name,
+      'AR7b and the accepted suggestion is no longer suggested — a mark is never drawn where a light already stands; the light carries the feature it was accepted for, and that feature comes into focus');
     const edited = await page.evaluate(() => {
       const S = window.ShapeLab;
       const mv = S.movePoint(1, 0.9, 0.9);
       const after = S.figure().points[1].slice();
       const del = S.deletePoint(1);
-      return { mv: mv.ok, after, del: del.ok, n: S.figure().points.length, back: LabReference.suggestions().length };
+      return { mv: mv.ok, after, del: del.ok, n: S.figure().points.length, back: LabReference.suggestions().filter((s) => s.budgeted).length };
     });
     ck(edited.mv && edited.after[0] === 0.9 && edited.after[1] === 0.9 && edited.del && edited.n === 1 && edited.back === near.count,
       'AR7c an accepted point is an ordinary light — moved, then deleted, and the suggestion returns when the place is free again');
@@ -5043,22 +5058,29 @@ async function sectionAR() {
 
     // ---- AR9: budgets ----
     const budgets = {};
-    for (const b of [8, 12, 16, 20]) {
-      budgets[b] = await page.evaluate((bb) => { window.ShapeLab.setBudget(bb); return { label: document.querySelector('[data-budget-label]').textContent, sugg: LabReference.suggestions().length }; }, b);
+    for (const b of [8, 10, 12, 16, 18, 20]) {
+      budgets[b] = await page.evaluate((bb) => { window.ShapeLab.setBudget(bb); return { label: document.querySelector('[data-budget-label]').textContent, sugg: LabReference.suggestions().filter((x) => x.budgeted).length }; }, b);
     }
-    ck([8, 12, 16, 20].every((b) => new RegExp('TESTING ' + b + ' POINTS').test(budgets[b].label)) &&
-       [12, 16, 20].every((b) => /authoring/.test(budgets[b].label) && /production currently supports 8/.test(budgets[b].label)) && /production budget/.test(budgets[8].label),
-      'AR9  the four budgets stay 8 · 12 · 16 · 20 and the header says TESTING N POINTS · Lab authoring budget · production currently supports 8', budgets[12].label);
-    ck([8, 12, 16, 20].every((b) => budgets[b].sugg <= b), 'AR9b suggestions never exceed the budget');
+    ck([8, 10, 12, 16, 18, 20].every((b) => new RegExp('TESTING ' + b + ' POINTS').test(budgets[b].label)) &&
+       [10, 12, 16, 18, 20].every((b) => /authoring/.test(budgets[b].label) && /production currently supports 8/.test(budgets[b].label)) && /production budget/.test(budgets[8].label),
+      'AR9  the six budgets are 8 · 10 · 12 · 16 · 18 · 20 and the header says TESTING N POINTS · Lab authoring budget · production currently supports 8', budgets[12].label);
+    // (the BUDGETED suggestions: a feature in focus exposes its related
+    // landmarks beside them, and those are deliberately not bounded by the
+    // budget — the budget bounds what is suggested unasked)
+    ck([8, 10, 12, 16, 18, 20].every((b) => budgets[b].sugg <= b), 'AR9b budgeted suggestions never exceed the budget', JSON.stringify([8, 10, 12, 16, 18, 20].map((b) => budgets[b].sugg)));
+    // TURNED ROUND (Adaptive Suggested Points sprint): this asserted the
+    // shrink was REFUSED. The budget is an authoring target now — the
+    // shrink is allowed, the figure is kept whole, and the state says it
+    // exceeds the budget. "Deletes nothing" is what it always guarded.
     const shrink = await page.evaluate(() => {
       const S = window.ShapeLab;
       S.setBudget(12); S.reset(); S.setBudget(12);
       for (let i = 0; i < 10; i++) S.addPoint(-1 + i * 0.2, 0.5);
       const r = S.setBudget(8);
-      return { r, n: S.figure().points.length, budget: S.state().budget };
+      return { r, n: S.figure().points.length, budget: S.state().budget, over: S.metrics().overBudget };
     });
-    ck(!shrink.r.ok && /figure-has-10-lights/.test(shrink.r.reason) && shrink.n === 10 && shrink.budget === 12,
-      'AR9c reducing the budget under a bigger figure is refused and deletes nothing', shrink.r.reason);
+    ck(shrink.r.ok && shrink.r.overBudget === 2 && shrink.n === 10 && shrink.budget === 8 && shrink.over === 2,
+      'AR9c reducing the budget under a bigger figure is allowed, deletes nothing, and reports the figure exceeds it by 2', JSON.stringify(shrink.r));
     await page.evaluate(() => { window.ShapeLab.reset(); window.ShapeLab.setBudget(8); });
 
     // ---- AR10: what the fixture holds, and what it does not ----
@@ -5074,7 +5096,7 @@ async function sectionAR() {
       const rec = S.list().filter((x) => x.id === r.id)[0];
       return { ok: r.ok, keys: Object.keys(rec).sort(), authoring: rec.authoring, json: JSON.stringify(rec), storeKeys: Object.keys(localStorage), exportHas: /sketch|anchor|silhouette|feature|ellipse|polygon/i.test(S.exportJSON()) };
     });
-    const allowedKeys = ['authoring', 'budget', 'createdAt', 'hint', 'id', 'joins', 'judgement', 'labVersion', 'missing', 'name', 'notes', 'points', 'tease', 'updatedAt'];
+    const allowedKeys = ['approved', 'authoring', 'budget', 'createdAt', 'hint', 'id', 'joins', 'judgement', 'labVersion', 'missing', 'name', 'notes', 'points', 'roles', 'tease', 'updatedAt'];
     ck(saved.ok && saved.keys.every((k) => allowedKeys.indexOf(k) !== -1) && JSON.stringify(Object.keys(saved.authoring).sort()) === JSON.stringify(['referenceUsed', 'source', 'subject']),
       'AR10 the saved fixture is the author\'s geometry plus allowed metadata — and the authoring note is three words about HOW, never geometry', saved.keys.join(','));
     ck(!/sketch|anchor|silhouette|feature|ellipse|polygon/i.test(saved.json) && !saved.exportHas && saved.storeKeys.length === 1 && saved.storeKeys[0] === 'vihu.lab.shapes',
@@ -5136,9 +5158,14 @@ async function sectionAR() {
     await page.click('[data-ref-generate]');
     await page.waitForFunction(() => LabReference.current() && LabReference.current().subject === 'Dragon');
     const gen = await page.evaluate(() => ({ meta: LabReference.meta(), status: document.querySelector('[data-ref-status]').textContent, sketch: LabReference.current().sketch.length,
-      authoring: ShapeLab.state().authoring, src: document.querySelector('[data-ref-source]').textContent, sugg: LabReference.suggestions().map((s) => s.name) }));
-    ck(gen.meta.source === 'generated' && gen.meta.mode === 'endpoint' && /LLM reference in place for "Dragon"/.test(gen.status) && gen.sketch === 4 && gen.authoring.source === 'generated' && /LLM — Endpoint \(gpt-4o-mini\) — generated for "Dragon"/.test(gen.src) && gen.sugg.join(',') === 'WING,WING,HEAD,TAIL',
-      'AR11 a generated reply becomes the reference, labelled generated, with its budget-8 suggestions on the outline (two wing tips, a head, a tail)', gen.sugg.join(','));
+      authoring: ShapeLab.state().authoring, src: document.querySelector('[data-ref-source]').textContent, sugg: LabReference.suggestions().map((s) => s.name), labels: LabReference.suggestions().map((s) => s.label) }));
+    // (Since the Adaptive Suggested Points sprint the budget-8 list is the
+    // RANKING cut to eight: the defining points first — both wing tips, the
+    // head, the tail tip — then the wing roots and the tail base. LEG is
+    // outside the blueprint's own 8 list and is not offered at 8.)
+    ck(gen.meta.source === 'generated' && gen.meta.mode === 'endpoint' && /LLM reference in place for "Dragon"/.test(gen.status) && gen.sketch === 4 && gen.authoring.source === 'generated' && /LLM — Endpoint \(gpt-4o-mini\) — generated for "Dragon"/.test(gen.src) &&
+       gen.sugg.slice(0, 4).join(',') === 'WING,HEAD,WING,TAIL' && gen.sugg.every((n) => ['WING', 'HEAD', 'TAIL'].indexOf(n) !== -1) && gen.labels.slice(0, 4).join(',') === 'left wing tip,head,right wing tip,tail tip' && gen.sugg.length === 8,
+      'AR11 a generated reply becomes the reference, labelled generated, with its budget-8 suggestions ranked on the outline (two wing tips, a head, a tail tip first; then wing roots and the tail base; never LEG, which the blueprint keeps for 12)', gen.labels.join(','));
     const reqJson = JSON.stringify(lastBody);
     ck(lastBody && lastBody.action === 'generate' && Array.isArray(lastBody.messages) && lastBody.messages.length === 2 && lastBody.messages[1].content === 'Subject: Dragon' &&
        !/\b(card|cardId|stars|constellation|memor|story|email|orbit|username|creator|companion|owner)\b/i.test(reqJson) && !/points|joins|gaps/.test(JSON.stringify(lastBody.messages[1])),
@@ -5287,7 +5314,10 @@ async function sectionAR() {
       for (let i = 0; i < d.length; i += 4) { if (d[i] + d[i + 1] + d[i + 2] > 240) lit++; }
       const o = LabReference.outline();
       const sug = LabReference.suggestions();
-      const onOutline = sug.every((s) => Object.keys(o.anchors).some((n) => o.anchors[n].some((q) => q[0] === s.x && q[1] === s.y)));
+      // (Suggestions are the outline's LANDMARKS now — its anchors as level-1
+      // defining points plus its structural and detail marks — so the test
+      // is against the landmark list, which every anchor is also in.)
+      const onOutline = sug.every((s) => o.landmarks.some((l) => l.x === s.x && l.y === s.y && l.name === s.name));
       const bpAnchors = LabReference.current().features.map((f) => f.anchor.join(','));
       return { litFraction: lit / (c.width * c.height), source: o.source, archetype: o.archetype, drawn: o.drawn, sug: sug.length, onOutline,
         anyOnBlueprintAnchor: sug.some((s) => bpAnchors.indexOf(s.x + ',' + s.y) !== -1),
@@ -5296,7 +5326,7 @@ async function sectionAR() {
     ck(ol.litFraction > 0.06 && ol.source === 'lab-parts' && ol.archetype === 'quadruped',
       'AR14g the outline is RENDERED on the underlay — a silhouette covering a real share of the sky, composed from the fixture body plan', 'lit ' + (ol.litFraction * 100).toFixed(1) + '%');
     ck(ol.sug > 0 && ol.onOutline && !ol.anyOnBlueprintAnchor,
-      'AR14h every suggested point sits ON the outline\'s own anchors, none on the assistant\'s sketch coordinates', ol.sug + ' suggestions');
+      'AR14h every suggested point sits ON the outline\'s own landmarks, none on the assistant\'s sketch coordinates', ol.sug + ' suggestions');
     ck(/Creature outline reference — Lab-only deterministic outline/.test(ol.info) && /not provider-generated/.test(ol.info) && /Body plan read from the features: quadruped/.test(ol.info) && /deprecated and not shown/.test(ol.info) &&
        ol.flag && /BLUEPRINT/.test(ol.legend) && /OUTLINE/.test(ol.legend) && /ETHER FIGURE/.test(ol.legend),
       'AR14i the panel says what the outline is (Lab-only, not provider-generated), which body plan it read, that the sketch is deprecated and not shown, and the legend separates BLUEPRINT · OUTLINE · ETHER FIGURE');
@@ -5363,6 +5393,359 @@ async function sectionAR() {
   }
 }
 
+
+// ===================================================================
+// AP. Adaptive Suggested Points & Author-Controlled Creature Geometry
+// (Shape Lab, Lab only). Six authoring budgets; suggestions RANKED from
+// the blueprint's importance and the outline's leveled landmarks and cut
+// to the budget; a budget change that never touches an authored point;
+// APPROVE FIGURE as a frozen research artifact. Production untouched.
+// ===================================================================
+async function sectionAP() {
+  console.log('\n== AP. Adaptive suggested points & author-controlled geometry ==');
+  const { chromium } = require('playwright');
+  const bpSrc = read('tools/ether-mystery-lab/labBlueprint.js');
+  const olSrc = read('tools/ether-mystery-lab/labOutline.js');
+  const refSrc = read('tools/ether-mystery-lab/labReference.js');
+  const shapeSrc = read('tools/ether-mystery-lab/labShape.js');
+  const shapeHtml = read('tools/ether-mystery-lab/shape.html');
+  const labStripped = [bpSrc, olSrc, refSrc, shapeSrc].map(stripComments).join('\n');
+
+  // ---- AP1: statics ----
+  const htmlBudgets = (shapeHtml.match(/data-budget="(\d+)"/g) || []).map((m) => m.replace(/\D/g, ''));
+  ck(htmlBudgets.join(',') === '8,10,12,16,18,20' && /BUDGETS\s*=\s*\[\s*8,\s*10,\s*12,\s*16,\s*18,\s*20\s*\]/.test(shapeSrc) && /BUDGETS\s*=\s*\[\s*8,\s*10,\s*12,\s*16,\s*18,\s*20\s*\]/.test(bpSrc) && /REQUIRED_BUDGETS\s*=\s*\[\s*8,\s*12,\s*16,\s*20\s*\]/.test(bpSrc),
+    'AP1  six authoring budgets — 8 · 10 · 12 · 16 · 18 · 20 — on the page, in the editor and in the blueprint; a reply still needs only the four canonical lists', htmlBudgets.join(','));
+  ck(/arrangementNodesMax:\s*8\b/.test(read('js/etherGrammar.js')),
+    'AP1b the production point limit is untouched — arrangementNodesMax is still 8 in js/etherGrammar.js');
+  ck(!/\b(tiger|lion|elephant|falcon|octopus|eagle|whale|dragon)\b/i.test(labStripped) && !/subject\s*===|subject\s*==\s*['"]/.test(labStripped),
+    'AP1c no subject-specific branch anywhere in the four Lab modules — no creature name in code, no `subject ===`');
+  // The reference layer may never place a light: the only thing that
+  // calls addPoint is the editor answering a real press.
+  const refCalls = stripComments(refSrc).match(/\baddPoint\s*\(/g) || [];
+  ck(refCalls.length === 0 && !/\bmovePoint\s*\(|\btoggleJoin\s*\(|\btoggleGap\s*\(/.test(stripComments(refSrc)) && !/\baddPoint\s*\(|\bmovePoint\s*\(|\btoggleJoin\s*\(/.test(stripComments(bpSrc) + stripComments(olSrc)),
+    'AP1d nothing is ever auto-placed, auto-joined or auto-gapped — the reference, blueprint and outline modules call no editing function');
+  // ("recognisable" is a word the CONTRACT uses — it asks the assistant
+  // what makes a subject recognisable — so it may appear in the prompt
+  // text and nowhere else; a ranking PRIORITY is not a score.)
+  const bpStrippedAP = stripComments(bpSrc);
+  const inPrompt = (bpStrippedAP.match(/recognis/gi) || []).length, inContract = ((bpStrippedAP.match(/'[^'\n]*recognis[^'\n]*'/gi) || []).join('').match(/recognis/gi) || []).length;
+  ck(!/\bscore\b|recognis|fetch\(|XMLHttpRequest/i.test(stripComments(olSrc) + stripComments(refSrc)) && !/\bscore\b|fetch\(|XMLHttpRequest/i.test(bpStrippedAP) && inPrompt === inContract,
+    'AP1e no recognisability score and no model judging anywhere in the ranking, the outline or the reference layer — the researcher judges', 'recognis: ' + inPrompt + ' in file, ' + inContract + ' in the contract string');
+
+  // ---- AP2: the ranking, in Node, across five creatures and six budgets ----
+  const vm = require('vm');
+  const ctx = {}; vm.createContext(ctx);
+  vm.runInContext(bpSrc, ctx); vm.runInContext(olSrc, ctx);
+  const B = ctx.LabBlueprint, O = ctx.LabOutline;
+  const mkBp = (subject, feats, lists) => {
+    const r = B.validate({ subject, silhouette: 'Side on, the whole animal.', features: feats.map((f) => ({ name: f[0], importance: f[1], why: 'It is what names it.', anchor: [0, 0] })), budgets: lists });
+    if (!r.ok) throw new Error(subject + ' ' + r.reasons.join(','));
+    return r.blueprint;
+  };
+  const grow = (a, b, c) => ({ 8: a, 12: b, 16: c, 20: c });
+  const CREATURES = {
+    Lion: mkBp('Lion', [['MANE', 3], ['HEAD', 3], ['POWERFUL BODY', 3], ['LONG TAIL', 2], ['FRONT LEGS', 2], ['HIND LEGS', 2], ['MUZZLE', 1], ['EARS', 1]],
+      grow(['MANE', 'HEAD', 'POWERFUL BODY', 'LONG TAIL', 'FRONT LEGS', 'HIND LEGS'], ['MANE', 'HEAD', 'POWERFUL BODY', 'LONG TAIL', 'FRONT LEGS', 'HIND LEGS', 'MUZZLE'], ['MANE', 'HEAD', 'POWERFUL BODY', 'LONG TAIL', 'FRONT LEGS', 'HIND LEGS', 'MUZZLE', 'EARS'])),
+    Tiger: mkBp('Tiger', [['HEAD', 3], ['BODY', 3], ['FOUR LEGS', 2], ['LONG TAIL', 2], ['EARS', 1], ['MUZZLE', 1], ['STRIPES', 1]],
+      grow(['HEAD', 'BODY', 'FOUR LEGS', 'LONG TAIL', 'EARS', 'MUZZLE'], ['HEAD', 'BODY', 'FOUR LEGS', 'LONG TAIL', 'EARS', 'MUZZLE', 'STRIPES'], ['HEAD', 'BODY', 'FOUR LEGS', 'LONG TAIL', 'EARS', 'MUZZLE', 'STRIPES'])),
+    Falcon: mkBp('Falcon', [['HOOKED BEAK', 3], ['HEAD', 3], ['BODY', 3], ['WINGS', 3], ['TAIL FEATHERS', 2], ['TALONS', 1]],
+      grow(['HOOKED BEAK', 'HEAD', 'BODY', 'WINGS', 'TAIL FEATHERS'], ['HOOKED BEAK', 'HEAD', 'BODY', 'WINGS', 'TAIL FEATHERS', 'TALONS'], ['HOOKED BEAK', 'HEAD', 'BODY', 'WINGS', 'TAIL FEATHERS', 'TALONS'])),
+    Elephant: mkBp('Elephant', [['TRUNK', 3], ['LARGE EARS', 3], ['TUSKS', 2], ['LARGE BODY', 3], ['HEAD', 3], ['THICK LEGS', 2], ['SHORT TAIL', 1]],
+      grow(['TRUNK', 'LARGE EARS', 'TUSKS', 'LARGE BODY', 'HEAD', 'THICK LEGS'], ['TRUNK', 'LARGE EARS', 'TUSKS', 'LARGE BODY', 'HEAD', 'THICK LEGS', 'SHORT TAIL'], ['TRUNK', 'LARGE EARS', 'TUSKS', 'LARGE BODY', 'HEAD', 'THICK LEGS', 'SHORT TAIL'])),
+    Octopus: mkBp('Octopus', [['MANTLE', 3], ['EIGHT ARMS', 3], ['HEAD', 2], ['SUCKERS', 1]],
+      grow(['MANTLE', 'EIGHT ARMS', 'HEAD'], ['MANTLE', 'EIGHT ARMS', 'HEAD', 'SUCKERS'], ['MANTLE', 'EIGHT ARMS', 'HEAD', 'SUCKERS']))
+  };
+  const HIGH = { Lion: ['MANE', 'HEAD', 'POWERFUL BODY'], Tiger: ['HEAD', 'BODY'], Falcon: ['HOOKED BEAK', 'HEAD', 'BODY', 'WINGS'], Elephant: ['TRUNK', 'HEAD', 'LARGE BODY', 'LARGE EARS'], Octopus: ['MANTLE', 'EIGHT ARMS'] };
+  const table = {};
+  let monotonic = true, bounded = true, onLandmark = true, highSurvive = true, extrasStructural = true, varied = true, distinct = true, labelled = true;
+  Object.keys(CREATURES).forEach((name) => {
+    const bp = CREATURES[name], o = O.compose(bp);
+    table[name] = {};
+    let prev = null;
+    B.BUDGETS.forEach((b) => {
+      const sg = B.suggestions(bp, b, o);
+      table[name][b] = sg.map((x) => x.label);
+      if (sg.length > b) bounded = false;
+      if (!sg.every((x) => o.landmarks.some((l) => l.x === x.x && l.y === x.y && l.name === x.name) || bp.features.some((f) => f.anchor[0] === x.x && f.anchor[1] === x.y && f.name === x.name))) onLandmark = false;
+      if (!sg.every((x) => typeof x.label === 'string' && x.label && typeof x.level === 'number')) labelled = false;
+      for (let i = 0; i < sg.length; i++) for (let j = i + 1; j < sg.length; j++) if (Math.hypot(sg[i].x - sg[j].x, sg[i].y - sg[j].y) < 0.07) distinct = false;
+      if (prev) {
+        const keys = (l) => l.map((x) => x.x + ',' + x.y);
+        const pk = keys(prev), ck2 = keys(sg);
+        if (!pk.every((k) => ck2.indexOf(k) !== -1)) monotonic = false;
+        // what a bigger budget ADDS is structure or detail, or a feature the blueprint only opens at that budget
+        const added = sg.filter((x) => pk.indexOf(x.x + ',' + x.y) === -1);
+        const prevNames = prev.map((x) => x.name);
+        if (!added.every((x) => x.level >= 2 || prevNames.indexOf(x.name) === -1 || prev.filter((y) => y.name === x.name && y.level === 1).length < o.landmarks.filter((l) => l.name === x.name && l.level === 1).length)) extrasStructural = false;
+        if (sg.length !== prev.length && keys(sg).join() === keys(prev).join()) varied = false;
+      }
+      prev = sg;
+    });
+    const at8 = table[name][8].slice(), names8 = B.suggestions(bp, 8, o).map((x) => x.name);
+    HIGH[name].forEach((h) => { if (names8.indexOf(h) === -1) highSurvive = false; });
+  });
+  ck(bounded && labelled, 'AP2  every creature × every budget: never more suggestions than the budget, every one labelled with the place it stands for');
+  ck(monotonic, 'AP2b one ranking serves every budget — 8 ⊂ 10 ⊂ 12 ⊂ 16 ⊂ 18 ⊂ 20 for all five creatures: a bigger budget only adds, a smaller one only removes');
+  ck(highSurvive, 'AP2c the most diagnostic features survive the lowest budget — HEAD, BODY, BEAK, TRUNK, WINGS, MANE, MANTLE, ARMS are all in the 8-point set of their creature', JSON.stringify(Object.keys(CREATURES).map((n) => n + ':' + table[n][8].join('/'))));
+  ck(extrasStructural, 'AP2d what a bigger budget adds is a structural or detail place, or a feature the blueprint only opens at that budget — never filler', JSON.stringify(table.Tiger[12]));
+  ck(varied && distinct && onLandmark, 'AP2e six budgets give six different sets, no two marks share a place, and every mark is one of the outline\'s own landmarks (or the blueprint anchor of a feature the outline could not draw)');
+  ck(table.Tiger[8].indexOf('head') !== -1 && table.Tiger[8].indexOf('body') !== -1 && table.Tiger[8].some((l) => /foot/.test(l)) && table.Tiger[8].indexOf('tail tip') !== -1 &&
+     table.Tiger[20].some((l) => /shoulder|rump/.test(l)) && table.Elephant[8].indexOf('trunk tip') !== -1 && table.Elephant[8].some((l) => /ear/.test(l)) && table.Elephant[8].some((l) => /foot/.test(l)),
+    'AP2f and they are meaningful places: the tiger\'s 8 holds its head, body, feet and tail tip; the elephant\'s 8 its trunk, an ear, a foot — nothing here is hard-coded per creature', 'tiger8: ' + table.Tiger[8].join(', ') + ' | elephant8: ' + table.Elephant[8].join(', '));
+  const rel = B.related(CREATURES.Falcon, O.compose(CREATURES.Falcon), 'WINGS').map((x) => x.label);
+  ck(rel.indexOf('left wing tip') !== -1 && rel.indexOf('left wing root') !== -1 && rel.indexOf('left leading edge') !== -1 && rel.indexOf('left trailing edge') !== -1 && rel.every((l) => /wing|edge/.test(l)),
+    'AP2g feature focus: a wing\'s related points are its tip, its root, its leading edge and its trailing edge — and nothing of any other feature', rel.join(', '));
+  const pure = JSON.stringify(B.suggestions(CREATURES.Lion, 12, O.compose(CREATURES.Lion))) === JSON.stringify(B.suggestions(CREATURES.Lion, 12, O.compose(CREATURES.Lion)));
+  ck(pure, 'AP2h the ranking is a pure function — asked twice, one answer');
+
+  // ---- the browser half: the real page, five creatures through the stubbed endpoint ----
+  const server = spawn('node', ['tools/bring-it-alive/test/serve.js', String(PORT)], { cwd: ROOT, stdio: 'ignore' });
+  await new Promise((res) => setTimeout(res, 900));
+  const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+  try {
+    const context = await browser.newContext({ viewport: { width: 1500, height: 1100 } });
+    const page = await context.newPage();
+    const errors = [];
+    page.on('pageerror', (e) => errors.push(String(e).split('\n')[0]));
+    let lastBody = null;
+    await page.route('https://fn.local/lab-generate', (route) => {
+      const body = JSON.parse(route.request().postData() || '{}');
+      lastBody = body;
+      if (body.action === 'ping') return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, build: 'LAB1', provider: 'configured', model: 'gpt-4o-mini' }) });
+      const user = ((body.messages || []).filter((m) => m.role === 'user')[0] || {}).content || '';
+      const subject = user.replace(/^Subject:\s*/, '').trim();
+      const bp = CREATURES[subject];
+      const text = bp ? JSON.stringify(bp) : JSON.stringify(mkBp(subject, [['HEAD', 3], ['BODY', 3], ['TAIL', 2]], grow(['HEAD', 'BODY', 'TAIL'], ['HEAD', 'BODY', 'TAIL'], ['HEAD', 'BODY', 'TAIL'])));
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, model: 'gpt-4o-mini', build: 'LAB1', text }) });
+    });
+    await page.goto(BASE + '/tools/ether-mystery-lab/shape.html');
+    await page.waitForFunction(() => !!window.ShapeLab && !!window.LabReference && !!window.LabBlueprint && !!window.LabConnection, null, { timeout: 20000 });
+    await page.click('[data-conn-mode="endpoint"]');
+    await page.fill('[data-conn-url]', 'https://fn.local/lab-generate');
+    await page.fill('[data-conn-token]', 'admin-session-token');
+    await page.click('[data-conn-test]');
+    await page.waitForFunction(() => /CONNECTED/.test(document.querySelector('[data-conn-status]').textContent));
+    const gen = async (subject) => {
+      await page.fill('[data-ref-subject]', subject);
+      await page.click('[data-ref-generate]');
+      await page.waitForFunction((s) => LabReference.current() && LabReference.current().subject === s, subject);
+    };
+    const geom = async () => page.evaluate(() => { const c = document.querySelector('[data-canvas-complete]'); c.scrollIntoView({ block: 'center' }); const r = c.getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; });
+    const at = (g, p) => { const k = (Math.min(g.w, g.h) * 0.46) / 1.4; return { x: g.x + g.w / 2 + p[0] * k, y: g.y + g.h / 2 + p[1] * k }; };
+    const tool = async (m) => page.click('[data-mode="' + m + '"]');
+
+    // ---- AP3: five creatures through all six budgets on the real page ----
+    const walk = {};
+    for (const name of Object.keys(CREATURES)) {
+      await page.evaluate(() => { window.ShapeLab.reset(); window.ShapeLab.setBudget(8); });
+      await gen(name);
+      walk[name] = {};
+      for (const b of [8, 10, 12, 16, 18, 20]) {
+        walk[name][b] = await page.evaluate((bb) => { window.ShapeLab.setBudget(bb); return { n: LabReference.suggestions().length, labels: LabReference.suggestions().map((s) => s.label), chips: document.querySelectorAll('[data-ref-sugg-list] .bp-s').length }; }, b);
+        if (b === 8 || b === 20) { await geom(); await page.screenshot({ path: path.join(SHOTS, 'shape-lab', 'adaptive', name.toLowerCase() + '-' + b + '.png') }); }
+      }
+      walk[name].source = await page.evaluate(() => LabReference.meta().source);
+      // what left the browser: two messages, the user one being the subject
+      // alone (the fixed contract is AR3b's to scan), and no geometry array
+      const msgs = (lastBody && lastBody.messages) || [];
+      // (the geometry probe reads everything BUT the fixed contract text,
+      // which itself says "[ 3 to 12 of" — a schema, not a coordinate)
+      const rest = JSON.stringify(Object.assign({}, lastBody, { messages: msgs.map((m) => m.role === 'system' ? { role: 'system' } : m) }));
+      walk[name].requestOk = msgs.length === 2 && msgs[1].role === 'user' && msgs[1].content === 'Subject: ' + name && !/\[\s*-?\d/.test(rest) && !/\b(card|constellation|memor)/i.test(JSON.stringify(lastBody));
+    }
+    const names = Object.keys(CREATURES);
+    ck(names.every((n) => walk[n].source === 'generated' && walk[n].requestOk),
+      'AP3  five creatures — lion, tiger, falcon, elephant, octopus — each generated through the (stubbed) real endpoint from the subject alone', names.map((n) => n + ':' + walk[n].source).join(' '));
+    ck(names.every((n) => [8, 10, 12, 16, 18, 20].every((b) => walk[n][b].n <= b && walk[n][b].n > 0 && walk[n][b].chips === walk[n][b].n)),
+      'AP3b on the page every budget shows suggestions within the budget, and the panel lists the same ones as chips');
+    ck(names.every((n) => walk[n][8].n < walk[n][12].n && walk[n][12].n <= walk[n][16].n && walk[n][16].n <= walk[n][20].n && walk[n][8].labels.every((l) => walk[n][20].labels.indexOf(l) !== -1)),
+      'AP3c changing the budget RECOMPUTES the suggestions: 8 → 20 grows, and everything offered at 8 is still offered at 20', names.map((n) => n + ':' + [8, 10, 12, 16, 18, 20].map((b) => walk[n][b].n).join('/')).join(' '));
+
+    // ---- AP4: accept · move · add · delete · join · gap, as a person does ----
+    await page.evaluate(() => { window.ShapeLab.reset(); window.ShapeLab.setBudget(12); });
+    await gen('Falcon');
+    let g = await geom();
+    await tool('add');
+    const first = await page.evaluate(() => LabReference.suggestions()[0]);
+    let q = at(g, [first.x + 0.05, first.y + 0.03]);
+    await page.mouse.click(q.x, q.y);
+    const accepted = await page.evaluate(() => ({ pts: window.ShapeLab.figure().points, roles: window.ShapeLab.roles(), focus: LabReference.focused(),
+      related: LabReference.suggestions().filter((s) => !s.budgeted).map((s) => s.label), stillOffered: LabReference.suggestions().some((s) => s.x === window.ShapeLab.figure().points[0][0] && s.y === window.ShapeLab.figure().points[0][1]) }));
+    ck(accepted.pts.length === 1 && accepted.pts[0][0] === first.x && accepted.pts[0][1] === first.y && accepted.roles[0] === first.name && !accepted.stillOffered,
+      'AP4  a click near a suggested point accepts it: the light lands exactly there, carries the feature\'s name, and the mark is no longer suggested', first.label + ' → ' + first.name);
+    ck(accepted.focus === first.name, 'AP4b accepting brings that feature into focus', accepted.focus);
+    // a click far from every suggestion lands exactly where pressed — normal placement is never blocked
+    const free = await page.evaluate(() => {
+      const sg = LabReference.suggestions();
+      const cand = [[1.2, 1.2], [-1.2, 1.2], [1.2, -1.2], [-1.2, -1.2], [0, 1.25]];
+      return cand.filter((c) => sg.every((s) => Math.hypot(s.x - c[0], s.y - c[1]) > 0.2))[0];
+    });
+    q = at(g, free);
+    await page.mouse.click(q.x, q.y);
+    const freehand = await page.evaluate(() => ({ pts: window.ShapeLab.figure().points, roles: window.ShapeLab.roles() }));
+    ck(freehand.pts.length === 2 && Math.abs(freehand.pts[1][0] - free[0]) < 0.03 && Math.abs(freehand.pts[1][1] - free[1]) < 0.03 && freehand.roles[1] === null,
+      'AP4c a click elsewhere places a light exactly there, with no feature name — suggestions never block normal placement', JSON.stringify(freehand.pts[1]));
+    // MOVE: drag the accepted light somewhere else — it keeps its identity and its name, and does not snap back
+    await tool('move');
+    const from = at(g, accepted.pts[0]), to = at(g, [accepted.pts[0][0] + 0.3, accepted.pts[0][1] + 0.25]);
+    await page.mouse.move(from.x, from.y); await page.mouse.down(); await page.mouse.move(from.x + 10, from.y + 10); await page.mouse.move(to.x, to.y); await page.mouse.up();
+    const moved = await page.evaluate(() => ({ pts: window.ShapeLab.figure().points, roles: window.ShapeLab.roles() }));
+    ck(moved.pts.length === 2 && Math.abs(moved.pts[0][0] - (accepted.pts[0][0] + 0.3)) < 0.04 && Math.abs(moved.pts[0][1] - (accepted.pts[0][1] + 0.25)) < 0.04 && moved.roles[0] === first.name,
+      'AP4d MOVE drags the accepted light where the author wants it — no snap back to the outline — and it keeps its index and its feature name', JSON.stringify(moved.pts[0]));
+    // JOIN and GAP through the tools, then DELETE the first light: joins renumber, the gap follows
+    await tool('add');
+    const third = await page.evaluate(() => LabReference.suggestions().filter((s) => s.budgeted)[0]);
+    q = at(g, [third.x + 0.03, third.y - 0.03]); await page.mouse.click(q.x, q.y);
+    await tool('join');
+    let A = at(g, moved.pts[0]), Bq = at(g, moved.pts[1]); await page.mouse.click(A.x, A.y); await page.mouse.click(Bq.x, Bq.y);
+    const P2 = await page.evaluate(() => window.ShapeLab.figure().points[2]);
+    A = at(g, moved.pts[1]); Bq = at(g, P2); await page.mouse.click(A.x, A.y); await page.mouse.click(Bq.x, Bq.y);
+    await tool('gap');
+    const m01 = { x: (at(g, moved.pts[0]).x + at(g, moved.pts[1]).x) / 2, y: (at(g, moved.pts[0]).y + at(g, moved.pts[1]).y) / 2 };
+    await page.mouse.click(m01.x, m01.y);
+    const joined = await page.evaluate(() => window.ShapeLab.figure());
+    ck(joined.points.length === 3 && joined.joins.join(' ') === '0-1 1-2' && joined.gaps.join() === '0',
+      'AP4e joins and gaps stay the author\'s: two joins made with the Join tool, one marked missing with the Gap tool — the system chose none of them', JSON.stringify(joined));
+    await tool('delete');
+    q = at(g, moved.pts[0]); await page.mouse.click(q.x, q.y);
+    const deleted = await page.evaluate(() => ({ fig: window.ShapeLab.figure(), roles: window.ShapeLab.roles(), m: window.ShapeLab.metrics() }));
+    ck(deleted.fig.points.length === 2 && deleted.fig.joins.join() === '0-1' && deleted.fig.gaps.length === 0 && deleted.roles.join() === ',' + third.name && deleted.m.components === 1 && deleted.m.connections === 1,
+      'AP4f DELETE removes the light, its join and its gap; the others renumber, their names travel with them, and the metrics and validator read the new figure', JSON.stringify(deleted.fig));
+
+    // ---- AP5: a budget change never touches an authored point ----
+    await page.evaluate(() => { window.ShapeLab.reset(); window.ShapeLab.setBudget(12); });
+    await gen('Elephant');
+    const built = await page.evaluate(() => {
+      const S = window.ShapeLab;
+      LabReference.suggestions().slice(0, 12).forEach((s) => S.addPoint(s.x, s.y, s.name));
+      for (let i = 0; i < 11; i++) S.toggleJoin(i, i + 1);
+      S.toggleGap(3);
+      return { fig: S.figure(), roles: S.roles(), sugg: LabReference.suggestions().length };
+    });
+    const up = await page.evaluate(() => { const S = window.ShapeLab; const r = S.setBudget(16); return { r, fig: S.figure(), roles: S.roles(), sugg: LabReference.suggestions().length, budget: S.state().budget, label: document.querySelector('[data-budget-label]').textContent }; });
+    ck(up.r.ok && !up.r.overBudget && JSON.stringify(up.fig) === JSON.stringify(built.fig) && JSON.stringify(up.roles) === JSON.stringify(built.roles) && up.sugg > 0 && up.sugg <= 4 && up.budget === 16,
+      'AP5  12 → 16 with twelve lights placed: not one point, join, gap or name changes, and the four free slots get new suggestions', 'new suggestions: ' + up.sugg);
+    const down = await page.evaluate(() => { const S = window.ShapeLab; const r = S.setBudget(10); return { r, fig: S.figure(), roles: S.roles(), m: S.metrics(), budget: S.state().budget, label: document.querySelector('[data-budget-label]').textContent,
+      why: document.querySelector('[data-play-why]').textContent, metricsText: document.querySelector('[data-metrics]').textContent, cls: document.body.className, add: S.addPoint(0.1, 0.1), save: S.save(), approve: S.approve(), sugg: LabReference.suggestions().length }; });
+    ck(down.r.ok && down.r.overBudget === 2 && JSON.stringify(down.fig) === JSON.stringify(built.fig) && JSON.stringify(down.roles) === JSON.stringify(built.roles) && down.budget === 10 && down.m.overBudget === 2,
+      'AP5b 16 → 10 does NOT delete six lights — every point, join, gap and name is exactly as it was, and the budget is 10');
+    ck(/FIGURE EXCEEDS BUDGET \(12 lights\)/.test(down.label) && /EXCEEDS the selected budget by 2/.test(down.metricsText) && /exceeds the budget by 2/.test(down.why) && /over-budget/.test(down.cls),
+      'AP5c and the state SAYS so — in the header, the metrics and beside Play — a budget is an authoring target, not a destructive operation', down.label);
+    ck(!down.add.ok && /budget-full:10/.test(down.add.reason) && !down.save.ok && /exceeds-budget/.test(down.save.reason) && !down.approve.ok && /exceeds-budget/.test(down.approve.reason) && down.sugg === 0,
+      'AP5d while it exceeds the budget the existing refusal convention holds: no adding, no saving, no approving, and nothing is suggested — the researcher deletes by hand');
+    const fit = await page.evaluate(() => { const S = window.ShapeLab; S.deletePoint(11); S.deletePoint(10); return { n: S.figure().points.length, over: S.metrics().overBudget, label: document.querySelector('[data-budget-label]').textContent, save: S.save() }; });
+    ck(fit.n === 10 && fit.over === 0 && !/EXCEEDS/.test(fit.label) && fit.save.ok,
+      'AP5e two lights taken away by hand and the figure fits its 10-point budget again — the state clears, and it can be saved');
+    await page.evaluate(() => { localStorage.clear(); });
+    await page.screenshot({ path: path.join(SHOTS, 'shape-lab', 'adaptive', 'over-budget.png') });
+
+    // ---- AP6: feature focus ----
+    await page.evaluate(() => { window.ShapeLab.reset(); window.ShapeLab.setBudget(8); });
+    await gen('Falcon');
+    const focusOn = await page.evaluate(() => {
+      const row = Array.from(document.querySelectorAll('[data-ref-focus]')).filter((b) => b.getAttribute('data-ref-focus') === 'WINGS')[0];
+      row.click();
+      const sg = LabReference.suggestions();
+      return { focus: LabReference.focused(), gold: sg.filter((s) => s.focused).map((s) => s.label), extras: sg.filter((s) => !s.budgeted).map((s) => s.label), budgeted: sg.filter((s) => s.budgeted).length, panel: document.querySelector('[data-ref-panel]').textContent };
+    });
+    ck(focusOn.focus === 'WINGS' && focusOn.gold.length >= focusOn.extras.length && focusOn.gold.every((l) => /wing|edge/.test(l)) && focusOn.extras.some((l) => /edge/.test(l)) && focusOn.budgeted <= 8 && /Focus: WINGS/.test(focusOn.panel),
+      'AP6  choosing WINGS in the blueprint panel exposes the wing\'s related points — root, leading edge, trailing edge — in gold, beside the budgeted eight', focusOn.gold.join(', '));
+    const focusOff = await page.evaluate(() => {
+      Array.from(document.querySelectorAll('[data-ref-focus]')).filter((b) => b.getAttribute('data-ref-focus') === 'WINGS')[0].click();
+      return { focus: LabReference.focused(), extras: LabReference.suggestions().filter((s) => !s.budgeted).length, bad: LabReference.focus('NOPE') };
+    });
+    ck(focusOff.focus === null && focusOff.extras === 0 && !focusOff.bad.ok, 'AP6b choosing it again clears the focus, and a name that is not a feature is refused');
+    await page.evaluate(() => { Array.from(document.querySelectorAll('[data-ref-focus]')).filter((b) => b.getAttribute('data-ref-focus') === 'WINGS')[0].click(); });
+    await geom();
+    await page.screenshot({ path: path.join(SHOTS, 'shape-lab', 'adaptive', 'focus-wings.png') });
+    await page.evaluate(() => { LabReference.focus(null); });
+
+    // ---- AP7: visual hierarchy, and REFERENCE OFF ----
+    g = await geom();
+    const hier = await page.evaluate(() => {
+      const S = window.ShapeLab; S.reset(); S.setBudget(8);
+      const sg = LabReference.suggestions();
+      S.addPoint(sg[0].x, sg[0].y, sg[0].name);
+      S.render(); LabReference.render();
+      const ed = document.querySelector('[data-canvas-complete]'), un = document.querySelector('[data-reference]');
+      const w = ed.clientWidth, h = ed.clientHeight, dpr = Math.min(2, devicePixelRatio || 1);
+      const lum = (c, p) => { const q = S.project(p, w, h); const d = c.getContext('2d').getImageData(Math.round(q[0] * dpr) - 2, Math.round(q[1] * dpr) - 2, 5, 5).data; let m = 0; for (let i = 0; i < d.length; i += 4) m = Math.max(m, (d[i] + d[i + 1] + d[i + 2]) * d[i + 3] / 255); return m; };
+      // the author's light (on the editor canvas) vs a suggested point (on the underlay) vs plain outline fill vs empty sky
+      const light = lum(ed, [sg[0].x, sg[0].y]);
+      const sugg = lum(un, [sg[1].x, sg[1].y]);
+      const o = LabReference.outline();
+      let fill = 0; o.paths.forEach((p) => { const cx = p.pts.reduce((a, q) => a + q[0], 0) / p.pts.length, cy = p.pts.reduce((a, q) => a + q[1], 0) / p.pts.length; if (LabReference.suggestions().every((s) => Math.hypot(s.x - cx, s.y - cy) > 0.15)) fill = Math.max(fill, lum(un, [cx, cy])); });
+      const sky = lum(un, [1.25, 1.25]);
+      return { light, sugg, fill, sky };
+    });
+    ck(hier.light > hier.sugg && hier.sugg > hier.fill && hier.fill > hier.sky,
+      'AP7  the visual hierarchy holds, measured in light: an authored light is brightest, a suggested point next, the outline faintest, the sky darkest', JSON.stringify(hier));
+    await page.click('[data-ref-toggle]');
+    const off = await page.evaluate(() => {
+      const un = document.querySelector('[data-reference]'), ed = document.querySelector('[data-canvas-complete]');
+      return { hidden: un.hidden, display: getComputedStyle(un).display, sugg: LabReference.suggestions().length, snap: LabReference.snap([0, 0]), pts: window.ShapeLab.figure().points.length, roles: window.ShapeLab.roles(), alpha: ed.getContext('2d').getImageData(3, 3, 1, 1).data[3], outlineKept: !!LabReference.outline() };
+    });
+    ck(off.hidden && off.display === 'none' && off.sugg === 0 && off.snap === null && off.pts === 1 && off.roles[0] === first.name && off.alpha === 255 && off.outlineKept,
+      'AP7b REFERENCE OFF removes the outline AND every suggestion, keeps the authored light and its name, and restores the opaque sky — the final judging state');
+    await page.click('[data-ref-toggle]');
+
+    // ---- AP8: judge, then APPROVE FIGURE ----
+    await page.evaluate(() => { window.ShapeLab.reset(); window.ShapeLab.setBudget(8); });
+    await gen('Lion');
+    const approved = await page.evaluate(() => {
+      const S = window.ShapeLab;
+      const sg = LabReference.suggestions();
+      sg.slice(0, 6).forEach((s) => S.addPoint(s.x, s.y, s.name));
+      S.addPoint(1.1, 1.1);                       // one freehand light
+      for (let i = 0; i < 6; i++) S.toggleJoin(i, i + 1);
+      S.toggleGap(2);
+      S.setName('Lion');
+      document.querySelector('input[name="jComplete"][value="recognisable"]').click();
+      document.querySelector('input[name="jUnfinished"][value="recognisable and incomplete"]').click();
+      const before = document.querySelector('[data-approve-section]').getAttribute('data-approve-state');
+      const btn = document.querySelector('[data-approve]');
+      const disabledBefore = btn.disabled;
+      btn.click();
+      const a = S.approved();
+      document.querySelector('[data-approved-export]').click();
+      const out = document.querySelector('[data-approved-out]');
+      const sv = S.save();
+      const rec = S.list().filter((x) => x.id === sv.id)[0];
+      return { before, disabledBefore, after: document.querySelector('[data-approve-section]').getAttribute('data-approve-state'), a, box: document.querySelector('[data-approved]').textContent,
+        outHidden: out.hidden, outText: out.value, sv, rec: JSON.stringify(rec), recApproved: rec.approved, judgement: rec.judgement, exp: S.exportJSON(), roles: S.roles(), fig: S.figure(), authoring: S.state().authoring,
+        btnAfter: btn.disabled, storeKeys: Object.keys(localStorage) };
+    });
+    ck(approved.before === 'unapproved' && !approved.disabledBefore && approved.after === 'approved' && approved.a && approved.a.kind === 'vihu-shape-lab-approved-figure' && /APPROVED FIGURE/.test(approved.box) && approved.btnAfter,
+      'AP8  APPROVE FIGURE freezes the figure and the page enters a clear APPROVED FIGURE state');
+    ck(JSON.stringify(approved.a.points) === JSON.stringify(approved.fig.points) && JSON.stringify(approved.a.joins) === JSON.stringify(approved.fig.joins) && JSON.stringify(approved.a.missing) === JSON.stringify(approved.fig.gaps) && approved.a.budget === 8 &&
+       approved.a.roles.length === 6 && approved.a.roles.every((r) => typeof r.light === 'number' && /^[A-Z ]+$/.test(r.feature)) && approved.a.roles.every((r) => r.feature === approved.roles[r.light]) && approved.a.subject === 'Lion' && approved.a.name === 'Lion',
+      'AP8b the artifact is exactly the authored geometry — points, joins, gaps, the selected budget — with each accepted light\'s feature association, the freehand light unnamed', JSON.stringify(approved.a.roles));
+    ck(JSON.stringify(Object.keys(approved.a).sort()) === JSON.stringify(['approvedAt', 'budget', 'joins', 'kind', 'labVersion', 'missing', 'name', 'points', 'roles', 'subject']) &&
+       !/outline|sketch|anchor|landmark|silhouette|archetype|paths|blueprint|card|stars|constellation|memor|story|companion|key|email|username/i.test(JSON.stringify(approved.a)),
+      'AP8c and holds nothing else: no outline, no sketch, no landmark, no blueprint, nothing private, no key', Object.keys(approved.a).join(','));
+    ck(!approved.outHidden && approved.outText.indexOf('vihu-shape-lab-approved-figure') !== -1 && approved.sv.ok && approved.recApproved && approved.recApproved.approvedAt === approved.a.approvedAt && /vihu-shape-lab-approved-figure/.test(approved.exp) && approved.storeKeys.join() === 'vihu.lab.shapes',
+      'AP8d the artifact can be inspected (Show approved artifact) and travels with the fixture through Save and the existing export — one storage key, as ever');
+    ck(approved.judgement && approved.judgement.complete === 'recognisable' && approved.judgement.unfinished === 'recognisable and incomplete',
+      'AP8e the judgement was made by the researcher and saved beside it');
+    ck(!/hint|tease|challenge|awaken|roam|wander|pool|active|candidate/i.test(JSON.stringify(approved.a)) && approved.a.missing.length === 1,
+      'AP8f approval made no hint, no new gap, no challenge, no completion, no awakening, no roaming and no pool entry — the one gap is the one the author marked');
+    ck(!/outline|archetype|lab-parts|"paths"|landmark|silhouette/i.test(approved.rec) && !/outline|archetype|landmark/i.test(approved.exp),
+      'AP8g the fixture and the export still carry no outline and no landmark');
+    // the approval survives a reload, and is cleared by an edit
+    await page.reload();
+    await page.waitForFunction(() => !!window.ShapeLab && !!window.LabReference);
+    const reopened = await page.evaluate(() => { const S = window.ShapeLab; const id = S.list()[0].id; S.load(id); const a = S.approved(); const st = document.querySelector('[data-approve-section]').getAttribute('data-approve-state'); S.movePoint(0, 0.2, 0.2); return { a: !!a, st, afterEdit: S.approved(), stAfter: document.querySelector('[data-approve-section]').getAttribute('data-approve-state'), roles: S.roles(), ref: LabReference.current() }; });
+    ck(reopened.a && reopened.st === 'approved' && reopened.afterEdit === null && reopened.stAfter === 'unapproved' && reopened.roles.filter(Boolean).length === 6 && reopened.ref === null,
+      'AP8h reopened after a reload the approval and the names are there (and no reference comes back with them); one edit clears the approval — a frozen artifact never describes a figure it does not match');
+    await page.evaluate(() => { localStorage.clear(); });
+    ck(errors.length === 0, 'AP9  no page errors across the whole journey', errors.join(' | '));
+    await page.close(); await context.close();
+  } finally {
+    await browser.close();
+    server.kill();
+  }
+}
+
 // ===================================================================
 (async () => {
   try {
@@ -5385,6 +5768,7 @@ async function sectionAR() {
     await run('SL', sectionSL);
     await run('GL', sectionGL);
     await run('AR', sectionAR);
+    await run('AP', sectionAP);
   } catch (e) {
     fail('suite crashed', (e && e.stack || String(e)).split('\n')[0]);
   }

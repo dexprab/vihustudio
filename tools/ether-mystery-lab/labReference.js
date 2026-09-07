@@ -26,12 +26,23 @@
 //     a subject anywhere in it; a subject is a string a person typed,
 //     shown back to them and sent — alone — to the assistant.
 //
-// SUGGESTIONS ARE SUGGESTIONS. A faint mark where a point COULD go —
-// the anchor of a feature the blueprint names for this budget. Adding a
-// light close to one snaps to it, and from that instant it is an
-// ordinary light: movable, deletable, the author's. A mark near an
-// existing light is not drawn, so a suggestion never nags about a place
-// already taken. Off by one checkbox; gone with the reference.
+// SUGGESTIONS ARE SUGGESTIONS. A mark where a point COULD go — one of
+// the outline's landmarks, ranked by the blueprint's own importance and
+// the landmark's level and cut to the budget in force
+// (LabBlueprint.suggestions). Changing the budget recomputes them:
+// 8 → 12 adds structural and detail places, 12 → 8 drops the least
+// diagnostic first. Adding a light close to one snaps to it, and from
+// that instant it is an ordinary light: movable, deletable, the
+// author's, carrying only the NAME of the feature it was accepted for.
+// A mark near an existing light is not drawn, so a suggestion never
+// nags about a place already taken. Nothing is ever auto-placed. Off by
+// one checkbox; gone with the reference.
+//
+// FEATURE FOCUS. Choosing a feature — a row in the blueprint panel, or
+// accepting one of its suggestions — exposes that feature's related
+// landmarks at every level (a wing: its tip, its root, its leading and
+// trailing edges) beside the budgeted ones. A light focus, not an
+// inspector: one name, cleared by choosing it again.
 //
 // ON / OFF. Off, the underlay is hidden and the editor paints its own
 // opaque sky — byte for byte the render the Shape Lab always had. That
@@ -45,6 +56,7 @@
   var OUTLINE_ALPHA = 0.36;
   var LABEL = 'rgba(170,190,236,.78)';
   var SUGGEST = 'rgba(206,222,255,';
+  var FOCUS = 'rgba(255,214,122,';
 
   var state = {
     current: null,     // the validated blueprint in use
@@ -56,6 +68,7 @@
     labels: true,      // feature annotations
     suggestOn: true,   // suggested points
     dismissed: {},     // feature names whose annotation was closed
+    focus: null,       // ONE feature name whose related landmarks are exposed, or null
     busy: false,
     last: null         // what happened on the last generation — the observable path
   };
@@ -90,7 +103,7 @@
     state.current = bp;
     state.meta = meta || null;
     state.outline = composeOutline(bp);
-    state.dismissed = {};
+    state.dismissed = {}; state.focus = null;
     state.visible = true;
     sync();
     return { ok: true };
@@ -104,7 +117,7 @@
     state.current = state.previous; state.meta = state.previousMeta;
     state.previous = cur; state.previousMeta = curMeta;
     state.outline = composeOutline(state.current);
-    state.dismissed = {};
+    state.dismissed = {}; state.focus = null;
     sync();
     return { ok: true };
   }
@@ -112,9 +125,18 @@
   function discard() {
     state.current = null; state.meta = null; state.outline = null;
     state.previous = null; state.previousMeta = null;
-    state.dismissed = {};
+    state.dismissed = {}; state.focus = null;
     sync();
     return { ok: true };
+  }
+
+  // FEATURE FOCUS — one name or nothing; the same name again clears it.
+  function focus(name) {
+    var n = name == null ? null : String(name).toUpperCase();
+    if (n && !(state.current && state.current.features.some(function (f) { return f.name === n; }))) return { ok: false, reason: 'no-such-feature' };
+    state.focus = (n && state.focus !== n) ? n : null;
+    sync();
+    return { ok: true, focus: state.focus };
   }
 
   function show(v) { state.visible = !!v; sync(); return isShowing(); }
@@ -147,24 +169,41 @@
     return f.anchor;
   }
 
+  // The budgeted suggestions — the ranking cut to the budget in force —
+  // plus, while a feature is in focus, every related landmark of that one
+  // feature. Each is marked `focused` when it belongs to the focused
+  // feature, and none is drawn where a light already stands.
   function suggestions() {
     var S = global.ShapeLab, B = global.LabBlueprint;
-    if (!S || !B || !state.current || !state.suggestOn) return [];
+    // REFERENCE OFF takes the suggestions with it: the judging state is
+    // the Ether figure alone, and a hidden reference suggests nothing.
+    if (!S || !B || !isShowing() || !state.suggestOn) return [];
     var budget = S.state().budget;
-    return B.suggestions(state.current, budget, state.outline ? state.outline.anchors : null).filter(function (s) { return !occupied(s.x, s.y); });
+    var out = B.suggestions(state.current, budget, state.outline).map(function (s) {
+      s.focused = state.focus === s.name; s.budgeted = true; return s;
+    });
+    if (state.focus && B.related) {
+      B.related(state.current, state.outline, state.focus).forEach(function (r) {
+        if (out.some(function (s) { return Math.hypot(s.x - r.x, s.y - r.y) < 0.03; })) return;
+        r.focused = true; r.budgeted = false; r.rank = null; out.push(r);
+      });
+    }
+    return out.filter(function (s) { return !occupied(s.x, s.y); });
   }
 
   // Add mode asks this with the unit point under the pointer; a
-  // suggestion within reach answers with its own place, otherwise null
-  // and the light lands exactly where the author pressed.
+  // suggestion within reach answers with its own place and the name of
+  // the feature it stands for, otherwise null and the light lands exactly
+  // where the author pressed.
   function snap(u) {
     if (!isShowing()) return null;
     var best = null, bd = NEAR;
     suggestions().forEach(function (s) {
       var d = Math.hypot(s.x - u[0], s.y - u[1]);
-      if (d < bd) { bd = d; best = [s.x, s.y]; }
+      if (d < bd) { bd = d; best = s; }
     });
-    return best;
+    if (!best) return null;
+    return { x: best.x, y: best.y, name: best.name, label: best.label, level: best.level };
   }
 
   // ---------------------------------------------------------------
@@ -234,16 +273,46 @@
     });
   }
 
+  // OBVIOUS, AND STILL BENEATH THE AUTHOR'S LIGHTS. A dashed ring with a
+  // soft glow and a small dot: a defining point rings widest and
+  // brightest, a structural place a little less, a detail place least —
+  // and a mark of the focused feature is warm gold. Its label is written
+  // beside it when feature labels are on. Everything here is drawn on
+  // the underlay, so the author's own lights — solid, brighter, on the
+  // canvas above — always read as the strongest thing on the sky.
   function drawSuggestions(g, S, w, h) {
-    var r = Math.max(5, Math.min(w, h) / 70);
+    var base = Math.max(6, Math.min(w, h) / 62);
+    var fs = Math.max(9, Math.min(w, h) / 48);
+    g.font = '500 ' + fs + 'px -apple-system, "Segoe UI", Roboto, sans-serif';
+    g.textAlign = 'left'; g.textBaseline = 'middle';
     suggestions().forEach(function (s) {
       var q = S.project([s.x, s.y], w, h);
-      g.setLineDash([3, 4]);
-      g.strokeStyle = SUGGEST + '.55)'; g.lineWidth = 1;
+      var lv = s.level || 1;
+      // sized so the ring never runs into a feature annotation's own text,
+      // which starts a little to the right of the same anchor
+      var r = base * (lv === 1 ? 1.0 : lv === 2 ? 0.85 : 0.7);
+      var a = lv === 1 ? 0.85 : lv === 2 ? 0.7 : 0.55;
+      var ink = s.focused ? FOCUS : SUGGEST;
+      var glow = g.createRadialGradient(q[0], q[1], 0, q[0], q[1], r * 2.2);
+      glow.addColorStop(0, ink + (s.focused ? '.30' : '.22') + ')'); glow.addColorStop(1, ink + '0)');
+      g.fillStyle = glow; g.beginPath(); g.arc(q[0], q[1], r * 2.2, 0, Math.PI * 2); g.fill();
+      g.setLineDash([4, 4]);
+      g.strokeStyle = ink + a + ')'; g.lineWidth = s.focused ? 1.6 : 1.2;
       g.beginPath(); g.arc(q[0], q[1], r, 0, Math.PI * 2); g.stroke();
       g.setLineDash([]);
-      g.fillStyle = SUGGEST + '.35)';
-      g.beginPath(); g.arc(q[0], q[1], Math.max(1.6, r / 3), 0, Math.PI * 2); g.fill();
+      g.fillStyle = ink + (a * 0.7) + ')';
+      g.beginPath(); g.arc(q[0], q[1], Math.max(1.8, r / 3.2), 0, Math.PI * 2); g.fill();
+      // a mark standing on a feature's own labelled anchor is named by that
+      // annotation (and stays unlabelled when the author dismissed it —
+      // a dismissal is not a request for the same word in a smaller font);
+      // every other mark says what place it is
+      var named = state.labels && state.current.features.some(function (f) {
+        if (f.name !== s.name) return false; var a = anchorFor(f); return Math.hypot(a[0] - s.x, a[1] - s.y) < 0.03;
+      });
+      if (state.labels && s.label && !named) {
+        g.fillStyle = ink + (s.focused ? '.9' : '.62') + ')';
+        g.fillText(s.label, q[0] + r + 3, q[1] + r * 0.9);
+      }
     });
   }
 
@@ -306,22 +375,34 @@
       '<div class="bp-h">Features — most diagnostic first</div>' +
       bp.features.map(function (f) {
         var off = !!state.dismissed[f.name];
-        return '<div class="bp-f' + (off ? ' off' : '') + '">' +
+        var foc = state.focus === f.name;
+        return '<div class="bp-f' + (off ? ' off' : '') + (foc ? ' focus' : '') + '" data-ref-feature="' + esc(f.name) + '">' +
           '<span class="bp-imp" title="importance ' + f.importance + ' of 3">' + stars(f.importance) + '</span>' +
-          '<span class="bp-name">' + esc(f.name) + '</span>' +
+          '<button class="bp-name bp-focus" data-ref-focus="' + esc(f.name) + '" title="' + (foc ? 'clear focus' : 'show this feature\'s related points') + '">' + esc(f.name) + (foc ? ' ◎' : '') + '</button>' +
           '<span class="bp-why">' + esc(f.why) + '</span>' +
           (off ? '' : '<button class="bp-x quiet" data-ref-dismiss="' + esc(f.name) + '" title="hide this label on the reference">×</button>') +
         '</div>';
       }).join('') +
       '<div class="bp-h">Where to spend each budget</div>' +
       global.LabBlueprint.BUDGETS.map(function (b) {
-        var list = bp.budgets[String(b)] || [];
+        var own = bp.budgets[String(b)];
+        var list = own || (global.LabBlueprint.listFor ? global.LabBlueprint.listFor(bp, b) : null) || [];
         return '<div class="bp-b' + (b === budget ? ' now' : '') + '"><span class="bp-bn">' + b + '</span> ' +
-          (list.length ? esc(list.join(' · ')) : '<span class="note">—</span>') + '</div>';
-      }).join('');
+          (list.length ? esc(list.join(' · ')) + (own ? '' : ' <span class="note">(read from the nearest smaller budget)</span>') : '<span class="note">—</span>') + '</div>';
+      }).join('') +
+      '<div class="bp-h">Suggested points at this budget</div>' +
+      '<div class="bp-sugg" data-ref-sugg-list>' + (function () {
+        var sg = suggestions();
+        if (!sg.length) return '<span class="note">' + (state.suggestOn ? 'none free — every suggested place holds a light, or the reference is off' : 'suggested points are off') + '</span>';
+        return sg.map(function (x) { return '<span class="bp-s l' + (x.level || 1) + (x.focused ? ' focus' : '') + '">' + esc(x.label) + '</span>'; }).join(' ');
+      })() + '</div>' +
+      (state.focus ? '<div class="note">Focus: <b>' + esc(state.focus) + '</b> — its related points are shown in gold at every level. Choose it again to clear.</div>' : '');
     box.innerHTML = html;
     box.querySelectorAll('[data-ref-dismiss]').forEach(function (b) {
-      b.addEventListener('click', function () { dismiss(b.getAttribute('data-ref-dismiss')); });
+      b.addEventListener('click', function (ev) { ev.stopPropagation(); dismiss(b.getAttribute('data-ref-dismiss')); });
+    });
+    box.querySelectorAll('[data-ref-focus]').forEach(function (b) {
+      b.addEventListener('click', function () { focus(b.getAttribute('data-ref-focus')); });
     });
   }
 
@@ -522,7 +603,10 @@
   function wire() {
     mount();
     var S = global.ShapeLab;
-    if (S && S.observe) S.observe(render);      // every editor repaint repaints the underlay after it
+    // every editor repaint repaints the underlay after it — and the panel,
+    // whose suggested-points list and budget row follow the editor's budget
+    // and the lights already placed
+    if (S && S.observe) S.observe(function () { render(); if (state.current) renderPanel(); });
     wireConn();
     var subj = el('[data-ref-subject]');
     var gen = el('[data-ref-generate]');
@@ -561,6 +645,7 @@
     NEAR: NEAR,
     set: set, restorePrevious: restorePrevious, discard: discard,
     show: show, showLabels: showLabels, showSuggestions: showSuggestions, dismiss: dismiss,
+    focus: focus, focused: function () { return state.focus; },
     isShowing: isShowing, snap: snap, suggestions: suggestions, generate: generate,
     current: function () { return state.current ? JSON.parse(JSON.stringify(state.current)) : null; },
     previous: function () { return state.previous ? JSON.parse(JSON.stringify(state.previous)) : null; },

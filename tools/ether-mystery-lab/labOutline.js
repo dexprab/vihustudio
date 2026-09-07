@@ -36,6 +36,18 @@
 //     feature sits — so the existing suggested-point mechanism can put its
 //     faint marks on the outline; accepting one is still the author's
 //     click and the light is still theirs.
+// LANDMARKS (Adaptive Suggested Points sprint). Beside its anchors,
+// every builder now names the places on a part a light could usefully
+// stand, each with a LEVEL: 1 = the part's defining point (a head, a
+// foot, a wing tip, a beak), 2 = a structural place (a shoulder, a rump,
+// a wing root, the base of a tail), 3 = a detail place (a knee, the
+// middle of a tail, the trailing edge of a wing). The composer maps them
+// onto the blueprint's own feature names; `LabBlueprint.suggestions()`
+// ranks them by the feature's importance and the level, so a small
+// budget takes the defining points of the most diagnostic features and a
+// larger one adds structure and then detail. Nothing here places a
+// light: a landmark is a place a person may accept, move away from, or
+// ignore.
 (function (global) {
   'use strict';
 
@@ -178,7 +190,8 @@
   // roughly ±1.2; the composer fits the whole to the editor's reach.
   // ---------------------------------------------------------------
   function quadruped(p) {
-    var paths = [], anchors = {};
+    var paths = [], anchors = {}, marks = [];
+    function mark(part, label, x, y, level) { marks.push({ part: part, label: label, x: x, y: y, level: level }); }
     var bodyK = mod(p, 'body', 'big') ? 1.18 : (mod(p, 'body', 'small') ? 0.9 : 1);
     var legW = mod(p, 'legs', 'big') ? 0.24 : (mod(p, 'legs', 'small') ? 0.1 : 0.16);
     var legN = Math.min(4, Math.max(2, count(p, 'legs', 4)));
@@ -192,27 +205,38 @@
       [bx + rx * 1.0, by + ry * 0.25], [bx + rx * 0.7, by + ry * 0.95], [bx, by + ry * 1.05], [bx - rx * 0.7, by + ry * 0.95], [bx - rx * 1.02, by + ry * 0.3]], true); anchors.hump = [[bx + rx * 0.1, by - ry * 1.7]]; }
     paths.push({ part: 'body', closed: true, pts: body });
     anchors.body = [[bx, by]];
+    mark('body', 'rump', bx + rx * 0.9, by - ry * 0.5, 2);
+    mark('body', 'back', bx, by - ry * 1.0, 3);
+    mark('body', 'belly', bx, by + ry * 1.02, 3);
+    mark('body', 'chest', bx - rx * 0.98, by + ry * 0.35, 3);
     if (has(p, 'shell')) { paths.push({ part: 'shell', closed: true, pts: ellipse(bx, by - ry * 0.3, rx * 0.9, ry * 1.1) }); anchors.shell = [[bx, by - ry * 0.8]]; }
     // NECK and HEAD — the head sits forward of the chest, up with the neck.
     var shoulder = [bx - rx * 0.78, by - ry * 0.55];
     var hx = shoulder[0] - 0.22 - neckL * 0.35, hy = shoulder[1] - 0.12 - neckL * 0.95;
+    mark('body', 'shoulder', shoulder[0], shoulder[1], 2);
     if (has(p, 'neck') || neckL > 0.1) {
       paths.push({ part: 'neck', closed: true, pts: tube([[shoulder[0] + 0.12, shoulder[1] + 0.18], [ (shoulder[0] + hx) / 2 + 0.02, (shoulder[1] + hy) / 2 ], [hx + 0.05, hy + 0.05]], 0.34 * bodyK, 0.26) });
       anchors.neck = [[(shoulder[0] + hx) / 2, (shoulder[1] + hy) / 2]];
+      mark('neck', 'nape', (shoulder[0] + hx) / 2 + 0.08, (shoulder[1] + hy) / 2 - 0.16 * bodyK, 3);
     }
     paths.push({ part: 'head', closed: true, pts: ellipse(hx, hy, headR * 1.05, headR) });
     anchors.head = [[hx, hy]];
+    mark('head', 'crown', hx, hy - headR, 3);
+    if (!has(p, 'muzzle') && !has(p, 'trunk')) mark('head', 'chin', hx - headR * 0.6, hy + headR * 0.8, 3);
     // MUZZLE — forward and a little down from the head.
     if (has(p, 'muzzle') && !has(p, 'trunk')) {
       var mL = mod(p, 'muzzle', 'long') ? 0.3 : 0.16, mx = hx - headR * 0.75 - mL * 0.5, my = hy + headR * 0.25;
       paths.push({ part: 'muzzle', closed: true, pts: ellipse(mx, my, mL * 0.9, headR * 0.5, -0.15) });
       anchors.muzzle = [[mx - mL * 0.6, my]];
+      mark('muzzle', 'bridge', hx - headR * 0.9, hy - headR * 0.15, 3);
     }
     // TRUNK — from the front of the head, curving down.
     if (has(p, 'trunk')) {
       var t0 = [hx - headR * 0.8, hy + headR * 0.15];
       paths.push({ part: 'trunk', closed: true, pts: tube([t0, [t0[0] - 0.18, t0[1] + 0.3], [t0[0] - 0.14, t0[1] + 0.62], [t0[0] - 0.02, t0[1] + 0.88]], 0.2, 0.08) });
       anchors.trunk = [[t0[0] - 0.03, t0[1] + 0.86]];
+      mark('trunk', 'trunk base', t0[0], t0[1], 2);
+      mark('trunk', 'trunk middle', t0[0] - 0.16, t0[1] + 0.46, 3);
     }
     // TUSKS — two curves forward from under the head.
     if (has(p, 'tusks')) {
@@ -247,6 +271,8 @@
       for (var i = 0; i < 18; i++) { var a = (i / 18) * Math.PI * 2, r = i % 2 ? R : R * 0.82; ruff.push([hx + headR * 0.35 + Math.cos(a) * r, hy + Math.sin(a) * r]); }
       paths.push({ part: 'mane', closed: true, pts: ruff });
       anchors.mane = [[hx + headR * 0.35, hy - R]];
+      mark('mane', 'mane back', hx + headR * 0.35 + R, hy, 2);
+      mark('mane', 'mane chin', hx + headR * 0.35, hy + R, 3);
     }
     // LEGS — front pair and hind pair, feet a little wider.
     var legTop = by + ry * 0.75, legBot = by + ry + 0.62 * bodyK;
@@ -261,6 +287,7 @@
         : [[lx - w * 0.7, legTop - 0.05], [lx + w * 0.7, legTop - 0.05], [lx + w * 0.5, legBot], [lx + w * 0.5 + foot, legBot + 0.04], [lx - w * 0.55, legBot + 0.04], [lx - w * 0.55, legBot]];
       paths.push({ part: 'legs', closed: true, pts: pts });
       (hind ? hindA : frontA).push([lx + (hind ? w * 0.2 : 0), legBot - 0.02]);
+      mark(hind ? 'legsHind' : 'legsFront', (hind ? 'hind' : 'front') + ' knee', lx + (hind ? w * 0.55 : 0), (legTop + legBot) / 2, 3);
     });
     anchors.legs = frontA.concat(hindA); anchors.legsFront = frontA; anchors.legsHind = hindA;
     // TAIL — long curve up and back, short and hanging, or bushy.
@@ -270,19 +297,25 @@
       var spine = lng ? [[tx, ty], [tx + 0.25, ty - 0.15], [tx + 0.42, ty - 0.45], [tx + 0.36, ty - 0.72]] : [[tx, ty], [tx + 0.08, ty + 0.25], [tx + 0.06, ty + 0.5]];
       paths.push({ part: 'tail', closed: true, pts: tube(spine, bushy ? 0.22 : 0.1, bushy ? 0.16 : 0.04) });
       var tip = spine[spine.length - 1]; anchors.tail = [[tip[0], tip[1]]];
+      mark('tail', 'tail base', tx, ty, 2);
+      var midS = spine[Math.floor(spine.length / 2)]; mark('tail', 'tail middle', midS[0], midS[1], 3);
     }
-    return { paths: paths, anchors: anchors };
+    return { paths: paths, anchors: anchors, marks: marks };
   }
 
   function winged(p) {
-    var paths = [], anchors = {};
+    var paths = [], anchors = {}, marks = [];
+    function mark(part, label, x, y, level) { marks.push({ part: part, label: label, x: x, y: y, level: level }); }
     var wingK = mod(p, 'wings', 'small') ? 0.45 : (mod(p, 'wings', 'big') || mod(p, 'wings', 'long') ? 1.15 : 1);
     var headR = 0.19;
     // BODY — a teardrop, head end up.
     paths.push({ part: 'body', closed: true, pts: smooth([[0, -0.42], [0.2, -0.2], [0.22, 0.2], [0.1, 0.5], [-0.1, 0.5], [-0.22, 0.2], [-0.2, -0.2]], true) });
     anchors.body = [[0, 0.05]];
+    mark('body', 'breast', 0, -0.28, 2);
+    mark('body', 'vent', 0, 0.42, 3);
     paths.push({ part: 'head', closed: true, pts: ellipse(0, -0.56, headR, headR * 0.95) });
     anchors.head = [[0, -0.56]];
+    mark('head', 'crown', 0, -0.56 - headR * 0.9, 3);
     if (has(p, 'beak')) {
       var hooked = mod(p, 'beak', 'hooked');
       var bk = hooked ? [[-0.07, -0.68], [0.0, -0.86], [0.09, -0.74], [0.04, -0.7]] : [[-0.07, -0.68], [0.0, -0.92], [0.07, -0.68]];
@@ -309,6 +342,10 @@
         var w = lead.concat(trail, [[sgn * 0.2, 0.2]]);
         paths.push({ part: 'wings', closed: true, pts: w });
         anchors.wings = (anchors.wings || []).concat([[sgn * (0.16 + span * 0.95), -0.16]]);
+        var side = sgn < 0 ? 'left ' : 'right ';
+        mark('wings', side + 'wing root', sgn * 0.2, -0.22, 2);
+        mark('wings', side + 'leading edge', sgn * (0.16 + span * 0.45), -0.42 - 0.08 * wingK, 3);
+        mark('wings', side + 'trailing edge', sgn * (0.16 + span * 0.5), 0.12, 3);
       });
     }
     if (has(p, 'tail')) {
@@ -318,6 +355,9 @@
                      : [[-0.12, 0.45], [-0.3, 0.45 + tl], [-0.2, 0.42 + tl], [-0.1, 0.5 + tl], [0, 0.45 + tl], [0.1, 0.5 + tl], [0.2, 0.42 + tl], [0.3, 0.45 + tl], [0.12, 0.45]];
       paths.push({ part: 'tail', closed: true, pts: t });
       anchors.tail = [[0, 0.45 + tl * 0.9]];
+      mark('tail', 'tail base', 0, 0.47, 2);
+      mark('tail', 'left tail corner', -0.28, 0.45 + tl * 0.95, 3);
+      mark('tail', 'right tail corner', 0.28, 0.45 + tl * 0.95, 3);
     }
     if (has(p, 'legs')) {
       [-1, 1].forEach(function (sgn) {
@@ -325,16 +365,20 @@
       });
       anchors.legs = [[-0.1, 0.62], [0.1, 0.62]];
     }
-    return { paths: paths, anchors: anchors };
+    return { paths: paths, anchors: anchors, marks: marks };
   }
 
   function cephalopod(p) {
-    var paths = [], anchors = {};
+    var paths = [], anchors = {}, marks = [];
+    function mark(part, label, x, y, level) { marks.push({ part: part, label: label, x: x, y: y, level: level }); }
     var n = Math.min(12, Math.max(4, count(p, 'arms', 8)));
     // MANTLE — a dome, narrowing to a head band.
     paths.push({ part: 'mantle', closed: true, pts: smooth([[0, -1.05], [0.4, -0.85], [0.5, -0.4], [0.42, -0.02], [0, 0.08], [-0.42, -0.02], [-0.5, -0.4], [-0.4, -0.85]], true) });
     anchors.mantle = [[0, -0.62]];
-    if (has(p, 'head')) anchors.head = [[0, -0.1]];
+    mark('mantle', 'mantle top', 0, -1.02, 2);
+    mark('mantle', 'left side', -0.48, -0.42, 3);
+    mark('mantle', 'right side', 0.48, -0.42, 3);
+    if (has(p, 'head')) { anchors.head = [[0, -0.1]]; mark('head', 'left cheek', -0.4, -0.05, 3); mark('head', 'right cheek', 0.4, -0.05, 3); }
     // ARMS — a fan of tapered curls from the base.
     var arms = [];
     for (var i = 0; i < n; i++) {
@@ -343,18 +387,24 @@
       var spine = [[x0, 0.02], [x0 + spread * 0.25, 0.42], [x0 + spread * 0.55 + sgn * 0.08, 0.8], [x0 + spread * 0.75 + sgn * 0.2, 1.02 - Math.abs(spread) * 0.25]];
       paths.push({ part: 'arms', closed: true, pts: tube(spine, 0.14, 0.03) });
       arms.push(spine[spine.length - 1]);
+      mark('arms', 'arm ' + (i + 1) + ' bend', spine[2][0], spine[2][1], 3);
     }
     anchors.arms = arms;
     if (has(p, 'fins')) { paths.push({ part: 'fins', closed: true, pts: [[0.44, -0.75], [0.7, -0.95], [0.5, -0.45]] }); paths.push({ part: 'fins', closed: true, pts: [[-0.44, -0.75], [-0.7, -0.95], [-0.5, -0.45]] }); anchors.fins = [[0.62, -0.85], [-0.62, -0.85]]; }
-    return { paths: paths, anchors: anchors };
+    return { paths: paths, anchors: anchors, marks: marks };
   }
 
   function finned(p) {
-    var paths = [], anchors = {};
+    var paths = [], anchors = {}, marks = [];
+    function mark(part, label, x, y, level) { marks.push({ part: part, label: label, x: x, y: y, level: level }); }
     var big = mod(p, 'body', 'big');
     var ry = big ? 0.42 : 0.3;
     paths.push({ part: 'body', closed: true, pts: smooth([[-1.0, 0], [-0.6, -ry], [0.1, -ry * 0.95], [0.6, -ry * 0.45], [0.8, 0], [0.6, ry * 0.45], [0.1, ry * 0.95], [-0.6, ry]], true) });
     anchors.body = [[-0.2, 0]]; anchors.head = [[-0.8, 0]];
+    mark('body', 'back', -0.1, -ry * 0.95, 2);
+    mark('body', 'belly', -0.1, ry * 0.95, 2);
+    mark('body', 'tail root', 0.6, 0, 3);
+    mark('head', 'brow', -0.7, -ry * 0.6, 3);
     if (has(p, 'muzzle')) anchors.muzzle = [[-1.0, 0]];
     var fl = has(p, 'fluke') || has(p, 'tail');
     if (fl || has(p, 'fins')) {
@@ -362,23 +412,33 @@
       var t = forked ? [[0.78, -0.08], [1.15, -0.42], [1.02, 0], [1.15, 0.42], [0.78, 0.08]] : [[0.78, -0.1], [1.1, -0.3], [1.1, 0.3], [0.78, 0.1]];
       paths.push({ part: fl ? (has(p, 'fluke') ? 'fluke' : 'tail') : 'fins', closed: true, pts: t });
       anchors[has(p, 'fluke') ? 'fluke' : 'tail'] = [[1.1, 0]];
+      var tp = has(p, 'fluke') ? 'fluke' : 'tail';
+      if (forked) { mark(tp, 'upper ' + tp + ' tip', 1.15, -0.42, 2); mark(tp, 'lower ' + tp + ' tip', 1.15, 0.42, 2); }
+      mark(tp, tp + ' base', 0.8, 0, 3);
     }
     if (has(p, 'fins')) {
       paths.push({ part: 'fins', closed: true, pts: [[-0.2, -ry * 0.9], [0.05, -ry * 1.7], [0.3, -ry * 0.7]] });
       paths.push({ part: 'fins', closed: true, pts: [[-0.45, ry * 0.5], [-0.2, ry * 1.25], [-0.05, ry * 0.7]] });
       anchors.fins = [[0.05, -ry * 1.6], [-0.2, ry * 1.2]];
+      mark('fins', 'dorsal fin base', -0.2, -ry * 0.9, 3);
+      mark('fins', 'lower fin base', -0.45, ry * 0.5, 3);
     }
-    return { paths: paths, anchors: anchors };
+    return { paths: paths, anchors: anchors, marks: marks };
   }
 
   function limbless(p) {
-    var paths = [], anchors = {};
+    var paths = [], anchors = {}, marks = [];
+    function mark(part, label, x, y, level) { marks.push({ part: part, label: label, x: x, y: y, level: level }); }
     var spine = [[-1.05, 0.55], [-0.6, 0.1], [-0.1, 0.45], [0.4, 0.05], [0.85, 0.4], [1.15, -0.15]];
     paths.push({ part: 'body', closed: true, pts: tube(spine, 0.22, 0.05) });
     paths.push({ part: 'head', closed: true, pts: ellipse(-1.12, 0.55, 0.16, 0.11, -0.7) });
     anchors.head = [[-1.15, 0.5]]; anchors.body = [[-0.1, 0.45]]; anchors.tail = [[1.15, -0.15]];
+    mark('body', 'first bend', spine[1][0], spine[1][1], 2);
+    mark('body', 'third bend', spine[3][0], spine[3][1], 2);
+    mark('body', 'fourth bend', spine[4][0], spine[4][1], 3);
+    mark('tail', 'tail base', (spine[4][0] + spine[5][0]) / 2, (spine[4][1] + spine[5][1]) / 2, 3);
     if (has(p, 'crest')) { paths.push({ part: 'crest', closed: true, pts: [[-1.05, 0.42], [-0.9, 0.2], [-0.82, 0.48]] }); anchors.crest = [[-0.9, 0.24]]; }
-    return { paths: paths, anchors: anchors };
+    return { paths: paths, anchors: anchors, marks: marks };
   }
 
   var ARCHETYPES = { quadruped: quadruped, winged: winged, cephalopod: cephalopod, finned: finned, limbless: limbless };
@@ -386,7 +446,7 @@
   // Fit the composed outline into the editor's reach, uniformly, with a
   // margin — one frame for every budget, so 8- and 20-point figures over
   // the same creature are comparable.
-  function fit(paths, anchors) {
+  function fit(paths, anchors, marks) {
     var minX = 1e9, minY = 1e9, maxX = -1e9, maxY = -1e9;
     paths.forEach(function (p) { p.pts.forEach(function (q) { minX = Math.min(minX, q[0]); maxX = Math.max(maxX, q[0]); minY = Math.min(minY, q[1]); maxY = Math.max(maxY, q[1]); }); });
     var w = maxX - minX || 1, h = maxY - minY || 1, reach = COORD * 0.92;
@@ -394,7 +454,8 @@
     var ox = -(minX + maxX) / 2 * k, oy = -(minY + maxY) / 2 * k;
     var out = scaleAll(paths, k, ox, oy), an = {};
     Object.keys(anchors).forEach(function (key) { an[key] = anchors[key].map(function (q) { return scalePt(q, k, ox, oy); }); });
-    return { paths: out, anchors: an };
+    var mk = (marks || []).map(function (m) { var q = scalePt([m.x, m.y], k, ox, oy); return { part: m.part, label: m.label, x: q[0], y: q[1], level: m.level }; });
+    return { paths: out, anchors: an, marks: mk };
   }
 
   // Map the blueprint's own feature NAMES to anchors, so the suggested
@@ -415,6 +476,45 @@
     return out;
   }
 
+  // LANDMARKS BY FEATURE — every place a light could usefully stand, per
+  // blueprint feature name: the part's anchors as level 1 (its defining
+  // points, labelled by the part), then the builder's own structural and
+  // detail marks. A feature the outline did not draw contributes no
+  // landmark; the blueprint's own anchor stands in for it downstream.
+  // Front/hind legs named separately each get their own column of marks.
+  function landmarksByFeature(bp, p, an, marks) {
+    var out = [];
+    function r2(v) { return Math.round(v * 100) / 100; }
+    (bp.features || []).forEach(function (f) {
+      var name = String(f.name || '').toUpperCase(), hit = null;
+      for (var i = 0; i < PARTS.length; i++) { if (PARTS[i].re.test(name)) { hit = PARTS[i].part; break; } }
+      if (!hit) return;
+      var m = modifiers(name);
+      var key = hit, markKeys = [hit];
+      if (hit === 'legs') {
+        if (m.front && an.legsFront) { key = 'legsFront'; markKeys = ['legsFront']; }
+        else if (m.hind && an.legsHind) { key = 'legsHind'; markKeys = ['legsHind']; }
+        else markKeys = ['legsFront', 'legsHind'];
+      }
+      var primary = an[key] || [];
+      primary.forEach(function (q, i) {
+        var label = hit === 'legs' ? ((key === 'legsHind' || (key === 'legs' && i >= primary.length / 2)) ? 'hind foot' : 'front foot')
+                  : hit === 'wings' ? (i === 0 ? 'left wing tip' : 'right wing tip')
+                  : hit === 'arms' ? ('arm ' + (i + 1) + ' tip')
+                  : hit === 'ears' ? (primary.length > 1 ? (i === 0 ? 'left ear' : 'right ear') : 'ear')
+                  : hit === 'fins' ? (i === 0 ? 'dorsal fin' : 'lower fin')
+                  : (hit === 'tail' || hit === 'trunk' || hit === 'tusks' || hit === 'horns' || hit === 'beak' || hit === 'fluke' || hit === 'muzzle') ? hit.replace(/s$/, '') + ' tip'
+                  : hit;
+        out.push({ name: name, part: hit, label: label, x: r2(q[0]), y: r2(q[1]), level: 1 });
+      });
+      (marks || []).forEach(function (mk) {
+        if (markKeys.indexOf(mk.part) === -1) return;
+        out.push({ name: name, part: hit, label: mk.label, x: r2(mk.x), y: r2(mk.y), level: mk.level });
+      });
+    });
+    return out;
+  }
+
   // ---------------------------------------------------------------
   // THE SEAM. `compose(bp)` is what the reference layer calls; the
   // deterministic parts composer is the only provider today, and it says
@@ -425,7 +525,7 @@
     var p = plan(bp);
     var kind = archetype(p);
     var built = ARCHETYPES[kind](p);
-    var fitted = fit(built.paths, built.anchors);
+    var fitted = fit(built.paths, built.anchors, built.marks);
     return {
       source: 'lab-parts',
       label: 'Lab-only deterministic outline — parts composed from the blueprint\'s features; not provider-generated',
@@ -434,7 +534,8 @@
       notDrawn: p.notDrawn,
       unplaced: p.unplaced,
       paths: fitted.paths,
-      anchors: anchorsByFeature(bp, p, fitted.anchors)
+      anchors: anchorsByFeature(bp, p, fitted.anchors),
+      landmarks: landmarksByFeature(bp, p, fitted.anchors, fitted.marks)
     };
   }
 
