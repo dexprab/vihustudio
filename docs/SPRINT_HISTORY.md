@@ -12746,3 +12746,14 @@ rewrites every Lab script tag with `?lab=<hash of everything the four
 pages load>`; `S3c` asks the generator for drift and fails on a bare
 tag, proved by reverting both ways. Build stamp untouched. S 21/21, AP
 and GL green on the stamped pages.
+
+## Lab — a feature name is repaired mechanically, and the repair is named
+
+Lab only. The product owner's first real dragon was refused whole
+(`bad-feature-name:5, bad-feature-name:6`): a model writes
+"WING-MEMBRANE" or "2 HORNS" and the rule was letters and spaces.
+`LabBlueprint.cleanName()` turns marks into spaces and cuts a long name
+at a word, for features and budget lists alike; every repair is named
+in the trace, a name with no letters is still refused and the refusal
+names it. `AR11f`–`AR11h`, proved by reverting (three red). S 21 · AR
+90 · AP green; pages restamped.

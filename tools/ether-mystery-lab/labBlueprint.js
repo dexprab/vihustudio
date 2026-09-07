@@ -70,7 +70,7 @@
       sketch: 'DEPRECATED — optional, ≤ 24 primitives, validated for compatibility and NOT shown: the visual reference is the Creature Outline (labOutline.js), composed from the features'
     },
     feature: {
-      name: 'string — a short body-part label in capitals, letters/spaces only, ≤ 24 chars (HEAD, EAR, TAIL, WING…)',
+      name: 'string — a short body-part label in capitals, letters/spaces only, ≤ 24 chars (HEAD, EAR, TAIL, WING…); a hyphen, digit or other mark is turned into a space, a longer name is cut at a word',
       importance: 'integer 1–3 — 3 = the creature is not itself without it',
       why: 'string — one short sentence on why it is diagnostic',
       anchor: '[x, y] — where on the reference this feature sits; unit space, x right, y DOWN, |x|,|y| ≤ 1.3'
@@ -137,8 +137,29 @@
     });
   }
 
+  // A FEATURE NAME IS REPAIRED MECHANICALLY, AND THE REPAIR IS NAMED.
+  // The product owner's first real dragon came back refused whole —
+  // `bad-feature-name:5, bad-feature-name:6` — because a real model
+  // writes "WING-MEMBRANE", "2 HORNS" or "TAIL (TIP)" for a body part,
+  // and the rule is capitals, letters and spaces, at most 24. A label
+  // with a hyphen in it is not a bad blueprint. So anything that is not
+  // a letter or a space becomes a space, runs of spaces collapse, and a
+  // name over the cap is cut at a word boundary — one rule, reported on
+  // every name it touched (`repairs`), never a guess about meaning. A
+  // name with no letters left is still refused, and says which.
+  function cleanName(v, log, where) {
+    var raw = typeof v === 'string' ? v.trim().toUpperCase() : '';
+    var out = raw.replace(/[^A-Z ]+/g, ' ').replace(/\s+/g, ' ').trim();
+    if (out.length > LIMITS.nameChars) {
+      var head = out.slice(0, LIMITS.nameChars + 1), cut = head.lastIndexOf(' ');
+      out = (cut > 0 ? head.slice(0, cut) : out.slice(0, LIMITS.nameChars)).trim();
+    }
+    if (log && where && out !== raw) log.push(where + ' "' + raw.slice(0, 40) + '" → "' + out + '"');
+    return out;
+  }
+
   function validate(raw) {
-    var reasons = [];
+    var reasons = [], repairs = [], offending = [];
     if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return { ok: false, reasons: ['not-an-object'] };
     walkKeys(raw, '', reasons);
     if (reasons.length) return { ok: false, reasons: reasons };
@@ -156,8 +177,11 @@
       raw.features.forEach(function (f, i) {
         if (!f || typeof f !== 'object' || Array.isArray(f)) { reasons.push('bad-feature:' + i); return; }
         Object.keys(f).forEach(function (k) { if (!SCHEMA.feature[k]) reasons.push('unknown-key:features[' + i + '].' + k); });
-        var name = typeof f.name === 'string' ? f.name.trim().toUpperCase() : '';
-        if (!name || name.length > LIMITS.nameChars || !/^[A-Z][A-Z ]*$/.test(name)) reasons.push('bad-feature-name:' + i);
+        var name = cleanName(f.name, repairs, 'feature ' + i);
+        if (!name || name.length > LIMITS.nameChars || !/^[A-Z][A-Z ]*$/.test(name)) {
+          reasons.push('bad-feature-name:' + i);
+          offending.push({ index: i, name: typeof f.name === 'string' ? f.name.slice(0, 40) : String(f.name) });
+        }
         if (names[name]) reasons.push('duplicate-feature:' + name);
         names[name] = true;
         var imp = f.importance;
@@ -182,7 +206,7 @@
         if (!Array.isArray(list) || list.length > b) { reasons.push('bad-budget-list:' + b); budgets[String(b)] = []; return; }
         var seen = {}, out = [];
         list.forEach(function (n) {
-          var u = typeof n === 'string' ? n.trim().toUpperCase() : '';
+          var u = cleanName(n);
           if (!names[u]) { reasons.push('budget-names-unknown-feature:' + b); return; }
           if (!seen[u]) { seen[u] = true; out.push(u); }
         });
@@ -214,8 +238,8 @@
       });
     }
 
-    if (reasons.length) return { ok: false, reasons: reasons };
-    return { ok: true, reasons: [], blueprint: {
+    if (reasons.length) return { ok: false, reasons: reasons, repairs: repairs, offending: offending };
+    return { ok: true, reasons: [], repairs: repairs, offending: [], blueprint: {
       subject: String(raw.subject).trim(),
       silhouette: String(raw.silhouette).trim(),
       features: features,
@@ -375,7 +399,7 @@
 
   global.LabBlueprint = {
     SCHEMA: SCHEMA, LIMITS: LIMITS, BUDGETS: BUDGETS.slice(), REQUIRED_BUDGETS: REQUIRED_BUDGETS.slice(), FORBIDDEN_KEYS: FORBIDDEN_KEYS.slice(), COORD: COORD,
-    cleanSubject: cleanSubject, messagesFor: messagesFor, validate: validate, parse: parse,
+    cleanSubject: cleanSubject, cleanName: cleanName, messagesFor: messagesFor, validate: validate, parse: parse,
     fixture: fixture, suggestions: suggestions, related: related, listFor: listFor
   };
 })(typeof window !== 'undefined' ? window : this);

@@ -9470,6 +9470,25 @@ leads somewhere.
   stripping one tag's stamp, each red. Twenty-first entry in this
   repository's family of "measured against the wrong thing", and the
   first where the wrong thing was a browser's cache of a research tool.
+- **A BODY-PART LABEL WITH A HYPHEN IN IT IS NOT A BAD BLUEPRINT.**
+  The product owner's first real dragon (`gpt-4.1-mini`, LLM — Direct)
+  came back refused whole: *bad-feature-name:5, bad-feature-name:6*.
+  The rule was capitals, letters and spaces, at most 24 — and a real
+  model writes "WING-MEMBRANE", "2 HORNS" or "TAIL (TIP)" for a body
+  part. Refusing a whole blueprint for that is the Contract Repair
+  lesson from the other side: a rule a model will not reliably obey
+  must be met with a MECHANICAL, NAMED repair where the schema has
+  exactly one home for the value, never a guess about meaning. So
+  `LabBlueprint.cleanName()` turns anything that is not a letter or a
+  space into a space, collapses runs, and cuts a name over the cap at a
+  word boundary — one rule, applied to feature names and to the budget
+  lists that name them, and EVERY repair is reported (`repairs` on the
+  validator's result, *names tidied* in the trace, what the model wrote
+  and what it became). A name with no letters left is still refused,
+  and **the refusal now says which name** — in the status line and in
+  the trace — because *bad-feature-name:5* on its own sent a person to
+  a reply they could not see. `AR11f`–`AR11h`, proved by reverting the
+  repair: three checks red.
 - **16 → 10 DELETES NOTHING.** Changing the budget touches no authored
   point, join, gap or name. Shrinking under a bigger figure keeps every
   light and shows that the figure EXCEEDS the selected budget — header,

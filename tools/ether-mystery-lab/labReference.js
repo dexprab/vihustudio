@@ -507,10 +507,11 @@
       }
       trace.answer = { ok: true, source: r.source, model: r.model || null, chars: String(r.text || '').length };
       var v = B.parse(r.text);
-      trace.parse = { ok: v.ok, reasons: v.reasons || [] };
+      trace.parse = { ok: v.ok, reasons: v.reasons || [], repairs: v.repairs || [], offending: v.offending || [] };
       if (!v.ok) {
         trace.outcome = 'rejected';
-        status((mode === 'fixture' ? 'Fixture' : 'LLM') + ' result rejected by the blueprint validator — ' + v.reasons.slice(0, 3).join(', ') + (v.reasons.length > 3 ? '…' : '') + '. No fixture was substituted. ' + kept, 'warn');
+        var named = (v.offending || []).map(function (o) { return '"' + o.name + '"'; }).join(', ');
+        status((mode === 'fixture' ? 'Fixture' : 'LLM') + ' result rejected by the blueprint validator — ' + v.reasons.slice(0, 3).join(', ') + (v.reasons.length > 3 ? '…' : '') + (named ? ' (refused: ' + named + ')' : '') + '. No fixture was substituted. ' + kept, 'warn');
         paintControls();
         return { ok: false, reason: 'invalid-blueprint', reasons: v.reasons };
       }
@@ -551,7 +552,8 @@
         ? row('answer', 'received · labelled ' + t.answer.source + (t.answer.model ? ' · model ' + t.answer.model : '') + ' · ' + t.answer.chars + ' chars', 'good')
         : row('answer', 'failed — ' + t.answer.reason, 'bad'));
     }
-    if (t.parse) rows.push(t.parse.ok ? row('validator', 'accepted', 'good') : row('validator', 'refused — ' + t.parse.reasons.join(', '), 'bad'));
+    if (t.parse) rows.push(t.parse.ok ? row('validator', 'accepted', 'good') : row('validator', 'refused — ' + t.parse.reasons.join(', ') + ((t.parse.offending || []).length ? ' · refused names: ' + t.parse.offending.map(function (o) { return '"' + o.name + '"'; }).join(', ') : ''), 'bad'));
+    if (t.parse && (t.parse.repairs || []).length) rows.push(row('names tidied', t.parse.repairs.join(' · ')));
     if (t.accepted) rows.push(row('blueprint', t.features + ' features · ' + t.sketch + ' sketch primitives'));
     rows.push(row('outcome', t.outcome, t.outcome === 'generated' || t.outcome === 'fixture' ? 'good' : 'bad'));
     box.innerHTML = rows.join('');

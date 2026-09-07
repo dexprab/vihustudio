@@ -2328,6 +2328,22 @@ The suite's `S3c` runs the check and fails on drift or on a bare tag,
 so a change that forgot to restamp cannot pass. The product build
 stamp (`?v=0769`) is untouched; the Lab ships nothing to a child.
 
+**A feature name is repaired mechanically, and the repair is named.**
+The product owner's first real dragon came back refused whole —
+`bad-feature-name:5, bad-feature-name:6` — because the rule was
+capitals, letters and spaces, at most 24, and a real model writes
+"WING-MEMBRANE", "2 HORNS" or "TAIL (TIP)" for a body part.
+`LabBlueprint.cleanName()` now turns anything that is not a letter or a
+space into a space, collapses runs, and cuts a name over the cap at a
+word boundary; the budget lists resolve through the same cleaning, so
+"Wing-Membrane" in a list still finds WING MEMBRANE. Every repair is
+reported — `repairs` on the validator's result, and a *names tidied*
+row in *What happened on the last generation* showing what the model
+wrote and what it became — never a silent rewrite. A name with no
+letters left in it is still refused, and the status line and the trace
+say which name (*refused: "---"*), so a refusal is never a code alone.
+The contract tells the model the same rule. `AR11f`–`AR11h`.
+
 **Feature focus.** Choosing a feature in the blueprint panel — or
 accepting one of its suggestions — exposes that feature's related
 landmarks at every level in gold beside the budgeted ones (a wing: its

@@ -5191,6 +5191,14 @@ async function sectionAR() {
       if (answer === 'good') text = JSON.stringify(generated);
       else if (answer === 'geometry') text = JSON.stringify(Object.assign({}, generated, { points: [[0, 0], [1, 1]], joins: ['0-1'] }));
       else if (answer === 'stars') { const g = JSON.parse(JSON.stringify(generated)); g.features[0].constellation = [[1, 2]]; text = JSON.stringify(g); }
+      else if (answer === 'punct') {
+        // what a real model writes for a body part: hyphens, digits, brackets, and one name over the cap
+        const g = JSON.parse(JSON.stringify(generated));
+        g.features[0].name = 'Wing-Membrane'; g.features[1].name = '2 Horns'; g.features[2].name = 'TAIL (TIP)'; g.features[3].name = 'Serpentine body with wings extended';
+        g.budgets = { 8: ['Wing-Membrane', '2 Horns', 'TAIL (TIP)'], 12: ['Wing-Membrane', '2 Horns', 'TAIL (TIP)', 'Serpentine body with wings extended'], 16: g.budgets[16].map((_, i) => g.features[i].name), 20: g.budgets[20].map((_, i) => g.features[i].name) };
+        text = JSON.stringify(g);
+      }
+      else if (answer === 'junk') { const g = JSON.parse(JSON.stringify(generated)); g.features[1].name = '---'; text = JSON.stringify(g); }
       else text = 'the dragon is mighty and I refuse to answer in JSON';
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, model: 'gpt-4o-mini', build: 'LAB1', text }) });
     });
@@ -5229,6 +5237,28 @@ async function sectionAR() {
       ck(r.subj === 'Dragon' && r.sketch === 4 && /still here/.test(r.status) && r.prev === null,
         'AR11c a ' + (mode === 'geometry' ? 'reply smuggling final geometry' : mode === 'stars' ? 'reply carrying a constellation' : mode === 'prose' ? 'reply that is not a blueprint' : 'transport that fails') + ' is refused safely: the reference in use is unchanged', r.status.slice(0, 70));
     }
+    // AR11f — the product owner's first real dragon came back refused
+    // whole for `bad-feature-name:5, bad-feature-name:6`: a real model
+    // writes "WING-MEMBRANE" or "2 HORNS" for a body part. A name is
+    // repaired mechanically now — marks to spaces, cut at a word — and
+    // every repair is named in the trace; the budget lists still resolve.
+    answer = 'punct';
+    await page.click('[data-ref-another]');
+    // (waits for EITHER outcome, so a build that refuses the reply fails
+    // AR11f by name rather than crashing the run on a timeout)
+    await page.waitForFunction(() => (LabReference.current() && LabReference.current().features.some((f) => f.name === 'WING MEMBRANE')) || /still here|Nothing changed/.test(document.querySelector('[data-ref-status]').textContent), null, { timeout: 8000 });
+    const tidy = await page.evaluate(() => ({ names: LabReference.current().features.map((f) => f.name), b8: LabReference.current().budgets['8'], b12: LabReference.current().budgets['12'],
+      repairs: LabReference.last().parse.repairs || [], outcome: document.querySelector('[data-ref-section]').getAttribute('data-ref-outcome'), traceText: document.querySelector('[data-ref-trace]').textContent }));
+    ck(tidy.names.join('|') === 'WING MEMBRANE|HORNS|TAIL TIP|SERPENTINE BODY WITH' && tidy.b8.join('|') === 'WING MEMBRANE|HORNS|TAIL TIP' && tidy.b12.length === 4 && tidy.outcome === 'generated',
+      'AR11f a reply naming "Wing-Membrane", "2 Horns", "TAIL (TIP)" and a 36-character name is ACCEPTED — each name tidied to capitals, letters and spaces, the long one cut at a word — and the budget lists still find them', tidy.names.join('|'));
+    ck(tidy.repairs.length === 4 && /feature 0 "WING-MEMBRANE" → "WING MEMBRANE"/.test(tidy.repairs.join(' ')) && /names tidied/.test(tidy.traceText) && /WING-MEMBRANE/.test(tidy.traceText),
+      'AR11g and every repair is NAMED in the trace — what the model wrote and what it became — never a silent rewrite', tidy.repairs.join(' · '));
+    answer = 'junk';
+    await page.click('[data-ref-another]');
+    await page.waitForFunction(() => /still here|Nothing changed/.test(document.querySelector('[data-ref-status]').textContent), null, { timeout: 8000 });
+    const junk = await page.evaluate(() => ({ status: document.querySelector('[data-ref-status]').textContent, names: LabReference.current().features.map((f) => f.name), trace: LabReference.last().parse, traceText: document.querySelector('[data-ref-trace]').textContent }));
+    ck(/bad-feature-name:1/.test(junk.status) && /refused: "---"/.test(junk.status) && junk.names[0] === 'WING MEMBRANE' && junk.trace.offending.length === 1 && junk.trace.offending[0].name === '---' && /refused names: "---"/.test(junk.traceText),
+      'AR11h a name with no letters left in it is still refused — and the status and the trace SAY WHICH NAME, so a refusal is never a code alone; the reference in use is unchanged', junk.status.slice(0, 120));
     answer = 'good';
     ck(hits >= 6, 'AR11d and every one of those was a real request to the stubbed endpoint', 'hits ' + hits);
     // try another interpretation → previous kept → bring back → discard
