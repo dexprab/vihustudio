@@ -95,6 +95,15 @@
   .bp-b.now { color: var(--ink); }
   .bp-bn { display: inline-block; min-width: 22px; font-weight: 700; color: var(--gold); }
   .warnbox { color: var(--warn); font-size: 12px; }
+  .srclabel { font-size: 11px; letter-spacing: .06em; color: var(--dim); text-transform: uppercase; margin-bottom: 2px; }
+  .bp-source { display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: .06em; padding: 3px 8px;
+               border-radius: 6px; margin-bottom: 6px; border: 1px solid var(--line); }
+  .bp-source.fixture { color: var(--mid); background: #2a2a1e; }
+  .bp-source.llm { color: var(--good); background: #1c2e22; }
+  .trace { font-size: 12px; margin-top: 6px; }
+  .trow { display: flex; gap: 8px; padding: 2px 0; border-bottom: 1px solid var(--line); }
+  .tk { color: var(--dim); min-width: 92px; } .tv { color: var(--ink); word-break: break-word; }
+  .tv.bad { color: var(--warn); } .tv.good { color: var(--good); }
   .flow { color: var(--dim); font-size: 12px; margin: 6px 0 0; padding-left: 18px; }
   .flow li { margin: 1px 0; }
 </style>
@@ -145,8 +154,35 @@
     <div class="note">Joins are straight. The Ether figure system has no curved connection, so none is offered here.</div>
   </section>
 
-  <section data-ref-section>
+  <section data-ref-section data-ref-outcome="none">
     <h2>Create from creature</h2>
+    <div class="srclabel">Reference source</div>
+    <div class="row" data-ref-source-row>
+      <button data-conn-mode="fixture" class="on">Fixture</button>
+      <button data-conn-mode="endpoint">LLM — Endpoint</button>
+      <button data-conn-mode="direct">LLM — Direct (dev)</button>
+    </div>
+    <div class="note conn-status" data-conn-status></div>
+    <div data-conn-endpoint-fields hidden>
+      <label>lab-generate function URL</label>
+      <input type="text" data-conn-url placeholder="https://&lt;project&gt;.supabase.co/functions/v1/lab-generate" autocomplete="off">
+      <label>Session access token (administrator)</label>
+      <input type="password" data-conn-token autocomplete="off">
+      <div class="note">The deployed relay. The provider key lives in the function's own environment; the caller must be in <code>platform_admins</code>. Test connection reports the live build, whether a provider key is configured, and the model.</div>
+    </div>
+    <div data-conn-direct-fields hidden>
+      <div class="warnbox">Development only. The key is held in memory for this page and nowhere else — never stored, never exported, never logged. Clear it when you are done.</div>
+      <label>Your provider API key</label>
+      <input type="password" data-conn-key autocomplete="off" placeholder="sk-…">
+      <label>Model</label>
+      <input type="text" data-conn-model value="gpt-4.1-mini" autocomplete="off">
+    </div>
+    <div class="row" data-conn-actions hidden>
+      <button data-conn-test class="quiet">Test connection</button>
+      <button data-conn-clear class="quiet">Disconnect / clear</button>
+    </div>
+    <div class="note" data-ref-source-note>Fixture sends nothing anywhere and answers with ONE generic body plan for every subject — the pipeline, never the creature. Choose an LLM source for a real reference.</div>
+
     <label>Creature or subject — anything</label>
     <div class="row">
       <input type="text" data-ref-subject placeholder="e.g. Tiger" autocomplete="off" maxlength="40" style="flex:1 1 140px">
@@ -154,6 +190,10 @@
     </div>
     <div class="say ref-status" data-ref-status></div>
     <div class="note" data-ref-source></div>
+    <details data-ref-trace-panel>
+      <summary>What happened on the last generation</summary>
+      <div data-ref-trace class="trace"></div>
+    </details>
     <div class="row" style="margin-top:8px">
       <button data-ref-toggle disabled>REFERENCE — none</button>
       <button data-ref-another disabled class="quiet">Try another interpretation</button>
@@ -164,40 +204,13 @@
       <label style="margin:0"><input type="checkbox" data-ref-labels checked disabled> feature labels</label>
       <label style="margin:0"><input type="checkbox" data-ref-suggest checked disabled> suggested points</label>
     </div>
-    <div class="note">The reference is a rough sketch to draw over — the assistant's semantic help, never the creature. It is drawn under your lights, takes no clicks, is never on the unfinished pane, and has no place in a fixture, a candidate, the preview or the Ether. Suggested points are faint marks a click accepts; once placed they are ordinary lights, yours to move or delete. Turn the reference OFF to judge the Ether figure alone.</div>
+    <div class="note">The reference is a rough sketch to draw over — the assistant's semantic help, never the creature. It is drawn under your lights, takes no clicks, is never on the unfinished pane, and has no place in a fixture, a candidate, the preview or the Ether. Suggested points are faint marks a click accepts; once placed they are ordinary lights, yours to move or delete. Turn the reference OFF to judge the Ether figure alone. A failed or rejected LLM result never becomes a Fixture and never replaces the reference you had.</div>
     <details><summary>The flow, in ten steps</summary>
     <ol class="flow">
       <li>Enter a creature</li><li>Generate a reference</li><li>Choose a budget</li>
       <li>Place points over the reference</li><li>Move points</li><li>Join points</li>
       <li>Toggle the reference OFF</li><li>Judge</li><li>Optionally switch budget</li><li>Save fixture</li>
     </ol>
-    </details>
-    <details style="margin-top:8px" data-conn-panel>
-      <summary>Where the help comes from</summary>
-      <div class="row" style="margin-top:6px">
-        <label style="margin:0"><input type="radio" name="refConn" data-conn-mode="fixture" checked> Fixture</label>
-        <label style="margin:0"><input type="radio" name="refConn" data-conn-mode="endpoint"> Endpoint (lab-generate)</label>
-        <label style="margin:0"><input type="radio" name="refConn" data-conn-mode="direct"> Direct (dev only)</label>
-      </div>
-      <div data-conn-endpoint-fields hidden>
-        <label>lab-generate function URL</label>
-        <input type="text" data-conn-url placeholder="https://&lt;project&gt;.supabase.co/functions/v1/lab-generate" autocomplete="off">
-        <label>Session access token (administrator)</label>
-        <input type="password" data-conn-token autocomplete="off">
-      </div>
-      <div data-conn-direct-fields hidden>
-        <div class="warnbox">Development only. The key is held in memory for this page and nowhere else — never stored, never exported, never logged. Clear it when you are done.</div>
-        <label>Your provider API key</label>
-        <input type="password" data-conn-key autocomplete="off" placeholder="sk-…">
-        <label>Model</label>
-        <input type="text" data-conn-model value="gpt-4.1-mini" autocomplete="off">
-      </div>
-      <div class="row" style="margin-top:6px">
-        <button data-conn-test class="quiet">Test connection</button>
-        <button data-conn-clear class="quiet">Disconnect / clear</button>
-      </div>
-      <div class="note conn-status" data-conn-status></div>
-      <div class="note">Fixture mode sends nothing anywhere and answers with one generic body plan for every subject — the pipeline, not the creature. The endpoint keeps the provider key in its own environment. Whatever the mode, the only thing sent is the subject you typed plus a fixed authoring contract.</div>
     </details>
   </section>
 

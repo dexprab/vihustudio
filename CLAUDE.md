@@ -9298,6 +9298,32 @@ leads somewhere.
   canvas left the viewport). The section sits AFTER Budget and Tool
   now, with its ten-step flow folded away; an additive mode must not
   move the controls it is additive to.
+- **THE REFERENCE SOURCE IS EXPLICIT, AND FAILED LLM ≠ FIXTURE** (the
+  verify-and-expose sprint). *Reference source* is one visible three-way
+  control — Fixture · LLM — Endpoint · LLM — Direct (dev), which are
+  `LabConnection`'s own three modes; no second mechanism, no key in
+  browser code. The result says where it came from in three places that
+  read the transport chosen BEFORE the call and never the reply: a badge
+  on the blueprint panel (*FIXTURE — generic authoring reference* / *LLM
+  — Endpoint (model)*), a `data-ref-outcome` of fixture · generated ·
+  rejected · failed · not-configured, and a trace of the last generation
+  naming the request, the answer, the model, the validator's verdict and
+  the outcome. A dead transport, a refused reply and an unconfigured
+  source each say so and substitute nothing — proved by reverting each:
+  an LLM result badged FIXTURE turns five checks red, and a silent
+  fixture substitution or the not-configured branch removed each stall
+  the suite at the refusal status that never comes.
+- **REAL CONNECTIVITY WAS ATTEMPTED HERE AND IS NOT CLAIMED.** With the
+  real `lab-generate` URL entered, the browser's request died at the
+  proxy — `net::ERR_TUNNEL_CONNECTION_FAILED`, the outbound policy's 403
+  on CONNECT to the Supabase host and to the provider alike — and the UI
+  said *LLM UNAVAILABLE — unreachable* then *LLM request failed —
+  unavailable (LLM — Endpoint). No fixture was substituted.* No
+  administrator token exists here either. What the real path needs is
+  written down in the Lab doc: the deployed function, `OPENAI_API_KEY`
+  in its secrets, the caller in `platform_admins`, and that caller's
+  session token. TYPE CREATURE → REAL LLM → REAL BLUEPRINT is observable
+  end to end and is the product owner's to run.
 - **DISCLOSED: no child has used it, no creature was judged, and no real
   model produced a blueprint here** — the environment cannot reach a
   provider, so the generated path is proved against a stubbed endpoint

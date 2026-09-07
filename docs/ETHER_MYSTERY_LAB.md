@@ -2027,17 +2027,87 @@ fixture (the suite scans the saved record and the export), no candidate
 (the candidate is byte-identical with and without a reference), no
 preview (`preview.html` loads neither module) and no Ether.
 
+### The reference source is explicit, and a failure is never a fixture
+
+*Reference source* is one visible three-way control at the top of the
+section — **Fixture · LLM — Endpoint · LLM — Direct (dev)** — using
+`LabConnection`'s own mode names. Fixture is the default. Choosing an
+LLM source shows its fields (the `lab-generate` URL and an administrator
+session token, or a dev-only provider key) plus *Test connection* and
+*Disconnect / clear*, and the live connection line sits right under the
+control. Nothing about the transports changed: the Endpoint mode is the
+same relay the Mystery Lab uses, Direct is the same closure-held key,
+and there is no third mechanism.
+
+What is new is that the RESULT says where it came from, in three places
+that cannot disagree because all three read the transport chosen BEFORE
+the call, never the reply:
+
+- the Reference Blueprint panel is badged **FIXTURE — generic authoring
+  reference**, or **LLM — Endpoint (model)** / **LLM — Direct (dev)
+  (model)**;
+- the section carries `data-ref-outcome` — `fixture` · `generated` ·
+  `rejected` · `failed` · `not-configured`;
+- *What happened on the last generation* is a trace: source, subject,
+  whether a request was sent, what came back (labelled `fixture` or
+  `generated`, the model, the length), what the validator said and why,
+  and the outcome.
+
+**FAILED LLM ≠ Fixture.** A dead transport reads *"LLM request failed —
+unavailable (LLM — Endpoint). No fixture was substituted."*; a reply the
+validator refuses reads *"LLM result rejected by the blueprint validator
+— …"*; an LLM source selected but not configured reads *"LLM — Endpoint
+is selected but not configured — enter the lab-generate URL and an
+administrator token, or choose Fixture. Nothing was generated."* In every
+case the reference in use stays exactly as it was, and its badge still
+says what IT came from. Three revert-proofs guard this: a transport
+failure quietly substituting the fixture, an LLM result badged FIXTURE,
+and the not-configured branch removed each turn their own checks red.
+
+### What the real path needs, exactly
+
+For **LLM — Endpoint**: `supabase/functions/lab-generate` deployed
+(`supabase/DEPLOY_lab_generate.md`); `OPENAI_API_KEY` set in that
+function's secrets (optionally `LAB_MODEL`, default `gpt-4.1-mini`);
+the caller's session email present in `platform_admins`; and, in the
+browser, the function URL plus that administrator session's access
+token. *Test connection* then reports `LLM CONNECTED (endpoint)` — the
+ping answers `build`, `provider: configured` and the model. For
+**LLM — Direct (dev)**: a provider key typed at runtime, and a network
+that can reach the provider host from the browser.
+
+**Real connectivity was attempted from this build environment and did
+not leave it.** With the real function URL entered, the browser's
+request to `https://<project>.supabase.co/functions/v1/lab-generate`
+failed at the proxy with `net::ERR_TUNNEL_CONNECTION_FAILED` (the
+outbound policy answers 403 to the CONNECT tunnel for both the Supabase
+host and `api.openai.com`; `curl` reproduces it). The UI reported *LLM
+UNAVAILABLE — unreachable* on Test connection, and *LLM request failed —
+unavailable (LLM — Endpoint). No fixture was substituted.* on Generate,
+with the trace showing `request: sent`, `answer: failed — unavailable`,
+`outcome: failed`. So the real path is proved OBSERVABLE here and is NOT
+proved to reach a model here; no administrator token exists in this
+environment either. The stubbed endpoint in the suite proves parsing,
+validation, badging and refusal — it does not count as connectivity.
+
 ### A short research procedure
 
-1. Open `tools/ether-mystery-lab/shape.html`. Leave *Where the help
-   comes from* on Fixture to walk the pipeline, or connect the endpoint
-   for a real reference.
-2. Enter **Tiger** → Generate reference.
+1. Open `tools/ether-mystery-lab/shape.html`. Under *Reference source*
+   choose **LLM — Endpoint**, paste the `lab-generate` URL and an
+   administrator session token, press *Test connection* and wait for
+   `LLM CONNECTED (endpoint)`. (Fixture walks the pipeline with a
+   generic body plan and never understands the creature.)
+2. Enter **lion** → Generate reference. Confirm the blueprint panel is
+   badged **LLM — Endpoint (…)**, never FIXTURE, and open *What happened
+   on the last generation* to see the request, the model, the validator's
+   verdict and the outcome.
 3. At budget 8, place lights over the reference (accept suggestions or
    not), join them, mark a gap. Toggle REFERENCE OFF. Judge. Save.
 4. Switch to 12, then 16 (Save as new… each time), and compare across
    budgets.
-5. Repeat with **Falcon**, **Elephant**, **Dragon**, **Penguin**.
+5. Repeat with **tiger**, **falcon**, **elephant**, **octopus**. Each
+   should arrive with its own diagnostic features and its own sketch —
+   the assistant's semantic reading, never a body plan the Lab knows.
 6. Export the fixtures. The judgement is yours; nothing here scores.
 
 ### Disclosed
@@ -2055,7 +2125,7 @@ delayed help); nothing beyond those is activated.
 
 `tools/ether-mystery-lab/labBlueprint.js` · `labReference.js` ·
 `labShape.js` (additive) · `shape.html` · `labConnection.js` (one hook).
-Suite section `AR` (63 checks). Screenshots:
+Suite section `AR` (71 checks). Screenshots:
 `tools/ether-mystery-lab-test/shots/shape-lab/reference-on.png`,
 `reference-off.png`, `reference-generated.png`.
 

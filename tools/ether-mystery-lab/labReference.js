@@ -53,8 +53,19 @@
     labels: true,      // feature annotations
     suggestOn: true,   // suggested points
     dismissed: {},     // feature names whose annotation was closed
-    busy: false
+    busy: false,
+    last: null         // what happened on the last generation — the observable path
   };
+
+  // THE THREE SOURCES ARE LabConnection's OWN MODES, named as it names
+  // them: fixture · endpoint · direct. A label is derived from the mode
+  // and never guessed from the reply.
+  function sourceLabel(mode, model) {
+    if (mode === 'endpoint') return 'LLM — Endpoint' + (model ? ' (' + model + ')' : '');
+    if (mode === 'direct') return 'LLM — Direct (dev)' + (model ? ' (' + model + ')' : '');
+    return 'FIXTURE — generic authoring reference';
+  }
+  function sourceKind(mode) { return mode === 'fixture' ? 'fixture' : 'llm'; }
 
   var canvas = null;
 
@@ -257,7 +268,9 @@
     }
     var S = global.ShapeLab;
     var budget = S ? S.state().budget : 8;
-    var html = '<div class="bp-subject">' + esc(bp.subject) + '</div>' +
+    var m = state.meta || {};
+    var html = '<div class="bp-source ' + sourceKind(m.mode) + '" data-ref-panel-source>' + esc(sourceLabel(m.mode, m.model)) + '</div>' +
+      '<div class="bp-subject">' + esc(bp.subject) + '</div>' +
       '<div class="bp-sil">' + esc(bp.silhouette) + '</div>' +
       '<div class="bp-h">Features — most diagnostic first</div>' +
       bp.features.map(function (f) {
@@ -304,11 +317,15 @@
     var gen = el('[data-ref-generate]'); if (gen) gen.disabled = state.busy;
     var src = el('[data-ref-source]');
     if (src) {
-      src.textContent = !state.meta ? '' :
-        (state.meta.source === 'fixture'
-          ? 'FIXTURE — a generic body plan standing in for "' + state.meta.subject + '"; the pipeline, not the creature.'
-          : 'Generated for "' + state.meta.subject + '"' + (state.meta.model ? ' (' + state.meta.model + ')' : '') + ' — a reference to draw over, never the creature itself.');
+      var mm = state.meta;
+      src.textContent = !mm ? '' :
+        (mm.mode === 'fixture'
+          ? 'FIXTURE — generic authoring reference: a body plan standing in for "' + mm.subject + '"; the pipeline, not the creature.'
+          : sourceLabel(mm.mode, mm.model) + ' — generated for "' + mm.subject + '"; a reference to draw over, never the creature itself.');
     }
+    var sec = el('[data-ref-section]');
+    if (sec) sec.setAttribute('data-ref-outcome', state.last ? state.last.outcome : 'none');
+    renderTrace();
   }
 
   function sync() {
@@ -334,38 +351,83 @@
       status('Give a subject to work from — letters, numbers, spaces, up to 40 characters.', 'warn');
       return Promise.resolve({ ok: false, reason: m.reason });
     }
+    var mode = Conn.status().mode;                 // decided BEFORE the call; the reply never renames it
+    var kept = state.current ? 'The reference you had is still here.' : 'Nothing changed.';
+    var trace = { mode: mode, label: sourceLabel(mode), subject: m.subject, request: null, answer: null, parse: null, accepted: false, outcome: 'pending' };
+    state.last = trace;
+    if (mode !== 'fixture' && /not configured/.test(Conn.status().line)) {
+      trace.request = 'not sent — ' + sourceLabel(mode) + ' is selected but not configured';
+      trace.outcome = 'not-configured';
+      status(sourceLabel(mode) + ' is selected but not configured — ' + (mode === 'endpoint' ? 'enter the lab-generate URL and an administrator token' : 'enter a provider key') + ', or choose Fixture. Nothing was generated and no fixture was substituted. ' + kept, 'warn');
+      paintControls();
+      return Promise.resolve({ ok: false, reason: 'not-configured' });
+    }
+    trace.request = mode === 'fixture' ? 'none — fixture mode sends nothing anywhere' : 'sent through LabConnection (' + mode + ')';
     state.busy = true; paintControls();
-    status('Asking for a reference for "' + m.subject + '"…');
+    status('Asking ' + sourceLabel(mode) + ' for a reference for "' + m.subject + '"…');
     return Conn.generate({
       messages: m.messages,
       fixture: function () { return JSON.stringify(B.fixture(m.subject).blueprint); }
     }).then(function (r) {
       state.busy = false;
       if (!r || !r.ok) {
-        status('Could not get a reference (' + ((r && r.reason) || 'unavailable') + '). ' + (state.current ? 'The reference you had is still here.' : 'Nothing changed.'), 'warn');
+        var reason = (r && r.reason) || 'unavailable';
+        trace.answer = { ok: false, reason: reason };
+        trace.outcome = 'failed';
+        status('LLM request failed — ' + reason + ' (' + sourceLabel(mode) + '). No fixture was substituted. ' + kept, 'warn');
         paintControls();
-        return { ok: false, reason: (r && r.reason) || 'unavailable' };
+        return { ok: false, reason: reason };
       }
+      trace.answer = { ok: true, source: r.source, model: r.model || null, chars: String(r.text || '').length };
       var v = B.parse(r.text);
+      trace.parse = { ok: v.ok, reasons: v.reasons || [] };
       if (!v.ok) {
-        status('The reply was not a usable blueprint — ' + v.reasons.slice(0, 3).join(', ') + (v.reasons.length > 3 ? '…' : '') + '. ' + (state.current ? 'The reference you had is still here.' : 'Nothing changed.'), 'warn');
+        trace.outcome = 'rejected';
+        status((mode === 'fixture' ? 'Fixture' : 'LLM') + ' result rejected by the blueprint validator — ' + v.reasons.slice(0, 3).join(', ') + (v.reasons.length > 3 ? '…' : '') + '. No fixture was substituted. ' + kept, 'warn');
         paintControls();
         return { ok: false, reason: 'invalid-blueprint', reasons: v.reasons };
       }
-      set(v.blueprint, { subject: m.subject, source: r.source, model: r.model || null });
+      trace.accepted = true;
+      trace.outcome = r.source === 'fixture' ? 'fixture' : 'generated';
+      trace.features = v.blueprint.features.length;
+      trace.sketch = v.blueprint.sketch.length;
+      set(v.blueprint, { subject: m.subject, source: r.source, mode: mode, model: r.model || null });
       if (S && S.setAuthoring) S.setAuthoring({ subject: m.subject, referenceUsed: true, source: r.source });
       // The researcher-metadata name is filled from the typed subject only
       // while it is empty — a name already given is never overwritten.
       if (S && S.setName && !S.state().name) S.setName(m.subject);
       status(r.source === 'fixture'
-        ? 'Fixture reference in place — a generic body plan, not "' + m.subject + '". Connect a real assistant for a real one.'
-        : 'Reference in place for "' + m.subject + '". Place your lights over it; the lights are yours.', 'ok');
-      return { ok: true, source: r.source };
+        ? 'Fixture reference in place — a generic body plan standing in for "' + m.subject + '", not the creature. Choose LLM — Endpoint or LLM — Direct for a real one.'
+        : 'LLM reference in place for "' + m.subject + '" (' + sourceLabel(mode, r.model) + '). Place your lights over it; the lights are yours.', 'ok');
+      return { ok: true, source: r.source, mode: mode };
     }).catch(function (e) {
-      state.busy = false; paintControls();
-      status('Could not get a reference. ' + (state.current ? 'The reference you had is still here.' : 'Nothing changed.'), 'warn');
+      state.busy = false;
+      trace.answer = { ok: false, reason: 'error' }; trace.outcome = 'failed';
+      paintControls();
+      status('LLM request failed (' + sourceLabel(mode) + '). No fixture was substituted. ' + kept, 'warn');
       return { ok: false, reason: 'error' };
     });
+  }
+
+  // THE OBSERVABLE PATH. Every step of the last generation, in words,
+  // so a real LLM run can be told from a fixture and a failure from a
+  // fallback — there is no fallback. Never persisted.
+  function renderTrace() {
+    var box = el('[data-ref-trace]');
+    if (!box) return;
+    var t = state.last;
+    if (!t) { box.innerHTML = '<div class="note">Nothing generated yet.</div>'; return; }
+    function row(k, v, cls) { return '<div class="trow"><span class="tk">' + esc(k) + '</span><span class="tv' + (cls ? ' ' + cls : '') + '">' + esc(v) + '</span></div>'; }
+    var rows = [row('source', t.label), row('subject', t.subject), row('request', t.request || '—')];
+    if (t.answer) {
+      rows.push(t.answer.ok
+        ? row('answer', 'received · labelled ' + t.answer.source + (t.answer.model ? ' · model ' + t.answer.model : '') + ' · ' + t.answer.chars + ' chars', 'good')
+        : row('answer', 'failed — ' + t.answer.reason, 'bad'));
+    }
+    if (t.parse) rows.push(t.parse.ok ? row('validator', 'accepted', 'good') : row('validator', 'refused — ' + t.parse.reasons.join(', '), 'bad'));
+    if (t.accepted) rows.push(row('blueprint', t.features + ' features · ' + t.sketch + ' sketch primitives'));
+    rows.push(row('outcome', t.outcome, t.outcome === 'generated' || t.outcome === 'fixture' ? 'good' : 'bad'));
+    box.innerHTML = rows.join('');
   }
 
   // ---------------------------------------------------------------
@@ -387,13 +449,21 @@
     function v(sel) { var n = el(sel); return n ? n.value : ''; }
     function syncFields() {
       var mode = Conn.status().mode;
-      var ep = el('[data-conn-endpoint-fields]'), dr = el('[data-conn-direct-fields]');
+      var ep = el('[data-conn-endpoint-fields]'), dr = el('[data-conn-direct-fields]'), ac = el('[data-conn-actions]');
       if (ep) ep.hidden = mode !== 'endpoint';
       if (dr) dr.hidden = mode !== 'direct';
+      if (ac) ac.hidden = mode === 'fixture';
+      doc.querySelectorAll('[data-conn-mode]').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-conn-mode') === mode); });
+      var note = el('[data-ref-source-note]');
+      if (note) note.textContent = mode === 'fixture'
+        ? 'Fixture sends nothing anywhere and answers with ONE generic body plan for every subject — the pipeline, never the creature. Choose an LLM source for a real reference.'
+        : (mode === 'endpoint'
+          ? 'A real request will leave the browser: the fixed contract and the typed subject, through the deployed lab-generate relay. A failed or rejected reply is reported as such and never becomes a fixture.'
+          : 'A real request will leave the browser straight to the provider, with the key held in memory for this page. A failed or rejected reply is reported as such and never becomes a fixture.');
       paintConn();
     }
-    doc.querySelectorAll('[data-conn-mode]').forEach(function (r) {
-      r.addEventListener('change', function () { if (r.checked) { Conn.setMode(r.getAttribute('data-conn-mode')); syncFields(); } });
+    doc.querySelectorAll('[data-conn-mode]').forEach(function (b) {
+      b.addEventListener('click', function () { Conn.setMode(b.getAttribute('data-conn-mode')); syncFields(); });
     });
     var url = el('[data-conn-url]'), tok = el('[data-conn-token]');
     if (url) url.addEventListener('input', function () { Conn.setEndpoint(v('[data-conn-url]'), v('[data-conn-token]')); paintConn(); });
@@ -411,7 +481,6 @@
     if (clr) clr.addEventListener('click', function () {
       Conn.disconnect();
       if (key) key.value = ''; if (tok) tok.value = ''; if (url) url.value = '';
-      var fx = el('[data-conn-mode="fixture"]'); if (fx) fx.checked = true;
       syncFields();
     });
     syncFields();
@@ -458,6 +527,8 @@
     labels: function () { return state.labels; },
     dismissed: function () { return Object.keys(state.dismissed); },
     render: render,
-    canvas: function () { return canvas; }
+    canvas: function () { return canvas; },
+    last: function () { return state.last ? JSON.parse(JSON.stringify(state.last)) : null; },
+    sourceLabel: sourceLabel
   };
 })(typeof window !== 'undefined' ? window : this);

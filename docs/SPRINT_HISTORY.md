@@ -12646,3 +12646,24 @@ Lab suite 557/557 — section `AR` (63 checks), with seven revert-proofs.
 Doc: `docs/ETHER_MYSTERY_LAB.md` → *Create from creature*; shots in
 `tools/ether-mystery-lab-test/shots/shape-lab/reference-*.png`.
 
+## Shape Lab — verify and expose the real LLM reference path
+
+Lab only. *Reference source* is now one visible three-way control on the
+Create-from-creature section — Fixture · LLM — Endpoint · LLM — Direct
+(dev), LabConnection's own modes, no new transport — and every result
+says where it came from: a source badge on the Reference Blueprint panel
+(FIXTURE — generic authoring reference / LLM — Endpoint (model) / LLM —
+Direct (dev)), a `data-ref-outcome` of fixture · generated · rejected ·
+failed · not-configured, and a step-by-step trace of the last generation
+(request sent?, answer, model, validator verdict, outcome). FAILED LLM ≠
+Fixture: a dead transport, a refused reply and an unconfigured source are
+each reported as such, nothing is substituted, and the reference in use
+stays. Real connectivity was attempted from the build environment and
+stopped at the proxy (`ERR_TUNNEL_CONNECTION_FAILED` to the Supabase host
+and to the provider); the UI reported it honestly, so the real path is
+observable here but NOT proved to reach a model here — that run is the
+product owner's, with the exact dependencies listed in the doc. AR grew
+63 → 71 (three revert-proofs); Lab suite 565/565. Zero production files
+changed. Doc: `docs/ETHER_MYSTERY_LAB.md` → *The reference source is
+explicit*.
+

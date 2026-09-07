@@ -4924,7 +4924,7 @@ async function sectionAR() {
       gens[s] = await page.evaluate(() => ({ subject: LabReference.current().subject, meta: LabReference.meta(), status: document.querySelector('[data-ref-status]').textContent,
         name: ShapeLab.state().name, authoring: ShapeLab.state().authoring, sugg: LabReference.suggestions().length, showing: LabReference.isShowing() }));
     }
-    ck(SUBJECTS.every((s) => gens[s].subject === s && gens[s].meta.source === 'fixture' && /Fixture reference/.test(gens[s].status) && gens[s].showing && gens[s].sugg > 0),
+    ck(SUBJECTS.every((s) => gens[s].subject === s && gens[s].meta.source === 'fixture' && gens[s].meta.mode === 'fixture' && /Fixture reference/.test(gens[s].status) && gens[s].showing && gens[s].sugg > 0),
       'AR5  Tiger · Falcon · Elephant · Dragon · Penguin each produce a reference in fixture mode, honestly labelled FIXTURE, with suggestions for the budget');
     ck(requests.length === before, 'AR5b and fixture mode made NO network request for any of them', requests.slice(before).join(',') || 'none');
     ck(gens.Tiger.name === 'Tiger' && gens.Penguin.name === 'Tiger' && gens.Penguin.authoring.subject === 'Penguin' && gens.Penguin.authoring.referenceUsed === true && gens.Penguin.authoring.source === 'fixture',
@@ -5117,8 +5117,7 @@ async function sectionAR() {
       else text = 'the dragon is mighty and I refuse to answer in JSON';
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, model: 'gpt-4o-mini', build: 'LAB1', text }) });
     });
-    await page.evaluate(() => { document.querySelector('[data-conn-panel]').open = true; });
-    await page.check('[data-conn-mode="endpoint"]');
+    await page.click('[data-conn-mode="endpoint"]');
     await page.fill('[data-conn-url]', 'https://fn.local/lab-generate');
     await page.fill('[data-conn-token]', 'admin-session-token');
     await page.click('[data-conn-test]');
@@ -5128,7 +5127,7 @@ async function sectionAR() {
     await page.waitForFunction(() => LabReference.current() && LabReference.current().subject === 'Dragon');
     const gen = await page.evaluate(() => ({ meta: LabReference.meta(), status: document.querySelector('[data-ref-status]').textContent, sketch: LabReference.current().sketch.length,
       authoring: ShapeLab.state().authoring, src: document.querySelector('[data-ref-source]').textContent, sugg: LabReference.suggestions().map((s) => s.name) }));
-    ck(gen.meta.source === 'generated' && /Reference in place for "Dragon"/.test(gen.status) && gen.sketch === 4 && gen.authoring.source === 'generated' && /Generated for "Dragon"/.test(gen.src) && gen.sugg.join(',') === 'WING,HEAD,TAIL',
+    ck(gen.meta.source === 'generated' && gen.meta.mode === 'endpoint' && /LLM reference in place for "Dragon"/.test(gen.status) && gen.sketch === 4 && gen.authoring.source === 'generated' && /LLM — Endpoint \(gpt-4o-mini\) — generated for "Dragon"/.test(gen.src) && gen.sugg.join(',') === 'WING,HEAD,TAIL',
       'AR11 a generated reply becomes the reference, labelled generated, with the assistant\'s own sketch and its budget-8 suggestions', gen.sugg.join(','));
     const reqJson = JSON.stringify(lastBody);
     ck(lastBody && lastBody.action === 'generate' && Array.isArray(lastBody.messages) && lastBody.messages.length === 2 && lastBody.messages[1].content === 'Subject: Dragon' &&
@@ -5158,8 +5157,86 @@ async function sectionAR() {
     ck(multi.a === 'Dragon' && multi.p === 'Dragon' && multi.rb && multi.after.cur === 'Dragon' && multi.after.prev && multi.cleared && multi.editorOpaque === 255,
       'AR11e another interpretation keeps the previous one, the previous one can be brought back, and discard clears both and returns the editor to its opaque sky');
 
+    // ---- AR13: the REFERENCE SOURCE is explicit, and a failure is never a fixture ----
+    const srcCtl = await page.evaluate(() => ({
+      buttons: Array.from(document.querySelectorAll('[data-conn-mode]')).map((b) => b.getAttribute('data-conn-mode') + ':' + b.textContent.trim()),
+      on: Array.from(document.querySelectorAll('[data-conn-mode].on')).map((b) => b.getAttribute('data-conn-mode')),
+      status: document.querySelector('[data-conn-status]').textContent
+    }));
+    ck(srcCtl.buttons.join('|') === 'fixture:Fixture|endpoint:LLM — Endpoint|direct:LLM — Direct (dev)' && srcCtl.on.join() === 'endpoint' && /CONNECTED \(endpoint\)/.test(srcCtl.status),
+      'AR13 REFERENCE SOURCE is one visible three-way control — Fixture · LLM — Endpoint · LLM — Direct (dev) — using LabConnection\'s own mode names, and it shows the live connection line', srcCtl.buttons.join('|'));
+    // a fresh fixture reference, then a generated one: the panel badge and the outcome attribute say which is which
+    await page.click('[data-conn-mode="fixture"]');
+    await page.fill('[data-ref-subject]', 'Lion');
+    await page.click('[data-ref-generate]');
+    await page.waitForFunction(() => LabReference.current() && LabReference.current().subject === 'Lion');
+    const fx = await page.evaluate(() => ({ badge: document.querySelector('[data-ref-panel-source]').textContent, cls: document.querySelector('[data-ref-panel-source]').className,
+      outcome: document.querySelector('[data-ref-section]').getAttribute('data-ref-outcome'), src: document.querySelector('[data-ref-source]').textContent, status: document.querySelector('[data-ref-status]').textContent,
+      trace: LabReference.last(), traceText: document.querySelector('[data-ref-trace]').textContent }));
+    ck(fx.badge === 'FIXTURE — generic authoring reference' && /fixture/.test(fx.cls) && fx.outcome === 'fixture' && /^FIXTURE — generic authoring reference/.test(fx.src) &&
+       /not the creature/.test(fx.status) && fx.trace.mode === 'fixture' && /sends nothing anywhere/.test(fx.trace.request) && /fixture/.test(fx.traceText),
+      'AR13b Fixture is unmistakable: the blueprint panel is badged FIXTURE — generic authoring reference, the outcome reads fixture, and the trace says no request was sent');
+    await page.click('[data-conn-mode="endpoint"]');
+    const hitsBefore = hits;
+    await page.click('[data-ref-generate]');
+    await page.waitForFunction(() => document.querySelector('[data-ref-section]').getAttribute('data-ref-outcome') === 'generated');
+    const ll = await page.evaluate(() => ({ badge: document.querySelector('[data-ref-panel-source]').textContent, cls: document.querySelector('[data-ref-panel-source]').className,
+      subject: LabReference.current().subject, features: LabReference.current().features.length, sketch: JSON.stringify(LabReference.current().sketch),
+      trace: LabReference.last(), traceText: document.querySelector('[data-ref-trace]').textContent }));
+    const fxSketch = JSON.stringify(B.fixture('Lion').blueprint.sketch);
+    ck(hits === hitsBefore + 1 && ll.badge === 'LLM — Endpoint (gpt-4o-mini)' && /llm/.test(ll.cls) && !/FIXTURE/i.test(ll.badge) && ll.subject === 'Dragon' && ll.features === 4 && ll.sketch !== fxSketch &&
+       ll.trace.mode === 'endpoint' && ll.trace.answer.ok && ll.trace.answer.source === 'generated' && ll.trace.answer.model === 'gpt-4o-mini' && ll.trace.parse.ok && ll.trace.accepted && ll.trace.outcome === 'generated' && /validator.*accepted/.test(ll.traceText),
+      'AR13c selecting LLM — Endpoint invokes the Endpoint transport (one real request to the stub), the accepted blueprint is badged LLM — Endpoint with the model, never FIXTURE, and the sketch differs from the fixture\'s', ll.badge + ' hits+' + (hits - hitsBefore));
+    // a failure in LLM mode is reported as an LLM failure, and the panel keeps saying LLM for the reference still in use
+    for (const mode of ['prose', 'down']) {
+      answer = mode;
+      await page.click('[data-ref-generate]');
+      await page.waitForFunction((m) => document.querySelector('[data-ref-section]').getAttribute('data-ref-outcome') === (m === 'prose' ? 'rejected' : 'failed'), mode, { timeout: 8000 });
+      const f = await page.evaluate(() => ({ status: document.querySelector('[data-ref-status]').textContent, badge: document.querySelector('[data-ref-panel-source]').textContent,
+        outcome: document.querySelector('[data-ref-section]').getAttribute('data-ref-outcome'), subject: LabReference.current().subject, trace: LabReference.last(), traceText: document.querySelector('[data-ref-trace]').textContent }));
+      ck(/^LLM (result rejected|request failed)/.test(f.status) && /No fixture was substituted/.test(f.status) && !/Fixture reference/.test(f.status) && f.badge === 'LLM — Endpoint (gpt-4o-mini)' && f.subject === 'Dragon' &&
+         f.trace.mode === 'endpoint' && (mode === 'prose' ? (f.trace.answer.ok && !f.trace.parse.ok) : (!f.trace.answer.ok)) && /outcome/.test(f.traceText),
+        'AR13d a ' + (mode === 'prose' ? 'rejected' : 'dead-transport') + ' LLM result says so — FAILED LLM ≠ Fixture: nothing is substituted, the LLM reference in use stays, the trace names the step', f.status.slice(0, 80));
+    }
+    answer = 'good';
+    // Endpoint selected but not configured: nothing is generated, nothing falls back
+    await page.click('[data-conn-clear]');
+    await page.click('[data-conn-mode="endpoint"]');
+    const hitsNC = hits;
+    await page.click('[data-ref-generate]');
+    await page.waitForFunction(() => document.querySelector('[data-ref-section]').getAttribute('data-ref-outcome') === 'not-configured');
+    const nc = await page.evaluate(() => ({ status: document.querySelector('[data-ref-status]').textContent, subject: LabReference.current() && LabReference.current().subject, trace: LabReference.last() }));
+    ck(hits === hitsNC && /LLM — Endpoint is selected but not configured/.test(nc.status) && /no fixture was substituted/.test(nc.status) && nc.subject === 'Dragon' && /not sent/.test(nc.trace.request),
+      'AR13e LLM — Endpoint selected but unconfigured: no request, no fixture, the reference in use untouched, and the status says exactly what is missing');
+    // Direct selection invokes the Direct transport — stubbed at the provider host, and the blueprint is badged Direct
+    let directHits = 0;
+    await page.route('https://api.openai.com/**', (route) => {
+      directHits++;
+      if (/\/models$/.test(route.request().url())) return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [{ id: 'gpt-4.1-mini' }] }) });
+      const body = JSON.parse(route.request().postData() || '{}');
+      lastBody = body;
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ choices: [{ message: { content: JSON.stringify(Object.assign({}, generated, { subject: 'Octopus' })) } }] }) });
+    });
+    await page.click('[data-conn-mode="direct"]');
+    await page.fill('[data-conn-key]', 'sk-test-direct-never-stored');
+    await page.click('[data-conn-test]');
+    await page.waitForFunction(() => /CONNECTED \(direct\)/.test(document.querySelector('[data-conn-status]').textContent));
+    await page.fill('[data-ref-subject]', 'Octopus');
+    await page.click('[data-ref-generate]');
+    await page.waitForFunction(() => LabReference.current() && LabReference.current().subject === 'Octopus');
+    const dr = await page.evaluate(() => ({ badge: document.querySelector('[data-ref-panel-source]').textContent, meta: LabReference.meta(), outcome: document.querySelector('[data-ref-section]').getAttribute('data-ref-outcome'),
+      ls: JSON.stringify(localStorage), ss: JSON.stringify(sessionStorage), cookie: document.cookie, exp: window.ShapeLab.exportJSON() }));
+    ck(directHits >= 2 && dr.badge === 'LLM — Direct (dev) (gpt-4.1-mini)' && dr.meta.mode === 'direct' && dr.meta.source === 'generated' && dr.outcome === 'generated' &&
+       lastBody && lastBody.messages && lastBody.messages[1].content === 'Subject: Octopus' && !/\b(card|stars|constellation|memor|story|email|username|creator|companion)\b/i.test(JSON.stringify(lastBody)) &&
+       !/sk-test-direct/.test(dr.ls + dr.ss + dr.cookie + dr.exp),
+      'AR13f selecting LLM — Direct (dev) invokes the Direct transport at the provider host, is badged LLM — Direct (dev), sends the subject plus the contract only, and the key reaches no storage, export or cookie', dr.badge);
+    await page.unroute('https://api.openai.com/**');
+    await page.click('[data-conn-clear]');
+    ck(!/subject\s*===|===\s*subject|\b(lion|tiger|falcon|elephant|octopus)\b/i.test(bpStripped + refStripped),
+      'AR13g still no subject-specific code — none of lion, tiger, falcon, elephant or octopus appears in the blueprint or reference modules');
+
     // ---- AR12: the direct key lives in a closure and nowhere else ----
-    await page.check('[data-conn-mode="direct"]');
+    await page.click('[data-conn-mode="direct"]');
     await page.fill('[data-conn-key]', 'sk-test-never-stored-9f9f9f');
     const keyState = await page.evaluate(() => ({ holds: window.LabConnection._holdsDirectKey(), ls: JSON.stringify(localStorage), ss: JSON.stringify(sessionStorage), exp: window.ShapeLab.exportJSON(), cookie: document.cookie }));
     ck(keyState.holds && !/sk-test/.test(keyState.ls + keyState.ss + keyState.exp + keyState.cookie),
