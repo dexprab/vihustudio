@@ -9289,6 +9289,15 @@ leads somewhere.
   reducing a budget under a bigger figure is refused and deletes
   nothing.** The header reads *TESTING 12 POINTS — Lab authoring /
   research budget · production currently supports 8*.
+- **THE FULL SUITE CAUGHT A LAYOUT REGRESSION THE NEW SECTION ALONE
+  COULD NOT SEE.** Placed first in the left column, *Create from
+  creature* pushed the Point budget and Tool controls ~900px down, so
+  at 1500×1000 a person had to scroll for the editor's own tools —
+  and the existing SL checks, which click those controls the way a
+  person does, went red (Playwright scrolled them into view and the
+  canvas left the viewport). The section sits AFTER Budget and Tool
+  now, with its ten-step flow folded away; an additive mode must not
+  move the controls it is additive to.
 - **DISCLOSED: no child has used it, no creature was judged, and no real
   model produced a blueprint here** — the environment cannot reach a
   provider, so the generated path is proved against a stubbed endpoint

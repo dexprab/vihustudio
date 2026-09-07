@@ -1950,7 +1950,10 @@ under the editor and a set of suggestions a click may accept.
   `authoring: { subject, referenceUsed, source }` note — three words
   about HOW, never geometry; the header reads *TESTING 12 POINTS — Lab
   authoring / research budget · production currently supports 8*.
-- **`shape.html`** — the *Create from creature* section (subject,
+- **`shape.html`** — the *Create from creature* section, placed AFTER
+  the Point budget and Tool sections so the editor's own controls stay
+  where they were (its first placement pushed them below the fold, and
+  the existing suite caught it) — (subject,
   Generate reference, REFERENCE ON/OFF, Try another interpretation,
   Bring back the previous one, Discard reference, feature-label and
   suggested-point toggles, the ten-step flow as a note rather than a

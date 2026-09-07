@@ -109,61 +109,7 @@
 </header>
 
 <main>
-<div><!-- left: create-from-creature, budget, tools, figure metadata -->
-  <section data-ref-section>
-    <h2>Create from creature</h2>
-    <label>Creature or subject — anything</label>
-    <div class="row">
-      <input type="text" data-ref-subject placeholder="e.g. Tiger" autocomplete="off" maxlength="40" style="flex:1 1 140px">
-      <button data-ref-generate class="primary">Generate reference</button>
-    </div>
-    <div class="say ref-status" data-ref-status></div>
-    <div class="note" data-ref-source></div>
-    <div class="row" style="margin-top:8px">
-      <button data-ref-toggle disabled>REFERENCE — none</button>
-      <button data-ref-another disabled class="quiet">Try another interpretation</button>
-      <button data-ref-restore disabled class="quiet">Bring back the previous one</button>
-      <button data-ref-discard disabled class="quiet">Discard reference</button>
-    </div>
-    <div class="row">
-      <label style="margin:0"><input type="checkbox" data-ref-labels checked disabled> feature labels</label>
-      <label style="margin:0"><input type="checkbox" data-ref-suggest checked disabled> suggested points</label>
-    </div>
-    <div class="note">The reference is a rough sketch to draw over — the assistant's semantic help, never the creature. It is drawn under your lights, takes no clicks, is never on the unfinished pane, and has no place in a fixture, a candidate, the preview or the Ether. Suggested points are faint marks a click accepts; once placed they are ordinary lights, yours to move or delete. Turn the reference OFF to judge the Ether figure alone.</div>
-    <ol class="flow">
-      <li>Enter a creature</li><li>Generate a reference</li><li>Choose a budget</li>
-      <li>Place points over the reference</li><li>Move points</li><li>Join points</li>
-      <li>Toggle the reference OFF</li><li>Judge</li><li>Optionally switch budget</li><li>Save fixture</li>
-    </ol>
-    <details style="margin-top:8px">
-      <summary>Where the help comes from</summary>
-      <div class="row" style="margin-top:6px">
-        <label style="margin:0"><input type="radio" name="refConn" data-conn-mode="fixture" checked> Fixture</label>
-        <label style="margin:0"><input type="radio" name="refConn" data-conn-mode="endpoint"> Endpoint (lab-generate)</label>
-        <label style="margin:0"><input type="radio" name="refConn" data-conn-mode="direct"> Direct (dev only)</label>
-      </div>
-      <div data-conn-endpoint-fields hidden>
-        <label>lab-generate function URL</label>
-        <input type="text" data-conn-url placeholder="https://&lt;project&gt;.supabase.co/functions/v1/lab-generate" autocomplete="off">
-        <label>Session access token (administrator)</label>
-        <input type="password" data-conn-token autocomplete="off">
-      </div>
-      <div data-conn-direct-fields hidden>
-        <div class="warnbox">Development only. The key is held in memory for this page and nowhere else — never stored, never exported, never logged. Clear it when you are done.</div>
-        <label>Your provider API key</label>
-        <input type="password" data-conn-key autocomplete="off" placeholder="sk-…">
-        <label>Model</label>
-        <input type="text" data-conn-model value="gpt-4.1-mini" autocomplete="off">
-      </div>
-      <div class="row" style="margin-top:6px">
-        <button data-conn-test class="quiet">Test connection</button>
-        <button data-conn-clear class="quiet">Disconnect / clear</button>
-      </div>
-      <div class="note conn-status" data-conn-status></div>
-      <div class="note">Fixture mode sends nothing anywhere and answers with one generic body plan for every subject — the pipeline, not the creature. The endpoint keeps the provider key in its own environment. Whatever the mode, the only thing sent is the subject you typed plus a fixed authoring contract.</div>
-    </details>
-  </section>
-
+<div><!-- left: budget, tools, create-from-creature, figure metadata -->
   <section>
     <h2>Point budget</h2>
     <div class="row">
@@ -197,6 +143,62 @@
       <button data-demo class="quiet">Neutral demo ring</button>
     </div>
     <div class="note">Joins are straight. The Ether figure system has no curved connection, so none is offered here.</div>
+  </section>
+
+  <section data-ref-section>
+    <h2>Create from creature</h2>
+    <label>Creature or subject — anything</label>
+    <div class="row">
+      <input type="text" data-ref-subject placeholder="e.g. Tiger" autocomplete="off" maxlength="40" style="flex:1 1 140px">
+      <button data-ref-generate class="primary">Generate reference</button>
+    </div>
+    <div class="say ref-status" data-ref-status></div>
+    <div class="note" data-ref-source></div>
+    <div class="row" style="margin-top:8px">
+      <button data-ref-toggle disabled>REFERENCE — none</button>
+      <button data-ref-another disabled class="quiet">Try another interpretation</button>
+      <button data-ref-restore disabled class="quiet">Bring back the previous one</button>
+      <button data-ref-discard disabled class="quiet">Discard reference</button>
+    </div>
+    <div class="row">
+      <label style="margin:0"><input type="checkbox" data-ref-labels checked disabled> feature labels</label>
+      <label style="margin:0"><input type="checkbox" data-ref-suggest checked disabled> suggested points</label>
+    </div>
+    <div class="note">The reference is a rough sketch to draw over — the assistant's semantic help, never the creature. It is drawn under your lights, takes no clicks, is never on the unfinished pane, and has no place in a fixture, a candidate, the preview or the Ether. Suggested points are faint marks a click accepts; once placed they are ordinary lights, yours to move or delete. Turn the reference OFF to judge the Ether figure alone.</div>
+    <details><summary>The flow, in ten steps</summary>
+    <ol class="flow">
+      <li>Enter a creature</li><li>Generate a reference</li><li>Choose a budget</li>
+      <li>Place points over the reference</li><li>Move points</li><li>Join points</li>
+      <li>Toggle the reference OFF</li><li>Judge</li><li>Optionally switch budget</li><li>Save fixture</li>
+    </ol>
+    </details>
+    <details style="margin-top:8px" data-conn-panel>
+      <summary>Where the help comes from</summary>
+      <div class="row" style="margin-top:6px">
+        <label style="margin:0"><input type="radio" name="refConn" data-conn-mode="fixture" checked> Fixture</label>
+        <label style="margin:0"><input type="radio" name="refConn" data-conn-mode="endpoint"> Endpoint (lab-generate)</label>
+        <label style="margin:0"><input type="radio" name="refConn" data-conn-mode="direct"> Direct (dev only)</label>
+      </div>
+      <div data-conn-endpoint-fields hidden>
+        <label>lab-generate function URL</label>
+        <input type="text" data-conn-url placeholder="https://&lt;project&gt;.supabase.co/functions/v1/lab-generate" autocomplete="off">
+        <label>Session access token (administrator)</label>
+        <input type="password" data-conn-token autocomplete="off">
+      </div>
+      <div data-conn-direct-fields hidden>
+        <div class="warnbox">Development only. The key is held in memory for this page and nowhere else — never stored, never exported, never logged. Clear it when you are done.</div>
+        <label>Your provider API key</label>
+        <input type="password" data-conn-key autocomplete="off" placeholder="sk-…">
+        <label>Model</label>
+        <input type="text" data-conn-model value="gpt-4.1-mini" autocomplete="off">
+      </div>
+      <div class="row" style="margin-top:6px">
+        <button data-conn-test class="quiet">Test connection</button>
+        <button data-conn-clear class="quiet">Disconnect / clear</button>
+      </div>
+      <div class="note conn-status" data-conn-status></div>
+      <div class="note">Fixture mode sends nothing anywhere and answers with one generic body plan for every subject — the pipeline, not the creature. The endpoint keeps the provider key in its own environment. Whatever the mode, the only thing sent is the subject you typed plus a fixed authoring contract.</div>
+    </details>
   </section>
 
   <section>

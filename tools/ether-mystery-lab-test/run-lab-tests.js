@@ -5117,7 +5117,7 @@ async function sectionAR() {
       else text = 'the dragon is mighty and I refuse to answer in JSON';
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, model: 'gpt-4o-mini', build: 'LAB1', text }) });
     });
-    await page.evaluate(() => { document.querySelector('[data-ref-section] details').open = true; });
+    await page.evaluate(() => { document.querySelector('[data-conn-panel]').open = true; });
     await page.check('[data-conn-mode="endpoint"]');
     await page.fill('[data-conn-url]', 'https://fn.local/lab-generate');
     await page.fill('[data-conn-token]', 'admin-session-token');
