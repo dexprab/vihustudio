@@ -4752,7 +4752,7 @@ async function sectionAR() {
 
   // ---- AR1: PRODUCTION IS UNTOUCHED ----
   const grepProd = require('child_process').spawnSync('grep',
-    ['-rl', '-e', 'LabReference', '-e', 'LabBlueprint', '-e', 'labReference', '-e', 'labBlueprint', '-e', 'Create from creature',
+    ['-rl', '-e', 'LabReference', '-e', 'LabBlueprint', '-e', 'labReference', '-e', 'labBlueprint', '-e', 'LabOutline', '-e', 'labOutline', '-e', 'Create from creature',
      path.join(ROOT, 'js'), path.join(ROOT, 'assets'), path.join(ROOT, 'vihuplanet'), path.join(ROOT, 'supabase'),
      path.join(ROOT, 'index.html'), path.join(ROOT, 'studio.html')],
     { encoding: 'utf8' }).stdout || '';
@@ -4783,7 +4783,11 @@ async function sectionAR() {
   // (The blueprint validator's own REFUSAL vocabulary names png, svg, base64
   // and data: — the strings it refuses — so it is scanned for the acts, not
   // the words: no image element, no bitmap draw, no element creation.)
-  ck(!/<img|drawImage|new Image|Image\(|\.png|\.jpg|\.svg|url\(|base64|background-image/i.test(refStripped) &&
+  // (The reference layer composites its OWN offscreen canvas — the outline's
+  // parts merged into one silhouette — and that is the one drawImage it may
+  // make; an image element, a bitmap file or a URL is still refused.)
+  ck(!/<img|new Image|(?<![A-Za-z])Image\(|\.png|\.jpg|\.svg|url\(|base64|background-image/i.test(refStripped) &&
+     (refStripped.match(/drawImage\(/g) || []).length === 1 && /drawImage\(offscreen/.test(refStripped) &&
      !/drawImage|new Image|Image\(|createElement|innerHTML/i.test(bpStripped) &&
      !/<img|\.png|\.jpg|\.svg|background-image/i.test(htmlNoComments),
     'AR2c no bitmap, no image element, no URL — the reference is vector primitives from a validated blueprint');
@@ -4844,7 +4848,6 @@ async function sectionAR() {
     budgetKeys: mutate((c) => { delete c.budgets['12']; }),
     budgetOver: mutate((c) => { c.budgets['8'] = new Array(9).fill('HEAD'); }),
     budgetUnknown: mutate((c) => { c.budgets['8'] = ['HORN']; }),
-    sketchEmpty: mutate((c) => { c.sketch = []; }),
     sketchKind: mutate((c) => { c.sketch[0] = { kind: 'bitmap' }; }),
     sketchUnknownKey: mutate((c) => { c.sketch[0].src = 'x'; }),
     hintSmuggled: mutate((c) => { c.hint = 'a tiger waits'; })
@@ -4854,6 +4857,13 @@ async function sectionAR() {
     allRefused.join(',') || Object.keys(bad).map((k) => k + ':' + bad[k].reasons[0]).slice(0, 4).join(' '));
   ck(/forbidden-key/.test(bad.forbiddenJoins.reasons[0]) && /forbidden-key/.test(bad.forbiddenDeep.reasons[0]) && /unknown-key:points/.test(bad.unknownTop.reasons[0]),
     'AR3g a key that would carry final geometry — joins, points, a constellation at any depth — is refused BY NAME');
+  // (A blueprint with NO sketch validates now — the sketch is deprecated:
+  // the visual reference is the Creature Outline composed from the
+  // features, so a reply that stops at the semantics is a complete reply.)
+  const noSketch = mutate((c) => { delete c.sketch; });
+  const emptySketch = mutate((c) => { c.sketch = []; });
+  ck(noSketch.ok && emptySketch.ok && noSketch.blueprint.sketch.length === 0,
+    'AR3f2 the assistant\'s sketch is deprecated and OPTIONAL — a blueprint without one validates, and the semantic half is whole');
   const fenced = B.parse('```json\n' + JSON.stringify(good) + '\n```');
   const prose = B.parse('Here you go: ' + JSON.stringify(good) + ' — enjoy');
   ck(fenced.ok && prose.ok && !B.parse('not json at all').ok && !B.parse('').ok,
@@ -5127,8 +5137,8 @@ async function sectionAR() {
     await page.waitForFunction(() => LabReference.current() && LabReference.current().subject === 'Dragon');
     const gen = await page.evaluate(() => ({ meta: LabReference.meta(), status: document.querySelector('[data-ref-status]').textContent, sketch: LabReference.current().sketch.length,
       authoring: ShapeLab.state().authoring, src: document.querySelector('[data-ref-source]').textContent, sugg: LabReference.suggestions().map((s) => s.name) }));
-    ck(gen.meta.source === 'generated' && gen.meta.mode === 'endpoint' && /LLM reference in place for "Dragon"/.test(gen.status) && gen.sketch === 4 && gen.authoring.source === 'generated' && /LLM — Endpoint \(gpt-4o-mini\) — generated for "Dragon"/.test(gen.src) && gen.sugg.join(',') === 'WING,HEAD,TAIL',
-      'AR11 a generated reply becomes the reference, labelled generated, with the assistant\'s own sketch and its budget-8 suggestions', gen.sugg.join(','));
+    ck(gen.meta.source === 'generated' && gen.meta.mode === 'endpoint' && /LLM reference in place for "Dragon"/.test(gen.status) && gen.sketch === 4 && gen.authoring.source === 'generated' && /LLM — Endpoint \(gpt-4o-mini\) — generated for "Dragon"/.test(gen.src) && gen.sugg.join(',') === 'WING,WING,HEAD,TAIL',
+      'AR11 a generated reply becomes the reference, labelled generated, with its budget-8 suggestions on the outline (two wing tips, a head, a tail)', gen.sugg.join(','));
     const reqJson = JSON.stringify(lastBody);
     ck(lastBody && lastBody.action === 'generate' && Array.isArray(lastBody.messages) && lastBody.messages.length === 2 && lastBody.messages[1].content === 'Subject: Dragon' &&
        !/\b(card|cardId|stars|constellation|memor|story|email|orbit|username|creator|companion|owner)\b/i.test(reqJson) && !/points|joins|gaps/.test(JSON.stringify(lastBody.messages[1])),
@@ -5234,6 +5244,106 @@ async function sectionAR() {
     await page.click('[data-conn-clear]');
     ck(!/subject\s*===|===\s*subject|\b(lion|tiger|falcon|elephant|octopus)\b/i.test(bpStripped + refStripped),
       'AR13g still no subject-specific code — none of lion, tiger, falcon, elephant or octopus appears in the blueprint or reference modules');
+
+    // ---- AR14: the CREATURE OUTLINE REFERENCE — the visual guide is composed from the features, Lab-side ----
+    const outlineSrc = read('tools/ether-mystery-lab/labOutline.js');
+    const outlineStripped = stripComments(outlineSrc);
+    ck(/labOutline\.js/.test(shapeHtml) && !/labOutline/.test(read('tools/ether-mystery-lab/preview.html')) && !/LabOutline/.test(read('tools/ether-mystery-lab/labPreview.js') + read('tools/ether-mystery-lab/labPreviewHost.js')),
+      'AR14 the Shape Lab loads the outline composer; the child-facing preview does not and cannot draw one');
+    ck(!/\b(lion|tiger|falcon|elephant|octopus|whale|penguin|dragon|giraffe|frog|shark|bird|cat|dog|lizard|horse|bear|fox)\b/i.test(outlineStripped) && !/subject\s*===|===\s*subject|switch\s*\(\s*subject/.test(outlineStripped),
+      'AR14b no creature name and no subject branch anywhere in the composer — a parts vocabulary keyed on FEATURE words, never a creature catalogue');
+    ck(!/<img|drawImage|new Image|Image\(|\.png|\.jpg|\.svg|url\(|base64|fetch\(|XMLHttpRequest|localStorage|sessionStorage/i.test(outlineStripped),
+      'AR14c the composer draws nothing itself, loads no image, reaches no network and writes no storage');
+    const osb = { console }; osb.window = undefined; osb.global = osb;
+    vm.runInNewContext(outlineSrc, osb, { filename: 'labOutline.js' });
+    const O = osb.LabOutline;
+    const feat = (names) => names.map((n, i) => ({ name: n, importance: i < 3 ? 3 : 2, why: 'x', anchor: [0, 0] }));
+    const shapes = {
+      quad: O.compose({ subject: 'a', features: feat(['HEAD', 'EARS', 'MUZZLE', 'BODY', 'FOUR LEGS', 'LONG TAIL', 'STRIPES']) }),
+      bird: O.compose({ subject: 'b', features: feat(['HOOKED BEAK', 'HEAD', 'BODY', 'WINGS', 'TAIL FEATHERS']) }),
+      ceph: O.compose({ subject: 'c', features: feat(['MANTLE', 'EIGHT ARMS', 'HEAD']) }),
+      fish: O.compose({ subject: 'd', features: feat(['BODY', 'DORSAL FIN', 'TAIL FIN']) }),
+      snake: O.compose({ subject: 'e', features: feat(['HEAD', 'BODY', 'TAIL']) }),
+      trunk: O.compose({ subject: 'f', features: feat(['TRUNK', 'LARGE EARS', 'TUSKS', 'LARGE BODY', 'HEAD', 'THICK LEGS', 'SHORT TAIL']) }),
+      wibble: O.compose({ subject: 'Wibble Fnord 7', features: feat(['GLORP', 'BODY', 'ZIB']) })
+    };
+    ck(shapes.quad.archetype === 'quadruped' && shapes.bird.archetype === 'winged' && shapes.ceph.archetype === 'cephalopod' && shapes.fish.archetype === 'finned' && shapes.snake.archetype === 'limbless' && shapes.trunk.archetype === 'quadruped',
+      'AR14d the body plan is READ from the features — legs → quadruped, wings → winged, mantle and arms → cephalopod, fins without legs → finned, nothing to stand on → limbless',
+      Object.keys(shapes).map((k) => k + ':' + shapes[k].archetype).join(' '));
+    ck(shapes.quad.drawn.join() === 'head,ears,muzzle,body,legs,tail' && shapes.quad.notDrawn.join() === 'STRIPES' && shapes.trunk.drawn.indexOf('trunk') !== -1 && shapes.trunk.drawn.indexOf('tusks') !== -1 &&
+       shapes.ceph.anchors['EIGHT ARMS'].length === 8 && shapes.quad.anchors['FOUR LEGS'].length === 4 && shapes.bird.anchors['HOOKED BEAK'].length === 1 && shapes.bird.anchors['WINGS'].length === 2,
+      'AR14e diagnostic structures the features name are drawn and anchored under the feature\'s OWN name — a trunk, tusks, eight arms, four legs, a hooked beak, two wings — and texture (STRIPES) is recorded as not drawn');
+    const allIn = Object.keys(shapes).every((k) => shapes[k].paths.every((p) => p.pts.every((q) => Math.abs(q[0]) <= 1.3 && Math.abs(q[1]) <= 1.3)));
+    ck(allIn && Object.keys(shapes).every((k) => shapes[k].source === 'lab-parts' && /not provider-generated/.test(shapes[k].label)) && shapes.wibble && shapes.wibble.paths.length > 0 && shapes.wibble.unplaced.join() === 'GLORP,ZIB',
+      'AR14f every outline fits the editor\'s reach, every one is labelled lab-parts and says it is not provider-generated, and an arbitrary subject with unknown features still composes (the unknown ones named as not understood)');
+    // the browser half: the outline is on the underlay, the suggestions sit on it, OFF removes it
+    await page.click('[data-conn-mode="fixture"]');
+    await page.fill('[data-ref-subject]', 'Tiger');
+    await page.click('[data-ref-generate]');
+    await page.waitForFunction(() => LabReference.current() && LabReference.current().subject === 'Tiger' && !!LabReference.outline());
+    const ol = await page.evaluate(() => {
+      const c = document.querySelector('[data-reference]'); const g = c.getContext('2d');
+      const d = g.getImageData(0, 0, c.width, c.height).data; let lit = 0;
+      for (let i = 0; i < d.length; i += 4) { if (d[i] + d[i + 1] + d[i + 2] > 240) lit++; }
+      const o = LabReference.outline();
+      const sug = LabReference.suggestions();
+      const onOutline = sug.every((s) => Object.keys(o.anchors).some((n) => o.anchors[n].some((q) => q[0] === s.x && q[1] === s.y)));
+      const bpAnchors = LabReference.current().features.map((f) => f.anchor.join(','));
+      return { litFraction: lit / (c.width * c.height), source: o.source, archetype: o.archetype, drawn: o.drawn, sug: sug.length, onOutline,
+        anyOnBlueprintAnchor: sug.some((s) => bpAnchors.indexOf(s.x + ',' + s.y) !== -1),
+        info: document.querySelector('[data-ref-outline-info]').textContent, flag: !document.querySelector('[data-outline-flag]').hidden, legend: document.querySelector('.legend').textContent };
+    });
+    ck(ol.litFraction > 0.06 && ol.source === 'lab-parts' && ol.archetype === 'quadruped',
+      'AR14g the outline is RENDERED on the underlay — a silhouette covering a real share of the sky, composed from the fixture body plan', 'lit ' + (ol.litFraction * 100).toFixed(1) + '%');
+    ck(ol.sug > 0 && ol.onOutline && !ol.anyOnBlueprintAnchor,
+      'AR14h every suggested point sits ON the outline\'s own anchors, none on the assistant\'s sketch coordinates', ol.sug + ' suggestions');
+    ck(/Creature outline reference — Lab-only deterministic outline/.test(ol.info) && /not provider-generated/.test(ol.info) && /Body plan read from the features: quadruped/.test(ol.info) && /deprecated and not shown/.test(ol.info) &&
+       ol.flag && /BLUEPRINT/.test(ol.legend) && /OUTLINE/.test(ol.legend) && /ETHER FIGURE/.test(ol.legend),
+      'AR14i the panel says what the outline is (Lab-only, not provider-generated), which body plan it read, that the sketch is deprecated and not shown, and the legend separates BLUEPRINT · OUTLINE · ETHER FIGURE');
+    // a click near an OUTLINE anchor snaps to the outline, not to the sketch
+    await page.evaluate(() => { window.ShapeLab.reset(); window.ShapeLab.setBudget(8); document.querySelector('[data-canvas-complete]').scrollIntoView({ block: 'center' }); });
+    const oa = await page.evaluate(() => {
+      const ed = document.querySelector('[data-canvas-complete]'); const b = ed.getBoundingClientRect();
+      const s = LabReference.suggestions()[0];
+      const q = window.ShapeLab.project([s.x + 0.04, s.y + 0.04], b.width, b.height);
+      return { x: b.left + q[0], y: b.top + q[1], want: [s.x, s.y], name: s.name };
+    });
+    await page.mouse.click(oa.x, oa.y);
+    const oaPts = await page.evaluate(() => window.ShapeLab.figure().points);
+    ck(oaPts.length === 1 && oaPts[0][0] === oa.want[0] && oaPts[0][1] === oa.want[1],
+      'AR14j a click near an outline anchor accepts it — the light lands on the outline\'s ' + oa.name + ' — and is an ordinary light from then on');
+    await page.click('[data-ref-toggle]');
+    const oOff = await page.evaluate(() => {
+      const c = document.querySelector('[data-reference]'), ed = document.querySelector('[data-canvas-complete]');
+      return { hidden: c.hidden, display: getComputedStyle(c).display, editorAlpha: ed.getContext('2d').getImageData(3, 3, 1, 1).data[3], snap: LabReference.snap([-0.85, -0.45]), flag: document.querySelector('[data-outline-flag]').hidden,
+        pts: window.ShapeLab.figure().points.length, outlineKept: !!LabReference.outline() };
+    });
+    ck(oOff.hidden && oOff.display === 'none' && oOff.editorAlpha === 255 && oOff.snap === null && oOff.flag && oOff.pts === 1 && oOff.outlineKept,
+      'AR14k REFERENCE OFF: the outline is gone, the editor paints its original opaque sky, nothing snaps, the light stays — the definitive judging state');
+    await page.click('[data-ref-toggle]');
+    // the outline never enters what leaves the Lab
+    const leak = await page.evaluate(() => {
+      const S = window.ShapeLab;
+      S.toggleJoin(0, 0);
+      const norm = (c) => JSON.stringify(c).replace(/lab-shape-\d+/g, 'lab-shape-N');
+      const withRef = norm(S.candidateFor());
+      const r = S.save();
+      const rec = S.list().filter((x) => x.id === r.id)[0];
+      const exp = S.exportJSON();
+      document.querySelector('[data-ref-copy]').click();
+      const json = document.querySelector('[data-ref-json]').value;
+      LabReference.discard();
+      const without = norm(S.candidateFor());
+      return { rec: JSON.stringify(rec), exp, withRef, without, json, keys: Object.keys(localStorage) };
+    });
+    const olWords = /outline|archetype|lab-parts|"paths"|quadruped/i;
+    ck(!olWords.test(leak.rec) && !olWords.test(leak.exp) && !olWords.test(leak.withRef) && leak.withRef === leak.without && leak.keys.join() === 'vihu.lab.shapes',
+      'AR14l the outline enters no fixture, no export and no candidate (byte-identical with and without it) — only the existing authoring note is stored');
+    ck(/"features"/.test(leak.json) && /"subject"/.test(leak.json) && !olWords.test(leak.json),
+      'AR14m Show blueprint JSON reveals the assistant\'s semantic blueprint for the record, and the outline is not in it');
+    ck(!/outline|LabOutline|archetype/i.test(read('assets/ether/experience-pool.js')) && grepProd.trim() === '',
+      'AR14n and nothing under js/, assets/, the runtime or the pool names the outline — Lab only');
+    await page.evaluate(() => { localStorage.clear(); window.ShapeLab.reset(); });
 
     // ---- AR12: the direct key lives in a closure and nowhere else ----
     await page.click('[data-conn-mode="direct"]');

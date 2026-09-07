@@ -2,9 +2,11 @@
 // LAB ONLY. Never loaded by a child-facing page, never by the preview.
 //
 // WHAT IT IS. A second canvas laid UNDER the editor's own "Complete —
-// as drawn" canvas, on which the blueprint's rough sketch, its feature
-// labels and its suggested points are drawn faintly — so a person can
-// place the Ether's lights OVER a picture of what they are building.
+// as drawn" canvas, on which the CREATURE OUTLINE REFERENCE composed
+// from the blueprint's features (labOutline.js), its feature labels and
+// its suggested points are drawn faintly — so a person can place the
+// Ether's lights OVER a picture of what they are building. The
+// assistant's own sketch is deprecated and is not drawn.
 // The lights, the joins and the gaps stay the author's own, on the
 // editor's own canvas, in the editor's own state.
 //
@@ -13,9 +15,9 @@
 //     candidate, the preview or the Ether: this file writes to no
 //     storage, builds no candidate, and the editor's serialize() has no
 //     field for a sketch. `ShapeLab.state()` is the proof.
-//   - It is not a hidden image. The sketch is a handful of ellipses,
-//     polygons and lines in unit space — vector primitives from a
-//     validated blueprint — never a bitmap, never a URL, never markup.
+//   - It is not a hidden image. The outline is closed paths in unit
+//     space composed by the Lab from a validated blueprint's features —
+//     never a bitmap, never a URL, never markup.
 //   - It is not a control. The underlay carries `pointer-events: none`
 //     and is aria-hidden; every tap goes to the editor canvas above it.
 //   - It is not a judge. It computes no score and asks nothing about
@@ -39,13 +41,14 @@
 
   var doc = global.document;
   var NEAR = 0.12;                         // unit distance: "close enough to snap"
-  var SKETCH_STROKE = 'rgba(126,156,214,.34)';
-  var SKETCH_FILL = 'rgba(126,156,214,.07)';
+  var OUTLINE_INK = '#C8D7F0';
+  var OUTLINE_ALPHA = 0.36;
   var LABEL = 'rgba(170,190,236,.78)';
   var SUGGEST = 'rgba(206,222,255,';
 
   var state = {
     current: null,     // the validated blueprint in use
+    outline: null,     // the Creature Outline composed from it (LabOutline) — never stored
     meta: null,        // { subject, source, model } for the status line only
     previous: null,    // the reference before the last "another interpretation"
     previousMeta: null,
@@ -86,6 +89,7 @@
     if (state.current) { state.previous = state.current; state.previousMeta = state.meta; }
     state.current = bp;
     state.meta = meta || null;
+    state.outline = composeOutline(bp);
     state.dismissed = {};
     state.visible = true;
     sync();
@@ -99,13 +103,14 @@
     var cur = state.current, curMeta = state.meta;
     state.current = state.previous; state.meta = state.previousMeta;
     state.previous = cur; state.previousMeta = curMeta;
+    state.outline = composeOutline(state.current);
     state.dismissed = {};
     sync();
     return { ok: true };
   }
 
   function discard() {
-    state.current = null; state.meta = null;
+    state.current = null; state.meta = null; state.outline = null;
     state.previous = null; state.previousMeta = null;
     state.dismissed = {};
     sync();
@@ -128,11 +133,25 @@
     return fig.points.some(function (p) { return Math.hypot(p[0] - x, p[1] - y) < NEAR; });
   }
 
+  // THE OUTLINE is composed from the blueprint's features by LabOutline —
+  // a Lab-only deterministic composer today, a provider seam later. It
+  // lives here and nowhere else: never in a fixture, never in a candidate.
+  function composeOutline(bp) {
+    var O = global.LabOutline;
+    if (!O || !bp) return null;
+    try { return O.compose(bp); } catch (e) { return null; }
+  }
+  function anchorFor(f) {
+    var o = state.outline;
+    if (o && o.anchors && o.anchors[f.name] && o.anchors[f.name].length) return o.anchors[f.name][0];
+    return f.anchor;
+  }
+
   function suggestions() {
     var S = global.ShapeLab, B = global.LabBlueprint;
     if (!S || !B || !state.current || !state.suggestOn) return [];
     var budget = S.state().budget;
-    return B.suggestions(state.current, budget).filter(function (s) { return !occupied(s.x, s.y); });
+    return B.suggestions(state.current, budget, state.outline ? state.outline.anchors : null).filter(function (s) { return !occupied(s.x, s.y); });
   }
 
   // Add mode asks this with the unit point under the pointer; a
@@ -173,27 +192,32 @@
     return { w: w, h: h, ox: editor.clientLeft, oy: editor.clientTop };
   }
 
-  function drawSketch(g, bp, S, w, h) {
-    g.lineWidth = Math.max(1.4, Math.min(w, h) / 300);
-    g.strokeStyle = SKETCH_STROKE; g.fillStyle = SKETCH_FILL;
-    g.lineJoin = 'round'; g.lineCap = 'round';
-    bp.sketch.forEach(function (p) {
-      if (p.kind === 'ellipse') {
-        var c = S.project(p.c, w, h);
-        var k = S.scaleFor(w, h);
-        g.beginPath();
-        g.ellipse(c[0], c[1], p.r[0] * k, p.r[1] * k, p.rot || 0, 0, Math.PI * 2);
-        g.fill(); g.stroke();
-      } else {
-        g.beginPath();
-        p.points.forEach(function (q, i) {
-          var s = S.project(q, w, h);
-          if (i) g.lineTo(s[0], s[1]); else g.moveTo(s[0], s[1]);
-        });
-        if (p.closed) { g.closePath(); g.fill(); }
-        g.stroke();
-      }
+  // THE OUTLINE, as one flat monochrome silhouette: every part is filled
+  // opaque on an offscreen canvas so overlapping parts merge into one
+  // shape, and the whole is laid under the lights at low alpha. No
+  // stroke detail, no eyes, no texture, no text — a children's
+  // silhouette, subordinate to the author's lights.
+  var offscreen = null;
+  function drawOutline(g, outline, S, w, h, dpr) {
+    if (!outline || !outline.paths || !outline.paths.length) return;
+    if (!offscreen) offscreen = doc.createElement('canvas');
+    var W = Math.round(w * dpr), H = Math.round(h * dpr);
+    if (offscreen.width !== W) offscreen.width = W;
+    if (offscreen.height !== H) offscreen.height = H;
+    var og = offscreen.getContext('2d');
+    og.setTransform(dpr, 0, 0, dpr, 0, 0);
+    og.clearRect(0, 0, w, h);
+    og.fillStyle = OUTLINE_INK; og.strokeStyle = OUTLINE_INK; og.lineJoin = 'round'; og.lineWidth = Math.max(1.2, Math.min(w, h) / 320);
+    outline.paths.forEach(function (p) {
+      og.beginPath();
+      p.pts.forEach(function (q, i) { var s = S.project(q, w, h); if (i) og.lineTo(s[0], s[1]); else og.moveTo(s[0], s[1]); });
+      og.closePath(); og.fill(); og.stroke();
     });
+    g.save();
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.globalAlpha = OUTLINE_ALPHA;
+    g.drawImage(offscreen, 0, 0);
+    g.restore();
   }
 
   function drawLabels(g, bp, S, w, h) {
@@ -202,7 +226,7 @@
     g.textAlign = 'left'; g.textBaseline = 'middle';
     bp.features.forEach(function (f) {
       if (state.dismissed[f.name]) return;
-      var s = S.project(f.anchor, w, h);
+      var s = S.project(anchorFor(f), w, h);
       g.strokeStyle = LABEL; g.lineWidth = 1;
       g.beginPath(); g.arc(s[0], s[1], fs * 0.55, 0, Math.PI * 2); g.stroke();
       g.fillStyle = LABEL;
@@ -245,7 +269,7 @@
     g.fillStyle = grad; g.fillRect(0, 0, W, H);
     g.save();
     g.translate(geo.ox, geo.oy);
-    drawSketch(g, state.current, S, geo.w, geo.h);
+    drawOutline(g, state.outline, S, geo.w, geo.h, dpr);
     if (state.labels) drawLabels(g, state.current, S, geo.w, geo.h);
     drawSuggestions(g, S, geo.w, geo.h);
     g.restore();
@@ -269,9 +293,16 @@
     var S = global.ShapeLab;
     var budget = S ? S.state().budget : 8;
     var m = state.meta || {};
+    var o = state.outline;
     var html = '<div class="bp-source ' + sourceKind(m.mode) + '" data-ref-panel-source>' + esc(sourceLabel(m.mode, m.model)) + '</div>' +
       '<div class="bp-subject">' + esc(bp.subject) + '</div>' +
       '<div class="bp-sil">' + esc(bp.silhouette) + '</div>' +
+      '<div class="bp-outline" data-ref-outline-info>' + (o
+        ? '<b>Creature outline reference</b> — ' + esc(o.label) + '. Body plan read from the features: <b>' + esc(o.archetype) + '</b>. Drawn: ' + esc(o.drawn.join(', ') || '—') +
+          (o.notDrawn.length ? '. Not drawn (texture or detail): ' + esc(o.notDrawn.join(', ')) : '') +
+          (o.unplaced.length ? '. Not understood by the composer: ' + esc(o.unplaced.join(', ')) : '') + '.'
+        : '<b>Creature outline reference</b> — none (the outline composer is not loaded).') +
+      (bp.sketch && bp.sketch.length ? ' <span class="note">The assistant\'s own sketch (' + bp.sketch.length + ' primitives) is deprecated and not shown.</span>' : '') + '</div>' +
       '<div class="bp-h">Features — most diagnostic first</div>' +
       bp.features.map(function (f) {
         var off = !!state.dismissed[f.name];
@@ -315,6 +346,8 @@
     var lb = el('[data-ref-labels]'); if (lb) { lb.checked = state.labels; lb.disabled = !has; }
     var sg = el('[data-ref-suggest]'); if (sg) { sg.checked = state.suggestOn; sg.disabled = !has; }
     var gen = el('[data-ref-generate]'); if (gen) gen.disabled = state.busy;
+    var cp = el('[data-ref-copy]'); if (cp) cp.disabled = !has;
+    var of = el('[data-outline-flag]'); if (of) of.hidden = !isShowing();
     var src = el('[data-ref-source]');
     if (src) {
       var mm = state.meta;
@@ -507,6 +540,14 @@
     if (lb) lb.addEventListener('change', function () { showLabels(lb.checked); });
     var sg = el('[data-ref-suggest]');
     if (sg) sg.addEventListener('change', function () { showSuggestions(sg.checked); });
+    // The semantic blueprint, readable — so a real reply can be kept for a
+    // test or a doc. It is the assistant's words; the outline is not in it.
+    var cp = el('[data-ref-copy]');
+    if (cp) cp.addEventListener('click', function () {
+      var ta = el('[data-ref-json]'); if (!ta) return;
+      ta.value = state.current ? JSON.stringify(state.current, null, 1) : '';
+      ta.hidden = !ta.value; if (!ta.hidden) ta.select();
+    });
     global.addEventListener('resize', render);
     sync();
   }
@@ -528,6 +569,7 @@
     dismissed: function () { return Object.keys(state.dismissed); },
     render: render,
     canvas: function () { return canvas; },
+    outline: function () { return state.outline ? JSON.parse(JSON.stringify(state.outline)) : null; },
     last: function () { return state.last ? JSON.parse(JSON.stringify(state.last)) : null; },
     sourceLabel: sourceLabel
   };

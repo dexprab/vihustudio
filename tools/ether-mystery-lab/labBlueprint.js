@@ -62,7 +62,7 @@
       silhouette: 'string — one sentence: the primary silhouette and the viewing angle (side / top / front)',
       features: 'array of 3–12 feature objects, most diagnostic first',
       budgets: 'object with exactly the keys "8", "12", "16", "20": for each, an array of feature names (from features[].name) worth spending that budget on, ≤ budget entries',
-      sketch: 'array of ≤ 24 primitives — the temporary visual reference'
+      sketch: 'DEPRECATED — optional, ≤ 24 primitives, validated for compatibility and NOT shown: the visual reference is the Creature Outline (labOutline.js), composed from the features'
     },
     feature: {
       name: 'string — a short body-part label in capitals, letters/spaces only, ≤ 24 chars (HEAD, EAR, TAIL, WING…)',
@@ -182,10 +182,12 @@
       });
     }
 
+    // The sketch is deprecated: accepted when present (an older prompt or
+    // a model that still returns one), never required, never shown.
     var sketch = [];
-    if (!Array.isArray(raw.sketch) || !raw.sketch.length || raw.sketch.length > LIMITS.sketchMax) {
+    if (raw.sketch !== undefined && (!Array.isArray(raw.sketch) || raw.sketch.length > LIMITS.sketchMax)) {
       reasons.push('bad-sketch-count');
-    } else {
+    } else if (Array.isArray(raw.sketch)) {
       raw.sketch.forEach(function (p, i) {
         if (!p || typeof p !== 'object' || Array.isArray(p)) { reasons.push('bad-primitive:' + i); return; }
         Object.keys(p).forEach(function (k) { if (!SCHEMA.primitive[k]) reasons.push('unknown-key:sketch[' + i + '].' + k); });
@@ -267,13 +269,20 @@
   // the features the blueprint names for that budget. Faint, optional,
   // accepted by a click and then the author's to move or delete. Pure.
   // ---------------------------------------------------------------
-  function suggestions(bp, budget) {
+  // `anchors` — an optional map of feature name → [[x,y],…] from the
+  // outline composer, so the marks land ON the outline; a feature the
+  // outline did not draw falls back to the blueprint's own anchor.
+  function suggestions(bp, budget, anchors) {
     if (!bp || !bp.features) return [];
     var wanted = (bp.budgets && bp.budgets[String(budget)]) || [];
     var byName = {};
     bp.features.forEach(function (f) { byName[f.name] = f; });
     var out = [];
-    wanted.forEach(function (n) { var f = byName[n]; if (f) out.push({ name: f.name, x: f.anchor[0], y: f.anchor[1], importance: f.importance }); });
+    wanted.forEach(function (n) {
+      var f = byName[n]; if (!f) return;
+      var list = (anchors && anchors[f.name]) ? anchors[f.name] : [f.anchor];
+      list.forEach(function (q) { out.push({ name: f.name, x: q[0], y: q[1], importance: f.importance }); });
+    });
     return out.slice(0, budget);
   }
 

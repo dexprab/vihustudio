@@ -2090,6 +2090,114 @@ proved to reach a model here; no administrator token exists in this
 environment either. The stubbed endpoint in the suite proves parsing,
 validation, badging and refusal — it does not count as connectivity.
 
+### The Creature Outline Reference replaces the assistant's sketch
+
+The real LLM connection worked and the semantic half of its reply was
+good; the picture was not — an LLM's ellipses and polygons came out as
+generic blobs. So the visual reference is no longer the assistant's.
+The concept is now:
+
+    LLM → semantic creature blueprint
+                 ↓
+         Creature Outline Reference   (a visual authoring guide)
+                 ↓
+         author places Ether points
+                 ↓
+         final Ether figure
+
+**BLUEPRINT** = semantic help from the assistant · **OUTLINE** = the
+visual authoring guide · **ETHER FIGURE** = the author's own creation.
+The legend says so on the panel. The outline is never called the
+creature.
+
+**What generates the outline.** `tools/ether-mystery-lab/labOutline.js`
+— a **Lab-only deterministic composer**, and it says so on every result
+(`source: 'lab-parts'`, badged in the panel as *Lab-only deterministic
+outline — parts composed from the blueprint's features; not
+provider-generated*). It reads the blueprint's FEATURE NAMES through a
+parts vocabulary — HEAD, EAR, MUZZLE, BEAK, TRUNK, TUSK, HORN, MANE,
+NECK, BODY, WING, LEG, TAIL, FIN, ARM, MANTLE, SHELL, HUMP, CREST — with
+the modifiers a name may carry (LARGE EARS, LONG NECK, HOOKED BEAK,
+THICK LEGS, EIGHT ARMS), infers a body plan from which parts are named
+(legs → quadruped · wings → winged · mantle or arms → cephalopod · fins
+without legs → finned · nothing to stand on → limbless), assembles
+closed paths in the editor's unit space, and fits the whole to one
+frame so 8-, 12-, 16- and 20-point figures over the same creature are
+comparable. Texture and detail the blueprint names — STRIPES, SPOTS,
+FUR, FEATHERS, EYES, WHISKERS, CLAWS — are recorded as *not drawn*
+rather than faked; a word the composer does not know is recorded as
+*not understood*. There is no `subject === …` and no creature
+catalogue: a tiger and a wibble go through the same table (the suite
+scans for creature names and subject branches).
+
+**It is not provider-generated, and nothing pretends it is.** No image
+provider exists in this project, none was added, no external image was
+fetched or traced, and the environment cannot reach a provider anyway.
+`LabOutline.compose(bp, {provider})` is the seam a real outline provider
+can occupy later without the Shape Lab changing.
+
+**How it is drawn.** Every part is filled opaque on an offscreen canvas
+so overlapping parts merge into one flat silhouette, and the whole is
+laid under the editor at low alpha — monochrome, no strokes inside, no
+eyes, no texture, no text; a children's silhouette, subordinate to the
+lights drawn over it. The underlay is still `pointer-events: none`,
+still never on the unfinished pane, and REFERENCE OFF still returns the
+editor to its original opaque sky with nothing snapping.
+
+**Suggested points and labels sit on the outline now.** The composer
+returns anchors keyed by the blueprint's own feature names (FOUR LEGS →
+four feet, WINGS → two wing tips, EIGHT ARMS → eight arm tips), and the
+existing suggestion mechanism reads them, so a faint mark is a place ON
+the outline. Nothing is auto-traced: no light is placed, no join is
+proposed, no gap is decided.
+
+**The assistant's sketch is deprecated.** The validator accepts one when
+present (an older prompt or a model that still returns it) and never
+requires it; the panel notes it is *deprecated and not shown*. The
+prompt was not changed for this — the semantic architecture is what the
+real connection verified, and it stays.
+
+**Data boundary.** The outline lives in the reference layer's memory
+and nowhere else: not in a fixture (still only
+`authoring: {subject, referenceUsed, source}`), not in the export, not
+in a candidate (byte-identical with and without it), not in
+`preview.html`, not in the pool. *Show blueprint JSON* reveals the
+semantic blueprint for the record, and the outline is not in it.
+
+**Recognisability, judged by looking, with the names hidden.** Five
+constructed semantic inputs — the feature lists a real reply would
+carry — rendered through the real page
+(`tools/ether-mystery-lab-test/shots/shape-lab/outlines/`,
+`recognisability-sheet-unlabelled.png` is the blind sheet):
+
+| subject | body plan | verdict | why |
+|---|---|---|---|
+| lion | quadruped | RECOGNISABLE | a big cat with a mane |
+| tiger | quadruped | SUGGESTIVE | plainly a cat; nothing says *tiger* — the diagnostic feature is STRIPES, which is texture and is deliberately not drawn |
+| falcon | winged | RECOGNISABLE | a spread bird of prey with a hooked beak; not a species |
+| elephant | quadruped | UNMISTAKABLE | trunk, tusks, big ears, thick legs |
+| octopus | cephalopod | UNMISTAKABLE | a dome and eight arms |
+
+Against the previous LLM sketch (generic ellipses; the owner's own
+verdict was that it produced generic shapes) this is a substantially
+better authoring aid: an author can see where the head, ears, muzzle,
+legs and tail are and put lights there. The honest limit is that a
+monochrome silhouette carries a FAMILY (cat, bird of prey) rather than
+a species when the species lives in texture or proportion.
+
+**The critical tiger test — with a disclosure.** The exact real
+LLM-generated tiger blueprint was never persisted: the Lab held it only
+in page memory, and nothing stored it. The tiger input used here is the
+feature set that reply was reported to contain — HEAD, EARS, MUZZLE,
+BODY, FOUR LEGS, LONG TAIL, STRIPES — not its text. *Show blueprint
+JSON* now exists so the next real reply can be kept. On that input the
+outline is a recognisable cat with a long tail; an author can place
+head, ears, muzzle, shoulder, body, four feet and tail-tip over it,
+which the LLM sketch never allowed. Whether it reads as a *tiger*
+rather than a cat is the texture limit above, and the Ether figure
+language cannot draw stripes either — so the remaining gap is the
+geometry language, not the outline.
+
 ### A short research procedure
 
 1. Open `tools/ether-mystery-lab/shape.html`. Under *Reference source*

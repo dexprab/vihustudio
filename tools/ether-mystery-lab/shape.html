@@ -95,6 +95,10 @@
   .bp-b.now { color: var(--ink); }
   .bp-bn { display: inline-block; min-width: 22px; font-weight: 700; color: var(--gold); }
   .warnbox { color: var(--warn); font-size: 12px; }
+  .legend { font-size: 11px; color: var(--dim); margin-bottom: 8px; line-height: 1.5; }
+  .legend b { color: var(--ink); letter-spacing: .04em; }
+  .bp-outline { font-size: 12px; color: var(--dim); margin: 4px 0 8px; padding: 6px 8px; border: 1px dashed var(--line); border-radius: 6px; }
+  .bp-outline b { color: var(--ink); }
   .srclabel { font-size: 11px; letter-spacing: .06em; color: var(--dim); text-transform: uppercase; margin-bottom: 2px; }
   .bp-source { display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: .06em; padding: 3px 8px;
                border-radius: 6px; margin-bottom: 6px; border: 1px solid var(--line); }
@@ -204,7 +208,7 @@
       <label style="margin:0"><input type="checkbox" data-ref-labels checked disabled> feature labels</label>
       <label style="margin:0"><input type="checkbox" data-ref-suggest checked disabled> suggested points</label>
     </div>
-    <div class="note">The reference is a rough sketch to draw over — the assistant's semantic help, never the creature. It is drawn under your lights, takes no clicks, is never on the unfinished pane, and has no place in a fixture, a candidate, the preview or the Ether. Suggested points are faint marks a click accepts; once placed they are ordinary lights, yours to move or delete. Turn the reference OFF to judge the Ether figure alone. A failed or rejected LLM result never becomes a Fixture and never replaces the reference you had.</div>
+    <div class="note">The <b>Creature Outline Reference</b> is a simple monochrome silhouette to draw over — composed from the blueprint's features as a visual authoring guide, never the creature. It is drawn under your lights, takes no clicks, is never on the unfinished pane, and has no place in a fixture, a candidate, the preview or the Ether. Suggested points are faint marks on the outline a click accepts; once placed they are ordinary lights, yours to move or delete. Turn the reference OFF to judge the Ether figure alone. A failed or rejected LLM result never becomes a Fixture and never replaces the reference you had.</div>
     <details><summary>The flow, in ten steps</summary>
     <ol class="flow">
       <li>Enter a creature</li><li>Generate a reference</li><li>Choose a budget</li>
@@ -235,7 +239,7 @@
   <section>
     <div class="stage">
       <div class="pane">
-        <h3>Complete — as drawn</h3>
+        <h3>Complete — as drawn <span class="note" style="text-transform:none;letter-spacing:0" data-outline-flag hidden>· over the creature outline</span></h3>
         <canvas class="figure" data-canvas-complete></canvas>
       </div>
       <div class="pane">
@@ -268,8 +272,11 @@
 <div><!-- right: blueprint, metrics, judgement, fixtures -->
   <section>
     <h2>Reference blueprint</h2>
+    <div class="legend"><b>BLUEPRINT</b> = semantic help from the assistant · <b>OUTLINE</b> = visual authoring guide · <b>ETHER FIGURE</b> = your own creation</div>
     <div data-ref-panel></div>
-    <div class="note" style="margin-top:6px">Semantic help only: what makes the subject recognisable and where each budget is best spent. Nothing here is a score, and nothing here becomes geometry unless you place it.</div>
+    <div class="row" style="margin-top:6px"><button data-ref-copy class="quiet" disabled>Show blueprint JSON</button></div>
+    <textarea data-ref-json hidden readonly style="min-height:90px;font-family:ui-monospace,monospace;font-size:11px"></textarea>
+    <div class="note" style="margin-top:6px">Semantic help only: what makes the subject recognisable and where each budget is best spent. The outline is composed FROM these features as a visual guide; nothing here is a score, and nothing here becomes geometry unless you place it.</div>
   </section>
 
   <section>
@@ -305,6 +312,7 @@
 <script src="labPreviewHost.js"></script>
 <script src="labConnection.js"></script>
 <script src="labBlueprint.js"></script>
+<script src="labOutline.js"></script>
 <script src="labShape.js"></script>
 <script src="labReference.js"></script>
 </body>

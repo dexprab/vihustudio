@@ -9324,6 +9324,36 @@ leads somewhere.
   in its secrets, the caller in `platform_admins`, and that caller's
   session token. TYPE CREATURE → REAL LLM → REAL BLUEPRINT is observable
   end to end and is the product owner's to run.
+- **THE CREATURE OUTLINE REFERENCE REPLACES THE ASSISTANT'S SKETCH** (the
+  outline sprint). The real connection returned good semantic features
+  and a poor picture, so the picture is no longer the assistant's:
+  `labOutline.js` reads the blueprint's FEATURE names through a parts
+  vocabulary, infers a body plan from which parts are named (quadruped ·
+  winged · cephalopod · finned · limbless), and lays one flat monochrome
+  silhouette under the editor — no strokes inside, no eyes, no texture,
+  no text — with the suggested points and labels on its OWN anchors, so
+  a mark is a place on the outline. **BLUEPRINT = semantic help · OUTLINE
+  = visual authoring guide · ETHER FIGURE = the author's creation**, and
+  the outline is never called the creature. No `subject === …`, no
+  creature catalogue (suite-scanned); STRIPES, FUR, EYES and the like are
+  recorded as *not drawn*, not faked.
+- **IT IS LAB-ONLY AND DETERMINISTIC, AND SAYS SO EVERYWHERE.** No image
+  provider exists in this project and none was added; every outline is
+  `source: 'lab-parts'` and badged *not provider-generated*.
+  `LabOutline.compose(bp, {provider})` is the seam a real provider takes
+  later. The assistant's sketch is deprecated — accepted when present,
+  never required, never shown; the prompt the real connection verified
+  is unchanged. The outline enters no fixture, export, candidate,
+  preview or pool.
+- **JUDGED BLIND, BY LOOKING, ON CONSTRUCTED INPUTS.** Elephant and
+  octopus UNMISTAKABLE, lion and falcon RECOGNISABLE, tiger SUGGESTIVE —
+  plainly a cat, and nothing says tiger because stripes are texture. The
+  exact real tiger blueprint was never persisted (page memory only), so
+  the tiger input is its reported feature set, and *Show blueprint JSON*
+  now exists so the next real reply can be kept. A monochrome silhouette
+  carries a family, not a species, when the species lives in texture —
+  and the Ether figure language cannot draw stripes either, so that gap
+  is the geometry language's, not the outline's.
 - **DISCLOSED: no child has used it, no creature was judged, and no real
   model produced a blueprint here** — the environment cannot reach a
   provider, so the generated path is proved against a stubbed endpoint
@@ -9333,8 +9363,9 @@ leads somewhere.
   bump, nothing activated; the seven revert-proofs each turn their own
   checks red.
 - `tools/ether-mystery-lab/labBlueprint.js` · `labReference.js` ·
-  `labShape.js` (additive) · `shape.html` · `labConnection.js` (one
-  hook) · `docs/ETHER_MYSTERY_LAB.md` → *Create from creature* ·
+  `labOutline.js` · `labShape.js` (additive) · `shape.html` ·
+  `labConnection.js` (one hook) · `docs/ETHER_MYSTERY_LAB.md` →
+  *Create from creature* ·
   `tools/ether-mystery-lab-test/` section `AR` ·
   `tools/ether-mystery-lab-test/shots/shape-lab/reference-*.png`
 - Out of scope and not implemented: creature encounters as a reward

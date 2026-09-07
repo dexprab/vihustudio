@@ -12667,3 +12667,24 @@ product owner's, with the exact dependencies listed in the doc. AR grew
 changed. Doc: `docs/ETHER_MYSTERY_LAB.md` → *The reference source is
 explicit*.
 
+## Shape Lab — the Creature Outline Reference replaces the LLM sketch
+
+Lab only. The real LLM connection returns good semantic features and a
+poor vector sketch, so the visual reference is no longer the
+assistant's: `labOutline.js` is a Lab-only deterministic composer that
+reads the blueprint's FEATURE names through a parts vocabulary (head,
+ears, muzzle, beak, trunk, tusks, mane, wings, legs, tail, fins, arms,
+mantle…), infers a body plan (quadruped · winged · cephalopod · finned ·
+limbless), and lays a flat monochrome silhouette under the editor with
+suggested points and labels on its own anchors. Labelled lab-parts and
+"not provider-generated" everywhere; the seam for a real outline
+provider is `LabOutline.compose(bp, {provider})`. The assistant's sketch
+is deprecated and optional, never shown. Reference OFF, pointer-inertness
+and every data boundary hold (no outline in fixtures, exports,
+candidates, preview or pool). Blind recognisability on constructed
+inputs rendered through the real page: elephant and octopus
+UNMISTAKABLE, lion and falcon RECOGNISABLE, tiger SUGGESTIVE (a cat —
+stripes are texture and are not drawn). AR 71 → 86; Lab suite 580/580.
+Zero production files changed. Doc: `docs/ETHER_MYSTERY_LAB.md` → *The
+Creature Outline Reference*.
+
