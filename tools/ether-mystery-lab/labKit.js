@@ -1711,6 +1711,12 @@
       count: 5,
       emphasis: 'The mystery comes first; the world itself quietly suggests one optional possibility; taking it leads to a discovery. Nothing is announced, framed as an objective, or required.'
     },
+    'falcon-variations': {
+      title: 'Three Falcons — which one reads as a bird?',
+      brief: 'LAB EXPERIMENT (fixtures only). The same falcon three ways: A is the shipped one, B redraws the same eight lights so the wings rise like a bird in flight, C is B with the world quietly leaning toward the two missing joins. Same hint, same node count, same difficulty.',
+      count: 3, needsCreation: true, fixturesOnly: true,
+      emphasis: 'Compare only. A vs B answers whether the DRAWING can read as a creature; B vs C answers whether the world can suggest which lights belong together without a word. Run it in FIXTURE MODE.'
+    },
     'creature-mystery': {
       title: 'Creature Mystery — Can you bring it to life?',
       brief: 'LAB EXPERIMENT (fixtures only). Five hand-authored creatures hidden in unfinished star patterns, each with a short leading hint. Join the missing lights and the creature comes alive and roams.',
@@ -2260,17 +2266,98 @@
 
   var CREATURE_BANK = CREATURE_EXPERIMENTS.map(creatureCandidate);
 
+  // ---------------------------------------------------------------
+  // THREE FALCONS, ONE QUESTION AT A TIME. A lab experiment inside a
+  // lab experiment: the Creature Mystery found that a leading hint
+  // does the work abstract geometry could not, and left two things
+  // open — whether the DRAWING can be made to read as a bird on its
+  // own, and whether the world can suggest which lights belong
+  // together without a word. So three falcons, and each pair differs
+  // in exactly one thing.
+  //
+  //   A → B   the same hint, the same node count, a different SHAPE.
+  //   B → C   the same shape, plus the world leaning toward the gap.
+  //
+  // A is the control BY REFERENCE — it shares the shipped falcon's
+  // own figure object, so it cannot drift from the thing it is the
+  // control for. C shares B's, for the same reason.
+  // ---------------------------------------------------------------
+  var FALCON_A_FIGURE = CREATURE_EXPERIMENTS[0].figure;
+
+  // THE BIRD IS IN THE WINGS, NOT IN THE NODE COUNT. A's wings leave
+  // the neck and DROOP — measured against the shipped screenshot,
+  // that reads as a zigzag hanging off a stick. A bird in the open
+  // sky raises its wings above the shoulder and lets the tips fall
+  // away behind: two shallow inverted-Vs on a short body, with the
+  // wingspan (2.72) far wider than the body is tall (1.88), which is
+  // what a bird in flight actually looks like from below.
+  var FALCON_B_FIGURE = {
+    points: [
+      [ 0.00, -0.92],   // 0 head, above the shoulders
+      [ 0.00, -0.46],   // 1 shoulders — where both wings are rooted
+      [ 0.00,  0.30],   // 2 the body's own axis, down to the tail
+      [-0.64, -0.72],   // 3 left wing bend, ABOVE the shoulder
+      [-1.36, -0.30],   // 4 left wingtip, swept out and back
+      [ 0.64, -0.72],   // 5 right wing bend
+      [ 1.36, -0.30],   // 6 right wingtip
+      [ 0.00,  0.96]    // 7 tail
+    ],
+    joins: ['0-1', '1-2', '2-7', '1-3', '3-4', '1-5', '5-6'],
+    // THE NECK AND THE TAIL, WHICH IS THE FINDING THIS VARIATION
+    // PRODUCED. A's gaps are the two wing ROOTS, and measured against
+    // five rendered alternatives that is what costs it the bird: a
+    // missing root hides the rising inner half of the wing, so all a
+    // child sees is the outer segment sloping away — a dash. Put the
+    // gaps here instead and the wings stay WHOLE, so the visible shape
+    // is already unmistakably a bird, and the two loose lights are
+    // read in its company as the head it is missing and the tail it
+    // is missing rather than as stray stars.
+    //
+    // It is the Unfinished Figure's finding turned round: a detached
+    // point reads perfectly well once the thing it is detached FROM is
+    // recognisable. Still two missing joins, so the difficulty is A's.
+    gaps: [0, 2]
+  };
+
+  var FALCON_VARIATIONS = [
+    { variation: 'A', creature: 'falcon',
+      hint: 'A hunter of the open sky is waiting…',
+      id: 'lab-fv-a', nodes: 8, complexity: 'moderate',
+      title: 'lights swept wide, and not yet joined',
+      figure: FALCON_A_FIGURE },
+    { variation: 'B', creature: 'falcon',
+      hint: 'A hunter of the open sky is waiting…',
+      id: 'lab-fv-b', nodes: 8, complexity: 'moderate',
+      title: 'a shape with two lights not yet joined to it',
+      figure: FALCON_B_FIGURE },
+    // C IS B PLUS ONE THING, AND THE ONE THING IS NOT IN THE
+    // CANDIDATE. The tease is drawn by the LAB over the real
+    // interpreter, exactly as the leading hint already is — so the
+    // candidate the Ether performs is byte-identical to B's, and
+    // whether the world may lean toward a gap stays a question this
+    // experiment asks rather than one it has answered.
+    { variation: 'C', creature: 'falcon', tease: true,
+      hint: 'A hunter of the open sky is waiting…',
+      id: 'lab-fv-c', nodes: 8, complexity: 'moderate',
+      title: 'a shape with two lights not yet joined to it',
+      figure: FALCON_B_FIGURE }
+  ];
+
+  var FALCON_BANK = FALCON_VARIATIONS.map(creatureCandidate);
+
   // What the LAB knows about a creature fixture and the sky never
   // does: which creature it is, and the leading hint the preview
   // renders over it. Looked up by candidate id, so nothing has to
   // travel inside a candidate to get here.
   function creatureNote(id) {
-    for (var i = 0; i < CREATURE_EXPERIMENTS.length; i++) {
-      var c = CREATURE_EXPERIMENTS[i];
+    var all = CREATURE_EXPERIMENTS.concat(FALCON_VARIATIONS);
+    for (var i = 0; i < all.length; i++) {
+      var c = all[i];
       if (c.id !== id) continue;
       return {
         creature: c.creature, hint: c.hint, nodes: c.nodes,
-        joins: c.figure.joins.length, missing: c.figure.gaps.length
+        joins: c.figure.joins.length, missing: c.figure.gaps.length,
+        variation: c.variation || null, tease: !!c.tease
       };
     }
     return null;
@@ -2285,6 +2372,10 @@
     // THE FIGURE EXPERIMENT HAS ITS OWN BANK, and it is emitted whole:
     // the comparison is between these eight and no others, so the
     // count control does not thin it out.
+    if (params.experiment === 'falcon-variations') {
+      return { ok: true, source: 'fixture', model: null,
+               text: JSON.stringify({ candidates: JSON.parse(JSON.stringify(FALCON_BANK)) }) };
+    }
     if (params.experiment === 'creature-mystery') {
       return { ok: true, source: 'fixture', model: null,
                text: JSON.stringify({ candidates: JSON.parse(JSON.stringify(CREATURE_BANK)) }) };
@@ -2317,6 +2408,8 @@
     FIXTURE_BANK: FIXTURE_BANK,
     FIGURE_EXPERIMENTS: FIGURE_EXPERIMENTS,
     CREATURE_EXPERIMENTS: CREATURE_EXPERIMENTS,
+    FALCON_VARIATIONS: FALCON_VARIATIONS,
+    FALCON_BANK: FALCON_BANK,
     CREATURE_BANK: CREATURE_BANK,
     creatureNote: creatureNote,
     FIGURE_BANK: FIGURE_BANK,

@@ -1179,3 +1179,128 @@ Four are proved by temporary reversion: a readable id put back (`CR3`,
 `tools/ether-mystery-lab/preview.html` · `labPreview.js` ·
 `labPreviewHost.js` · `labUi.js` — the leading hint. Screenshots:
 `tools/ether-mystery-lab-test/shots/creatures/`. Suite section: `CR`.
+
+## THREE FALCONS — can the drawing carry it, and can the world lean?
+
+**A LAB EXPERIMENT INSIDE A LAB EXPERIMENT. Nothing here is in the
+production Ether and no production file changed.**
+
+The Creature Mystery's answer was that a leading hint does the work
+abstract geometry could not, and it left two things open. Can the
+DRAWING be made to read as a bird on its own? And can the world suggest
+which lights belong together without a word? Three falcons, and each
+pair differs in exactly one thing:
+
+| | | the one thing that changed |
+|---|---|---|
+| **A** | `lab-fv-a` | the shipped falcon — the control |
+| **B** | `lab-fv-b` | the same hint, the same eight lights, a different SHAPE |
+| **C** | `lab-fv-c` | B's shape exactly, plus the world leaning toward the gaps |
+
+**Same hint for all three**, word for word — *A hunter of the open sky
+is waiting…* — same node count, same number of missing joins. The only
+variable in each comparison is the one being tested.
+
+### The controls are controls BY REFERENCE
+
+Falcon A shares the **shipped falcon's own figure object**, and C shares
+B's. Not a copy: a copy is one edit away from an experiment that
+compares nothing. `FV2` and `FV2b` check identity, not equality, and
+`FV2c` checks that the candidate the interpreter is handed is
+**byte-identical for B and C** — the tease is not in it.
+
+### What actually made A weak, and it was the GAPS
+
+The redesign started as a shape problem and turned out to be a gap
+problem. Five geometries were rendered and looked at, which is what the
+Lab is for:
+
+| tried | what it looked like |
+|---|---|
+| raised bent wings, roots missing | a stick with two dashes — same as A |
+| head + shoulder + forked tail | a person with their arms out |
+| gull wings, roots missing | two horizontal dashes, worse |
+| **raised bent wings, NECK and TAIL missing** | **a bird, missing its head and its tail** |
+| wingtips missing | stubby wings and two far-off strays |
+
+**A's gaps are the two wing ROOTS — and a missing root hides the rising
+inner half of the wing**, so all a child sees is the outer segment
+sloping away. The bird-defining relationship is exactly the one removed.
+Move the gaps to the neck and the tail and both wings stand whole: the
+visible shape is unmistakably a bird before anything is joined, and the
+two loose lights are read in its company as *the head it is missing* and
+*the tail it is missing*.
+
+**This turns the Unfinished Figure's own finding round.** That
+experiment concluded *a detached PART reads; a detached POINT does not*
+— and the correction is that **a detached point reads perfectly well
+once the thing it is detached FROM is recognisable.** The rule that
+survives both is the general one: **put the gap where the creature
+stays recognisable without it.**
+
+`FV4` holds it: A is missing its wings' roots, B and C keep every wing
+join whole.
+
+### The tease is the Lab's, exactly as the hint already is
+
+`js/etherMystery.js` draws no text and this did not change that; it now
+also draws no tease. The suggestion lives in the Lab's own overlay
+(`preview.html`'s `.tease` canvas, driven from `labPreview.js`), which
+reads the interpreter's own `instrument()` and adds one thing over the
+top. Two rules keep it a suggestion rather than an answer:
+
+- **the two endpoints of a still-missing join breathe TOGETHER**, which
+  is the only thing in the sky that does, so the pair reads as a pair;
+- **the almost-line is drawn from both ends inward and is faintest in
+  the middle**, so it never closes — the world leans toward the gap
+  without filling it.
+
+Not one word, no arrow, no marker, nothing to press, and it goes the
+moment the shape is whole. `FV7` measures it where it counts: the
+brightest pixel around the midpoint of each **missing** join is lit and
+around every **present** join is exactly zero. `FV8` proves the overlay
+never catches a touch — C is completed through the real lights.
+
+**Whether a production Mystery may ever lean like this is a product
+decision, not something this experiment shipped.** It is one option on
+the preview, off for A and B, and the candidate is unchanged either way.
+
+### Judgement
+
+| | A | B | C |
+|---|---|---|---|
+| reads as a bird unfinished | REJECT | **EXCEPTIONAL** | **EXCEPTIONAL** |
+| reads as a bird completed | GOOD | **EXCEPTIONAL** | **EXCEPTIONAL** |
+| the gap feels meaningful | VALID BUT BORING | **EXCEPTIONAL** | **EXCEPTIONAL** |
+| knows what to try | VALID BUT BORING | VALID BUT BORING | **GOOD** |
+| **overall** | **VALID BUT BORING** | **GOOD** | **EXCEPTIONAL** |
+
+**B is the recognisability answer and C is the interaction answer, and
+they are independent.** B fixes what a child SEES; it does nothing at
+all about the Creature Mystery's biggest open finding — that nothing
+teaches a child that tapping one light and then another joins them. C is
+the first thing that has ever addressed it, and it addresses it the way
+this product is allowed to: by having the world behave, rather than by
+saying anything.
+
+**C is recommended, and the recommendation is C's tease ON B's
+geometry** — which is what C is. A is kept as the control and is not
+recommended for anything.
+
+### Disclosed
+
+**No child has played any of them.** What is measured is the geometry,
+the gap placement, what the tease paints and where, that it catches no
+touch and says no word, that all three complete, awaken and roam
+identically, and that none of it is reachable from production. Whether a
+six-year-old sees a bird in B, and whether C's breathing pair is what
+finally says *these two go together*, is the product owner's to judge
+from the Lab.
+
+### Files
+
+`tools/ether-mystery-lab/labKit.js` — `FALCON_VARIATIONS`,
+`FALCON_BANK`, the `falcon-variations` preset.
+`tools/ether-mystery-lab/preview.html` · `labPreview.js` (`TEASE`,
+`startTease`) · `labPreviewHost.js` · `labUi.js`. Screenshots:
+`tools/ether-mystery-lab-test/shots/falcons/`. Suite section: `FV`.

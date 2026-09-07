@@ -12418,3 +12418,74 @@ U9b asks for more than 150px of NET displacement over a 14s sample while
 a wanderer rests 3–8s inside that window; measured three times on the
 untouched tree it gave 156px PASS, 141px FAIL, 121px FAIL. Reported
 rather than re-tuned.
+
+## Three Falcons — can the drawing carry it, and can the world lean? (Lab only)
+
+The Creature Mystery left two things open, and each falcon answers one.
+**A** is the shipped falcon, by reference rather than by copy — the
+control. **B** is the same hint, the same eight lights and the same two
+missing joins, redrawn. **C** is B's geometry exactly, plus a Lab
+overlay that leans toward the gaps. Every pair differs in one thing.
+**Zero production files changed.**
+
+**What made A weak was the GAPS, not the shape.** Five geometries were
+rendered and looked at before anything was committed, which is what the
+Lab is for. A's gaps are the two wing ROOTS — and a missing root hides
+the rising inner half of the wing, so all a child sees is the outer
+segment sloping away. The bird-defining relationship is exactly the one
+removed. Move the gaps to the neck and the tail and both wings stand
+whole: the shape is unmistakably a bird before anything is joined, and
+the two loose lights are read as the head it is missing and the tail it
+is missing.
+
+**That turns the Unfinished Figure's own finding round.** It concluded
+*a detached PART reads; a detached POINT does not* — and the correction
+is that a detached point reads perfectly well once the thing it is
+detached FROM is recognisable. The rule that survives both: **put the
+gap where the creature stays recognisable without it.**
+
+**The tease is the Lab's, exactly as the leading hint already is.** The
+interpreter still draws no text and now also draws no tease; the
+suggestion is a Lab overlay reading the interpreter's own
+`instrument()`. The two endpoints of a still-missing join breathe
+TOGETHER — the only thing in the sky that does — and the almost-line
+between them is drawn from both ends inward and is faintest in the
+middle, so it never closes. Measured: the brightest pixel around every
+missing join's midpoint is lit and around every present join is exactly
+zero; the overlay catches no touch and says no word; it goes the moment
+the shape is whole.
+
+**B answers recognisability; C answers interaction, and they are
+independent.** C is the first thing that has addressed the Creature
+Mystery's biggest open finding — that nothing teaches a child that
+tapping one light and then another joins them — and it addresses it by
+having the world behave rather than by saying anything. **C recommended,
+on B's geometry. Whether production may ever lean like this is a product
+decision, not something this shipped.**
+
+**A pre-existing check was turned round with its reason in place.** `P1`
+read *"the preview draws nothing"* and included `getContext` in its
+needles — a PROXY for "no second Mystery engine" written when the
+preview drew nothing at all. The tease is the case that tells them
+apart, so what P1 was protecting is now checked more precisely: every
+stroke the preview makes lies inside the tease (`P1k`), and the tease
+draws from `instrument()` rather than from a candidate (`P1m`).
+
+Lab suite 344/344, with four `FV` checks proved by temporary reversion:
+the tease drawn on joins already there, the overlay allowed to catch
+touches, A made a copy, and C given geometry of its own.
+
+**Two pre-existing wall-clock flakes, measured rather than blamed on the
+change.** Production is byte-identical, so neither can be caused by
+this. `tools/ether-mystery-test/` `U10b` asks a wanderer's accumulated
+frame-age to reach 20s after a ~20s wall-clock wait, and on a loaded
+container the frame clock trails: four runs on this tree gave 19.1s,
+19.8s, 18.7s and 19.1s — always just short, with the wanderer alive
+every time. `U9b` (the displacement flake already recorded at build
+0769) appeared in one of the four. Both are reported rather than
+re-tuned; everything else in that suite is green (102 of 103).
+
+Judgement, the five rendered alternatives and the disclosure:
+`docs/ETHER_MYSTERY_LAB.md` → *Three Falcons*. Suite section `FV` in
+`tools/ether-mystery-lab-test/`; shots in
+`tools/ether-mystery-lab-test/shots/falcons/`.

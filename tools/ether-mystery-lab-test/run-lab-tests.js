@@ -897,8 +897,33 @@ async function sectionP() {
 
   // NOT A SECOND ENGINE. The preview may not interpret a candidate, so
   // it must not read the fields only the interpreter reads.
-  ck(!/\belements\s*\.\s*forEach|\bplacePoints|\bcoverRegions|drawImage|getContext/.test(prev),
-    'P1  the preview draws nothing and places nothing — no second renderer');
+  ck(!/\belements\s*\.\s*forEach|\bplacePoints|\bcoverRegions|drawImage/.test(prev),
+    'P1  the preview interprets nothing and places nothing — no second renderer');
+
+  // THE ONE CANVAS THE PREVIEW OWNS IS THE TEASE, AND IT DRAWS NO
+  // MYSTERY. `getContext` sat on the list above while the preview drew
+  // nothing at all, which made it a PROXY for the real rule rather
+  // than the rule itself — and the Falcon C experiment is the case
+  // that tells them apart: a Lab overlay that leans toward a missing
+  // join, exactly as the leading hint already writes a Lab sentence
+  // over the sky. What P1 was protecting is checked here instead, and
+  // more precisely: every stroke the preview makes is inside the tease,
+  // and the tease reads the interpreter's own instrument() rather than
+  // a candidate — so it draws no element, no join, no outcome and no
+  // residue, and there is still exactly one Mystery engine.
+  const teaseFrom = prev.indexOf('var TEASE = {');
+  const teaseTo = prev.indexOf('function lookPoint');
+  const draws = [];
+  for (let at = prev.indexOf('getContext'); at !== -1;
+       at = prev.indexOf('getContext', at + 1)) draws.push(at);
+  ck(teaseFrom > 0 && teaseTo > teaseFrom && draws.length > 0 &&
+     draws.every((i) => i > teaseFrom && i < teaseTo),
+    'P1k every stroke the preview makes is inside the tease overlay, and nowhere else',
+    draws.length + ' drawing call(s), all within the tease');
+  const teaseBlock = prev.slice(teaseFrom, teaseTo);
+  ck(/instrument\(\)/.test(teaseBlock) &&
+     !/candidate|shard|veil|coverRegions|residue|placePoints/.test(teaseBlock),
+    'P1m and it draws from the interpreter\'s own instrument(), never from a candidate');
   ck(prev.indexOf('EtherMystery.mount') !== -1 && prev.indexOf('.begin(') !== -1 &&
      prev.indexOf('.candidates()') !== -1,
     'P1b the candidate enters through the REAL interpreter seam');
@@ -2944,6 +2969,232 @@ async function sectionCR() {
 }
 
 // ===================================================================
+// FV. THREE FALCONS (Lab experiment)
+//
+// The Creature Mystery left two things open — whether the DRAWING can
+// be made to read as a bird on its own, and whether the world can
+// suggest which lights belong together without a word. Three falcons
+// answer one of those each, and every pair differs in exactly one
+// thing: A → B is a different shape, B → C is the same shape with the
+// world leaning toward the gaps. Everything is Lab-side.
+// ===================================================================
+async function sectionFV() {
+  console.log('\n== FV. three falcons (Lab experiment) ==');
+  const { chromium } = require('playwright');
+  const sb = kitSandbox();
+  const G = sb.EtherGrammar || (sb.window && sb.window.EtherGrammar);
+  const Kit = sb.EtherMysteryLabKit || (sb.window && sb.window.EtherMysteryLabKit);
+  const Support = sb.LabPreviewSupport || (sb.window && sb.window.LabPreviewSupport);
+  const bank = Kit.FALCON_BANK;
+  const meta = Kit.FALCON_VARIATIONS;
+
+  // ---- FV1: three real candidates ----
+  const verdicts = bank.map((c) => ({ id: c.id, v: G.validate(c) }));
+  ck(bank.length === 3 && verdicts.every((r) => r.v.ok) &&
+     bank.every((c) => Support.support(c).ok),
+    'FV1  all three falcons are VALID through the real validator and previewable',
+    verdicts.filter((r) => !r.v.ok).map((r) => r.id + ':' + r.v.reasons).join(' ') || '3/3');
+  ck(meta.map((m) => m.variation).join('') === 'ABC',
+    'FV1b they are A, B and C, in that order');
+
+  // ---- FV2: the controls are controls BY REFERENCE ----
+  //
+  // A shares the SHIPPED falcon's own figure object and C shares B's,
+  // so neither can drift from the thing it is the control for. A copy
+  // would be one edit away from an experiment that compares nothing.
+  ck(bank[0].arrangement.figure === Kit.CREATURE_BANK[0].arrangement.figure,
+    'FV2  Falcon A is the shipped falcon\'s own figure, not a copy of it');
+  ck(bank[1].arrangement.figure === bank[2].arrangement.figure,
+    'FV2b Falcon C is Falcon B\'s own geometry, not a copy of it');
+  const strip = (c) => JSON.stringify(Object.assign({}, c, { id: 0, title: 0 }));
+  ck(strip(bank[1]) === strip(bank[2]),
+    'FV2c and the candidate the Ether performs is IDENTICAL for B and C — the tease is not in it');
+
+  // ---- FV3: one variable at a time ----
+  ck(meta.every((m) => m.nodes === 8) &&
+     new Set(meta.map((m) => m.figure.gaps.length)).size === 1,
+    'FV3  same node count and the same number of missing joins — the difficulty is held still',
+    meta.map((m) => m.nodes + 'n/' + m.figure.gaps.length + 'g').join(' '));
+  ck(new Set(meta.map((m) => m.hint)).size === 1 &&
+     meta[0].hint === Kit.creatureNote('lab-cm-1').hint,
+    'FV3b and all three carry the shipped falcon\'s hint, word for word',
+    JSON.stringify(meta[0].hint));
+  ck(JSON.stringify(bank[0].arrangement.figure) !== JSON.stringify(bank[1].arrangement.figure),
+    'FV3c A and B really are different drawings');
+
+  // ---- FV4: B keeps its wings, which is the whole redesign ----
+  //
+  // A's gaps are the two wing ROOTS, so the visible wing is only its
+  // outer half. B's are the neck and the tail, so both wings stand
+  // whole and the shape is a bird before anything is joined.
+  const wholeWings = (m) => {
+    const missing = m.figure.gaps.map((i) => m.figure.joins[i]);
+    // a wing join is one that does not lie on the vertical body axis
+    return m.figure.joins.filter((j) => {
+      const ab = j.split('-').map(Number);
+      return m.figure.points[ab[0]][0] !== 0 || m.figure.points[ab[1]][0] !== 0;
+    }).every((j) => missing.indexOf(j) === -1);
+  };
+  ck(!wholeWings(meta[0]) && wholeWings(meta[1]) && wholeWings(meta[2]),
+    'FV4  A is missing its wings\' roots; B and C keep every wing join whole');
+
+  // ---- FV5: the evaluator's knowledge stays out of the experience ----
+  const j = JSON.stringify(bank);
+  ck(!/falcon|creature|variation|tease|hint/i.test(j),
+    'FV5  no candidate names the creature, the variation, the tease or the hint');
+  ck(meta.every((m) => typeof m.variation === 'string' && typeof m.creature === 'string'),
+    'FV5b and the Lab knows all of it, per fixture, for the research log');
+
+  // ---- the browser half ----
+  const server = spawn('node', ['tools/bring-it-alive/test/serve.js', String(PORT)],
+    { cwd: ROOT, stdio: 'ignore' });
+  await new Promise((res) => setTimeout(res, 900));
+  const browser = await chromium.launch({
+    executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome'
+  });
+  try {
+    const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+    await page.goto(BASE + '/tools/ether-mystery-lab/preview.html');
+    await page.waitForFunction(() => !!window.LabPreview, null, { timeout: 20000 });
+
+    const walk = async (c) => {
+      const note = Kit.creatureNote(c.id);
+      return page.evaluate(async ([cand, hint, tease]) => {
+        window.LabPreview.play(cand, 'fv-seed', 'play', { hint: hint, tease: tease });
+        await new Promise((r) => setTimeout(r, 1800));
+        const canvas = document.querySelector('[data-tease]');
+        const posed = {
+          hidden: canvas.hidden,
+          inert: getComputedStyle(canvas).pointerEvents === 'none',
+          w: canvas.width, h: canvas.height
+        };
+
+        // WHAT THE TEASE PAINTS, AND WHERE. The brightest pixel in a
+        // box around the midpoint of each join — a still-missing one
+        // should carry the almost-line, a present one nothing at all.
+        function brightestNear(x, y, r) {
+          if (canvas.hidden || !canvas.width) return 0;
+          const g = canvas.getContext('2d');
+          const d = g.getImageData(Math.max(0, x - r), Math.max(0, y - r), r * 2, r * 2).data;
+          let m = 0;
+          for (let i = 3; i < d.length; i += 4) if (d[i] > m) m = d[i];
+          return m;
+        }
+        const my = window.LabPreview.mystery();
+        let i = my.instrument();
+        const mid = (L) => {
+          const A = i.elements[L.a], B = i.elements[L.b];
+          return { x: (A.x + B.x) / 2, y: (A.y + B.y) / 2 };
+        };
+        const missing = i.arrangement.links.filter((L) => !L.present);
+        const present = i.arrangement.links.filter((L) => L.present);
+        const paint = {
+          missing: missing.map((L) => { const p = mid(L); return brightestNear(p.x, p.y, 26); }),
+          present: present.map((L) => { const p = mid(L); return brightestNear(p.x, p.y, 26); })
+        };
+
+        // A TAP STILL REACHES THE MYSTERY. The overlay sits over every
+        // light, so if it ever caught a touch the experience would be
+        // unplayable — measured through the real completion, not from
+        // the stylesheet alone.
+        const onTop = document.elementFromPoint(
+          Math.round(i.elements[0].x), Math.round(i.elements[0].y));
+        const overlayEatsTaps = !!(onTop && onTop.hasAttribute &&
+                                   onTop.hasAttribute('data-tease'));
+        let guard = 40;
+        while (guard-- > 0 && i && i.arrangement && i.arrangement.missingLeft > 0) {
+          const gap = i.arrangement.links.filter((L) => !L.present)[0];
+          my.touchAt(i.elements[gap.a].x, i.elements[gap.a].y);
+          my.touchAt(i.elements[gap.b].x, i.elements[gap.b].y);
+          i = my.instrument();
+        }
+        const live = window.LabPreview.instrument();
+        const whole = live ? live.arrangement.links.filter((L) => L.present).length : -1;
+        await new Promise((r) => setTimeout(r, 600));
+        const afterWhole = { hidden: canvas.hidden };
+        await new Promise((r) => setTimeout(r, 6200));
+        const w = window.LabPreview.alive()[0] || null;
+        return {
+          posed: posed, paint: paint, overlayEatsTaps: overlayEatsTaps,
+          whole: whole, afterWhole: afterWhole,
+          alive: window.LabPreview.alive().length, born: w,
+          words: (document.querySelector('[data-tease]').textContent || '').trim()
+        };
+      }, [c, note.hint, note.tease]);
+    };
+
+    const A = await walk(bank[0]);
+    const B = await walk(bank[1]);
+    const C = await walk(bank[2]);
+
+    ck(A.posed.hidden === true && B.posed.hidden === true && C.posed.hidden === false,
+      'FV6  only Falcon C shows the tease — A and B are the Ether exactly as it is',
+      JSON.stringify({ A: A.posed.hidden, B: B.posed.hidden, C: C.posed.hidden }));
+    ck(C.posed.w === 1440 && C.posed.h === 900,
+      'FV6b and it covers the sky — a canvas is a replaced element and needs its size said',
+      JSON.stringify({ w: C.posed.w, h: C.posed.h }));
+    ck(C.afterWhole.hidden === true,
+      'FV6c it goes the moment the shape is whole — from then on the creature speaks for itself');
+
+    const litMissing = C.paint.missing.filter((v) => v > 6).length;
+    const litPresent = C.paint.present.filter((v) => v > 6).length;
+    ck(litMissing === C.paint.missing.length && litPresent === 0,
+      'FV7  the tease is drawn ONLY between the endpoints of a missing join',
+      'missing ' + JSON.stringify(C.paint.missing) + ' · present ' + JSON.stringify(C.paint.present));
+    ck(A.paint.missing.every((v) => v === 0) && B.paint.missing.every((v) => v === 0),
+      'FV7b and nothing at all is painted for A or B');
+
+    ck(C.posed.inert && !C.overlayEatsTaps && C.whole === 7,
+      'FV8  the overlay never catches a touch — C completes through the real lights',
+      JSON.stringify({ inert: C.posed.inert, eats: C.overlayEatsTaps, joined: C.whole }));
+    ck(C.words === '',
+      'FV8b and it says nothing — light only, not one word',
+      JSON.stringify(C.words));
+
+    ck(B.whole === 7 && B.alive === 1 && B.born && B.born.nodes === 8 && B.born.links === 7,
+      'FV9  Falcon B completes, comes alive with all eight lights, and roams',
+      JSON.stringify({ whole: B.whole, born: B.born && B.born.nodes }));
+    ck(C.whole === 7 && C.alive === 1 && C.born && C.born.nodes === 8 && C.born.links === 7,
+      'FV9b and so does C — the tease changes what is SUGGESTED, never what happens',
+      JSON.stringify({ whole: C.whole, born: C.born && C.born.nodes }));
+    ck(A.whole === 7 && A.alive === 1,
+      'FV9c and the control behaves exactly as it shipped');
+    await page.close();
+  } finally {
+    await browser.close();
+    server.kill();
+  }
+
+  // ---- FV10: production knows nothing about any of it ----
+  ck(!/tease|falcon|lab-fv-/i.test(stripComments(read('js/etherMystery.js'))) &&
+     !/tease|falcon|lab-fv-/i.test(stripComments(read('js/etherGrammar.js'))),
+    'FV10 neither production file names a falcon or a tease');
+  ck(!/lab-fv-|FALCON_BANK|FALCON_VARIATIONS/.test(
+       require('child_process').spawnSync('grep',
+         ['-rl', '-e', 'lab-fv-', '-e', 'FALCON_BANK', '-e', 'FALCON_VARIATIONS',
+          path.join(ROOT, 'js'), path.join(ROOT, 'assets'), path.join(ROOT, 'vihuplanet')],
+         { encoding: 'utf8' }).stdout || ''),
+    'FV10b and nothing a child loads — js/, assets/, the runtime — names one');
+
+  // ---- FV11: the research log carries the comparison ----
+  const session = Kit.createSession();
+  bank.forEach((c) => session.add(c,
+    { source: 'fixture', params: { experiment: 'falcon-variations' } }));
+  const rows = session.items();
+  session.review(rows[1].labId, 'good', [], 'reads as a bird before anything is joined');
+  const log = session.exportResearch();
+  const got = log.artifact.candidates
+    .filter((r) => (r.candidate.id || '').indexOf('lab-fv-') === 0)
+    .map((r) => r.creatureExperiment && (r.creatureExperiment.variation +
+      (r.creatureExperiment.tease ? '+tease' : '')));
+  ck(got.length === 3 && got.join(' ') === 'A B C+tease',
+    'FV11 the research log carries which variation each one is, and which carries the tease',
+    got.join(' '));
+  ck(log.artifact.productionReady === false,
+    'FV11b and it is still marked research-only');
+}
+
+// ===================================================================
 (async () => {
   try {
     await sectionS();
@@ -2955,6 +3206,7 @@ async function sectionCR() {
     await sectionR();
     await sectionUF();
     await sectionCR();
+    await sectionFV();
   } catch (e) {
     fail('suite crashed', (e && e.stack || String(e)).split('\n')[0]);
   }

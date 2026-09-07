@@ -50,6 +50,16 @@
   .hint.on { opacity: 1; }
   @media (max-width: 640px) { .hint { font-size: 15px; top: 7%; } }
 
+  /* THE TEASE. Drawn by the LAB over the real interpreter, exactly as
+     the leading hint above it is — so the candidate the Ether performs
+     is byte-identical with it and without it, and whether the world
+     may lean toward a gap stays a question rather than a shipped
+     answer. Beneath the hint, above the universe, inert to touch. */
+  /* A canvas is a REPLACED element, so `inset:0` alone leaves it at
+     its intrinsic 300x150 — measured. The size has to be said. */
+  .tease { position: absolute; inset: 0; width: 100%; height: 100%;
+           z-index: 30; pointer-events: none; }
+
   .unavailable { position: absolute; inset: 0; z-index: 60; display: none;
                  align-items: center; justify-content: center; padding: 40px;
                  background: rgba(18,24,43,.86); }
@@ -73,6 +83,7 @@
 
   <!-- The leading hint. Lab-rendered, over the real sky, and the only
        words in the child-facing half of the preview. -->
+  <canvas class="tease" data-tease hidden></canvas>
   <div class="hint" data-hint></div>
 
   <div class="chrome" data-chrome hidden>

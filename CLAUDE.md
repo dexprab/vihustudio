@@ -8863,6 +8863,72 @@ leads somewhere.
   `docs/ETHER_MYSTERY_LAB.md` → *The Creature Mystery* ·
   `tools/ether-mystery-lab-test/` section `CR` ·
   `tools/ether-mystery-lab-test/shots/creatures/`
+- **THREE FALCONS, AND EACH PAIR DIFFERS IN EXACTLY ONE THING — A LAB
+  EXPERIMENT, ZERO PRODUCTION FILES CHANGED.** The Creature Mystery
+  left two questions open and each falcon answers one. **A** is the
+  shipped falcon, held BY REFERENCE rather than copied, because a copy
+  is one edit away from an experiment that compares nothing. **B** is
+  the same hint, the same eight lights and the same two missing joins,
+  redrawn. **C** is B's geometry exactly — the candidate handed to the
+  interpreter is byte-identical — plus a Lab overlay that leans toward
+  the gaps.
+- **WHAT MADE A WEAK WAS THE GAPS, NOT THE SHAPE, and five rendered
+  alternatives are what found it.** A's gaps are the two wing ROOTS,
+  and a missing root hides the RISING inner half of the wing — so all a
+  child sees is the outer segment sloping away, which is why A reads as
+  a stick with two dashes. Move the gaps to the neck and the tail and
+  both wings stand whole: the visible shape is unmistakably a bird
+  before anything is joined, and the two loose lights are read in its
+  company as the head it is missing and the tail it is missing.
+- **THIS TURNS THE UNFINISHED FIGURE'S OWN FINDING ROUND.** That
+  experiment concluded *a detached PART reads; a detached POINT does
+  not* — and the correction is that a detached point reads perfectly
+  well once the thing it is detached FROM is recognisable. The rule
+  that survives both is the general one: **put the gap where the
+  creature stays recognisable without it.**
+- **THE TEASE IS THE LAB'S, EXACTLY AS THE LEADING HINT ALREADY IS.**
+  `js/etherMystery.js` draws no text and now also draws no tease; the
+  suggestion is a Lab overlay reading the interpreter's own
+  `instrument()`. Two rules keep it a suggestion rather than an answer:
+  **the two endpoints of a still-missing join breathe TOGETHER**, which
+  is the only thing in the sky that does, so the pair reads as a pair;
+  and **the almost-line is drawn from both ends inward and is faintest
+  in the middle**, so it never closes. Measured: the brightest pixel
+  around every MISSING join's midpoint is lit and around every PRESENT
+  join is exactly zero, the overlay catches no touch, it says no word,
+  and it goes the moment the shape is whole.
+- **B ANSWERS RECOGNISABILITY; C ANSWERS INTERACTION, AND THEY ARE
+  INDEPENDENT.** B fixes what a child SEES and does nothing about the
+  Creature Mystery's biggest open finding — that nothing teaches a
+  child that tapping one light and then another joins them. C is the
+  first thing that has addressed it, and it addresses it the way this
+  product is allowed to: by having the world behave rather than by
+  saying anything. **C is recommended, on B's geometry. Whether a
+  production Mystery may ever lean like this is a product decision,
+  not something this experiment shipped.**
+- **A PRE-EXISTING CHECK WAS TURNED ROUND WITH ITS REASON IN PLACE.**
+  `P1` read *"the preview draws nothing"* and carried `getContext`
+  among its needles — a PROXY for *no second Mystery engine*, written
+  when the preview drew nothing at all, and the tease is the case that
+  tells the proxy from the rule. What it was protecting is checked more
+  precisely now: every stroke the preview makes lies inside the tease
+  (`P1k`), and the tease draws from `instrument()` rather than from a
+  candidate (`P1m`). Four `FV` checks are proved by temporary
+  reversion: the tease drawn on joins already there, the overlay
+  allowed to catch touches, A made a copy, and C given geometry of its
+  own.
+- **DISCLOSED: no child has played any of them.** The geometry, the gap
+  placement, what the tease paints and where, that it catches no touch
+  and says no word, that all three complete, awaken and roam
+  identically, and that none of it is reachable from production are
+  measured. Whether a six-year-old sees a bird in B, and whether C's
+  breathing pair is what finally says *these two go together*, is the
+  product owner's to judge from the Lab.
+- `tools/ether-mystery-lab/labKit.js` → `FALCON_VARIATIONS` ·
+  `labPreview.js` → `TEASE` / `startTease` ·
+  `docs/ETHER_MYSTERY_LAB.md` → *Three Falcons* ·
+  `tools/ether-mystery-lab-test/` section `FV` ·
+  `tools/ether-mystery-lab-test/shots/falcons/`
 - Out of scope and not implemented: creature encounters as a reward
   system, creature dialogue, a Companion in the Ether, per-Traveller
   encounter history, more activity rows (story hunt, missing

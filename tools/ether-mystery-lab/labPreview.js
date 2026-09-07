@@ -139,6 +139,8 @@
   function el(sel) { return doc.querySelector(sel); }
 
   function teardown() {
+    if (run && run.teaseRaf) { try { global.cancelAnimationFrame(run.teaseRaf); } catch (e) {} }
+    stopTease();
     if (run && run.hintTimer) { try { global.clearTimeout(run.hintTimer); } catch (e) {} }
     if (!run) return;
     try { if (run.mystery) run.mystery.destroy(); } catch (e) {}
@@ -216,6 +218,7 @@
     finished = false;
     mode = (mode === 'try') ? 'try' : 'play';
     var hintText = (opts && typeof opts.hint === 'string') ? opts.hint : '';
+    var teasing = !!(opts && opts.tease);
     var box = el('[data-unavailable]');
     if (box) box.classList.remove('on');
     var badge = el('[data-try-badge]');
@@ -405,7 +408,123 @@
         });
       }
     }
+    if (teasing) startTease(mystery, universe);
     post('playing', { id: candidate.id, elements: report.happened.elements });
+  }
+
+  // ---------------------------------------------------------------
+  // THE TEASE — "these two belong together", said by light alone.
+  //
+  // It draws NOTHING of the mystery: the figure, its lights, its
+  // joins and every response to a touch are the real interpreter's,
+  // and this reads that interpreter's own instrument() and adds one
+  // suggestion over the top. Two rules keep it a suggestion rather
+  // than an answer. The two endpoints of a still-missing join breathe
+  // TOGETHER, which is the only thing in the sky that does, so the
+  // pair reads as a pair; and the almost-line between them is drawn
+  // from both ends inward and is faintest in the middle, so it never
+  // closes — the world leans toward the gap without filling it.
+  //
+  // Not one word, no arrow, no marker, nothing to press. It stops the
+  // moment the shape is whole: past that the creature speaks for
+  // itself, exactly as the leading hint already withdraws.
+  // ---------------------------------------------------------------
+  var TEASE = {
+    haloR: 17,          // of the node's own halo, at the pulse's peak
+    haloAlpha: 0.34,
+    lineAlpha: 0.26,
+    dots: 9,            // along the almost-line, ends inward
+    inset: 0.14,        // how far short of each light the dots start
+    breathe: 1.15       // radians per second — slower than a heartbeat
+  };
+
+  function stopTease() {
+    var c = el('[data-tease]');
+    if (!c) return;
+    c.hidden = true;
+    try {
+      var g = c.getContext('2d');
+      if (g) g.clearRect(0, 0, c.width, c.height);
+    } catch (e) {}
+  }
+
+  function startTease(mystery, universe) {
+    var canvas = el('[data-tease]');
+    if (!canvas || !canvas.getContext) return;
+    var ctx = canvas.getContext('2d');
+    canvas.hidden = false;
+
+    // The interpreter holds its lights in FIELD coordinates and the
+    // sky wraps, so a screen position is the same three lines it uses
+    // itself. A coordinate transform, never a second renderer.
+    function nearestCopy(v, span, centre) {
+      if (!(span > 0)) return v;
+      return v - Math.round((v - centre) / span) * span;
+    }
+
+    function frame(t) {
+      if (!run || run.mystery !== mystery) return;
+      run.teaseRaf = global.requestAnimationFrame(frame);
+
+      var dpr = Math.min(2, global.devicePixelRatio || 1);
+      var w = canvas.clientWidth, h = canvas.clientHeight;
+      if (canvas.width !== Math.round(w * dpr)) canvas.width = Math.round(w * dpr);
+      if (canvas.height !== Math.round(h * dpr)) canvas.height = Math.round(h * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, w, h);
+
+      var inst = null;
+      try { inst = mystery.instrument(); } catch (e) {}
+      if (!inst || !inst.arrangement || inst.arrangement.missingLeft === 0) {
+        stopTease();
+        return;
+      }
+
+      var cam = { x: 0 }, span = 0;
+      try {
+        cam = universe.camera.offsetFor(universe.ether.depth.stories, { x: 0, y: 0 });
+        span = universe.ether.width;
+      } catch (e) {}
+
+      // One clock for every pair on screen, so two lights that belong
+      // together rise and fall as one — which is the whole signal.
+      var pulse = 0.5 + 0.5 * Math.sin((t / 1000) * TEASE.breathe);
+      var lift = 0.35 + 0.65 * pulse;
+
+      inst.arrangement.links.forEach(function (L) {
+        if (L.present) return;
+        var A = inst.elements[L.a], B = inst.elements[L.b];
+        if (!A || !B || A.hidden || B.hidden) return;
+        var ax = nearestCopy(A.x + cam.x, span, w * 0.5), ay = A.y;
+        var bx = nearestCopy(B.x + cam.x, span, w * 0.5), by = B.y;
+
+        // The almost-line: dots from both ends, palest in the middle,
+        // and no dot is ever placed at the midpoint itself.
+        for (var i = 0; i < TEASE.dots; i++) {
+          var u = TEASE.inset + (i / (TEASE.dots - 1)) * (1 - TEASE.inset * 2);
+          var mid = 1 - Math.abs(u - 0.5) * 2;          // 0 at the ends, 1 in the middle
+          var a = TEASE.lineAlpha * lift * (1 - mid * 0.82);
+          if (a <= 0.005) continue;
+          ctx.beginPath();
+          ctx.arc(ax + (bx - ax) * u, ay + (by - ay) * u, 1.5, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(241,234,208,' + a.toFixed(3) + ')';
+          ctx.fill();
+        }
+
+        // And the two lights answer each other.
+        [[ax, ay], [bx, by]].forEach(function (p) {
+          var r = TEASE.haloR * (0.72 + 0.28 * pulse);
+          var g = ctx.createRadialGradient(p[0], p[1], 0, p[0], p[1], r);
+          g.addColorStop(0, 'rgba(241,234,208,' + (TEASE.haloAlpha * lift).toFixed(3) + ')');
+          g.addColorStop(1, 'rgba(241,234,208,0)');
+          ctx.beginPath();
+          ctx.arc(p[0], p[1], r, 0, Math.PI * 2);
+          ctx.fillStyle = g;
+          ctx.fill();
+        });
+      });
+    }
+    run.teaseRaf = global.requestAnimationFrame(frame);
   }
 
   function lookPoint(universe) {
@@ -484,7 +603,7 @@
       var d = ev && ev.data;
       if (!d || d.type !== 'lab-preview:play') return;
       epoch = (typeof d.epoch === 'number') ? d.epoch : null;
-      play(d.candidate, d.seed, d.mode, { hint: d.hint });
+      play(d.candidate, d.seed, d.mode, { hint: d.hint, tease: !!d.tease });
     });
     post('ready', {});
   }
