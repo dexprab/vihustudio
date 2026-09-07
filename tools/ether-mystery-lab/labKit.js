@@ -1711,6 +1711,12 @@
       count: 5,
       emphasis: 'The mystery comes first; the world itself quietly suggests one optional possibility; taking it leads to a discovery. Nothing is announced, framed as an objective, or required.'
     },
+    'eight-point-creatures': {
+      title: 'Eight-Point Creatures — how many can the language carry?',
+      brief: 'LAB EXPERIMENT (fixtures only). Five deliberately different silhouettes — fish, butterfly, whale, snake, octopus — each drawn at the product\'s own ceiling of eight lights, each with a short leading hint and two missing joins.',
+      count: 5, needsCreation: true, fixturesOnly: true,
+      emphasis: 'Judge the COMPLETED figure first, with the hint hidden. The question is not whether five creatures can be made to work — it is HOW MANY the eight-point language can carry, and a reject is as useful an answer as a keep. Run it in FIXTURE MODE.'
+    },
     'falcon-redesign': {
       title: 'Three Falcons — Recognition / Mystery / Guided Discovery',
       brief: 'LAB EXPERIMENT (fixtures only). One falcon, redesigned from scratch with outlined wings and tips swept behind the shoulder, shown three ways: F1 has the fewest gaps, F2 has one more, and F3 is F2 exactly plus a delayed aid that appears only after a child has tried twice without success.',
@@ -2442,6 +2448,224 @@
 
   var FALCON_REDESIGN_BANK = FALCON_REDESIGN.map(creatureCandidate);
 
+  // ---------------------------------------------------------------
+  // EIGHT-POINT CREATURES
+  //
+  // The falcon experiment asked whether ONE creature could be made
+  // unmistakable, found it could not, and found the wall: a figure may
+  // declare at most eight lights. This asks the more useful question —
+  // WHICH creatures the eight-point language can carry — by taking
+  // five deliberately different silhouettes and designing the FINISHED
+  // figure first, as the falcon's own §14 demanded.
+  //
+  // Six rounds of completed silhouettes were drawn and LOOKED AT
+  // before a single gap was placed. The sheets are committed under
+  // tools/ether-mystery-lab-test/shots/eight-point/.
+  //
+  // WHAT THE STUDY FOUND, and it is the transferable half:
+  //
+  //   A CLOSED OUTLINE PLUS ONE DIAGNOSTIC APPENDAGE READS. Eight
+  //   straight segments can enclose a body and still have two or three
+  //   left over for the one part that names the animal — a forked
+  //   tail, a pair of wings. That is the whole of what succeeded.
+  //
+  //   BULK DOES NOT READ. A body made wide enough to be a whale
+  //   becomes a polygon: measured across four framings (side, blunt,
+  //   diving, from above) it came out as a box, a dart, a wavy line
+  //   and an aeroplane. Straight lines between few points cannot say
+  //   "rounded and heavy".
+  //
+  //   A LINE IS NOT A CREATURE. A snake spends every light on its own
+  //   length, so nothing is left to make a body — and outlining the
+  //   front half to give it one turned it into a tadpole.
+  //
+  //   RADIAL LIMBS READ AS A STICK FIGURE. Five arms need five lights
+  //   and a mantle needs three, so every arm is one straight spike off
+  //   a triangle: measured, a tent, a bat and a person doing a star
+  //   jump.
+  //
+  // The verdicts are in docs/ETHER_MYSTERY_LAB.md. Nothing here is
+  // promoted, activated or reachable from production.
+  // ---------------------------------------------------------------
+  var EIGHT_POINT_CREATURES = [
+    // ---- THE FISH. A closed body, a narrow waist, a forked tail and
+    // a dorsal fin: the outline plus TWO diagnostic appendages, which
+    // is the most any eight-point figure managed.
+    { creature: 'fish',
+      hint: 'Something is gliding beneath the quiet water…',
+      tease: 'delayed',
+      id: 'lab-ep-1', nodes: 8, complexity: 'simple',
+      title: 'a shape of lights, two joins short',
+      figure: {
+        points: [
+          [-1.35, 0.02],   // 0 nose
+          [-0.50,-0.55],   // 1 back
+          [ 0.50,-0.15],   // 2 waist, upper
+          [ 1.32,-0.60],   // 3 tail, upper lobe
+          [ 1.32, 0.56],   // 4 tail, lower lobe
+          [ 0.50, 0.19],   // 5 waist, lower
+          [-0.50, 0.58],   // 6 belly
+          [-0.25,-1.10]    // 7 dorsal fin
+        ],
+        joins: ['0-1', '1-2', '2-5', '5-6', '6-0',   // the body, closed
+                '2-3', '3-4', '4-5',                 // the tail
+                '1-7', '7-2'],                       // the fin
+        // The tail's outer edge and one side of the fin: a missing
+        // tail section and a missing fin relationship, which is §4's
+        // own list. The body outline is never broken.
+        gaps: [6, 8]
+      } },
+
+    // ---- THE BUTTERFLY. Bilateral symmetry doing the work: a body
+    // line and two closed wing shapes. The strongest of the five.
+    { creature: 'butterfly',
+      hint: 'Something delicate is waiting to open its wings…',
+      tease: 'delayed',
+      id: 'lab-ep-2', nodes: 8, complexity: 'simple',
+      title: 'a shape of lights, two joins short',
+      figure: {
+        points: [
+          [ 0.00,-0.50],   // 0 thorax
+          [ 0.00, 1.00],   // 1 abdomen
+          [-1.32,-1.10],   // 2 left forewing tip
+          [-1.05,-0.05],   // 3 left outer notch
+          [-0.50, 0.72],   // 4 left hindwing tip
+          [ 1.32,-1.10],   // 5 right forewing tip
+          [ 1.05,-0.05],   // 6 right outer notch
+          [ 0.50, 0.72]    // 7 right hindwing tip
+        ],
+        joins: ['0-1',                       // the body
+                '0-2', '2-3', '3-4', '4-1',  // the left wing, closed
+                '0-5', '5-6', '6-7', '7-1'], // the right wing, closed
+        // One join out of each wing, so neither wing collapses: the
+        // left hindwing hangs off the abdomen and the right forewing
+        // off the thorax. Both wings stay whole enough to read.
+        gaps: [4, 5]
+      } },
+
+    // ---- THE WHALE, at its best of four framings and still not a
+    // whale. A big fish is what eight lights draw.
+    { creature: 'whale',
+      hint: 'A giant of the deep is waiting…',
+      tease: 'delayed',
+      id: 'lab-ep-3', nodes: 8, complexity: 'simple',
+      title: 'a shape of lights, two joins short',
+      figure: {
+        points: [
+          [-1.38, 0.05],   // 0 snout
+          [-1.12,-0.48],   // 1 head, above
+          [-0.25,-0.62],   // 2 back
+          [ 0.60,-0.34],   // 3 back, rear
+          [ 0.92,-0.05],   // 4 peduncle
+          [ 1.38,-0.52],   // 5 fluke, upper
+          [ 1.34, 0.34],   // 6 fluke, lower
+          [-0.30, 0.62]    // 7 belly
+        ],
+        joins: ['0-1', '1-2', '2-3', '3-4',   // the back
+                '4-5', '4-6', '5-6',          // the fluke
+                '0-7', '7-4'],                // the belly
+        gaps: [6, 7]
+      } },
+
+    // ---- THE SNAKE, at its best of four framings. The head reads;
+    // the body is a polyline, because that is all a line can be.
+    { creature: 'snake',
+      hint: 'Something is curled up and waiting…',
+      tease: 'delayed',
+      id: 'lab-ep-4', nodes: 8, complexity: 'simple',
+      title: 'a shape of lights, two joins short',
+      figure: {
+        points: [
+          [-1.35,-0.55],   // 0 nose
+          [-1.00,-0.95],   // 1 head, above
+          [-0.95,-0.22],   // 2 jaw
+          [-0.35,-0.55],   // 3 neck
+          [ 0.15, 0.05],   // 4
+          [ 0.70,-0.20],   // 5
+          [ 1.10, 0.45],   // 6
+          [ 1.38, 1.05]    // 7 tail tip
+        ],
+        joins: ['0-1', '1-2', '2-0',          // the head
+                '1-3', '2-3',                 // the neck
+                '3-4', '4-5', '5-6', '6-7'],  // the body
+        // A break in the neck and a break mid-body: both ends of each
+        // gap stay joined to something, so what floats is a length of
+        // snake rather than two loose stars.
+        gaps: [4, 7]
+      } },
+
+    // ---- THE OCTOPUS, at its best of four framings. A dome and five
+    // straight arms is a stick figure however the arms are angled.
+    { creature: 'octopus',
+      hint: 'Something with many arms is waiting…',
+      tease: 'delayed',
+      id: 'lab-ep-5', nodes: 8, complexity: 'moderate',
+      title: 'a shape of lights, two joins short',
+      figure: {
+        points: [
+          [ 0.00,-1.10],   // 0 mantle, above
+          [-0.72,-0.50],   // 1 mantle, left
+          [ 0.72,-0.50],   // 2 mantle, right
+          [-1.38, 0.10],   // 3 arm
+          [-0.72, 0.95],   // 4 arm
+          [ 0.10, 1.25],   // 5 arm
+          [ 0.88, 0.85],   // 6 arm
+          [ 1.30, 0.05]    // 7 arm
+        ],
+        joins: ['0-1', '0-2', '1-2',                 // the mantle
+                '1-3', '1-4', '1-5',                 // the left arms
+                '2-5', '2-6', '2-7'],                // the right arms
+        // A MISSING BODY CONNECTION, because nothing else is
+        // available: every arm is a single-point spike, so gapping one
+        // leaves a stray star rather than a part that has come away.
+        gaps: [1, 2]
+      } }
+  ];
+
+  var EIGHT_POINT_BANK = EIGHT_POINT_CREATURES.map(creatureCandidate);
+
+  // §9's guard. The experiment must not be able to pretend a malformed
+  // figure is fine, and the interpreter CLAMPS rather than refuses
+  // (js/etherMystery.js -> LIMITS.pieces), so an over-limit figure
+  // would be truncated and drawn with joins pointing at lights that
+  // were never placed.
+  //
+  // It deliberately RESTATES NO PRODUCTION NUMBER. The ceiling is
+  // asked of the REAL validator — a figure with too many lights is
+  // simply refused by it — and everything else here is internal
+  // consistency the validator does not owe us. The suite then measures
+  // the other half where it actually matters: the interpreter must
+  // place exactly as many lights as the figure declares.
+  function figureGuard(candidate) {
+    var bad = [];
+    var pat = candidate && candidate.arrangement;
+    if (!pat || !pat.figure) return { ok: false, reasons: ['no-figure'] };
+    var fig = pat.figure;
+    var pts = fig.points || [], jns = fig.joins || [], gps = fig.gaps || [];
+    if (pts.length !== pat.nodes) bad.push('points-not-nodes:' + pts.length + '/' + pat.nodes);
+    var el = (candidate.elements || [])[0];
+    if (!el || el.count !== pat.nodes) bad.push('element-count-not-nodes');
+    jns.forEach(function (j) {
+      var ab = String(j).split('-').map(Number);
+      if (ab.length !== 2 || ab.some(function (n) {
+        return !(n >= 0 && n < pat.nodes && n === Math.floor(n));
+      })) bad.push('join-out-of-range:' + j);
+    });
+    gps.forEach(function (i) {
+      if (!(i >= 0 && i < jns.length)) bad.push('gap-out-of-range:' + i);
+    });
+    if (gps.length !== pat.missing) bad.push('missing-not-gaps');
+    if (!gps.length) bad.push('no-gap-is-not-unfinished');
+    // And the ceiling, asked of the thing that owns it.
+    var G = global.EtherGrammar;
+    if (!G || !G.validate) bad.push('no-validator');
+    else {
+      var v = G.validate(candidate);
+      if (!v.ok) bad.push('validator:' + v.reasons.join(','));
+    }
+    return { ok: bad.length === 0, reasons: bad };
+  }
+
   // WHAT THE RUNTIME WILL ACTUALLY PLACE, measured rather than
   // assumed, and the reason this experiment is EIGHT lights and not
   // the fourteen to twenty the brief asked for:
@@ -2471,7 +2695,8 @@
   // renders over it. Looked up by candidate id, so nothing has to
   // travel inside a candidate to get here.
   function creatureNote(id) {
-    var all = CREATURE_EXPERIMENTS.concat(FALCON_VARIATIONS, FALCON_REDESIGN);
+    var all = CREATURE_EXPERIMENTS.concat(FALCON_VARIATIONS, FALCON_REDESIGN,
+                                          EIGHT_POINT_CREATURES);
     for (var i = 0; i < all.length; i++) {
       var c = all[i];
       if (c.id !== id) continue;
@@ -2493,6 +2718,10 @@
     // THE FIGURE EXPERIMENT HAS ITS OWN BANK, and it is emitted whole:
     // the comparison is between these eight and no others, so the
     // count control does not thin it out.
+    if (params.experiment === 'eight-point-creatures') {
+      return { ok: true, source: 'fixture',
+               text: JSON.stringify({ candidates: JSON.parse(JSON.stringify(EIGHT_POINT_BANK)) }) };
+    }
     if (params.experiment === 'falcon-redesign') {
       return { ok: true, source: 'fixture',
                text: JSON.stringify({ candidates: JSON.parse(JSON.stringify(FALCON_REDESIGN_BANK)) }) };
@@ -2535,6 +2764,9 @@
     CREATURE_EXPERIMENTS: CREATURE_EXPERIMENTS,
     FALCON_VARIATIONS: FALCON_VARIATIONS,
     FALCON_BANK: FALCON_BANK,
+    EIGHT_POINT_CREATURES: EIGHT_POINT_CREATURES,
+    EIGHT_POINT_BANK: EIGHT_POINT_BANK,
+    figureGuard: figureGuard,
     FALCON_REDESIGN: FALCON_REDESIGN,
     FALCON_REDESIGN_BANK: FALCON_REDESIGN_BANK,
     RUNTIME_NODE_CEILING: RUNTIME_NODE_CEILING,

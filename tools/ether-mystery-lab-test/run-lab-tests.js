@@ -3579,6 +3579,284 @@ async function sectionFR() {
     'FR12b and it is still marked research-only');
 }
 
+async function sectionEP() {
+  console.log('\n== EP. eight-point creatures (Lab experiment) ==');
+  const { chromium } = require('playwright');
+  const sb = kitSandbox();
+  const G = sb.EtherGrammar || (sb.window && sb.window.EtherGrammar);
+  const Kit = sb.EtherMysteryLabKit || (sb.window && sb.window.EtherMysteryLabKit);
+  const Support = sb.LabPreviewSupport || (sb.window && sb.window.LabPreviewSupport);
+  const bank = Kit.EIGHT_POINT_BANK;
+  const meta = Kit.EIGHT_POINT_CREATURES;
+
+  // ---- EP1: five real candidates, inside the product's own ceiling ----
+  const verdicts = bank.map((c) => ({ id: c.id, v: G.validate(c) }));
+  ck(bank.length === 5 && verdicts.every((r) => r.v.ok) &&
+     bank.every((c) => Support.support(c).ok),
+    'EP1  all five are VALID through the real validator and previewable',
+    verdicts.filter((r) => !r.v.ok).map((r) => r.id + ':' + r.v.reasons).join(' ') || '5/5');
+  ck(meta.map((m) => m.creature).sort().join(' ') === 'butterfly fish octopus snake whale',
+    'EP1b the five are the five the brief named',
+    meta.map((m) => m.creature).join(' '));
+  ck(meta.every((m) => m.nodes <= 8 && m.figure.points.length === m.nodes),
+    'EP1c every fixture is at most EIGHT lights, and declares exactly as many as it draws',
+    meta.map((m) => m.creature + ':' + m.figure.points.length).join(' '));
+  ck(meta.every((m) => m.figure.gaps.length >= 1 && m.figure.gaps.length <= 3),
+    'EP1d each is one to three joins short — unfinished, never mostly gaps',
+    meta.map((m) => m.figure.gaps.length).join(''));
+
+  // ---- EP2: §9's GUARD. The experiment cannot pretend a malformed
+  // figure is fine, and it restates no production number: the ceiling
+  // is asked of the REAL validator.
+  ck(bank.every((c) => Kit.figureGuard(c).ok),
+    'EP2  the Lab guard passes every fixture',
+    bank.map((c) => c.id + ':' + Kit.figureGuard(c).reasons.join('|')).join(' ') || 'clean');
+  const over = JSON.parse(JSON.stringify(bank[0]));
+  over.arrangement.nodes = 12; over.elements[0].count = 12;
+  const op = over.arrangement.figure.points;
+  over.arrangement.figure.points = op.concat(op.slice(0, 4).map((q) => [q[0] * 0.5, q[1] * 0.5]));
+  ck(!Kit.figureGuard(over).ok && !G.validate(over).ok,
+    'EP2b a figure over the ceiling is REFUSED by both, never quietly clamped',
+    JSON.stringify(Kit.figureGuard(over).reasons));
+  const bentJoin = JSON.parse(JSON.stringify(bank[0]));
+  bentJoin.arrangement.figure.joins = bentJoin.arrangement.figure.joins.concat(['0-9']);
+  const bentGap = JSON.parse(JSON.stringify(bank[0]));
+  bentGap.arrangement.figure.gaps = [99];
+  ck(!Kit.figureGuard(bentJoin).ok && !Kit.figureGuard(bentGap).ok,
+    'EP2c and it catches a join or a gap pointing at a light that is not there');
+  ck(!/arrangementNodesMax|nodes\s*<=\s*8|=== 8|pieces/.test(
+       String(Kit.figureGuard).replace(/\/\/[^\n]*/g, '')),
+    'EP2d the guard restates NO production number — it asks the validator');
+
+  // ---- EP3: §4. A gap takes a PART away, never a light. ----
+  //
+  // The falcon's own finding: a detached POINT reads as one of the
+  // stray stars the sky is already full of, and a detached PART reads
+  // as a piece of the creature sitting apart from it.
+  const strays = meta.map(function (m) {
+    const kept = m.figure.joins.filter((j, i) => m.figure.gaps.indexOf(i) === -1);
+    const held = {};
+    kept.forEach((j) => j.split('-').forEach((n) => { held[n] = 1; }));
+    const loose = [];
+    for (let n = 0; n < m.figure.points.length; n++) if (!held[n]) loose.push(n);
+    return { creature: m.creature, loose: loose };
+  });
+  ck(strays.every((r) => r.loose.length === 0),
+    'EP3  no gap leaves a light attached to nothing at all',
+    strays.map((r) => r.creature + ':' + (r.loose.length ? r.loose.join(',') : 'ok')).join(' '));
+
+  // ---- EP4: the hint is the Lab's, and no creature name travels ----
+  ck(meta.every((m) => typeof m.hint === 'string' && m.hint.length > 0 &&
+       m.hint.toLowerCase().indexOf(m.creature) === -1),
+    'EP4  every creature has a leading hint, and no hint names its own creature',
+    meta.map((m) => m.hint).join(' | '));
+  ck(!/connect|join the|tap the|complete the|dots|puzzle/i.test(
+       meta.map((m) => m.hint).join(' ')),
+    'EP4b and not one hint explains the mechanic');
+  const j = JSON.stringify(bank);
+  ck(!/whale|fish|snake|octopus|butterfly|creature|hint|tease/i.test(j),
+    'EP4c NO creature name, hint or aid travels inside a candidate');
+  ck(meta.every((m) => m.tease === 'delayed'),
+    'EP4d and all five carry the SAME delayed aid — one mechanism, not five');
+
+  // ---- the browser half ----
+  const server = spawn('node', ['tools/bring-it-alive/test/serve.js', String(PORT)],
+    { cwd: ROOT, stdio: 'ignore' });
+  await new Promise((res) => setTimeout(res, 900));
+  const browser = await chromium.launch({
+    executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome'
+  });
+  try {
+    const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+    await page.goto(BASE + '/tools/ether-mystery-lab/preview.html');
+    await page.waitForFunction(() => !!window.LabPreview, null, { timeout: 20000 });
+
+    const walk = async (c) => {
+      const note = Kit.creatureNote(c.id);
+      return page.evaluate(async ([cand, hint, tease, pts]) => {
+        const step = () => new Promise((r) =>
+          requestAnimationFrame(() => requestAnimationFrame(r)));
+        const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+        const canvas = document.querySelector('[data-tease]');
+        function lit(x, y, r) {
+          if (canvas.hidden || !canvas.width) return 0;
+          const g = canvas.getContext('2d');
+          const d = g.getImageData(Math.max(0, x - r), Math.max(0, y - r), r * 2, r * 2).data;
+          let m = 0;
+          for (let i = 3; i < d.length; i += 4) if (d[i] > m) m = d[i];
+          return m;
+        }
+        function at(L, u, inst) {
+          const A = inst.elements[L.a], B = inst.elements[L.b];
+          return { x: A.x + (B.x - A.x) * u, y: A.y + (B.y - A.y) * u };
+        }
+        async function tryWrong(n) {
+          for (let k = 0; k < n; k++) {
+            const my = window.LabPreview.mystery(), i = my.instrument();
+            const missing = i.arrangement.links.filter((L) => !L.present);
+            const isGap = (a, b) => missing.some((L) =>
+              (L.a === a && L.b === b) || (L.a === b && L.b === a));
+            const pairs = [];
+            for (let a = 0; a < i.elements.length; a++)
+              for (let b = a + 1; b < i.elements.length; b++)
+                if (!isGap(a, b)) pairs.push([a, b]);
+            const p = pairs[k % pairs.length];
+            my.touchAt(i.elements[p[0]].x, i.elements[p[0]].y);
+            await step();
+            my.touchAt(i.elements[p[1]].x, i.elements[p[1]].y);
+            await step();
+          }
+        }
+
+        window.LabPreview.play(cand, 'ep-seed', 'play', { hint: hint, tease: tease });
+        await wait(1800);
+
+        // §9: the interpreter places what the figure declares, or the
+        // experiment is pretending. Measured, never assumed.
+        let i = window.LabPreview.instrument();
+        const placed = { elements: i.elements.length, declared: pts,
+                         missing: i.arrangement.missingLeft };
+        const posed = { hidden: canvas.hidden,
+                        inert: getComputedStyle(canvas).pointerEvents === 'none',
+                        state: window.LabPreview.tease() };
+        const gaps0 = i.arrangement.links.filter((L) => !L.present);
+        const beforeAny = gaps0.map((L) => { const p = at(L, 0.3, i); return lit(p.x, p.y, 22); });
+
+        await tryWrong(1);
+        await wait(280);
+        const afterOne = { state: window.LabPreview.tease(),
+                           paint: gaps0.map((L) => { const p = at(L, 0.3, i); return lit(p.x, p.y, 22); }) };
+
+        await tryWrong(1);
+        let guard = 240;
+        while (guard-- > 0) {
+          const s = window.LabPreview.tease();
+          if (!s || s.phase === 'hold') break;
+          await step();
+        }
+        await wait(120);
+        i = window.LabPreview.instrument();
+        const s = window.LabPreview.tease();
+        const target = (s && s.target !== null) ? i.arrangement.links[s.target] : null;
+        const others = i.arrangement.links.filter((L, n) => !L.present && n !== (s && s.target));
+        const shown = {
+          state: s,
+          near: target ? [lit(at(target, 0.18, i).x, at(target, 0.18, i).y, 16),
+                          lit(at(target, 0.82, i).x, at(target, 0.82, i).y, 16)] : null,
+          middle: target ? lit(at(target, 0.5, i).x, at(target, 0.5, i).y, 9) : null,
+          others: others.map((L) => lit(at(L, 0.35, i).x, at(L, 0.35, i).y, 16)),
+          words: (canvas.textContent || '').trim(),
+          onTop: (function () {
+            const el = document.elementFromPoint(
+              Math.round(i.elements[0].x), Math.round(i.elements[0].y));
+            return !!(el && el.hasAttribute && el.hasAttribute('data-tease'));
+          })()
+        };
+
+        // A pair that does not belong says nothing at all.
+        const wrongSaid = (document.body.innerText || '');
+
+        const my = window.LabPreview.mystery();
+        i = my.instrument();
+        guard = 40;
+        while (guard-- > 0 && i && i.arrangement && i.arrangement.missingLeft > 0) {
+          const gap = i.arrangement.links.filter((L) => !L.present)[0];
+          my.touchAt(i.elements[gap.a].x, i.elements[gap.a].y);
+          my.touchAt(i.elements[gap.b].x, i.elements[gap.b].y);
+          i = my.instrument();
+        }
+        const live = window.LabPreview.instrument();
+        const whole = live ? live.arrangement.links.filter((L) => L.present).length : -1;
+        await wait(600);
+        const afterWhole = { hidden: canvas.hidden, state: window.LabPreview.tease() };
+        await wait(6200);
+        const w = window.LabPreview.alive()[0] || null;
+        return { placed, posed, beforeAny, afterOne, shown, wrongSaid, whole, afterWhole,
+                 alive: window.LabPreview.alive().length, born: w };
+      }, [c, note.hint, note.tease, c.arrangement.figure.points.length]);
+    };
+
+    const runs = [];
+    for (const c of bank) runs.push({ id: c.id, note: Kit.creatureNote(c.id), r: await walk(c) });
+
+    // ---- EP5: NOTHING IS TRUNCATED, and this is the measured half ----
+    ck(runs.every((x) => x.r.placed.elements === x.r.placed.declared),
+      'EP5  the interpreter places exactly as many lights as each figure declares',
+      runs.map((x) => x.note.creature + ':' + x.r.placed.elements + '/' + x.r.placed.declared).join(' '));
+
+    // ---- EP6: the aid waits, names one gap, and cannot close it ----
+    ck(runs.every((x) => x.r.posed.state && x.r.posed.state.phase === 'waiting' &&
+         x.r.posed.state.shown === 0 && x.r.beforeAny.every((v) => v === 0)),
+      'EP6  no aid when a mystery is posed — for any of the five');
+    ck(runs.every((x) => x.r.afterOne.state && x.r.afterOne.state.tries === 1 &&
+         x.r.afterOne.state.shown === 0 && x.r.afterOne.paint.every((v) => v === 0)),
+      'EP6b nor after ONE attempt — one try is not being stuck');
+    ck(runs.every((x) => x.r.shown.state && x.r.shown.state.shown === 1 &&
+         x.r.shown.state.tries >= 2 && x.r.shown.state.target !== null),
+      'EP6c after the second, each one leans toward ONE gap',
+      runs.map((x) => x.note.creature + ':' + (x.r.shown.state && x.r.shown.state.target)).join(' '));
+    ck(runs.every((x) => x.r.shown.near && x.r.shown.near.every((v) => v > 6)),
+      'EP6d a dashed line reaches in from BOTH lights',
+      runs.map((x) => x.note.creature + ':' + JSON.stringify(x.r.shown.near)).join(' '));
+    ck(runs.every((x) => x.r.shown.middle === 0),
+      'EP6e and the middle is never painted — it can never close the join it is about',
+      runs.map((x) => x.note.creature + ':' + x.r.shown.middle).join(' '));
+    ck(runs.every((x) => x.r.shown.others.every((v) => v === 0)),
+      'EP6f never every possible connection — only the one');
+    ck(runs.every((x) => x.r.shown.words === '' && x.r.posed.inert && !x.r.shown.onTop),
+      'EP6g not one word, and it never intercepts a touch meant for a light');
+    ck(runs.every((x) => x.r.afterWhole.hidden === true && x.r.afterWhole.state === null),
+      'EP6h and it is gone once the shape is whole');
+
+    // ---- EP7: nothing blames, and no creature is named on screen ----
+    ck(runs.every((x) => !/wrong|incorrect|try again|oops|no,|score|point|level/i.test(x.r.wrongSaid)),
+      'EP7  a pair that does not belong is answered in silence — nothing blames');
+    ck(runs.every((x) => x.r.wrongSaid.toLowerCase().indexOf(x.note.creature) === -1),
+      'EP7b and no creature is ever named on the child-facing stage',
+      runs.map((x) => x.note.creature).join(' '));
+
+    // ---- EP8: completion is deterministic and each one comes alive ----
+    ck(runs.every((x) => x.r.whole === x.note.joins),
+      'EP8  all five complete to every join their figure declares',
+      runs.map((x) => x.note.creature + ':' + x.r.whole + '/' + x.note.joins).join(' '));
+    ck(runs.every((x) => x.r.alive === 1 && x.r.born &&
+         x.r.born.nodes === 8 && x.r.born.links === x.note.joins),
+      'EP8b each comes alive with every light and every join, and roams',
+      runs.map((x) => x.r.born && (x.r.born.nodes + '/' + x.r.born.links)).join(' '));
+    await page.close();
+  } finally {
+    await browser.close();
+    server.kill();
+  }
+
+  // ---- EP9: production knows nothing about any of it ----
+  ck(!/lab-ep-|EIGHT_POINT/.test(
+       require('child_process').spawnSync('grep',
+         ['-rl', '-e', 'lab-ep-', '-e', 'EIGHT_POINT',
+          path.join(ROOT, 'js'), path.join(ROOT, 'assets'), path.join(ROOT, 'vihuplanet')],
+         { encoding: 'utf8' }).stdout || ''),
+    'EP9  nothing a child loads — js/, assets/, the runtime — names one');
+  const pool = read('assets/ether/experience-pool.js');
+  ck(!/lab-ep-/.test(pool) && !/arrangement/.test(
+       (pool.match(/status:\s*'active'[\s\S]{0,40}/g) || []).join('')),
+    'EP9b and no ACTIVE production experience carries an arrangement at all');
+
+  // ---- EP10: the research log ----
+  const session = Kit.createSession();
+  bank.forEach((c) => session.add(c,
+    { source: 'fixture', params: { experiment: 'eight-point-creatures' } }));
+  const rows = session.items();
+  session.review(rows[0].labId, 'great', [], 'reads as a fish with the hint hidden');
+  const log = session.exportResearch();
+  const got = log.artifact.candidates
+    .filter((r) => (r.candidate.id || '').indexOf('lab-ep-') === 0)
+    .map((r) => r.creatureExperiment && r.creatureExperiment.creature);
+  ck(got.length === 5 && got.join(' ') === 'fish butterfly whale snake octopus',
+    'EP10 the research log carries which creature each one is', got.join(' '));
+  ck(log.artifact.productionReady === false,
+    'EP10b and it is still marked research-only');
+}
+
 // ===================================================================
 (async () => {
   try {
@@ -3593,6 +3871,7 @@ async function sectionFR() {
     await sectionCR();
     await sectionFV();
     await sectionFR();
+    await sectionEP();
   } catch (e) {
     fail('suite crashed', (e && e.stack || String(e)).split('\n')[0]);
   }

@@ -12533,3 +12533,44 @@ suite 375/375; six load-bearing checks proved by temporary reversion.
 Judgement, the study sheets and what raising the ceiling would take:
 `docs/ETHER_MYSTERY_LAB.md` → *The falcon redrawn*. Suite section `FR`;
 shots in `tools/ether-mystery-lab-test/shots/falcon-redesign/`.
+
+## Eight-point creatures — how many can the language carry? (Lab)
+
+The falcon experiment ended in a rejection and a wall: a figure may
+declare at most eight lights. This asked the more useful question —
+which creatures the eight-point language *can* carry — with five
+deliberately different silhouettes (fish, butterfly, whale, snake,
+octopus), the completed figure designed and looked at first across six
+rounds, before any gap was placed.
+
+**Two of five.** Butterfly (EXCEPTIONAL) and fish (GOOD) read as
+themselves with the hint hidden; whale, snake and octopus are rejects,
+each after four different framings. The rule that separates them is
+transferable: **a closed outline plus one or two diagnostic appendages
+reads.** Eight straight segments can enclose a body and still leave two
+or three over for the part that names the animal. What fails, fails
+namably — bulk becomes a polygon (a whale and a fish compete for one
+silhouette, and the fish wins), a snake spends every light on its own
+length so nothing is left to make a body, and five radial arms off a
+three-point mantle is a stick figure however the arms are angled.
+
+Columns E–I of the judgement pass for **all five, rejects included**:
+the Creature Mystery mechanic works, and the geometry is what decides
+whether there is a creature in it. The falcon's delayed dashed aid is
+reused verbatim across all five — one mechanism, not five — and is
+measured per creature: absent when posed, absent after one attempt, one
+gap after the second, middle never painted, gone when the shape is
+whole.
+
+A first draft of the octopus and snake gaps left a light attached to
+nothing at all — the falcon's own recorded stray-point trap — and `EP3`
+now enforces it for every fixture. §9's guard (`figureGuard`) restates
+no production number: it asks the real validator about the ceiling, and
+non-truncation is measured in the interpreter instead (8/8 placed for
+all five).
+
+Zero production files changed, nothing activated, no build bump. Lab
+suite 405/405; four load-bearing checks proved by temporary reversion.
+Verdicts, the hint-free comparison and the four framings tried per
+reject: `docs/ETHER_MYSTERY_LAB.md` → *Eight-point creatures*. Suite
+section `EP`; shots in `tools/ether-mystery-lab-test/shots/eight-point/`.

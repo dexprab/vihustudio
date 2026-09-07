@@ -9039,6 +9039,73 @@ leads somewhere.
   `docs/ETHER_MYSTERY_LAB.md` → *The falcon redrawn* ·
   `tools/ether-mystery-lab-test/` section `FR` ·
   `tools/ether-mystery-lab-test/shots/falcon-redesign/`
+- **EIGHT-POINT CREATURES: TWO OF FIVE, AND THE RULE THAT SEPARATES
+  THEM — A LAB EXPERIMENT, ZERO PRODUCTION FILES CHANGED.** The falcon
+  ended in a rejection and a wall, so the useful question is not
+  whether eight lights can do every animal but **which creatures the
+  language can carry.** Five deliberately different silhouettes, the
+  completed figure designed and LOOKED AT first across six rounds
+  before a single gap was placed. **Butterfly EXCEPTIONAL · fish
+  GOOD · whale, snake and octopus REJECT**, each after four different
+  framings.
+- **A CLOSED OUTLINE PLUS ONE OR TWO DIAGNOSTIC APPENDAGES READS**, and
+  that is the transferable half. Eight straight segments can enclose a
+  body and still leave two or three over for the part that names the
+  animal — the fish spends five joins on a closed body and five on a
+  forked tail and a dorsal fin; the butterfly one on a body and four on
+  each closed wing. It predicts the successes exactly.
+- **AND EACH FAILURE IS NAMABLE.** *Bulk does not read* — a body wide
+  enough to be a whale becomes a polygon (measured as a dart, a box, a
+  wavy line and an aeroplane), and the features separating a whale from
+  a fish are the ones needing curvature, so **the two compete for one
+  silhouette and the fish wins.** *A line is not a creature* — a snake
+  spends every light on its own length, and outlining the front half to
+  give it a body (the falcon's own winning trick) turned it into a
+  tadpole. *Radial limbs read as a stick figure* — five arms need five
+  lights and a mantle needs three, so every arm is a single spike off a
+  triangle: a tent, a bat, a person doing a star jump.
+- **THE MECHANIC IS NOT WHAT FAILED.** Judgement columns E–I — a reason
+  to experiment, the aid helping, completion satisfying, the creature
+  alive, and it feeling like Ether — pass for **all five, rejects
+  included.** The Creature Mystery interaction works; the geometry is
+  what decides whether there is a creature in it, which is the finding
+  worth carrying into any future candidate.
+- **ONE AID, FIVE CREATURES.** The falcon's delayed dashed line is
+  reused verbatim (`tease: 'delayed'` — one mechanism, not five) and
+  measured for each: absent when the mystery is posed, absent after ONE
+  attempt, and after the second it leans toward ONE gap with a middle
+  **never painted at any alpha**, so it can never close the join it is
+  about. Not a word, never intercepts a touch, gone when the shape is
+  whole.
+- **THE STRAY-POINT TRAP CAME BACK, FROM A THIRD DIRECTION.** The first
+  draft of the octopus and the snake left a light attached to nothing
+  at all — the falcon's own recorded failure — and `EP3` now enforces
+  it for every fixture. The octopus is the instructive case: every one
+  of its arms is a single-point spike, so **no arm gap can leave a
+  part** and its gaps had to move to the mantle's own edges. The same
+  finding arriving a third time is why it is a rule rather than a note.
+- **§9's GUARD RESTATES NO PRODUCTION NUMBER, AND NON-TRUNCATION IS
+  MEASURED.** `LabKit.figureGuard()` asks the REAL validator about the
+  ceiling and otherwise checks only internal consistency the validator
+  does not owe us (`EP2d`); the other half — that
+  `js/etherMystery.js`'s clamping `LIMITS.pieces` never quietly
+  truncates — is proved by posing each figure in the real interpreter
+  and requiring the placed element count to equal the declared point
+  count (`EP5`, 8/8 for all five). No production seam was needed and
+  none was taken: `arrangementNodesMax` is untouched.
+- **DISCLOSED: no child has played any of them**, and roaming is the
+  existing generic wanderer for all five (§8 — no species-specific
+  movement was built). What is measured is the geometry, the gap
+  placement, non-truncation, the aid, that nothing blames, that all
+  five complete deterministically and reach the existing awakening and
+  roaming path at 1440×900 and 390×844, and that none of it is
+  reachable from production. The hint-free comparison sheet is rendered
+  FROM the fixtures, so it cannot drift from what the Ether performs.
+- **The next primary Lab candidate is the BUTTERFLY.**
+- `tools/ether-mystery-lab/labKit.js` → `EIGHT_POINT_CREATURES` ·
+  `figureGuard` · `docs/ETHER_MYSTERY_LAB.md` → *Eight-point
+  creatures* · `tools/ether-mystery-lab-test/` section `EP` ·
+  `tools/ether-mystery-lab-test/shots/eight-point/`
 - Out of scope and not implemented: creature encounters as a reward
   system, creature dialogue, a Companion in the Ether, per-Traveller
   encounter history, more activity rows (story hunt, missing

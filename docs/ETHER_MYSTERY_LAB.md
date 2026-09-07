@@ -1543,3 +1543,145 @@ preset. `tools/ether-mystery-lab/labPreview.js` — `DELAY`, the delayed
 branch of `startTease`, `LabPreview.tease()`. Screenshots and study
 sheets: `tools/ether-mystery-lab-test/shots/falcon-redesign/`. Suite
 section: `FR`.
+
+---
+
+## EIGHT-POINT CREATURES — how many can the language carry?
+
+**A LAB EXPERIMENT. Nothing here is in the production Ether, no
+production file changed, no pool entry was activated, and the build was
+not bumped.**
+
+The falcon experiment ended in a rejection and a wall: a figure may
+declare at most eight lights, and one creature could not be made
+unmistakable inside that. This asks the more useful question — not
+*can eight points do every animal*, but **which creatures the
+eight-point language can carry.** Five deliberately different
+silhouettes: fish, butterfly, whale, snake, octopus.
+
+### THE RESULT: TWO OF FIVE
+
+| | verdict | why |
+|---|---|---|
+| 🦋 **Butterfly** | **EXCEPTIONAL** | bilateral symmetry does the work; two closed wings and a body |
+| 🐟 **Fish** | **GOOD** | a closed body, a narrow waist, a forked tail *and* a dorsal fin |
+| 🐋 Whale | **REJECT** | eight straight segments draw a big fish, not a whale |
+| 🐍 Snake | **REJECT** | a line is not a creature |
+| 🐙 Octopus | **REJECT** | radial limbs read as a stick figure |
+
+Six rounds of completed silhouettes were drawn and **looked at** before
+a single gap was placed — the falcon's own §14 discipline. The
+hint-free comparison is committed as
+`shots/eight-point/comparison-no-hint.png`, rendered **from the
+fixtures themselves** so it can never drift from what the Ether
+performs.
+
+### THE RULE THAT SEPARATES THEM
+
+**A CLOSED OUTLINE PLUS ONE OR TWO DIAGNOSTIC APPENDAGES READS.**
+Eight straight segments can enclose a body and still leave two or three
+over for the part that names the animal. That is the whole of what
+succeeded, and it predicts the successes exactly: the fish spends five
+joins on a closed body and five on a forked tail and a dorsal fin; the
+butterfly spends one on a body and four on each closed wing.
+
+Everything that failed, failed for a nameable reason, and each was
+tried in **four different framings** before being rejected:
+
+- **BULK DOES NOT READ.** A body made wide enough to be a whale becomes
+  a polygon. Measured across side, blunt-and-deep, diving-with-fluke-up
+  and from-above: a dart, a box, a wavy line, an aeroplane. Straight
+  lines between few points cannot say *rounded and heavy*, and the
+  features that separate a whale from a fish — the horizontal fluke,
+  the blunt head, the bulk itself — are exactly the ones that need
+  curvature. **A whale and a fish compete for one silhouette here, and
+  the fish wins** because a forked tail and a dorsal fin are cheaper to
+  draw than mass.
+- **A LINE IS NOT A CREATURE.** A snake spends every light on its own
+  length, so nothing is left over to make a body. Outlining the front
+  half to give it one — the falcon's own winning trick — turned it into
+  a tadpole. The best version has a head that genuinely reads and a
+  body that is a polyline, which is all a polyline can be.
+- **RADIAL LIMBS READ AS A STICK FIGURE.** Five arms need five lights
+  and a mantle needs three, so every arm is a single straight spike off
+  a triangle. Measured across four framings: a tent, a bat, a person
+  doing a star jump, and a lamp.
+
+### THE UNFINISHED STATE, AND ONE FIXED DEFECT
+
+Each creature is **two joins short**, chosen from §4's own list — a
+missing tail section, a missing fin relationship, a missing wing
+connection, a missing body connection — and never from the joins that
+carry the identity.
+
+The first draft of the octopus and the snake left a light **attached to
+nothing at all**, which the falcon experiment already recorded as the
+failure mode: *a detached PART reads as a piece of the creature sitting
+apart from it; a detached POINT reads as one of the stray stars the sky
+is already full of.* `EP3` now enforces it for every fixture.
+
+The octopus is the interesting case: every one of its arms is a
+single-point spike, so **no arm gap can leave a part** — its gaps had
+to move to the mantle's own edges. That is not a workaround, it is the
+same finding arriving from a third direction.
+
+### THE DELAYED AID, UNCHANGED AND SHARED
+
+The falcon's aid mechanism is reused verbatim across all five —
+`tease: 'delayed'`, one mechanism, not five (`EP4d`). Measured for
+every creature: absent when the mystery is posed, absent after one
+attempt, and after the second it leans toward **one** gap with a dashed
+line whose middle is **never painted at any alpha** (`EP6e`, measured 0
+for all five), so it can never close the join it is about. Not a word,
+never intercepts a touch, gone when the shape is whole.
+
+### §9 — THE CEILING WAS NOT TOUCHED, AND A GUARD PROVES IT
+
+`arrangementNodesMax` is 8, `points.length` must equal `nodes`, and
+`js/etherMystery.js`'s `LIMITS.pieces = 10` **clamps rather than
+refuses**. None of that was changed and no production seam was needed.
+
+`LabKit.figureGuard()` is the guard §9 asks for, and it **restates no
+production number** (`EP2d`): the ceiling is asked of the *real
+validator*, and everything else it checks is internal consistency the
+validator does not owe us. The other half — that nothing is silently
+truncated — is **measured rather than asserted**: the suite poses each
+figure in the real interpreter and requires the placed element count to
+equal the declared point count (`EP5`, 8/8 for all five). An over-limit
+figure is refused by both (`EP2b`).
+
+### Judgement, creature by creature
+
+|   | A completed | B unfinished | C hint fits | D curiosity | E reason to try | F aid helps | G satisfying | H alive | I feels like Ether | J reusable |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Butterfly | ✅ strong | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Fish | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Whale | ❌ reads as a fish | ~ | ❌ hint would carry it | ~ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| Snake | ❌ a polyline | ❌ reads as a kink | ❌ "curled up" is not shown | ~ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| Octopus | ❌ a stick figure | ❌ | ~ arms half-read | ~ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+
+Columns E–I are the *interaction*, and they pass for all five —
+including the three rejects. That separation is the useful part: **the
+Creature Mystery mechanic works; the geometry is what decides whether
+there is a creature in it.**
+
+### Disclosed
+
+**No child has played any of them.** What is measured is the geometry,
+the gap placement, non-truncation, the aid's timing and its inability
+to close a join, that nothing blames, that all five complete
+deterministically and reach the existing awakening and roaming path,
+and that none of it is reachable from production. **Whether a
+six-year-old says "OH! IT'S A BUTTERFLY!" is the judgement above, made
+by looking**, and the hint-free sheet is committed so it can be argued
+with. Desktop 1440×900 and phone 390×844 both shot.
+
+Roaming is the existing generic wanderer for all five, per §8 — no
+species-specific movement was built.
+
+### Files
+
+`tools/ether-mystery-lab/labKit.js` — `EIGHT_POINT_CREATURES`,
+`EIGHT_POINT_BANK`, `figureGuard`, the `eight-point-creatures` preset.
+Screenshots and the comparison sheet:
+`tools/ether-mystery-lab-test/shots/eight-point/`. Suite section: `EP`.
