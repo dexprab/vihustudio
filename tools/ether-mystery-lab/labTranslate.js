@@ -349,7 +349,12 @@
     underCanvas.className = 'source-layer';
     underCanvas.setAttribute('data-source-underlay', '');
     underCanvas.setAttribute('aria-hidden', 'true');
-    ed.parentNode.insertBefore(underCanvas, ed);
+    // The source picture is the LOWEST layer under the editor: beneath
+    // the reference (outline + suggested points) when one is mounted,
+    // so the reference stays the editor's immediate underlay and the
+    // suggested points are never drawn under a photograph.
+    var ref = ed.parentNode.querySelector('[data-reference]');
+    ed.parentNode.insertBefore(underCanvas, ref || ed);
   }
   var underImg = null, underImgSrc = null;
   function drawUnderlay() {

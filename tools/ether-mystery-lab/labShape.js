@@ -253,6 +253,8 @@
     return { ok: true, placed: placed };
   }
 
+  function overBudget(s) { s = s || state; return Math.max(0, s.points.length - s.budget); }
+
   // ONE GENERATED FIGURE, ONE HISTORY STEP. The translation's composer
   // hands over points (unit space), a role per point, a join list and
   // the budget it chose; this replaces the figure — points, connections
@@ -289,8 +291,6 @@
     emit();
     return { ok: true, points: state.points.length, joins: state.joins.length, budget: budget };
   }
-
-  function overBudget(s) { s = s || state; return Math.max(0, s.points.length - s.budget); }
 
   // A budget change is NEVER destructive. Choosing a smaller budget under
   // a bigger figure keeps every light and reports how many the figure is

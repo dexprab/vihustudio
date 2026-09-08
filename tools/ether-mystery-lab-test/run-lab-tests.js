@@ -5193,7 +5193,9 @@ async function sectionAR() {
                revealLightsAreIndices: (rec.reveal.features || []).every((f) => Number.isInteger(f.lights.a) && (f.lights.b === null || Number.isInteger(f.lights.b))),
                storeKeys: Object.keys(localStorage), exportHas: /sketch|anchor|silhouette|feature|ellipse|polygon/i.test(JSON.stringify(S.list().map(noReveal))) };
     });
-    const allowedKeys = ['approved', 'authoring', 'budget', 'createdAt', 'hint', 'id', 'joins', 'judgement', 'labVersion', 'missing', 'name', 'notes', 'points', 'reveal', 'roles', 'tease', 'updatedAt'];
+    // (`generated` is the translation sprint's three-field label — source,
+    // at, edited — a note about HOW the figure arrived, never geometry.)
+    const allowedKeys = ['approved', 'authoring', 'budget', 'createdAt', 'generated', 'hint', 'id', 'joins', 'judgement', 'labVersion', 'missing', 'name', 'notes', 'points', 'reveal', 'roles', 'tease', 'updatedAt'];
     ck(saved.ok && saved.keys.every((k) => allowedKeys.indexOf(k) !== -1) && JSON.stringify(Object.keys(saved.authoring).sort()) === JSON.stringify(['referenceUsed', 'source', 'subject']),
       'AR10 the saved fixture is the author\'s geometry plus allowed metadata — and the authoring note is three words about HOW, never geometry', saved.keys.join(','));
     ck(!/sketch|anchor|silhouette|feature|ellipse|polygon/i.test(saved.json) && !saved.exportHas && saved.storeKeys.length === 1 && saved.storeKeys[0] === 'vihu.lab.shapes' &&
