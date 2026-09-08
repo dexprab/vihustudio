@@ -12822,3 +12822,40 @@ journey on a laptop and a phone; six load-bearing checks proved by
 reverting from a copy; `SL6` and `SL12` turned round with reasons.
 Full Lab suite green. No creature intelligence, no runtime change, no
 child-facing surface.
+
+## Lab — prompt → artistic creature → image understanding, proof V1
+
+Lab only, zero production files changed, build 0769, nothing activated
+in the Ether. The Shape Lab's CREATE stage gains a front door in front
+of the untouched name → blueprint flow: a creative prompt (never
+reduced to a noun) → a gallery of interpretations → choose one, refine
+(the words kept, a line added, every set retained, previous/forward),
+→ the CHOSEN PICTURE read by the model into a structured semantic
+analysis — subject, character, composition, masses, diagnostic
+features, modifiers, proportion, gesture (one gesture or a collection
+of parts, asked in as many words), what survives the abstraction,
+reveal payoff candidates, and fidelity to the prompt. Deny-by-shape
+validator; the image is the source of truth. ARTISTIC IMAGE GENERATION
+is a provider table (fixture — existing artwork · openai-image), and on
+this account the model provider is UNAVAILABLE from the transport's
+own `no-image-model` (gpt-image-1 → `model_not_found`, measured), never
+a flag — ruled an unavailable capability by the product owner, not
+worked around. The fixture is seventeen real pictures: the five
+Companions plus openly-licensed mermaids, elephants, birds of prey, a
+centaur and dragons with licences and per-picture ground truth that is
+never sent. `LabConnection` gains `imagine()` and `understand()` in all
+three modes; `lab-generate` becomes LAB2 with both actions behind the
+same gate and bucket. REAL RESULT: gpt-4.1-mini read all seventeen
+pictures, 17/17 valid, and understood them as compositions — the
+winged lion's wings "emerge symmetrically from the shoulders" over a
+quadruped body in "one coherent gesture of reaching"; the centaur's
+"human torso seamlessly attached to the horse body at the waist"; the
+mermaid silhouette "one coherent flowing gesture from head to tail";
+the falcon's moon "a graphic element… not a literal part of the bird";
+and two deliberate prompt/picture mismatches reported `differs`. Found
+and recorded: prompt bias on near-misses (an eagle called a falcon),
+one contradictory expression read, one misplaced face, one missed
+wing; recommended for the next contract — a viewpoint field, an
+explicit relationships list, modifiers held to the visible. Section
+`IM` (104) plus the committed real run re-validated by the suite.
+Stops at the handoff: no points, joins, gaps or reveal from an image.

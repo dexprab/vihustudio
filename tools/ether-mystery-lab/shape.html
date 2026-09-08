@@ -129,6 +129,35 @@
                            border-radius: 10px; display: block; }
   canvas.reference-layer[hidden] { display: none; }   /* an explicit display beats [hidden] (Decision 48) */
   .ref-status.ok { color: var(--good); } .ref-status.warn { color: var(--warn); }
+  /* CREATE — prompt → ideas → choose → understanding. Pictures are made
+     by the module, never written into this markup. */
+  .imagine-status.ok { color: var(--good); } .imagine-status.warn { color: var(--warn); }
+  .ideas { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 6px 0; }
+  .idea { position: relative; border: 2px solid var(--line); border-radius: 8px; overflow: hidden; cursor: pointer;
+          background: #0a0e1a; aspect-ratio: 1 / 1; }
+  .idea img { width: 100%; height: 100%; object-fit: contain; display: block; }
+  .idea.on { border-color: var(--gold); box-shadow: 0 0 0 2px #3a3418; }
+  .idea.chosen { border-color: var(--good); }
+  .idea .tag { position: absolute; left: 4px; top: 4px; font-size: 9px; letter-spacing: .06em; color: var(--dim);
+               background: rgba(0,0,0,.62); padding: 2px 5px; border-radius: 4px; pointer-events: none; }
+  .idea .tag.chosen { left: auto; right: 4px; color: var(--good); }
+  .idea .cap { position: absolute; left: 0; right: 0; bottom: 0; font-size: 10px; color: var(--ink); background: rgba(0,0,0,.62);
+               padding: 3px 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+  .selbox { position: relative; background: #0a0e1a; border: 2px solid var(--good); border-radius: 8px; padding: 6px; margin: 6px 0; }
+  .selbox img { width: 100%; max-height: 280px; object-fit: contain; display: block; border-radius: 6px; }
+  .selbadge { position: absolute; right: 8px; top: 8px; font-size: 10px; letter-spacing: .08em; color: var(--good);
+              background: rgba(0,0,0,.62); padding: 2px 6px; border-radius: 4px; }
+  .an-subject { font-weight: 700; color: var(--gold); font-size: 14px; margin-bottom: 4px; }
+  .an-h { font-size: 11px; letter-spacing: .06em; color: var(--dim); text-transform: uppercase; margin: 8px 0 3px; }
+  .an-v { color: var(--ink); font-size: 12px; line-height: 1.45; }
+  .an-list { margin: 2px 0 0 16px; padding: 0; color: var(--ink); font-size: 12px; line-height: 1.45; }
+  .an-chip { display: inline-block; background: var(--panel2); border: 1px solid var(--line); border-radius: 10px;
+             padding: 1px 8px; font-size: 11px; color: var(--ink); margin: 2px 0; }
+  .an-fid-differs { color: var(--mid); } .an-fid-matches { color: var(--good); }
+  .srcbadge { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 6px; min-height: 1em; }
+  .srcbadge.fixture { color: var(--mid); } .srcbadge.llm { color: var(--good); }
+  @media (max-width: 1240px) { .ideas { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+  @media (max-width: 640px) { .ideas { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   .conn-status.good { color: var(--good); } .conn-status.warn { color: var(--warn); } .conn-status.mid { color: var(--mid); }
   .bp-subject { font-weight: 700; color: var(--gold); font-size: 14px; }
   .bp-sil { color: var(--ink); font-size: 12px; margin: 4px 0 8px; }
@@ -237,16 +266,61 @@
   <span class="sname" data-status-name>NEW CREATURE</span>
   <span class="sline" data-status-line>0 POINTS</span>
   <span class="sstate" data-status-state data-state="building">BUILDING</span>
-  <span class="snext" data-status-next>Name a creature and generate a reference, or place points by hand.</span>
+  <span class="snext" data-status-next>Say what should exist and create it; or name a creature for a reference; or place points by hand.</span>
   <span id="budgetLabel" data-budget-label>TESTING 8 POINTS</span>
 </div>
 </div>
 
 <main>
 <div><!-- left: CREATE → SHAPE → CONNECT -->
-  <section class="step" data-step="create" data-ref-section data-ref-outcome="none">
+  <section class="step" data-step="create" data-ref-section data-ref-outcome="none" data-imagine-section data-imagine-state="idle" data-imagine-outcome="none" data-understand-outcome="none" data-imagine-provider="fixture">
     <h2><span class="stepn">1</span> Create</h2>
-    <div class="lead">Name a creature. The reference helps you see it; your points become the Ether figure.</div>
+    <div class="lead">Say what should exist. Look at what it could be. Choose one — the picture you choose is what gets read. Your points become the Ether figure.</div>
+    <label>What should exist?</label>
+    <div class="row">
+      <input type="text" data-imagine-prompt placeholder="e.g. a smiling dragon with enormous wings" autocomplete="off" maxlength="200" style="flex:1 1 200px">
+      <button data-imagine-create class="primary">Create</button>
+    </div>
+    <div class="say imagine-status" data-imagine-status></div>
+    <div class="srclabel">Artistic source</div>
+    <div class="row">
+      <button data-imagine-provider-pick="fixture" class="on">Fixture — existing artwork</button>
+      <button data-imagine-provider-pick="openai-image">OpenAI image generation</button>
+    </div>
+    <div class="note" data-imagine-provider-line></div>
+    <div data-imagine-ideas hidden>
+      <div class="srclabel" style="margin-top:10px">Your ideas — choose one</div>
+      <div class="note" data-imagine-set></div>
+      <div class="ideas" data-imagine-options></div>
+      <div class="row">
+        <button data-imagine-use class="primary" disabled>Use this creature</button>
+        <button data-imagine-another class="quiet" disabled>Try another interpretation</button>
+        <button data-imagine-prev class="quiet" disabled>Bring back previous</button>
+        <button data-imagine-next class="quiet" hidden>Forward again</button>
+      </div>
+      <label>Refine — keep the idea, change something</label>
+      <div class="row">
+        <input type="text" data-imagine-refine placeholder="e.g. make it friendlier and more playful, with a longer tail" autocomplete="off" maxlength="200" style="flex:1 1 200px">
+        <button data-imagine-refine-go disabled>Refine</button>
+      </div>
+      <div class="note">Every set you make is kept for this page — refining or trying again never throws one away, and <b>Bring back previous</b> walks back through them. Nothing is stored.</div>
+    </div>
+    <div data-imagine-selected hidden>
+      <div class="srclabel" style="margin-top:10px">Selected creature</div>
+      <div class="selbox"><div data-imagine-selected-img></div><span class="selbadge">SELECTED</span></div>
+      <div class="note" data-imagine-selected-label></div>
+      <div class="say imagine-status" data-imagine-understand-status></div>
+      <div class="row">
+        <button data-imagine-understand class="quiet" disabled>Read it again</button>
+        <button data-imagine-unselect class="quiet" disabled>Choose a different one</button>
+      </div>
+      <div class="note">The understanding is on the right. It describes what is in the picture — the picture, not the words that asked for it.</div>
+    </div>
+    <div class="srclabel" style="margin-top:10px">Or bring a picture</div>
+    <div class="row"><input type="file" data-imagine-file accept="image/png,image/jpeg,image/webp" style="flex:1 1 200px"></div>
+    <div class="note">A picture you already have is used straight away, labelled UPLOADED — PNG, JPEG or WebP, under 6 MB. It lives on this page only and is never saved with a fixture.</div>
+
+    <div class="srclabel" style="margin-top:14px">Or start from a name — a reference blueprint</div>
     <label>Creature</label>
     <div class="row">
       <input type="text" data-ref-subject placeholder="e.g. Tiger" autocomplete="off" maxlength="40" style="flex:1 1 140px">
@@ -262,7 +336,7 @@
       <button data-ref-discard disabled class="quiet">Discard reference</button>
     </div>
     <div class="note"><b>REFERENCE ON</b> draws the outline and the suggested points under your lights; <b>OFF</b> shows the Ether figure alone — your points and connections stay exactly where they are either way. The reference takes no clicks, is never on the JUDGE pane, and never travels with the creature.</div>
-    <div class="srclabel" style="margin-top:10px">Reference source</div>
+    <div class="srclabel" style="margin-top:10px">Source — the connection that reads pictures and writes references</div>
     <div class="row" data-ref-source-row>
       <button data-conn-mode="fixture" class="on">Fixture</button>
       <button data-conn-mode="endpoint">LLM — Endpoint</button>
@@ -270,6 +344,7 @@
     </div>
     <div class="note conn-status" data-conn-status></div>
     <div class="note" data-ref-source-note>Fixture sends nothing anywhere and answers with ONE generic body plan for every subject — the pipeline, never the creature. Choose an LLM source for a real reference.</div>
+    <div class="note">The same connection reads a chosen picture: in Fixture it answers with a placeholder that says no model looked; in LLM — Endpoint or LLM — Direct the picture goes to the model and the understanding is real.</div>
     <div class="note" data-ref-source></div>
     <details class="adv">
       <summary>Advanced — connection, research set, what happened</summary>
@@ -470,6 +545,13 @@
     <div class="note">Points, connections, missing marks and the reveal all go, and so do the name, hint and notes; the reference stays if one is showing. For less than everything: <b>Reset points</b> (step 2), <b>Reset connections</b> (step 3), <b>Reset reveal</b> (step 4).</div>
   </section>
   <section>
+    <h2>Understanding</h2>
+    <div class="srcbadge" data-imagine-panel-source></div>
+    <div data-imagine-panel></div>
+    <div class="note" style="margin-top:6px">What the chosen picture shows, in words: subject, character, composition, masses, diagnostic features, modifiers, proportion, gesture, what should survive, what could be a reveal payoff, and whether it matches the prompt. Nothing here is geometry, and nothing here becomes points in this version.</div>
+  </section>
+
+  <section>
     <h2>Reference blueprint</h2>
     <div class="legend"><b>BLUEPRINT</b> = what the creature is · <b>ETHER INTERPRETATION</b> = how it should feel abstracted · <b>OUTLINE</b> = visual reference · <b>SUGGESTED POINTS</b> = landmarks · <b>ETHER FIGURE</b> = your own creation · <b>REVEAL</b> = temporary detail</div>
     <div data-ref-panel></div>
@@ -499,6 +581,13 @@
       <summary>Compare across budgets</summary>
       <div class="row"><select data-compare-name style="width:auto"></select></div>
       <div class="compare" data-compare></div>
+    </details>
+    <details class="adv">
+      <summary>Understanding JSON, and what happened</summary>
+      <div class="row" style="margin-top:6px"><button data-imagine-copy class="quiet" disabled>Show analysis JSON</button></div>
+      <textarea data-imagine-json hidden readonly style="min-height:90px;font-family:ui-monospace,monospace;font-size:11px"></textarea>
+      <div data-imagine-trace class="trace"></div>
+      <div class="note">The trace says which artistic source made the ideas, whether a request left the browser, what came back and how it was labelled, and what the validator said — so a real read can be told from a placeholder and a failure from a fallback (there is no fallback).</div>
     </details>
     <details class="adv">
       <summary>Blueprint JSON</summary>
@@ -532,16 +621,18 @@
 </div>
 </main>
 
-<script src="../../js/etherGrammar.js?lab=0b4ebd1260"></script>
-<script src="labKit.js?lab=0b4ebd1260"></script>
-<script src="labPreviewHost.js?lab=0b4ebd1260"></script>
-<script src="labConnection.js?lab=0b4ebd1260"></script>
-<script src="labBlueprint.js?lab=0b4ebd1260"></script>
-<script src="labOutline.js?lab=0b4ebd1260"></script>
-<script src="labReveal.js?lab=0b4ebd1260"></script>
-<script src="labRevealData.js?lab=0b4ebd1260"></script>
-<script src="labShape.js?lab=0b4ebd1260"></script>
-<script src="labReference.js?lab=0b4ebd1260"></script>
-<script src="labTranslationData.js?lab=0b4ebd1260"></script>
+<script src="../../js/etherGrammar.js?lab=58c1d46792"></script>
+<script src="labKit.js?lab=58c1d46792"></script>
+<script src="labPreviewHost.js?lab=58c1d46792"></script>
+<script src="labConnection.js?lab=58c1d46792"></script>
+<script src="labBlueprint.js?lab=58c1d46792"></script>
+<script src="labOutline.js?lab=58c1d46792"></script>
+<script src="labReveal.js?lab=58c1d46792"></script>
+<script src="labRevealData.js?lab=58c1d46792"></script>
+<script src="labShape.js?lab=58c1d46792"></script>
+<script src="labReference.js?lab=58c1d46792"></script>
+<script src="labArtworkData.js?lab=58c1d46792"></script>
+<script src="labImagine.js?lab=58c1d46792"></script>
+<script src="labTranslationData.js?lab=58c1d46792"></script>
 </body>
 </html>

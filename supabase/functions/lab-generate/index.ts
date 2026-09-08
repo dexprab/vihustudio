@@ -46,11 +46,24 @@
 //   OPENAI_API_KEY    required for real generation (shared with
 //                     companion-chat — one account, one key, one place
 //                     per function's own env)
-//   LAB_MODEL         optional, default gpt-4.1-mini
+//   LAB_MODEL         optional, default gpt-4.1-mini (chat, and image
+//                     understanding — the same model reads a picture)
+//   LAB_IMAGE_MODEL   optional, default gpt-image-1 — the ARTISTIC IMAGE
+//                     GENERATION provider. An account with no image
+//                     model answers {ok:false, reason:'no-image-model'};
+//                     that is the provider's own answer, relayed as one
+//                     word, never a flag written here.
+//
+// THREE ACTIONS (build LAB2, the Shape Lab's prompt → visual →
+// understanding sprint): `generate` (chat, structured text — the Mystery
+// Lab's and the blueprint's), `imagine` (images/generations — artistic
+// interpretations of a creative prompt), `understand` (chat with ONE
+// image part attached — what is visible in a chosen picture). All three
+// sit behind the same gate, the same bucket and the same bounds.
 //
 // Deploy: supabase/DEPLOY_lab_generate.md.
 
-const BUILD = 'LAB1';
+const BUILD = 'LAB2';
 
 // ===== BEGIN GENERATED edgeAuth — do not edit below this line =====
 // Generated from supabase/functions/_shared/edgeAuth.js, which is the
@@ -365,7 +378,17 @@ function json(body: unknown, status = 200): Response {
 }
 
 const PROVIDER_URL = 'https://api.openai.com/v1/chat/completions';
+const PROVIDER_IMAGE_URL = 'https://api.openai.com/v1/images/generations';
 const DEFAULT_MODEL = 'gpt-4.1-mini';
+const DEFAULT_IMAGE_MODEL = 'gpt-image-1';
+
+// Bounds on a picture a caller may attach (understand) and on what it
+// may ask a picture of (imagine): a PNG/JPEG/WebP under ~6 MB decoded,
+// a prompt under 2000 chars, at most four interpretations per press.
+const IMAGE_MIMES = ['image/png', 'image/jpeg', 'image/webp'];
+const MAX_IMAGE_B64_CHARS = 8 * 1024 * 1024;
+const MAX_IMAGE_PROMPT_CHARS = 2000;
+const MAX_IMAGES = 4;
 
 // Bounds on what a caller may relay. Generous for a research batch,
 // impossible for abuse: at most a handful of messages, each capped,
@@ -442,11 +465,113 @@ function makeHandler(deps: Deps) {
       build: BUILD,
       provider: key ? 'configured' : 'none',
       model: env('LAB_MODEL') || DEFAULT_MODEL,
+      imageModel: env('LAB_IMAGE_MODEL') || DEFAULT_IMAGE_MODEL,
     });
   }
 
-  if (payload.action !== 'generate') return json({ ok: false, reason: 'unknown-action' });
+  if (payload.action !== 'generate' && payload.action !== 'imagine' && payload.action !== 'understand') {
+    return json({ ok: false, reason: 'unknown-action' });
+  }
   if (!key) return json({ ok: false, reason: 'not-configured' });
+
+  // ---------------------------------------------------------------
+  // IMAGINE — artistic image generation. The prompt is the Lab's own
+  // (the researcher's words plus a fixed presentation line), validated
+  // for shape and bounds only. The reply is base64 pictures and the
+  // model that drew them; a provider refusal is one word, and the one
+  // refusal that is a property of the ACCOUNT rather than a fault —
+  // the model not existing for this project — is its own word so the
+  // Lab can say so on screen.
+  // ---------------------------------------------------------------
+  if (payload.action === 'imagine') {
+    const prompt = payload.prompt;
+    if (typeof prompt !== 'string' || !prompt.trim() || prompt.length > MAX_IMAGE_PROMPT_CHARS) {
+      return json({ ok: false, reason: 'bad-prompt' });
+    }
+    let n = Number(payload.n);
+    if (!Number.isInteger(n) || n < 1) n = 3;
+    if (n > MAX_IMAGES) n = MAX_IMAGES;
+    let imageModel = String(env('LAB_IMAGE_MODEL') || DEFAULT_IMAGE_MODEL);
+    if (!MODEL_RE.test(imageModel)) imageModel = DEFAULT_IMAGE_MODEL;
+
+    const ires = await boundedFetch(doFetch, PROVIDER_IMAGE_URL, {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: imageModel, prompt, n, size: '1024x1024' }),
+    }, 110000);
+    if (!ires) return json({ ok: false, reason: 'unavailable' });
+    if (!ires.ok) {
+      let code = '';
+      try {
+        const eb = await ires.json();
+        const err = eb && typeof eb.error === 'object' ? eb.error as Record<string, unknown> : null;
+        code = err ? String(err.code || err.type || '') : '';
+      } catch { code = ''; }
+      const noModel = code === 'model_not_found' || code === 'invalid_value' || code === 'image_generation_user_error';
+      const why = noModel ? 'no-image-model' : (ires.status === 429 ? 'provider-busy' : 'unavailable');
+      return json({ ok: false, reason: why });
+    }
+    let ibody: Record<string, unknown> = {};
+    try { ibody = await ires.json(); } catch { return json({ ok: false, reason: 'malformed' }); }
+    const data = Array.isArray(ibody.data) ? ibody.data as Array<Record<string, unknown>> : [];
+    const images = data.map((d) => (d && typeof d.b64_json === 'string') ? d.b64_json : '').filter((b) => b);
+    if (!images.length) return json({ ok: false, reason: 'malformed' });
+    return json({ ok: true, images, model: imageModel, build: BUILD });
+  }
+
+  // ---------------------------------------------------------------
+  // UNDERSTAND — image understanding. The Lab sends TEXT messages and
+  // ONE picture; this is the only place that knows the provider's shape
+  // for attaching a picture, so the browser never builds a provider
+  // request. The picture is validated by type and size and reaches the
+  // provider and nowhere else; nothing here stores it.
+  // ---------------------------------------------------------------
+  if (payload.action === 'understand') {
+    const img = payload.image as Record<string, unknown> | undefined;
+    const mime = img && typeof img.mime === 'string' ? img.mime : '';
+    const b64 = img && typeof img.b64 === 'string' ? img.b64 : '';
+    if (IMAGE_MIMES.indexOf(mime) === -1 || b64.length < 64 || b64.length > MAX_IMAGE_B64_CHARS || !/^[A-Za-z0-9+/=]+$/.test(b64.slice(0, 4096))) {
+      return json({ ok: false, reason: 'bad-image' });
+    }
+    const umsgs = payload.messages;
+    if (!Array.isArray(umsgs) || !umsgs.length || umsgs.length > MAX_MESSAGES) return json({ ok: false, reason: 'bad-messages' });
+    for (const m of umsgs) {
+      if (!m || typeof m !== 'object') return json({ ok: false, reason: 'bad-messages' });
+      const role = (m as Record<string, unknown>).role;
+      const content = (m as Record<string, unknown>).content;
+      if (role !== 'system' && role !== 'user') return json({ ok: false, reason: 'bad-messages' });
+      if (typeof content !== 'string' || !content || content.length > MAX_MESSAGE_CHARS) return json({ ok: false, reason: 'bad-messages' });
+    }
+    const last = umsgs[umsgs.length - 1] as Record<string, unknown>;
+    if (last.role !== 'user') return json({ ok: false, reason: 'bad-messages' });
+    const withImage = umsgs.map((m, i) => {
+      const mm = m as Record<string, unknown>;
+      if (i !== umsgs.length - 1) return { role: mm.role, content: mm.content };
+      return { role: 'user', content: [
+        { type: 'text', text: String(mm.content) },
+        { type: 'image_url', image_url: { url: 'data:' + mime + ';base64,' + b64, detail: 'high' } },
+      ] };
+    });
+    let umodel = String(env('LAB_MODEL') || DEFAULT_MODEL);
+    if (!MODEL_RE.test(umodel)) umodel = DEFAULT_MODEL;
+    const ures = await boundedFetch(doFetch, PROVIDER_URL, {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: umodel, messages: withImage, response_format: { type: 'json_object' }, temperature: 0.2, max_tokens: 1400 }),
+    }, 110000);
+    if (!ures) return json({ ok: false, reason: 'unavailable' });
+    if (!ures.ok) {
+      return json({ ok: false, reason: ures.status === 429 ? 'provider-busy' : 'unavailable' });
+    }
+    let ubody: Record<string, unknown> = {};
+    try { ubody = await ures.json(); } catch { return json({ ok: false, reason: 'malformed' }); }
+    const uchoices = ubody.choices;
+    const ufirst = Array.isArray(uchoices) ? uchoices[0] as Record<string, unknown> : null;
+    const umessage = ufirst && typeof ufirst.message === 'object' ? ufirst.message as Record<string, unknown> : null;
+    const utext = umessage && typeof umessage.content === 'string' ? umessage.content : '';
+    if (!utext) return json({ ok: false, reason: 'malformed' });
+    return json({ ok: true, text: utext, model: umodel, build: BUILD });
+  }
 
   // The messages the Lab built (labKit.js is the one prompt owner).
   // Validated for SHAPE and BOUNDS only — the content is the Lab's own
@@ -519,4 +644,4 @@ function makeHandler(deps: Deps) {
 const handler = makeHandler({ env: (n: string) => (typeof Deno !== 'undefined' ? (Deno.env.get(n) || '') : '') });
 if (typeof Deno !== 'undefined' && Deno.serve) Deno.serve(handler);
 
-export { makeHandler, handler, BUILD, DEFAULT_MODEL, MAX_MESSAGES, MAX_MESSAGE_CHARS };
+export { makeHandler, handler, BUILD, DEFAULT_MODEL, DEFAULT_IMAGE_MODEL, MAX_MESSAGES, MAX_MESSAGE_CHARS, MAX_IMAGES, MAX_IMAGE_B64_CHARS, IMAGE_MIMES };

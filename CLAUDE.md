@@ -9723,6 +9723,66 @@ leads somewhere.
   a preview recording, an edit keeping its approval, Undo not
   restoring, the sticky centre removed, a line click deleting again.
   Detail: `docs/ETHER_MYSTERY_LAB.md` → *The researcher workflow*.
+- **PROMPT → ARTISTIC CREATURE → IMAGE UNDERSTANDING, PROOF V1 — THE
+  SHAPE LAB'S FRONT DOOR. IMAGE GENERATION IS AN UNAVAILABLE PROVIDER
+  CAPABILITY; IMAGE UNDERSTANDING IS REAL** (Lab only, zero production
+  files changed, build 0769). The Shape Lab's CREATE stage gains a new
+  entry point in front of the untouched name → blueprint flow: a
+  creative prompt — *a smiling dragon with enormous wings* stays that
+  sentence, never a noun — → interpretations to look at → choose one,
+  refine (the words kept, a line added, every set retained) → the
+  CHOSEN PICTURE is read by the model into a structured semantic
+  analysis (`LabImagine.SCHEMA`: subject · character · composition ·
+  masses and how they relate · diagnostic features · modifiers ·
+  proportion · gesture, asked whether it is ONE gesture or a collection
+  of parts · what survives the abstraction · reveal payoff candidates ·
+  fidelity to the prompt). **It stops there** — nothing turns an image
+  into points, joins, gaps or a reveal, and the validator refuses those
+  keys by name.
+- **THE ACCOUNT HAS NO IMAGE MODEL, AND THAT IS RECORDED AS A
+  MEASUREMENT, NOT DESIGNED IN.** Every `gpt-image-*` model answers
+  `model_not_found` for this project and the newer image routes need
+  organisation verification; the product owner ruled it an unavailable
+  capability for the sprint, not a thing to work around. So ARTISTIC
+  IMAGE GENERATION is a provider table — `fixture` (existing artwork,
+  chosen not generated) and `openai-image` — with no availability flag
+  anywhere: UNAVAILABLE on screen is reached only from the transport's
+  own `no-image-model`, and the day the account has an image model the
+  same button yields three IMAGE MODEL pictures with nothing changed
+  (proved against a stubbed provider). The UI reads *ARTISTIC SOURCE —
+  Fixture* and never implies a model drew what a person chose.
+- **THE FIXTURE IS REAL ARTWORK, WITH GROUND TRUTH THAT NEVER TRAVELS.**
+  Seventeen pictures — the five Companions read from `assets/`, and
+  twelve openly-licensed creatures (Twemoji, OpenMoji, game-icons.net;
+  licences committed) for the mermaid, elephant, falcon, eagle, centaur
+  and more dragons — each with a `visible` description written by a
+  person; the suite checks no fragment of it reaches any request. No
+  creature word and no `subject ===` exist in the front door; the
+  gallery is ordered by word overlap over data.
+- **gpt-4.1-mini READ ALL SEVENTEEN, 17/17 VALID, AND UNDERSTOOD THEM
+  AS COMPOSITIONS**, committed beside the ground truth
+  (`tools/ether-mystery-lab-test/shots/imagine/real-understanding.md`):
+  the winged lion's wings "emerge symmetrically from the shoulders"
+  over "a sturdy, quadruped body" in "one coherent gesture of reaching";
+  the centaur's "human torso seamlessly attached to the horse body at
+  the waist"; the mermaid silhouette "one coherent flowing gesture from
+  head to tail"; the falcon's crescent "a graphic element… not a literal
+  part of the bird"; and the two deliberate prompt/picture mismatches
+  came back `differs`. Recorded shortfalls: prompt bias on near-misses
+  (an eagle called a falcon, a bulky elephant called tiny), one reply
+  whose `modifiers` said smiling while its own fidelity said neutral,
+  one face placed in the wrong mass, one missed wing. The next
+  contract should add a viewpoint field, an explicit relationships
+  list, and hold modifiers to the visible — none of it built here.
+- **ONE TRANSPORT, TWO NEW CALLS.** `LabConnection.imagine()` and
+  `understand()` in all three modes; `lab-generate` is build LAB2 with
+  `imagine` and `understand` behind the same administrators-only gate,
+  the same bucket and the same bounds, a picture validated by type and
+  size before any call, the picture attached as an image part on the
+  last user message so the browser never builds a provider shape, and
+  no provider text ever leaving. Nothing is stored: no image, no
+  analysis, no key, no token — measured. Section `IM` (104), and the
+  real run's committed replies re-validated on every suite run.
 - Out of scope and not implemented: creature encounters as a reward
   system, creature dialogue, a Companion in the Ether, per-Traveller
   encounter history, more activity rows (story hunt, missing

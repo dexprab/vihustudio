@@ -500,8 +500,8 @@ async function sectionE() {
 
   // E3 — admin ping: build, and whether a key is configured.
   r = await drive('admin-token', { action: 'ping' });
-  ck(r.status === 200 && r.body.ok && r.body.build === 'LAB1' && r.body.provider === 'none',
-    'E3 admin ping reports the build and an unconfigured provider');
+  ck(r.status === 200 && r.body.ok && r.body.build === 'LAB2' && r.body.provider === 'none' && r.body.imageModel === 'gpt-image-1',
+    'E3 admin ping reports the build (LAB2), an unconfigured provider, and the image model it would use');
   r = await drive('admin-token', { action: 'ping' }, { OPENAI_API_KEY: 'sk-test' });
   ck(r.body.provider === 'configured' && JSON.stringify(r.body).indexOf('sk-test') === -1,
     'E3b a configured key is reported as a word, never echoed');
@@ -7182,6 +7182,463 @@ async function sectionWF() {
 }
 
 // ===================================================================
+// IM. PROMPT → ARTISTIC VISUAL → CHOOSE / REFINE → IMAGE UNDERSTANDING
+// (the Shape Lab's new front door, proof V1). The account this sprint
+// ran on has no image-generation access, so ARTISTIC IMAGE GENERATION
+// is a provider abstraction with two providers — fixture (existing
+// artwork, chosen not generated) and openai-image (reports UNAVAILABLE
+// from the transport's own answer) — and the proof target is FIXTURE
+// ARTWORK → gpt-4.1-mini IMAGE UNDERSTANDING → STRUCTURED ANALYSIS.
+// This section proves the contract, the validator, the endpoint's two
+// new actions, the browser journey through fixture and a stubbed model,
+// the privacy boundary, key handling and error recovery. The REAL model
+// pass is tools/ether-mystery-lab-test/real-understanding.js and its
+// committed results — never run here.
+// ===================================================================
+async function sectionIM() {
+  console.log('\n== IM. prompt → visual → choose → understanding (Shape Lab front door) ==');
+  const { chromium } = require('playwright');
+  const Imagine = require(path.join(ROOT, 'tools/ether-mystery-lab/labImagine.js'));
+  const Art = require(path.join(ROOT, 'tools/ether-mystery-lab/labArtworkData.js'));
+  const imSrc = read('tools/ether-mystery-lab/labImagine.js');
+  const imStripped = stripComments(imSrc);
+  const connStripped = stripComments(read('tools/ether-mystery-lab/labConnection.js'));
+  const shapeHtml = read('tools/ether-mystery-lab/shape.html');
+  const htmlNoComments = shapeHtml.replace(/<!--[\s\S]*?-->/g, '');
+  const shotDir = path.join(SHOTS, 'imagine'); fs.mkdirSync(shotDir, { recursive: true });
+
+  // ---- IM1: the boundary — production untouched, nothing reaches the Ether ----
+  ck(/arrangementNodesMax:\s*8\b/.test(read('js/etherGrammar.js')), 'IM1  the production point limit is still eight — image analysis becomes no geometry');
+  const stamps = (read('index.html').match(/\?v=(\d{4})/g) || []).map((s) => s.slice(3));
+  ck(stamps.length > 0 && stamps.every((s) => s === '0769'), 'IM1b the build is not bumped — nothing shipped to a child', Array.from(new Set(stamps)).join(','));
+  const srcs = [...htmlNoComments.matchAll(/<script src="([^"?]+)/g)].map((m) => m[1]);
+  ck(!srcs.some((s) => /etherExperience|etherLife|etherRipple|etherMystery|etherDiscovery|experience-pool|vihuplanetHome|magicCard/.test(s)) && srcs.some((s) => /labImagine/.test(s)) && srcs.some((s) => /labArtworkData/.test(s)),
+    'IM1c the Shape Lab loads the front door and the artwork manifest, and still no file that mounts the Ether or reads the production pool', srcs.join(','));
+  ck(!/ShapeLab\.(addPoint|movePoint|deletePoint|toggleJoin|toggleGap|addReveal|placeSuggestions|joinInOrder|setBudget|reset)\b|\bLabReveal\b|\bEtherMystery\b|\bEtherGrammar\b|LabReference\.set\b|candidateFor/.test(imStripped),
+    'IM1d the front door never places a point, a join, a gap or a reveal — it calls no editor mutator, no reveal, no grammar and no interpreter');
+
+  // ---- IM2: no creature catalogue, no hidden picture, no key, no storage ----
+  const creatureWords = /\b(tiger|falcon|elephant|dragon|penguin|whale|bird|lion|fox|bear|octopus|cat|dog|fish|butterfly|snake|horse|mermaid|centaur|eagle)\b/i;
+  ck(!creatureWords.test(imStripped), 'IM2  no creature name anywhere in the front door — arbitrary prompts, no taxonomy');
+  ck(!/subject\s*===|===\s*subject|switch\s*\(\s*(subject|prompt|s|name|creature)\b/.test(imStripped), 'IM2b no prompt-specific branch — nothing compares a prompt to a literal');
+  ck(!/localStorage|sessionStorage|indexedDB|document\.cookie/.test(imStripped), 'IM2c the front door writes nothing to storage — ideas, the selection and the analysis live for the page');
+  ck(!/api\.openai|sk-[A-Za-z0-9]|XMLHttpRequest|WebSocket/.test(imStripped) && (imStripped.match(/fetch\(/g) || []).length === 1 && /function loadArtwork/.test(imStripped) && /\^\[a-z\]\+:/.test(imStripped),
+    'IM2d the only fetch in the front door reads the Lab\'s own artwork by relative path — a provider is reached through LabConnection alone');
+  ck(!/Math\.random/.test(imStripped), 'IM2e nothing in it is random — the same prompt orders the gallery the same way');
+  ck(!/\.png|\.jpg|<img|new Image|drawImage/i.test(imStripped.replace(/createElement\('img'\)/g, '')), 'IM2f no bitmap file, no hidden picture in code — the pictures come from the manifest or the model');
+  ck(!/<img|\.png|\.jpg|\.svg|background-image/i.test(htmlNoComments), 'IM2g the page markup still carries no image element and no image file — every picture on screen is made by the module from what was chosen');
+  ck(!/available\s*:\s*(true|false)|UNAVAILABLE\s*=|isAvailable/.test(imStripped) && /'no-image-model'/.test(imStripped) && /'no-image-model'/.test(connStripped),
+    'IM2h the unavailability is NOT hard-coded: no provider carries an availability flag, and UNAVAILABLE is reached only from the transport\'s own no-image-model answer');
+  const providers = Imagine.PROVIDERS;
+  ck(providers.fixture && providers.fixture.kind === 'fixture' && providers['openai-image'] && providers['openai-image'].kind === 'model' && Object.keys(providers).length === 2,
+    'IM2i two artistic providers in a table — fixture (existing artwork) and openai-image (a real image model) — and the table is where a third would go');
+  const connRaw = read('tools/ether-mystery-lab/labConnection.js');
+  ck(/DIRECT_IMAGE_URL = 'https:\/\/api\.openai\.com\/v1\/images\/generations'/.test(connRaw) && (connRaw.match(/images\/generations/g) || []).length === 1 && /function imagine\(/.test(connStripped) && /function understand\(/.test(connStripped),
+    'IM2j LabConnection names the image endpoint exactly once and owns both new transports — imagine() and understand() — in all three modes');
+
+  // ---- IM3: the researcher's words ----
+  const EIGHT = ['a graceful mermaid with flowing hair', 'a smiling dragon with enormous wings', 'a lion with wings', 'a centaur', 'a tiny elephant with huge ears', 'a sleepy fox carrying a little moon', 'a creature with six legs and a giant curled tail', 'a playful sea creature with butterfly wings'];
+  ck(EIGHT.every((p) => Imagine.cleanPrompt(p) === p), 'IM3  all eight of the brief\'s prompts are valid creative inputs, verbatim');
+  ck(Imagine.cleanPrompt('') === null && Imagine.cleanPrompt('ab') === null && Imagine.cleanPrompt('<b>dragon</b>') === null && Imagine.cleanPrompt('see http://x.y') === null && Imagine.cleanPrompt('x'.repeat(201)) === null && Imagine.cleanPrompt('123') === null,
+    'IM3b an empty, too-short, marked-up, linked, over-long or letterless prompt is refused — never rewritten');
+  const gp = Imagine.imagePrompt(EIGHT[1], ['make it friendlier and more playful, with a longer tail', 'bigger eyes']);
+  const glines = gp.text.split('\n');
+  ck(gp.ok && glines[0] === EIGHT[1] + '.' && glines[1] === 'Refinement: make it friendlier and more playful, with a longer tail.' && glines[2] === 'Refinement: bigger eyes.' && glines[3] === Imagine.PRESENTATION && glines.length === 4,
+    'IM3c the generation prompt is the creative intent VERBATIM first, the refinements in order, then the fixed presentation line — nothing reduces "a smiling dragon with enormous wings" to a noun');
+  ck(/full body/.test(Imagine.PRESENTATION) && /single creature/.test(Imagine.PRESENTATION) && /No text/.test(Imagine.PRESENTATION) && !/constellation|point|line drawing|diagram of|style:/i.test(Imagine.PRESENTATION.replace('no diagram', '')),
+    'IM3d the presentation constraints ask for full body, one creature, no text — and impose no style and no constellation');
+  ck(Imagine.cleanRefinements(['a', 'b', 'c', 'd', 'e', 'f', 'g']).length === 6 && Imagine.cleanRefinement('<x>') === null && Imagine.cleanRefinement('') === '',
+    'IM3e refinements are bounded to six and validated like the prompt');
+  const um = Imagine.understandMessages(EIGHT[2], ['make the mane bigger']);
+  ck(um.messages.length === 2 && um.messages[0].role === 'system' && um.messages[1].role === 'user' && /Creative prompt: a lion with wings\nRefinement: make the mane bigger/.test(um.messages[1].content),
+    'IM3f the understanding request is one fixed contract plus the creative prompt and its refinements — the picture is attached by the transport');
+  ck(Object.keys(Imagine.SCHEMA).every((k) => um.messages[0].content.indexOf('"' + k + '"') !== -1) && /PICTURE is the source of truth/.test(um.messages[0].content) && /promptFidelity/.test(um.messages[0].content) && /No coordinates/.test(um.messages[0].content) && /one coherent visual gesture or as a collection of parts/.test(um.messages[0].content),
+    'IM3g the contract names every schema field, says the picture is the source of truth, asks for prompt fidelity, forbids coordinates and asks whether it is one gesture or a collection of parts');
+
+  // ---- IM4: the analysis validator — deny by shape ----
+  const good = { subject: 'a winged lion cub', character: ['playful', 'curious'], composition: 'A grounded walking cat with two big wings rising from the shoulders.', architecture: ['a round mane around the head', 'wings rooted at the shoulders, spread up and back', 'a low four-legged body'], diagnosticFeatures: ['mane', 'feathered wings', 'lantern tail'], modifiers: ['winged', 'carrying a lantern'], proportion: 'The mane and the wings dominate; the legs are short.', gesture: 'One coherent gesture: a cat mid-step reaching for a butterfly.', abstraction: { survives: ['the mane', 'the wing span', 'the walking pose'], doNotDrawLiterally: ['fur texture'], note: 'Keep the wing roots on the shoulders.' }, revealCandidates: ['mane', 'wing feathers'], promptFidelity: { agreement: 'matches', differences: [] } };
+  const v0 = Imagine.validateAnalysis(good);
+  ck(v0.ok && Object.keys(v0.analysis).sort().join(',') === Object.keys(Imagine.SCHEMA).sort().join(',') && v0.analysis.abstraction.survives.length === 3 && v0.analysis.promptFidelity.agreement === 'matches',
+    'IM4  a valid analysis comes out as a CLEAN copy carrying exactly the schema\'s keys');
+  const refusedTop = ['points', 'joins', 'missing', 'svg', 'x', 'coordinates', 'path', 'pattern', 'constellation', 'stars', 'card', 'email', 'memories', 'username', 'url', 'image', 'code', 'html'].filter((k) => { const r = Imagine.validateAnalysis(Object.assign({}, good, { [k]: 'x' })); return !(r.ok === false && r.reasons.some((x) => x === 'forbidden-key:' + k)); });
+  ck(refusedTop.length === 0, 'IM4b every geometry, runtime, credential and private key is refused BY NAME at the top level', refusedTop.join(','));
+  const nested = Imagine.validateAnalysis(Object.assign({}, good, { abstraction: { survives: ['a'], doNotDrawLiterally: [], note: 'x', points: [[0, 1]] } }));
+  ck(!nested.ok && nested.reasons.indexOf('forbidden-key:abstraction.points') !== -1, 'IM4c and at any depth, with its path', nested.reasons.join(','));
+  const unk = Imagine.validateAnalysis(Object.assign({}, good, { extra: 'y' }));
+  ck(!unk.ok && unk.reasons.join() === 'unknown-key:extra', 'IM4d an unknown key is refused by name — a field a future build adds is refused by default');
+  const badTexts = { coord: 'the head at (12, 40)', bracket: 'wing [0.2, 0.3]', px: 'about 40px wide', svg: '<svg viewBox="0 0 1 1">', markup: '<b>mane</b>', url: 'see https://example.com/lion', data: 'data:image/png;base64,AAAA', exec: 'function () { return 1 }' };
+  const leaks = Object.keys(badTexts).filter((k) => Imagine.validateAnalysis(Object.assign({}, good, { gesture: badTexts[k] })).ok);
+  ck(leaks.length === 0, 'IM4e a coordinate, a pixel measure, SVG, markup, a link, a data URI and code are all refused as text — the analysis is words', leaks.join(','));
+  ck(!Imagine.validateAnalysis(Object.assign({}, good, { proportion: 3 })).ok && !Imagine.validateAnalysis(Object.assign({}, good, { character: 'playful' })).ok && !Imagine.validateAnalysis(Object.assign({}, good, { architecture: [1, 2] })).ok,
+    'IM4f a number, a string where a list should be, or a list of numbers is refused');
+  const miss = Imagine.validateAnalysis({ subject: 'x' });
+  ck(!miss.ok && Imagine.REQUIRED.slice(1).every((k) => miss.reasons.indexOf('missing:' + k) !== -1), 'IM4g every missing required field is named', miss.reasons.join(','));
+  const long = Imagine.validateAnalysis(Object.assign({}, good, { gesture: 'word '.repeat(120).trim(), character: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'], promptFidelity: { agreement: 'kinda', differences: [] } }));
+  ck(long.ok && long.analysis.gesture.length <= 400 && long.repairs.some((r) => /gesture cut at a word/.test(r)) && long.analysis.character.length === 6 && long.repairs.some((r) => /character cut to 6/.test(r)) && long.analysis.promptFidelity.agreement === 'unknown' && long.repairs.some((r) => /agreement "kinda" → unknown/.test(r)),
+    'IM4h an over-long sentence is cut at a word and RECORDED, an over-long list is cut and recorded, an unknown agreement becomes unknown and is recorded — nothing is silently changed');
+  ck(Imagine.parseAnalysis('```json\n' + JSON.stringify(good) + '\n```').ok && Imagine.parseAnalysis('Sure! Here it is: ' + JSON.stringify(good) + ' Hope that helps.').ok && !Imagine.parseAnalysis('the lion is mighty').ok && !Imagine.parseAnalysis('').ok && !Imagine.parseAnalysis('{"subject": ').ok,
+    'IM4i a reply is text until proven an analysis — fenced or wrapped JSON is read, prose and broken JSON are refused');
+  const fx = Imagine.parseAnalysis(Imagine.fixtureAnalysis('a lion with wings', 'Leo'));
+  ck(fx.ok && /^FIXTURE/.test(fx.analysis.subject) && /no model/i.test(fx.analysis.composition) && fx.analysis.promptFidelity.agreement === 'differs',
+    'IM4j the fixture analysis passes the same validator and says on its face that no model looked');
+  ck(!Imagine.validateAnalysis(Object.assign({}, good, { promptFidelity: { agreement: 'matches', differences: [], score: 9 } })).ok,
+    'IM4k promptFidelity takes no score — a number about the picture is refused');
+
+  // ---- IM5: the artwork manifest — real files, ground truth, credits, and it never travels ----
+  const missingFiles = Art.entries.filter((e) => !fs.existsSync(path.resolve(ROOT, 'tools/ether-mystery-lab', e.file)));
+  ck(Art.entries.length >= 12 && missingFiles.length === 0, 'IM5  every manifest entry points at a real picture in the repository', missingFiles.map((e) => e.id).join(','));
+  ck(Art.entries.every((e) => typeof e.visible === 'string' && e.visible.length >= 80 && e.credit && e.licence && Array.isArray(e.tags) && e.tags.length >= 3 && e.title),
+    'IM5b every entry carries ground truth written by a person (visible), a credit, a licence and tags');
+  ck(['twemoji-LICENSE-GRAPHICS.txt', 'openmoji-LICENSE.txt', 'gameicons-license.txt'].every((f) => fs.existsSync(path.join(ROOT, 'tools/ether-mystery-lab/artwork', f))) && Art.entries.filter((e) => e.licence === 'product').length === 5 && Art.entries.filter((e) => e.licence === 'product').every((e) => /^\.\.\/\.\.\/assets\//.test(e.file)),
+    'IM5c the three licence texts ride with the rasters, and the five product entries point into assets/ rather than copying the Companions');
+  const ids = Art.entries.map((e) => e.id);
+  ck(new Set(ids).size === ids.length && Art.byId('leo') && !Art.byId('nope'), 'IM5d ids are unique and byId answers');
+  // the ground truth never reaches a request: every visible sentence is checked against every message the contract builds
+  const msgsAll = Art.entries.map((e) => JSON.stringify(Imagine.understandMessages(e.title, []).messages) + JSON.stringify(Imagine.imagePrompt(e.title, []).text));
+  const truthLeak = Art.entries.filter((e, i) => { const frag = e.visible.split('. ')[0].slice(0, 40); return msgsAll[i].indexOf(frag) !== -1; });
+  ck(truthLeak.length === 0, 'IM5e no fragment of any ground-truth sentence appears in any request the contract builds — the model is never told what a person saw', truthLeak.map((e) => e.id).join(','));
+  ck(!creatureWords.test(imStripped) && /rankArtwork/.test(imStripped), 'IM5f the gallery is ordered by word overlap over the manifest\'s data, in a function that knows no creature');
+  const r1 = Imagine.rankArtwork('a lion with wings', Art.entries);
+  const r2 = Imagine.rankArtwork('a graceful mermaid with flowing hair', Art.entries);
+  const r3 = Imagine.rankArtwork('a wibble', Art.entries);
+  ck(r1[0].entry.id === 'leo' && r1[0].score >= 2 && /mermaid/.test(r2[0].entry.id) && r3.every((r) => r.score === 0) && r3.map((r) => r.entry.id).join() === ids.join() && r1.length === Art.entries.length,
+    'IM5g "a lion with wings" brings the winged lion first, a mermaid prompt a mermaid first, a word nobody has leaves the gallery in manifest order — and nothing is ever filtered out');
+
+  // ---- IM6: the endpoint's two new actions — transpiled, driven with real Requests ----
+  const ts = require('typescript');
+  const js = ts.transpileModule(read('supabase/functions/lab-generate/index.ts'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText;
+  const mod = { exports: {} };
+  new Function('exports', 'require', 'module', 'Deno', 'fetch', js)(mod.exports, require, mod, undefined, undefined);
+  const makeHandler = mod.exports.makeHandler;
+  const ENV = { SUPABASE_URL: 'https://x.local', SUPABASE_SERVICE_ROLE_KEY: 'svc-key', SUPABASE_ANON_KEY: 'anon-key', OPENAI_API_KEY: 'sk-test' };
+  let calls = [];
+  function jsonRes(body, status) { return new Response(JSON.stringify(body), { status: status || 200, headers: { 'Content-Type': 'application/json' } }); }
+  function fetchFor(behaviour) {
+    calls = [];
+    return async (url, init) => {
+      const u = String(url);
+      if (u.indexOf('/auth/v1/user') !== -1) return (init.headers.Authorization || '') === 'Bearer admin-token' ? jsonRes({ id: 'u-admin', email: 'admin@x' }) : jsonRes({}, 401);
+      if (u.indexOf('/rest/v1/rpc/edge_rate_limit_hit') !== -1) return jsonRes({ allowed: true, remaining: 5, retry_after: 0 });
+      if (u.indexOf('/rest/v1/platform_admins') !== -1) return jsonRes([{ email: 'admin@x' }]);
+      if (u.indexOf('api.openai.com') !== -1) {
+        calls.push({ url: u, body: JSON.parse(init.body) });
+        if (behaviour === 'no-model') return jsonRes({ error: { message: 'Project proj_SECRET does not have access to model gpt-image-1', type: 'invalid_request_error', code: 'model_not_found' } }, 403);
+        if (behaviour === 'busy') return jsonRes({ error: { message: 'rate' } }, 429);
+        if (behaviour === 'error') return jsonRes({ error: { message: 'SECRET-PROVIDER-DETAIL org_abc' } }, 500);
+        if (behaviour === 'malformed') return new Response('<<<', { status: 200 });
+        if (behaviour === 'throw') throw new Error('unreachable');
+        if (/images\/generations/.test(u)) return jsonRes({ data: [{ b64_json: 'AAAA' }, { b64_json: 'BBBB' }, { b64_json: 'CCCC' }] });
+        return jsonRes({ choices: [{ message: { content: JSON.stringify(good) } }] });
+      }
+      throw new Error('unexpected fetch ' + u);
+    };
+  }
+  async function drive(payload, behaviour, envExtra) {
+    const h = makeHandler({ env: (n) => (Object.assign({}, ENV, envExtra || {}))[n] || '', fetchImpl: fetchFor(behaviour || 'ok') });
+    const res = await h(new Request('https://fn.local/lab-generate', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer admin-token' }, body: JSON.stringify(payload) }));
+    return { status: res.status, body: await res.json().catch(() => null) };
+  }
+  const B64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+  let r = await drive({ action: 'ping' });
+  ck(r.body.ok && r.body.build === 'LAB2' && r.body.imageModel === 'gpt-image-1' && r.body.provider === 'configured', 'IM6  ping reports build LAB2 and the image model it would use');
+  r = await drive({ action: 'imagine', prompt: 'a lion with wings' }, 'no-model');
+  ck(r.status === 200 && r.body.ok === false && r.body.reason === 'no-image-model' && JSON.stringify(r.body).indexOf('proj_SECRET') === -1 && JSON.stringify(r.body).indexOf('sk-test') === -1,
+    'IM6b an account with no image model answers ONE word — no-image-model — and neither the provider\'s message nor the key leaves', JSON.stringify(r.body));
+  ck(calls.length === 1 && /images\/generations/.test(calls[0].url) && calls[0].body.model === 'gpt-image-1' && calls[0].body.n === 3 && calls[0].body.prompt === 'a lion with wings',
+    'IM6c the provider was asked once, for three interpretations, with the Lab\'s own prompt');
+  r = await drive({ action: 'imagine', prompt: 'a lion with wings', n: 9 }, 'ok');
+  ck(r.body.ok && r.body.images.length === 3 && r.body.images[0] === 'AAAA' && r.body.model === 'gpt-image-1' && calls[0].body.n === 4, 'IM6d a good answer passes the pictures through as base64, and a request for nine is clamped to four');
+  r = await drive({ action: 'imagine', prompt: 'a lion with wings' }, 'busy');
+  ck(r.body.reason === 'provider-busy', 'IM6e a busy provider is provider-busy');
+  r = await drive({ action: 'imagine', prompt: 'a lion with wings' }, 'error');
+  ck(r.body.reason === 'unavailable' && JSON.stringify(r.body).indexOf('SECRET') === -1, 'IM6f a provider error is unavailable, never provider text');
+  r = await drive({ action: 'imagine', prompt: '' }, 'ok');
+  ck(r.body.reason === 'bad-prompt' && calls.length === 0, 'IM6g an empty prompt is refused before any call');
+  r = await drive({ action: 'imagine', prompt: 'x' }, 'ok', { OPENAI_API_KEY: '' });
+  ck(r.body.reason === 'not-configured', 'IM6h no key → not-configured');
+  r = await drive({ action: 'understand', messages: um.messages, image: { mime: 'image/png', b64: B64 } }, 'ok');
+  ck(r.body.ok && typeof r.body.text === 'string' && r.body.model === 'gpt-4.1-mini' && calls.length === 1, 'IM6i understand relays the model\'s text back once');
+  const sentU = calls[0].body;
+  const lastU = sentU.messages[sentU.messages.length - 1];
+  ck(sentU.model === 'gpt-4.1-mini' && sentU.response_format.type === 'json_object' && typeof sentU.messages[0].content === 'string' && Array.isArray(lastU.content) && lastU.content[0].type === 'text' && lastU.content[0].text === um.messages[1].content && lastU.content[1].type === 'image_url' && lastU.content[1].image_url.url === 'data:image/png;base64,' + B64 && lastU.content[1].image_url.detail === 'high',
+    'IM6j the picture is attached to the last user message as an image part beside the Lab\'s own text, and structured output is demanded — the browser never built that shape');
+  const badImgs = [{ mime: 'text/html', b64: B64 }, { mime: 'image/png', b64: 'short' }, { mime: 'image/png', b64: '<script>' + B64 }, { mime: 'image/png', b64: 'A'.repeat(8 * 1024 * 1024 + 1) }];
+  let refusedImgs = 0;
+  for (const im of badImgs) { r = await drive({ action: 'understand', messages: um.messages, image: im }, 'ok'); if (r.body.reason === 'bad-image' && calls.length === 0) refusedImgs++; }
+  ck(refusedImgs === badImgs.length, 'IM6k a wrong type, a too-short, a non-base64 or an over-size picture is refused before any call', refusedImgs + '/' + badImgs.length);
+  r = await drive({ action: 'understand', messages: [{ role: 'system', content: 'x' }], image: { mime: 'image/png', b64: B64 } }, 'ok');
+  ck(r.body.reason === 'bad-messages', 'IM6l messages must end with a user turn for the picture to sit on');
+  r = await drive({ action: 'understand', messages: um.messages, image: { mime: 'image/png', b64: B64 } }, 'error');
+  ck(r.body.reason === 'unavailable' && JSON.stringify(r.body).indexOf('SECRET') === -1, 'IM6m a failed read is unavailable, never provider text');
+  r = await drive({ action: 'understand', messages: um.messages, image: { mime: 'image/png', b64: B64 } }, 'malformed');
+  ck(r.body.reason === 'malformed', 'IM6n a malformed read is malformed');
+  const fnStripped = stripComments(read('supabase/functions/lab-generate/index.ts'));
+  const bodies = [...fnStripped.matchAll(/json\(\{\s*ok:\s*false[^}]*\}/g)].map((m) => m[0]);
+  ck(bodies.length > 0 && bodies.every((b) => !/detail|error:|body\.|\.text\(|\$\{/.test(b)), 'IM6o every failure body in the function is still a fixed reason (S6\'s rule holds for the new actions)');
+
+  // ---- the browser half ----
+  const server = spawn('node', ['tools/bring-it-alive/test/serve.js', String(PORT)], { cwd: ROOT, stdio: 'ignore' });
+  await new Promise((res) => setTimeout(res, 900));
+  const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+  try {
+    const ctx = await browser.newContext({ viewport: { width: 1500, height: 1100 } });
+    const page = await ctx.newPage();
+    const errors = [];
+    page.on('pageerror', (e) => errors.push(String(e).split('\n')[0]));
+    const requests = [];
+    page.on('request', (q) => requests.push(q.url()));
+    await page.goto(BASE + '/tools/ether-mystery-lab/shape.html');
+    await page.waitForFunction(() => !!window.LabImagine && !!window.LabArtworkData && !!window.ShapeLab && !!window.LabReference && !!window.LabConnection, null, { timeout: 20000 });
+    const S = (fn, arg) => page.evaluate(fn, arg);
+
+    // ---- IM7: loading does nothing ----
+    const load = await S(() => ({ st: window.LabImagine.state(), ls: Object.keys(localStorage).length, ss: Object.keys(sessionStorage).length,
+      attrs: [document.querySelector('[data-imagine-section]').getAttribute('data-imagine-state'), document.querySelector('[data-imagine-section]').getAttribute('data-imagine-provider')],
+      controls: ['[data-imagine-prompt]', '[data-imagine-create]', '[data-imagine-provider-pick="fixture"]', '[data-imagine-provider-pick="openai-image"]', '[data-imagine-options]', '[data-imagine-use]', '[data-imagine-another]', '[data-imagine-prev]', '[data-imagine-refine]', '[data-imagine-refine-go]', '[data-imagine-selected-img]', '[data-imagine-understand]', '[data-imagine-unselect]', '[data-imagine-file]', '[data-imagine-panel]', '[data-imagine-panel-source]', '[data-imagine-copy]', '[data-imagine-json]', '[data-imagine-trace]', '[data-ref-subject]', '[data-ref-generate]'].filter((c) => !document.querySelector(c)),
+      ideasHidden: document.querySelector('[data-imagine-ideas]').hidden, selHidden: document.querySelector('[data-imagine-selected]').hidden, imgs: document.querySelectorAll('img').length,
+      line: document.querySelector('[data-imagine-provider-line]').textContent }));
+    ck(load.st.page === 'idle' && load.st.generations.length === 0 && load.ls === 0 && load.ss === 0 && load.attrs.join() === 'idle,fixture' && load.controls.length === 0 && load.ideasHidden && load.selHidden && load.imgs === 0 && errors.length === 0 && !requests.some((u) => /openai|supabase/.test(u)),
+      'IM7  loading the page creates nothing, writes nothing, shows no picture, reaches no provider, and every control is there — including the name→reference flow', 'missing ' + load.controls.join(','));
+    ck(/^ARTISTIC SOURCE — Fixture — existing artwork\./.test(load.line), 'IM7b the artistic source reads ARTISTIC SOURCE — Fixture, and says the pictures are chosen, never generated', load.line);
+    // Advanced holds the JSON and the trace
+    ['data-imagine-json', 'data-imagine-trace', 'data-imagine-copy'].forEach((sel) => {
+      const idx = htmlNoComments.indexOf(sel); const before = htmlNoComments.slice(0, idx);
+      ck(idx > 0 && (before.match(/<details class="adv"/g) || []).length > (before.match(/<\/details>/g) || []).length - ((before.match(/<details data-ref-trace-panel>/g) || []).length), 'IM7c ' + sel + ' sits inside an Advanced disclosure — raw JSON is never the default view');
+    });
+
+    // ---- IM8: validation on the page ----
+    await page.click('[data-imagine-create]');
+    let v = await S(() => ({ st: document.querySelector('[data-imagine-status]').textContent, n: window.LabImagine.state().generations.length }));
+    ck(/Nothing was created/.test(v.st) && v.n === 0, 'IM8  an empty prompt is refused on screen and nothing is created');
+    await page.fill('[data-imagine-prompt]', '<b>dragon</b>');
+    await page.click('[data-imagine-create]');
+    v = await S(() => ({ st: document.querySelector('[data-imagine-status]').textContent, n: window.LabImagine.state().generations.length, req: 0 }));
+    ck(/Nothing was created/.test(v.st) && v.n === 0, 'IM8b a marked-up prompt is refused');
+
+    // ---- IM9: the fixture journey — create → choose → use → (placeholder) understanding ----
+    const before = requests.length;
+    await page.fill('[data-imagine-prompt]', 'a lion with wings');
+    await page.click('[data-imagine-create]');
+    await page.waitForFunction(() => window.LabImagine.state().page === 'ideas', null, { timeout: 20000 });
+    const ideas = await S(() => { const st = window.LabImagine.state(); const cards = Array.from(document.querySelectorAll('[data-imagine-option]'));
+      return { n: st.generations[0].images.length, cards: cards.length, first: st.generations[0].images[0].artworkId, firstCap: cards[0].querySelector('.cap').textContent, tags: cards.map((c) => c.querySelector('.tag').textContent.split(' ·')[0]), labels: st.generations[0].images.map((i) => i.source),
+        status: document.querySelector('[data-imagine-status]').textContent, outcome: document.querySelector('[data-imagine-section]').getAttribute('data-imagine-outcome'), useDisabled: document.querySelector('[data-imagine-use]').disabled, imgs: document.querySelectorAll('[data-imagine-option] img').length, set: document.querySelector('[data-imagine-set]').textContent }; });
+    ck(ideas.n === Art.entries.length && ideas.cards === ideas.n && ideas.imgs === ideas.n && ideas.first === 'leo' && /Leo/.test(ideas.firstCap) && ideas.tags.every((t) => t === 'FIXTURE') && ideas.labels.every((l) => l === 'fixture') && ideas.outcome === 'fixture',
+      'IM9  Create with the fixture artistic source shows the whole gallery, the winged lion first, every card tagged FIXTURE', ideas.first + ' ' + ideas.tags.slice(0, 3).join(','));
+    ck(/ARTISTIC SOURCE: Fixture/.test(ideas.status) && /chosen by you, not generated/.test(ideas.status) && /FIXTURE — existing artwork, chosen not generated/.test(ideas.set),
+      'IM9b the status and the set label say ARTISTIC SOURCE: Fixture — chosen, not generated — and never imply a model drew them');
+    const reqs = requests.slice(before);
+    ck(reqs.length > 0 && reqs.every((u) => u.indexOf(BASE + '/') === 0) && reqs.some((u) => /assets\/leosaurus\/hero\.png/.test(u)) && reqs.some((u) => /artwork\/gameicons-centaur\.png/.test(u)),
+      'IM9c every request the gallery made stayed on this origin — the Companion art from assets/ and the rasters from artwork/', reqs.length + ' requests');
+    ck(ideas.useDisabled, 'IM9d USE waits for a choice');
+    await page.click('[data-imagine-option]');
+    const picked = await S(() => ({ on: document.querySelectorAll('.idea.on').length, useDisabled: document.querySelector('[data-imagine-use]').disabled, hi: window.LabImagine.state().highlight }));
+    ck(picked.on === 1 && !picked.useDisabled && picked.hi, 'IM9e a click picks one idea out and enables USE THIS CREATURE');
+    await page.screenshot({ path: path.join(shotDir, 'create-fixture-ideas.png') });
+    await page.click('[data-imagine-use]');
+    await page.waitForFunction(() => window.LabImagine.state().page === 'understood', null, { timeout: 20000 });
+    const used = await S(() => { const a = window.LabImagine.analysis(); return { sel: window.LabImagine.selectedImage(), selImg: !!document.querySelector('[data-imagine-selected-img] img'), badge: document.querySelector('.selbadge').textContent, chosenTag: !!document.querySelector('.idea.chosen .tag.chosen'),
+      subject: a.subject, source: a.source, panelBadge: document.querySelector('[data-imagine-panel-source]').textContent, panel: document.querySelector('[data-imagine-panel]').textContent, uoutcome: document.querySelector('[data-imagine-section]').getAttribute('data-understand-outcome'), ustatus: document.querySelector('[data-imagine-understand-status]').textContent, trace: window.LabImagine.lastUnderstand() }; });
+    const reqAfterUse = requests.length;
+    ck(used.sel && used.sel.artworkId === 'leo' && used.selImg && used.badge === 'SELECTED' && used.chosenTag, 'IM9f USE makes the choice the selected creature — shown large, badged SELECTED, and marked in the gallery');
+    ck(/^FIXTURE/.test(used.subject) && used.source === 'fixture' && /FIXTURE — a placeholder, no model looked/.test(used.panelBadge) && /no model/i.test(used.panel) && used.uoutcome === 'fixture' && /no model looked at the picture/.test(used.ustatus) && /sends nothing|placeholder/.test(used.trace.request),
+      'IM9g with the Fixture connection the understanding is a placeholder that says on its face that no model looked — never an invented description');
+    ck(reqAfterUse === requests.length && !requests.some((u) => /openai|supabase/.test(u)), 'IM9h and no request left for it');
+    // the JSON lives in a closed Advanced disclosure — opened the way a person opens it, then pressed
+    await S(() => { document.querySelector('[data-imagine-copy]').closest('details').open = true; });
+    await page.click('[data-imagine-copy]');
+    const json = await S(() => { const ta = document.querySelector('[data-imagine-json]'); return { hidden: ta.hidden, ok: (() => { try { return JSON.parse(ta.value).subject; } catch (e) { return null; } })() }; });
+    ck(!json.hidden && /^FIXTURE/.test(json.ok), 'IM9i the raw JSON is one press away under Advanced');
+
+    // ---- IM10: refine, previous, forward, another — nothing destroyed, the selection persists ----
+    await page.fill('[data-imagine-refine]', 'make it friendlier and more playful, with a longer tail');
+    await page.click('[data-imagine-refine-go]');
+    await page.waitForFunction(() => window.LabImagine.state().generations.length === 2, null, { timeout: 20000 });
+    const ref = await S(() => { const st = window.LabImagine.state(); return { n: st.generations.length, g2: st.generations[1], shown: st.shown, sel: st.selected, set: document.querySelector('[data-imagine-set]').textContent, prevOn: !document.querySelector('[data-imagine-prev]').disabled, refineField: document.querySelector('[data-imagine-refine]').value, analysis: !!window.LabImagine.analysis() }; });
+    ck(ref.n === 2 && ref.g2.prompt === 'a lion with wings' && ref.g2.refinements.join() === 'make it friendlier and more playful, with a longer tail' && ref.shown === ref.g2.id && /Set 2 of 2/.test(ref.set) && /refined: make it friendlier/.test(ref.set) && ref.prevOn && ref.refineField === '',
+      'IM10 REFINE keeps the original words and adds a line — a second set, the first kept, the field cleared, Bring back previous enabled');
+    ck(ref.sel && ref.sel.generationId === 'ideas-1' && ref.analysis, 'IM10b the selected creature and its understanding survive the refinement — a new set never takes them away');
+    await page.click('[data-imagine-prev]');
+    const prev = await S(() => { const st = window.LabImagine.state(); return { shown: st.shown, set: document.querySelector('[data-imagine-set]').textContent, chosen: document.querySelectorAll('.idea.chosen').length, nextShown: !document.querySelector('[data-imagine-next]').hidden }; });
+    ck(prev.shown === 'ideas-1' && /Set 1 of 2/.test(prev.set) && prev.chosen === 1 && prev.nextShown, 'IM10c BRING BACK PREVIOUS shows the first set again with its chosen picture still marked, and Forward appears');
+    await page.click('[data-imagine-next]');
+    // (ids come off one counter shared with the pictures, so the second set is not "ideas-2" — it is whatever the state says it is)
+    ck(await S(() => { const st = window.LabImagine.state(); return st.shown === st.generations[1].id; }), 'IM10d Forward goes back to the second');
+    await page.click('[data-imagine-another]');
+    await page.waitForFunction(() => window.LabImagine.state().generations.length === 3, null, { timeout: 20000 });
+    const an = await S(() => { const st = window.LabImagine.state(); return { n: st.generations.length, same: st.generations[2].prompt === st.generations[1].prompt && st.generations[2].refinements.join() === st.generations[1].refinements.join() }; });
+    ck(an.n === 3 && an.same, 'IM10e TRY ANOTHER INTERPRETATION makes a third set from the same words, keeping the other two');
+    await page.fill('[data-imagine-refine]', '<script>x</script>');
+    await page.click('[data-imagine-refine-go]');
+    ck(await S(() => window.LabImagine.state().generations.length === 3 && /Nothing was created/.test(document.querySelector('[data-imagine-status]').textContent)), 'IM10f a refinement that cannot be sent is refused and nothing is created');
+
+    // ---- IM11: the openai-image provider on the fixture connection ----
+    await page.click('[data-imagine-provider-pick="openai-image"]');
+    const pl = await S(() => ({ line: document.querySelector('[data-imagine-provider-line]').textContent, attr: document.querySelector('[data-imagine-section]').getAttribute('data-imagine-provider'), on: document.querySelector('[data-imagine-provider-pick="openai-image"]').classList.contains('on') }));
+    ck(/ARTISTIC SOURCE — OpenAI image generation/.test(pl.line) && /UNAVAILABLE when the account has no image model/.test(pl.line) && pl.attr === 'openai-image' && pl.on, 'IM11 choosing OpenAI image generation says so, and says what UNAVAILABLE would mean');
+    await page.click('[data-imagine-create]');
+    await page.waitForTimeout(300);
+    const nc = await S(() => ({ n: window.LabImagine.state().generations.length, outcome: document.querySelector('[data-imagine-section]').getAttribute('data-imagine-outcome'), st: document.querySelector('[data-imagine-status]').textContent, sel: window.LabImagine.state().selected, req: 0 }));
+    ck(nc.n === 3 && nc.outcome === 'not-configured' && /needs a real connection/.test(nc.st) && /Nothing was created/.test(nc.st) && nc.sel && !requests.some((u) => /openai/.test(u)),
+      'IM11b with the Fixture connection the image provider makes no request and creates nothing; the three sets and the selection stay');
+
+    // ---- IM12: the stubbed endpoint — UNAVAILABLE from the transport, then a generated set, then a real-shaped understanding ----
+    let epBodies = []; let imagineAnswer = 'no-model'; let understandAnswer = 'good';
+    await page.route('https://fn.local/lab-generate', (route) => {
+      const body = JSON.parse(route.request().postData() || '{}');
+      epBodies.push(body);
+      if (body.action === 'ping') return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, build: 'LAB2', provider: 'configured', model: 'gpt-4.1-mini', imageModel: 'gpt-image-1' }) });
+      if (body.action === 'imagine') {
+        if (imagineAnswer === 'no-model') return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: false, reason: 'no-image-model' }) });
+        if (imagineAnswer === 'down') return route.abort();
+        return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, images: [B64, B64, B64], model: 'gpt-image-1', build: 'LAB2' }) });
+      }
+      if (body.action === 'understand') {
+        if (understandAnswer === 'down') return route.abort();
+        const text = understandAnswer === 'good' ? JSON.stringify(Object.assign({}, good, { subject: 'a winged lion from the stub' })) : (understandAnswer === 'geometry' ? JSON.stringify(Object.assign({}, good, { points: [[0, 1]] })) : 'I would rather write prose about lions.');
+        return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, text, model: 'gpt-4.1-mini', build: 'LAB2' }) });
+      }
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, model: 'gpt-4.1-mini', build: 'LAB2', text: '{}' }) });
+    });
+    await page.click('[data-conn-mode="endpoint"]');
+    await page.fill('[data-conn-url]', 'https://fn.local/lab-generate');
+    await page.fill('[data-conn-token]', 'admin-session-token');
+    await page.click('[data-conn-test]');
+    await page.waitForFunction(() => /CONNECTED/.test(document.querySelector('[data-conn-status]').textContent));
+    await page.click('[data-imagine-create]');
+    await page.waitForFunction(() => document.querySelector('[data-imagine-section]').getAttribute('data-imagine-outcome') === 'unavailable', null, { timeout: 8000 });
+    const un = await S(() => ({ n: window.LabImagine.state().generations.length, st: document.querySelector('[data-imagine-status]').textContent, trace: window.LabImagine.lastImagine(), createOn: !document.querySelector('[data-imagine-create]').disabled }));
+    ck(un.n === 3 && /UNAVAILABLE/.test(un.st) && /no image model/.test(un.st) && /Nothing was replaced/.test(un.st) && un.trace.answer.reason === 'no-image-model' && un.trace.outcome === 'unavailable' && un.createOn && epBodies.filter((b) => b.action === 'imagine').length === 1,
+      'IM12 the image provider answering no-image-model reads UNAVAILABLE on screen, from the transport\'s answer — nothing replaced, the button live again');
+    imagineAnswer = 'ok';
+    await page.click('[data-imagine-create]');
+    await page.waitForFunction(() => window.LabImagine.state().generations.length === 4, null, { timeout: 8000 });
+    const gen = await S(() => { const st = window.LabImagine.state(); const g = st.generations[3]; return { n: g.images.length, src: g.images.map((i) => i.source).join(), model: g.model, tags: Array.from(document.querySelectorAll('[data-imagine-option] .tag')).map((t) => t.textContent.split(' ·')[0]).join(), set: document.querySelector('[data-imagine-set]').textContent, outcome: document.querySelector('[data-imagine-section]').getAttribute('data-imagine-outcome') }; });
+    ck(gen.n === 3 && gen.src === 'generated,generated,generated' && gen.model === 'gpt-image-1' && gen.tags === 'IMAGE MODEL,IMAGE MODEL,IMAGE MODEL' && /IMAGE MODEL \(gpt-image-1\)/.test(gen.set) && gen.outcome === 'generated',
+      'IM12b when the image model answers, the three interpretations are labelled IMAGE MODEL (the model named) — the fixture label is never borrowed');
+    const sentImagine = epBodies.filter((b) => b.action === 'imagine').pop();
+    // (CREATE from the field is a fresh start — no refinement line; REFINE is what carries one)
+    ck(sentImagine.n === 3 && sentImagine.prompt.split('\n')[0] === 'a lion with wings.' && !/Refinement:/.test(sentImagine.prompt) && /Presentation:/.test(sentImagine.prompt) && Object.keys(sentImagine).sort().join() === 'action,n,prompt',
+      'IM12c what left for the image model is action, n and the prompt — the creative words and the presentation line, nothing else; a fresh Create carries no refinement');
+    await page.click('[data-imagine-option]');
+    await page.click('[data-imagine-use]');
+    await page.waitForFunction(() => document.querySelector('[data-imagine-section]').getAttribute('data-understand-outcome') === 'generated', null, { timeout: 8000 });
+    const ru = await S(() => { const a = window.LabImagine.analysis(); return { subject: a.subject, source: a.source, model: a.model, imageSource: a.imageSource, badge: document.querySelector('[data-imagine-panel-source]').textContent, panel: document.querySelector('[data-imagine-panel]').textContent, chips: document.querySelectorAll('.an-chip').length, ustatus: document.querySelector('[data-imagine-understand-status]').textContent, ls: JSON.stringify(localStorage), ss: JSON.stringify(sessionStorage), exp: window.ShapeLab.exportJSON() }; });
+    ck(ru.subject === 'a winged lion from the stub' && ru.source === 'generated' && ru.model === 'gpt-4.1-mini' && ru.imageSource === 'generated' && /IMAGE UNDERSTANDING \(gpt-4.1-mini\) · endpoint · read from a generated picture/.test(ru.badge) && /Primary composition/.test(ru.panel) && /Gesture and flow/.test(ru.panel) && /Against the prompt/.test(ru.panel) && ru.chips >= 6 && /Understood \(gpt-4.1-mini\)/.test(ru.ustatus),
+      'IM12d the understanding of the chosen picture renders every section — subject, character, composition, masses, features, modifiers, proportion, gesture, survives, reveal, against the prompt — badged as image understanding by the model');
+    const sentU2 = epBodies.filter((b) => b.action === 'understand').pop();
+    const truthWords = Art.entries.map((e) => e.visible.split('. ')[0].slice(0, 40));
+    ck(sentU2 && sentU2.image && sentU2.image.mime === 'image/png' && sentU2.image.b64 === B64 && sentU2.messages.length === 2 && sentU2.messages.every((m) => typeof m.content === 'string') && Object.keys(sentU2).sort().join() === 'action,image,messages' &&
+       !/\b(card|stars|constellation|memor|username|creator|companion|email|session|token)\b/i.test(JSON.stringify(sentU2.messages)) && !truthWords.some((w) => JSON.stringify(sentU2).indexOf(w) !== -1),
+      'IM12e what left for the understanding is action, the picture and two text messages — no private word, no ground truth, and the picture only as the picture');
+    ck(!/admin-session-token/.test(ru.ls + ru.ss + ru.exp) && !/base64|data:image/.test(ru.ls + ru.ss + ru.exp), 'IM12f the token, the picture and the analysis reach no storage and no export');
+    await page.screenshot({ path: path.join(shotDir, 'understanding-stubbed-model.png') });
+    // a refused reply keeps what was there
+    understandAnswer = 'geometry';
+    await page.click('[data-imagine-understand]');
+    await page.waitForFunction(() => document.querySelector('[data-imagine-section]').getAttribute('data-understand-outcome') === 'rejected', null, { timeout: 8000 });
+    const rej = await S(() => ({ subject: window.LabImagine.analysis().subject, ustatus: document.querySelector('[data-imagine-understand-status]').textContent, trace: window.LabImagine.lastUnderstand() }));
+    ck(rej.subject === 'a winged lion from the stub' && /refused by the validator/.test(rej.ustatus) && /forbidden-key:points/.test(rej.ustatus) && /still here/.test(rej.ustatus) && rej.trace.parse.ok === false,
+      'IM12g a reply carrying geometry is refused by name and the understanding in use is untouched');
+    understandAnswer = 'prose';
+    await page.click('[data-imagine-understand]');
+    await page.waitForFunction(() => /not-json/.test(document.querySelector('[data-imagine-understand-status]').textContent), null, { timeout: 8000 });
+    ck(await S(() => window.LabImagine.analysis().subject === 'a winged lion from the stub'), 'IM12h a prose reply is refused and the understanding in use is untouched');
+    understandAnswer = 'down';
+    await page.click('[data-imagine-understand]');
+    await page.waitForFunction(() => document.querySelector('[data-imagine-section]').getAttribute('data-understand-outcome') === 'failed', null, { timeout: 12000 });
+    const down = await S(() => ({ subject: window.LabImagine.analysis().subject, ustatus: document.querySelector('[data-imagine-understand-status]').textContent, busy: window.LabImagine.state().busy, on: !document.querySelector('[data-imagine-understand]').disabled }));
+    ck(down.subject === 'a winged lion from the stub' && /failed — unavailable/.test(down.ustatus) && /No fixture was substituted/.test(down.ustatus) && down.busy === null && down.on,
+      'IM12i a dead transport fails on screen, substitutes nothing, keeps the understanding, and hands the button back');
+    imagineAnswer = 'down';
+    await page.click('[data-imagine-create]');
+    await page.waitForFunction(() => document.querySelector('[data-imagine-section]').getAttribute('data-imagine-outcome') === 'failed', null, { timeout: 12000 });
+    ck(await S(() => window.LabImagine.state().generations.length === 4 && /Creating failed/.test(document.querySelector('[data-imagine-status]').textContent) && !document.querySelector('[data-imagine-create]').disabled),
+      'IM12j a dead transport on Create fails on screen, keeps every set, and hands the button back');
+    await page.unroute('https://fn.local/lab-generate');
+
+    // ---- IM13: the Direct (dev) path — stubbed at the provider host; the key reaches nowhere ----
+    let directBodies = [];
+    await page.route('https://api.openai.com/**', (route) => {
+      const u = route.request().url();
+      if (/\/models$/.test(u)) return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [{ id: 'gpt-4.1-mini' }] }) });
+      const body = JSON.parse(route.request().postData() || '{}');
+      directBodies.push({ url: u, body });
+      if (/images\/generations/.test(u)) return route.fulfill({ status: 403, contentType: 'application/json', body: JSON.stringify({ error: { message: 'Project proj_SECRET does not have access to model gpt-image-1', type: 'invalid_request_error', code: 'model_not_found' } }) });
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ choices: [{ message: { content: JSON.stringify(Object.assign({}, good, { subject: 'read directly' })) } }] }) });
+    });
+    await page.click('[data-conn-mode="direct"]');
+    await page.fill('[data-conn-key]', 'sk-test-direct-never-stored');
+    await page.click('[data-conn-test]');
+    await page.waitForFunction(() => /CONNECTED \(direct\)/.test(document.querySelector('[data-conn-status]').textContent));
+    await page.click('[data-imagine-create]');
+    await page.waitForFunction(() => document.querySelector('[data-imagine-section]').getAttribute('data-imagine-outcome') === 'unavailable', null, { timeout: 8000 });
+    const dun = await S(() => ({ st: document.querySelector('[data-imagine-status]').textContent, n: window.LabImagine.state().generations.length }));
+    ck(/UNAVAILABLE/.test(dun.st) && dun.n === 4 && directBodies.some((d) => /images\/generations/.test(d.url) && d.body.model === 'gpt-image-1' && d.body.n === 3),
+      'IM13 on the Direct path the provider\'s model_not_found becomes UNAVAILABLE on screen — the same word, from the same kind of answer');
+    await page.click('[data-imagine-understand]');
+    await page.waitForFunction(() => window.LabImagine.analysis().subject === 'read directly', null, { timeout: 8000 });
+    const dr = await S(() => ({ a: window.LabImagine.analysis(), ls: JSON.stringify(localStorage), ss: JSON.stringify(sessionStorage), cookie: document.cookie, exp: window.ShapeLab.exportJSON(), badge: document.querySelector('[data-imagine-panel-source]').textContent }));
+    const dsent = directBodies.filter((d) => /chat\/completions/.test(d.url)).pop().body;
+    const dlast = dsent.messages[dsent.messages.length - 1];
+    ck(dr.a.mode === 'direct' && /· direct ·/.test(dr.badge) && dsent.model === 'gpt-4.1-mini' && dsent.response_format.type === 'json_object' && Array.isArray(dlast.content) && dlast.content[1].type === 'image_url' && /^data:image\/png;base64,/.test(dlast.content[1].image_url.url) && dlast.content[1].image_url.detail === 'high',
+      'IM13b Direct attaches the picture as an image part on the last user message and demands structured output — the same shape the endpoint builds');
+    ck(!/sk-test-direct/.test(dr.ls + dr.ss + dr.cookie + dr.exp) && !/sk-test-direct/.test(JSON.stringify(dsent.messages)), 'IM13c the key reaches no storage, no cookie, no export and no message body');
+    await page.unroute('https://api.openai.com/**');
+    await page.click('[data-conn-clear]');
+    ck(await S(() => !window.LabConnection._holdsDirectKey() && window.LabConnection.status().mode === 'fixture'), 'IM13d Disconnect / clear drops the key and returns to Fixture');
+
+    // ---- IM14: bring a picture ----
+    await page.setInputFiles('[data-imagine-file]', path.join(ROOT, 'tools/ether-mystery-lab/artwork/gameicons-centaur.png'));
+    await page.waitForFunction(() => { const s = window.LabImagine.state(); return s.generations.length === 5 && s.page === 'understood'; }, null, { timeout: 20000 });
+    const up = await S(() => { const st = window.LabImagine.state(); const g = st.generations[4]; return { src: g.source, label: g.images[0].label, title: g.images[0].title, sel: st.selected.generationId === g.id, tag: document.querySelector('[data-imagine-option] .tag').textContent, subject: window.LabImagine.analysis().subject, outcome: document.querySelector('[data-imagine-section]').getAttribute('data-imagine-outcome') }; });
+    ck(up.src === 'uploaded' && /^UPLOADED/.test(up.label) && /centaur/.test(up.title) && up.sel && /^UPLOADED/.test(up.tag) && /^FIXTURE/.test(up.subject) && up.outcome === 'uploaded',
+      'IM14 a picture of the researcher\'s own becomes a one-picture set labelled UPLOADED, is used at once, and is read by whatever connection is chosen');
+    await page.setInputFiles('[data-imagine-file]', { name: 'x.txt', mimeType: 'text/plain', buffer: Buffer.from('hello') });
+    await page.waitForTimeout(200);
+    ck(await S(() => window.LabImagine.state().generations.length === 5 && /not a PNG, JPEG or WebP/.test(document.querySelector('[data-imagine-status]').textContent)), 'IM14b a file that is not a picture is refused and nothing changes');
+
+    // ---- IM15: the existing Shape Lab is intact ----
+    await page.fill('[data-ref-subject]', 'Tiger');
+    await page.click('[data-ref-generate]');
+    await page.waitForFunction(() => { const c = window.LabReference.current(); return !!c && c.subject === 'Tiger'; }, null, { timeout: 8000 });
+    const intact = await S(() => { const S = window.ShapeLab; return { placed: S.figure().points.length, ref: window.LabReference.meta().source, api: ['setBudget', 'addPoint', 'toggleJoin', 'toggleGap', 'joinInOrder', 'undo', 'redo', 'approve', 'save', 'exportJSON', 'importJSON'].filter((k) => typeof S[k] !== 'function'), keys: Object.keys(localStorage), err: 0 }; });
+    ck(intact.placed > 0 && intact.ref === 'fixture' && intact.api.length === 0 && intact.keys.length === 0 && errors.length === 0,
+      'IM15 the name→reference flow still places a starting figure, every editor API is there, nothing was written, and the page raised no error through the whole journey', errors.join(' | '));
+    const stepOrder = (htmlNoComments.match(/data-step="([a-z]+)"/g) || []).map((m) => m.replace(/.*="|"/g, ''));
+    ck(stepOrder.join(',') === 'create,shape,connect,reveal,test,approve', 'IM15b the six stages are exactly where they were — the front door is INSIDE Create');
+    const advStripped = htmlNoComments.replace(/<details class="adv"[\s\S]*?<\/details>/g, '').replace(/<style>[\s\S]*?<\/style>/, '').replace(/<header>[\s\S]*?<\/header>/, '').replace(/<script[^>]*><\/script>/g, '').replace(/<[^>]+>/g, ' ');
+    const banned = ['candidate', 'interpreter', 'provider', 'projection', 'sanitiz', 'schema', 'runtime', 'validator'].filter((w) => new RegExp('\\b' + w, 'i').test(advStripped));
+    ck(banned.length === 0, 'IM15c the new copy keeps the technical vocabulary out of the stages — no provider, schema, validator or runtime outside Advanced', banned.join(','));
+    // a phone
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.waitForTimeout(300);
+    const mob = await S(() => ({ sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth, cols: getComputedStyle(document.querySelector('.ideas')).gridTemplateColumns.split(' ').length }));
+    ck(mob.sw <= mob.cw && mob.cols === 2, 'IM15d on a phone the gallery is two columns and the page never scrolls sideways', JSON.stringify(mob));
+    await page.close(); await ctx.close();
+  } finally {
+    await browser.close();
+    server.kill();
+  }
+
+  // ---- IM16: the real-model pass is committed, honest, and validated by this same validator ----
+  const rp = path.join(__dirname, 'shots', 'imagine', 'real-understanding.json');
+  ck(fs.existsSync(rp), 'IM16 the real-model pass has been run and its results are committed');
+  if (fs.existsSync(rp)) {
+    const rep = JSON.parse(fs.readFileSync(rp, 'utf8'));
+    ck(rep.imageGeneration && rep.imageGeneration.available === false && rep.imageGeneration.reason === 'model_not_found', 'IM16b IMAGE GENERATION was measured UNAVAILABLE — the provider answered model_not_found, recorded rather than believed', JSON.stringify(rep.imageGeneration));
+    const okN = rep.results.filter((r) => r.ok).length;
+    ck(rep.model === 'gpt-4.1-mini' && rep.results.length === Art.entries.length && okN === rep.results.length, 'IM16c gpt-4.1-mini read every picture in the manifest and every reply passed the validator', okN + '/' + rep.results.length);
+    const revalid = rep.results.filter((r) => r.ok && !Imagine.parseAnalysis(r.raw).ok);
+    ck(revalid.length === 0, 'IM16d the committed raw replies still pass the validator as it stands today — the contract and the results cannot drift apart', revalid.map((r) => r.id).join(','));
+    const badFid = rep.results.filter((r) => r.ok && !r.analysis.promptFidelity);
+    ck(badFid.length === 0, 'IM16e every real reply says how the picture stood against its prompt', badFid.map((r) => r.id).join(','));
+    const gestures = rep.results.filter((r) => r.ok && !/gesture|parts|coherent|flow|pose|one /i.test(r.analysis.gesture));
+    ck(gestures.length === 0, 'IM16f every real reply answered the gesture question in the terms it was asked', gestures.map((r) => r.id).join(','));
+  }
+}
+
+// ===================================================================
 (async () => {
   try {
     // ETHER_LAB_ONLY=SL runs one section alone while it is being built;
@@ -7207,6 +7664,7 @@ async function sectionWF() {
     await run('RV', sectionRV);
     await run('ET', sectionET);
     await run('WF', sectionWF);
+    await run('IM', sectionIM);
   } catch (e) {
     fail('suite crashed', (e && e.stack || String(e)).split('\n')[0]);
   }

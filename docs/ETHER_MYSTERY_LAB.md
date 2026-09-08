@@ -3088,3 +3088,297 @@ every direct press of `[data-reset]`.
 rendering, language) · `labReference.js` (opens the Advanced
 disclosure when an LLM source is chosen). Screenshots:
 `tools/ether-mystery-lab-test/shots/workflow/`.
+
+---
+
+## PROMPT → ARTISTIC CREATURE → IMAGE UNDERSTANDING — proof V1 (the Shape Lab's front door)
+
+Lab only, zero production files changed, build 0769, nothing activated
+in the Ether. The Shape Lab's CREATE stage gains a new entry point in
+front of the name → blueprint flow, which stays exactly as it was:
+**say what should exist → look at what it could be → choose one →
+(refine) → the chosen PICTURE is read by the model into a structured,
+semantic description.** It stops there. Nothing in this sprint turns an
+image into points, joins, missing joins or reveal geometry; the
+analysis contract has no field for any of those and refuses them by
+name.
+
+### The headline, as measured
+
+```
+IMAGE GENERATION:    UNAVAILABLE — API access limitation
+                     (gpt-image-1 answers model_not_found for this project;
+                      every gpt-image-* model does; the newer image routes
+                      require organisation verification)
+IMAGE UNDERSTANDING: REAL
+MODEL:               gpt-4.1-mini
+```
+
+Seventeen real pictures were read by the real model through the same
+contract the Lab uses, and all seventeen replies passed the validator.
+The results, beside a person's own description of each picture, are
+committed: `tools/ether-mystery-lab-test/shots/imagine/real-understanding.md`
+(and `.json`, the raw replies included). They were produced by
+`tools/ether-mystery-lab-test/real-understanding.js`, which never runs
+inside the suite — it costs money and needs the network — but whose
+committed output the suite re-validates on every run (`IM16`).
+
+### The researcher workflow
+
+1. **CREATE — "What should exist?"** Type a creative prompt — *a
+   smiling dragon with enormous wings* stays that sentence and is never
+   reduced to a noun — and press **Create**.
+2. **ARTISTIC SOURCE** is a visible two-way control — **Fixture —
+   existing artwork · OpenAI image generation** — and the line under it
+   says what each is. The fixture shows the whole gallery of existing
+   pictures, ordered so the ones sharing a word with the prompt come
+   first, every card tagged FIXTURE with its title; the status line
+   reads *ARTISTIC SOURCE: Fixture — chosen by you, not generated*. The
+   image-model provider, on a real connection, asks the image model for
+   three interpretations; on this account it comes back **UNAVAILABLE**
+   — from the transport's own `no-image-model`, never from a flag.
+3. **YOUR IDEAS — choose one.** Click a picture to pick it out
+   (double-click uses it at once), then **Use this creature**. **Try
+   another interpretation** makes a new set from the same words;
+   **Refine** keeps the words and adds a line ("make it friendlier and
+   more playful, with a longer tail"), up to six times; **Bring back
+   previous** / **Forward again** walk through every set made on this
+   page. Nothing is ever thrown away, and the selection survives a new
+   set.
+4. **SELECTED CREATURE** — the chosen picture, large, badged SELECTED,
+   with its title, label and credit — and the model reads it at once.
+   **Read it again** re-reads; **Choose a different one** unselects.
+5. **UNDERSTANDING** (right column) — subject · character · primary
+   composition · body and masses · diagnostic features · modifiers ·
+   proportion and emphasis · gesture and flow · what should survive the
+   abstraction · do not draw literally · could be a reveal payoff ·
+   against the prompt. Badged *IMAGE UNDERSTANDING (gpt-4.1-mini) ·
+   endpoint · read from a fixture picture*, or *FIXTURE — a placeholder,
+   no model looked at the picture* when the connection is Fixture. Raw
+   JSON and the trace live under Advanced.
+6. **Or bring a picture** — a PNG/JPEG/WebP of the researcher's own is
+   used straight away, labelled UPLOADED.
+
+The **connection** (Fixture · LLM — Endpoint · LLM — Direct) is the
+existing `LabConnection` control, shared with the reference flow. It
+now reads pictures as well: in Fixture the understanding is a
+placeholder that says on its face that no model looked; on either LLM
+mode the picture goes to the model.
+
+### How OpenAI is connected — one transport, two new calls
+
+`labConnection.js` gains `imagine({prompt, n, fixture})` → `{ok,
+images:[{mime,b64}], model, source}` and `understand({messages, image,
+fixture})` → `{ok, text, model, source}`, in all three modes: Fixture
+answers with the caller's own producer and never touches the network;
+Direct (dev-only, closure-held key) posts to `images/generations` and to
+`chat/completions` with the picture attached as an `image_url` part on
+the last user message (`detail: high`, structured output demanded);
+Endpoint sends `action: imagine` / `action: understand` to
+`supabase/functions/lab-generate`, which is now build **LAB2** and
+carries both actions behind the same administrators-only gate, the
+same `lab-generate` bucket and the same bounds (a picture is validated
+by type and size before any call; a provider refusal is one word; the
+one refusal that is a property of the ACCOUNT — the image model not
+existing for the project — is relayed as `no-image-model`). The
+provider's free-text error, which carries organisation and project
+ids, never leaves either path. `sync-shared.js --check` stays green:
+the generated gate block is untouched.
+
+### The provider abstraction, and why UNAVAILABLE is not hard-coded
+
+`LabImagine.PROVIDERS` is a table — `fixture` (kind fixture) and
+`openai-image` (kind model) — and CREATE branches on `kind`, never on
+an id. No provider carries an availability flag; the suite fails on
+one. UNAVAILABLE is reached in exactly one way: the transport answers
+`no-image-model`, which is what the provider's `model_not_found` (or an
+image model name it says does not exist) becomes. The day the account
+has an image model, the same button produces three labelled IMAGE
+MODEL pictures with nothing in the Lab changed — `IM12b` drives that
+path against a stubbed endpoint and `IM13` against a stubbed provider.
+
+### The fixture is real artwork
+
+`labArtworkData.js` names seventeen pictures: the product's own five
+Companions (Lumo — a smiling dragon with enormous wings; Leo — a lion
+with wings; Leafy, Quill and Nimbus — three invented beings), read from
+`assets/` without copying, and twelve openly-licensed creature pictures
+rasterized into `tools/ether-mystery-lab/artwork/` with their licence
+texts: three mermaids, three elephants, a falcon and an eagle, a
+centaur and three more dragons — Twemoji (CC BY 4.0), OpenMoji (CC
+BY-SA 4.0) and game-icons.net (CC BY 3.0). Every entry carries
+`visible`: a description written by a person looking at the picture,
+which is the ground truth the real run is judged against and which is
+NEVER sent to the model (`IM5e` checks every request the contract
+builds against every ground-truth sentence). Ordering is word overlap
+over the entries' tags — string overlap over data — and there is no
+`subject === …`, no species branch and no creature word anywhere in
+the front door's code (`IM2`, `IM2b`).
+
+### The analysis contract (`LabImagine.SCHEMA`)
+
+```
+subject             string — what is depicted, in a few words
+character           1–6 words/phrases — what the visual communicates
+composition         1–2 sentences — the dominant visual organisation
+architecture        1–8 phrases — the major masses and how they RELATE
+diagnosticFeatures  1–10 names — what makes THIS concept recognisable
+modifiers           0–8 phrases — the creative modifications actually visible
+proportion          1–2 sentences — what is exaggerated, compressed, dominant
+gesture             1–2 sentences — how the whole flows; ONE gesture or a
+                    collection of parts (the contract asks this in as many words)
+abstraction         { survives 1–8, doNotDrawLiterally 0–8, note? }
+revealCandidates    0–8 names — a reveal-only payoff later; names, never geometry
+promptFidelity      { agreement: matches|partly|differs, differences 0–6 }
+```
+
+Every value is words. The validator (`validateAnalysis`) is deny by
+shape: an unknown key at any depth is refused by name; a geometry,
+runtime, credential or private key (`points`, `joins`, `missing`,
+`svg`, `x`, `path`, `pattern`, `constellation`, `stars`, `card`,
+`email`, `memories`, `username`, `url`, `image`, `code`, `html`…)
+refuses the whole analysis; a coordinate-shaped string, a pixel
+measure, SVG, markup, a link, a data URI or code is refused as text; a
+number where a word should be is refused; every missing required field
+is named; an over-long sentence is cut at a word and RECORDED; an
+unknown agreement becomes `unknown` and is recorded. What comes out is
+a clean copy built field by field. A reply is text until proven an
+analysis (fenced or wrapped JSON is read; prose is refused).
+
+**The image is the source of truth.** The contract tells the model so
+in its own instructions, hands it the creative prompt as context only,
+and asks for `promptFidelity`. Measured: the serpentine Twemoji dragon
+read against *a smiling dragon with enormous wings* came back
+`differs — no wings visible`, and the sea-dragon silhouette read
+against *a playful sea creature with butterfly wings* came back
+`differs — no butterfly wings visible; creature appears more
+dragon-like`. Nimbus read against *a sleepy cloud sprite carrying a
+little moon* came back `partly — sprite is awake and smiling, not
+sleepy; moon is a symbol on the body, not carried separately`, which is
+exactly right.
+
+### The real results, judged as compositions
+
+The question is not whether the model names the creature. It is
+whether it understands the picture as a composition — masses, where
+parts attach, what the whole body is doing, what makes this particular
+picture read as what it is.
+
+**Strong (a designer could build from this alone):**
+
+- **Leo, the winged lion** — "a large, rounded lion head with a full
+  mane sits atop a sturdy, quadruped body / two large, colorful wings
+  emerge symmetrically from the lion's shoulders / the tail curls upward
+  and ends in a glowing lantern / the extended front paw reaches toward
+  a butterfly"; gesture "one coherent gesture of reaching and
+  curiosity, with the wings and extended paw directing attention forward
+  and upward"; proportion "the wings are oversized… the head and mane
+  are large and expressive relative to the body". Feline body, grounded
+  gesture, mane/head relationship, wing placement and wing/body
+  relationship, dominant proportions: all present.
+- **Lumo, the smiling dragon** — "large membranous wings attached at the
+  shoulders", "a compact, upright stance with wings spread wide on
+  either side, creating a balanced horizontal extension", modifiers
+  `smiling, oversized wings`, and "one coherent, confident gesture with
+  an upright posture and wings creating a wide, open frame". Dragon
+  identity AND the expression modifier, both kept.
+- **The centaur** — "human torso seamlessly attached to the horse body
+  at the waist", "the human upper body is proportionally smaller and
+  simplified compared to the horse body, which dominates". The
+  human/horse structural transition is named, not just the two halves.
+- **The mermaid silhouette** — "a flowing, curved body forming an
+  S-shape with a clear division between the upper humanoid torso and
+  the lower fish tail, creating a smooth vertical gesture"; "one
+  coherent flowing gesture… from head to tail". The continuous
+  body-to-tail flow, not a list of head/torso/tail.
+- **The falcon with the moon** — the crescent recognised as "a graphic
+  element that complements the falcon but is not a literal part of the
+  bird", the wings "broad and angular, dominating the composition", the
+  gesture "a strong diagonal thrust". Two overlapping shapes, told apart.
+- **Quill and Nimbus (invented)** — no anatomy forced: "ink-like fluid
+  forms extending from head and cape edges", "lower body blends into a
+  cloud base that curls around the feet", the pen "held upright in
+  right hand", exaggerated head-to-body proportion named in both.
+
+**Weak, and where the contract or the model fell short:**
+
+- **Prompt bias on the subject and the modifiers.** The OpenMoji eagle
+  (white head, yellow hooked beak) read against *a falcon* came back
+  `subject: stylized falcon` with `matches` softened only to `partly`
+  for style; the Twemoji elephant read against *a tiny elephant with
+  huge ears* came back `tiny body` and `matches` although the picture
+  is one bulky mass. The contract says the picture wins; on
+  near-misses the model leans toward the prompt's own words.
+- **An expression read wrong, and contradicted within one reply.** The
+  Twemoji dragon frowns; the reply listed `smiling` among modifiers and
+  `playful, friendly, cheerful` as character, while its own
+  `promptFidelity` said "expression is more neutral than smiling".
+  Two fields disagreeing in one answer is a contract gap: modifiers
+  should be held to what is visible as strictly as fidelity is.
+- **One placement error.** Leafy's face is on the pot; the reply put
+  "two small plant-like eyes emerge from the soil among the leaves" —
+  and then, correctly, "smiling face" in the features. A designer
+  following the masses list would place the eyes in the wrong mass.
+- **One wing missed.** The OpenMoji eagle raises two wings; the reply
+  saw "a large wing".
+- **Hedging on a clear thing.** The OpenMoji dragon's red flame was
+  "tongue or flame", twice.
+- **Architecture is sometimes a parts list.** On the simplest
+  pictures (the emoji elephants) the masses are named but their
+  relationships are thin; on the richer pictures the relationships are
+  there. The contract asks for relationships; a dedicated field would
+  make them mandatory.
+
+**Does the same architecture handle real · hybrid · mythical · modified
+· invented?** Yes, with the caveats above: real (three elephants, two
+birds), hybrid (Leo, the centaur, three mermaids), mythical (four
+dragons), modified (the smiling dragon, the tiny elephant, the fixture
+mismatches), invented (Leafy, Quill, Nimbus) — one contract, no special
+case, 17/17 valid.
+
+**Is the output enough for a later Ether translation?** For the strong
+cases, yes: `abstraction.survives` plus `gesture` plus `proportion` say
+what to spend lights on, what to keep as a reveal, and what shape the
+whole should read as. Three things the next contract should add, found
+by this run: a **viewpoint** field (side / front / three-quarter — the
+translation needs it and the model volunteers it inconsistently); an
+explicit **relationships** list (part → attaches to → part), so the
+masses cannot collapse into a list; and a rule that **modifiers name
+only what is visible and must agree with `promptFidelity`**. None of
+that is built here — this sprint stops at the handoff.
+
+### Privacy and security, verified
+
+- What leaves for a picture read is the fixed contract, the creative
+  prompt (and its refinements), and the picture — `IM12e` pins the
+  request to exactly `action, image, messages`, checks the messages
+  for `card`, `stars`, `constellation`, `memor`, `username`,
+  `creator`, `companion`, `email`, `session`, `token`, and checks every
+  ground-truth sentence against it.
+- What leaves for image generation is `action, n, prompt` (`IM12c`).
+- The key stays in `LabConnection`'s closure: `IM13c` proves it reaches
+  no storage, no cookie, no export and no message body; `IM12f` the
+  same for the endpoint token, the picture and the analysis.
+- No image and no analysis is stored anywhere: the front door has no
+  storage call (`IM2c`), and loading the page writes nothing (`IM7`).
+- The endpoint never echoes provider text (`IM6b`, `IM6f`, `IM6m`,
+  `IM6o`).
+
+### Production boundary
+
+`js/`, `assets/`, `vihuplanet/`, `index.html` and `studio.html` are
+untouched — `git diff --stat` against the branch base is empty for all
+of them, the build stamps still read 0769, `arrangementNodesMax` is
+still eight, and the Shape Lab still loads no file that mounts the
+Ether. What changed outside the Lab is `supabase/functions/lab-generate`
+(the Lab's own endpoint) and its runbook.
+
+### Files
+
+`tools/ether-mystery-lab/labImagine.js` · `labArtworkData.js` ·
+`artwork/` · `labConnection.js` (imagine, understand) · `shape.html` ·
+`supabase/functions/lab-generate/index.ts` (LAB2) ·
+`supabase/DEPLOY_lab_generate.md` ·
+`tools/ether-mystery-lab-test/run-lab-tests.js` section `IM` ·
+`tools/ether-mystery-lab-test/real-understanding.js` ·
+`tools/ether-mystery-lab-test/shots/imagine/`
