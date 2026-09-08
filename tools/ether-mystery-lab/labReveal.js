@@ -19,7 +19,7 @@
 //
 // WHAT IS HERE.
 //   - The DATA MODEL: a feature is a name, one of SEVEN generic visual
-//     types, an ANCHOR into the authored figure (two light indices),
+//     types, two of the author's LIGHTS it is anchored to (indices),
 //     a placement (offset, size, angle) and a few numeric parameters.
 //   - The SANITIZER: deny by shape (Decision 33). An unknown key at any
 //     depth is refused by name, every number is clamped to a written
@@ -141,8 +141,8 @@
   };
 
   // What a feature record may hold, and nothing else.
-  var FEATURE_KEYS = ['id', 'name', 'type', 'anchor', 'offset', 'size', 'angle', 'params'];
-  var ANCHOR_KEYS = ['a', 'b'];
+  var FEATURE_KEYS = ['id', 'name', 'type', 'lights', 'offset', 'size', 'angle', 'params'];
+  var LIGHTS_KEYS = ['a', 'b'];
   var BLOCK_KEYS = ['durationS', 'features'];
 
   // A name may never carry the product's boundary vocabulary: nothing
@@ -195,12 +195,16 @@
     var name = cleanName(raw.name);
     if (!name) reasons.push('bad-name:' + i);
     else if (FORBIDDEN_WORDS.test(name)) reasons.push('forbidden-name:' + i);
-    var anchor = raw.anchor;
-    if (!anchor || typeof anchor !== 'object' || Array.isArray(anchor)) { reasons.push('bad-anchor:' + i); anchor = { a: 0, b: null }; }
-    else Object.keys(anchor).forEach(function (k) { if (ANCHOR_KEYS.indexOf(k) === -1) reasons.push('unknown-key:features[' + i + '].anchor.' + k); });
-    var a = anchor.a, b = anchor.b === undefined ? null : anchor.b;
-    if (!Number.isInteger(a) || a < 0 || (isNum(pointCount) && a >= pointCount)) reasons.push('bad-anchor-a:' + i);
-    if (b !== null && (!Number.isInteger(b) || b < 0 || (isNum(pointCount) && b >= pointCount) || b === a)) reasons.push('bad-anchor-b:' + i);
+    // `lights` — the two of the author's own lights a feature is anchored
+    // to, as INDICES into the figure. Deliberately not called `anchor`:
+    // the blueprint's `anchor` is a coordinate on the reference outline,
+    // and a scan for that word must never find one of these.
+    var lights = raw.lights;
+    if (!lights || typeof lights !== 'object' || Array.isArray(lights)) { reasons.push('bad-lights:' + i); lights = { a: 0, b: null }; }
+    else Object.keys(lights).forEach(function (k) { if (LIGHTS_KEYS.indexOf(k) === -1) reasons.push('unknown-key:features[' + i + '].lights.' + k); });
+    var a = lights.a, b = lights.b === undefined ? null : lights.b;
+    if (!Number.isInteger(a) || a < 0 || (isNum(pointCount) && a >= pointCount)) reasons.push('bad-light-a:' + i);
+    if (b !== null && (!Number.isInteger(b) || b < 0 || (isNum(pointCount) && b >= pointCount) || b === a)) reasons.push('bad-light-b:' + i);
     var off = raw.offset === undefined ? [0, 0] : raw.offset;
     if (!Array.isArray(off) || off.length !== 2 || !isNum(off[0]) || !isNum(off[1])) { reasons.push('bad-offset:' + i); off = [0, 0]; }
     var size = raw.size === undefined ? 1 : raw.size;
@@ -218,7 +222,7 @@
     var id = typeof raw.id === 'string' && /^rf-[a-z0-9]{1,12}$/.test(raw.id) ? raw.id : 'rf-' + (i + 1);
     return {
       id: id, name: name, type: type || 'glow',
-      anchor: { a: Number.isInteger(a) ? a : 0, b: b },
+      lights: { a: Number.isInteger(a) ? a : 0, b: b },
       offset: [round2(clamp(off[0], -LIMITS.offset, LIMITS.offset)), round2(clamp(off[1], -LIMITS.offset, LIMITS.offset))],
       size: round2(clamp(size, LIMITS.size[0], LIMITS.size[1])),
       angle: Math.round(clamp(angle, LIMITS.angle[0], LIMITS.angle[1])),
@@ -252,11 +256,11 @@
   function onPointDeleted(features, i) {
     var kept = [], dropped = [];
     (features || []).forEach(function (f) {
-      var a = f.anchor.a, b = f.anchor.b;
+      var a = f.lights.a, b = f.lights.b;
       if (a === i || b === i) { dropped.push(f.name); return; }
       var g = JSON.parse(JSON.stringify(f));
-      if (a > i) g.anchor.a = a - 1;
-      if (b !== null && b > i) g.anchor.b = b - 1;
+      if (a > i) g.lights.a = a - 1;
+      if (b !== null && b > i) g.lights.b = b - 1;
       kept.push(g);
     });
     return { features: kept, dropped: dropped };
@@ -268,7 +272,7 @@
       id: 'rf-' + String(seq || 1).toString(36),
       name: cleanName(name) || type.toUpperCase(),
       type: type,
-      anchor: { a: Number.isInteger(a) ? a : 0, b: (Number.isInteger(b) && b !== a) ? b : null },
+      lights: { a: Number.isInteger(a) ? a : 0, b: (Number.isInteger(b) && b !== a) ? b : null },
       offset: [0, 0], size: 1, angle: 0,
       params: defaults(type)
     };
@@ -292,9 +296,9 @@
   }
 
   function frameOf(f, P) {
-    var A = P[f.anchor.a];
+    var A = P[f.lights.a];
     if (!A) return null;
-    var B = f.anchor.b === null ? centroid(P) : P[f.anchor.b];
+    var B = f.lights.b === null ? centroid(P) : P[f.lights.b];
     if (!B) return null;
     var dx = B[0] - A[0], dy = B[1] - A[1];
     var unit = Math.hypot(dx, dy);

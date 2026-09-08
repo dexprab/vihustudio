@@ -2489,7 +2489,7 @@ BESIDE the puzzle geometry and never inside it. A feature is:
 { id: 'rf-1',                     // opaque
   name: 'MANE',                   // a label — capitals, letters and spaces, ≤ 24; never shown to a child
   type: 'contour',                // one of SEVEN generic primitives
-  anchor: { a: 0, b: 1 },         // two of the AUTHOR'S OWN lights (b may be null = the figure's centre)
+  lights: { a: 0, b: 1 },         // two of the AUTHOR'S OWN lights, as INDICES (b may be null = the figure's centre) — never `anchor`, which is the blueprint's coordinate
   offset: [0.1, 0],               // in frame units (|AB| = 1), along/across the A→B frame
   size: 1, angle: 0,              // scale and turn of the feature in that frame
   params: { strands: 11, radius: 0.62, sweep: 310, wave: 0.35, spread: 0.7, mode: 'around' } }
@@ -2497,7 +2497,7 @@ BESIDE the puzzle geometry and never inside it. A feature is:
 
 **Deny by shape.** `LabReveal.sanitize(block, pointCount)` returns a
 clean copy built field by field and REFUSES BY NAME: an unknown key at
-any depth (`unknown-key:features[0].anchor.c`), a name carrying the
+any depth (`unknown-key:features[0].lights.c`), a name carrying the
 product's boundary vocabulary (card, stars, constellation, memory,
 email, story, companion, key, token…), an anchor past the figure or
 onto itself, an unknown type, a ninth feature, a non-object. Every

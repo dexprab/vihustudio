@@ -50,9 +50,9 @@
       joins: ['0-1', '1-2', '2-3', '1-4', '2-5', '4-6', '5-6', '0-7'],
       missing: [0, 4],
       features: [
-        { id: 'rf-1', name: 'MANE', type: 'contour', anchor: { a: 0, b: 1 }, offset: [0.1, 0], size: 1, angle: 0,
+        { id: 'rf-1', name: 'MANE', type: 'contour', lights: { a: 0, b: 1 }, offset: [0.1, 0], size: 1, angle: 0,
           params: { strands: 11, radius: 0.62, sweep: 310, wave: 0.35, spread: 0.7, mode: 'around' } },
-        { id: 'rf-2', name: 'TAIL TUFT', type: 'contour', anchor: { a: 3, b: 2 }, offset: [0, 0], size: 1, angle: 0,
+        { id: 'rf-2', name: 'TAIL TUFT', type: 'contour', lights: { a: 3, b: 2 }, offset: [0, 0], size: 1, angle: 0,
           params: { strands: 6, radius: 0.32, sweep: 130, wave: 0.7, spread: 0.3, mode: 'radial' } }
       ] }),
 
@@ -66,9 +66,9 @@
       joins: ['0-1', '1-2', '2-3', '1-4', '2-5', '4-6', '5-6', '0-7'],
       missing: [3, 2],
       features: [
-        { id: 'rf-1', name: 'BODY STRIPES', type: 'lines', anchor: { a: 1, b: 2 }, offset: [0, 0.18], size: 1, angle: 0,
+        { id: 'rf-1', name: 'BODY STRIPES', type: 'lines', lights: { a: 1, b: 2 }, offset: [0, 0.18], size: 1, angle: 0,
           params: { count: 9, length: 0.42, tilt: 78, curve: 0.4, taper: 0.75 } },
-        { id: 'rf-2', name: 'FACE MARKINGS', type: 'lines', anchor: { a: 0, b: 1 }, offset: [0.05, 0.05], size: 0.75, angle: 0,
+        { id: 'rf-2', name: 'FACE MARKINGS', type: 'lines', lights: { a: 0, b: 1 }, offset: [0.05, 0.05], size: 0.75, angle: 0,
           params: { count: 4, length: 0.36, tilt: 60, curve: 0.5, taper: 0.4 } }
       ] }),
 
@@ -82,13 +82,13 @@
       joins: ['0-1', '1-2', '2-3', '3-4', '2-5', '5-6', '3-6', '2-7'],
       missing: [4, 0],
       features: [
-        { id: 'rf-1', name: 'WING MEMBRANE', type: 'fill', anchor: { a: 5, b: 3 }, offset: [0, 0], size: 1, angle: 0,
+        { id: 'rf-1', name: 'WING MEMBRANE', type: 'fill', lights: { a: 5, b: 3 }, offset: [0, 0], size: 1, angle: 0,
           params: { shape: 'membrane', bulge: 0.32, width: 0.8 } },
-        { id: 'rf-2', name: 'WING MEMBRANE FRONT', type: 'fill', anchor: { a: 2, b: 5 }, offset: [0, 0], size: 1, angle: 0,
+        { id: 'rf-2', name: 'WING MEMBRANE FRONT', type: 'fill', lights: { a: 2, b: 5 }, offset: [0, 0], size: 1, angle: 0,
           params: { shape: 'membrane', bulge: 0.28, width: 0.8 } },
-        { id: 'rf-3', name: 'HORNS', type: 'spike', anchor: { a: 0, b: 1 }, offset: [-0.05, -0.12], size: 1, angle: -35,
+        { id: 'rf-3', name: 'HORNS', type: 'spike', lights: { a: 0, b: 1 }, offset: [-0.05, -0.12], size: 1, angle: -35,
           params: { count: 2, length: 0.62, width: 0.14, curve: 0.45, spread: 26, along: false } },
-        { id: 'rf-4', name: 'SPINE RIDGES', type: 'spike', anchor: { a: 1, b: 3 }, offset: [0, -0.06], size: 1, angle: 0,
+        { id: 'rf-4', name: 'SPINE RIDGES', type: 'spike', lights: { a: 1, b: 3 }, offset: [0, -0.06], size: 1, angle: 0,
           params: { count: 6, length: 0.17, width: 0.09, curve: 0.2, spread: 0, along: true } }
       ], durationS: 4.5 }),
 
@@ -102,11 +102,11 @@
       joins: ['0-1', '1-2', '1-3', '3-4', '4-5', '5-6', '5-7', '6-7'],
       missing: [1, 4],
       features: [
-        { id: 'rf-1', name: 'FLOWING HAIR', type: 'contour', anchor: { a: 0, b: 1 }, offset: [0.05, 0.05], size: 1, angle: 150,
+        { id: 'rf-1', name: 'FLOWING HAIR', type: 'contour', lights: { a: 0, b: 1 }, offset: [0.05, 0.05], size: 1, angle: 150,
           params: { strands: 9, radius: 1.7, sweep: 75, wave: 0.7, spread: 0.4, mode: 'radial' } },
-        { id: 'rf-2', name: 'TAIL FIN', type: 'fill', anchor: { a: 5, b: 6 }, offset: [0, 0], size: 1.05, angle: 20,
+        { id: 'rf-2', name: 'TAIL FIN', type: 'fill', lights: { a: 5, b: 6 }, offset: [0, 0], size: 1.05, angle: 20,
           params: { shape: 'fan', bulge: 0.55, width: 0.8 } },
-        { id: 'rf-3', name: 'SCALES', type: 'texture', anchor: { a: 3, b: 5 }, offset: [0, 0], size: 1, angle: 0,
+        { id: 'rf-3', name: 'SCALES', type: 'texture', lights: { a: 3, b: 5 }, offset: [0, 0], size: 1, angle: 0,
           params: { rows: 6, cols: 5, dot: 0.04, width: 0.9, height: 0.36 } }
       ] }),
 
@@ -120,11 +120,11 @@
       joins: ['0-1', '0-2', '2-3', '0-4', '3-5', '4-6', '5-6', '0-7'],
       missing: [0, 4],
       features: [
-        { id: 'rf-1', name: 'TUSKS', type: 'spike', anchor: { a: 0, b: 2 }, offset: [-0.08, 0.22], size: 1, angle: 165,
+        { id: 'rf-1', name: 'TUSKS', type: 'spike', lights: { a: 0, b: 2 }, offset: [-0.08, 0.22], size: 1, angle: 165,
           params: { count: 2, length: 0.55, width: 0.06, curve: -0.5, spread: 10, along: false } },
-        { id: 'rf-2', name: 'EAR CONTOUR', type: 'contour', anchor: { a: 7, b: 0 }, offset: [0.05, 0], size: 1, angle: 0,
+        { id: 'rf-2', name: 'EAR CONTOUR', type: 'contour', lights: { a: 7, b: 0 }, offset: [0.05, 0], size: 1, angle: 0,
           params: { strands: 3, radius: 0.7, sweep: 250, wave: 0.25, spread: 0.3, mode: 'around' } },
-        { id: 'rf-3', name: 'TRUNK DETAIL', type: 'lines', anchor: { a: 0, b: 1 }, offset: [0, 0], size: 1, angle: 0,
+        { id: 'rf-3', name: 'TRUNK DETAIL', type: 'lines', lights: { a: 0, b: 1 }, offset: [0, 0], size: 1, angle: 0,
           params: { count: 8, length: 0.12, tilt: 90, curve: 0.2, taper: 0.3 } }
       ] }),
 
@@ -138,13 +138,13 @@
       joins: ['0-1', '1-2', '2-3', '1-4', '4-5', '1-6', '6-7'],
       missing: [3, 5],
       features: [
-        { id: 'rf-1', name: 'LEFT FEATHERS', type: 'lines', anchor: { a: 4, b: 5 }, offset: [0, 0.12], size: 1, angle: 0,
+        { id: 'rf-1', name: 'LEFT FEATHERS', type: 'lines', lights: { a: 4, b: 5 }, offset: [0, 0.12], size: 1, angle: 0,
           params: { count: 7, length: 0.42, tilt: 55, curve: 0.3, taper: 0.4 } },
-        { id: 'rf-2', name: 'RIGHT FEATHERS', type: 'lines', anchor: { a: 6, b: 7 }, offset: [0, -0.12], size: 1, angle: 0,
+        { id: 'rf-2', name: 'RIGHT FEATHERS', type: 'lines', lights: { a: 6, b: 7 }, offset: [0, -0.12], size: 1, angle: 0,
           params: { count: 7, length: 0.42, tilt: -55, curve: -0.3, taper: 0.4 } },
-        { id: 'rf-3', name: 'EYE', type: 'glow', anchor: { a: 0, b: 1 }, offset: [-0.1, 0.16], size: 1, angle: 0,
+        { id: 'rf-3', name: 'EYE', type: 'glow', lights: { a: 0, b: 1 }, offset: [-0.1, 0.16], size: 1, angle: 0,
           params: { radius: 0.16, intensity: 0.9, pulse: 0.35 } },
-        { id: 'rf-4', name: 'OTHER EYE', type: 'glow', anchor: { a: 0, b: 1 }, offset: [-0.1, -0.16], size: 1, angle: 0,
+        { id: 'rf-4', name: 'OTHER EYE', type: 'glow', lights: { a: 0, b: 1 }, offset: [-0.1, -0.16], size: 1, angle: 0,
           params: { radius: 0.16, intensity: 0.9, pulse: 0.35 } }
       ] })
   ];

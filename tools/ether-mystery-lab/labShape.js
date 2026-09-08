@@ -864,9 +864,9 @@
     var rows = false;
     if (patch.type !== undefined && patch.type !== f.type) { f.type = patch.type; f.params = R.defaults(patch.type); rows = true; }
     if (patch.name !== undefined) f.name = patch.name;
-    if (patch.anchor) {
-      if (patch.anchor.a !== undefined) f.anchor.a = patch.anchor.a;
-      if (patch.anchor.b !== undefined) f.anchor.b = patch.anchor.b;
+    if (patch.lights) {
+      if (patch.lights.a !== undefined) f.lights.a = patch.lights.a;
+      if (patch.lights.b !== undefined) f.lights.b = patch.lights.b;
       rows = true;
     }
     if (patch.offset !== undefined) f.offset = patch.offset;
@@ -1031,8 +1031,8 @@
         '<div class="rvhead">' +
           '<input type="text" class="rvname" data-rv-name value="' + esc(f.name) + '" maxlength="24" title="name — a label, never shown to a child">' +
           '<select data-rv-type title="visual type">' + R.TYPES.map(function (t) { return '<option value="' + t + '"' + (t === f.type ? ' selected' : '') + '>' + t + '</option>'; }).join('') + '</select>' +
-          '<label class="rvp">at light<select data-rv-a>' + lightOptions(f.anchor.a, false) + '</select></label>' +
-          '<label class="rvp">toward<select data-rv-b>' + lightOptions(f.anchor.b, true) + '</select></label>' +
+          '<label class="rvp">at light<select data-rv-a>' + lightOptions(f.lights.a, false) + '</select></label>' +
+          '<label class="rvp">toward<select data-rv-b>' + lightOptions(f.lights.b, true) + '</select></label>' +
           '<button class="quiet" data-rv-del title="delete this feature">×</button>' +
         '</div>' +
         '<div class="rvbody">' +
@@ -1054,12 +1054,12 @@
       row.querySelector('[data-rv-type]').addEventListener('change', function (ev) { updateReveal(id, { type: ev.target.value }); });
       row.querySelector('[data-rv-a]').addEventListener('change', function (ev) {
         var a = Number(ev.target.value);
-        var r = updateReveal(id, { anchor: { a: a } });
+        var r = updateReveal(id, { lights: { a: a } });
         if (!r.ok) { say('A feature cannot point at the light it stands on — choose another light, or the centre.'); renderRevealRows(); }
       });
       row.querySelector('[data-rv-b]').addEventListener('change', function (ev) {
         var b = ev.target.value === '' ? null : Number(ev.target.value);
-        var r = updateReveal(id, { anchor: { b: b } });
+        var r = updateReveal(id, { lights: { b: b } });
         if (!r.ok) { say('A feature cannot point at the light it stands on — choose another light, or the centre.'); renderRevealRows(); }
       });
       row.querySelectorAll('[data-rv-off]').forEach(function (inp) {

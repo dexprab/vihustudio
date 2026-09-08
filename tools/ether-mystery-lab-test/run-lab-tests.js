@@ -929,13 +929,28 @@ async function sectionP() {
   // residue, and there is still exactly one Mystery engine.
   const teaseFrom = prev.indexOf('var TEASE = {');
   const teaseTo = prev.indexOf('function lookPoint');
+  // The REVEAL is a second Lab overlay of exactly the tease's kind
+  // (reveal-only creature features, drawn over the sky only after the
+  // interpreter's last join), so its drawing sits in its own block; and
+  // the pixel READER in the exports opens a context only to read it back
+  // (getImageData, never a stroke or a fill). Everything else in the
+  // file still draws nothing.
+  const revealFrom = prev.indexOf('function stopReveal()');
+  const revealTo = prev.indexOf('var lastRevealDone = null;');
+  const readerFrom = prev.indexOf('revealPixels: function');
+  const readerTo = prev.indexOf('stories: function', readerFrom);
+  const reader = prev.slice(readerFrom, readerTo);
   const draws = [];
   for (let at = prev.indexOf('getContext'); at !== -1;
        at = prev.indexOf('getContext', at + 1)) draws.push(at);
-  ck(teaseFrom > 0 && teaseTo > teaseFrom && draws.length > 0 &&
-     draws.every((i) => i > teaseFrom && i < teaseTo),
-    'P1k every stroke the preview makes is inside the tease overlay, and nowhere else',
-    draws.length + ' drawing call(s), all within the tease');
+  const inTease = (i) => i > teaseFrom && i < teaseTo;
+  const inReveal = (i) => i > revealFrom && i < revealTo;
+  const inReader = (i) => i > readerFrom && i < readerTo;
+  ck(teaseFrom > 0 && teaseTo > teaseFrom && revealFrom > 0 && revealTo > revealFrom && draws.length > 0 &&
+     draws.every((i) => inTease(i) || inReveal(i) || inReader(i)) && draws.some(inTease) && draws.some(inReveal) &&
+     /getImageData/.test(reader) && !/stroke|fill|arc\(|lineTo/.test(reader),
+    'P1k every stroke the preview makes is inside a Lab overlay — the tease or the reveal — and nowhere else; the one other context is a pixel reader',
+    draws.length + ' drawing call(s): tease ' + draws.filter(inTease).length + ', reveal ' + draws.filter(inReveal).length + ', reader ' + draws.filter(inReader).length);
   const teaseBlock = prev.slice(teaseFrom, teaseTo);
   ck(/instrument\(\)/.test(teaseBlock) &&
      !/candidate|shard|veil|coverRegions|residue|placePoints/.test(teaseBlock),
@@ -4916,9 +4931,14 @@ async function sectionAR() {
   const sug8 = B.suggestions(good, 8), sug12 = B.suggestions(good, 12);
   ck(sug8.length <= 8 && sug12.length <= 12 && sug8.every((s) => good.budgets['8'].indexOf(s.name) !== -1) && sug8.every((s) => typeof s.x === 'number'),
     'AR3j suggestions are the anchors of the features the blueprint names for that budget, never more than the budget');
-  ck(JSON.stringify(Object.keys(B.SCHEMA.top).sort()) === JSON.stringify(['budgets', 'features', 'silhouette', 'sketch', 'subject']) &&
+  // (`reveal` joined the schema with the reveal-only features sprint: a
+  // SEMANTIC list — a name, a kind from the seven, the feature it belongs
+  // to — with no field for a point, a shape or a coordinate, which is
+  // asserted beside the top-level key set.)
+  ck(JSON.stringify(Object.keys(B.SCHEMA.top).sort()) === JSON.stringify(['budgets', 'features', 'reveal', 'silhouette', 'sketch', 'subject']) &&
+     JSON.stringify(Object.keys(B.SCHEMA.reveal).sort()) === JSON.stringify(['kind', 'name', 'near']) &&
      ['joins', 'gaps', 'missing', 'hint', 'tease', 'candidate'].every((k) => B.FORBIDDEN_KEYS.indexOf(k) !== -1),
-    'AR3k the schema has no field for final points, joins, gaps or a hint — and those very keys are forbidden');
+    'AR3k the schema has no field for final points, joins, gaps or a hint — and those very keys are forbidden; its reveal list is names and kinds only');
 
   // ---- the browser half ----
   const server = spawn('node', ['tools/bring-it-alive/test/serve.js', String(PORT)], { cwd: ROOT, stdio: 'ignore' });
@@ -5139,13 +5159,21 @@ async function sectionAR() {
       S.toggleJoin(0, 1); S.toggleJoin(1, 2); S.toggleJoin(2, 3); S.toggleGap(1);
       const r = S.save();
       const rec = S.list().filter((x) => x.id === r.id)[0];
-      return { ok: r.ok, keys: Object.keys(rec).sort(), authoring: rec.authoring, json: JSON.stringify(rec), storeKeys: Object.keys(localStorage), exportHas: /sketch|anchor|silhouette|feature|ellipse|polygon/i.test(S.exportJSON()) };
+      // The reveal block (reveal-only features, its own sprint) is set
+      // aside and scanned on its own terms: its `features` are the
+      // PAYOFF's list and its `lights` are two INDICES into the author's
+      // figure — never a coordinate, never the blueprint's `anchor`.
+      const noReveal = (x) => { const c = Object.assign({}, x); delete c.reveal; return c; };
+      return { ok: r.ok, keys: Object.keys(rec).sort(), authoring: rec.authoring, json: JSON.stringify(noReveal(rec)), revealJson: JSON.stringify(rec.reveal),
+               revealLightsAreIndices: (rec.reveal.features || []).every((f) => Number.isInteger(f.lights.a) && (f.lights.b === null || Number.isInteger(f.lights.b))),
+               storeKeys: Object.keys(localStorage), exportHas: /sketch|anchor|silhouette|feature|ellipse|polygon/i.test(JSON.stringify(S.list().map(noReveal))) };
     });
-    const allowedKeys = ['approved', 'authoring', 'budget', 'createdAt', 'hint', 'id', 'joins', 'judgement', 'labVersion', 'missing', 'name', 'notes', 'points', 'roles', 'tease', 'updatedAt'];
+    const allowedKeys = ['approved', 'authoring', 'budget', 'createdAt', 'hint', 'id', 'joins', 'judgement', 'labVersion', 'missing', 'name', 'notes', 'points', 'reveal', 'roles', 'tease', 'updatedAt'];
     ck(saved.ok && saved.keys.every((k) => allowedKeys.indexOf(k) !== -1) && JSON.stringify(Object.keys(saved.authoring).sort()) === JSON.stringify(['referenceUsed', 'source', 'subject']),
       'AR10 the saved fixture is the author\'s geometry plus allowed metadata — and the authoring note is three words about HOW, never geometry', saved.keys.join(','));
-    ck(!/sketch|anchor|silhouette|feature|ellipse|polygon/i.test(saved.json) && !saved.exportHas && saved.storeKeys.length === 1 && saved.storeKeys[0] === 'vihu.lab.shapes',
-      'AR10b no sketch, no anchor, no feature list in the fixture or the export — the reference cannot enter final creature data; still ONE storage key');
+    ck(!/sketch|anchor|silhouette|feature|ellipse|polygon/i.test(saved.json) && !saved.exportHas && saved.storeKeys.length === 1 && saved.storeKeys[0] === 'vihu.lab.shapes' &&
+       !/anchor|sketch|silhouette|ellipse|polygon/i.test(saved.revealJson) && saved.revealLightsAreIndices,
+      'AR10b no sketch, no anchor, no feature list in the fixture or the export — the reference cannot enter final creature data; still ONE storage key (and the reveal block beside it holds light indices, never an anchor)');
     const cands = await page.evaluate(() => {
       const S = window.ShapeLab;
       const norm = (c) => JSON.stringify(c).replace(/lab-shape-\d+/g, 'lab-shape-N');
@@ -5841,7 +5869,9 @@ async function sectionAP() {
     ck(JSON.stringify(approved.a.points) === JSON.stringify(approved.fig.points) && JSON.stringify(approved.a.joins) === JSON.stringify(approved.fig.joins) && JSON.stringify(approved.a.missing) === JSON.stringify(approved.fig.gaps) && approved.a.budget === 8 &&
        approved.a.roles.length === 6 && approved.a.roles.every((r) => typeof r.light === 'number' && /^[A-Z ]+$/.test(r.feature)) && approved.a.roles.every((r) => r.feature === approved.roles[r.light]) && approved.a.subject === 'Lion' && approved.a.name === 'Lion',
       'AP8b the artifact is exactly the authored geometry — points, joins, gaps, the selected budget — with each accepted light\'s feature association, the freehand light unnamed', JSON.stringify(approved.a.roles));
-    ck(JSON.stringify(Object.keys(approved.a).sort()) === JSON.stringify(['approvedAt', 'budget', 'joins', 'kind', 'labVersion', 'missing', 'name', 'points', 'roles', 'subject']) &&
+    // (`sections` and `reveal` joined the artifact with the reveal-only
+    // features sprint — the puzzle geometry and the payoff, named apart.)
+    ck(JSON.stringify(Object.keys(approved.a).sort()) === JSON.stringify(['approvedAt', 'budget', 'joins', 'kind', 'labVersion', 'missing', 'name', 'points', 'reveal', 'roles', 'sections', 'subject']) &&
        !/outline|sketch|anchor|landmark|silhouette|archetype|paths|blueprint|card|stars|constellation|memor|story|companion|key|email|username/i.test(JSON.stringify(approved.a)),
       'AP8c and holds nothing else: no outline, no sketch, no landmark, no blueprint, nothing private, no key', Object.keys(approved.a).join(','));
     ck(!approved.outHidden && approved.outText.indexOf('vihu-shape-lab-approved-figure') !== -1 && approved.sv.ok && approved.recApproved && approved.recApproved.approvedAt === approved.a.approvedAt && /vihu-shape-lab-approved-figure/.test(approved.exp) && approved.storeKeys.join() === 'vihu.lab.shapes',
@@ -6004,44 +6034,44 @@ async function sectionRV() {
   const R = sb.LabReveal, D = sb.LabRevealData;
   ck(!!R && R.TYPES.join(',') === 'contour,fill,lines,texture,spike,glow,motes' && Object.keys(R.PARAMS).join(',') === R.TYPES.join(','),
     'RV2  seven generic primitives — contour · fill · lines · texture · spike · glow · motes — each with its parameters written down');
-  const good = { durationS: 4, features: [{ id: 'rf-1', name: 'Mane', type: 'contour', anchor: { a: 0, b: 1 }, offset: [0.1, 0], size: 1, angle: 0, params: { strands: 9 } }] };
+  const good = { durationS: 4, features: [{ id: 'rf-1', name: 'Mane', type: 'contour', lights: { a: 0, b: 1 }, offset: [0.1, 0], size: 1, angle: 0, params: { strands: 9 } }] };
   const s1 = R.sanitize(good, 8);
   ck(s1.ok && s1.features.length === 1 && s1.features[0].name === 'MANE' && s1.features[0].params.strands === 9 && s1.features[0].params.radius === R.PARAMS.contour.radius.def,
     'RV2b a well-formed feature is accepted: the name tidied to capitals, a named parameter kept, the rest at their written defaults');
   const bads = {
     'unknown-key:extra': R.sanitize({ durationS: 4, features: [], extra: 1 }, 8),
-    'unknown-key:features[0].url': R.sanitize({ features: [{ name: 'X', type: 'glow', anchor: { a: 0, b: null }, url: 'http://x' }] }, 8),
-    'unknown-key:features[0].anchor.c': R.sanitize({ features: [{ name: 'X', type: 'glow', anchor: { a: 0, b: null, c: 2 } }] }, 8),
-    'unknown-key:features[0].params.zzz': R.sanitize({ features: [{ name: 'X', type: 'glow', anchor: { a: 0, b: null }, params: { zzz: 1 } }] }, 8),
-    'forbidden-name:0': R.sanitize({ features: [{ name: 'MAGIC CARD', type: 'glow', anchor: { a: 0, b: null } }] }, 8),
-    'bad-anchor-a:0': R.sanitize({ features: [{ name: 'X', type: 'glow', anchor: { a: 8, b: null } }] }, 8),
-    'bad-anchor-b:0': R.sanitize({ features: [{ name: 'X', type: 'glow', anchor: { a: 2, b: 2 } }] }, 8),
-    'bad-type:0': R.sanitize({ features: [{ name: 'X', type: 'sprite', anchor: { a: 0, b: null } }] }, 8),
-    'too-many-features:9': R.sanitize({ features: Array.from({ length: 9 }, (_, i) => ({ name: 'F' + i, type: 'glow', anchor: { a: 0, b: null } })) }, 8),
+    'unknown-key:features[0].url': R.sanitize({ features: [{ name: 'X', type: 'glow', lights: { a: 0, b: null }, url: 'http://x' }] }, 8),
+    'unknown-key:features[0].lights.c': R.sanitize({ features: [{ name: 'X', type: 'glow', lights: { a: 0, b: null, c: 2 } }] }, 8),
+    'unknown-key:features[0].params.zzz': R.sanitize({ features: [{ name: 'X', type: 'glow', lights: { a: 0, b: null }, params: { zzz: 1 } }] }, 8),
+    'forbidden-name:0': R.sanitize({ features: [{ name: 'MAGIC CARD', type: 'glow', lights: { a: 0, b: null } }] }, 8),
+    'bad-light-a:0': R.sanitize({ features: [{ name: 'X', type: 'glow', lights: { a: 8, b: null } }] }, 8),
+    'bad-light-b:0': R.sanitize({ features: [{ name: 'X', type: 'glow', lights: { a: 2, b: 2 } }] }, 8),
+    'bad-type:0': R.sanitize({ features: [{ name: 'X', type: 'sprite', lights: { a: 0, b: null } }] }, 8),
+    'too-many-features:9': R.sanitize({ features: Array.from({ length: 9 }, (_, i) => ({ name: 'F' + i, type: 'glow', lights: { a: 0, b: null } })) }, 8),
     'not-an-object': R.sanitize([1, 2], 8)
   };
   const badOk = Object.keys(bads).every((k) => !bads[k].ok && bads[k].reasons.indexOf(k) !== -1 && bads[k].features.length === 0);
   ck(badOk, 'RV2c DENY BY SHAPE: an unknown key at any depth, a forbidden word in a name, an anchor past the figure or onto itself, an unknown type, a ninth feature and a non-object are each refused BY NAME and nothing is trimmed', Object.keys(bads).filter((k) => bads[k].ok || bads[k].reasons.indexOf(k) === -1).join(','));
-  const cl = R.sanitize({ durationS: 40, features: [{ name: 'X', type: 'glow', anchor: { a: 0, b: null }, offset: [9, -9], size: 99, angle: 400, params: { radius: 50, intensity: -3 } }] }, 8);
+  const cl = R.sanitize({ durationS: 40, features: [{ name: 'X', type: 'glow', lights: { a: 0, b: null }, offset: [9, -9], size: 99, angle: 400, params: { radius: 50, intensity: -3 } }] }, 8);
   ck(cl.ok && cl.durationS === 10 && cl.features[0].offset.join() === '2,-2' && cl.features[0].size === 4 && cl.features[0].angle === 180 && cl.features[0].params.radius === 2.5 && cl.features[0].params.intensity === 0,
     'RV2d every number is clamped to its written bound — duration, offset, size, angle and each parameter', JSON.stringify(cl.features[0]));
   ck(R.sanitize(undefined, 8).ok && R.sanitize(undefined, 8).features.length === 0 && R.sanitize(null, 8).ok,
     'RV2e a fixture with no reveal block at all is valid and simply has none');
   const del = R.onPointDeleted(R.sanitize({ features: [
-    { name: 'A', type: 'glow', anchor: { a: 0, b: 3 } }, { name: 'B', type: 'glow', anchor: { a: 3, b: null } }, { name: 'C', type: 'glow', anchor: { a: 5, b: 4 } }] }, 8).features, 3);
-  ck(del.dropped.join() === 'A,B' && del.features.length === 1 && del.features[0].anchor.a === 4 && del.features[0].anchor.b === 3,
+    { name: 'A', type: 'glow', lights: { a: 0, b: 3 } }, { name: 'B', type: 'glow', lights: { a: 3, b: null } }, { name: 'C', type: 'glow', lights: { a: 5, b: 4 } }] }, 8).features, 3);
+  ck(del.dropped.join() === 'A,B' && del.features.length === 1 && del.features[0].lights.a === 4 && del.features[0].lights.b === 3,
     'RV2f deleting a light drops every feature anchored to it and steps every later anchor down — a feature with no light has nowhere to be');
 
   // ---- RV3: the frame follows the AUTHORED lights ----
   const P = [[100, 100], [200, 100], [150, 200]];
-  const f = R.sanitize({ features: [{ name: 'X', type: 'glow', anchor: { a: 0, b: 1 }, offset: [0.5, 0.2] }] }, 3).features[0];
+  const f = R.sanitize({ features: [{ name: 'X', type: 'glow', lights: { a: 0, b: 1 }, offset: [0.5, 0.2] }] }, 3).features[0];
   const o1 = R.originOf(f, P), o2 = R.originOf(f, [[130, 140], [230, 140], [150, 200]]);
   const F1 = R.frameOf(f, P), F2 = R.frameOf(f, [[100, 100], [200, 200], [150, 200]]);
   ck(Math.abs(o2[0] - o1[0] - 30) < 1e-6 && Math.abs(o2[1] - o1[1] - 40) < 1e-6,
     'RV3  move the anchor light and the feature moves with it, exactly', o1.join() + ' → ' + o2.join());
   ck(Math.abs(F1.fx[0] - 1) < 1e-9 && Math.abs(F2.fx[0] - Math.SQRT1_2) < 1e-6 && Math.abs(F2.unit - Math.hypot(100, 100)) < 1e-6,
     'RV3b move the light it points TOWARD and the feature turns and scales with the part it belongs to');
-  const fc = R.sanitize({ features: [{ name: 'X', type: 'glow', anchor: { a: 2, b: null } }] }, 3).features[0];
+  const fc = R.sanitize({ features: [{ name: 'X', type: 'glow', lights: { a: 2, b: null } }] }, 3).features[0];
   const Fc = R.frameOf(fc, P);
   ck(Math.abs(Fc.ox - 150) < 1e-9 && Math.abs(Fc.oy - 200) < 1e-9 && Fc.unit > 0,
     'RV3c with no second light the frame points at the figure\'s own centre — a feature is always relative to the author\'s figure, never to the reference outline');
@@ -6143,7 +6173,7 @@ async function sectionRV() {
       out.forbidden = S.addReveal('glow', 0, null, 'MAGIC CARD');
       out.edit = S.updateReveal(out.add.id, { name: 'ridge', type: 'lines', offset: [0.3, -0.2], size: 1.5, angle: 20, params: { count: 9 } });
       out.after = S.reveal().features.filter((f) => f.id === out.add.id)[0];
-      out.same = S.updateReveal(out.add.id, { anchor: { b: 0 } });
+      out.same = S.updateReveal(out.add.id, { lights: { b: 0 } });
       out.dur = S.setRevealDuration(6.5);
       out.rm = S.removeReveal(out.add.id);
       out.count2 = S.reveal().features.length;
@@ -6187,7 +6217,7 @@ async function sectionRV() {
       return { dx: o2[0] - o1[0], dy: o2[1] - o1[1], k };
     });
     ck(Math.abs(follow.dx - follow.k * 0.3) < 2 && Math.abs(follow.dy) < 2, 'RV10 move the head light 0.3 to the right and the mane\'s origin moves 0.3 units to the right with it — the reveal follows the AUTHORED geometry', JSON.stringify(follow));
-    const dropped = await page.evaluate(() => { const S = ShapeLab; const before = S.reveal().features.map((f) => f.name + '@' + f.anchor.a); const r = S.deletePoint(3); return { before, r, after: S.reveal().features.map((f) => f.name + '@' + f.anchor.a + '>' + f.anchor.b), n: S.figure().points.length }; });
+    const dropped = await page.evaluate(() => { const S = ShapeLab; const before = S.reveal().features.map((f) => f.name + '@' + f.lights.a); const r = S.deletePoint(3); return { before, r, after: S.reveal().features.map((f) => f.name + '@' + f.lights.a + '>' + f.lights.b), n: S.figure().points.length }; });
     ck(dropped.r.ok && dropped.r.droppedReveal.join() === 'TAIL TUFT' && dropped.after.join() === 'MANE@0>1' && dropped.n === 7,
       'RV10b deleting the tail-tip light drops the tail tuft anchored to it, and the mane anchored to lights 0→1 is untouched', JSON.stringify(dropped));
 
@@ -6238,7 +6268,7 @@ async function sectionRV() {
       'RV13 reveal features are saved with the fixture, survive a reload, and travel in the export', back.names);
     const refused = await page.evaluate(() => {
       const S = ShapeLab;
-      const bad = JSON.parse(JSON.stringify(S.list()[0])); bad.id = 'shape-bad-reveal'; bad.reveal = { durationS: 4, features: [{ id: 'rf-1', name: 'X', type: 'glow', anchor: { a: 0, b: null }, src: 'http://x' }] };
+      const bad = JSON.parse(JSON.stringify(S.list()[0])); bad.id = 'shape-bad-reveal'; bad.reveal = { durationS: 4, features: [{ id: 'rf-1', name: 'X', type: 'glow', lights: { a: 0, b: null }, src: 'http://x' }] };
       const imp = S.importJSON(JSON.stringify({ fixtures: [bad] }));
       const arr = JSON.parse(localStorage.getItem(S.STORE_KEY)); arr.push(bad); localStorage.setItem(S.STORE_KEY, JSON.stringify(arr));
       const ld = S.load('shape-bad-reveal');
@@ -6264,7 +6294,7 @@ async function sectionRV() {
       'RV14 the approved artifact holds the puzzle geometry and, in its own named section, the reveal-only features — and says in words what each is');
     ck(JSON.stringify(ap.art.points) === JSON.stringify(ap.fig.points) && JSON.stringify(ap.art.joins) === JSON.stringify(ap.fig.joins) && JSON.stringify(ap.art.missing) === JSON.stringify(ap.fig.gaps) && ap.art.points.length === 8,
       'RV14b the puzzle geometry in the artifact is exactly the authored figure — no reveal feature became a point, a join or a gap');
-    ck(!/outline|sketch|blueprint|landmark|paths|silhouette|card|constellation|memor|email|username|token|http/i.test(ap.txt),
+    ck(!/outline|sketch|blueprint|landmark|paths|silhouette|anchor|card|constellation|memor|email|username|token|http/i.test(ap.txt),
       'RV14c the artifact carries no outline, sketch, blueprint, landmark, silhouette, identity or link — the reference was authoring help and is not persisted as reveal data');
     ck(ap.r1 && ap.cleared === null && ap.a2 && ap.saved,
       'RV14d editing a reveal feature clears the approval, exactly as editing the figure does; approving again refreezes both');
@@ -6289,7 +6319,7 @@ async function sectionRV() {
       const roles = S.roles();
       const ser = JSON.stringify(S.state());
       const panel = document.querySelector('[data-ref-reveal-list]') ? document.querySelector('[data-ref-reveal-list]').textContent : '';
-      return { bpReveal: bp.reveal, chips: chips.length, before, after: S.reveal().features.length, f, roleAt: roles[f.anchor.a], ser, panel, refOn: LabReference.isShowing() };
+      return { bpReveal: bp.reveal, chips: chips.length, before, after: S.reveal().features.length, f, roleAt: roles[f.lights.a], ser, panel, refOn: LabReference.isShowing() };
     });
     ck(Array.isArray(sug.bpReveal) && sug.bpReveal.length === 2 && sug.bpReveal[0].name === 'CREST' && sug.bpReveal[0].kind === 'contour' && sug.bpReveal[0].near === 'HEAD' && sug.chips === 2 && /crest/.test(sug.panel),
       'RV15 the blueprint may carry SEMANTIC reveal suggestions — a name, a kind from the seven, a feature it belongs to — listed in the panel and offered as one-press additions');
