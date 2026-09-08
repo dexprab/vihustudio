@@ -121,6 +121,22 @@
   .bp-s { font-size: 11px; padding: 1px 6px; border-radius: 10px; border: 1px dashed var(--line); color: var(--ink); }
   .bp-s.l2 { color: var(--dim); } .bp-s.l3 { color: var(--dim); opacity: .75; }
   .bp-s.focus { border-color: var(--mid); color: var(--mid); }
+  /* the Ether interpretation, read back as words */
+  .bp-interp { border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; margin: 2px 0 6px; font-size: 12px; }
+  .bp-interp.none { border-style: dashed; }
+  .bp-ir { display: grid; grid-template-columns: 84px 1fr; gap: 6px; align-items: baseline; padding: 2px 0; }
+  .bp-ik { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--dim); }
+  .bp-iv { color: var(--ink); line-height: 1.4; }
+  .bp-iv div { margin: 1px 0; }
+  .bp-s.own { border-style: solid; border-color: var(--gold); color: var(--gold); }
+  .bp-s.diag { border-style: solid; border-color: var(--mid); color: var(--mid); }
+  .bp-s.struct { border-style: solid; }
+  .bp-s.ronly { border-style: dotted; color: var(--dim); }
+  .bp-stance { display: inline-block; font-size: 11px; letter-spacing: .04em; padding: 1px 6px; border-radius: 4px; background: #23233a; margin-bottom: 2px; }
+  .bp-stance.do-not-draw-literally { color: var(--gold); }
+  .bp-cmp { border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; margin: 2px 0 6px; }
+  .bp-cmp > div { display: grid; grid-template-columns: 84px 1fr; gap: 6px; align-items: baseline; padding: 2px 0; }
+  .bp-cmp > div.note { display: block; }
   .flow li { margin: 1px 0; }
   /* REVEAL-ONLY FEATURES — the payoff's own canvas and rows. Never the
      two judging panes: those draw the puzzle and nothing else. */
@@ -221,6 +237,15 @@
       <input type="text" data-ref-subject placeholder="e.g. Tiger" autocomplete="off" maxlength="40" style="flex:1 1 140px">
       <button data-ref-generate class="primary">Generate reference</button>
     </div>
+    <label>Author idea — optional, one line: what you hope the figure feels like</label>
+    <input type="text" data-ref-idea placeholder="e.g. heavy and old, all mane, looking straight at you" autocomplete="off" maxlength="200">
+    <div class="note">Semantic only. It travels as its own line under the subject, never as the subject, and colours the assistant's <b>Ether interpretation</b> and reveal suggestions. Plain words and punctuation; nothing else is sent.</div>
+    <div class="row" style="margin-top:6px">
+      <label style="margin:0;flex:0 0 auto">Translation research set</label>
+      <select data-ref-research style="flex:1 1 120px"></select>
+      <button data-ref-research-load class="quiet">Load constructed blueprint</button>
+    </div>
+    <div class="note">Hand-written blueprints with an Ether interpretation, for judging the translation layer where no model is reachable. Labelled CONSTRUCTED everywhere they show — never a fixture, never called generated.</div>
     <div class="say ref-status" data-ref-status></div>
     <div class="note" data-ref-source></div>
     <details data-ref-trace-panel>
@@ -344,11 +369,11 @@
 <div><!-- right: blueprint, metrics, judgement, fixtures -->
   <section>
     <h2>Reference blueprint</h2>
-    <div class="legend"><b>BLUEPRINT</b> = semantic help from the assistant · <b>OUTLINE</b> = visual authoring guide · <b>ETHER FIGURE</b> = your own creation</div>
+    <div class="legend"><b>BLUEPRINT</b> = what the creature is · <b>ETHER INTERPRETATION</b> = how it should feel abstracted · <b>OUTLINE</b> = visual reference · <b>SUGGESTED POINTS</b> = landmarks · <b>ETHER FIGURE</b> = your own creation · <b>REVEAL</b> = temporary detail</div>
     <div data-ref-panel></div>
     <div class="row" style="margin-top:6px"><button data-ref-copy class="quiet" disabled>Show blueprint JSON</button></div>
     <textarea data-ref-json hidden readonly style="min-height:90px;font-family:ui-monospace,monospace;font-size:11px"></textarea>
-    <div class="note" style="margin-top:6px">Semantic help only: what makes the subject recognisable and where each budget is best spent. The outline is composed FROM these features as a visual guide; nothing here is a score, and nothing here becomes geometry unless you place it.</div>
+    <div class="note" style="margin-top:6px">Semantic help only: what makes the subject recognisable and where each budget is best spent. The outline is composed FROM these features as a visual guide; nothing here is a score, and nothing here becomes geometry unless you place it. The <b>Ether interpretation</b> is art direction in words — character, gesture, how the masses relate, what to exaggerate, what must survive, what not to draw literally, rhythm, movement — and it may only re-order the suggested points and keep a reveal-only characteristic out of them; it never places a light and never runs the reveal.</div>
   </section>
 
   <section>
@@ -379,15 +404,16 @@
 </div>
 </main>
 
-<script src="../../js/etherGrammar.js?lab=16379c0bab"></script>
-<script src="labKit.js?lab=16379c0bab"></script>
-<script src="labPreviewHost.js?lab=16379c0bab"></script>
-<script src="labConnection.js?lab=16379c0bab"></script>
-<script src="labBlueprint.js?lab=16379c0bab"></script>
-<script src="labOutline.js?lab=16379c0bab"></script>
-<script src="labReveal.js?lab=16379c0bab"></script>
-<script src="labRevealData.js?lab=16379c0bab"></script>
-<script src="labShape.js?lab=16379c0bab"></script>
-<script src="labReference.js?lab=16379c0bab"></script>
+<script src="../../js/etherGrammar.js?lab=5d1a440c67"></script>
+<script src="labKit.js?lab=5d1a440c67"></script>
+<script src="labPreviewHost.js?lab=5d1a440c67"></script>
+<script src="labConnection.js?lab=5d1a440c67"></script>
+<script src="labBlueprint.js?lab=5d1a440c67"></script>
+<script src="labOutline.js?lab=5d1a440c67"></script>
+<script src="labReveal.js?lab=5d1a440c67"></script>
+<script src="labRevealData.js?lab=5d1a440c67"></script>
+<script src="labShape.js?lab=5d1a440c67"></script>
+<script src="labReference.js?lab=5d1a440c67"></script>
+<script src="labTranslationData.js?lab=5d1a440c67"></script>
 </body>
 </html>

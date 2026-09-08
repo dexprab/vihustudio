@@ -4935,10 +4935,16 @@ async function sectionAR() {
   // SEMANTIC list — a name, a kind from the seven, the feature it belongs
   // to — with no field for a point, a shape or a coordinate, which is
   // asserted beside the top-level key set.)
-  ck(JSON.stringify(Object.keys(B.SCHEMA.top).sort()) === JSON.stringify(['budgets', 'features', 'reveal', 'silhouette', 'sketch', 'subject']) &&
+  // (`etherInterpretation` joined the schema with the Ether creature
+  // translation sprint: ART DIRECTION in words — character, gesture,
+  // architecture, proportion, what must survive, what not to draw
+  // literally, rhythm, movement, structural / reveal-only — with no field
+  // for a point, a shape or a coordinate at any depth, which section ET
+  // proves by trying; the top-level key set is widened by that one name.)
+  ck(JSON.stringify(Object.keys(B.SCHEMA.top).sort()) === JSON.stringify(['budgets', 'etherInterpretation', 'features', 'reveal', 'silhouette', 'sketch', 'subject']) &&
      JSON.stringify(Object.keys(B.SCHEMA.reveal).sort()) === JSON.stringify(['kind', 'name', 'near']) &&
      ['joins', 'gaps', 'missing', 'hint', 'tease', 'candidate'].every((k) => B.FORBIDDEN_KEYS.indexOf(k) !== -1),
-    'AR3k the schema has no field for final points, joins, gaps or a hint — and those very keys are forbidden; its reveal list is names and kinds only');
+    'AR3k the schema has no field for final points, joins, gaps or a hint — and those very keys are forbidden; its reveal list is names and kinds only, and its interpretation is words only');
 
   // ---- the browser half ----
   const server = spawn('node', ['tools/bring-it-alive/test/serve.js', String(PORT)], { cwd: ROOT, stdio: 'ignore' });
@@ -6412,6 +6418,426 @@ async function sectionRV() {
 }
 
 // ===================================================================
+// ET. ETHER CREATURE TRANSLATION V1 — the `etherInterpretation` layer of
+// the blueprint: art direction in WORDS, validated by shape, shown beside
+// the outline, consumed by nothing but the suggested-point ranking. What
+// this section proves: the schema is bounded and holds no geometry; a
+// section carrying a number, a digit, a coordinate, a shape key or code
+// is set aside BY NAME and the literal blueprint stands; a private word
+// refuses the whole reply as it always did; the author idea travels as
+// its own line and never as the subject; the request still carries
+// nothing private; a failed generation preserves the reference in use;
+// an older blueprint without the section validates and ranks exactly as
+// before; the outline, the suggestions, point editing, the reveal and the
+// approval are untouched by it; nothing production changed; and the five
+// constructed research blueprints go through the real validator and are
+// judged by looking (their shots are committed).
+// ===================================================================
+async function sectionET() {
+  console.log('\n== ET. Ether creature translation (the interpretation layer) ==');
+  const { chromium } = require('playwright');
+  const bpSrc = read('tools/ether-mystery-lab/labBlueprint.js');
+  const refSrc = read('tools/ether-mystery-lab/labReference.js');
+  const dataSrc = read('tools/ether-mystery-lab/labTranslationData.js');
+  const shapeHtml = read('tools/ether-mystery-lab/shape.html');
+  const bpStripped = stripComments(bpSrc), refStripped = stripComments(refSrc), dataStripped = stripComments(dataSrc);
+
+  // ---- ET1: production untouched ----
+  const grepProd = require('child_process').spawnSync('grep',
+    ['-rl', '-e', 'etherInterpretation', '-e', 'LabTranslationData', '-e', 'labTranslationData', '-e', 'Author idea',
+     path.join(ROOT, 'js'), path.join(ROOT, 'assets'), path.join(ROOT, 'vihuplanet'), path.join(ROOT, 'supabase'),
+     path.join(ROOT, 'index.html'), path.join(ROOT, 'studio.html')],
+    { encoding: 'utf8' }).stdout || '';
+  ck(grepProd.trim() === '', 'ET1  nothing a child loads names the interpretation layer or the research set', grepProd.trim() || 'clean');
+  ck(/arrangementNodesMax:\s*8\b/.test(read('js/etherGrammar.js')), 'ET1b the production point limit is still EIGHT');
+  const stamps = (read('index.html').match(/\?v=(\d{4})/g) || []).map((s) => s.slice(3));
+  ck(stamps.length > 0 && stamps.every((s) => s === '0769'), 'ET1c no build bump — every stamp on index.html still reads 0769');
+  ck(!/labTranslationData/.test(read('tools/ether-mystery-lab/preview.html') + read('tools/ether-mystery-lab/index.html') + read('tools/ether-mystery-lab/gallery.html')) && /labTranslationData\.js/.test(shapeHtml),
+    'ET1d the research set is loaded by the Shape Lab page alone — never by the preview, the Lab index or the gallery');
+
+  // ---- ET2: the schema, in Node ----
+  const sb = { console }; sb.window = undefined; sb.global = sb;
+  vm.runInNewContext(bpSrc, sb, { filename: 'labBlueprint.js' });
+  vm.runInNewContext(read('tools/ether-mystery-lab/labOutline.js'), sb, { filename: 'labOutline.js' });
+  vm.runInNewContext(dataSrc, sb, { filename: 'labTranslationData.js' });
+  const B = sb.LabBlueprint, O = sb.LabOutline, D = sb.LabTranslationData;
+  const INTERP_KEYS = ['character', 'gesture', 'architecture', 'proportion', 'diagnostic', 'abstraction', 'rhythm', 'movement', 'structural', 'revealOnly'];
+  ck(!!B.SCHEMA.top.etherInterpretation && JSON.stringify(Object.keys(B.SCHEMA.interpretation).sort()) === JSON.stringify(INTERP_KEYS.slice().sort()) &&
+     JSON.stringify(Object.keys(B.SCHEMA.proportionItem).sort()) === JSON.stringify(['feature', 'note', 'treat']) &&
+     JSON.stringify(Object.keys(B.SCHEMA.abstractionItem).sort()) === JSON.stringify(['doNot', 'instead', 'stance']),
+    'ET2  the schema has an optional etherInterpretation with exactly the ten named parts (A–H of the brief, plus structural / reveal-only), and its two sub-shapes');
+  const schemaKeys = Object.keys(B.SCHEMA.interpretation).concat(Object.keys(B.SCHEMA.proportionItem), Object.keys(B.SCHEMA.abstractionItem));
+  ck(schemaKeys.every((k) => B.INTERPRETATION_GEOMETRY_KEYS.indexOf(k) === -1 && B.FORBIDDEN_KEYS.indexOf(k) === -1) &&
+     ['points', 'x', 'y', 'coordinates', 'polygon', 'path', 'canvas', 'code', 'script', 'sketch', 'anchor'].every((k) => B.INTERPRETATION_GEOMETRY_KEYS.indexOf(k) !== -1) &&
+     Object.keys(B.SCHEMA.interpretation).every((k) => /string|array|object/.test(B.SCHEMA.interpretation[k])) &&
+     !Object.keys(B.SCHEMA.interpretation).some((k) => /\[x, y\]|coordinate|radians|number/i.test(B.SCHEMA.interpretation[k]) && !/never|no number/i.test(B.SCHEMA.interpretation[k])),
+    'ET2b no interpretation field is a geometry, code or forbidden key; every field is words, lists of words or a words object — and the geometry key list names points, coordinates, paths, canvas and code');
+  ck(B.STANCES.indexOf('do-not-draw-literally') !== -1 && /do-not-draw-literally/.test(B.SCHEMA.interpretation.abstraction) && /may say plainly/.test(B.SCHEMA.interpretation.abstraction),
+    'ET2c the schema explicitly allows the assistant to say "do not draw this literally"');
+
+  // ---- ET3: the fixture carries a generic interpretation, and it round-trips ----
+  const fx = B.fixture('Wibble');
+  const fxI = fx.ok ? fx.blueprint.etherInterpretation : null;
+  const leaves = [];
+  (function walk(o) { if (o && typeof o === 'object') Object.keys(o).forEach((k) => walk(o[k])); else leaves.push(o); })(fxI);
+  const fx2 = B.fixture('Tiger');
+  ck(fx.ok && fxI && fx.interpretationRefused === null && leaves.length > 10 && leaves.every((v) => typeof v === 'string') && leaves.every((v) => !/\d/.test(v)) &&
+     JSON.stringify(fx2.blueprint.etherInterpretation) === JSON.stringify(fxI) && /FIXTURE/.test(fxI.gesture),
+    'ET3  the fixture carries ONE generic interpretation for every subject, every leaf a digit-free string, and it says it is a fixture');
+  const round = B.validate(JSON.parse(JSON.stringify(fx.blueprint)));
+  ck(round.ok && round.repairs.length === 0 && JSON.stringify(round.blueprint) === JSON.stringify(fx.blueprint),
+    'ET3b a validated blueprint re-validates byte-identical, interpretation included — the clean copy is itself valid input');
+  const mutate = (fn) => { const c = JSON.parse(JSON.stringify(fx.blueprint)); fn(c); return B.validate(c); };
+
+  // ---- ET4: bounded fields — repaired where the schema has one home, set aside where it does not ----
+  const bounds = {
+    characterCut: mutate((c) => { c.etherInterpretation.character = ['a', 'b', 'c', 'd', 'e', 'f']; }),
+    characterNone: mutate((c) => { c.etherInterpretation.character = []; }),
+    characterCustom: mutate((c) => { c.etherInterpretation.character = ['Grumpy-Old']; }),
+    architectureCut: mutate((c) => { c.etherInterpretation.architecture = ['a', 'b', 'c', 'd', 'e', 'f', 'g']; }),
+    diagnosticFew: mutate((c) => { c.etherInterpretation.diagnostic = ['HEAD']; }),
+    diagnosticUnknown: mutate((c) => { c.etherInterpretation.diagnostic = ['HEAD', 'BODY', 'HALO']; }),
+    proportionUnknown: mutate((c) => { c.etherInterpretation.proportion = [{ feature: 'HALO', treat: 'exaggerate' }, { feature: 'HEAD', treat: 'inflate' }, { feature: 'TAIL', treat: 'compress' }]; }),
+    stanceUnknown: mutate((c) => { c.etherInterpretation.abstraction.stance = 'whatever'; }),
+    overlap: mutate((c) => { c.etherInterpretation.revealOnly = ['HEAD', 'CREST']; }),
+    longText: mutate((c) => { c.etherInterpretation.gesture = 'x'.repeat(300); }),
+    missingGesture: mutate((c) => { delete c.etherInterpretation.gesture; }),
+    animationWords: mutate((c) => { c.etherInterpretation.movement = 'animate it with a loop of keyframes'; })
+  };
+  ck(bounds.characterCut.ok && bounds.characterCut.blueprint.etherInterpretation.character.length === 4 && bounds.characterCut.repairs.some((r) => /character cut to 4/.test(r)) &&
+     bounds.architectureCut.ok && bounds.architectureCut.blueprint.etherInterpretation.architecture.length === 5,
+    'ET4  an over-long character or architecture list is cut to its bound and the cut is a NAMED repair');
+  ck(bounds.characterCustom.ok && bounds.characterCustom.blueprint.etherInterpretation.character[0] === 'grumpy old' && !B.isSuggestedWord('grumpy old') && B.isSuggestedWord('Poised'),
+    'ET4b the character vocabulary is suggested, not rigid — a word off the list is kept, tidied, and told apart from the list');
+  ck(bounds.diagnosticUnknown.ok && JSON.stringify(bounds.diagnosticUnknown.blueprint.etherInterpretation.diagnostic) === '["HEAD","BODY"]' && bounds.diagnosticUnknown.repairs.some((r) => /diagnostic "HALO" → dropped/.test(r)) &&
+     bounds.proportionUnknown.ok && bounds.proportionUnknown.blueprint.etherInterpretation.proportion.length === 1 && bounds.proportionUnknown.blueprint.etherInterpretation.proportion[0].feature === 'TAIL' && bounds.proportionUnknown.repairs.filter((r) => /proportion/.test(r)).length === 2,
+    'ET4c a name that is not a feature, and a treatment that is not exaggerate / compress / keep, are dropped and named — the section is kept');
+  ck(bounds.stanceUnknown.ok && bounds.stanceUnknown.blueprint.etherInterpretation.abstraction.stance === 'simplify' && bounds.stanceUnknown.repairs.some((r) => /stance "whatever" → simplify/.test(r)),
+    'ET4d an unknown abstraction stance falls to "simplify", named');
+  ck(bounds.overlap.ok && bounds.overlap.blueprint.etherInterpretation.revealOnly.indexOf('HEAD') === -1 && bounds.overlap.blueprint.etherInterpretation.revealOnly.indexOf('CREST') !== -1 && bounds.overlap.repairs.some((r) => /structural wins/.test(r)),
+    'ET4e a characteristic named both structural and reveal-only stays structural, and the conflict is named');
+  const setAside = (v, re) => v.ok && v.blueprint.etherInterpretation === null && Array.isArray(v.interpretationRefused) && v.interpretationRefused.some((r) => re.test(r)) && v.repairs.some((r) => /etherInterpretation set aside/.test(r));
+  ck(setAside(bounds.characterNone, /too-few:character/) && setAside(bounds.diagnosticFew, /too-few:diagnostic/) && setAside(bounds.missingGesture, /not-text:gesture/) && setAside(bounds.longText, /bad-text:gesture/) && setAside(bounds.animationWords, /animation-words:movement/),
+    'ET4f too few characters, too few diagnostic features, a missing gesture, an over-long text and animation vocabulary in "movement" each SET THE SECTION ASIDE by name — and the literal blueprint stands');
+
+  // ---- ET5: geometry cannot arrive through it ----
+  const geo = {
+    pointsKey: mutate((c) => { c.etherInterpretation.points = [[0.1, 0.2]]; }),
+    xyKeys: mutate((c) => { c.etherInterpretation.proportion[0].x = 0.4; }),
+    pathKey: mutate((c) => { c.etherInterpretation.abstraction.path = 'M 0 0 L 1 1'; }),
+    numberLeaf: mutate((c) => { c.etherInterpretation.architecture = ['a', 0.5]; }),
+    booleanLeaf: mutate((c) => { c.etherInterpretation.rhythm = true; }),
+    digitInText: mutate((c) => { c.etherInterpretation.gesture = 'lean the head 30 degrees to the left'; }),
+    coordString: mutate((c) => { c.etherInterpretation.rhythm = 'place the head at [0.3, -0.5] and the tail at (1.1, 0.4)'; }),
+    svgPath: mutate((c) => { c.etherInterpretation.movement = 'd="M 0 0 L 1 1"'; }),
+    polygonInList: mutate((c) => { c.etherInterpretation.abstraction.instead = [{ polygon: [[0, 0]] }]; }),
+    nestedObject: mutate((c) => { c.etherInterpretation.character = [{ word: 'poised' }]; })
+  };
+  const geoRefused = Object.keys(geo).filter((k) => !(geo[k].ok && geo[k].blueprint.etherInterpretation === null && geo[k].interpretationRefused));
+  ck(geoRefused.length === 0, 'ET5  ' + Object.keys(geo).length + ' ways of smuggling geometry into the interpretation — a points key, x/y, a path, a number, a boolean, a digit, a coordinate string, an SVG path, a nested shape, a nested object — every one sets the section aside and keeps the blueprint', geoRefused.join(','));
+  ck(/geometry-key:\.points/.test(geo.pointsKey.interpretationRefused.join()) && /geometry-key:\.proportion\[0\]\.x/.test(geo.xyKeys.interpretationRefused.join()) && /geometry-key:\.abstraction\.path/.test(geo.pathKey.interpretationRefused.join()) &&
+     /not-text:\.architecture\[1\]/.test(geo.numberLeaf.interpretationRefused.join()) && /digit:gesture/.test(geo.digitInText.interpretationRefused.join()) && /(digit|geometric-text):rhythm/.test(geo.coordString.interpretationRefused.join()) && /(digit|geometric-text):movement/.test(geo.svgPath.interpretationRefused.join()),
+    'ET5b each refusal names the key or the field it found the geometry in');
+  ck(Object.keys(geo).every((k) => JSON.stringify(Object.assign({}, geo[k].blueprint, { etherInterpretation: null })) === JSON.stringify(Object.assign({}, fx.blueprint, { etherInterpretation: null }))),
+    'ET5c in every one of those cases the literal blueprint that comes out is byte-identical to the one with a clean interpretation — nothing else was touched');
+
+  // ---- ET6: executable content, markup, links ----
+  const exe = {
+    fn: mutate((c) => { c.etherInterpretation.gesture = 'function () { draw(); }'; }),
+    arrow: mutate((c) => { c.etherInterpretation.rhythm = 'ctx => ctx.fill()'; }),
+    tag: mutate((c) => { c.etherInterpretation.movement = '<script>alert(1)</script>'; }),
+    markup: mutate((c) => { c.etherInterpretation.architecture = ['<b>heavy</b> at the front']; }),
+    url: mutate((c) => { c.etherInterpretation.abstraction.doNot = ['see https://example.com/x']; }),
+    dataUri: mutate((c) => { c.etherInterpretation.abstraction.instead = ['data:image/png;base64,AAAA']; }),
+    canvasKey: mutate((c) => { c.etherInterpretation.canvas = 'draw here'; }),
+    template: mutate((c) => { c.etherInterpretation.gesture = 'the ${subject} rears'; })
+  };
+  const exeRefused = Object.keys(exe).filter((k) => !(exe[k].ok && exe[k].blueprint.etherInterpretation === null && exe[k].interpretationRefused));
+  ck(exeRefused.length === 0, 'ET6  ' + Object.keys(exe).length + ' shapes of executable or foreign content — a function, an arrow, a script tag, markup, a link, a data URI, a canvas key, a template — every one sets the section aside and keeps the blueprint', exeRefused.join(','));
+  ck(/executable:gesture/.test(exe.fn.interpretationRefused.join()) && /executable:rhythm/.test(exe.arrow.interpretationRefused.join()) && /bad-text:movement/.test(exe.tag.interpretationRefused.join()) && /geometry-key:\.canvas/.test(exe.canvasKey.interpretationRefused.join()),
+    'ET6b and each names what it found');
+
+  // ---- ET7: the product's own boundary words still refuse the WHOLE reply ----
+  const priv = ['constellation', 'stars', 'card', 'memories', 'pattern', 'email'].map((k) => mutate((c) => { c.etherInterpretation[k] = 'x'; }));
+  ck(priv.every((v) => !v.ok && /forbidden-key:\.etherInterpretation\./.test(v.reasons[0])),
+    'ET7  a private key inside the interpretation — a constellation, stars, a card, memories, a pattern, an email — refuses the WHOLE reply by name, exactly as at every other depth');
+
+  // ---- ET8: the request — subject, optional idea, one contract, nothing private ----
+  const PRIVATE = /\b(card|stars|constellation|memor|story|email|orbit|username|creator|traveller|companion)\b/i;
+  const SUBJ = ['Lion', 'Wibble Fnord', "O'Malley's Beast"];
+  const plain = SUBJ.map((s) => B.messagesFor(s));
+  const withIdea = SUBJ.map((s) => B.messagesFor(s, 'heavy and old, all mane; looking straight at you!'));
+  const sys = new Set(plain.concat(withIdea).map((m) => m.messages[0].content));
+  ck(plain.every((m, i) => m.ok && m.idea === '' && m.messages[1].content === 'Subject: ' + SUBJ[i]) &&
+     withIdea.every((m, i) => m.ok && m.idea === 'heavy and old, all mane; looking straight at you!' && m.messages[1].content === 'Subject: ' + SUBJ[i] + '\nAuthor idea: heavy and old, all mane; looking straight at you!') &&
+     sys.size === 1 && !plain.concat(withIdea).some((m) => PRIVATE.test(JSON.stringify(m.messages))),
+    'ET8  the request is the subject, an OPTIONAL author idea on its own line, and ONE contract identical for every subject with and without the idea — and no private word in any of it');
+  const sysText = Array.from(sys)[0];
+  ck(/"etherInterpretation": \{/.test(sysText) && /do-not-draw-literally/.test(sysText) && /say plainly that this creature should not be drawn literally/.test(sysText) &&
+     /NO number, NO digit, NO coordinate, NO shape, NO code/.test(sysText) && /It is not the subject: keep the subject as given/.test(sysText) &&
+     /do NOT draw the final figure/.test(sysText) && /Never return final points, joins, gaps or hints/.test(sysText),
+    'ET8b the contract asks for the interpretation, allows the model to refuse literal representation, forbids numbers and geometry in it, says the idea is not the subject — and still says the assistant never draws the final figure');
+  const badIdeas = ['<b>x</b>', 'see http://x.y/z', 'x'.repeat(201), 'data:image/png;base64,AA', 'a {b} c'];
+  const refusedIdeas = badIdeas.map((i) => B.messagesFor('Lion', i));
+  ck(refusedIdeas.every((m) => !m.ok && m.reason === 'bad-idea') && B.cleanIdea('') === '' && B.cleanIdea(undefined) === '' && B.cleanIdea('  two  words ') === 'two words',
+    'ET8c an idea carrying markup, a link, a data URI, braces or more than 200 characters is refused BY NAME before any request is built; an empty idea is simply none');
+  ck(B.messagesFor('', 'a fine idea').reason === 'bad-subject',
+    'ET8d an idea is never a subject — with no subject the request is refused as bad-subject however good the idea');
+
+  // ---- ET9: an older blueprint without the section is exactly what it was ----
+  const older = mutate((c) => { delete c.etherInterpretation; });
+  const olderOut = older.blueprint.etherInterpretation;
+  const sugA = B.suggestions(older.blueprint, 12), sugB = B.suggestionsWithout(older.blueprint, 12);
+  ck(older.ok && older.repairs.length === 0 && olderOut === null && older.interpretationRefused === null &&
+     JSON.stringify(Object.keys(older.blueprint).sort()) === JSON.stringify(Object.keys(B.SCHEMA.top).sort()) &&
+     JSON.stringify(sugA) === JSON.stringify(sugB) && sugA.every((s) => s.lifted === false),
+    'ET9  a blueprint with no interpretation validates with no repair, carries the key as null, and its suggestions are identical with the section "set aside" — the ranking is exactly what it was');
+
+  // ---- ET10: the ranking is the ONE thing it moves, and it moves no light ----
+  const withI = B.fixture('Lion').blueprint;
+  const s8 = B.suggestions(withI, 12), s8w = B.suggestionsWithout(withI, 12);
+  ck(s8w.some((s) => s.name === 'EAR') && !s8.some((s) => s.name === 'EAR') && s8.every((s) => withI.etherInterpretation.revealOnly.indexOf(s.name) === -1) &&
+     s8.filter((s) => withI.etherInterpretation.structural.indexOf(s.name) !== -1).every((s) => s.lifted === true),
+    'ET10 a reveal-only characteristic is kept OUT of the budgeted suggestions (the fixture\'s EAR), and a structural one is marked lifted');
+  ck(JSON.stringify(Object.keys(s8[0]).sort()) === JSON.stringify(['importance', 'label', 'level', 'lifted', 'name', 'rank', 'x', 'y']) &&
+     s8.every((s) => s8w.some((w) => w.x === s.x && w.y === s.y) || B.related(withI, null, s.name).some((r) => r.x === s.x && r.y === s.y)),
+    'ET10b a suggestion is still a mark on an existing landmark — the interpretation invents no place, it only chooses among the outline\'s own');
+  ck(!/placeSuggestions|addPoint|movePoint|toggleJoin|ShapeLab\./.test(bpStripped) && !/\bfetch\(|XMLHttpRequest|localStorage|sessionStorage/.test(bpStripped),
+    'ET10c the blueprint module reaches no editor, no network and no store — it cannot place a light, join one or remember one');
+
+  // ---- ET11: the constructed research set ----
+  const FIVE = ['Lion', 'Tiger', 'Dragon', 'Mermaid', 'Falcon'];
+  const entries = (D.creatures || []);
+  const vals = entries.map((c) => B.validate(JSON.parse(JSON.stringify(c.blueprint))));
+  ck(entries.length === 5 && JSON.stringify(entries.map((c) => c.subject)) === JSON.stringify(FIVE) && vals.every((v) => v.ok && v.repairs.length === 0 && v.blueprint.etherInterpretation && v.interpretationRefused === null),
+    'ET11 the five constructed blueprints — Lion, Tiger, Dragon, Mermaid, Falcon — go through the REAL validator with no repair and every one carries an accepted interpretation');
+  const interpLeaves = [];
+  vals.forEach((v) => (function walk(o) { if (o && typeof o === 'object') Object.keys(o).forEach((k) => walk(o[k])); else interpLeaves.push(o); })(v.blueprint.etherInterpretation));
+  ck(interpLeaves.every((v) => typeof v === 'string' && !/\d/.test(v)) && vals.every((v) => v.blueprint.etherInterpretation.abstraction.doNot.length > 0 && v.blueprint.etherInterpretation.diagnostic.length >= 2),
+    'ET11b every leaf of every constructed interpretation is a digit-free string, and each says what must NOT be drawn literally');
+  const rejectsLiteral = vals.filter((v) => v.blueprint.etherInterpretation.abstraction.stance === 'do-not-draw-literally').length;
+  ck(rejectsLiteral >= 3 && rejectsLiteral < 5, 'ET11c the constructed set exercises the stance both ways — most refuse literal representation, at least one only simplifies', 'do-not-draw-literally:' + rejectsLiteral);
+  const diffs = vals.map((v, i) => {
+    const o = O.compose(v.blueprint);
+    return [8, 12].map((b) => ({ b, w: B.suggestions(v.blueprint, b, o).map((s) => s.name), l: B.suggestionsWithout(v.blueprint, b, o).map((s) => s.name) }))
+      .filter((d) => d.w.join('|') !== d.l.join('|')).map((d) => FIVE[i] + '@' + d.b);
+  });
+  ck(diffs.flat().length >= 5 && diffs.every((d) => d.length > 0),
+    'ET11d for every constructed creature the interpretation changes the suggested structure at 8 or 12 — the layer is consumed, not only shown', diffs.flat().join(','));
+  ck(vals.every((v, i) => { const o = O.compose(v.blueprint); const w = B.suggestions(v.blueprint, 8, o); return w.length === Math.min(8, w.length) && w.every((s) => v.blueprint.etherInterpretation.revealOnly.indexOf(s.name) === -1); }),
+    'ET11e and at 8 no constructed creature suggests a characteristic its own interpretation marked reveal-only');
+  ck(!/\bif\s*\(|switch\s*\(|subject\s*===/.test(dataStripped.replace(/function \(c\) \{ return c\.id === id; \}/, '')) && (dataStripped.match(/function/g) || []).length <= 3 && !PRIVATE.test(dataStripped.replace(/\bstory\b/gi, '')),
+    'ET11f the research set is DATA — no branch, no subject comparison, no private word; nothing reads an entry by its creature name');
+  ck(!/\b(lion|tiger|dragon|mermaid|falcon)\b/i.test(bpStripped + refStripped),
+    'ET11g and the two modules that consume it name no creature');
+
+  // ---- the browser half ----
+  const server = spawn('node', ['tools/bring-it-alive/test/serve.js', String(PORT)], { cwd: ROOT, stdio: 'ignore' });
+  await new Promise((res) => setTimeout(res, 900));
+  const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+  const shotDir = path.join(SHOTS, 'translation');
+  try { fs.mkdirSync(shotDir, { recursive: true }); } catch (e) {}
+  try {
+    const ctx = await browser.newContext({ viewport: { width: 1500, height: 1100 } });
+    const page = await ctx.newPage();
+    const errors = [];
+    page.on('pageerror', (e) => errors.push(String(e).split('\n')[0]));
+    const open = async () => {
+      await page.goto(BASE + '/tools/ether-mystery-lab/shape.html');
+      await page.waitForFunction(() => !!window.ShapeLab && !!window.LabReference && !!window.LabBlueprint && !!window.LabConnection && !!window.LabTranslationData, null, { timeout: 20000 });
+    };
+    await open();
+    await page.evaluate(() => { localStorage.clear(); });
+    await open();
+    const legend = await page.evaluate(() => document.querySelector('.legend').textContent);
+    ck(/BLUEPRINT/.test(legend) && /ETHER INTERPRETATION/.test(legend) && /OUTLINE/.test(legend) && /SUGGESTED POINTS/.test(legend) && /ETHER FIGURE/.test(legend) && /REVEAL/.test(legend) &&
+       await page.evaluate(() => !!document.querySelector('[data-ref-idea]') && document.querySelector('[data-ref-idea]').maxLength === 200 && document.querySelector('[data-ref-idea]').value === ''),
+      'ET20 the page states the six-part mental model and offers an EMPTY optional author-idea field, separate from the subject');
+    // fixture with an idea
+    await page.fill('[data-ref-subject]', 'Wibble');
+    await page.fill('[data-ref-idea]', 'heavy and old, looking straight at you');
+    await page.click('[data-ref-generate]');
+    await page.waitForFunction(() => LabReference.current() && LabReference.current().subject === 'Wibble');
+    const fxRun = await page.evaluate(() => ({
+      last: LabReference.last(), interp: LabReference.interpretation(),
+      state: document.querySelector('[data-ref-interp]').getAttribute('data-ref-interp-state'),
+      stance: document.querySelector('[data-ref-interp]').getAttribute('data-ref-interp-stance'),
+      cmp: document.querySelector('[data-ref-compare]') && document.querySelector('[data-ref-compare]').getAttribute('data-ref-compare-differs'),
+      trace: document.querySelector('[data-ref-trace]').textContent,
+      pts: ShapeLab.figure().points.length, outline: !!LabReference.outline(), sugg: LabReference.suggestions().length + ShapeLab.figure().points.length
+    }));
+    ck(fxRun.last.idea === true && fxRun.last.ideaChars === 38 && fxRun.last.interpretation === 'accepted' && fxRun.state === 'present' && fxRun.stance === 'simplify' && !!fxRun.interp && /author idea.*given · 38 chars/.test(fxRun.trace) && /interpretation.*accepted/.test(fxRun.trace),
+      'ET21 a fixture run with an idea records the idea in the trace, shows the fixture\'s interpretation as PRESENT, and the trace says it was accepted', JSON.stringify({ idea: fxRun.last.idea, state: fxRun.state, stance: fxRun.stance }));
+    // (With the outline's own landmarks in play the direction reorders
+    // even the fixture at 8 — a structural lift ahead of a second leg mark
+    // — so what is asserted is that the page's comparison AGREES with the
+    // module's pure one, and that no reveal-only name is in the with-list.)
+    const cmp8 = await page.evaluate(() => LabReference.compareSuggestions());
+    ck(fxRun.cmp === (cmp8.differs ? 'yes' : 'no') && cmp8.withInterpretation.every((n) => fxRun.interp.revealOnly.indexOf(n) === -1) && fxRun.outline && fxRun.pts > 0,
+      'ET21b the page\'s with/literal comparison agrees with the module\'s own, the with-list holds no reveal-only name, the outline composed as before, and the starting figure was placed as before', JSON.stringify({ cmp: fxRun.cmp, differs: cmp8.differs, pts: fxRun.pts }));
+    await page.evaluate(() => ShapeLab.setBudget(12));
+    const cmp12 = await page.evaluate(() => Object.assign(LabReference.compareSuggestions(), { attr: document.querySelector('[data-ref-compare]').getAttribute('data-ref-compare-differs'), text: document.querySelector('[data-ref-compare]').textContent }));
+    ck(cmp12.differs === true && cmp12.attr === 'yes' && cmp12.removed.indexOf('EAR') !== -1 && /Left to the reveal: ear/.test(cmp12.text) && cmp12.withInterpretation.indexOf('EAR') === -1,
+      'ET21c at 12 the comparison shows the one thing the direction did — the ear left to the reveal — with and literal side by side', JSON.stringify({ removed: cmp12.removed, attr: cmp12.attr }));
+    await page.evaluate(() => ShapeLab.setBudget(8));
+
+    // the stubbed endpoint
+    let lastBody = null, answer = 'interp';
+    const base = JSON.parse(JSON.stringify(await page.evaluate(() => LabBlueprint.fixture('Griffin').blueprint)));
+    base.silhouette = 'A generated side view, standing.';
+    base.etherInterpretation = {
+      character: ['looming', 'watchful'], gesture: 'Standing square and looking straight out.',
+      architecture: ['The body is one long mass with the head at the front and the tail behind.'],
+      proportion: [{ feature: 'HEAD', treat: 'exaggerate', note: 'A big head reads first.' }],
+      diagnostic: ['HEAD', 'BODY', 'TAIL'],
+      abstraction: { stance: 'do-not-draw-literally', doNot: ['fur', 'a face'], instead: ['one line of the back from head to tail'] },
+      rhythm: 'Dense at the head, open along the back.', movement: 'Would walk slowly and evenly.',
+      structural: ['HEAD', 'BODY', 'TAIL'], revealOnly: ['EAR', 'CREST']
+    };
+    await page.route('https://fn.local/lab-generate', (route) => {
+      const body = JSON.parse(route.request().postData() || '{}');
+      lastBody = body;
+      if (body.action === 'ping') return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, build: 'LAB1', provider: 'configured', model: 'gpt-4o-mini' }) });
+      if (answer === 'down') return route.abort();
+      let g = JSON.parse(JSON.stringify(base));
+      if (answer === 'geometry') g.etherInterpretation.points = [[0.1, 0.2], [0.3, 0.4]];
+      if (answer === 'code') g.etherInterpretation.gesture = 'ctx => ctx.fill()';
+      if (answer === 'none') delete g.etherInterpretation;
+      if (answer === 'private') g.etherInterpretation.constellation = 'x';
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, model: 'gpt-4o-mini', build: 'LAB1', text: JSON.stringify(g) }) });
+    });
+    await page.click('[data-conn-mode="endpoint"]');
+    await page.fill('[data-conn-url]', 'https://fn.local/lab-generate');
+    await page.fill('[data-conn-token]', 'admin-session-token');
+    await page.click('[data-conn-test]');
+    await page.waitForFunction(() => /CONNECTED/.test(document.querySelector('[data-conn-status]').textContent));
+    const gen = async (subject, idea) => {
+      await page.fill('[data-ref-subject]', subject);
+      await page.fill('[data-ref-idea]', idea || '');
+      await page.click('[data-ref-generate]');
+      await page.waitForFunction(() => !/Asking/.test(document.querySelector('[data-ref-status]').textContent), null, { timeout: 8000 });
+      return page.evaluate(() => ({
+        subject: LabReference.current() && LabReference.current().subject, interp: LabReference.interpretation(), meta: LabReference.meta(), last: LabReference.last(),
+        state: document.querySelector('[data-ref-interp]') && document.querySelector('[data-ref-interp]').getAttribute('data-ref-interp-state'),
+        stance: document.querySelector('[data-ref-interp]') && document.querySelector('[data-ref-interp]').getAttribute('data-ref-interp-stance'),
+        status: document.querySelector('[data-ref-status]').textContent, trace: document.querySelector('[data-ref-trace]').textContent,
+        outline: !!LabReference.outline(), pts: ShapeLab.figure().points.length, sugg: LabReference.suggestions().length,
+        badge: document.querySelector('[data-ref-panel-source]').textContent, source: document.querySelector('[data-ref-source]').textContent
+      }));
+    };
+    const g1 = await gen('Griffin', 'a heavy guardian, more lion than eagle');
+    const reqJson = JSON.stringify(lastBody);
+    ck(lastBody && lastBody.messages.length === 2 && lastBody.messages[1].content === 'Subject: Griffin\nAuthor idea: a heavy guardian, more lion than eagle' && !PRIVATE.test(reqJson.replace(/\bstory\b/gi, '')) &&
+       !/etherInterpretation|character|gesture/.test(lastBody.messages[1].content),
+      'ET22 a real request carries the subject and the idea as two lines and nothing else besides the fixed contract — no card, no name, no private word');
+    ck(g1.subject === 'Griffin' && g1.state === 'present' && g1.stance === 'do-not-draw-literally' && g1.interp && g1.interp.abstraction.doNot.indexOf('fur') !== -1 && g1.meta.mode === 'endpoint' && /LLM — Endpoint/.test(g1.badge) &&
+       /interpretation.*accepted/.test(g1.trace) && g1.outline && g1.pts > 0,
+      'ET22b a generated interpretation that refuses literal representation is shown as PRESENT with its stance, labelled LLM, and the outline and the starting figure arrive exactly as before', JSON.stringify({ state: g1.state, stance: g1.stance, pts: g1.pts }));
+    const panelText = await page.evaluate(() => document.querySelector('[data-ref-interp]').textContent);
+    ck(/Do not draw this literally/.test(panelText) && /fur · a face/.test(panelText) && /Instead: one line of the back/.test(panelText) && /looming/.test(panelText) && /↑ exaggerate/.test(panelText) && /crest/i.test(panelText),
+      'ET22c the panel reads the direction back in words — the stance, what not to draw, what instead, the character, the treatment, the reveal-only names');
+    answer = 'geometry';
+    const g2 = await gen('Griffin', '');
+    ck(g2.subject === 'Griffin' && g2.state === 'set-aside' && g2.interp === null && /set aside — interpretation-geometry-key:\.points/.test(g2.trace) && g2.meta.interpretationRefused && g2.outline && g2.pts > 0 && /LLM reference in place/.test(g2.status),
+      'ET23 a generated interpretation smuggling points is SET ASIDE by name — the literal blueprint is accepted, the outline composed, the figure placed, and the panel says why the direction is missing', JSON.stringify({ state: g2.state, refused: g2.meta.interpretationRefused }));
+    answer = 'code';
+    const g3 = await gen('Griffin', '');
+    ck(g3.state === 'set-aside' && /interpretation-executable:gesture/.test(g3.trace) && g3.outline,
+      'ET23b code in a field is the same refusal, named', g3.trace.slice(0, 120));
+    answer = 'private';
+    const g4 = await gen('Griffin', '');
+    ck(/rejected by the blueprint validator/.test(g4.status) && /forbidden-key/.test(g4.status) && g4.last.outcome === 'rejected',
+      'ET23c a private key inside the interpretation refuses the whole reply, as it does at every other depth');
+    answer = 'interp';
+    const g5 = await gen('Griffin', 'a heavy guardian');
+    answer = 'down';
+    const before = g5.interp;
+    const g6 = await gen('Griffin', 'a heavy guardian');
+    ck(g6.last.outcome === 'failed' && /No fixture was substituted/.test(g6.status) && /still here/.test(g6.status) && JSON.stringify(g6.interp) === JSON.stringify(before) && g6.state === 'present' && g6.badge === g5.badge,
+      'ET24 a failed generation preserves the reference AND its interpretation exactly — no fixture substituted, the panel unchanged');
+    answer = 'none';
+    const g7 = await gen('Griffin', '');
+    const cmpNone = await page.evaluate(() => LabReference.compareSuggestions());
+    ck(g7.state === 'absent' && g7.interp === null && /interpretation.*absent/.test(g7.trace) && cmpNone.differs === false && g7.outline && g7.pts > 0 && !g7.meta.interpretationRefused,
+      'ET25 a reply with no interpretation is a whole reply — shown as ABSENT, not set aside, and the suggestions equal the literal ones');
+
+    // editing, reveal and approval are untouched by it
+    answer = 'interp';
+    await gen('Griffin', '');
+    const edit = await page.evaluate(() => {
+      const S = window.ShapeLab;
+      // repeated generations have placed a starting figure each time; trim to
+      // well under the budget so an add is an add (the budget rule is not
+      // what this check is about)
+      while (S.figure().points.length > 4) S.deletePoint(0);
+      const p0 = S.figure().points.length;
+      const a = S.addPoint(0.9, 0.9); const p1 = S.figure().points.length;
+      S.movePoint(p1 - 1, 0.95, 0.85); const moved = S.figure().points[p1 - 1];
+      S.joinInOrder(); const j = S.figure().joins.length;
+      S.deletePoint(p1 - 1); const p2 = S.figure().points.length;
+      const st = JSON.stringify(S.state());
+      return { p0, p1, p2, moved, j, revealCount: S.reveal().features.length, stateHasInterp: /etherInterpretation|gesture|revealOnly/.test(st), authoring: S.state().authoring };
+    });
+    ck(edit.p1 === edit.p0 + 1 && edit.p2 === edit.p0 && Math.abs(edit.moved[0] - 0.95) < 1e-9 && edit.j > 0 && edit.revealCount === 0 && !edit.stateHasInterp && edit.authoring.subject === 'Griffin' && edit.authoring.referenceUsed === true,
+      'ET26 with an interpretation in place a light is added, moved and deleted exactly as before, Join still joins, the reveal list is untouched (empty), and the fixture record holds none of the direction — only that a reference was used', JSON.stringify({ p: [edit.p0, edit.p1, edit.p2], reveal: edit.revealCount, interp: edit.stateHasInterp }));
+    const appr = await page.evaluate(() => {
+      const S = window.ShapeLab;
+      S.joinInOrder(); const f = S.figure(); if (f.joins.length) S.toggleGap(0);
+      const r = S.approve(); const a = S.approved();
+      return { ok: r && r.ok, json: JSON.stringify(a || {}) };
+    });
+    ck(appr.ok && !/etherInterpretation|gesture|character|architecture|doNot|revealOnly|structural|rhythm/.test(appr.json),
+      'ET27 the approved figure carries no interpretation — the direction is a blueprint thing, the approval freezes only the authored figure and the reveal', appr.json.slice(0, 80));
+    await page.unroute('https://fn.local/lab-generate');
+
+    // the constructed research set, judged by looking
+    await page.click('[data-conn-mode="fixture"]');
+    const walked = [];
+    for (const c of ['tr-lion', 'tr-tiger', 'tr-dragon', 'tr-mermaid', 'tr-falcon']) {
+      await page.evaluate(() => ShapeLab.reset());
+      await page.selectOption('[data-ref-research]', c);
+      await page.click('[data-ref-research-load]');
+      await page.waitForFunction((id) => LabReference.meta() && LabReference.meta().mode === 'constructed' && LabReference.current().subject === window.LabTranslationData.byId(id).subject, c);
+      const r = await page.evaluate(() => ({
+        subject: LabReference.current().subject, meta: LabReference.meta(), last: LabReference.last(), interp: LabReference.interpretation(),
+        badge: document.querySelector('[data-ref-panel-source]').textContent, source: document.querySelector('[data-ref-source]').textContent,
+        status: document.querySelector('[data-ref-status]').textContent, trace: document.querySelector('[data-ref-trace]').textContent,
+        state: document.querySelector('[data-ref-interp]').getAttribute('data-ref-interp-state'), pts: ShapeLab.figure().points.length, outline: !!LabReference.outline(),
+        cmp: LabReference.compareSuggestions()
+      }));
+      walked.push(r);
+      const slug = r.subject.toLowerCase();
+      // A — the literal blueprint (the panel's own feature and budget rows); C — the interpretation, read back
+      await page.$eval('[data-ref-panel]', (n) => n.scrollIntoView());
+      await (await page.$('[data-ref-panel]')).screenshot({ path: path.join(shotDir, slug + '-A-blueprint-and-C-interpretation.png') });
+      await (await page.$('[data-ref-interp]')).screenshot({ path: path.join(shotDir, slug + '-C-interpretation.png') });
+      // D — the suggested structure with the direction: the placed starting figure over the outline
+      await page.$eval('[data-canvas-complete]', (n) => n.scrollIntoView());
+      await (await page.$('[data-canvas-complete]')).screenshot({ path: path.join(shotDir, slug + '-D-structure-with-interpretation.png') });
+      // B — the literal outline alone: every light removed, reference on
+      await page.evaluate(() => { const S = window.ShapeLab; while (S.figure().points.length) S.deletePoint(0); });
+      await (await page.$('[data-canvas-complete]')).screenshot({ path: path.join(shotDir, slug + '-B-literal-outline.png') });
+    }
+    ck(walked.length === 5 && walked.every((r) => r.meta.mode === 'constructed' && r.meta.source === 'constructed' && /CONSTRUCTED/.test(r.badge) && /CONSTRUCTED/.test(r.source) && /CONSTRUCTED research blueprint/.test(r.status) && r.last.outcome === 'constructed' && /hand-written/.test(r.trace) && !/FIXTURE|LLM/.test(r.badge)),
+      'ET28 each of the five loads as CONSTRUCTED — on the badge, the source line, the status and the trace — never as a fixture and never as generated');
+    ck(walked.every((r) => r.state === 'present' && r.interp && r.outline && r.pts > 0) && walked.filter((r) => r.cmp.differs).length >= 3,
+      'ET28b every one shows its interpretation, composes an outline and places a starting figure — and the with/literal comparison differs for most of them at 8', walked.map((r) => r.subject + ':' + (r.cmp.differs ? 'differs' : 'same')).join(','));
+    const shots = fs.readdirSync(shotDir).filter((f) => /\.png$/.test(f));
+    ck(shots.length === 20 && ['lion', 'tiger', 'dragon', 'mermaid', 'falcon'].every((s) => ['-A-blueprint-and-C-interpretation', '-B-literal-outline', '-C-interpretation', '-D-structure-with-interpretation'].every((k) => shots.indexOf(s + k + '.png') !== -1)),
+      'ET28c the four-way comparison is committed as screenshots, four per creature', shots.length + ' files');
+    // stateless in the browser: nothing about the interpretation or the idea is remembered
+    const remembered = await page.evaluate(() => Object.keys(localStorage).map((k) => localStorage.getItem(k)).join(' ') + Object.keys(sessionStorage).map((k) => sessionStorage.getItem(k)).join(' '));
+    ck(!/etherInterpretation|Author idea|heavy guardian|doNot|revealOnly/.test(remembered),
+      'ET29 no interpretation and no author idea is written to browser storage — a fixture keeps the figure, never the direction');
+    ck(errors.length === 0, 'ET30 no page errors across the whole journey', errors.join(' | '));
+    await page.close(); await ctx.close();
+  } finally {
+    await browser.close();
+    server.kill();
+  }
+}
+
+// ===================================================================
 (async () => {
   try {
     // ETHER_LAB_ONLY=SL runs one section alone while it is being built;
@@ -6435,6 +6861,7 @@ async function sectionRV() {
     await run('AR', sectionAR);
     await run('AP', sectionAP);
     await run('RV', sectionRV);
+    await run('ET', sectionET);
   } catch (e) {
     fail('suite crashed', (e && e.stack || String(e)).split('\n')[0]);
   }

@@ -33,6 +33,24 @@
 //     GENERIC body plan, the same for "tiger" and "wibble", and it says so.
 //   - NO RECOGNISABILITY SCORE. A blueprint may name features; nothing
 //     in it, and nothing here, says whether the author's figure is good.
+//   - THE ETHER INTERPRETATION IS ART DIRECTION, NOT GEOMETRY. An
+//     optional, clearly separated `etherInterpretation` section lets the
+//     model act as a TRANSLATOR — how the creature should feel once it is
+//     abstracted into a few lights: its character, its one dominant
+//     gesture, how its masses relate, what to exaggerate and what to
+//     compress, which features must survive, what must NOT be drawn
+//     literally (the model is explicitly allowed to say so), its spatial
+//     rhythm, and its movement character in words. It is validated as
+//     WORDS ONLY: no number of any kind, no digit, no coordinate, no
+//     shape, no code, no markup — a section that carries any of those is
+//     set aside BY NAME and the literal blueprint stands. Nothing in it
+//     ever becomes geometry by itself; it may only re-rank which of the
+//     outline's landmarks are SUGGESTED first, and keep a reveal-only
+//     characteristic out of the structural suggestions.
+//   - AN AUTHOR IDEA IS SEMANTIC AND OPTIONAL. A person may add one
+//     sentence about what they hope the figure feels like; it travels
+//     beside the subject as a separate line, is bounded and scanned like
+//     any other text, and is never confused with the subject.
 (function (global) {
   'use strict';
 
@@ -49,6 +67,13 @@
     nameChars: 24,
     featuresMin: 3, featuresMax: 12,
     revealMax: 8,
+    ideaChars: 200,
+    characterMin: 1, characterMax: 4,
+    architectureMin: 1, architectureMax: 5,
+    proportionMax: 4,
+    diagnosticMin: 2, diagnosticMax: 4,
+    abstractionListMax: 6,
+    structuralMax: 8, revealOnlyMax: 8,
     sketchMax: 24, polyPointsMax: 24,
     importanceMin: 1, importanceMax: 3
   };
@@ -59,6 +84,20 @@
   // The Lab's seven reveal kinds — restated here so a blueprint reply can
   // be validated with labReveal.js absent (this file runs in Node too).
   var REVEAL_KINDS = ['contour', 'fill', 'lines', 'texture', 'spike', 'glow', 'motes'];
+
+  // The interpretation's CHARACTER vocabulary — suggested, not rigid: a
+  // word off this list is kept, and the panel marks it as the model's
+  // own (`isSuggestedWord`). The cleaned section holds plain strings, so
+  // a validated blueprint re-validates unchanged.
+  var CHARACTER_WORDS = ['poised', 'watchful', 'fierce', 'gentle', 'heavy', 'light', 'swift', 'slow', 'coiled', 'open',
+    'proud', 'shy', 'playful', 'ancient', 'wild', 'serene', 'looming', 'nimble', 'brooding', 'bright'];
+  var TREATMENTS = ['exaggerate', 'compress', 'keep'];
+  var STANCES = ['do-not-draw-literally', 'simplify', 'literal-is-fine'];
+  // Keys that would turn art direction into geometry or code. Refused BY
+  // NAME anywhere inside the interpretation, and the section is set aside.
+  var INTERPRETATION_GEOMETRY_KEYS = ['points', 'point', 'x', 'y', 'coordinates', 'coords', 'polygon', 'polyline', 'path', 'paths',
+    'shape', 'shapes', 'geometry', 'anchor', 'anchors', 'position', 'positions', 'angle', 'radius', 'size', 'scale',
+    'canvas', 'code', 'script', 'css', 'js', 'sketch', 'lines', 'vector', 'vectors', 'bezier', 'curve', 'curves'];
 
   var FORBIDDEN_KEYS = ['pattern', 'cells', 'constellation', 'stars', 'card', 'cardId', 'owner', 'ownerId',
     'email', 'memories', 'memory', 'orbit', 'circle', 'username', 'url', 'href', 'src', 'image', 'img',
@@ -73,8 +112,27 @@
       features: 'array of 3–12 feature objects, most diagnostic first',
       budgets: 'object with the keys "8", "12", "16", "20" (optionally "10" and "18"): for each, an array of feature names (from features[].name) worth spending that budget on, ≤ budget entries',
       sketch: 'DEPRECATED — optional, ≤ 24 primitives, validated for compatibility and NOT shown: the visual reference is the Creature Outline (labOutline.js), composed from the features',
-      reveal: 'optional — array of ≤ 8 reveal-only suggestions: visual details that would appear only AFTER the figure is complete, as pure payoff (a mane, a wing membrane, stripes); semantic names only, never geometry'
+      reveal: 'optional — array of ≤ 8 reveal-only suggestions: visual details that would appear only AFTER the figure is complete, as pure payoff (a mane, a wing membrane, stripes); semantic names only, never geometry',
+      etherInterpretation: 'optional — ART DIRECTION for the figure of lights, in words only: how the creature should feel once abstracted (see the interpretation schema). No number, no digit, no coordinate, no shape, no code; a section carrying any is set aside by name and the rest of the blueprint stands'
     },
+    // THE ETHER INTERPRETATION — the translator's answer. Every value is
+    // a word or a sentence; the validator refuses a number, a digit, a
+    // coordinate-shaped string, a code-shaped string and a geometry key at
+    // any depth, so nothing here can be executed or plotted.
+    interpretation: {
+      character: 'array of 1–4 short words or phrases (letters/spaces, ≤ 24 chars each) — the creature\'s character as a figure of lights; prefer the suggested vocabulary, other words are allowed',
+      gesture: 'string — one sentence: the ONE dominant gesture or pose the whole figure should read as',
+      architecture: 'array of 1–5 sentences — how the main masses relate: what hangs from what, what leads and what trails, what is wide against what is narrow',
+      proportion: 'array of 0–4 of { "feature": a features[].name, "treat": "exaggerate" | "compress" | "keep", "note": one short sentence } — what to push and what to shrink so the figure reads at a glance',
+      diagnostic: 'array of 2–4 features[].name — the features that must survive the abstraction; everything else may go',
+      abstraction: 'object { "stance": "do-not-draw-literally" | "simplify" | "literal-is-fine", "doNot": array of 0–6 short phrases (what must NOT be represented literally), "instead": array of 0–6 short phrases (what to suggest in its place) } — the model may say plainly that the creature should not be drawn literally',
+      rhythm: 'string — one sentence on spatial rhythm: where the figure is open and where it is dense, its symmetry or its lean, the space it leaves empty',
+      movement: 'string — one sentence on movement CHARACTER, in words only (how it would move if it moved); never a timing, a speed, a count or an animation instruction',
+      structural: 'array of 0–8 features[].name — the characteristics worth a light and a join',
+      revealOnly: 'array of 0–8 short names — characteristics best kept for the payoff after completion (a mane, stripes, a membrane), never built from lights'
+    },
+    proportionItem: { feature: 'features[].name', treat: 'exaggerate | compress | keep', note: 'optional — one short sentence' },
+    abstractionItem: { stance: 'do-not-draw-literally | simplify | literal-is-fine', doNot: 'array of 0–6 short phrases', instead: 'array of 0–6 short phrases' },
     // A reveal suggestion is SEMANTIC: a name, optionally which of the
     // Lab's seven visual kinds fits, and which feature it sits near. The
     // Lab interprets and draws; the assistant never returns a shape.
@@ -109,9 +167,24 @@
     return s;
   }
 
-  function messagesFor(subject) {
+  // An AUTHOR IDEA: optional, one line, plain punctuation, bounded, and
+  // scanned like every other text. Empty means none; an idea that cannot
+  // be sent is refused by name rather than trimmed into something else.
+  function cleanIdea(v) {
+    if (v == null) return '';
+    var s = String(v).trim().replace(/\s+/g, ' ');
+    if (!s) return '';
+    if (s.length > LIMITS.ideaChars) return null;
+    if (!/^[A-Za-z0-9 ,.;:'"!?()\-]*$/.test(s)) return null;
+    if (badText(s)) return null;
+    return s;
+  }
+
+  function messagesFor(subject, idea) {
     var s = cleanSubject(subject);
     if (!s) return { ok: false, reason: 'bad-subject' };
+    var id = cleanIdea(idea);
+    if (id === null) return { ok: false, reason: 'bad-idea' };
     var system = [
       'You are an authoring assistant for a night-sky drawing tool. A person will build a creature as a small figure of lights: a few bright points joined by straight lines. Your job is SEMANTIC HELP — what makes the subject recognisable — plus a rough visual reference to draw over. You do NOT draw the final figure; the person does. Never return final points, joins, gaps or hints.',
       '',
@@ -122,13 +195,27 @@
       '  "features": [ 3 to 12 of { "name": CAPITALS ≤ 24 chars (HEAD, EAR, TAIL, WING…), "importance": 1|2|3, "why": one short sentence, "anchor": [x, y] } ], most diagnostic first,',
       '  "budgets": { "8": [feature names], "12": [feature names], "16": [feature names], "20": [feature names] } — which features are worth spending that many points on; each list at most that many names, all taken from features[].name,',
       '  "sketch": [ up to 24 of { "kind": "ellipse", "c": [x, y], "r": [rx, ry], "rot": radians } | { "kind": "polygon", "points": [[x, y], …], "closed": true } | { "kind": "line", "points": [[x, y], …] } ] — a rough outline of the whole creature, big and simple, made of these primitives only,',
-      '  "reveal": [ up to 8 of { "name": CAPITALS ≤ 24 chars (MANE, TAIL TUFT, WING MEMBRANE, HORNS…), "kind": one of "contour" (flowing strokes) | "fill" (a soft silhouette) | "lines" (accents across a part) | "texture" (a field of small marks) | "spike" (tapered appendages) | "glow" (one soft light) | "motes" (a few drifting lights), "near": a features[].name } ] — optional: visual details that give the finished creature its character, to be shown only AFTER the figure is complete as a brief payoff; names and kinds only, never points, never shapes.',
+      '  "reveal": [ up to 8 of { "name": CAPITALS ≤ 24 chars (MANE, TAIL TUFT, WING MEMBRANE, HORNS…), "kind": one of "contour" (flowing strokes) | "fill" (a soft silhouette) | "lines" (accents across a part) | "texture" (a field of small marks) | "spike" (tapered appendages) | "glow" (one soft light) | "motes" (a few drifting lights), "near": a features[].name } ] — optional: visual details that give the finished creature its character, to be shown only AFTER the figure is complete as a brief payoff; names and kinds only, never points, never shapes,',
+      '  "etherInterpretation": { — optional but strongly wanted: you are also the ART DIRECTOR for the abstraction. A figure of a few lights cannot be an illustration; say how the creature should FEEL once it is one. Words only.',
+      '    "character": [ 1 to 4 short words — prefer: ' + CHARACTER_WORDS.join(', ') + ' — another word is allowed ],',
+      '    "gesture": one sentence — the ONE dominant gesture or pose the whole figure should read as,',
+      '    "architecture": [ 1 to 5 sentences — how the main masses relate: what hangs from what, what leads and what trails, what is wide against what is narrow ],',
+      '    "proportion": [ up to 4 of { "feature": a features[].name, "treat": "exaggerate" | "compress" | "keep", "note": one short sentence } — what to push and what to shrink so it reads at a glance ],',
+      '    "diagnostic": [ 2 to 4 features[].name — what must survive the abstraction; everything else may go ],',
+      '    "abstraction": { "stance": "do-not-draw-literally" | "simplify" | "literal-is-fine", "doNot": [ up to 6 short phrases — what must NOT be represented literally ], "instead": [ up to 6 short phrases — what to suggest in its place ] } — you may say plainly that this creature should not be drawn literally, and what to do instead,',
+      '    "rhythm": one sentence on spatial rhythm — where the figure is open and where it is dense, its symmetry or its lean, the space it leaves empty,',
+      '    "movement": one sentence on movement CHARACTER in words — how it would move if it moved; never a timing, a speed, a count or an animation instruction,',
+      '    "structural": [ up to 8 features[].name — the characteristics worth a light and a join ],',
+      '    "revealOnly": [ up to 8 short names — characteristics best kept for the payoff after completion, never built from lights ]',
+      '  }',
       '}',
       '',
-      'Coordinates: unit space, x to the right, y DOWNWARD, every |x| and |y| ≤ 1.3; use most of that range so the figure is large. Every feature anchor must lie on the sketch. No other keys. No URLs, no images, no markup, no text outside the JSON. Do not judge or rate anything; describe what is there.'
+      'Coordinates: unit space, x to the right, y DOWNWARD, every |x| and |y| ≤ 1.3; use most of that range so the figure is large. Every feature anchor must lie on the sketch. No other keys. No URLs, no images, no markup, no text outside the JSON. Do not judge or rate anything; describe what is there.',
+      'The etherInterpretation is direction, never geometry: it must contain NO number, NO digit, NO coordinate, NO shape, NO code and NO markup anywhere — write "two" rather than a digit. A section that breaks this is set aside and the rest of the blueprint is kept.',
+      'If the person adds an "Author idea" line, it says what THEY hope the figure feels like. It is not the subject: keep the subject as given, and let the idea colour the etherInterpretation and the choice of reveal details.'
     ].join('\n');
-    var user = 'Subject: ' + s;
-    return { ok: true, subject: s, messages: [{ role: 'system', content: system }, { role: 'user', content: user }] };
+    var user = 'Subject: ' + s + (id ? '\nAuthor idea: ' + id : '');
+    return { ok: true, subject: s, idea: id, messages: [{ role: 'system', content: system }, { role: 'user', content: user }] };
   }
 
   // ---------------------------------------------------------------
@@ -171,6 +258,140 @@
     }
     if (log && where && out !== raw) log.push(where + ' "' + raw.slice(0, 40) + '" → "' + out + '"');
     return out;
+  }
+
+  // ---------------------------------------------------------------
+  // THE INTERPRETATION VALIDATOR — words only, deny by shape. Any
+  // failure sets the SECTION aside by name (`interpretationRefused`) and
+  // leaves the literal blueprint standing: a good blueprint is never
+  // lost because its art direction carried a digit. A forbidden key
+  // (the product's own boundary words) has already refused the whole
+  // reply before this runs, as it does at every depth.
+  // ---------------------------------------------------------------
+  var GEOMETRIC_TEXT = /\[\s*-?\d|\(\s*-?\d+(?:\.\d+)?\s*,|\bpx\b|<svg|<path|\bd="|\bM\s*\d/i;
+  var EXECUTABLE_TEXT = /function\s*\(|=>|\bctx\.|<\/?[a-z]+>|\beval\(|\brequire\(|\bimport\b|console\.|\$\{|\{\{|;\s*\}/i;
+  var ANIMATION_TEXT = /\b(ms|milliseconds?|seconds?|fps|frames?|keyframes?|animate|animation|easing|tween|loop)\b/i;
+
+  function wordy(v, path, ir) {
+    if (typeof v !== 'string') { ir.push('interpretation-not-text:' + path); return null; }
+    if (badText(v)) { ir.push('interpretation-bad-text:' + path); return null; }
+    if (/\d/.test(v)) { ir.push('interpretation-digit:' + path); return null; }
+    if (GEOMETRIC_TEXT.test(v)) { ir.push('interpretation-geometric-text:' + path); return null; }
+    if (EXECUTABLE_TEXT.test(v)) { ir.push('interpretation-executable:' + path); return null; }
+    return v.trim();
+  }
+  function wordList(v, path, min, max, ir, repairs) {
+    if (v === undefined) v = [];
+    if (!Array.isArray(v)) { ir.push('interpretation-not-list:' + path); return []; }
+    var out = [];
+    v.forEach(function (x, i) { var w = wordy(x, path + '[' + i + ']', ir); if (w) out.push(w); });
+    if (out.length > max) { repairs.push('interpretation ' + path + ' cut to ' + max); out = out.slice(0, max); }
+    if (out.length < min) ir.push('interpretation-too-few:' + path);
+    return out;
+  }
+  function isSuggestedWord(w) { return CHARACTER_WORDS.indexOf(shortWord(w)) !== -1; }
+  function shortWord(v) {
+    var w = typeof v === 'string' ? v.trim().toLowerCase().replace(/[^a-z ]+/g, ' ').replace(/\s+/g, ' ').trim() : '';
+    return w.length > LIMITS.nameChars ? w.slice(0, LIMITS.nameChars).trim() : w;
+  }
+  // every key at every depth inside the section: unknown by name, and
+  // geometry or code by name; every non-string leaf refused (a number, a
+  // boolean, null) — direction is words
+  function sweepInterp(o, path, allowed, ir) {
+    if (o === null || typeof o !== 'object') {
+      if (typeof o !== 'string') ir.push('interpretation-not-text:' + path);
+      return;
+    }
+    if (Array.isArray(o)) { o.forEach(function (v, i) { sweepInterp(v, path + '[' + i + ']', allowed, ir); }); return; }
+    Object.keys(o).forEach(function (k) {
+      var ok = allowed[path] ? allowed[path].indexOf(k) !== -1 : false;
+      if (INTERPRETATION_GEOMETRY_KEYS.indexOf(k) !== -1) ir.push('interpretation-geometry-key:' + path + '.' + k);
+      else if (!ok) ir.push('interpretation-unknown-key:' + path + '.' + k);
+      sweepInterp(o[k], path + '.' + k, allowed, ir);
+    });
+  }
+  function interpretationOf(raw, names, reveals, repairs) {
+    if (raw === undefined) return { section: null, refused: null };
+    var ir = [];
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return { section: null, refused: ['interpretation-not-an-object'] };
+    var allowed = {};
+    allowed[''] = Object.keys(SCHEMA.interpretation);
+    allowed['.abstraction'] = Object.keys(SCHEMA.abstractionItem);
+    Object.keys(raw.proportion && Array.isArray(raw.proportion) ? raw.proportion : []).forEach(function (i) { allowed['.proportion[' + i + ']'] = Object.keys(SCHEMA.proportionItem); });
+    sweepInterp(raw, '', allowed, ir);
+    if (ir.length) return { section: null, refused: ir };
+
+    var character = [];
+    (Array.isArray(raw.character) ? raw.character : [raw.character]).forEach(function (c, i) {
+      var w0 = wordy(c, 'character[' + i + ']', ir); if (!w0) return;
+      var w = shortWord(w0); if (!w) { repairs.push('interpretation character "' + String(c).slice(0, 24) + '" → dropped (no letters)'); return; }
+      if (character.indexOf(w) !== -1) return;
+      character.push(w);
+    });
+    if (character.length > LIMITS.characterMax) { repairs.push('interpretation character cut to ' + LIMITS.characterMax); character = character.slice(0, LIMITS.characterMax); }
+    if (character.length < LIMITS.characterMin) ir.push('interpretation-too-few:character');
+
+    var gesture = wordy(raw.gesture, 'gesture', ir);
+    var rhythm = wordy(raw.rhythm, 'rhythm', ir);
+    var movement = wordy(raw.movement, 'movement', ir);
+    if (movement && ANIMATION_TEXT.test(movement)) ir.push('interpretation-animation-words:movement');
+    var architecture = wordList(raw.architecture, 'architecture', LIMITS.architectureMin, LIMITS.architectureMax, ir, repairs);
+
+    var proportion = [];
+    if (raw.proportion !== undefined) {
+      if (!Array.isArray(raw.proportion)) ir.push('interpretation-not-list:proportion');
+      else raw.proportion.forEach(function (p, i) {
+        if (!p || typeof p !== 'object' || Array.isArray(p)) { ir.push('interpretation-bad-proportion:' + i); return; }
+        var f = cleanName(p.feature);
+        if (!names[f]) { repairs.push('interpretation proportion ' + i + ' "' + String(p.feature).slice(0, 24) + '" → dropped (names no feature)'); return; }
+        var t = typeof p.treat === 'string' ? p.treat.trim().toLowerCase() : '';
+        if (TREATMENTS.indexOf(t) === -1) { repairs.push('interpretation proportion ' + i + ' treat "' + String(p.treat).slice(0, 24) + '" → dropped (not exaggerate/compress/keep)'); return; }
+        var note = p.note === undefined ? '' : (wordy(p.note, 'proportion[' + i + '].note', ir) || '');
+        if (proportion.length >= LIMITS.proportionMax) { repairs.push('interpretation proportion cut to ' + LIMITS.proportionMax); return; }
+        proportion.push({ feature: f, treat: t, note: note });
+      });
+    }
+
+    var diagnostic = [];
+    if (!Array.isArray(raw.diagnostic)) ir.push('interpretation-not-list:diagnostic');
+    else raw.diagnostic.forEach(function (n, i) {
+      var f = cleanName(n);
+      if (!names[f]) { repairs.push('interpretation diagnostic "' + String(n).slice(0, 24) + '" → dropped (names no feature)'); return; }
+      if (diagnostic.indexOf(f) === -1) diagnostic.push(f);
+    });
+    if (diagnostic.length > LIMITS.diagnosticMax) { repairs.push('interpretation diagnostic cut to ' + LIMITS.diagnosticMax); diagnostic = diagnostic.slice(0, LIMITS.diagnosticMax); }
+    if (diagnostic.length < LIMITS.diagnosticMin) ir.push('interpretation-too-few:diagnostic');
+
+    var abstraction = { stance: 'simplify', doNot: [], instead: [] };
+    if (!raw.abstraction || typeof raw.abstraction !== 'object' || Array.isArray(raw.abstraction)) ir.push('interpretation-missing:abstraction');
+    else {
+      var st = typeof raw.abstraction.stance === 'string' ? raw.abstraction.stance.trim().toLowerCase() : '';
+      if (STANCES.indexOf(st) !== -1) abstraction.stance = st;
+      else repairs.push('interpretation abstraction stance "' + String(raw.abstraction.stance).slice(0, 24) + '" → simplify');
+      abstraction.doNot = wordList(raw.abstraction.doNot, 'abstraction.doNot', 0, LIMITS.abstractionListMax, ir, repairs);
+      abstraction.instead = wordList(raw.abstraction.instead, 'abstraction.instead', 0, LIMITS.abstractionListMax, ir, repairs);
+    }
+
+    var structural = [];
+    (Array.isArray(raw.structural) ? raw.structural : []).forEach(function (n) {
+      var f = cleanName(n);
+      if (!names[f]) { repairs.push('interpretation structural "' + String(n).slice(0, 24) + '" → dropped (names no feature)'); return; }
+      if (structural.indexOf(f) === -1 && structural.length < LIMITS.structuralMax) structural.push(f);
+    });
+    var revealOnly = [];
+    (Array.isArray(raw.revealOnly) ? raw.revealOnly : []).forEach(function (n) {
+      var f = cleanName(n);
+      if (!f) return;
+      if (structural.indexOf(f) !== -1) { repairs.push('interpretation reveal-only "' + f + '" is also structural → structural wins'); return; }
+      if (revealOnly.indexOf(f) === -1 && revealOnly.length < LIMITS.revealOnlyMax) revealOnly.push(f);
+    });
+
+    if (ir.length) return { section: null, refused: ir };
+    return { section: {
+      character: character, gesture: gesture, architecture: architecture, proportion: proportion,
+      diagnostic: diagnostic, abstraction: abstraction, rhythm: rhythm, movement: movement,
+      structural: structural, revealOnly: revealOnly
+    }, refused: null };
   }
 
   function validate(raw) {
@@ -279,14 +500,21 @@
       });
     }
 
+    // THE ETHER INTERPRETATION — optional; validated as words only; a
+    // failing section is set aside BY NAME and recorded as a repair, and
+    // the literal blueprint stands.
+    var interp = interpretationOf(raw.etherInterpretation, names, reveal, repairs);
+    if (interp.refused) repairs.push('etherInterpretation set aside — ' + interp.refused.slice(0, 4).join(', ') + (interp.refused.length > 4 ? '…' : ''));
+
     if (reasons.length) return { ok: false, reasons: reasons, repairs: repairs, offending: offending };
-    return { ok: true, reasons: [], repairs: repairs, offending: [], blueprint: {
+    return { ok: true, reasons: [], repairs: repairs, offending: [], interpretationRefused: interp.refused, blueprint: {
       subject: String(raw.subject).trim(),
       silhouette: String(raw.silhouette).trim(),
       features: features,
       budgets: budgets,
       sketch: sketch,
-      reveal: reveal
+      reveal: reveal,
+      etherInterpretation: interp.section
     } };
   }
 
@@ -332,6 +560,20 @@
         { name: 'CREST', kind: 'contour', near: 'HEAD' },
         { name: 'TAIL TUFT', kind: 'contour', near: 'TAIL' }
       ],
+      // generic, like the body plan, and it says so: direction for a body
+      // plan that stands in for anything — not for this subject
+      etherInterpretation: {
+        character: ['poised', 'open'],
+        gesture: 'FIXTURE direction — a body standing square, head lifted a little, tail carried behind.',
+        architecture: ['The body is the one long mass; the head hangs off its front and the tail trails off its back.', 'The legs are two short drops under the body, front and back, never wider than the body itself.'],
+        proportion: [{ feature: 'HEAD', treat: 'exaggerate', note: 'A head a little too large reads at a glance.' }, { feature: 'EAR', treat: 'compress', note: 'One small mark is enough.' }],
+        diagnostic: ['HEAD', 'BODY', 'TAIL'],
+        abstraction: { stance: 'simplify', doNot: ['fur or texture of any kind', 'eyes and a mouth'], instead: ['the one line of the back, from head to tail', 'the space under the body between the legs'] },
+        rhythm: 'Dense at the head, open along the back, one long empty space under the belly.',
+        movement: 'Would move at a walk — steady, level, unhurried.',
+        structural: ['HEAD', 'BODY', 'TAIL', 'FRONT LEG', 'BACK LEG'],
+        revealOnly: ['CREST', 'TAIL TUFT', 'EAR']
+      },
       sketch: [
         { kind: 'ellipse', c: [0.1, 0.0], r: [0.75, 0.42], rot: 0 },
         { kind: 'ellipse', c: [-0.85, -0.45], r: [0.3, 0.26], rot: 0 },
@@ -397,10 +639,23 @@
     // point and a detail place less again; a feature's second, third and
     // fourth marks at one level each count a little less than its first,
     // so four feet do not crowd out a tail.
+    // THE INTERPRETATION MAY RE-RANK, NEVER PLACE. A feature the art
+    // direction calls STRUCTURAL or DIAGNOSTIC is lifted ahead of one it
+    // does not name at the same level; a feature it calls REVEAL-ONLY is
+    // left to the reveal (kept out of the budgeted suggestions in
+    // `suggestions()`, still reachable through focus). Absent, the ranking
+    // is exactly what it was.
+    var I = bp.etherInterpretation || null;
+    var lift = {};
+    if (I) {
+      (I.structural || []).forEach(function (n) { lift[n] = (lift[n] || 0) + 6; });
+      (I.diagnostic || []).forEach(function (n) { lift[n] = (lift[n] || 0) + 4; });
+    }
     var seen = {};
     out.forEach(function (c) {
       var k = c.name + '#' + c.level, dup = seen[k] || 0; seen[k] = dup + 1;
-      c.priority = c.importance * 10 - (c.level - 1) * 14 - dup * 3;
+      c.priority = c.importance * 10 - (c.level - 1) * 14 - dup * 3 + (lift[c.name] || 0);
+      c.lifted = !!lift[c.name];
     });
     out.sort(function (a, b) {
       return (b.priority - a.priority) || (order[a.name] - order[b.name]) || (a.level - b.level) || (a.seq - b.seq);
@@ -427,10 +682,21 @@
       o = { landmarks: lmk };
     }
     var allowed = listFor(bp, budget);
-    var ranked = candidates(bp, o).filter(function (c) { return !allowed || allowed.indexOf(c.name) !== -1; });
+    var revealOnly = (bp.etherInterpretation && bp.etherInterpretation.revealOnly) || [];
+    var ranked = candidates(bp, o).filter(function (c) { return (!allowed || allowed.indexOf(c.name) !== -1) && revealOnly.indexOf(c.name) === -1; });
     return ranked.slice(0, budget).map(function (c, i) {
-      return { name: c.name, label: c.label, x: c.x, y: c.y, importance: c.importance, level: c.level, rank: i + 1 };
+      return { name: c.name, label: c.label, x: c.x, y: c.y, importance: c.importance, level: c.level, rank: i + 1, lifted: !!c.lifted };
     });
+  }
+
+  // The same ranking with the interpretation SET ASIDE — what the
+  // suggestions would be from the literal blueprint alone. Pure: a copy
+  // of the blueprint with the section removed, nothing stored.
+  function suggestionsWithout(bp, budget, outline) {
+    if (!bp) return [];
+    var copy = {}; Object.keys(bp).forEach(function (k) { copy[k] = bp[k]; });
+    copy.etherInterpretation = null;
+    return suggestions(copy, budget, outline);
   }
 
   // Every landmark of ONE feature, in rank order and at every level —
@@ -446,7 +712,8 @@
 
   global.LabBlueprint = {
     SCHEMA: SCHEMA, LIMITS: LIMITS, REVEAL_KINDS: REVEAL_KINDS.slice(), BUDGETS: BUDGETS.slice(), REQUIRED_BUDGETS: REQUIRED_BUDGETS.slice(), FORBIDDEN_KEYS: FORBIDDEN_KEYS.slice(), COORD: COORD,
-    cleanSubject: cleanSubject, cleanName: cleanName, messagesFor: messagesFor, validate: validate, parse: parse,
-    fixture: fixture, suggestions: suggestions, related: related, listFor: listFor
+    CHARACTER_WORDS: CHARACTER_WORDS.slice(), TREATMENTS: TREATMENTS.slice(), STANCES: STANCES.slice(), INTERPRETATION_GEOMETRY_KEYS: INTERPRETATION_GEOMETRY_KEYS.slice(),
+    cleanSubject: cleanSubject, cleanIdea: cleanIdea, isSuggestedWord: isSuggestedWord, cleanName: cleanName, messagesFor: messagesFor, validate: validate, parse: parse,
+    fixture: fixture, suggestions: suggestions, suggestionsWithout: suggestionsWithout, related: related, listFor: listFor
   };
 })(typeof window !== 'undefined' ? window : this);

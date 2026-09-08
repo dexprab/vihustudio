@@ -12777,3 +12777,26 @@ the last join, the unfinished state, the candidate's contents, the
 sanitizer's refusal, the approval's reach). A proof runner that
 restores with `git checkout` wipes the uncommitted work it is proving;
 this one restores from its own copy. No child has played it.
+
+## Lab — Ether creature translation V1: art direction in words
+
+Lab only, zero production files changed, build 0769. The blueprint
+gains an optional `etherInterpretation` — the assistant as art-direction
+translator: character, one gesture, body architecture, proportion,
+what must survive, what not to draw literally (explicitly allowed),
+rhythm, movement in words, structural vs reveal-only. Validated as
+words only: a geometry or code key, a non-string leaf, a digit, a
+coordinate- or code-shaped string, markup or a link at any depth sets
+the section aside BY NAME while the literal blueprint stands
+byte-identical; the product's boundary words still refuse the whole
+reply. An optional author idea travels as its own line, never the
+subject. The one consumer is the suggested-point ranking (structural
+and must-survive lifted, reveal-only kept out), shown with-vs-literal
+in the panel; the outline composer deliberately does not consume it —
+the dragon (rearing S drawn as a bird from below) and the mermaid (two
+halves drawn as a fish) show why re-ranking cannot fix a parts
+silhouette. Five constructed, CONSTRUCTED-labelled research blueprints
+with A/B/C/D shots; judged by looking, the layer improves authoring
+decisions every time and the picture never. Section `ET` (55), five
+load-bearing checks proved by reverting; `AR3k` widened with reason. No
+model was reachable; nothing is called generated.

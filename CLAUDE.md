@@ -9591,6 +9591,82 @@ leads somewhere.
   `docs/ETHER_MYSTERY_LAB.md` → *Reveal-only creature features* ·
   `tools/ether-mystery-lab-test/` section `RV` ·
   `tools/ether-mystery-lab-test/shots/reveal/`
+- **ETHER CREATURE TRANSLATION V1: THE ASSISTANT DIRECTS THE ABSTRACTION,
+  IN WORDS, AND DRAWS NOTHING — LAB ONLY, ZERO PRODUCTION FILES
+  CHANGED.** The blueprint gains one optional, clearly separated
+  section, `etherInterpretation`: the model as ART-DIRECTION
+  TRANSLATOR, never illustrator — character (a suggested vocabulary,
+  not a rigid one), the ONE dominant gesture, how the masses relate,
+  what to exaggerate and compress, which two-to-four features must
+  survive, what must NOT be drawn literally (the model is explicitly
+  allowed to say "do not draw this literally", and four of the five
+  constructed creatures do), spatial rhythm, movement character in
+  words, and which characteristics are structural against reveal-only.
+  The mental model is six parts now, and the legend says so: BLUEPRINT
+  = what the creature is · ETHER INTERPRETATION = how it should feel
+  abstracted · OUTLINE = visual reference · SUGGESTED POINTS =
+  landmarks · ETHER FIGURE = the researcher's creation · REVEAL =
+  temporary detail.
+- **IT IS NOT GEOMETRY, BY CONSTRUCTION, AND A FAILING SECTION IS SET
+  ASIDE BY NAME WHILE THE LITERAL BLUEPRINT STANDS.** At any depth
+  inside it the validator refuses a geometry or code key by name
+  (points, x, y, coordinates, path, polygon, canvas, code, script…),
+  any non-string leaf, any DIGIT in any text ("two" is the word), a
+  coordinate- or SVG-shaped string, a code-shaped string, markup, a link
+  — and animation vocabulary in `movement`, because movement is
+  character and never an instruction. Ten ways of smuggling geometry
+  and eight shapes of executable content each set the section aside
+  with the reason named, and the blueprint that comes out is
+  byte-identical to one whose direction was clean: a good literal
+  blueprint is never lost because its art direction carried a digit.
+  The product's own boundary words still refuse the WHOLE reply at any
+  depth, as they always did — the stronger rule, and it runs first.
+- **AN AUTHOR IDEA IS A LINE OF ITS OWN, NEVER THE SUBJECT.** Optional,
+  ≤ 200 characters of plain words, refused BY NAME when it cannot be
+  sent (markup, a link, braces, too long), and sent as `Author idea: …`
+  under `Subject: …` — with no subject the request is `bad-subject`
+  however good the idea. One contract, identical for every subject with
+  and without an idea; no private word anywhere in the request.
+- **THE RANKING IS THE ONE THING IT MOVES, AND IT MOVES NO LIGHT.** A
+  structural or must-survive feature is lifted in the suggested-point
+  ranking; a reveal-only one is kept out of the budgeted suggestions. A
+  suggestion is still a mark on one of the outline's own landmarks, and
+  the panel shows the suggestions both ways — with the direction, and
+  from the literal blueprint alone — naming what was brought in and
+  what was left to the reveal. Nothing else reads it: not the editor,
+  not the fixture record, not the approval, not the reveal (which it
+  may recommend for and never executes), not browser storage.
+- **THE OUTLINE COMPOSER DOES NOT CONSUME IT, AND THAT IS THE FINDING.**
+  The composer is a silhouette of PARTS; the interpretation is direction
+  about FEEL, and drawing "rearing" or "two halves meeting at the hip"
+  is not a thing a parts composer can do honestly. The two constructed
+  creatures where the direction most disagrees with the archetype show
+  it: the dragon's rearing S-curve is drawn as a bird from below with
+  its wings level, and the mermaid's two halves as a fish with a head,
+  a torso and a hand pinned to its flank. Re-ranking a few landmarks
+  cannot turn a fish into a mermaid, so the interpretation is shown
+  BESIDE the outline and the researcher reconciles them. Teaching the
+  composer a gesture is its own decision. **Judged by looking across
+  the five** (Lion strongest, Falcon honest with `simplify`, Tiger good,
+  Dragon and Mermaid the composer's failures): the layer improves the
+  authoring DECISIONS every time — what to spend a light on, what to
+  leave to the reveal, what to exaggerate — and the PICTURE never,
+  because it does not draw. That is the correct division for V1.
+- **NOTHING WAS GENERATED, AND NOTHING IS CALLED GENERATED.** The five
+  research blueprints are hand-written (`labTranslationData.js`),
+  labelled CONSTRUCTED on the badge, the source line, the status and
+  the trace — never fixture, never generated — and go through the real
+  validator. The generated path is proved against a stubbed endpoint
+  (a valid interpretation, one smuggling points, one carrying code, one
+  carrying a private key, one with none, a transport that dies — each
+  preserving the reference in use). Whether a real model writes
+  direction of this quality is the product owner's to find. `ET` (55),
+  five load-bearing checks proved by reverting.
+- `tools/ether-mystery-lab/labBlueprint.js` · `labReference.js` ·
+  `labTranslationData.js` · `shape.html` ·
+  `docs/ETHER_MYSTERY_LAB.md` → *Ether creature translation V1* ·
+  `tools/ether-mystery-lab-test/` section `ET` ·
+  `tools/ether-mystery-lab-test/shots/translation/`
 - Out of scope and not implemented: creature encounters as a reward
   system, creature dialogue, a Companion in the Ether, per-Traveller
   encounter history, more activity rows (story hunt, missing

@@ -2679,3 +2679,207 @@ runner must restore from a copy it took itself.
 · `labBlueprint.js` (one optional field) · `labReference.js` (one panel
 list). Suite section `RV` (61 checks). Screenshots:
 `tools/ether-mystery-lab-test/shots/reveal/<creature>-{unfinished,complete,reveal,after}.png`.
+
+## ETHER CREATURE TRANSLATION V1 — art direction in words, beside the outline
+
+Lab only; zero production files changed; build stays 0769. The
+blueprint gains one optional, clearly separated section —
+`etherInterpretation` — in which the assistant acts as an **art-direction
+translator, not an illustrator**: how the creature should FEEL once it
+is abstracted into a few lights. It is validated as words only, shown
+beside the outline, and consumed by exactly one thing: the order of the
+suggested points.
+
+### The mental model, now in six parts
+
+**BLUEPRINT** = what the creature is · **ETHER INTERPRETATION** = how
+it should feel abstracted · **OUTLINE** = visual reference ·
+**SUGGESTED POINTS** = landmarks · **ETHER FIGURE** = the researcher's
+own creation · **REVEAL** = temporary detail. The Shape Lab's legend
+says exactly this.
+
+### The schema (`LabBlueprint.SCHEMA.interpretation`)
+
+Ten parts, every one words:
+
+| key | what it is |
+|---|---|
+| `character` | 1–4 short words; a suggested vocabulary (`CHARACTER_WORDS`) that is not rigid — a word off it is kept and marked as the assistant's own |
+| `gesture` | one sentence: the ONE dominant gesture or pose |
+| `architecture` | 1–5 sentences: how the main masses relate |
+| `proportion` | 0–4 of `{feature, treat: exaggerate\|compress\|keep, note}` |
+| `diagnostic` | 2–4 feature names that must survive the abstraction |
+| `abstraction` | `{stance: do-not-draw-literally\|simplify\|literal-is-fine, doNot[], instead[]}` — the assistant may say plainly that the creature should not be drawn literally |
+| `rhythm` | one sentence on spatial rhythm and negative space |
+| `movement` | one sentence on movement CHARACTER, words only |
+| `structural` | 0–8 feature names worth a light and a join |
+| `revealOnly` | 0–8 names best kept for the payoff |
+
+**It is NOT geometry, by construction.** The validator
+(`interpretationOf`) refuses, at any depth inside the section: a
+geometry or code key by name (`INTERPRETATION_GEOMETRY_KEYS` — points,
+x, y, coordinates, path, polygon, canvas, code, script, sketch, anchor…),
+any non-string leaf (a number, a boolean, null), any DIGIT in any text
+("two" is the word), a coordinate-shaped or SVG-shaped string, a
+code-shaped string (a function, an arrow, `ctx.`, a template), and
+markup, links and data URIs (the blueprint's own `badText`). Animation
+vocabulary in `movement` (ms, seconds, frames, animate, easing, loop) is
+refused too: movement is character, never an instruction.
+
+**A failing section is SET ASIDE BY NAME, and the literal blueprint
+stands.** `validate()` returns `interpretationRefused: [...]` and adds
+one repair line (`etherInterpretation set aside — …`); the blueprint
+that comes out is byte-identical to one whose interpretation was clean.
+A good literal blueprint is never lost because its art direction carried
+a digit. The product's own boundary words (constellation, stars, card,
+memories, pattern, email…) still refuse the WHOLE reply at any depth,
+as they always did — that is a stronger rule and it runs first. Bounded
+lists are cut with a named repair; an unknown feature in `diagnostic`,
+`proportion` or `structural` is dropped and named; an unknown stance
+falls to `simplify`, named; a name in both `structural` and
+`revealOnly` stays structural, named.
+
+### The request
+
+`messagesFor(subject, idea)`. The **author idea** is optional, one line,
+plain words and punctuation, ≤ 200 characters, scanned like every other
+text and refused BY NAME (`bad-idea`) when it cannot be sent — never
+trimmed into something else. It travels as its own line under the
+subject (`Subject: Lion` / `Author idea: …`) and is never the subject:
+with no subject the request is `bad-subject` however good the idea. The
+contract is ONE fixed text, identical for every subject with and without
+an idea; it asks for the interpretation, allows the assistant to refuse
+literal representation, forbids numbers and geometry in it, says the
+idea is not the subject — and still says the assistant never draws the
+final figure. No private word anywhere in the request (suite-scanned).
+
+### What consumes it — and what deliberately does not
+
+**The suggested-point ranking, and nothing else.** In
+`LabBlueprint.candidates()` a feature the direction calls `structural`
+or `diagnostic` is lifted ahead of one it does not name at the same
+level; in `suggestions()` a feature it calls `revealOnly` is kept OUT of
+the budgeted suggestions (still reachable through feature focus). A
+suggestion is still a mark on one of the outline's own landmarks — the
+interpretation invents no place. `suggestionsWithout()` is the same
+ranking with the section set aside, and the panel shows both
+(`[data-ref-compare]`): with the direction, and from the literal
+blueprint alone, at the budget in force, with what was brought in and
+what was left to the reveal named.
+
+**The outline composer does NOT consume it, and that is a judgement,
+not an omission.** The composer (`labOutline.js`) is a silhouette of
+PARTS — it reads which parts a blueprint names and lays a body plan for
+them. The interpretation is direction about FEEL — "rearing", "one long
+S from head to tail", "two halves meeting at the hip". Drawing "poised"
+is not a thing a parts composer can do honestly, and the two constructed
+creatures where the direction most disagrees with the archetype show why
+a patch would be wrong: the dragon's interpretation is a rearing side-on
+S-curve and the composer draws a **winged** archetype — a bird from
+below, wings level; the mermaid's is two halves and the composer draws
+a **finned** archetype — a fish, with the head, torso and reaching hand
+dropped onto its side. Re-ranking a few landmarks cannot turn a fish
+into a mermaid. Where the interpretation and the outline disagree, the
+interpretation is shown beside the outline and the RESEARCHER is the
+one who reconciles them — which is what the layer is for. Teaching the
+composer a gesture is its own decision (see the report's H).
+
+**Not consumed anywhere else, by construction.** `js/` is untouched;
+the blueprint module reaches no editor, no network and no store (it
+cannot place, join or remember a light); the fixture record holds none
+of the direction (only `authoring: {subject, referenceUsed, source}`);
+the approved figure carries none of it; the reveal list is untouched
+by a generation; nothing about the interpretation or the idea is written
+to browser storage. The reveal is NOT executed by the interpretation:
+`revealOnly` is a recommendation the researcher reads, and the reveal
+features are authored exactly as before.
+
+### The constructed research set (`labTranslationData.js`)
+
+Five hand-written blueprints — Lion, Tiger, Dragon, Mermaid, Falcon —
+each carrying a full interpretation, loaded through *Translation
+research set → Load constructed blueprint* and labelled **CONSTRUCTED**
+on the badge, the source line, the status and the trace: never a
+fixture (the fixture is ONE generic body plan) and never called
+generated (no model was reachable from this environment). They go
+through the real validator on the way in. Four of the five refuse
+literal representation (`do-not-draw-literally`); the falcon only
+simplifies. Every interpretation changes the suggested structure at 8
+or 12 (measured: Lion, Tiger, Dragon and Falcon at both; Mermaid at 12).
+
+The four-way comparison is committed per creature under
+`tools/ether-mystery-lab-test/shots/translation/`: **A** the literal
+blueprint (the panel's feature and budget rows, with **C** beneath),
+**B** the literal outline alone (every light removed, reference on),
+**C** the interpretation read back, **D** the suggested structure WITH
+the direction (the placed starting figure over the outline).
+
+### Judged by looking — the researcher's own judgement, no model scoring
+
+- **Lion** — the strongest. The direction ("the mane is the largest
+  mass and the head is inside it"; exaggerate the mane, compress the
+  head, keep the long back) matches what a few lights can do, and the
+  with-structure puts a mane light above the head, keeps the long back
+  as shoulder → body → rump, and leaves the tuft and the muzzle to the
+  reveal. Distinctiveness, proportion and point economy all improve
+  against the literal ranking, which spent lights on second leg marks.
+- **Tiger** — good. "One long horizontal with the head BELOW the line
+  of the back" is exactly the sentence a literal blueprint cannot say,
+  and the with-structure keeps the stripes and the muzzle out of the
+  lights entirely; the tail is lifted ahead of the legs. What it cannot
+  do is lower the head — that is the composer's, and the composer draws
+  a standing cat.
+- **Dragon** — the direction is the best of the five as WRITING
+  ("neck and tail as one S with the small chest at its middle; the
+  wings hang from the middle of that line; most of the figure is empty
+  sky held between the wings") and the outline is the worst match: a
+  winged archetype seen from below, wings level, head up. The
+  interpretation re-ranks correctly (wings, neck, head, tail first;
+  horns, jaws and hind legs to the reveal) and cannot fix the picture.
+  This is the case that answers H.
+- **Mermaid** — the same finding, harder. "Two halves meeting at the
+  hip, the fish half longer than the torso is tall, one diagonal from
+  fluke to fingertips" is right and the composer draws a fish with a
+  head, a torso and a hand pinned to its flank. At 8 the direction
+  changes nothing, because the eight lights the literal ranking chooses
+  are already the ones the direction names; at 12 it leaves the hair to
+  the reveal.
+- **Falcon** — good and honest. The stance is `simplify`, not
+  `do-not-draw-literally`, because a stooping falcon IS an arrowhead
+  and an arrowhead is drawable; the direction lifts the wings, the
+  head, the tail and the beak and leaves feathers, eyes and talons to
+  the reveal. The composer's spread-wing bird is a reasonable literal
+  outline for once.
+
+**Across the five:** the interpretation improves the authoring
+DECISIONS in every case — what to spend a light on, what to leave to
+the reveal, what to exaggerate — and improves the PICTURE in none,
+because it does not draw. That is the correct division for V1 and the
+reason the composer was left alone.
+
+**Disclosed:** no model produced any of these. The environment cannot
+reach a provider; the generated path is proved against a stubbed
+endpoint (a valid interpretation, one smuggling points, one carrying
+code, one carrying a private key, one with none, and a transport that
+dies — each with the reference in use preserved). Whether a real model
+writes direction of this quality, and whether it uses the permission to
+refuse literal representation, is the product owner's to find with the
+real connection.
+
+### Proved by reverting
+
+Section `ET` (55). Five load-bearing checks each proved by temporary
+reversion, restored from a copy: the digit rule removed → `ET5`; the
+geometry-key sweep removed → `ET5b`, `ET6b`, `ET23`; the reveal-only
+exclusion removed → `ET10`; the idea folded into the subject line →
+`ET8`, `ET22`; a refused interpretation refusing the whole blueprint →
+`ET4f`, `ET5`. `AR3k` was widened by the one new top-level key with its
+reason in place.
+
+### Files
+
+`tools/ether-mystery-lab/labBlueprint.js` (schema, validator, contract,
+idea, ranking hook) · `labReference.js` (panel, comparison, trace,
+idea field, constructed loader) · `labTranslationData.js` (new) ·
+`shape.html`. Screenshots:
+`tools/ether-mystery-lab-test/shots/translation/<creature>-{A,B,C,D}-….png`.

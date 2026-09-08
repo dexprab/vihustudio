@@ -51,6 +51,23 @@
 // ON / OFF. Off, the underlay is hidden and the editor paints its own
 // opaque sky — byte for byte the render the Shape Lab always had. That
 // is the judging state: only the Ether figure.
+//
+// THE ETHER INTERPRETATION IS SHOWN, NOT DRAWN. The blueprint's optional
+// art-direction section (labBlueprint.js) is read back in the panel —
+// character, gesture, architecture, proportion, what must survive, what
+// must not be drawn literally, rhythm, movement, structural vs
+// reveal-only — beside a comparison of the suggested points WITH it and
+// FROM THE LITERAL BLUEPRINT ALONE. The outline composer does not read
+// it: the outline is a silhouette of parts and the interpretation is
+// direction about feel, and drawing "poised" is not a thing a silhouette
+// composer can do honestly. What it changes is the ORDER of the
+// suggestions, through the blueprint module's own ranking, never a place.
+//
+// CONSTRUCTED RESEARCH BLUEPRINTS. `loadConstructed(id)` sets a hand-
+// written blueprint from labTranslationData.js — labelled CONSTRUCTED on
+// the panel, in the trace and in the source line, never fixture and
+// never generated — so the translation layer can be judged where no
+// model is reachable. The same validator, the same seam.
 (function (global) {
   'use strict';
 
@@ -83,9 +100,10 @@
   function sourceLabel(mode, model) {
     if (mode === 'endpoint') return 'LLM — Endpoint' + (model ? ' (' + model + ')' : '');
     if (mode === 'direct') return 'LLM — Direct (dev)' + (model ? ' (' + model + ')' : '');
+    if (mode === 'constructed') return 'CONSTRUCTED — research blueprint (hand-written, not model output)';
     return 'FIXTURE — generic authoring reference';
   }
-  function sourceKind(mode) { return mode === 'fixture' ? 'fixture' : 'llm'; }
+  function sourceKind(mode) { return mode === 'fixture' || mode === 'constructed' ? 'fixture' : 'llm'; }
 
   var canvas = null;
 
@@ -364,6 +382,70 @@
   // ---------------------------------------------------------------
   function stars(n) { return '●'.repeat(n) + '○'.repeat(3 - n); }
 
+  // THE ETHER INTERPRETATION, READ BACK — words, never marks. Every
+  // block names what it is; nothing here is drawn, placed or counted
+  // toward anything. Beneath it, the one thing the interpretation DOES
+  // change is shown both ways: the suggested points at this budget with
+  // the direction, and from the literal blueprint alone.
+  var TREAT_MARK = { exaggerate: '↑ exaggerate', compress: '↓ compress', keep: '= keep' };
+  var STANCE_WORDS = { 'do-not-draw-literally': 'Do not draw this literally', 'simplify': 'Simplify', 'literal-is-fine': 'Literal is fine' };
+  function chips(list, cls) { return list.map(function (w) { return '<span class="bp-s ' + (cls || '') + '">' + esc(w) + '</span>'; }).join(' '); }
+
+  function compareSuggestions() {
+    var S = global.ShapeLab, B = global.LabBlueprint;
+    if (!S || !B || !state.current) return null;
+    var budget = S.state().budget;
+    var withI = B.suggestions(state.current, budget, state.outline).map(function (x) { return x.name; });
+    var without = (B.suggestionsWithout ? B.suggestionsWithout(state.current, budget, state.outline) : []).map(function (x) { return x.name; });
+    var added = withI.filter(function (n) { return without.indexOf(n) === -1; });
+    var removed = without.filter(function (n) { return withI.indexOf(n) === -1; });
+    var reordered = added.length === 0 && removed.length === 0 && withI.join('|') !== without.join('|');
+    return { budget: budget, withInterpretation: withI, withoutInterpretation: without, added: added, removed: removed, reordered: reordered, differs: added.length > 0 || removed.length > 0 || reordered };
+  }
+
+  function renderInterpretation(bp, budget) {
+    var B = global.LabBlueprint;
+    var I = bp.etherInterpretation;
+    var m = state.meta || {};
+    var head = '<div class="bp-h">Ether interpretation — how it should feel as a figure of lights</div>';
+    if (!I) {
+      var why = m.interpretationRefused
+        ? 'Set aside by the validator — ' + esc(m.interpretationRefused.slice(0, 3).join(', ')) + (m.interpretationRefused.length > 3 ? '…' : '') + '. The literal blueprint stands; the outline and the suggested points are read from the features alone.'
+        : 'None — the assistant answered with the literal blueprint only. The outline and the suggested points are read from the features alone.';
+      return head + '<div class="bp-interp none" data-ref-interp data-ref-interp-state="' + (m.interpretationRefused ? 'set-aside' : 'absent') + '"><span class="note">' + why + '</span></div>';
+    }
+    var stanceWord = STANCE_WORDS[I.abstraction.stance] || I.abstraction.stance;
+    var html = head + '<div class="bp-interp" data-ref-interp data-ref-interp-state="present" data-ref-interp-stance="' + esc(I.abstraction.stance) + '">' +
+      '<div class="bp-ir"><span class="bp-ik">character</span>' + I.character.map(function (w) {
+        var own = B && B.isSuggestedWord ? !B.isSuggestedWord(w) : false;
+        return '<span class="bp-s' + (own ? ' own' : '') + '" title="' + (own ? 'the assistant\'s own word' : 'from the suggested vocabulary') + '">' + esc(w) + (own ? ' ·' : '') + '</span>';
+      }).join(' ') + '</div>' +
+      '<div class="bp-ir"><span class="bp-ik">gesture</span><span class="bp-iv">' + esc(I.gesture) + '</span></div>' +
+      '<div class="bp-ir"><span class="bp-ik">architecture</span><span class="bp-iv">' + I.architecture.map(function (a) { return '<div>' + esc(a) + '</div>'; }).join('') + '</span></div>' +
+      (I.proportion.length ? '<div class="bp-ir"><span class="bp-ik">proportion</span><span class="bp-iv">' + I.proportion.map(function (p) { return '<div><b>' + esc(p.feature) + '</b> ' + esc(TREAT_MARK[p.treat] || p.treat) + (p.note ? ' — ' + esc(p.note) : '') + '</div>'; }).join('') + '</span></div>' : '') +
+      '<div class="bp-ir"><span class="bp-ik">must survive</span>' + chips(I.diagnostic, 'diag') + '</div>' +
+      '<div class="bp-ir"><span class="bp-ik">abstraction</span><span class="bp-iv"><b class="bp-stance ' + esc(I.abstraction.stance) + '">' + esc(stanceWord) + '</b>' +
+        (I.abstraction.doNot.length ? '<div>Do not draw literally: ' + esc(I.abstraction.doNot.join(' · ')) + '</div>' : '') +
+        (I.abstraction.instead.length ? '<div>Instead: ' + esc(I.abstraction.instead.join(' · ')) + '</div>' : '') + '</span></div>' +
+      '<div class="bp-ir"><span class="bp-ik">rhythm</span><span class="bp-iv">' + esc(I.rhythm) + '</span></div>' +
+      '<div class="bp-ir"><span class="bp-ik">movement</span><span class="bp-iv">' + esc(I.movement) + '</span></div>' +
+      '<div class="bp-ir"><span class="bp-ik">structural</span>' + (I.structural.length ? chips(I.structural, 'struct') : '<span class="note">—</span>') + '</div>' +
+      '<div class="bp-ir"><span class="bp-ik">reveal-only</span>' + (I.revealOnly.length ? chips(I.revealOnly, 'ronly') : '<span class="note">—</span>') + '</div>' +
+      '<div class="note">Direction, not geometry: nothing here is drawn or placed. It lifts the structural and must-survive features in the suggested-point ranking and keeps a reveal-only characteristic out of it; the outline is still composed from the features alone.</div>' +
+      '</div>';
+    var c = compareSuggestions();
+    if (c) {
+      html += '<div class="bp-h">Suggested points at ' + c.budget + ' — with the interpretation vs from the literal blueprint</div>' +
+        '<div class="bp-cmp" data-ref-compare data-ref-compare-differs="' + (c.differs ? 'yes' : 'no') + '">' +
+        '<div><span class="bp-ik">with</span>' + (c.withInterpretation.length ? chips(c.withInterpretation.map(function (n) { return n.toLowerCase(); }), 'struct') : '<span class="note">—</span>') + '</div>' +
+        '<div><span class="bp-ik">literal</span>' + (c.withoutInterpretation.length ? chips(c.withoutInterpretation.map(function (n) { return n.toLowerCase(); })) : '<span class="note">—</span>') + '</div>' +
+        '<div class="note">' + (c.differs
+          ? (c.added.length ? 'Brought in: ' + esc(c.added.join(', ').toLowerCase()) + '. ' : '') + (c.removed.length ? 'Left to the reveal: ' + esc(c.removed.join(', ').toLowerCase()) + '. ' : '') + (c.reordered ? 'Same places, a different order. ' : '')
+          : 'The same places in the same order at this budget — the direction changed nothing here.') + '</div></div>';
+    }
+    return html;
+  }
+
   function renderPanel() {
     var box = el('[data-ref-panel]');
     if (!box) return;
@@ -410,6 +492,7 @@
         return sg.map(function (x) { return '<span class="bp-s l' + (x.level || 1) + (x.focused ? ' focus' : '') + '">' + esc(x.label) + '</span>'; }).join(' ');
       })() + '</div>' +
       (state.focus ? '<div class="note">Focus: <b>' + esc(state.focus) + '</b> — its related points are shown in gold at every level. Choose it again to clear.</div>' : '') +
+      renderInterpretation(bp, budget) +
       // Reveal-only suggestions: names the assistant offered for the
       // PAYOFF, listed here and added — one press each — from the
       // Reveal-only features section, where the researcher chooses the
@@ -456,7 +539,9 @@
       src.textContent = !mm ? '' :
         (mm.mode === 'fixture'
           ? 'FIXTURE — generic authoring reference: a body plan standing in for "' + mm.subject + '"; the pipeline, not the creature.'
-          : sourceLabel(mm.mode, mm.model) + ' — generated for "' + mm.subject + '"; a reference to draw over, never the creature itself.');
+          : (mm.mode === 'constructed'
+            ? 'CONSTRUCTED — a hand-written research blueprint for "' + mm.subject + '", not a model\'s answer; a reference to draw over, never the creature itself.'
+            : sourceLabel(mm.mode, mm.model) + ' — generated for "' + mm.subject + '"; a reference to draw over, never the creature itself.'));
     }
     var sec = el('[data-ref-section]');
     if (sec) sec.setAttribute('data-ref-outcome', state.last ? state.last.outcome : 'none');
@@ -478,17 +563,19 @@
   // and a key never lives in this file). The reply is TEXT until the
   // blueprint validator says otherwise; a refused reply changes nothing.
   // ---------------------------------------------------------------
-  function generate(subject) {
+  function generate(subject, idea) {
     var B = global.LabBlueprint, Conn = global.LabConnection, S = global.ShapeLab;
     if (!B || !Conn) { status('The blueprint or connection module is not loaded.', 'warn'); return Promise.resolve({ ok: false, reason: 'not-loaded' }); }
-    var m = B.messagesFor(subject);
+    var m = B.messagesFor(subject, idea);
     if (!m.ok) {
-      status('Give a subject to work from — letters, numbers, spaces, up to 40 characters.', 'warn');
+      status(m.reason === 'bad-idea'
+        ? 'The author idea could not be sent — plain words and punctuation only, up to 200 characters, no links or markup. Nothing was generated.'
+        : 'Give a subject to work from — letters, numbers, spaces, up to 40 characters.', 'warn');
       return Promise.resolve({ ok: false, reason: m.reason });
     }
     var mode = Conn.status().mode;                 // decided BEFORE the call; the reply never renames it
     var kept = state.current ? 'The reference you had is still here.' : 'Nothing changed.';
-    var trace = { mode: mode, label: sourceLabel(mode), subject: m.subject, request: null, answer: null, parse: null, accepted: false, outcome: 'pending' };
+    var trace = { mode: mode, label: sourceLabel(mode), subject: m.subject, idea: !!m.idea, ideaChars: m.idea ? m.idea.length : 0, request: null, answer: null, parse: null, accepted: false, interpretation: null, outcome: 'pending' };
     state.last = trace;
     if (mode !== 'fixture' && /not configured/.test(Conn.status().line)) {
       trace.request = 'not sent — ' + sourceLabel(mode) + ' is selected but not configured';
@@ -527,7 +614,8 @@
       trace.outcome = r.source === 'fixture' ? 'fixture' : 'generated';
       trace.features = v.blueprint.features.length;
       trace.sketch = v.blueprint.sketch.length;
-      set(v.blueprint, { subject: m.subject, source: r.source, mode: mode, model: r.model || null });
+      trace.interpretation = v.blueprint.etherInterpretation ? 'accepted' : (v.interpretationRefused ? 'set aside — ' + v.interpretationRefused.join(', ') : 'absent');
+      set(v.blueprint, { subject: m.subject, source: r.source, mode: mode, model: r.model || null, interpretationRefused: v.interpretationRefused || null });
       if (S && S.setAuthoring) S.setAuthoring({ subject: m.subject, referenceUsed: true, source: r.source });
       // The researcher-metadata name is filled from the typed subject only
       // while it is empty — a name already given is never overwritten.
@@ -545,6 +633,30 @@
     });
   }
 
+  // A CONSTRUCTED research blueprint — hand-written in
+  // labTranslationData.js, validated by the real validator on the way in,
+  // and labelled CONSTRUCTED everywhere it shows. Never a fixture, never
+  // called generated; a research stand-in for a model this environment
+  // cannot reach.
+  function loadConstructed(id) {
+    var B = global.LabBlueprint, D = global.LabTranslationData, S = global.ShapeLab;
+    if (!B || !D) return { ok: false, reason: 'not-loaded' };
+    var entry = (D.creatures || []).filter(function (c) { return c.id === id; })[0];
+    if (!entry) return { ok: false, reason: 'no-such-entry' };
+    var v = B.validate(JSON.parse(JSON.stringify(entry.blueprint)));
+    var trace = { mode: 'constructed', label: sourceLabel('constructed'), subject: entry.subject, idea: false, ideaChars: 0, request: 'none — a hand-written research blueprint, loaded from the Lab\'s own data file', answer: { ok: true, source: 'constructed', model: null, chars: JSON.stringify(entry.blueprint).length }, parse: { ok: v.ok, reasons: v.reasons || [], repairs: v.repairs || [], offending: v.offending || [] }, accepted: false, interpretation: null, outcome: 'pending' };
+    state.last = trace;
+    if (!v.ok) { trace.outcome = 'rejected'; status('The constructed blueprint was refused by the validator — ' + v.reasons.slice(0, 3).join(', ') + '. Nothing changed.', 'warn'); paintControls(); return { ok: false, reason: 'invalid-blueprint', reasons: v.reasons }; }
+    trace.accepted = true; trace.outcome = 'constructed';
+    trace.features = v.blueprint.features.length; trace.sketch = v.blueprint.sketch.length;
+    trace.interpretation = v.blueprint.etherInterpretation ? 'accepted' : (v.interpretationRefused ? 'set aside — ' + v.interpretationRefused.join(', ') : 'absent');
+    set(v.blueprint, { subject: entry.subject, source: 'constructed', mode: 'constructed', model: null, interpretationRefused: v.interpretationRefused || null });
+    if (S && S.setAuthoring) S.setAuthoring({ subject: entry.subject, referenceUsed: true, source: 'constructed' });
+    if (S && S.setName && !S.state().name) S.setName(entry.subject);
+    status('CONSTRUCTED research blueprint in place for "' + entry.subject + '" — hand-written for the translation study, not a model\'s answer. Place your lights over it; the lights are yours.', 'ok');
+    return { ok: true, source: 'constructed', mode: 'constructed' };
+  }
+
   // THE OBSERVABLE PATH. Every step of the last generation, in words,
   // so a real LLM run can be told from a fixture and a failure from a
   // fallback — there is no fallback. Never persisted.
@@ -554,7 +666,7 @@
     var t = state.last;
     if (!t) { box.innerHTML = '<div class="note">Nothing generated yet.</div>'; return; }
     function row(k, v, cls) { return '<div class="trow"><span class="tk">' + esc(k) + '</span><span class="tv' + (cls ? ' ' + cls : '') + '">' + esc(v) + '</span></div>'; }
-    var rows = [row('source', t.label), row('subject', t.subject), row('request', t.request || '—')];
+    var rows = [row('source', t.label), row('subject', t.subject), row('author idea', t.idea ? 'given · ' + t.ideaChars + ' chars · sent as its own line under the subject' : 'none'), row('request', t.request || '—')];
     if (t.answer) {
       rows.push(t.answer.ok
         ? row('answer', 'received · labelled ' + t.answer.source + (t.answer.model ? ' · model ' + t.answer.model : '') + ' · ' + t.answer.chars + ' chars', 'good')
@@ -563,7 +675,8 @@
     if (t.parse) rows.push(t.parse.ok ? row('validator', 'accepted', 'good') : row('validator', 'refused — ' + t.parse.reasons.join(', ') + ((t.parse.offending || []).length ? ' · refused names: ' + t.parse.offending.map(function (o) { return '"' + o.name + '"'; }).join(', ') : ''), 'bad'));
     if (t.parse && (t.parse.repairs || []).length) rows.push(row('names tidied', t.parse.repairs.join(' · ')));
     if (t.accepted) rows.push(row('blueprint', t.features + ' features · ' + t.sketch + ' sketch primitives'));
-    rows.push(row('outcome', t.outcome, t.outcome === 'generated' || t.outcome === 'fixture' ? 'good' : 'bad'));
+    if (t.accepted) rows.push(row('interpretation', t.interpretation || 'absent', t.interpretation === 'accepted' ? 'good' : (/set aside/.test(t.interpretation || '') ? 'bad' : '')));
+    rows.push(row('outcome', t.outcome, t.outcome === 'generated' || t.outcome === 'fixture' || t.outcome === 'constructed' ? 'good' : 'bad'));
     box.innerHTML = rows.join('');
   }
 
@@ -632,11 +745,19 @@
     if (S && S.observe) S.observe(function () { render(); if (state.current) renderPanel(); });
     wireConn();
     var subj = el('[data-ref-subject]');
+    var ideaEl = el('[data-ref-idea]');
+    var ideaOf = function () { return ideaEl ? ideaEl.value : ''; };
     var gen = el('[data-ref-generate]');
-    if (gen) gen.addEventListener('click', function () { generate(subj ? subj.value : ''); });
-    if (subj) subj.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); generate(subj.value); } });
+    if (gen) gen.addEventListener('click', function () { generate(subj ? subj.value : '', ideaOf()); });
+    if (subj) subj.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); generate(subj.value, ideaOf()); } });
     var an = el('[data-ref-another]');
-    if (an) an.addEventListener('click', function () { generate(state.meta ? state.meta.subject : (subj ? subj.value : '')); });
+    if (an) an.addEventListener('click', function () { generate(state.meta ? state.meta.subject : (subj ? subj.value : ''), ideaOf()); });
+    // The translation research set: constructed blueprints, one press each.
+    var rs = el('[data-ref-research]'), rl = el('[data-ref-research-load]');
+    if (rs && global.LabTranslationData) {
+      rs.innerHTML = (global.LabTranslationData.creatures || []).map(function (c) { return '<option value="' + esc(c.id) + '">' + esc(c.subject) + '</option>'; }).join('');
+    }
+    if (rl) rl.addEventListener('click', function () { loadConstructed(rs ? rs.value : ''); });
     var rp = el('[data-ref-restore]');
     if (rp) rp.addEventListener('click', function () { var r = restorePrevious(); status(r.ok ? 'The previous reference is back; the other one is one press away.' : ''); });
     var dc = el('[data-ref-discard]');
@@ -670,6 +791,8 @@
     show: show, showLabels: showLabels, showSuggestions: showSuggestions, dismiss: dismiss,
     focus: focus, focused: function () { return state.focus; },
     isShowing: isShowing, snap: snap, suggestions: suggestions, generate: generate,
+    loadConstructed: loadConstructed, compareSuggestions: compareSuggestions,
+    interpretation: function () { return state.current && state.current.etherInterpretation ? JSON.parse(JSON.stringify(state.current.etherInterpretation)) : null; },
     current: function () { return state.current ? JSON.parse(JSON.stringify(state.current)) : null; },
     previous: function () { return state.previous ? JSON.parse(JSON.stringify(state.previous)) : null; },
     meta: function () { return state.meta ? JSON.parse(JSON.stringify(state.meta)) : null; },
