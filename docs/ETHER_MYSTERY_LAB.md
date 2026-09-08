@@ -3382,3 +3382,187 @@ Ether. What changed outside the Lab is `supabase/functions/lab-generate`
 `tools/ether-mystery-lab-test/run-lab-tests.js` section `IM` ·
 `tools/ether-mystery-lab-test/real-understanding.js` ·
 `tools/ether-mystery-lab-test/shots/imagine/`
+
+## Image → Ether creature translation, proof V1
+
+The step after the understanding. The Shape Lab's CREATE stage gains
+one button under the selected picture — **Create Ether creature** —
+and the answer is a complete Ether figure in the editor, labelled
+GENERATED, with the picture it came from standing beside it. Lab
+only; `js/`, `assets/`, `vihuplanet/`, `index.html` and `studio.html`
+are untouched and the build stays 0769.
+
+### The division of labour
+
+**The model decides MEANING; the composer decides GEOMETRY.** That
+line is the whole design, and it is enforced rather than hoped for.
+
+- `LabTranslate.planMessages(analysis)` builds the plan request: one
+  fixed contract, then the picture's own understanding as context;
+  the transport attaches the picture. The contract asks for GESTURE
+  FIRST — the dominant gesture of the whole figure and which masses
+  lie along its main body line, rear to head — and then for every
+  other mass by its RELATIONSHIP to one already standing: rises from
+  the top of, extends from the back of, spans from, surrounds,
+  supports from below, hangs from, attaches to, flows into, pairs
+  with; which side; whether it is a pair. Plus proportion, what must
+  survive, what to simplify, what is reveal-only, complexity and
+  movement. Words only, in a controlled vocabulary.
+- `LabTranslate.validatePlan(raw)` denies by shape: a geometry,
+  runtime, credential or private key at any depth refuses the plan by
+  name; a NUMBER anywhere — a value, or a decimal pair in a sentence —
+  is a coordinate in disguise and is refused; SVG, markup, a link, a
+  data URI and code are refused as text; an unknown key is refused.
+  Vocabulary drift ("wing" for span, "huge" for large, "standing" for
+  upright) is REPAIRED to the vocabulary and every repair is recorded.
+  Structure a composer could only guess at — a flow of one, an id
+  nobody declared, a mass related to itself, nothing to survive — is
+  refused with its reason. A mass no relationship reaches is allowed
+  and named; the composer hangs it off the largest flow mass and says
+  so.
+- `LabEtherComposer.compose(plan)` lays the SPINE of the gesture
+  (upright · seated · grounded · reaching · flowing · coiled ·
+  diagonal · spread · rearing · floating, bent by the curve, pointed
+  by the facing), gives every flow mass a stretch of it by weight,
+  puts a light at each end and at every transition, a width pair on
+  the masses that dominate, and then attaches the rest by
+  relationship through a small primitive vocabulary — flow · mass ·
+  taper · span · branch · terminal · enclosure · transition ·
+  attachment. Lights are allocated by priority: the spine's ends and
+  transitions, then what must survive, then the dominant volume, then
+  the diagnostic structures, then widths, then the secondary ones,
+  with every refining light (a tail's mid, a wing's trailing corner)
+  after every defining one. The budget FLOORS at the essentials and
+  complexity sets the room beyond — a plan that says "simple" and
+  names five things that must survive keeps all five. A candidate
+  standing where one already stands IS that light. A join to a
+  dropped light climbs to what that light hung from, so every figure
+  is one piece by construction. The result is fitted to the sky and
+  reported: components, crossings, what was dropped, what shares a
+  light, and an allocation naming every light.
+- No creature word, no branch on a subject, a label or a mass id, no
+  `Math.random`. Renaming every mass in a plan moves not one light
+  (`TR2e`); numbers smuggled onto a plan move not one light either
+  (`TR6`).
+
+### What a figure looks like on the page
+
+SOURCE — the chosen picture, on the left · AUTHOR — the figure, with
+the source faintly under it (SOURCE UNDER — ON/OFF; its own inert
+canvas beneath the editor, never under JUDGE, never in a fixture) ·
+JUDGE — the figure alone. The status strip carries GENERATED; one
+edit makes it GENERATED · EDITED; undo gives GENERATED back; Reset
+everything is AUTHORED again. The generated figure walks the existing
+SHAPE → CONNECT → REVEAL → TEST → APPROVE path with nothing bolted on.
+The plan is shown as words a person can argue with; the JSON, the
+composition and the trace sit under Advanced.
+
+### The real run, and the first round of generic fixes
+
+`tools/ether-mystery-lab-test/real-translation.js` sends every
+picture in the manifest — with the REAL understanding already
+committed for it — through the same contract to gpt-4.1-mini (from
+Node; the browser here cannot reach the provider), validates, composes,
+and writes every raw reply, plan, repair, figure and diagnostic to
+`shots/translate/real-translation.json`. `render-translation.js` draws
+each one back into the real Shape Lab and screenshots SOURCE · AUTHOR
+· JUDGE. **17/17 plans valid on the first attempt.**
+
+The first composed round was rated, and then the composer was
+corrected ONLY where the same defect showed on several creatures —
+never per creature:
+
+| defect, measured | seen on | fix |
+|---|---|---|
+| a symmetric span on BOTH sides gave ONE wing reaching back | Lumo, the eagle | a mirrored pair across the spine |
+| every span reached up-and-back whatever its side | the falcon (both wings left) | a span honours its side |
+| every branch was feet | Lumo's arms under its feet | a branch to a side is a limb |
+| a child of a dropped parent was an island | the quill, the elephant (three pieces) | a join climbs to what the dropped light hung from |
+| an attachment started at a circle inside a flow mass | horns lost into the head's top light; a crown on the same light | reach to the mass's real edge along the spine |
+| a width pair outranked what must survive | the elephant's ear, tusk, legs, tail all dropped | survive over width; budget floored at the essentials |
+
+`real-translation.js --recompose` re-runs the composer on the saved
+plans without a request; `TR8c` requires the committed figures to be
+what today's composer makes of the committed plans.
+
+### The ratings
+
+`shots/translate/ratings.json` — A unmistakable · B recognisable ·
+C generic creature · D wrong, judged on the JUDGE pane first.
+
+Round one: **A 0 · B 1 · C 13 · D 3.** Round two: **A 0 · B 3 · C 11
+· D 3.** The centaur (a human torso and head on a four-legged body),
+the emoji mermaid (a person shape ending in a forked tail) and Lumo (an
+upright creature with two wings, horns and a tail) are recognisable.
+The winged lion, the ink spirit and the spread-winged falcon are
+tangles. Everything else is a generic creature.
+
+The golden image the brief names — an uploaded baby dragon — is not in
+the repository; Lumo stood in for it and for *a smiling dragon*.
+
+### Where it fails, and whose failure it is
+
+**LLM semantic.** FACING is wrong on four of seventeen (a picture
+facing left called right — the trunk then hangs at the wrong end).
+Surface details are listed as masses (eyes, a smile, a butterfly, a
+crescent moon) and spend lights. "Simple" is chosen for creatures with
+five must-survive features (fixed on the composer side by the floor).
+One eagle was given one wing, not a pair. Everything else the model
+said — the gesture kind, the flow order, the relationships — is almost
+always what a person would say: `horse-body → human-torso →
+human-head`; `tail → torso → head` on an S; wings on both sides,
+symmetric; a mane that surrounds the head.
+
+**Deterministic.** The composer draws the SAME KIND OF FIGURE for
+everything: a spine, a diamond for every volume, a spike for every
+attachment. A span is a triangle, so a wing has no outline; a taper
+curls a fixed way, so a tail cannot coil; a mass is a diamond, so a
+plant pot has no flat top and an elephant no bulk. Where several
+attachments leave one short spine the joins cross (the winged lion,
+the ink spirit, the falcon). Rendering is not a failure class here —
+the Shape Lab draws what it is given.
+
+### FINAL PRODUCT TEST — can an artistic image become an Ether
+version that still feels like the same creature?
+
+**NO — not yet.** It fails at ABSTRACTION in the composer, not at
+understanding in the model. What a species lives in — the outline of
+a wing, the curl of a tail, the width of an ear, the flatness of a
+pot — is exactly what a spine-plus-attachment vocabulary cannot draw.
+The next step is not a better prompt; it is silhouette primitives in
+the composer: an outlined span (root, leading tip, trailing tip,
+corner), a curling taper (a real arc, not a fixed bend), a wide flat
+mass, and a way for attachments leaving one mass to take different
+angles so they do not cross.
+
+### Privacy, and what leaves
+
+What leaves for a plan is `action, image, messages` — the same picture
+the understanding was read from, the fixed contract, and the picture's
+own understanding — checked for every private word (`card`, `stars`,
+`constellation`, `memor`, `username`, `creator`, `companion`, `email`,
+`session`, `token`) and every ground-truth sentence (`TR3d`, `TR12c`).
+No plan, picture, token, contract or figure reaches storage or an
+export (`TR12d`). Both new modules make no request of their own
+(`TR1f`), write to no storage (`TR1e`), and name nothing that mounts
+the Ether or reads the pool (`TR1d`). A refused reply — geometry, a
+coordinate in a sentence, prose — and a dead transport each leave the
+figure in use untouched, substitute no fixture, and hand the button
+back (`TR12f`). With the Fixture connection the plan is a generic
+stand-in that says so on every light and on the status line.
+
+### Not built, deliberately
+
+IMAGE → MISSING JOINS, MISSING JOINS → HINT, COMPLETION → AWAKENING.
+The manual point budget stays; the automatic one is the composer's.
+The old outline composer is not used by this path.
+
+### Files
+
+`tools/ether-mystery-lab/labTranslate.js` · `labEtherComposer.js` ·
+`labShape.js` (loadGenerated, origin) · `shape.html` ·
+`tools/ether-mystery-lab-test/run-lab-tests.js` section `TR` (88) ·
+`tools/ether-mystery-lab-test/real-translation.js` ·
+`tools/ether-mystery-lab-test/render-translation.js` ·
+`tools/ether-mystery-lab-test/shots/translate/` (the real run, the
+ratings, seventeen screenshots)

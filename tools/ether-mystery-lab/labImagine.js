@@ -816,6 +816,9 @@
       };
     },
     selectedImage: function () { var im = selectedImage(); return im ? { id: im.id, mime: im.mime, bytes: Math.round(im.b64.length * 0.75), source: im.source, label: im.label, title: im.title, artworkId: im.artworkId, dataUrl: im.dataUrl } : null; },
+    // the bytes of the selected picture, for the one caller that sends it
+    // onward through the same transport (the translation plan)
+    selectedImageBytes: function () { var im = selectedImage(); return im ? { id: im.id, mime: im.mime, b64: im.b64, source: im.source, title: im.title } : null; },
     analysis: function () { return state.analysis ? JSON.parse(JSON.stringify(state.analysis)) : null; },
     last: function () { return state.last ? JSON.parse(JSON.stringify(state.last)) : null; },
     lastImagine: function () { return state.lastImagine ? JSON.parse(JSON.stringify(state.lastImagine)) : null; },

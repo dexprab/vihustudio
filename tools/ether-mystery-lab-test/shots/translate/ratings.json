@@ -1,0 +1,229 @@
+{
+  "what": "Human ratings of the real-model translation pass (real-translation.json → <id>.png). A = unmistakable, B = recognisable, C = generic creature, D = wrong. Rated by looking at the JUDGE pane alone and then with the source. Two rounds: round 1 is the composer as first run; round 2 is after four GENERIC composer fixes (symmetric spans became mirrored pairs, spans honour their side, limbs to a side are not feet, a light whose partner was dropped rejoins what it hung from, survive outranks width, the budget floors at the essentials). No creature was repaired individually between the rounds — the same seventeen plans were recomposed.",
+  "goldenTest": "The brief's golden image (the uploaded baby dragon) is not in the repository and cannot be run from here. lumo (the product's own dragon Companion, VihuPlanet's Lumo) is the stand-in for both 'the golden test' and 'a smiling dragon'.",
+  "scale": {
+    "A": "unmistakable",
+    "B": "recognisable",
+    "C": "generic creature",
+    "D": "wrong"
+  },
+  "round1": {
+    "A": 0,
+    "B": 1,
+    "C": 13,
+    "D": 3
+  },
+  "round2": {
+    "A": 0,
+    "B": 3,
+    "C": 11,
+    "D": 3
+  },
+  "results": [
+    {
+      "id": "lumo",
+      "stands": "golden test stand-in · a smiling dragon",
+      "round1": "C",
+      "round2": "B",
+      "sees": "an upright creature with two wings, horns at the top and a tail — a dragon-like thing",
+      "fails": [
+        "feature-selection: arms and legs dropped for budget",
+        "abstraction: the wings are a triangle each, no membrane outline"
+      ],
+      "where": "deterministic"
+    },
+    {
+      "id": "leo",
+      "stands": "a lion with wings",
+      "round1": "D",
+      "round2": "D",
+      "sees": "a tangle of lights with two lines going up",
+      "fails": [
+        "connection: twenty lights hang off a two-segment spine — the joins no longer cross after the composer fixes, and it is still a tangle",
+        "point-allocation: 20 lights spent on eyes, butterfly, lantern, book",
+        "gesture: the model chose reaching with a two-mass flow, so the body is one short segment"
+      ],
+      "where": "both — the plan lists surface details as masses; the composer stacks every attachment on the same two spine lights"
+    },
+    {
+      "id": "leafy",
+      "stands": "invented creature (a plant-pot character)",
+      "round1": "C",
+      "round2": "C",
+      "sees": "a stacked vase shape with a spread at the top",
+      "fails": [
+        "abstraction: a pot with a plant needs a wide flat top and an open crown; the spine gives it a diamond"
+      ],
+      "where": "deterministic"
+    },
+    {
+      "id": "quill",
+      "stands": "invented creature (an ink spirit)",
+      "round1": "C",
+      "round2": "D",
+      "sees": "a tangle with a crest",
+      "fails": [
+        "connection: 9 crossings — cape ring, ink ring, crest and quill all around one head",
+        "feature-selection: both arms dropped, the quill kept without the arm that holds it"
+      ],
+      "where": "deterministic (the plan is sound: head, body, crest, cape, quill, arms)"
+    },
+    {
+      "id": "nimbus",
+      "stands": "invented creature (a cloud sprite)",
+      "round1": "C",
+      "round2": "C",
+      "sees": "an upright figure with a wide hood",
+      "fails": [
+        "abstraction: clouds are enclosures the ring cannot say",
+        "connection: 8 crossings — two cloud enclosures around the head and the base"
+      ],
+      "where": "deterministic"
+    },
+    {
+      "id": "twemoji-mermaid",
+      "stands": "mermaid",
+      "round1": "C",
+      "round2": "B",
+      "sees": "a person shape — head, arms out, a torso — ending in a forked tail",
+      "fails": [
+        "abstraction: the tail is straight down; the picture curls it to the side",
+        "abstraction: every mass is a diamond"
+      ],
+      "where": "deterministic"
+    },
+    {
+      "id": "openmoji-mermaid",
+      "stands": "mermaid",
+      "round1": "C",
+      "round2": "C",
+      "sees": "an upright figure with a fork at the bottom and a spike at the top",
+      "fails": [
+        "abstraction: the curled tail is drawn as a taper hanging down",
+        "feature-selection: the trident became a mass"
+      ],
+      "where": "both"
+    },
+    {
+      "id": "gameicons-mermaid",
+      "stands": "mermaid",
+      "round1": "C",
+      "round2": "C",
+      "sees": "an S-shaped chain with a fork at one end",
+      "fails": [
+        "connection: 4 crossings",
+        "gesture: flowing s-curve is right, but hair and arms both attach at the head end and cross"
+      ],
+      "where": "deterministic"
+    },
+    {
+      "id": "openmoji-elephant",
+      "stands": "elephant",
+      "round1": "C",
+      "round2": "C",
+      "sees": "a four-legged-ish thing with something long hanging from one end and something up",
+      "fails": [
+        "facing: the picture faces LEFT and the model said right, so the trunk hangs at the wrong end of the composed figure",
+        "proportion: the trunk is as long as the body"
+      ],
+      "where": "LLM semantic (facing) + deterministic (taper length)"
+    },
+    {
+      "id": "twemoji-elephant",
+      "stands": "elephant",
+      "round1": "C",
+      "round2": "C",
+      "sees": "a horizontal kite with a fan at one end",
+      "fails": [
+        "facing: wrong (left → right)",
+        "abstraction: no ear shape, no trunk curl — the diamond body says nothing"
+      ],
+      "where": "both"
+    },
+    {
+      "id": "gameicons-elephant",
+      "stands": "elephant",
+      "round1": "D",
+      "round2": "C",
+      "sees": "a horizontal chain with two legs at the front and a spike up",
+      "fails": [
+        "point-allocation (round 1): ear, tusk, legs, tail all dropped at complexity simple — fixed generically by flooring the budget at the essentials",
+        "connection: both feet under the front, so it reads two-legged"
+      ],
+      "where": "both — the model said simple for a five-feature creature; the composer put a legs branch under one mass"
+    },
+    {
+      "id": "gameicons-falcon",
+      "stands": "falcon",
+      "round1": "D",
+      "round2": "D",
+      "sees": "a splat of lines",
+      "fails": [
+        "connection: 10 crossings → 4 after the side fix, still a tangle",
+        "gesture: the plan calls it diagonal with wings left and right; the crescent is an enclosure of the body and its ring crosses everything",
+        "abstraction: a spread-winged bird needs a wing OUTLINE, and a span is a triangle"
+      ],
+      "where": "deterministic"
+    },
+    {
+      "id": "openmoji-eagle",
+      "stands": "eagle",
+      "round1": "C",
+      "round2": "C",
+      "sees": "an upright figure with one wing and a horizontal bar of legs",
+      "fails": [
+        "facing: wrong (left → right)",
+        "relationship: the model gave ONE wing mass, side top, not symmetric — so one wing"
+      ],
+      "where": "LLM semantic"
+    },
+    {
+      "id": "gameicons-centaur",
+      "stands": "centaur",
+      "round1": "B",
+      "round2": "B",
+      "sees": "a human torso and head standing on a four-legged body",
+      "fails": [
+        "abstraction: the bow is a spike; the horse body is a straight line"
+      ],
+      "where": "deterministic (the plan is exactly right: horse-body → human-torso → human-head as the flow)"
+    },
+    {
+      "id": "twemoji-dragon",
+      "stands": "dragon",
+      "round1": "C",
+      "round2": "C",
+      "sees": "a many-limbed thing on an S",
+      "fails": [
+        "facing: wrong",
+        "connection: 3 crossings",
+        "feature-selection: teeth, eye, back spikes are masses"
+      ],
+      "where": "both"
+    },
+    {
+      "id": "openmoji-dragon",
+      "stands": "dragon",
+      "round1": "C",
+      "round2": "C",
+      "sees": "an upright winged thing with a head at the top",
+      "fails": [
+        "abstraction: the wings are two short spikes; the curled tail hangs straight"
+      ],
+      "where": "deterministic"
+    },
+    {
+      "id": "gameicons-sea-dragon",
+      "stands": "sea dragon (an S)",
+      "round1": "C",
+      "round2": "C",
+      "sees": "a diagonal S with a spike at one end",
+      "fails": [
+        "abstraction: the S is a gentle bend; the picture is a full coil",
+        "connection: 2 crossings"
+      ],
+      "where": "deterministic (the model's flowing/s-curve is right)"
+    }
+  ],
+  "verdict": "NO — not yet. The plan captures the right semantics (17/17 valid on the first attempt: the gesture kind, the flow order and the relationships are almost always what a person would say), and the composer turns every one of them into the SAME KIND of figure: a spine with diamonds for volume and spikes for attachments. What a species lives in — the outline of a wing, the curl of a tail, the width of an ear, a pot's flat top — is exactly what a spine-plus-attachment vocabulary cannot draw. It fails at ABSTRACTION in the composer, not at understanding in the model."
+}

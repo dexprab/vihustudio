@@ -12859,3 +12859,36 @@ wing; recommended for the next contract — a viewpoint field, an
 explicit relationships list, modifiers held to the visible. Section
 `IM` (104) plus the committed real run re-validated by the suite.
 Stops at the handoff: no points, joins, gaps or reveal from an image.
+
+## Lab — image → Ether creature translation, proof V1
+
+Lab only, zero production files changed, build 0769, nothing activated
+in the Ether. The Shape Lab's CREATE stage goes one step past the
+understanding: **Create Ether creature** asks gpt-4.1-mini for an
+ETHER TRANSLATION PLAN in a controlled vocabulary of words — gesture
+first (kind · curve · facing · the flow of masses rear to head), then
+every other mass by its relationship to one already standing, with
+its side and whether it is a pair; proportion, what must survive,
+what to simplify, what is reveal-only, complexity, movement — never a
+coordinate (`LabTranslate.validatePlan` refuses geometry keys at any
+depth and a number anywhere, repairs vocabulary drift on record, and
+refuses structure a composer could only guess at). A deterministic
+composer (`labEtherComposer.js`: spine first, masses on the flow,
+attachments by relationship through flow · mass · taper · span ·
+branch · terminal · enclosure, essentials-before-extras allocation, a
+budget floored at what must survive, one piece by construction,
+diagnostics) turns it into a complete figure that enters the editor
+as GENERATED beside the source picture. No creature word, no branch
+on a name, no randomness; renaming every mass moves nothing. REAL
+RESULT: 17/17 plans valid on the first attempt; composed, rendered,
+rated, six GENERIC composer defects fixed (mirrored pairs, spans by
+side, side limbs not feet, rejoin-on-drop, the real edge of a flow
+mass, survive over width), recomposed and re-rated — A 0 · B 3 · C 11
+· D 3. Final product test answered NO, not yet, and the failure is
+located: the model's meaning is mostly right (facing wrong on four,
+surface details as masses), and the composer's abstraction — a
+diamond for every volume, a spike for every attachment — draws the
+same figure for a falcon and a plant pot. Next is silhouette
+primitives in the composer, not a better prompt. Section `TR` (88).
+Golden image not in the repository (Lumo stood in); provider reached
+from Node, never from the browser here.

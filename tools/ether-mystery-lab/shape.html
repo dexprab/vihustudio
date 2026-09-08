@@ -156,6 +156,18 @@
   .an-fid-differs { color: var(--mid); } .an-fid-matches { color: var(--good); }
   .srcbadge { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 6px; min-height: 1em; }
   .srcbadge.fixture { color: var(--mid); } .srcbadge.llm { color: var(--good); }
+  /* IMAGE → ETHER: the SOURCE pane stands left of AUTHOR when a picture
+     is selected, and the picture can sit faintly UNDER the author canvas */
+  .stage.with-source { grid-template-columns: 1fr 1fr 1fr; }
+  .pane[data-source-pane] img { width: 100%; aspect-ratio: 1 / 1; object-fit: contain; display: block; border-radius: 10px;
+                                border: 1px solid var(--line); background: #10152a; }
+  canvas.source-layer { position: absolute; pointer-events: none; z-index: 0; border-radius: 10px; display: block; }
+  canvas.source-layer[hidden] { display: none; }
+  .translate-status.ok { color: var(--good); } .translate-status.warn { color: var(--warn); }
+  .status .sorigin { font-weight: 700; font-size: 10px; letter-spacing: .1em; padding: 3px 8px; border-radius: 6px; border: 1px solid var(--line); color: var(--dim); }
+  .status .sorigin[data-origin="generated"] { color: var(--good); border-color: var(--good); }
+  .status .sorigin[data-origin="generated-edited"] { color: var(--mid); border-color: var(--mid); }
+  @media (max-width: 1240px) { .stage.with-source { grid-template-columns: 1fr 1fr; } }
   @media (max-width: 1240px) { .ideas { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
   @media (max-width: 640px) { .ideas { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   .conn-status.good { color: var(--good); } .conn-status.warn { color: var(--warn); } .conn-status.mid { color: var(--mid); }
@@ -266,6 +278,7 @@
   <span class="sname" data-status-name>NEW CREATURE</span>
   <span class="sline" data-status-line>0 POINTS</span>
   <span class="sstate" data-status-state data-state="building">BUILDING</span>
+  <span class="sorigin" data-status-origin data-origin="authored" hidden>AUTHORED</span>
   <span class="snext" data-status-next>Say what should exist and create it; or name a creature for a reference; or place points by hand.</span>
   <span id="budgetLabel" data-budget-label>TESTING 8 POINTS</span>
 </div>
@@ -298,6 +311,13 @@
         <button data-imagine-show class="quiet" disabled>Show the understanding</button>
         <button data-imagine-understand class="quiet" disabled>Read it again</button>
         <button data-imagine-unselect class="quiet" disabled>Choose a different one</button>
+      </div>
+      <div data-translate-section data-translate-outcome="none" style="margin-top:8px">
+        <div class="row">
+          <button data-translate-go class="primary" disabled>Create Ether creature</button>
+        </div>
+        <div class="say translate-status" data-translate-status></div>
+        <div class="note">From the picture and its understanding, a structural plan is made — masses, the dominant gesture, what attaches to what — and the Ether figure is composed from it and placed on AUTHOR, GENERATED, at a point budget chosen for it. Then it is yours: inspect it on JUDGE, adjust anything, approve.</div>
       </div>
       <div class="note">The understanding is on the right. It describes what is in the picture — the picture, not the words that asked for it.</div>
     </div>
@@ -467,7 +487,13 @@
 
 <div class="centre"><!-- centre: AUTHOR / JUDGE, always in view -->
   <section>
-    <div class="stage">
+    <div class="stage" data-stage>
+      <div class="pane" data-source-pane hidden>
+        <h3><b>Source</b> — the chosen picture</h3>
+        <div data-source-img></div>
+        <div class="note" data-source-caption style="margin-top:4px"></div>
+        <div class="row" style="margin-top:6px"><button data-source-under class="quiet" disabled>SOURCE UNDER — ON</button></div>
+      </div>
       <div class="pane">
         <h3><b>Author</b> — complete, as drawn <span class="note" style="text-transform:none;letter-spacing:0" data-outline-flag hidden>· over the creature outline</span></h3>
         <canvas class="figure" data-canvas-complete></canvas>
@@ -477,7 +503,7 @@
         <canvas class="figure readonly" data-canvas-unfinished></canvas>
       </div>
     </div>
-    <div class="note" style="margin-top:8px"><b>AUTHOR</b> is where you work: the reference underneath, your points and connections on top, a missing connection dashed. <b>JUDGE</b> is what a child meets: no reference, no outline, and a missing connection simply absent. Both are drawn at one fixed scale for every budget, so creatures stay comparable. While a reference is showing, any suggested place you have left empty is marked faintly on JUDGE.</div>
+    <div class="note" style="margin-top:8px"><b>SOURCE</b> is the picture the creature was made from; <b>SOURCE UNDER</b> lays it faintly under AUTHOR, and switching it off is the question that matters — does JUDGE still read as the same creature without it? <b>AUTHOR</b> is where you work: the reference underneath, your points and connections on top, a missing connection dashed. <b>JUDGE</b> is what a child meets: no reference, no outline, and a missing connection simply absent. Both are drawn at one fixed scale for every budget, so creatures stay comparable. While a reference is showing, any suggested place you have left empty is marked faintly on JUDGE.</div>
     <div class="say" data-say hidden></div>
   </section>
 
@@ -554,6 +580,12 @@
   </section>
 
   <section>
+    <h2>Ether translation plan</h2>
+    <div data-translate-panel></div>
+    <div class="note" style="margin-top:6px">The structure the figure was composed from: the dominant gesture and its flow, the masses, what attaches to what and on which side, what must survive. Words only — the positions are the composer's, and every one of them is on AUTHOR to move.</div>
+  </section>
+
+  <section>
     <h2>Reference blueprint</h2>
     <div class="legend"><b>BLUEPRINT</b> = what the creature is · <b>ETHER INTERPRETATION</b> = how it should feel abstracted · <b>OUTLINE</b> = visual reference · <b>SUGGESTED POINTS</b> = landmarks · <b>ETHER FIGURE</b> = your own creation · <b>REVEAL</b> = temporary detail</div>
     <div data-ref-panel></div>
@@ -583,6 +615,13 @@
       <summary>Compare across budgets</summary>
       <div class="row"><select data-compare-name style="width:auto"></select></div>
       <div class="compare" data-compare></div>
+    </details>
+    <details class="adv">
+      <summary>Ether translation — plan JSON, composition and what happened</summary>
+      <div class="row" style="margin-top:6px"><button data-translate-copy class="quiet" disabled>Show plan and figure JSON</button></div>
+      <textarea data-translate-json hidden readonly style="min-height:90px;font-family:ui-monospace,monospace;font-size:11px"></textarea>
+      <div data-translate-diag class="trace"></div>
+      <div class="note">The budget decision, every light with the mass it stands for, every connection with its reason (flow · volume · attach · span · taper · limb · ring), pieces and crossings, and any mass that got no light.</div>
     </details>
     <details class="adv">
       <summary>Understanding JSON, and what happened</summary>
@@ -623,18 +662,20 @@
 </div>
 </main>
 
-<script src="../../js/etherGrammar.js?lab=8809f30565"></script>
-<script src="labKit.js?lab=8809f30565"></script>
-<script src="labPreviewHost.js?lab=8809f30565"></script>
-<script src="labConnection.js?lab=8809f30565"></script>
-<script src="labBlueprint.js?lab=8809f30565"></script>
-<script src="labOutline.js?lab=8809f30565"></script>
-<script src="labReveal.js?lab=8809f30565"></script>
-<script src="labRevealData.js?lab=8809f30565"></script>
-<script src="labShape.js?lab=8809f30565"></script>
-<script src="labReference.js?lab=8809f30565"></script>
-<script src="labArtworkData.js?lab=8809f30565"></script>
-<script src="labImagine.js?lab=8809f30565"></script>
-<script src="labTranslationData.js?lab=8809f30565"></script>
+<script src="../../js/etherGrammar.js?lab=23903b6391"></script>
+<script src="labKit.js?lab=23903b6391"></script>
+<script src="labPreviewHost.js?lab=23903b6391"></script>
+<script src="labConnection.js?lab=23903b6391"></script>
+<script src="labBlueprint.js?lab=23903b6391"></script>
+<script src="labOutline.js?lab=23903b6391"></script>
+<script src="labReveal.js?lab=23903b6391"></script>
+<script src="labRevealData.js?lab=23903b6391"></script>
+<script src="labShape.js?lab=23903b6391"></script>
+<script src="labReference.js?lab=23903b6391"></script>
+<script src="labArtworkData.js?lab=23903b6391"></script>
+<script src="labImagine.js?lab=23903b6391"></script>
+<script src="labEtherComposer.js?lab=23903b6391"></script>
+<script src="labTranslate.js?lab=23903b6391"></script>
+<script src="labTranslationData.js?lab=23903b6391"></script>
 </body>
 </html>

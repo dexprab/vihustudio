@@ -117,6 +117,7 @@
     budget: 8,
     points: [],                  // [[x,y]] in unit space
     roles: [],                   // per light: the feature name it was accepted for, or null — never geometry
+    generated: null,             // { source: 'translation' | 'fixture', at, edited } — a label, never a lock
     origins: [],                 // per light: the suggested PLACE it was accepted at ([x,y]) or null — SESSION ONLY, never serialized
     joins: [],                   // [{a,b,gap}]
     approved: null,              // the frozen research artifact, or null once the figure changes
@@ -155,7 +156,7 @@
   function emit() { listeners.forEach(function (f) { try { f(); } catch (e) {} }); }
 
   function snapshot() {
-    return JSON.stringify({ budget: state.budget, points: state.points, roles: state.roles, origins: state.origins, joins: state.joins, reveal: state.reveal });
+    return JSON.stringify({ budget: state.budget, points: state.points, roles: state.roles, origins: state.origins, joins: state.joins, reveal: state.reveal, generated: state.generated });
   }
   // Record BEFORE a mutation. While a drag is coalescing, only its first
   // step is recorded; the rest ride on it.
@@ -177,6 +178,9 @@
     revealEpoch++; revealPlay = null; revealForced = null;
     clearSelection(); dragging = null;
     touch();
+    // the GENERATED / EDITED label follows the history too — undoing the
+    // one edit made to a generated figure gives GENERATED back
+    state.generated = t.generated === undefined ? state.generated : (t.generated ? { source: t.generated.source, at: t.generated.at, edited: !!t.generated.edited } : null);
     emit();
   }
   function undo() {
@@ -202,7 +206,15 @@
   // EDITING
   // ---------------------------------------------------------------
   // The figure changed: an approval no longer describes it.
-  function touch() { state.approved = null; tested = false; }
+  // GENERATED vs AUTHORED. A figure the translation composed carries
+  // `generated` — where it came from and whether a hand has touched it
+  // since. It is a label on the status strip and in the fixture record,
+  // never a lock: every tool works on a generated figure exactly as on an
+  // authored one, and the first edit marks it GENERATED · EDITED rather
+  // than taking anything away. Nothing here reads it to change behaviour.
+  var nameGenerated = false;       // the current name came from a generation, not from the researcher
+  function touch() { state.approved = null; tested = false; if (state.generated && !state.generated.edited) state.generated.edited = true; }
+  function origin() { return !state.generated ? 'authored' : (state.generated.edited ? 'generated-edited' : 'generated'); }
 
   // THE SUGGESTED POINTS ARE THE STARTING FIGURE. Decided by the product
   // owner after the first real lion: "the suggested points are also part
@@ -239,6 +251,43 @@
     });
     if (placed) { touch(); emit(); } else unrecordIfSame();
     return { ok: true, placed: placed };
+  }
+
+  // ONE GENERATED FIGURE, ONE HISTORY STEP. The translation's composer
+  // hands over points (unit space), a role per point, a join list and
+  // the budget it chose; this replaces the figure — points, connections
+  // and reveal — in a single undoable step and marks it GENERATED. The
+  // name is filled from the subject only while it is empty.
+  function loadGenerated(fig) {
+    if (!fig || !Array.isArray(fig.points) || !fig.points.length) return { ok: false, reason: 'no-figure' };
+    var budget = BUDGETS.indexOf(Number(fig.budget)) !== -1 ? Number(fig.budget) : BUDGETS.filter(function (b) { return b >= fig.points.length; })[0] || BUDGETS[BUDGETS.length - 1];
+    if (fig.points.length > budget) return { ok: false, reason: 'over-budget:' + budget };
+    record();
+    state.budget = budget;
+    state.points = []; state.roles = []; state.origins = []; state.joins = [];
+    state.reveal = { durationS: state.reveal.durationS, features: [] }; revealEpoch++; revealPlay = null; revealForced = null;
+    clearSelection(); dragging = null;
+    fig.points.forEach(function (p, i) {
+      state.points.push([clamp(p[0]), clamp(p[1])]);
+      var role = fig.roles && fig.roles[i] ? String(fig.roles[i]).toUpperCase().slice(0, 24) : null;
+      state.roles.push(role); state.origins.push(null);
+    });
+    var seen = {};
+    (fig.joins || []).forEach(function (j) {
+      var a = Number(j.a), b = Number(j.b);
+      if (!(a >= 0 && b >= 0 && a < state.points.length && b < state.points.length) || a === b) return;
+      var k = key(a, b); if (seen[k]) return; seen[k] = true;
+      state.joins.push({ a: Math.min(a, b), b: Math.max(a, b), gap: false });
+    });
+    state.approved = null; tested = false;
+    state.generated = { source: fig.source === 'fixture' ? 'fixture' : 'translation', at: Date.now(), edited: false };
+    // the understanding's subject names the figure unless the researcher
+    // has typed a name themselves — a name a previous generation gave is
+    // the generation's to replace
+    if (fig.subject && (!state.name || nameGenerated)) { state.name = String(fig.subject).slice(0, 40); nameGenerated = true; }
+    state.authoring = authoringOf({ subject: fig.subject || state.name || 'generated', referenceUsed: false, source: fig.source === 'fixture' ? 'fixture' : 'generated' });
+    emit();
+    return { ok: true, points: state.points.length, joins: state.joins.length, budget: budget };
   }
 
   function overBudget(s) { s = s || state; return Math.max(0, s.points.length - s.budget); }
@@ -375,8 +424,9 @@
     figureEpoch++;
     state.id = null;
     state.points = []; state.roles = []; state.origins = []; state.joins = []; state.approved = null;
-    state.name = ''; state.hint = ''; state.notes = '';
+    state.name = ''; state.hint = ''; state.notes = ''; nameGenerated = false;
     state.judgement = null; state.tease = false; state.authoring = null;
+    state.generated = null;
     state.reveal = { durationS: 4, features: [] }; revealEpoch++; revealPlay = null; revealForced = null;
     clearSelection(); dragging = null; tested = false; armedOpen = null;
     clearHistory(); savedSnap = snapshot();
@@ -507,7 +557,7 @@
     else if (!tested) { st = 'READY TO TEST'; next = 'Test it: UNFINISHED, then COMPLETE, then COME ALIVE.' + (m.aboveProduction ? ' (This budget tests here; the real Ether performs up to ' + m.productionBudget + ' points.)' : ''); }
     else { st = 'READY TO APPROVE'; next = 'Looks right? Approve the creature, then save the fixture.'; }
     return {
-      name: name,
+      name: name, origin: origin(),
       points: m.points, connections: m.connections, missing: m.missing, reveal: state.reveal.features.length,
       budget: m.budget, overBudget: m.overBudget, state: st, next: next, tested: tested, dirty: isDirty(),
       line: m.points + ' POINT' + (m.points === 1 ? '' : 'S') + ' · ' + m.connections + ' CONNECTED · ' + m.missing + ' MISSING' + (state.reveal.features.length ? ' · ' + state.reveal.features.length + ' REVEAL' : '')
@@ -768,6 +818,7 @@
       // a reference was used. Words only: no sketch, no anchors, no
       // feature list ever lands here.
       authoring: authoringOf(state.authoring),
+      generated: state.generated ? { source: state.generated.source, at: state.generated.at, edited: !!state.generated.edited } : null,
       // Per light, the feature it was accepted for — a word or null.
       roles: rolesOf(state),
       // REVEAL-ONLY VISUAL FEATURES — explicit and deterministic, kept
@@ -843,6 +894,7 @@
     state.judgement = rec.judgement || null;
     state.tease = !!rec.tease;
     state.authoring = authoringOf(rec.authoring);
+    state.generated = rec.generated && typeof rec.generated === 'object' ? { source: rec.generated.source === 'fixture' ? 'fixture' : 'translation', at: Number(rec.generated.at) || 0, edited: !!rec.generated.edited } : null;
     state.roles = rolesOf({ points: state.points, roles: Array.isArray(rec.roles) ? rec.roles : [] });
     state.origins = state.points.map(function () { return null; });
     // The reveal block is REFUSED rather than trimmed when it is not
@@ -970,7 +1022,7 @@
   }
 
   function setJudgement(j) { state.judgement = j || null; emit(); }
-  function setName(v) { state.name = String(v || ''); emit(); }
+  function setName(v) { state.name = String(v || ''); nameGenerated = false; emit(); }
   function setHint(v) { state.hint = String(v || ''); emit(); }
   function setNotes(v) { state.notes = String(v || ''); emit(); }
   function setTease(v) { state.tease = !!v; emit(); }
@@ -1698,6 +1750,7 @@
     var n2 = el('[data-status-line]'); if (n2) n2.textContent = st.line;
     var n3 = el('[data-status-state]'); if (n3) { n3.textContent = st.state; n3.setAttribute('data-state', st.state.toLowerCase().replace(/ /g, '-')); }
     var n4 = el('[data-status-next]'); if (n4) n4.textContent = st.next;
+    var n5 = el('[data-status-origin]'); if (n5) { n5.textContent = st.origin === 'generated' ? 'GENERATED' : st.origin === 'generated-edited' ? 'GENERATED · EDITED' : 'AUTHORED'; n5.setAttribute('data-origin', st.origin); n5.hidden = !state.points.length; }
     var hd = historyDepth();
     var un = el('[data-undo]'); if (un) { un.disabled = !hd.undo; un.title = hd.undo ? 'Undo (' + hd.undo + ')' : 'Nothing to undo'; }
     var rd = el('[data-redo]'); if (rd) { rd.disabled = !hd.redo; rd.title = hd.redo ? 'Redo (' + hd.redo + ')' : 'Nothing to redo'; }
@@ -1727,7 +1780,8 @@
   function render() {
     var cc = el('[data-canvas-complete]'), cu = el('[data-canvas-unfinished]');
     var Ref = global.LabReference;
-    var under = !!(Ref && Ref.isShowing && Ref.isShowing());
+    var Tr = global.LabTranslate;
+    var under = !!(Ref && Ref.isShowing && Ref.isShowing()) || !!(Tr && Tr.underlayShowing && Tr.underlayShowing());
     if (cc) draw(cc, state, { editing: true, numbers: showNumbers, transparent: under });
     // never the reference OUTLINE: this is what a child meets — but the
     // suggested points are marked on it faintly, as the starting point on
@@ -1782,7 +1836,7 @@
     });
     var num = el('[data-numbers]');
     if (num) num.addEventListener('change', function () { showNumbers = num.checked; emit(); });
-    var nm = el('[data-name]'); if (nm) nm.addEventListener('input', function () { state.name = nm.value; renderMetrics(); });
+    var nm = el('[data-name]'); if (nm) nm.addEventListener('input', function () { state.name = nm.value; nameGenerated = false; renderMetrics(); });
     var hn = el('[data-hint]'); if (hn) hn.addEventListener('input', function () { state.hint = hn.value; });
     var nt = el('[data-notes]'); if (nt) nt.addEventListener('input', function () { state.notes = nt.value; });
     var tz = el('[data-tease]'); if (tz) tz.addEventListener('change', function () { state.tease = tz.checked; });
@@ -1959,6 +2013,7 @@
     state: function () { return JSON.parse(JSON.stringify(serialize())); },
     figure: function () { return figureOf(state); },
     roles: function () { return rolesOf(state); },
+    loadGenerated: loadGenerated, origin: origin,
     originTaken: originTaken,
     approved: function () { return state.approved ? JSON.parse(JSON.stringify(state.approved)) : null; },
     metrics: function () { return metrics(); },

@@ -9783,6 +9783,83 @@ leads somewhere.
   no provider text ever leaving. Nothing is stored: no image, no
   analysis, no key, no token — measured. Section `IM` (104), and the
   real run's committed replies re-validated on every suite run.
+- **IMAGE → ETHER TRANSLATION, PROOF V1 — THE MODEL DECIDES MEANING, THE
+  COMPOSER DECIDES GEOMETRY, AND THE ANSWER IS NOT YET** (Lab only, zero
+  production files changed, build 0769). The Shape Lab's CREATE stage
+  goes one step past the understanding: **Create Ether creature** asks
+  the model for an ETHER TRANSLATION PLAN — gesture first (kind, curve,
+  facing, and which masses lie along the flow, rear to head), then
+  every other mass by its RELATIONSHIP to one already standing (rises
+  from the top of, extends from the back of, spans from, surrounds,
+  supports from below; which side; whether it is a pair), plus
+  proportion, what must survive, what to simplify, what is reveal-only,
+  complexity and movement — in a controlled vocabulary of words, and
+  **never a coordinate**: `LabTranslate.validatePlan` refuses geometry
+  keys by name at any depth, refuses a number anywhere (a value, or a
+  decimal pair inside a sentence), repairs vocabulary drift and records
+  every repair, and refuses structure a composer could only guess at.
+  `labEtherComposer.js` then lays the SPINE of the gesture, gives every
+  flow mass its stretch, attaches the rest by relationship with a small
+  primitive vocabulary (flow · mass · taper · span · branch · terminal ·
+  enclosure · transition · attachment), allocates lights by priority
+  (essentials before extras, what must survive before what merely has
+  volume), floors the budget at the essentials and lets complexity set
+  the room beyond, fits the sky, and reports components, crossings,
+  what was dropped and what shares a light. It contains no creature
+  word, no branch on a name, and no `Math.random`; renaming every mass
+  moves not one light. The result enters the editor as **GENERATED**
+  (a label, never a lock — one move makes it GENERATED · EDITED, undo
+  gives GENERATED back), with the source picture standing in a SOURCE
+  pane and faintly under AUTHOR, and JUDGE alone.
+- **GENERIC FIXES FROM THE FIRST REAL ROUND, AND NOT ONE PER
+  CREATURE.** The seventeen real plans were composed, rendered, rated,
+  and the composer was corrected only where the defect was the same on
+  several creatures: a symmetric span on BOTH sides is a mirrored pair
+  (one dragon had one wing, reaching back); a span honours its side (a
+  bird's left and right wings both went left); a branch out to a side
+  is a limb, never feet (a dragon's arms sat under its feet); a join to
+  a dropped light climbs to what that light hung from, so every figure
+  is one piece by construction (a quill floated beside its bird, an
+  elephant came in three pieces); an attachment starts at the mass's
+  REAL edge along the spine rather than at a circle inside it (a pair of
+  horns lost one horn into the head's own top light); and what must
+  survive outranks a width pair (an elephant lost its ear, tusk, legs
+  and tail to its head's volume). The same seventeen plans were
+  recomposed and re-rated: **A 0 · B 3 · C 11 · D 3** (round one: 0 ·
+  1 · 13 · 3). The centaur, the emoji mermaid and Lumo are recognisable;
+  the winged lion, the ink spirit and the spread-winged falcon are
+  tangles; everything else is a generic creature.
+- **THE FINAL PRODUCT TEST: CAN AN ARTISTIC IMAGE BECOME AN ETHER
+  VERSION THAT STILL FEELS LIKE THE SAME CREATURE? — NO, NOT YET, AND
+  THE FAILURE IS IN ONE PLACE.** gpt-4.1-mini's plans were 17/17 valid
+  on the first attempt, and the gesture kind, the flow order and the
+  relationships are almost always what a person would say (horse-body →
+  human-torso → human-head; tail → torso → head on an S; wings on both
+  sides, symmetric). Where the model is wrong it is wrong about
+  FACING (four of seventeen say right for a picture facing left) and
+  about what counts as a mass (eyes, a smile, a butterfly, a crescent
+  spend lights). Where the result is not the creature it is the
+  COMPOSER'S ABSTRACTION: a spine with a diamond for every volume and a
+  spike for every attachment draws the same kind of figure for a
+  falcon, a mermaid and a plant pot. The species lives in what that
+  vocabulary cannot say — the outline of a wing, the curl of a tail, the
+  width of an ear, a pot's flat top. The next step is not a better
+  prompt; it is silhouette primitives (an outlined span, a curling
+  taper, a wide flat mass) in the composer.
+- **DISCLOSED.** The brief's golden image (an uploaded baby dragon) is
+  not in the repository; Lumo stood in for it and for *a smiling
+  dragon*. The browser here cannot reach the provider, so the real
+  plans were made from Node through the same contract (`real-
+  translation.js`, committed with every raw reply, plan, repair, figure
+  and diagnostic) and drawn back into the real Shape Lab for the
+  screenshots; the suite re-validates the committed replies and
+  recomposes the committed plans on every run, so neither can drift.
+  Nothing here implements IMAGE → MISSING JOINS, MISSING JOINS → HINT
+  or COMPLETION → AWAKENING. What leaves for a plan is the picture, the
+  contract and the picture's own understanding — pinned to exactly
+  `action, image, messages`, checked for every private word and every
+  ground-truth sentence — and no plan, picture, token or figure reaches
+  storage. Section `TR` (88).
 - Out of scope and not implemented: creature encounters as a reward
   system, creature dialogue, a Companion in the Ether, per-Traveller
   encounter history, more activity rows (story hunt, missing

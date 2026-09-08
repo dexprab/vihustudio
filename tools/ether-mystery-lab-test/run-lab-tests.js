@@ -7644,6 +7644,334 @@ async function sectionIM() {
   }
 }
 
+async function sectionTR() {
+  console.log('\n== TR. image → understanding → Ether translation plan → deterministic composer → Shape Lab ==');
+  const { chromium } = require('playwright');
+  const Translate = require(path.join(ROOT, 'tools/ether-mystery-lab/labTranslate.js'));
+  const Composer = require(path.join(ROOT, 'tools/ether-mystery-lab/labEtherComposer.js'));
+  const Imagine = require(path.join(ROOT, 'tools/ether-mystery-lab/labImagine.js'));
+  const Art = require(path.join(ROOT, 'tools/ether-mystery-lab/labArtworkData.js'));
+  const trSrc = read('tools/ether-mystery-lab/labTranslate.js'), trStripped = stripComments(trSrc);
+  const coSrc = read('tools/ether-mystery-lab/labEtherComposer.js'), coStripped = stripComments(coSrc);
+  const shapeHtml = read('tools/ether-mystery-lab/shape.html');
+  const htmlNoComments = shapeHtml.replace(/<!--[\s\S]*?-->/g, '');
+  const shotDir = path.join(SHOTS, 'translate'); fs.mkdirSync(shotDir, { recursive: true });
+
+  // ---- TR1: the boundary — production untouched, the two new modules reach nothing of the Ether ----
+  ck(/arrangementNodesMax:\s*8\b/.test(read('js/etherGrammar.js')), 'TR1  the production point limit is still eight — a generated figure is Lab data, never Ether geometry');
+  const stamps = (read('index.html').match(/\?v=(\d{4})/g) || []).map((s) => s.slice(3));
+  ck(stamps.length > 0 && stamps.every((s) => s === '0769'), 'TR1b the build is not bumped — nothing shipped to a child', Array.from(new Set(stamps)).join(','));
+  const srcs = [...htmlNoComments.matchAll(/<script src="([^"?]+)/g)].map((m) => m[1]);
+  ck(srcs.some((s) => /labEtherComposer/.test(s)) && srcs.some((s) => /labTranslate/.test(s)) && !srcs.some((s) => /etherExperience|etherLife|etherRipple|etherMystery|etherDiscovery|experience-pool|vihuplanetHome|magicCard/.test(s)),
+    'TR1c the Shape Lab loads the composer and the translator, and still no file that mounts the Ether or reads the production pool', srcs.join(','));
+  ck(!/\bEtherMystery\b|\bEtherGrammar\b|\bEtherLife\b|\bEtherExperience\b|experience-pool|\bMagicCard\b|\bCompanionMemory\b|CreatorProjectStore/.test(trStripped + coStripped),
+    'TR1d neither module names the interpreter, the grammar, the pool, a card or a memory — there is no route from a translation to production');
+  ck(!/localStorage|sessionStorage|indexedDB|document\.cookie/.test(trStripped + coStripped), 'TR1e neither module writes to storage — the plan, the figure and the trace live for the page');
+  ck(!/fetch\(|XMLHttpRequest|WebSocket|api\.openai|sk-[A-Za-z0-9]/.test(trStripped + coStripped) && /C\.understand\(/.test(trStripped),
+    'TR1f neither module makes a request of its own — the plan is asked for through LabConnection.understand(), the transport the understanding already uses');
+
+  // ---- TR2: no creature catalogue, no branch, no randomness ----
+  const creatureWords = /\b(tiger|falcon|elephant|dragon|penguin|whale|bird|lion|fox|bear|octopus|cat|dog|fish|butterfly|snake|horse|mermaid|centaur|eagle|wing|wings|tail|trunk|mane|horn|beak|fin)\b/i;
+  ck(!creatureWords.test(coStripped), 'TR2  the composer names no creature and no creature part — a plan for a wibble composes as a plan for anything else');
+  ck(!/subject\s*===|===\s*subject|switch\s*\(\s*(subject|name|creature|label|id)\b|\.(label|id)\s*===\s*'(?!string|number|object|boolean)/.test(coStripped + trStripped), 'TR2b no branch on a subject, a label or a mass id — geometry is decided by kind, size, gesture and relationship alone');
+  ck(!/Math\.random/.test(coStripped + trStripped), 'TR2c nothing is random — the same plan composes the same figure');
+  const hand = { masses: [
+      { id: 'head', role: 'primary', kind: 'mass', size: 'large', shape: 'round', label: 'HEAD' },
+      { id: 'body', role: 'primary', kind: 'mass', size: 'dominant', shape: 'oval', label: 'BODY' },
+      { id: 'tail', role: 'diagnostic', kind: 'taper', size: 'large', shape: 'long', label: 'TAIL' },
+      { id: 'sails', role: 'diagnostic', kind: 'span', size: 'dominant', shape: 'wide', label: 'SAIL' },
+      { id: 'prongs', role: 'diagnostic', kind: 'terminal', size: 'small', shape: 'thin', label: 'PRONG' },
+      { id: 'legs', role: 'secondary', kind: 'branch', size: 'small', shape: 'thin', label: 'LEG' } ],
+    gesture: { kind: 'upright', flow: ['body', 'head'], curve: 'gentle', facing: 'left', note: 'stands' },
+    relationships: [ { from: 'tail', relation: 'extends-from', to: 'body', side: 'back' }, { from: 'sails', relation: 'spans-from', to: 'body', side: 'both', symmetric: true }, { from: 'prongs', relation: 'rises-from', to: 'head', side: 'top', symmetric: true }, { from: 'legs', relation: 'supports', to: 'body', side: 'bottom' } ],
+    proportion: [ { mass: 'head', treat: 'oversized' } ], mustSurvive: ['head', 'sails', 'tail'], simplify: [], revealOnly: ['scales'], complexity: 'moderate', movement: 'sways' };
+  const f1 = Composer.compose(hand), f2 = Composer.compose(JSON.parse(JSON.stringify(hand)));
+  ck(f1.ok && JSON.stringify(f1) === JSON.stringify(f2), 'TR2d compose is deterministic — the same plan twice is the same figure, byte for byte');
+  const renamed = JSON.parse(JSON.stringify(hand)); renamed.masses.forEach((m) => { m.id = 'q' + m.id; m.label = 'Q' + m.label; }); renamed.gesture.flow = renamed.gesture.flow.map((i) => 'q' + i); renamed.relationships.forEach((r) => { r.from = 'q' + r.from; r.to = 'q' + r.to; }); renamed.proportion.forEach((p) => { p.mass = 'q' + p.mass; }); renamed.mustSurvive = renamed.mustSurvive.map((i) => 'q' + i);
+  const f3 = Composer.compose(renamed);
+  ck(f3.ok && JSON.stringify(f3.points) === JSON.stringify(f1.points) && JSON.stringify(f3.joins) === JSON.stringify(f1.joins), 'TR2e renaming every mass changes not one light — the composer reads structure, never names');
+
+  // ---- TR3: the plan contract — gesture first, relationships, no coordinates asked for ----
+  const anal = Imagine.parseAnalysis(Imagine.fixtureAnalysis('a made-up creature', 'X')).analysis;
+  const pm = Translate.planMessages(anal);
+  const sys = pm.messages[0].content, usr = pm.messages[1].content;
+  ck(pm.ok && pm.messages.length === 2 && pm.messages[0].role === 'system' && pm.messages[1].role === 'user' && typeof usr === 'string', 'TR3  the plan request is one fixed contract and one user message of text — the picture is attached by the transport, never built here');
+  ck(/GESTURE FIRST/.test(sys) && /RELATIONSHIPS ARE THE POINT/.test(sys) && /never a coordinate/i.test(sys) && /SVG, code or markup/.test(sys) && /Never invent a part/.test(sys),
+    'TR3b the contract says gesture first, relationships are the point, words only, never a coordinate, never invent a part');
+  ck(Object.keys(Translate.SCHEMA).every((k) => sys.indexOf('"' + k + '"') !== -1) && Translate.RELATIONS.every((r) => sys.indexOf(r) !== -1) && Translate.KINDS.every((k) => sys.indexOf(k + ' (') !== -1),
+    'TR3c every schema field, every relation and every kind is named in the contract from the vocabulary itself — no second copy');
+  const truthWords = Art.entries.map((e) => e.visible.split('. ')[0].slice(0, 40));
+  const realU = JSON.parse(read('tools/ether-mystery-lab-test/shots/imagine/real-understanding.json'));
+  const leaks = realU.results.filter((r) => r.ok).filter((r, i) => { const m = JSON.stringify(Translate.planMessages(r.analysis).messages); return truthWords.some((w) => m.indexOf(w) !== -1); });
+  ck(leaks.length === 0, 'TR3d no fragment of any ground-truth sentence reaches a plan request built from a real understanding — the model is never told what a person saw', leaks.map((r) => r.id).join(','));
+  ck(!/\b(card|stars|constellation|memor|username|creator|companion|email|session|token)\b/i.test(sys + usr), 'TR3e no private word in the contract or the context');
+  ck(!Translate.planMessages(null).ok && !Translate.planMessages('x').ok, 'TR3f no understanding, no request');
+
+  // ---- TR4: the plan validator — deny by shape, drift repaired, structure refused ----
+  const v0 = Translate.validatePlan(hand);
+  ck(v0.ok && v0.reasons.length === 0 && Object.keys(v0.plan).sort().join() === Object.keys(Translate.SCHEMA).sort().join() && v0.plan.masses.length === 6 && v0.plan.gesture.flow.join() === 'body,head',
+    'TR4  a valid plan comes out as a CLEAN copy carrying exactly the schema\'s keys');
+  const refusedTop = ['points', 'joins', 'missing', 'x', 'coordinates', 'svg', 'path', 'polygon', 'pattern', 'constellation', 'stars', 'card', 'email', 'memories', 'username', 'url', 'code', 'html'].filter((k) => { const r = Translate.validatePlan(Object.assign({}, hand, { [k]: 'x' })); return !(r.ok === false && r.reasons.some((x) => x === 'forbidden-key:' + k)); });
+  ck(refusedTop.length === 0, 'TR4b every geometry, runtime, credential and private key is refused BY NAME at the top level', refusedTop.join(','));
+  const nested = Translate.validatePlan(Object.assign({}, hand, { gesture: Object.assign({}, hand.gesture, { points: [[0, 1]] }) }));
+  ck(!nested.ok && nested.reasons.indexOf('forbidden-key:gesture.points') !== -1, 'TR4c and at any depth, with its path', nested.reasons.join(','));
+  const numbered = Translate.validatePlan(Object.assign({}, hand, { masses: hand.masses.map((m, i) => i ? m : Object.assign({}, m, { size: 0.3 })) }));
+  const numbered2 = Translate.validatePlan(Object.assign({}, hand, { movement: 'the head sits at 0.2, 0.4' }));
+  ck(!numbered.ok && !numbered2.ok && numbered.reasons.concat(numbered2.reasons).every((r) => /number|geometry|text/i.test(r)), 'TR4d a NUMBER anywhere — as a value or inside a sentence — is refused: a coordinate in disguise', numbered.reasons.join(',') + ' | ' + numbered2.reasons.join(','));
+  const badTexts = { svg: '<svg viewBox="0 0 1 1">', markup: '<b>head</b>', url: 'see https://x.y/z', data: 'data:image/png;base64,AAAA', exec: 'function () { return 1 }' };
+  const textLeaks = Object.keys(badTexts).filter((k) => Translate.validatePlan(Object.assign({}, hand, { movement: badTexts[k] })).ok);
+  ck(textLeaks.length === 0, 'TR4e SVG, markup, a link, a data URI and code are refused as text', textLeaks.join(','));
+  ck(!Translate.validatePlan(Object.assign({}, hand, { extra: 'y' })).ok && Translate.validatePlan(Object.assign({}, hand, { extra: 'y' })).reasons.join() === 'unknown-key:extra', 'TR4f an unknown key is refused by name');
+  const drift = Translate.validatePlan(Object.assign({}, hand, { masses: hand.masses.map((m, i) => i === 3 ? Object.assign({}, m, { kind: 'wing', size: 'huge' }) : m), gesture: Object.assign({}, hand.gesture, { kind: 'standing' }) }));
+  ck(drift.ok && drift.plan.masses[3].kind === 'mass' && drift.plan.masses[3].size === 'medium' && drift.plan.gesture.kind === 'upright' && drift.repairs.length >= 3 && drift.repairs.every((r) => /→/.test(r)),
+    'TR4g vocabulary drift ("wing", "huge", "standing") is REPAIRED to the vocabulary and every repair is recorded — never silently, never refused whole', drift.repairs.join(' | '));
+  const structural = [
+    ['flow-too-short', Object.assign({}, hand, { gesture: Object.assign({}, hand.gesture, { flow: ['body'] }) })],
+    ['flow-names-unknown-mass', Object.assign({}, hand, { gesture: Object.assign({}, hand.gesture, { flow: ['body', 'ghost'] }) })],
+    ['self-relationship', Object.assign({}, hand, { relationships: hand.relationships.concat([{ from: 'tail', relation: 'extends-from', to: 'tail' }]) })],
+    ['relationship-names-unknown-mass', Object.assign({}, hand, { relationships: hand.relationships.concat([{ from: 'ghost', relation: 'extends-from', to: 'body' }]) })],
+    ['missing:mustSurvive', Object.assign({}, hand, { mustSurvive: [] })],
+    ['bad-masses-count', Object.assign({}, hand, { masses: hand.masses.slice(0, 1) })],
+    ['duplicate-mass', Object.assign({}, hand, { masses: hand.masses.concat([hand.masses[0]]) })]
+  ];
+  const structFail = structural.filter(([reason, p]) => { const r = Translate.validatePlan(p); return r.ok || !r.reasons.some((x) => x.indexOf(reason) === 0); });
+  ck(structFail.length === 0, 'TR4h structure the composer could only guess at — a flow of one, an id nobody declared, a mass related to itself, nothing to survive, one mass, a duplicate — is refused with its reason', structFail.map((s) => s[0]).join(','));
+  const unreach = Translate.validatePlan(Object.assign({}, hand, { relationships: hand.relationships.slice(1) }));
+  ck(unreach.ok && unreach.repairs.some((r) => /no relationship reaches: tail/.test(r)), 'TR4i a mass no relationship reaches is allowed and NAMED — the composer will hang it off the largest flow mass and say so');
+  ck(!Translate.validatePlan(Object.assign({}, hand, { relationships: hand.relationships.map((r) => Object.assign({}, r, { symmetric: 'yes' })) })).ok === false && Translate.validatePlan(Object.assign({}, hand, { relationships: hand.relationships.map((r) => Object.assign({}, r, { symmetric: 'yes' })) })).repairs.some((r) => /symmetric dropped/.test(r)),
+    'TR4j symmetric is the one boolean — a string there is dropped and recorded');
+  ck(Translate.parsePlan('```json\n' + JSON.stringify(hand) + '\n```').ok && Translate.parsePlan('Here: ' + JSON.stringify(hand) + ' done.').ok && !Translate.parsePlan('a spine and some wings').ok && !Translate.parsePlan('').ok && !Translate.parsePlan('{"masses": ').ok,
+    'TR4k a reply is text until proven a plan — fenced or wrapped JSON is read, prose and broken JSON are refused');
+  const fx = Translate.parsePlan(Translate.fixturePlan());
+  ck(fx.ok && fx.plan.masses.every((m) => /^FIXTURE/.test(m.label)) && /fixture/i.test(fx.plan.gesture.note) && Composer.compose(fx.plan).ok, 'TR4l the fixture plan passes the same validator, says on its face that it is a fixture, and composes');
+
+  // ---- TR5: the composer — gesture first, then relationships ----
+  const alloc = f1.diagnostics.allocation;
+  const tagOf = (re) => alloc.filter((a) => re.test(a.tag));
+  const rootEnd = tagOf(/root end/)[0], tipEnd = tagOf(/tip end/)[0], trans = tagOf(/transition body→head/)[0];
+  ck(rootEnd && tipEnd && trans && rootEnd.mass === 'body' && tipEnd.mass === 'head' && rootEnd.p[1] > trans.p[1] && trans.p[1] > tipEnd.p[1],
+    'TR5  the SPINE comes first: for an upright flow body→head the root end is the body, the tip end is the head, and the transition between them stands between them');
+  const spine = Composer.spineFor({ kind: 'grounded', flow: ['a', 'b'], curve: 'straight', facing: 'right' });
+  const spineL = Composer.spineFor({ kind: 'grounded', flow: ['a', 'b'], curve: 'straight', facing: 'left' });
+  ck(spine.at(1)[0] > spine.at(0)[0] && spineL.at(1)[0] < spineL.at(0)[0] && Math.abs(spine.at(0.5)[1] - (spine.at(0)[1] + spine.at(1)[1]) / 2) < 1e-9,
+    'TR5b facing decides which way the head end of the spine points, and a straight curve is straight');
+  const gest = ['upright', 'seated', 'grounded', 'reaching', 'flowing', 'coiled', 'diagonal', 'spread', 'rearing', 'floating'].map((k) => Composer.spineFor({ kind: k, flow: ['a', 'b'], curve: 'gentle', facing: 'left' }));
+  ck(gest.every((s) => s.length > 0.4) && new Set(gest.map((s) => s.at(0).join() + '|' + s.at(1).join())).size >= 7, 'TR5c every gesture kind lays a real spine and they are not one spine wearing ten names');
+  const body = alloc.filter((a) => a.mass === 'body'), sails = alloc.filter((a) => a.mass === 'sails'), tail = alloc.filter((a) => a.mass === 'tail'), legs = alloc.filter((a) => a.mass === 'legs'), prongs = alloc.filter((a) => a.mass === 'prongs');
+  const bodyC = body.reduce((s, a) => s + a.p[1], 0) / body.length;
+  ck(legs.length === 2 && legs.every((a) => a.p[1] > bodyC) && Math.abs(legs[0].p[0] - legs[1].p[0]) > 0.3, 'TR5d a branch that SUPPORTS from the bottom becomes two feet below the body, spread apart');
+  ck(prongs.length === 2 && prongs.every((a) => a.p[1] < tipEnd.p[1] + 0.05) && Math.sign(prongs[0].p[0] - tipEnd.p[0]) !== Math.sign(prongs[1].p[0] - tipEnd.p[0]), 'TR5e a symmetric terminal that RISES FROM the top of the head becomes a pair above it, one each side');
+  const sailTips = sails.filter((a) => /\btip\b/.test(a.tag));
+  ck(sailTips.length === 2 && Math.sign(sailTips[0].p[0]) !== Math.sign(sailTips[1].p[0]) && Math.abs(Math.abs(sailTips[0].p[0]) - Math.abs(sailTips[1].p[0])) < 0.05 && sailTips.every((t) => t.p[1] < bodyC),
+    'TR5f a span on BOTH sides is a MIRRORED PAIR — two tips, one each side of the spine, at the same height, above their root (round 1 gave one wing reaching back; measured, this was the fix)');
+  const tailTip = tail.filter((a) => /\btip\b/.test(a.tag))[0];
+  ck(tailTip && tailTip.p[0] > rootEnd.p[0] + 0.2, 'TR5g a taper that EXTENDS FROM the back of a left-facing body reaches to the right — the side of the relationship decides, in the gesture\'s own frame');
+  const sideR = Composer.compose(Object.assign({}, hand, { relationships: hand.relationships.map((r) => r.from === 'sails' ? Object.assign({}, r, { side: 'right', symmetric: false }) : r) }));
+  const rightTips = sideR.diagnostics.allocation.filter((a) => a.mass === 'sails' && /\btip\b/.test(a.tag));
+  ck(sideR.ok && rightTips.length === 1 && rightTips[0].p[0] > 0.3, 'TR5h a span on the RIGHT reaches right (round 1 sent every span up-and-back whatever its side; measured on a bird whose two wings both went left)');
+  const armed = Composer.compose(Object.assign({}, hand, { relationships: hand.relationships.map((r) => r.from === 'legs' ? Object.assign({}, r, { relation: 'attaches-to', side: 'both' }) : r) }));
+  const arms = armed.diagnostics.allocation.filter((a) => a.mass === 'legs');
+  ck(armed.ok && arms.length === 2 && arms.every((a) => /limb end/.test(a.tag) && Math.abs(a.p[1] - bodyC) < 0.6) && Math.sign(arms[0].p[0]) !== Math.sign(arms[1].p[0]), 'TR5i a branch to BOTH sides is a pair of limbs out to the sides, never feet (round 1 put a dragon\'s arms under its feet)');
+  // (without the prongs: a ring's crown and a pair of horns above the same head are ONE place, and the composer says so by sharing the light)
+  const ringed = Composer.compose(Object.assign({}, hand, { masses: hand.masses.filter((m) => m.id !== 'prongs').concat([{ id: 'ruff', role: 'diagnostic', kind: 'enclosure', size: 'large', shape: 'round', label: 'RUFF' }]), relationships: hand.relationships.filter((r) => r.from !== 'prongs').concat([{ from: 'ruff', relation: 'surrounds', to: 'head' }]), mustSurvive: ['head', 'ruff', 'sails'] }));
+  const ring = ringed.diagnostics.allocation.filter((a) => a.mass === 'ruff');
+  const headC = ringed.diagnostics.allocation.filter((a) => a.mass === 'head' && /tip end|width|transition/.test(a.tag));
+  ck(ringed.ok && ring.length === 3 && ring.every((r) => headC.some((h) => Math.hypot(h.p[0] - r.p[0], h.p[1] - r.p[1]) < 1.0)) && ring.every((r) => headC.every((h) => Math.hypot(h.p[0] - r.p[0], h.p[1] - r.p[1]) > 0.1)),
+    'TR5j an enclosure is a ring of three lights around its mass — near it, and never ON one of its own lights');
+  const orphan = Composer.compose(Object.assign({}, hand, { relationships: hand.relationships.slice(1) }));
+  ck(orphan.ok && orphan.diagnostics.notes.some((n) => /"tail" had no relationship — attached to "body"/.test(n)) && orphan.diagnostics.components === 1, 'TR5k a mass no relationship reaches is hung off the largest flow mass and the diagnostics say so');
+
+  // ---- TR6: no coordinate leakage — the composer cannot be steered by a number ----
+  const smug = JSON.parse(JSON.stringify(hand)); smug.masses.forEach((m) => { m.x = 0.9; m.y = -0.9; m.points = [[0.5, 0.5]]; }); smug.gesture.angle = 45;
+  const fS = Composer.compose(smug);
+  ck(fS.ok && JSON.stringify(fS.points) === JSON.stringify(f1.points) && JSON.stringify(fS.joins) === JSON.stringify(f1.joins), 'TR6  numbers smuggled onto a plan move not one light — the composer reads no coordinate, and the validator refuses them before it anyway');
+  ck(!Translate.validatePlan(smug).ok, 'TR6b (and the validator does refuse that plan)');
+
+  // ---- TR7: bounds, graph validity, components, crossings, budget — on the hand plans and on all seventeen real ones ----
+  const realT = JSON.parse(read('tools/ether-mystery-lab-test/shots/translate/real-translation.json'));
+  const figures = [{ id: 'hand', fig: f1 }].concat(realT.results.filter((r) => r.ok).map((r) => ({ id: r.id, fig: Composer.compose(r.plan) })));
+  const bad = (pred) => figures.filter((f) => !pred(f.fig)).map((f) => f.id);
+  const inBounds = bad((f) => f.points.every((p) => Math.abs(p[0]) <= Composer.FIT + 0.011 && Math.abs(p[1]) <= Composer.FIT + 0.011));
+  ck(inBounds.length === 0, 'TR7  every light of every figure lies inside the fit box (±' + Composer.FIT + '), so the editor never clamps one', inBounds.join(','));
+  const validGraph = bad((f) => f.joins.every((j) => Number.isInteger(j.a) && Number.isInteger(j.b) && j.a !== j.b && j.a >= 0 && j.b >= 0 && j.a < f.points.length && j.b < f.points.length) && new Set(f.joins.map((j) => Math.min(j.a, j.b) + '-' + Math.max(j.a, j.b))).size === f.joins.length);
+  ck(validGraph.length === 0, 'TR7b every join names two different real lights, and no join is listed twice', validGraph.join(','));
+  const onePiece = bad((f) => f.diagnostics.components === 1 && Composer.components(f.points.length, f.joins) === 1);
+  ck(onePiece.length === 0, 'TR7c every figure is ONE piece — the hand plan and all seventeen real plans (round 1 left a quill floating beside its bird and an elephant in three pieces; a join to a dropped light now climbs to what that light hung from)', onePiece.join(','));
+  const crossOK = bad((f) => f.diagnostics.crossings === Composer.crossings(f.points, f.joins));
+  ck(crossOK.length === 0, 'TR7d the crossings reported are the crossings counted');
+  ck(Composer.crossings([[0, 0], [1, 1], [0, 1], [1, 0]], [{ a: 0, b: 1 }, { a: 2, b: 3 }]) === 1 && Composer.crossings([[0, 0], [1, 1], [0, 1], [1, 0]], [{ a: 0, b: 1 }, { a: 1, b: 2 }]) === 0, 'TR7e the crossing counter counts a crossing and not a shared end');
+  const budgetOK = bad((f) => Composer.BUDGETS.indexOf(f.budget) !== -1 && f.budget >= f.points.length && f.points.length <= f.diagnostics.cap && f.diagnostics.cap <= 20 && Composer.BUDGETS.filter((b) => b >= f.points.length)[0] === f.budget);
+  ck(budgetOK.length === 0, 'TR7f the budget is the smallest allowed budget that holds the figure, the figure never exceeds its cap, and the cap never exceeds the Lab\'s twenty', budgetOK.join(','));
+  const mapOK = bad((f) => f.points.length === f.roles.length && f.roles.length === f.masses.length && f.diagnostics.allocation.length === f.points.length && f.roles.every((r) => typeof r === 'string' && r.length > 0));
+  ck(mapOK.length === 0, 'TR7g every light carries the label of the mass it stands for, and the allocation names every light');
+  const capped = Composer.compose(hand, { cap: 8 });
+  ck(capped.ok && capped.points.length <= 8 && capped.budget === 8 && capped.diagnostics.components === 1, 'TR7h a caller\'s cap is honoured and the figure is still one piece');
+  const simpleFive = { masses: [
+      { id: 'b', role: 'primary', kind: 'mass', size: 'large', shape: 'oval', label: 'B' }, { id: 'h', role: 'primary', kind: 'mass', size: 'large', shape: 'oval', label: 'H' },
+      { id: 'e', role: 'diagnostic', kind: 'span', size: 'large', shape: 'oval', label: 'E' }, { id: 't', role: 'diagnostic', kind: 'taper', size: 'large', shape: 'oval', label: 'T' },
+      { id: 'k', role: 'diagnostic', kind: 'terminal', size: 'medium', shape: 'thin', label: 'K' }, { id: 'l', role: 'diagnostic', kind: 'branch', size: 'large', shape: 'oval', label: 'L' } ],
+    gesture: { kind: 'grounded', flow: ['b', 'h'], curve: 'gentle', facing: 'right', note: '' },
+    relationships: [ { from: 't', relation: 'extends-from', to: 'h', side: 'bottom' }, { from: 'e', relation: 'spans-from', to: 'h', side: 'left' }, { from: 'k', relation: 'extends-from', to: 'h', side: 'front' }, { from: 'l', relation: 'supports', to: 'b', side: 'bottom' } ],
+    proportion: [], mustSurvive: ['t', 'e', 'k', 'l', 'b'], simplify: [], revealOnly: [], complexity: 'simple', movement: '' };
+  const sf = Composer.compose(simpleFive);
+  ck(sf.ok && sf.diagnostics.dropped.length === 0 && sf.diagnostics.cap >= Composer.CAPS.simple, 'TR7i THE BUDGET IS AUTOMATIC: a plan that says "simple" and names five things that must survive keeps all five — the floor is the essentials, complexity is the room beyond them (round 1 dropped an elephant\'s ear, tusk, legs and tail at cap 10)', 'cap ' + sf.diagnostics.cap + ' dropped ' + sf.diagnostics.dropped.join(','));
+  const droppedSurvive = figures.filter((f) => f.id !== 'hand').map((f) => ({ id: f.id, plan: realT.results.filter((r) => r.id === f.id)[0].plan, fig: f.fig })).filter((x) => x.plan.mustSurvive.some((id) => x.fig.diagnostics.dropped.indexOf(id) !== -1)).map((x) => x.id);
+  ck(droppedSurvive.length === 0, 'TR7j across the seventeen real plans not one must-survive mass is without a light', droppedSurvive.join(','));
+
+  // ---- TR8: the real pass — committed, honest, re-validated and re-composed by the code as it stands ----
+  ck(realT.model === 'gpt-4.1-mini' && realT.results.length === Art.entries.length && realT.results.every((r) => r.ok), 'TR8  gpt-4.1-mini gave a structural plan for every picture in the manifest and every one composed', realT.results.filter((r) => r.ok).length + '/' + realT.results.length);
+  const reparse = realT.results.filter((r) => !Translate.parsePlan(r.raw).ok);
+  ck(reparse.length === 0, 'TR8b the committed raw replies still pass the validator as it stands today — the contract and the results cannot drift apart', reparse.map((r) => r.id).join(','));
+  const drifted = realT.results.filter((r) => { const now = Composer.compose(r.plan); return JSON.stringify(now.points) !== JSON.stringify(r.figure.points) || JSON.stringify(now.joins) !== JSON.stringify(r.figure.joins); });
+  ck(drifted.length === 0, 'TR8c the committed figures are what today\'s composer makes of the committed plans — a composer change without a recompose fails here', drifted.map((r) => r.id).join(','));
+  const firstTry = realT.results.filter((r) => r.validator && r.validator.ok);
+  ck(firstTry.length === realT.results.length && realT.results.every((r) => r.usage && r.usage.prompt > 1000 && r.usage.completion > 300), 'TR8d every plan was valid on the first attempt, and every request really carried the contract and the picture');
+  const ratings = JSON.parse(read('tools/ether-mystery-lab-test/shots/translate/ratings.json'));
+  const rIds = ratings.results.map((r) => r.id).sort().join(), aIds = Art.entries.map((e) => e.id).sort().join();
+  ck(rIds === aIds && ratings.results.every((r) => /^[ABCD]$/.test(r.round1) && /^[ABCD]$/.test(r.round2) && r.sees && r.fails.length && r.where) && /golden/i.test(ratings.goldenTest) && /^NO/.test(ratings.verdict),
+    'TR8e a person rated every one of the seventeen, both rounds, named what they saw and where it failed, said what stood in for the golden test, and answered the final question — and the answer is written down as NO');
+  const counted = ['A', 'B', 'C', 'D'].map((g) => ratings.results.filter((r) => r.round2 === g).length);
+  ck(counted.join() === [ratings.round2.A, ratings.round2.B, ratings.round2.C, ratings.round2.D].join(), 'TR8f the tally is the count of the rows, not a number somebody typed', counted.join());
+  const pngs = Art.entries.filter((e) => !fs.existsSync(path.join(shotDir, e.id + '.png')));
+  ck(pngs.length === 0, 'TR8g every rated creature has its screenshot committed — SOURCE · AUTHOR over the source · JUDGE alone', pngs.map((e) => e.id).join(','));
+
+  // ---- the browser half ----
+  const B64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+  const server = spawn('node', ['tools/bring-it-alive/test/serve.js', String(PORT)], { cwd: ROOT, stdio: 'ignore' });
+  await new Promise((res) => setTimeout(res, 900));
+  const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+  try {
+    const ctx = await browser.newContext({ viewport: { width: 1500, height: 1100 } });
+    const page = await ctx.newPage();
+    const errors = [];
+    page.on('pageerror', (e) => errors.push(String(e).split('\n')[0]));
+    const requests = [];
+    page.on('request', (q) => requests.push(q.url()));
+    await page.goto(BASE + '/tools/ether-mystery-lab/shape.html');
+    await page.waitForFunction(() => !!window.LabTranslate && !!window.LabEtherComposer && !!window.LabImagine && !!window.ShapeLab && !!window.LabConnection, null, { timeout: 20000 });
+    const S = (fn, arg) => page.evaluate(fn, arg);
+
+    // ---- TR9: loading does nothing; the door is shut until something is understood ----
+    const load = await S(() => ({ ls: Object.keys(localStorage).length, ss: Object.keys(sessionStorage).length, goDisabled: document.querySelector('[data-translate-go]').disabled, outcome: document.querySelector('[data-translate-section]').getAttribute('data-translate-outcome'),
+      srcHidden: document.querySelector('[data-source-pane]').hidden, origin: document.querySelector('[data-status-origin]').hidden, plan: window.LabTranslate.plan(), fig: window.LabTranslate.figure(), o: window.ShapeLab.origin(),
+      controls: ['[data-translate-go]', '[data-translate-status]', '[data-translate-panel]', '[data-translate-copy]', '[data-translate-json]', '[data-translate-diag]', '[data-source-pane]', '[data-source-img]', '[data-source-under]', '[data-status-origin]'].filter((c) => !document.querySelector(c)) }));
+    ck(load.ls === 0 && load.ss === 0 && load.goDisabled && load.outcome === 'none' && load.srcHidden && load.origin && !load.plan && !load.fig && load.o === 'authored' && load.controls.length === 0 && errors.length === 0 && !requests.some((u) => /openai|supabase/.test(u)),
+      'TR9  loading the page makes no plan, no figure, writes nothing, shows no source, reaches no provider; the button waits for an understanding; the figure is AUTHORED and the badge is hidden', 'missing ' + load.controls.join(','));
+    ['data-translate-json', 'data-translate-diag', 'data-translate-copy'].forEach((sel) => {
+      const idx = htmlNoComments.indexOf(sel); const before = htmlNoComments.slice(0, idx);
+      ck(idx > 0 && (before.match(/<details class="adv"/g) || []).length > (before.match(/<\/details>/g) || []).length - ((before.match(/<details data-ref-trace-panel>/g) || []).length), 'TR9b ' + sel + ' sits inside an Advanced disclosure — plan JSON, composition and trace are never the default view');
+    });
+    const noGo = await S(() => window.LabTranslate.translate());
+    ck(noGo.ok === false && noGo.reason === 'nothing-understood', 'TR9c asked with nothing understood, the translator refuses and says why');
+
+    // ---- TR10: the fixture journey — upload → placeholder understanding → fixture plan → GENERATED figure, labelled fixture ----
+    await page.setInputFiles('[data-imagine-file]', path.join(ROOT, 'tools/ether-mystery-lab/artwork/gameicons-centaur.png'));
+    await page.waitForFunction(() => window.LabImagine.state().page === 'understood', null, { timeout: 20000 });
+    const src = await S(() => ({ hidden: document.querySelector('[data-source-pane]').hidden, img: !!document.querySelector('[data-source-img] img'), cap: document.querySelector('[data-source-caption]').textContent, goOn: !document.querySelector('[data-translate-go]').disabled, under: window.LabTranslate.underlayShowing(), stage: document.querySelector('[data-stage]').className }));
+    ck(!src.hidden && src.img && /UPLOADED/.test(src.cap) && src.goOn && src.under && /with-source/.test(src.stage), 'TR10 a picture brought in stands in the SOURCE pane on the left, the source sits under AUTHOR, and Create Ether creature wakes');
+    const before = requests.length;
+    await page.click('[data-translate-go]');
+    await page.waitForFunction(() => document.querySelector('[data-translate-section]').getAttribute('data-translate-outcome') === 'fixture', null, { timeout: 8000 });
+    const fx1 = await S(() => { const st = window.ShapeLab.status(); return { origin: window.ShapeLab.origin(), badge: document.querySelector('[data-status-origin]').textContent, badgeHidden: document.querySelector('[data-status-origin]').hidden, attr: document.querySelector('[data-status-origin]').getAttribute('data-origin'), n: window.ShapeLab.state().points.length, joins: window.ShapeLab.state().joins.length,
+      status: document.querySelector('[data-translate-status]').textContent, meta: window.LabTranslate.planMeta(), last: window.LabTranslate.last(), roles: window.ShapeLab.state().roles, budget: window.ShapeLab.state().budget, st: st.origin }; });
+    ck(fx1.n >= 6 && fx1.joins >= fx1.n - 1 && fx1.origin === 'generated' && fx1.st === 'generated' && !fx1.badgeHidden && /GENERATED/.test(fx1.badge) && fx1.attr === 'generated', 'TR10b the composed figure enters the editor as GENERATED — badge shown, points and connections in place', fx1.n + ' lights');
+    ck(fx1.meta.source === 'fixture' && fx1.last.outcome === 'fixture' && /Fixture plan composed — a generic stand-in, not the creature/.test(fx1.status) && fx1.roles.every((r) => /^FIXTURE/.test(r)) && /none — fixture mode/.test(fx1.last.request),
+      'TR10c with the Fixture connection the plan is a stand-in that says so on every light and on the status line — never an invented creature');
+    ck(requests.length === before || requests.slice(before).every((u) => u.indexOf(BASE + '/') === 0), 'TR10d and no request left for it');
+    await page.screenshot({ path: path.join(shotDir, 'shape-lab-fixture-translation.png') });
+
+    // ---- TR11: generated vs authored — a label, never a lock ----
+    await S(() => { const p = window.ShapeLab.state().points[0]; window.ShapeLab.movePoint(0, p[0] + 0.15, p[1]); });
+    const edited = await S(() => ({ origin: window.ShapeLab.origin(), attr: document.querySelector('[data-status-origin]').getAttribute('data-origin'), badge: document.querySelector('[data-status-origin]').textContent, depth: window.ShapeLab.historyDepth().undo }));
+    ck(edited.origin === 'generated-edited' && edited.attr === 'generated-edited' && /GENERATED · EDITED/.test(edited.badge) && edited.depth >= 2, 'TR11 moving one light turns GENERATED into GENERATED · EDITED — the generated figure is editable like any other, and the edit is undoable');
+    await S(() => window.ShapeLab.undo());
+    ck(await S(() => window.ShapeLab.origin() === 'generated'), 'TR11b undo gives GENERATED back — the label follows the history');
+    const rec = await S(() => { const j = window.ShapeLab.state(); return { gen: j.generated, auth: j.authoring }; });
+    ck(rec.gen && rec.gen.source === 'fixture' && rec.gen.edited === false && rec.auth && rec.auth.source === 'fixture', 'TR11c the record carries where the figure came from, so a reopened fixture is still labelled');
+    await S(() => window.ShapeLab.reset());
+    ck(await S(() => window.ShapeLab.origin() === 'authored' && document.querySelector('[data-status-origin]').hidden), 'TR11d Reset everything is a fresh AUTHORED start and the badge goes');
+    // a generated figure enters the existing workflow: connect, gap, approve
+    await S(() => window.LabTranslate.translate());
+    await page.waitForFunction(() => window.ShapeLab.state().points.length > 0, null, { timeout: 8000 });
+    const wf = await S(() => { window.ShapeLab.toggleGap(0); const ap = window.ShapeLab.approve(); return { ok: ap && ap.ok, kind: ap && ap.approved && ap.approved.kind, origin: window.ShapeLab.origin(), gaps: window.ShapeLab.state().missing.length, status: window.ShapeLab.status().state }; });
+    ck(wf.gaps === 1 && wf.ok && /approved-figure/.test(String(wf.kind)) && wf.origin === 'generated-edited', 'TR11e a generated figure walks the existing SHAPE → CONNECT → REVEAL → TEST → APPROVE path — a gap marked, the figure approved — with nothing new bolted on', JSON.stringify(wf));
+
+    // ---- TR12: the stubbed endpoint — what leaves, what comes back, what is refused ----
+    const goodPlan = JSON.parse(JSON.stringify(hand));
+    let epBodies = []; let planAnswer = 'good';
+    await page.route('https://fn.local/lab-generate', (route) => {
+      const body = JSON.parse(route.request().postData() || '{}');
+      epBodies.push(body);
+      if (body.action === 'ping') return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, build: 'LAB2', provider: 'configured', model: 'gpt-4.1-mini', imageModel: 'gpt-image-1' }) });
+      if (body.action === 'understand') {
+        const isPlan = /GESTURE FIRST/.test(String(body.messages && body.messages[0] && body.messages[0].content));
+        if (!isPlan) {
+          const good = { subject: 'a creature from the stub', character: ['calm'], composition: 'An upright figure.', architecture: ['a body', 'a head on top'], diagnosticFeatures: ['two sails'], modifiers: [], proportion: 'The head is big.', gesture: 'One coherent gesture: standing.', abstraction: { survives: ['the sails'], doNotDrawLiterally: ['texture'], note: '' }, revealCandidates: ['scales'], promptFidelity: { agreement: 'matches', differences: [] } };
+          return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, text: JSON.stringify(good), model: 'gpt-4.1-mini', build: 'LAB2' }) });
+        }
+        if (planAnswer === 'down') return route.abort();
+        const text = planAnswer === 'good' ? JSON.stringify(goodPlan) : planAnswer === 'geometry' ? JSON.stringify(Object.assign({}, goodPlan, { points: [[0, 1]] })) : planAnswer === 'numbers' ? JSON.stringify(Object.assign({}, goodPlan, { movement: 'head at 0.2, 0.3' })) : 'A spine, then some wings, I think.';
+        return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, text, model: 'gpt-4.1-mini', build: 'LAB2' }) });
+      }
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, model: 'gpt-4.1-mini', build: 'LAB2', text: '{}' }) });
+    });
+    await page.click('[data-conn-mode="endpoint"]');
+    await page.fill('[data-conn-url]', 'https://fn.local/lab-generate');
+    await page.fill('[data-conn-token]', 'admin-session-token');
+    await page.click('[data-conn-test]');
+    await page.waitForFunction(() => /CONNECTED/.test(document.querySelector('[data-conn-status]').textContent));
+    // a fresh picture, read by the stub, then translated by the stub
+    await page.setInputFiles('[data-imagine-file]', path.join(ROOT, 'tools/ether-mystery-lab/artwork/twemoji-mermaid.png'));
+    await page.waitForFunction(() => document.querySelector('[data-imagine-section]').getAttribute('data-understand-outcome') === 'generated', null, { timeout: 8000 });
+    epBodies = [];
+    await page.click('[data-translate-go]');
+    await page.waitForFunction(() => document.querySelector('[data-translate-section]').getAttribute('data-translate-outcome') === 'generated', null, { timeout: 8000 });
+    const gen = await S(() => ({ origin: window.ShapeLab.origin(), n: window.ShapeLab.state().points.length, roles: window.ShapeLab.state().roles, meta: window.LabTranslate.planMeta(), status: document.querySelector('[data-translate-status]').textContent, last: window.LabTranslate.last(), name: window.ShapeLab.state().name, auth: window.ShapeLab.state().authoring, ls: JSON.stringify(localStorage), ss: JSON.stringify(sessionStorage), exp: window.ShapeLab.exportJSON(), panel: document.querySelector('[data-translate-panel]').textContent }));
+    ck(gen.origin === 'generated' && gen.n >= 10 && gen.roles.some((r) => r === 'SAIL') && gen.meta.source === 'generated' && gen.meta.model === 'gpt-4.1-mini' && /Ether creature generated \(gpt-4\.1-mini\)/.test(gen.status) && gen.last.outcome === 'generated' && gen.auth.source === 'generated',
+      'TR12 when the model answers with a plan, the figure is composed and labelled GENERATED (the model named) — the fixture label is never borrowed');
+    ck(/Gesture/.test(gen.panel) && /flow: /.test(gen.panel) && /Relationships/.test(gen.panel) && /Must survive/.test(gen.panel) && /ETHER TRANSLATION PLAN \(gpt-4\.1-mini\)/.test(gen.panel), 'TR12b the plan is shown as words a person can argue with — gesture, flow, what attaches to what, what must survive');
+    const sentPlan = epBodies.filter((b) => b.action === 'understand' && /GESTURE FIRST/.test(b.messages[0].content)).pop();
+    const sentU = epBodies.filter((b) => b.action === 'understand' && !/GESTURE FIRST/.test(b.messages[0].content)).pop();
+    ck(sentPlan && sentPlan.image && sentPlan.image.mime === 'image/png' && sentPlan.image.b64.length > 64 && sentPlan.messages.length === 2 && sentPlan.messages.every((m) => typeof m.content === 'string') && Object.keys(sentPlan).sort().join() === 'action,image,messages' &&
+       !/\b(card|stars|constellation|memor|username|creator|companion|email|session|token)\b/i.test(JSON.stringify(sentPlan.messages)) && !truthWords.some((w) => JSON.stringify(sentPlan).indexOf(w) !== -1) && !/-?\d\.\d+\s*,\s*-?\d\.\d+/.test(JSON.stringify(sentPlan.messages)) && (!sentU || sentU.image.b64 === sentPlan.image.b64),
+      'TR12c what left for the plan is action, the same picture the understanding was read from, and two text messages — the contract and the understanding — with no private word, no ground truth, no coordinate');
+    ck(!/admin-session-token/.test(gen.ls + gen.ss + gen.exp) && !/base64|data:image/.test(gen.ls + gen.ss + gen.exp) && !/GESTURE FIRST/.test(gen.exp), 'TR12d the token, the picture, the contract and the plan reach no storage and no export');
+    ck(gen.name === 'a creature from the stub', 'TR12e the understanding\'s subject names the figure when the researcher has not');
+    await page.screenshot({ path: path.join(shotDir, 'shape-lab-stubbed-translation.png') });
+    // refused replies keep what was there
+    const keptN = gen.n;
+    for (const [ans, label, outcome] of [['geometry', 'a reply carrying geometry', 'rejected'], ['numbers', 'a reply with a coordinate in a sentence', 'rejected'], ['prose', 'a prose reply', 'rejected'], ['down', 'a dead transport', 'failed']]) {
+      planAnswer = ans;
+      await page.click('[data-translate-go]');
+      await page.waitForFunction((o) => document.querySelector('[data-translate-section]').getAttribute('data-translate-outcome') === o, outcome, { timeout: 8000 });
+      const r = await S(() => ({ n: window.ShapeLab.state().points.length, origin: window.ShapeLab.origin(), status: document.querySelector('[data-translate-status]').textContent, last: window.LabTranslate.last(), goOn: !document.querySelector('[data-translate-go]').disabled, meta: window.LabTranslate.planMeta() }));
+      ck(r.n === keptN && r.origin === 'generated' && r.meta.source === 'generated' && /still here/.test(r.status) && !/[Ff]ixture plan composed/.test(r.status) && r.last.outcome === outcome && r.goOn && (outcome === 'failed' ? /No fixture was substituted/.test(r.status) : /refused by the validator/.test(r.status)),
+        'TR12f ' + label + ' is ' + outcome + ' on screen: the generated figure in use is untouched, no fixture is substituted, the button comes back', r.status.slice(0, 90));
+    }
+    // and a real plan again works after the failures
+    planAnswer = 'good';
+    await page.click('[data-translate-go]');
+    await page.waitForFunction(() => document.querySelector('[data-translate-section]').getAttribute('data-translate-outcome') === 'generated', null, { timeout: 8000 });
+    ck(await S(() => window.ShapeLab.origin() === 'generated' && window.LabTranslate.last().outcome === 'generated'), 'TR12g and the next good reply composes again');
+
+    // ---- TR13: the source is a reference, not the figure ----
+    const und = await S(() => { const c = document.querySelector('[data-source-underlay]'); return { present: !!c, hidden: c && c.hidden, cls: c && c.className, showing: window.LabTranslate.underlayShowing(), events: c && getComputedStyle(c).pointerEvents, btn: document.querySelector('[data-source-under]').textContent }; });
+    ck(und.present && !und.hidden && /source-layer/.test(und.cls) && und.showing && und.events === 'none' && /ON/.test(und.btn), 'TR13 the source under AUTHOR is its own canvas, beneath the editor, and catches no touch');
+    await page.click('[data-source-under]');
+    const off = await S(() => { const c = document.querySelector('[data-source-underlay]'); return { hidden: c.hidden, showing: window.LabTranslate.underlayShowing(), btn: document.querySelector('[data-source-under]').textContent, n: window.ShapeLab.state().points.length, box: c.getBoundingClientRect().width }; });
+    ck(off.hidden && !off.showing && /OFF/.test(off.btn) && off.n === keptN && off.box === 0, 'TR13b SOURCE UNDER — OFF hides it, the figure is untouched, and the box is really gone (an explicit display beats [hidden])');
+    await page.click('[data-source-under]');
+    const judgeClean = await S(() => { const cs = Array.from(document.querySelectorAll('canvas.source-layer')); const judge = document.querySelector('[data-canvas-unfinished]') || document.querySelectorAll('canvas.figure')[1]; return { sources: cs.length, judgeHasSource: cs.some((c) => judge && judge.parentElement && judge.parentElement.contains(c)), exp: window.ShapeLab.exportJSON() }; });
+    ck(judgeClean.sources === 1 && !judgeClean.judgeHasSource && !/data:image|b64/.test(judgeClean.exp), 'TR13c exactly one source layer exists, it is not under the JUDGE pane, and the picture is in no fixture');
+
+    // ---- TR14: the existing Shape Lab is intact ----
+    const intact = await S(() => { window.ShapeLab.reset(); window.ShapeLab.addPoint(0, 0); window.ShapeLab.addPoint(0.5, 0); window.ShapeLab.toggleJoin(0, 1); return { n: window.ShapeLab.state().points.length, joins: window.ShapeLab.state().joins.length, origin: window.ShapeLab.origin(), api: ['setBudget', 'addPoint', 'movePoint', 'deletePoint', 'toggleJoin', 'joinInOrder', 'toggleGap', 'reset', 'approve', 'undo', 'redo', 'loadGenerated', 'origin'].filter((k) => typeof window.ShapeLab[k] !== 'function'), ls: Object.keys(localStorage).filter((k) => k !== 'vihu.lab.shapes' && k !== 'vihu.lab.connection').length }; });
+    ck(intact.n === 2 && intact.joins === 1 && intact.origin === 'authored' && intact.api.length === 0 && errors.length === 0, 'TR14 the manual editor still draws, every editor API is there, a hand-placed figure is AUTHORED, and the page raised no error through the whole journey', errors.join(' | ') + ' missing ' + intact.api.join(','));
+    const stepOrder = await S(() => Array.from(document.querySelectorAll('[data-step]')).map((s) => s.getAttribute('data-step')));
+    ck(stepOrder.join(',') === 'create,shape,connect,reveal,test,approve', 'TR14b the six stages are exactly where they were — the translation is INSIDE Create');
+  } finally { await browser.close(); server.kill(); }
+}
+
 // ===================================================================
 (async () => {
   try {
@@ -7671,6 +7999,7 @@ async function sectionIM() {
     await run('ET', sectionET);
     await run('WF', sectionWF);
     await run('IM', sectionIM);
+    await run('TR', sectionTR);
   } catch (e) {
     fail('suite crashed', (e && e.stack || String(e)).split('\n')[0]);
   }
