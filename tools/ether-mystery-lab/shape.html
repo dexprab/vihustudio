@@ -288,6 +288,19 @@
       <button data-imagine-provider-pick="openai-image">OpenAI image generation</button>
     </div>
     <div class="note" data-imagine-provider-line></div>
+    <div data-imagine-selected hidden>
+      <div class="srclabel" style="margin-top:10px">Selected creature</div>
+      <div class="selbox"><div data-imagine-selected-img></div><span class="selbadge">SELECTED</span></div>
+      <div class="note" data-imagine-selected-label></div>
+      <div class="say imagine-status" data-imagine-understand-status></div>
+      <div class="note" data-imagine-summary hidden></div>
+      <div class="row">
+        <button data-imagine-show class="quiet" disabled>Show the understanding</button>
+        <button data-imagine-understand class="quiet" disabled>Read it again</button>
+        <button data-imagine-unselect class="quiet" disabled>Choose a different one</button>
+      </div>
+      <div class="note">The understanding is on the right. It describes what is in the picture — the picture, not the words that asked for it.</div>
+    </div>
     <div data-imagine-ideas hidden>
       <div class="srclabel" style="margin-top:10px">Your ideas — choose one</div>
       <div class="note" data-imagine-set></div>
@@ -304,17 +317,6 @@
         <button data-imagine-refine-go disabled>Refine</button>
       </div>
       <div class="note">Every set you make is kept for this page — refining or trying again never throws one away, and <b>Bring back previous</b> walks back through them. Nothing is stored.</div>
-    </div>
-    <div data-imagine-selected hidden>
-      <div class="srclabel" style="margin-top:10px">Selected creature</div>
-      <div class="selbox"><div data-imagine-selected-img></div><span class="selbadge">SELECTED</span></div>
-      <div class="note" data-imagine-selected-label></div>
-      <div class="say imagine-status" data-imagine-understand-status></div>
-      <div class="row">
-        <button data-imagine-understand class="quiet" disabled>Read it again</button>
-        <button data-imagine-unselect class="quiet" disabled>Choose a different one</button>
-      </div>
-      <div class="note">The understanding is on the right. It describes what is in the picture — the picture, not the words that asked for it.</div>
     </div>
     <div class="srclabel" style="margin-top:10px">Or bring a picture</div>
     <div class="row"><input type="file" data-imagine-file accept="image/png,image/jpeg,image/webp" style="flex:1 1 200px"></div>
@@ -621,18 +623,18 @@
 </div>
 </main>
 
-<script src="../../js/etherGrammar.js?lab=58c1d46792"></script>
-<script src="labKit.js?lab=58c1d46792"></script>
-<script src="labPreviewHost.js?lab=58c1d46792"></script>
-<script src="labConnection.js?lab=58c1d46792"></script>
-<script src="labBlueprint.js?lab=58c1d46792"></script>
-<script src="labOutline.js?lab=58c1d46792"></script>
-<script src="labReveal.js?lab=58c1d46792"></script>
-<script src="labRevealData.js?lab=58c1d46792"></script>
-<script src="labShape.js?lab=58c1d46792"></script>
-<script src="labReference.js?lab=58c1d46792"></script>
-<script src="labArtworkData.js?lab=58c1d46792"></script>
-<script src="labImagine.js?lab=58c1d46792"></script>
-<script src="labTranslationData.js?lab=58c1d46792"></script>
+<script src="../../js/etherGrammar.js?lab=8809f30565"></script>
+<script src="labKit.js?lab=8809f30565"></script>
+<script src="labPreviewHost.js?lab=8809f30565"></script>
+<script src="labConnection.js?lab=8809f30565"></script>
+<script src="labBlueprint.js?lab=8809f30565"></script>
+<script src="labOutline.js?lab=8809f30565"></script>
+<script src="labReveal.js?lab=8809f30565"></script>
+<script src="labRevealData.js?lab=8809f30565"></script>
+<script src="labShape.js?lab=8809f30565"></script>
+<script src="labReference.js?lab=8809f30565"></script>
+<script src="labArtworkData.js?lab=8809f30565"></script>
+<script src="labImagine.js?lab=8809f30565"></script>
+<script src="labTranslationData.js?lab=8809f30565"></script>
 </body>
 </html>

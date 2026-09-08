@@ -7441,6 +7441,12 @@ async function sectionIM() {
       subject: a.subject, source: a.source, panelBadge: document.querySelector('[data-imagine-panel-source]').textContent, panel: document.querySelector('[data-imagine-panel]').textContent, uoutcome: document.querySelector('[data-imagine-section]').getAttribute('data-understand-outcome'), ustatus: document.querySelector('[data-imagine-understand-status]').textContent, trace: window.LabImagine.lastUnderstand() }; });
     const reqAfterUse = requests.length;
     ck(used.sel && used.sel.artworkId === 'leo' && used.selImg && used.badge === 'SELECTED' && used.chosenTag, 'IM9f USE makes the choice the selected creature — shown large, badged SELECTED, and marked in the gallery');
+    // (reported by the product owner on a narrow screen: the top line said
+    // "Reading it…" for ever while the result sat below the fold)
+    const where = await S(() => ({ top: document.querySelector('[data-imagine-status]').textContent, under: document.querySelector('[data-imagine-understand-status]').textContent, summary: document.querySelector('[data-imagine-summary]').textContent, summaryHidden: document.querySelector('[data-imagine-summary]').hidden, showOn: !document.querySelector('[data-imagine-show]').disabled,
+      selectedAboveIdeas: document.querySelector('[data-imagine-selected]').compareDocumentPosition(document.querySelector('[data-imagine-ideas]')) & Node.DOCUMENT_POSITION_FOLLOWING }));
+    ck(where.top === where.under && /placeholder|Understood/.test(where.top) && !where.summaryHidden && /Understanding panel/.test(where.summary) && where.showOn && !!where.selectedAboveIdeas,
+      'IM9f2 the read\'s outcome is written on the TOP line as well as under the picture, a one-line summary and a Show-the-understanding button sit under the selected picture, and the selected block stands above the gallery — nothing about a read is below the fold');
     ck(/^FIXTURE/.test(used.subject) && used.source === 'fixture' && /FIXTURE — a placeholder, no model looked/.test(used.panelBadge) && /no model/i.test(used.panel) && used.uoutcome === 'fixture' && /no model looked at the picture/.test(used.ustatus) && /sends nothing|placeholder/.test(used.trace.request),
       'IM9g with the Fixture connection the understanding is a placeholder that says on its face that no model looked — never an invented description');
     ck(reqAfterUse === requests.length && !requests.some((u) => /openai|supabase/.test(u)), 'IM9h and no request left for it');

@@ -564,12 +564,14 @@
     }
     trace.request = mode === 'fixture' ? 'none — fixture mode answers with a placeholder that says no model looked' : 'sent through LabConnection (' + mode + '): the fixed contract, the creative prompt, and the picture (' + im.mime + ', ' + trace.imageBytes + ' bytes) — nothing else';
     state.busy = 'understand'; emit();
-    understandStatus(mode === 'fixture' ? 'Fixture: answering with a placeholder — no model looks at the picture…' : 'Reading the picture (' + mode + ')…');
+    var reading = mode === 'fixture' ? 'Fixture: answering with a placeholder — no model looks at the picture…' : 'Reading the picture (' + mode + ') — this takes a few seconds…';
+    understandStatus(reading);
+    if (mode !== 'fixture') tickStartFor(reading);
     return C.understand({
       messages: m.messages, image: { mime: im.mime, b64: im.b64 },
       fixture: function () { return fixtureAnalysis(g.prompt, im.title); }
     }).then(function (r) {
-      state.busy = null;
+      state.busy = null; tickStop();
       if (!r || !r.ok) {
         var reason = (r && r.reason) || 'unavailable';
         trace.answer = { ok: false, reason: reason }; trace.outcome = 'failed';
@@ -592,7 +594,7 @@
       emit();
       return { ok: true, source: r.source };
     }).catch(function () {
-      state.busy = null; trace.answer = { ok: false, reason: 'error' }; trace.outcome = 'failed';
+      state.busy = null; tickStop(); trace.answer = { ok: false, reason: 'error' }; trace.outcome = 'failed';
       understandStatus('Reading the picture failed (' + mode + '). ' + kept, 'warn'); emit();
       return { ok: false, reason: 'error' };
     });
@@ -607,7 +609,27 @@
   function el(sel) { return doc && doc.querySelector(sel); }
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function status(msg, kind) { var n = el('[data-imagine-status]'); if (n) { n.textContent = msg || ''; n.className = 'say imagine-status' + (kind ? ' ' + kind : ''); } }
-  function understandStatus(msg, kind) { var n = el('[data-imagine-understand-status]'); if (n) { n.textContent = msg || ''; n.className = 'say imagine-status' + (kind ? ' ' + kind : ''); } }
+  // The read's status is written in BOTH places — under the selected
+  // picture and on the top line under the prompt — because on a narrow
+  // screen the selected block and the Understanding panel sit below the
+  // fold, and a top line that still said "Reading it…" after the read had
+  // finished looked like a hang (reported by the product owner).
+  function understandStatus(msg, kind) {
+    var n = el('[data-imagine-understand-status]'); if (n) { n.textContent = msg || ''; n.className = 'say imagine-status' + (kind ? ' ' + kind : ''); }
+    status(msg, kind);
+  }
+  // While a read is in flight the line counts the seconds, so a slow model
+  // (a large picture at high detail takes ten seconds or so) reads as
+  // working rather than stuck.
+  var ticker = null, tickStart = 0, tickBase = '';
+  function tickStartFor(base) {
+    tickStop(); tickStart = Date.now(); tickBase = base;
+    ticker = setInterval(function () {
+      if (state.busy !== 'understand') { tickStop(); return; }
+      understandStatus(tickBase + ' ' + Math.round((Date.now() - tickStart) / 1000) + 's');
+    }, 1000);
+  }
+  function tickStop() { if (ticker) { clearInterval(ticker); ticker = null; } }
 
   function pageState() {
     if (state.busy === 'imagine') return 'creating';
@@ -655,6 +677,13 @@
     var img = doc.createElement('img'); img.alt = 'Selected creature — ' + (im.title ? im.title + ' — ' : '') + im.label; img.src = im.dataUrl;
     box.appendChild(img);
     var l = el('[data-imagine-selected-label]'); if (l) l.textContent = (im.title ? im.title + ' · ' : '') + im.label + (im.credit ? ' · ' + im.credit : '');
+    var sm = el('[data-imagine-summary]');
+    if (sm) {
+      var a = state.analysis;
+      sm.textContent = !a ? '' : (a.source === 'fixture' ? 'Placeholder in place (no model looked). ' : 'Understood as: ' + a.subject + ' — ' + a.character.join(', ') + '. ') + 'The full understanding is in the Understanding panel.';
+      sm.hidden = !a;
+    }
+    var sh = el('[data-imagine-show]'); if (sh) sh.disabled = !state.analysis;
   }
 
   function chips(list) { return (list || []).map(function (w) { return '<span class="an-chip">' + esc(w) + '</span>'; }).join(' '); }
@@ -755,6 +784,7 @@
     var useBtn = el('[data-imagine-use]'); if (useBtn) useBtn.addEventListener('click', function () { use(); });
     var ub = el('[data-imagine-understand]'); if (ub) ub.addEventListener('click', function () { understand(); });
     var un = el('[data-imagine-unselect]'); if (un) un.addEventListener('click', function () { unselect(); status('Choose another picture, or create more.'); });
+    var sh = el('[data-imagine-show]'); if (sh) sh.addEventListener('click', function () { var pn = el('[data-imagine-panel]'); if (pn && pn.scrollIntoView) pn.scrollIntoView({ block: 'start', behavior: 'smooth' }); });
     var file = el('[data-imagine-file]'); if (file) file.addEventListener('change', function () { var f = file.files && file.files[0]; if (f) bringImage(f); file.value = ''; });
     doc.querySelectorAll('[data-imagine-provider-pick]').forEach(function (bb) { bb.addEventListener('click', function () { setProvider(bb.getAttribute('data-imagine-provider-pick')); }); });
     var cp = el('[data-imagine-copy]');
