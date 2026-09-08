@@ -59,6 +59,12 @@
      its intrinsic 300x150 — measured. The size has to be said. */
   .tease { position: absolute; inset: 0; width: 100%; height: 100%;
            z-index: 30; pointer-events: none; }
+  /* THE REVEAL. Reveal-only creature features, drawn by the LAB over the
+     real interpreter ONLY once the figure is whole — never before, never
+     as a hint. Inert to touch: nothing here can be tapped, moved or
+     selected, because it is not part of the puzzle. */
+  .reveal { position: absolute; inset: 0; width: 100%; height: 100%;
+            z-index: 28; pointer-events: none; }
 
   .unavailable { position: absolute; inset: 0; z-index: 60; display: none;
                  align-items: center; justify-content: center; padding: 40px;
@@ -83,6 +89,7 @@
 
   <!-- The leading hint. Lab-rendered, over the real sky, and the only
        words in the child-facing half of the preview. -->
+  <canvas class="reveal" data-reveal hidden></canvas>
   <canvas class="tease" data-tease hidden></canvas>
   <div class="hint" data-hint></div>
 
@@ -108,38 +115,39 @@
 
 <!-- The runtime, in its own dependency order (the sandbox's order,
      which is index.html's order). -->
-<script src="../../vihuplanet/artDirection/illustrationRules.js?lab=f05d0aef26"></script>
-<script src="../../vihuplanet/runtime/core/namespace.js?lab=f05d0aef26"></script>
-<script src="../../vihuplanet/runtime/core/rng.js?lab=f05d0aef26"></script>
-<script src="../../vihuplanet/runtime/core/signal.js?lab=f05d0aef26"></script>
-<script src="../../vihuplanet/runtime/core/clock.js?lab=f05d0aef26"></script>
-<script src="../../vihuplanet/runtime/core/camera.js?lab=f05d0aef26"></script>
-<script src="../../vihuplanet/runtime/core/traveller.js?lab=f05d0aef26"></script>
-<script src="../../vihuplanet/runtime/stories/storyEntity.js?lab=f05d0aef26"></script>
-<script src="../../vihuplanet/runtime/stories/storyManager.js?lab=f05d0aef26"></script>
-<script src="../../vihuplanet/runtime/stories/storyLayer.js?lab=f05d0aef26"></script>
-<script src="../../vihuplanet/runtime/stories/storySpirit.js?lab=f05d0aef26"></script>
-<script src="../../vihuplanet/runtime/physics/spatialGrid.js?lab=f05d0aef26"></script>
-<script src="../../vihuplanet/runtime/physics/physics.js?lab=f05d0aef26"></script>
-<script src="../../vihuplanet/runtime/ether/ether.js?lab=f05d0aef26"></script>
-<script src="../../vihuplanet/runtime/ether/currents.js?lab=f05d0aef26"></script>
-<script src="../../vihuplanet/runtime/ether/aurora.js?lab=f05d0aef26"></script>
-<script src="../../vihuplanet/runtime/ether/etherRenderer.js?lab=f05d0aef26"></script>
-<script src="../../vihuplanet/runtime/ambient/ambientSystem.js?lab=f05d0aef26"></script>
-<script src="../../vihuplanet/runtime/focus/focusSystem.js?lab=f05d0aef26"></script>
-<script src="../../vihuplanet/runtime/birth/storyBirth.js?lab=f05d0aef26"></script>
-<script src="../../vihuplanet/runtime/worlds/worldEngine.js?lab=f05d0aef26"></script>
-<script src="../../vihuplanet/runtime/core/universe.js?lab=f05d0aef26"></script>
+<script src="../../vihuplanet/artDirection/illustrationRules.js?lab=3b227312b1"></script>
+<script src="../../vihuplanet/runtime/core/namespace.js?lab=3b227312b1"></script>
+<script src="../../vihuplanet/runtime/core/rng.js?lab=3b227312b1"></script>
+<script src="../../vihuplanet/runtime/core/signal.js?lab=3b227312b1"></script>
+<script src="../../vihuplanet/runtime/core/clock.js?lab=3b227312b1"></script>
+<script src="../../vihuplanet/runtime/core/camera.js?lab=3b227312b1"></script>
+<script src="../../vihuplanet/runtime/core/traveller.js?lab=3b227312b1"></script>
+<script src="../../vihuplanet/runtime/stories/storyEntity.js?lab=3b227312b1"></script>
+<script src="../../vihuplanet/runtime/stories/storyManager.js?lab=3b227312b1"></script>
+<script src="../../vihuplanet/runtime/stories/storyLayer.js?lab=3b227312b1"></script>
+<script src="../../vihuplanet/runtime/stories/storySpirit.js?lab=3b227312b1"></script>
+<script src="../../vihuplanet/runtime/physics/spatialGrid.js?lab=3b227312b1"></script>
+<script src="../../vihuplanet/runtime/physics/physics.js?lab=3b227312b1"></script>
+<script src="../../vihuplanet/runtime/ether/ether.js?lab=3b227312b1"></script>
+<script src="../../vihuplanet/runtime/ether/currents.js?lab=3b227312b1"></script>
+<script src="../../vihuplanet/runtime/ether/aurora.js?lab=3b227312b1"></script>
+<script src="../../vihuplanet/runtime/ether/etherRenderer.js?lab=3b227312b1"></script>
+<script src="../../vihuplanet/runtime/ambient/ambientSystem.js?lab=3b227312b1"></script>
+<script src="../../vihuplanet/runtime/focus/focusSystem.js?lab=3b227312b1"></script>
+<script src="../../vihuplanet/runtime/birth/storyBirth.js?lab=3b227312b1"></script>
+<script src="../../vihuplanet/runtime/worlds/worldEngine.js?lab=3b227312b1"></script>
+<script src="../../vihuplanet/runtime/core/universe.js?lab=3b227312b1"></script>
 
 <!-- The Ether's own providers — the same files the product loads. -->
-<script src="../../js/etherLife.js?lab=f05d0aef26"></script>
-<script src="../../js/etherRipple.js?lab=f05d0aef26"></script>
-<script src="../../js/etherGrammar.js?lab=f05d0aef26"></script>
-<script src="../../js/etherCreationLens.js?lab=f05d0aef26"></script>
-<script src="../../js/etherMystery.js?lab=f05d0aef26"></script>
+<script src="../../js/etherLife.js?lab=3b227312b1"></script>
+<script src="../../js/etherRipple.js?lab=3b227312b1"></script>
+<script src="../../js/etherGrammar.js?lab=3b227312b1"></script>
+<script src="../../js/etherCreationLens.js?lab=3b227312b1"></script>
+<script src="../../js/etherMystery.js?lab=3b227312b1"></script>
 
-<script src="labPreviewSupport.js?lab=f05d0aef26"></script>
-<script src="labResearch.js?lab=f05d0aef26"></script>
-<script src="labPreview.js?lab=f05d0aef26"></script>
+<script src="labReveal.js?lab=3b227312b1"></script>
+<script src="labPreviewSupport.js?lab=3b227312b1"></script>
+<script src="labResearch.js?lab=3b227312b1"></script>
+<script src="labPreview.js?lab=3b227312b1"></script>
 </body>
 </html>

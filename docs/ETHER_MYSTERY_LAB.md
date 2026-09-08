@@ -2442,3 +2442,240 @@ delayed help); nothing beyond those is activated.
 `reference-off.png`, `reference-generated.png`, and
 `shots/shape-lab/adaptive/*.png`.
 
+
+## REVEAL-ONLY CREATURE FEATURES — the payoff, authored beside the puzzle
+
+**Lab only. Zero production files changed.** `js/`, `assets/`,
+`vihuplanet/`, `supabase/`, `index.html` and `studio.html` have an
+empty diff; `arrangementNodesMax` is still 8; every stamp on
+`index.html` still reads 0769; the production pool holds no reveal
+feature and cannot, because nothing that reads the pool knows what one
+is.
+
+### The distinction
+
+```
+DOTS + JOINS            = THE CHALLENGE
+REVEAL-ONLY FEATURES    = THE PAYOFF
+```
+
+A reveal-only feature is a small visual detail — a mane, a wing
+membrane, a set of stripes, a pair of horns — that appears ONLY after
+the Creature Mystery's figure is completely solved, stays a few seconds,
+and fades. It is not a star. It is not connected by the child. It is
+not a puzzle piece. It is not part of the completion condition and
+cannot affect it. It cannot be tapped, moved, selected or deleted by a
+child. It is purely visual, and it exists to give the completed creature
+its emotional and visual impact.
+
+```
+UNFINISHED CREATURE
+    ↓  the child connects the missing lights
+ALL REQUIRED JOINS COMPLETE
+    ↓  the figure blazes (the interpreter's own awakening, untouched)
+REVEAL-ONLY FEATURES EMERGE      ← labReveal.js, drawn by the Lab over the sky
+    ↓  hold (the researcher's number, default 4s)
+FEATURES FADE
+    ↓
+the pure Ether figure remains / the creature roams, exactly as before
+```
+
+### The data model (`tools/ether-mystery-lab/labReveal.js`)
+
+A reveal block is `{ durationS, features[] }`, kept on the fixture
+BESIDE the puzzle geometry and never inside it. A feature is:
+
+```
+{ id: 'rf-1',                     // opaque
+  name: 'MANE',                   // a label — capitals, letters and spaces, ≤ 24; never shown to a child
+  type: 'contour',                // one of SEVEN generic primitives
+  anchor: { a: 0, b: 1 },         // two of the AUTHOR'S OWN lights (b may be null = the figure's centre)
+  offset: [0.1, 0],               // in frame units (|AB| = 1), along/across the A→B frame
+  size: 1, angle: 0,              // scale and turn of the feature in that frame
+  params: { strands: 11, radius: 0.62, sweep: 310, wave: 0.35, spread: 0.7, mode: 'around' } }
+```
+
+**Deny by shape.** `LabReveal.sanitize(block, pointCount)` returns a
+clean copy built field by field and REFUSES BY NAME: an unknown key at
+any depth (`unknown-key:features[0].anchor.c`), a name carrying the
+product's boundary vocabulary (card, stars, constellation, memory,
+email, story, companion, key, token…), an anchor past the figure or
+onto itself, an unknown type, a ninth feature, a non-object. Every
+number is clamped to a written bound (`LIMITS`, `PARAMS`). Nothing is
+ever trimmed into use. `Math.random`, storage, network, timers and
+images appear nowhere in the file; a creature name appears nowhere in
+it either, and the suite scans for all of that.
+
+### The seven generic primitives
+
+| type | what it draws | tuned by | used in the research set as |
+|---|---|---|---|
+| `contour` | flowing glowing strokes — `around` the anchor (arcs centred away from B) or `radial` from it | strands · reach · sweep · wave · spread · mode | lion's mane, lion's tail tuft, mermaid's hair, elephant's ear contour |
+| `fill` | a soft translucent silhouette — `membrane` (sagging between A and B), `fan` (from A toward B), `lobe` (an ellipse between them) | shape · bulge · width | dragon's wing membranes, mermaid's tail fin |
+| `lines` | accent strokes laid along A→B, tilted, curved, tapered toward the ends | count · length · tilt · curve · taper | tiger's stripes and face markings, falcon's feathers, elephant's trunk rings |
+| `texture` | a field of small scale-like marks in a box along A→B | rows · columns · mark · width · height | mermaid's scales |
+| `spike` | tapered appendages — fanned at A around the A→B direction, or `along` the join standing off it | count · length · base · curve · spread · along | dragon's horns and spine ridges, elephant's tusks |
+| `glow` | one soft pulsing light | radius · intensity · pulse | falcon's eyes |
+| `motes` | a few drifting twinkling lights around A | count · reach · drift · mark | (authored by hand in the Lab; not in the shipped set) |
+
+All seven are drawn in the Ether's own light — paper-cream and a touch
+of the Studio's gold, a wide faint pass under a thin bright one (the
+way the currents are drawn), low alpha, slow flow — so they read as
+light in the sky rather than as an illustration pasted over it.
+
+### Anchoring — the AUTHORED figure is authoritative
+
+`frameOf(feature, P)` builds a frame from two of the author's own
+lights in SCREEN space: origin at A, x-axis toward B (or toward the
+centroid when B is null), unit length |AB|. Everything a feature
+draws is expressed in that frame. So:
+
+- move the head light and the mane moves with it, exactly (RV3, RV10);
+- move the light it points toward and the feature turns and scales
+  with the part it belongs to (RV3b);
+- delete a light and every feature anchored to it is dropped, every
+  later anchor steps down (RV2f, RV10b).
+
+The blueprint outline is never an anchor and is never consulted by the
+renderer: it was authoring help, and the suite checks that the reveal
+preview's drawing path reads nothing of the reference (RV15e).
+
+### The timeline (`LabReveal.envelope`, `totalMs`)
+
+```
+completion → afterMs 380 (the figure's own blaze; nothing drawn)
+           → each feature emerges over 900ms, a 140ms beat after the last
+           → HOLD for durationS (researcher's number, 1.5–10s, default 4)
+           → all fade together over 1300ms
+           → gone: alpha 0, nothing left on the canvas
+```
+
+A pure function of milliseconds since completion. There is no
+countdown, no remaining time, no "hurry" — the hold is simply how long
+they stay, and a child is never shown a number.
+
+### Authoring, in the Shape Lab
+
+A **Reveal-only features** section sits between *Play in Ether* and
+*Approve figure*. Add a feature (type · at light · toward · name); each
+row shows its offset, size, angle and the type's own parameters; a row's
+× deletes it; *hold for N seconds* is the duration. The **reveal
+preview** canvas underneath shows the COMPLETE figure on its own opaque
+sky with the features standing at full light and a small dashed ring at
+each one's origin — drag the ring to move it. **▶ Play reveal** runs the
+whole sequence on that canvas and then leaves the plain figure standing
+until the next edit. *Show features while authoring* off → the plain
+complete figure.
+
+The two judging panes never draw a feature — pixel-identical with and
+without (RV7d) — and the unfinished figure never can (RV8). REFERENCE
+ON / OFF is untouched: the outline lives under the editor canvas and
+nowhere near the reveal canvas.
+
+The blueprint contract gained one OPTIONAL, SEMANTIC field: `reveal`,
+up to eight `{ name, kind, near }` — names of details that would give
+the finished creature its character, a kind from the seven, and which
+feature it belongs to. Never points, never shapes. The Lab validates it
+(keys refused by name; an unknown kind or `near` is dropped and named as
+a repair), lists it in the blueprint panel, and offers each as a
+one-press addition anchored to the light whose role matches. The
+fixture blueprint carries two generic ones (CREST near HEAD, TAIL TUFT
+near TAIL). No model-generated code, HTML or executable instruction of
+any kind is possible through that field.
+
+### Approval and the data boundary
+
+`Approve figure` freezes both. The artifact now carries
+`sections: { puzzle: ['budget','points','joins','missing','roles'], reveal: ['reveal'] }`
+and a `reveal` block with its own `kind`
+(`vihu-shape-lab-reveal-only-features`) and a sentence saying what it
+is. Editing a feature clears the approval exactly as editing the figure
+does; a stored approval is honoured on reopen only while it still
+matches the stored reveal (RV14e). The artifact carries no outline,
+sketch, blueprint, landmark, silhouette, identity or link (RV14c).
+
+A fixture's reveal block is refused on import AND on open when it is
+not what the vocabulary allows (RV13b). The candidate handed to the
+interpreter never contains a reveal feature — not the block, not a
+name, not a type (RV7b): the features travel BESIDE the candidate to
+the Ether preview, exactly as the leading hint and the tease do.
+
+### In the real Ether preview
+
+`labPreviewHost` passes the block beside the candidate; `preview.html`
+gained one inert canvas (`data-reveal`, `pointer-events: none`);
+`labPreview.js` sanitizes the block AGAIN (the preview trusts nothing it
+is handed) and starts the reveal from ONE place — the interpreter's own
+`mystery:joined` with `left === 0`. Nothing is drawn while a join is
+missing (RV17: not after posing, not after the first join). The
+features are drawn at the interpreter's live node positions read off
+`instrument()` — so they gather and breathe with the waking figure —
+and once the figure has set off (`instrument()` goes null) the layer
+keeps its last layout and follows the wanderer's centre, which is all
+the runtime exposes and all the tail of a fade needs. After the hold:
+no pixels, the canvas hidden, the creature roaming exactly as before
+(RV17e, RV17c).
+
+Measured: 20,054 lit pixels at full reveal for the falcon's four
+features at 1500×1100; 0 before the last join; 0 after the fade.
+
+### The first research set (`labRevealData.js`, *Load research set*)
+
+Six eight-light figures with reveal features, each importable as a
+fixture and playable in the real Ether. Screenshots of the four states
+— A unfinished · B complete without reveal · C complete with reveal ·
+D after the reveal fades — are under
+`tools/ether-mystery-lab-test/shots/reveal/`.
+
+| creature | reveal features | B → C, by looking |
+|---|---|---|
+| Lion | MANE (contour around head→shoulder, 11 strands), TAIL TUFT (contour radial) | The strongest change of the six: eight lights that read as "a four-legged something" gain a ruff around the head and the animal becomes a lion candidate at once. The mane is a set of glowing arcs, plainly light and not fur; it reads as a mane by placement. |
+| Tiger | BODY STRIPES (9 lines across shoulder→rump), FACE MARKINGS (4 short lines) | The stripes say *striped* immediately; the figure underneath is still a generic quadruped, so C reads as "a striped animal" rather than unmistakably a tiger. The first draft (7 longer, untapered lines) read as a rib cage — taper and shorter strokes fixed it. |
+| Dragon | WING MEMBRANE ×2 (fill), HORNS (2 spikes swept back), SPINE RIDGES (6 spikes along neck→rump) | The membranes turn a triangle of lights into a wing; the horns are the single most legible mark. At the first alpha the fills were a solid sail and were halved. Still the heaviest of the six and the closest to "pasted". |
+| Mermaid | FLOWING HAIR (9 radial strands), TAIL FIN (fill fan), SCALES (6×5 texture) | Scales are the surprise: at the first size they read as the letter C repeated; smaller and more closed they read as scales and carry the identity. Hair reads as a fountain of strands from the head. |
+| Elephant | TUSKS (2 thin curved spikes), EAR CONTOUR (3 arcs), TRUNK DETAIL (8 rings) | The weakest of the six. The rings along the trunk read as rungs, the tusks as sticks; the figure's own trunk (one light hanging from the head) carries more of the elephant than the reveal does. |
+| Falcon | LEFT/RIGHT FEATHERS (7 lines each along the wings), EYE ×2 (glow) | Clean: parallel strokes along each wing read as feathers and the two glows give the head a face. "Bird" is confirmed; "falcon" is not, and no reveal primitive could say it. |
+
+**What the set answers.** The reveal reliably turns a completed figure
+from *a shape of lights* into *a creature of lights* — recognisability,
+character and the sense that something is alive all rise, and the
+authored geometry stays visible underneath because the features are
+light rather than fill. It does NOT make a weak figure into a strong
+creature (the elephant), and it can tip into illustration when a fill
+is large and dense (the dragon at its first alpha). Six of the seven
+primitives were sufficient for the set; `motes` was not needed for any
+of these six.
+
+**Whether a six-year-old feels the "OH!"** is not proved here — no
+child has played it — and the environment cannot reach a provider, so
+the blueprint's `reveal` suggestions are proved against the fixture and
+a stubbed reply only.
+
+### Proved by reverting
+
+Each mutation was applied to one Lab file, section `RV` run, and the
+file restored from a backup: the reveal started on ANY join rather
+than the last → `RV1g`, `RV17`, `RV17b`, `RV17d` red; the unfinished
+state drew the features → `RV8` red; the reveal block smuggled inside
+the figure the candidate carries → `RV7` (the REAL validator refused
+the unknown key on its own) and `RV7b` red; the sanitizer dropping
+unknown keys instead of refusing → `RV2c`, `RV13b` red; an approval
+ignoring the reveal → `RV14e` red. A first mutation for the candidate
+case — a `reveal` key on the INPUT to `creatureCandidate` — went red
+nowhere, because the Kit builds a candidate field by field and never
+copied it: the guard working, not the check failing, and why the
+smuggling had to go inside the figure to prove anything.
+
+A process lesson worth writing down: the first proof runner restored
+files with `git checkout --`, which restores to the last COMMIT — and
+wiped the uncommitted reveal work it was in the middle of proving. A
+runner must restore from a copy it took itself.
+
+### Files
+
+`tools/ether-mystery-lab/labReveal.js` (new) · `labRevealData.js` (new)
+· `labShape.js` (additive: the reveal list, canvas, rows, approval)
+· `shape.html` · `labPreview.js` · `labPreviewHost.js` · `preview.html`
+· `labBlueprint.js` (one optional field) · `labReference.js` (one panel
+list). Suite section `RV` (61 checks). Screenshots:
+`tools/ether-mystery-lab-test/shots/reveal/<creature>-{unfinished,complete,reveal,after}.png`.

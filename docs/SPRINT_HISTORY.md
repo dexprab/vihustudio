@@ -12757,3 +12757,23 @@ at a word, for features and budget lists alike; every repair is named
 in the trace, a name with no letters is still refused and the refusal
 names it. `AR11f`–`AR11h`, proved by reverting (three red). S 21 · AR
 90 · AP green; pages restamped.
+
+## Lab — reveal-only creature features: the payoff, beside the puzzle
+
+Lab only, zero production files changed. `labReveal.js` adds seven
+generic reveal primitives (contour · fill · lines · texture · spike ·
+glow · motes) anchored to the author's own lights, a deny-by-shape
+sanitizer, and a pure completion → response → emerge → hold → fade
+timeline; the Shape Lab authors them beside the figure on a canvas of
+their own, the approval keeps puzzle and reveal in two named sections,
+and the Ether preview draws them over the real sky only on the
+interpreter's own `mystery:joined` with `left === 0`. Six research
+creatures (lion, tiger, dragon, mermaid, elephant, falcon) shipped as
+fixtures with A/B/C/D screenshots; judged by looking, the lion is the
+strongest and the elephant the weakest, and the reveal turns a shape of
+lights into a creature of lights without hiding the geometry. Section
+`RV` (61), five load-bearing checks proved by reverting (the gate on
+the last join, the unfinished state, the candidate's contents, the
+sanitizer's refusal, the approval's reach). A proof runner that
+restores with `git checkout` wipes the uncommitted work it is proving;
+this one restores from its own copy. No child has played it.

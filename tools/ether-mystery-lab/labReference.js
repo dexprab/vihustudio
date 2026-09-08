@@ -409,7 +409,15 @@
         if (!sg.length) return '<span class="note">' + (state.suggestOn ? 'none free — every suggested place holds a light, or the reference is off' : 'suggested points are off') + '</span>';
         return sg.map(function (x) { return '<span class="bp-s l' + (x.level || 1) + (x.focused ? ' focus' : '') + '">' + esc(x.label) + '</span>'; }).join(' ');
       })() + '</div>' +
-      (state.focus ? '<div class="note">Focus: <b>' + esc(state.focus) + '</b> — its related points are shown in gold at every level. Choose it again to clear.</div>' : '');
+      (state.focus ? '<div class="note">Focus: <b>' + esc(state.focus) + '</b> — its related points are shown in gold at every level. Choose it again to clear.</div>' : '') +
+      // Reveal-only suggestions: names the assistant offered for the
+      // PAYOFF, listed here and added — one press each — from the
+      // Reveal-only features section, where the researcher chooses the
+      // type and the place. Semantic only; nothing here is geometry.
+      (bp.reveal && bp.reveal.length
+        ? '<div class="bp-h">Reveal-only suggestions (payoff, after completion)</div><div class="bp-sugg" data-ref-reveal-list>' +
+          bp.reveal.map(function (r) { return '<span class="bp-s">' + esc(r.name.toLowerCase()) + (r.kind ? ' · ' + esc(r.kind) : '') + (r.near ? ' · near ' + esc(r.near.toLowerCase()) : '') + '</span>'; }).join(' ') + '</div>'
+        : '');
     box.innerHTML = html;
     box.querySelectorAll('[data-ref-dismiss]').forEach(function (b) {
       b.addEventListener('click', function (ev) { ev.stopPropagation(); dismiss(b.getAttribute('data-ref-dismiss')); });

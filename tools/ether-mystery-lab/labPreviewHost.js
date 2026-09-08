@@ -66,7 +66,11 @@
               // The leading hint travels BESIDE the candidate, never
               // inside it: a candidate carries no words, because the
               // interpreter draws none.
-              hint: pending.hint || '', tease: pending.tease || false, epoch: epoch },
+              hint: pending.hint || '', tease: pending.tease || false,
+              // Reveal-only features ride beside the candidate the same
+              // way: the interpreter never sees them, and the preview
+              // draws them only after the figure is whole.
+              reveal: pending.reveal || null, epoch: epoch },
             '*');
         } catch (e) { /* held */ }
       }
@@ -115,7 +119,8 @@
     onDone = done || null;
     pending = { candidate: candidate, seed: seed,
                 mode: (mode === 'try') ? 'try' : 'play',
-                hint: (opts && typeof opts.hint === 'string') ? opts.hint : '', tease: (opts && opts.tease) || false };
+                hint: (opts && typeof opts.hint === 'string') ? opts.hint : '', tease: (opts && opts.tease) || false,
+                reveal: (opts && opts.reveal && typeof opts.reveal === 'object') ? opts.reveal : null };
     var w = null;
     try { w = global.open('preview.html', TARGET); } catch (e) { w = null; }
     if (!w) {

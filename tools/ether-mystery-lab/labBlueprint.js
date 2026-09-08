@@ -48,6 +48,7 @@
     textChars: 240,
     nameChars: 24,
     featuresMin: 3, featuresMax: 12,
+    revealMax: 8,
     sketchMax: 24, polyPointsMax: 24,
     importanceMin: 1, importanceMax: 3
   };
@@ -55,6 +56,10 @@
   // Keys a blueprint may never carry, at any depth — the product's own
   // boundary words (Stars, cards, memories…) and everything that would
   // smuggle an image or a link into authoring data.
+  // The Lab's seven reveal kinds — restated here so a blueprint reply can
+  // be validated with labReveal.js absent (this file runs in Node too).
+  var REVEAL_KINDS = ['contour', 'fill', 'lines', 'texture', 'spike', 'glow', 'motes'];
+
   var FORBIDDEN_KEYS = ['pattern', 'cells', 'constellation', 'stars', 'card', 'cardId', 'owner', 'ownerId',
     'email', 'memories', 'memory', 'orbit', 'circle', 'username', 'url', 'href', 'src', 'image', 'img',
     'data', 'base64', 'svg', 'html', 'joins', 'gaps', 'missing', 'hint', 'tease', 'candidate'];
@@ -67,7 +72,16 @@
       silhouette: 'string — one sentence: the primary silhouette and the viewing angle (side / top / front)',
       features: 'array of 3–12 feature objects, most diagnostic first',
       budgets: 'object with the keys "8", "12", "16", "20" (optionally "10" and "18"): for each, an array of feature names (from features[].name) worth spending that budget on, ≤ budget entries',
-      sketch: 'DEPRECATED — optional, ≤ 24 primitives, validated for compatibility and NOT shown: the visual reference is the Creature Outline (labOutline.js), composed from the features'
+      sketch: 'DEPRECATED — optional, ≤ 24 primitives, validated for compatibility and NOT shown: the visual reference is the Creature Outline (labOutline.js), composed from the features',
+      reveal: 'optional — array of ≤ 8 reveal-only suggestions: visual details that would appear only AFTER the figure is complete, as pure payoff (a mane, a wing membrane, stripes); semantic names only, never geometry'
+    },
+    // A reveal suggestion is SEMANTIC: a name, optionally which of the
+    // Lab's seven visual kinds fits, and which feature it sits near. The
+    // Lab interprets and draws; the assistant never returns a shape.
+    reveal: {
+      name: 'string — a short label in capitals, letters/spaces only, ≤ 24 chars (MANE, TAIL TUFT, WING MEMBRANE…)',
+      kind: 'optional — one of contour | fill | lines | texture | spike | glow | motes; anything else is dropped and the researcher chooses',
+      near: 'optional — a features[].name this detail belongs to'
     },
     feature: {
       name: 'string — a short body-part label in capitals, letters/spaces only, ≤ 24 chars (HEAD, EAR, TAIL, WING…); a hyphen, digit or other mark is turned into a space, a longer name is cut at a word',
@@ -107,7 +121,8 @@
       '  "silhouette": string (one sentence: the primary silhouette and the best viewing angle — side, top or front — for a line drawing),',
       '  "features": [ 3 to 12 of { "name": CAPITALS ≤ 24 chars (HEAD, EAR, TAIL, WING…), "importance": 1|2|3, "why": one short sentence, "anchor": [x, y] } ], most diagnostic first,',
       '  "budgets": { "8": [feature names], "12": [feature names], "16": [feature names], "20": [feature names] } — which features are worth spending that many points on; each list at most that many names, all taken from features[].name,',
-      '  "sketch": [ up to 24 of { "kind": "ellipse", "c": [x, y], "r": [rx, ry], "rot": radians } | { "kind": "polygon", "points": [[x, y], …], "closed": true } | { "kind": "line", "points": [[x, y], …] } ] — a rough outline of the whole creature, big and simple, made of these primitives only.',
+      '  "sketch": [ up to 24 of { "kind": "ellipse", "c": [x, y], "r": [rx, ry], "rot": radians } | { "kind": "polygon", "points": [[x, y], …], "closed": true } | { "kind": "line", "points": [[x, y], …] } ] — a rough outline of the whole creature, big and simple, made of these primitives only,',
+      '  "reveal": [ up to 8 of { "name": CAPITALS ≤ 24 chars (MANE, TAIL TUFT, WING MEMBRANE, HORNS…), "kind": one of "contour" (flowing strokes) | "fill" (a soft silhouette) | "lines" (accents across a part) | "texture" (a field of small marks) | "spike" (tapered appendages) | "glow" (one soft light) | "motes" (a few drifting lights), "near": a features[].name } ] — optional: visual details that give the finished creature its character, to be shown only AFTER the figure is complete as a brief payoff; names and kinds only, never points, never shapes.',
       '}',
       '',
       'Coordinates: unit space, x to the right, y DOWNWARD, every |x| and |y| ≤ 1.3; use most of that range so the figure is large. Every feature anchor must lie on the sketch. No other keys. No URLs, no images, no markup, no text outside the JSON. Do not judge or rate anything; describe what is there.'
@@ -238,13 +253,40 @@
       });
     }
 
+    // REVEAL SUGGESTIONS — optional and semantic. Keys are refused by
+    // name; a name is tidied exactly as a feature's is; an unknown kind or
+    // an unknown `near` is dropped and RECORDED as a repair rather than
+    // refusing a blueprint whose figure is fine.
+    var reveal = [];
+    if (raw.reveal !== undefined) {
+      if (!Array.isArray(raw.reveal) || raw.reveal.length > LIMITS.revealMax) reasons.push('bad-reveal-count');
+      else raw.reveal.forEach(function (r, i) {
+        if (!r || typeof r !== 'object' || Array.isArray(r)) { reasons.push('bad-reveal:' + i); return; }
+        Object.keys(r).forEach(function (k) { if (!SCHEMA.reveal[k]) reasons.push('unknown-key:reveal[' + i + '].' + k); });
+        var nm = cleanName(r.name, repairs, 'reveal ' + i);
+        if (!nm || !/^[A-Z][A-Z ]*$/.test(nm)) { reasons.push('bad-reveal-name:' + i); return; }
+        var kind = null;
+        if (r.kind !== undefined) {
+          if (REVEAL_KINDS.indexOf(r.kind) !== -1) kind = r.kind;
+          else repairs.push('reveal ' + i + ' kind "' + String(r.kind).slice(0, 24) + '" → unset (not one of the seven)');
+        }
+        var near = null;
+        if (r.near !== undefined) {
+          var nn = cleanName(r.near);
+          if (names[nn]) near = nn; else repairs.push('reveal ' + i + ' near "' + String(r.near).slice(0, 24) + '" → unset (names no feature)');
+        }
+        reveal.push({ name: nm, kind: kind, near: near });
+      });
+    }
+
     if (reasons.length) return { ok: false, reasons: reasons, repairs: repairs, offending: offending };
     return { ok: true, reasons: [], repairs: repairs, offending: [], blueprint: {
       subject: String(raw.subject).trim(),
       silhouette: String(raw.silhouette).trim(),
       features: features,
       budgets: budgets,
-      sketch: sketch
+      sketch: sketch,
+      reveal: reveal
     } };
   }
 
@@ -285,6 +327,11 @@
         '16': ['HEAD', 'BODY', 'TAIL', 'FRONT LEG', 'BACK LEG', 'EAR'],
         '20': ['HEAD', 'BODY', 'TAIL', 'FRONT LEG', 'BACK LEG', 'EAR']
       },
+      // generic, like the body plan: a crest at the head, a tuft at the tail
+      reveal: [
+        { name: 'CREST', kind: 'contour', near: 'HEAD' },
+        { name: 'TAIL TUFT', kind: 'contour', near: 'TAIL' }
+      ],
       sketch: [
         { kind: 'ellipse', c: [0.1, 0.0], r: [0.75, 0.42], rot: 0 },
         { kind: 'ellipse', c: [-0.85, -0.45], r: [0.3, 0.26], rot: 0 },
@@ -398,7 +445,7 @@
   }
 
   global.LabBlueprint = {
-    SCHEMA: SCHEMA, LIMITS: LIMITS, BUDGETS: BUDGETS.slice(), REQUIRED_BUDGETS: REQUIRED_BUDGETS.slice(), FORBIDDEN_KEYS: FORBIDDEN_KEYS.slice(), COORD: COORD,
+    SCHEMA: SCHEMA, LIMITS: LIMITS, REVEAL_KINDS: REVEAL_KINDS.slice(), BUDGETS: BUDGETS.slice(), REQUIRED_BUDGETS: REQUIRED_BUDGETS.slice(), FORBIDDEN_KEYS: FORBIDDEN_KEYS.slice(), COORD: COORD,
     cleanSubject: cleanSubject, cleanName: cleanName, messagesFor: messagesFor, validate: validate, parse: parse,
     fixture: fixture, suggestions: suggestions, related: related, listFor: listFor
   };

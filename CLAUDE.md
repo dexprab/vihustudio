@@ -9525,6 +9525,72 @@ leads somewhere.
   `docs/ETHER_MYSTERY_LAB.md` → *Adaptive suggested points* ·
   `tools/ether-mystery-lab-test/` section `AP` ·
   `tools/ether-mystery-lab-test/shots/shape-lab/adaptive/`
+- **REVEAL-ONLY CREATURE FEATURES: DOTS + JOINS ARE THE CHALLENGE, THE
+  REVEAL IS THE PAYOFF — LAB ONLY, ZERO PRODUCTION FILES CHANGED.**
+  A reveal-only feature — a mane, a wing membrane, a set of stripes, a
+  pair of horns — appears ONLY after the Creature Mystery's figure is
+  completely solved, stays a few seconds, and fades. It is not a star,
+  not a join, not a gap; it is never connected by a child, never counted
+  toward the budget, never part of completion, never tappable, and
+  never in the candidate the interpreter performs. `labReveal.js` owns
+  what a feature IS: SEVEN generic primitives — contour · fill · lines ·
+  texture · spike · glow · motes — each a handful of bounded numbers,
+  and NO creature catalogue: a lion's mane and a mermaid's hair are one
+  primitive with different numbers, and the suite scans the file for
+  creature names and `subject ===`.
+- **IT IS ANCHORED TO THE AUTHOR'S OWN LIGHTS, NEVER TO THE OUTLINE.**
+  A feature lives in a frame made of two lights — origin at A, x-axis
+  toward B (or the figure's centre), unit |AB| — so moving the head
+  moves the mane exactly, moving the light it points toward turns and
+  scales it, and deleting a light drops what was anchored to it. The
+  blueprint outline was authoring help; the renderer never reads it.
+- **THE UNFINISHED FIGURE CAN NEVER SHOW IT, STRUCTURALLY.** The two
+  judging panes are pixel-identical with the reveal and without it; the
+  reveal preview's `unfinished` state returns before a feature is
+  drawn; and in the real Ether preview the reveal starts from ONE place
+  — the interpreter's own `mystery:joined` with `left === 0` — drawn by
+  the Lab over the real sky on an inert canvas, exactly as the leading
+  hint and the tease already are. A researcher cannot accidentally make
+  a Mystery whose answer is visible before it is solved.
+- **THE TIMELINE IS A PURE FUNCTION, AND NOTHING COUNTS ON SCREEN.**
+  Completion → a 380ms response (the figure's own blaze, nothing drawn)
+  → features emerge over 900ms a beat apart → HOLD for the researcher's
+  seconds (1.5–10, default 4) → fade together over 1300ms → gone. No
+  countdown, no remaining time, no score, no badge, no success text.
+  Afterwards the plain figure is pixel-identical to what it was before
+  the reveal: nothing became permanent geometry.
+- **DENY BY SHAPE, AGAIN.** `LabReveal.sanitize` refuses by name an
+  unknown key at any depth, a name carrying the product's boundary
+  vocabulary, an anchor past the figure or onto itself, an unknown
+  type and a ninth feature; every number is clamped to a written bound.
+  A fixture whose reveal block fails it is refused on import AND on
+  open. The approved artifact keeps the puzzle geometry and the reveal
+  in two NAMED sections (`sections.puzzle` / `sections.reveal`, the
+  reveal with its own `kind` and a sentence saying what it is), editing
+  either clears the approval, and the artifact carries no outline,
+  sketch, blueprint, landmark, identity or link.
+- **THE ASSISTANT MAY SUGGEST, SEMANTICALLY.** The blueprint contract
+  gained one optional field — `reveal: [{ name, kind, near }]`, names
+  and a kind from the seven — validated by the Lab, listed in the
+  panel, and added with one press at the light whose role matches. No
+  model-generated code, markup or geometry can arrive through it.
+- **THE SIX RESEARCH CREATURES, JUDGED BY LOOKING.** Lion (mane, tail
+  tuft) is the strongest change; falcon (feathers, eyes) and mermaid
+  (hair, fin, scales) read cleanly; tiger says *striped* rather than
+  *tiger*; dragon's membranes are the heaviest and were halved after
+  the first render read as a solid sail; elephant is the weakest, its
+  own trunk light carrying more than the reveal does. The reveal turns
+  a shape of lights into a creature of lights and leaves the authored
+  geometry visible underneath; it does not make a weak figure strong.
+  Six of the seven primitives were needed. **No child has played it**,
+  and no provider was reachable, so "OH!" is the product owner's to
+  measure.
+- `tools/ether-mystery-lab/labReveal.js` · `labRevealData.js` ·
+  `labShape.js` · `shape.html` · `labPreview.js` · `preview.html` ·
+  `labPreviewHost.js` · `labBlueprint.js` · `labReference.js` ·
+  `docs/ETHER_MYSTERY_LAB.md` → *Reveal-only creature features* ·
+  `tools/ether-mystery-lab-test/` section `RV` ·
+  `tools/ether-mystery-lab-test/shots/reveal/`
 - Out of scope and not implemented: creature encounters as a reward
   system, creature dialogue, a Companion in the Ether, per-Traveller
   encounter history, more activity rows (story hunt, missing

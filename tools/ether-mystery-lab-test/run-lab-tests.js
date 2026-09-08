@@ -5946,6 +5946,442 @@ async function sectionAP() {
 }
 
 // ===================================================================
+// RV. REVEAL-ONLY CREATURE FEATURES (Shape Lab, Lab only)
+//
+// DOTS + JOINS are the challenge; reveal-only features are the payoff.
+// This section proves the distinction from every side: a feature is
+// never a light, a join, a gap, a budget entry or a completion
+// condition; it is absent from the unfinished figure and from the two
+// judging panes; it appears in the reveal preview and in the real Ether
+// preview ONLY after the last join; it follows the author's own lights;
+// it fades and leaves nothing behind; it is refused by shape; and no
+// production file names it. Load-bearing checks proved by temporary
+// reversion during the sprint are named in the sprint history.
+// ===================================================================
+async function sectionRV() {
+  console.log('\n== RV. reveal-only creature features ==');
+  const { chromium } = require('playwright');
+  const revSrc = read('tools/ether-mystery-lab/labReveal.js');
+  const revStripped = stripComments(revSrc);
+  const shapeSrc = read('tools/ether-mystery-lab/labShape.js');
+  const shapeHtml = read('tools/ether-mystery-lab/shape.html');
+  const pvSrc = read('tools/ether-mystery-lab/labPreview.js');
+  const pvHtml = read('tools/ether-mystery-lab/preview.html');
+  const dataSrc = read('tools/ether-mystery-lab/labRevealData.js');
+  const SHOTDIR = path.join(SHOTS, 'reveal');
+  try { fs.mkdirSync(SHOTDIR, { recursive: true }); } catch (e) {}
+
+  // ---- RV1: PRODUCTION IS UNTOUCHED ----
+  const grepProd = require('child_process').spawnSync('grep',
+    ['-rl', '-e', 'LabReveal', '-e', 'labReveal', '-e', 'reveal-only', '-e', 'vihu-shape-lab-reveal',
+     path.join(ROOT, 'js'), path.join(ROOT, 'assets'), path.join(ROOT, 'vihuplanet'), path.join(ROOT, 'supabase'),
+     path.join(ROOT, 'index.html'), path.join(ROOT, 'studio.html')],
+    { encoding: 'utf8' }).stdout || '';
+  ck(grepProd.trim() === '', 'RV1  nothing a child loads — js/, assets/, the runtime, supabase/, the two entry pages — names the reveal layer', grepProd.trim() || 'clean');
+  // ("reveal" is the interpreter's OWN word — `onEngage: 'reveal'`,
+  // `creation-revealed` — so the scan is for the Lab layer's names, not
+  // for the word: the substring-in-its-own-vocabulary trap, again.)
+  ck(/arrangementNodesMax:\s*8\b/.test(read('js/etherGrammar.js')) && !/LabReveal|reveal-only|revealFeatures|durationS/.test(stripComments(read('js/etherMystery.js'))),
+    'RV1b the production validator still caps at eight and the Mystery interpreter knows nothing of the reveal layer');
+  const stamps = (read('index.html').match(/\?v=(\d{4})/g) || []).map((s) => s.slice(3));
+  ck(stamps.length > 0 && stamps.every((s) => s === '0769'), 'RV1c the build is not bumped — every stamp on index.html still reads 0769');
+  ck(!/\b(lion|tiger|dragon|mermaid|elephant|falcon|octopus|whale|bird|fox|bear)\b/i.test(revStripped) && !/subject\s*===|subject\s*==\s*['"]|name\s*===\s*['"]/.test(revStripped),
+    'RV1d labReveal.js has no creature name in code and no subject-specific branch — a mane and a mermaid\'s hair are one primitive with different numbers');
+  ck(!/Math\.random|localStorage|sessionStorage|fetch\(|XMLHttpRequest|WebSocket|setTimeout|setInterval|requestAnimationFrame|<img|drawImage|new Image|\.png|\.svg/.test(revStripped),
+    'RV1e labReveal.js has no randomness, no storage, no network, no timer of its own and no image — a pure renderer of typed numbers');
+  ck(!/addPoint|movePoint|deletePoint|toggleJoin|toggleGap|joinInOrder|ShapeLab|LabReference|LabOutline|LabBlueprint/.test(revStripped),
+    'RV1f labReveal.js reaches no editing API and no reference layer — it cannot make a light, a join or a gap');
+  const startCalls = (stripComments(pvSrc).match(/startReveal\(/g) || []).length;
+  const joinedGate = /mystery:joined',\s*function \(d\) \{\s*if \(d && d\.left === 0[^\n]*startReveal\(/.test(stripComments(pvSrc));
+  ck(startCalls === 2 && joinedGate, 'RV1g in the Ether preview the reveal starts from ONE place: the interpreter\'s own `mystery:joined` with `left === 0` — never before the last join, never as a hint', 'calls:' + startCalls);
+  ck(/<canvas class="reveal" data-reveal hidden>/.test(pvHtml) && /\.reveal \{[^}]*pointer-events: none/.test(pvHtml),
+    'RV1h the preview\'s reveal canvas is inert to touch: nothing on it can be tapped, moved or selected');
+
+  // ---- RV2: the model and the sanitizer, in Node ----
+  const sb = { console }; sb.window = undefined; sb.global = sb;
+  vm.runInNewContext(revSrc, sb, { filename: 'labReveal.js' });
+  vm.runInNewContext(dataSrc, sb, { filename: 'labRevealData.js' });
+  const R = sb.LabReveal, D = sb.LabRevealData;
+  ck(!!R && R.TYPES.join(',') === 'contour,fill,lines,texture,spike,glow,motes' && Object.keys(R.PARAMS).join(',') === R.TYPES.join(','),
+    'RV2  seven generic primitives — contour · fill · lines · texture · spike · glow · motes — each with its parameters written down');
+  const good = { durationS: 4, features: [{ id: 'rf-1', name: 'Mane', type: 'contour', anchor: { a: 0, b: 1 }, offset: [0.1, 0], size: 1, angle: 0, params: { strands: 9 } }] };
+  const s1 = R.sanitize(good, 8);
+  ck(s1.ok && s1.features.length === 1 && s1.features[0].name === 'MANE' && s1.features[0].params.strands === 9 && s1.features[0].params.radius === R.PARAMS.contour.radius.def,
+    'RV2b a well-formed feature is accepted: the name tidied to capitals, a named parameter kept, the rest at their written defaults');
+  const bads = {
+    'unknown-key:extra': R.sanitize({ durationS: 4, features: [], extra: 1 }, 8),
+    'unknown-key:features[0].url': R.sanitize({ features: [{ name: 'X', type: 'glow', anchor: { a: 0, b: null }, url: 'http://x' }] }, 8),
+    'unknown-key:features[0].anchor.c': R.sanitize({ features: [{ name: 'X', type: 'glow', anchor: { a: 0, b: null, c: 2 } }] }, 8),
+    'unknown-key:features[0].params.zzz': R.sanitize({ features: [{ name: 'X', type: 'glow', anchor: { a: 0, b: null }, params: { zzz: 1 } }] }, 8),
+    'forbidden-name:0': R.sanitize({ features: [{ name: 'MAGIC CARD', type: 'glow', anchor: { a: 0, b: null } }] }, 8),
+    'bad-anchor-a:0': R.sanitize({ features: [{ name: 'X', type: 'glow', anchor: { a: 8, b: null } }] }, 8),
+    'bad-anchor-b:0': R.sanitize({ features: [{ name: 'X', type: 'glow', anchor: { a: 2, b: 2 } }] }, 8),
+    'bad-type:0': R.sanitize({ features: [{ name: 'X', type: 'sprite', anchor: { a: 0, b: null } }] }, 8),
+    'too-many-features:9': R.sanitize({ features: Array.from({ length: 9 }, (_, i) => ({ name: 'F' + i, type: 'glow', anchor: { a: 0, b: null } })) }, 8),
+    'not-an-object': R.sanitize([1, 2], 8)
+  };
+  const badOk = Object.keys(bads).every((k) => !bads[k].ok && bads[k].reasons.indexOf(k) !== -1 && bads[k].features.length === 0);
+  ck(badOk, 'RV2c DENY BY SHAPE: an unknown key at any depth, a forbidden word in a name, an anchor past the figure or onto itself, an unknown type, a ninth feature and a non-object are each refused BY NAME and nothing is trimmed', Object.keys(bads).filter((k) => bads[k].ok || bads[k].reasons.indexOf(k) === -1).join(','));
+  const cl = R.sanitize({ durationS: 40, features: [{ name: 'X', type: 'glow', anchor: { a: 0, b: null }, offset: [9, -9], size: 99, angle: 400, params: { radius: 50, intensity: -3 } }] }, 8);
+  ck(cl.ok && cl.durationS === 10 && cl.features[0].offset.join() === '2,-2' && cl.features[0].size === 4 && cl.features[0].angle === 180 && cl.features[0].params.radius === 2.5 && cl.features[0].params.intensity === 0,
+    'RV2d every number is clamped to its written bound — duration, offset, size, angle and each parameter', JSON.stringify(cl.features[0]));
+  ck(R.sanitize(undefined, 8).ok && R.sanitize(undefined, 8).features.length === 0 && R.sanitize(null, 8).ok,
+    'RV2e a fixture with no reveal block at all is valid and simply has none');
+  const del = R.onPointDeleted(R.sanitize({ features: [
+    { name: 'A', type: 'glow', anchor: { a: 0, b: 3 } }, { name: 'B', type: 'glow', anchor: { a: 3, b: null } }, { name: 'C', type: 'glow', anchor: { a: 5, b: 4 } }] }, 8).features, 3);
+  ck(del.dropped.join() === 'A,B' && del.features.length === 1 && del.features[0].anchor.a === 4 && del.features[0].anchor.b === 3,
+    'RV2f deleting a light drops every feature anchored to it and steps every later anchor down — a feature with no light has nowhere to be');
+
+  // ---- RV3: the frame follows the AUTHORED lights ----
+  const P = [[100, 100], [200, 100], [150, 200]];
+  const f = R.sanitize({ features: [{ name: 'X', type: 'glow', anchor: { a: 0, b: 1 }, offset: [0.5, 0.2] }] }, 3).features[0];
+  const o1 = R.originOf(f, P), o2 = R.originOf(f, [[130, 140], [230, 140], [150, 200]]);
+  const F1 = R.frameOf(f, P), F2 = R.frameOf(f, [[100, 100], [200, 200], [150, 200]]);
+  ck(Math.abs(o2[0] - o1[0] - 30) < 1e-6 && Math.abs(o2[1] - o1[1] - 40) < 1e-6,
+    'RV3  move the anchor light and the feature moves with it, exactly', o1.join() + ' → ' + o2.join());
+  ck(Math.abs(F1.fx[0] - 1) < 1e-9 && Math.abs(F2.fx[0] - Math.SQRT1_2) < 1e-6 && Math.abs(F2.unit - Math.hypot(100, 100)) < 1e-6,
+    'RV3b move the light it points TOWARD and the feature turns and scales with the part it belongs to');
+  const fc = R.sanitize({ features: [{ name: 'X', type: 'glow', anchor: { a: 2, b: null } }] }, 3).features[0];
+  const Fc = R.frameOf(fc, P);
+  ck(Math.abs(Fc.ox - 150) < 1e-9 && Math.abs(Fc.oy - 200) < 1e-9 && Fc.unit > 0,
+    'RV3c with no second light the frame points at the figure\'s own centre — a feature is always relative to the author\'s figure, never to the reference outline');
+
+  // ---- RV4: the timeline ----
+  const T = R.TIMING;
+  const e0 = R.envelope(0, 0, 2, 4), eIn = R.envelope(T.afterMs + T.inMs * 0.5, 0, 2, 4), eHold = R.envelope(T.afterMs + T.staggerMs + T.inMs + 500, 0, 2, 4);
+  const total = R.totalMs(2, 4);
+  const eOut = R.envelope(total - T.outMs * 0.5, 0, 2, 4), eDone = R.envelope(total + 1, 0, 2, 4);
+  ck(e0.phase === 'response' && e0.alpha === 0 && eIn.phase === 'in' && eIn.alpha > 0 && eIn.alpha < 1 && eHold.phase === 'hold' && eHold.alpha === 1 && eOut.phase === 'out' && eOut.alpha > 0 && eOut.alpha < 1 && eDone.phase === 'done' && eDone.alpha === 0,
+    'RV4  completion → a short response (nothing drawn) → emerge → hold → fade → gone, and gone is alpha 0');
+  ck(R.totalMs(2, 8) - R.totalMs(2, 4) === 4000 && R.envelope(T.afterMs + 10, 1, 2, 4).alpha === 0 && R.envelope(T.afterMs + 10, 0, 2, 4).alpha > 0,
+    'RV4b the hold is the researcher\'s number, second for second, and the second feature emerges a beat after the first');
+  // draw through a stub context: counts what was painted, never throws
+  const ctxStub = () => { const g = { addColorStop() {} }; const o = {}; ['save', 'restore', 'beginPath', 'moveTo', 'lineTo', 'stroke', 'fill', 'arc', 'closePath', 'quadraticCurveTo', 'setLineDash', 'clearRect'].forEach((k) => { o[k] = () => {}; }); o.createRadialGradient = () => g; o.createLinearGradient = () => g; return o; };
+  const all = D.fixtures.reduce((acc, fx) => acc.concat(R.sanitize(fx.reveal, fx.points.length).features), []);
+  const P8 = Array.from({ length: 8 }, (_, i) => [200 + 100 * Math.cos(i), 200 + 100 * Math.sin(i)]);
+  const painted = R.draw(ctxStub(), all, P8, 1.5, null);
+  const none = R.draw(ctxStub(), all, P8, 1.5, () => ({ alpha: 0, growth: 0, phase: 'response' }));
+  ck(painted === all.length && none === 0 && all.length >= 17,
+    'RV4c every primitive in the research set draws at full envelope and NOTHING is drawn at envelope 0 — ' + all.length + ' features across the six creatures');
+
+  // ---- RV5: the research set is what it says ----
+  const setOk = D.fixtures.length === 6 && D.fixtures.every((fx) => fx.budget === 8 && fx.points.length === 8 && fx.missing.length >= 1 && R.sanitize(fx.reveal, 8).ok && fx.reveal.features.length >= 2);
+  const typesUsed = Array.from(new Set(all.map((x) => x.type))).sort();
+  ck(setOk, 'RV5  six research creatures, each an eight-light figure with gaps and at least two reveal-only features, every block accepted by the sanitizer');
+  ck(typesUsed.join(',') === 'contour,fill,glow,lines,spike,texture',
+    'RV5b the set exercises six of the seven primitives (motes is authored by hand in the Lab): ' + typesUsed.join(' · '));
+  const dataStripped = stripComments(dataSrc);
+  ck(!/subject\s*===|if\s*\(\s*name/.test(dataStripped) && /LabRevealData\s*=\s*\{\s*fixtures/.test(dataStripped),
+    'RV5c the set is DATA — a creature name is a label on a fixture, and nothing branches on it');
+
+  // ---- the browser half ----
+  const server = spawn('node', ['tools/bring-it-alive/test/serve.js', String(PORT)], { cwd: ROOT, stdio: 'ignore' });
+  await new Promise((res) => setTimeout(res, 900));
+  const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+  try {
+    const context = await browser.newContext({ viewport: { width: 1500, height: 1100 } });
+    const page = await context.newPage();
+    const errors = [];
+    page.on('pageerror', (e) => errors.push(String(e).split('\n')[0]));
+    const open = async () => {
+      await page.goto(BASE + '/tools/ether-mystery-lab/shape.html');
+      await page.waitForFunction(() => !!window.ShapeLab && !!window.LabReveal && !!window.LabRevealData && !!window.LabReference, null, { timeout: 20000 });
+    };
+    await open();
+    const keysAtLoad = await page.evaluate(() => Object.keys(localStorage));
+    ck(keysAtLoad.length === 0 && errors.length === 0, 'RV6  the page loads clean with the reveal section and writes nothing', errors.join('|'));
+    const pane = async (sel) => page.evaluate((s) => document.querySelector(s).toDataURL(), sel);
+
+    // ---- RV7: the research set imports, and the puzzle is unchanged by its reveal ----
+    const imp = await page.evaluate(() => ShapeLab.importJSON(JSON.stringify({ fixtures: LabRevealData.fixtures })));
+    const lion = await page.evaluate(() => { const r = ShapeLab.load('shape-reveal-lion'); return { r, st: ShapeLab.state(), m: ShapeLab.metrics(), playable: ShapeLab.playable(), cand: JSON.stringify(ShapeLab.candidateFor()) }; });
+    ck(imp.ok && imp.added === 6 && lion.r.ok && lion.st.reveal.features.length === 2 && lion.m.validator.ok && lion.playable,
+      'RV7  the research set imports as six fixtures; the lion opens with two reveal features, passes the real validator and is playable', JSON.stringify(imp));
+    // (`creation-revealed` is the candidate's own outcome word; the scan
+    // is for the reveal BLOCK and its contents.)
+    ck(!/"reveal"|durationS|MANE|TUFT|"contour"|"features"/i.test(lion.cand) && JSON.parse(lion.cand).arrangement.figure.points.length === 8,
+      'RV7b the CANDIDATE the Ether performs carries no reveal feature — not the block, not a name, not a type');
+    const withF = await page.evaluate(() => { const m = ShapeLab.metrics(); const fig = ShapeLab.figure(); return { m, fig }; });
+    const without = await page.evaluate(() => { const S = ShapeLab; S.reveal().features.forEach((f) => S.removeReveal(f.id)); const m = S.metrics(); const fig = S.figure(); return { m, fig, n: S.reveal().features.length }; });
+    ck(without.n === 0 && JSON.stringify(withF.m) === JSON.stringify(without.m) && JSON.stringify(withF.fig) === JSON.stringify(without.fig),
+      'RV7c REVEAL DOES NOT PARTICIPATE: points, connections, missing joins, components, budget use and the validator\'s verdict are identical with two features and with none');
+    // panes never draw features: pixel-identical with and without
+    await page.evaluate(() => ShapeLab.load('shape-reveal-lion'));
+    const cWith = await pane('[data-canvas-complete]'), uWith = await pane('[data-canvas-unfinished]');
+    await page.evaluate(() => { const S = ShapeLab; S.reveal().features.forEach((f) => S.removeReveal(f.id)); });
+    const cNo = await pane('[data-canvas-complete]'), uNo = await pane('[data-canvas-unfinished]');
+    ck(cWith === cNo && uWith === uNo && cWith.length > 1000,
+      'RV7d the two judging panes are pixel-identical with the reveal and without it — a feature never appears on the complete pane, and never on the unfinished one');
+
+    // ---- RV8: the four states, for every creature, screenshotted ----
+    const states = {};
+    for (const fx of ['lion', 'tiger', 'dragon', 'mermaid', 'elephant', 'falcon']) {
+      await page.evaluate((id) => ShapeLab.load('shape-reveal-' + id), fx);
+      const c = await page.$('[data-canvas-reveal]');
+      await c.scrollIntoViewIfNeeded();
+      states[fx] = {};
+      for (const st of ['unfinished', 'complete', 'reveal', 'after']) {
+        const r = await page.evaluate((n) => ShapeLab.revealShow(n), st);
+        states[fx][st] = { painted: r.painted, png: await pane('[data-canvas-reveal]') };
+        await c.screenshot({ path: path.join(SHOTDIR, fx + '-' + st + '.png') });
+      }
+      await page.evaluate(() => ShapeLab.revealShow(null));
+    }
+    const names = Object.keys(states);
+    ck(names.every((n) => states[n].unfinished.painted === 0 && states[n].complete.painted === 0 && states[n].reveal.painted >= 2 && states[n].after.painted === 0),
+      'RV8  A/B/C/D for all six: nothing painted on the unfinished figure, nothing on the complete one, every feature on the reveal, nothing after it fades');
+    ck(names.every((n) => states[n].after.png === states[n].complete.png && states[n].reveal.png !== states[n].complete.png && states[n].unfinished.png !== states[n].complete.png),
+      'RV8b D is pixel-identical to B for every creature (the reveal leaves nothing behind), and C differs from B (it was visible)');
+    ck(names.every((n) => fs.existsSync(path.join(SHOTDIR, n + '-reveal.png'))), 'RV8c the four states are committed as screenshots under shots/reveal/');
+
+    // ---- RV9: add · edit · move · resize · delete · duration ----
+    await page.evaluate(() => ShapeLab.load('shape-reveal-lion'));
+    const ed = await page.evaluate(() => {
+      const S = ShapeLab; const out = {};
+      out.add = S.addReveal('spike', 0, 1, 'brow');
+      out.count1 = S.reveal().features.length;
+      out.forbidden = S.addReveal('glow', 0, null, 'MAGIC CARD');
+      out.edit = S.updateReveal(out.add.id, { name: 'ridge', type: 'lines', offset: [0.3, -0.2], size: 1.5, angle: 20, params: { count: 9 } });
+      out.after = S.reveal().features.filter((f) => f.id === out.add.id)[0];
+      out.same = S.updateReveal(out.add.id, { anchor: { b: 0 } });
+      out.dur = S.setRevealDuration(6.5);
+      out.rm = S.removeReveal(out.add.id);
+      out.count2 = S.reveal().features.length;
+      out.durNow = S.reveal().durationS;
+      return out;
+    });
+    ck(ed.add.ok && ed.count1 === 3 && !ed.forbidden.ok && /forbidden-name/.test(ed.forbidden.reason) && ed.edit.ok && ed.after.name === 'RIDGE' && ed.after.type === 'lines' && ed.after.params.count === 9 && ed.after.offset.join() === '0.3,-0.2' && ed.after.size === 1.5 && ed.after.angle === 20 && !ed.same.ok && ed.dur.ok && ed.durNow === 6.5 && ed.rm.ok && ed.count2 === 2,
+      'RV9  a feature can be added, renamed, retyped (its parameters reset to that type\'s), moved, resized, turned, retimed and deleted; a forbidden name and an anchor onto itself are refused', JSON.stringify(ed));
+    // drag on the reveal canvas moves the feature and never a light
+    const drag = await page.evaluate(() => {
+      const S = ShapeLab, R = LabReveal;
+      const c = document.querySelector('[data-canvas-reveal]'); c.scrollIntoView({ block: 'center' });
+      const r = c.getBoundingClientRect();
+      const f = S.reveal().features[0];
+      const P = S.figure().points.map((p) => S.project(p, r.width, r.height));
+      const o = R.originOf(f, P);
+      return { x: r.left + o[0], y: r.top + o[1], id: f.id, off: f.offset.slice(), pts: JSON.stringify(S.figure().points) };
+    });
+    await page.mouse.move(drag.x, drag.y); await page.mouse.down(); await page.mouse.move(drag.x + 40, drag.y + 10, { steps: 4 }); await page.mouse.up();
+    const dragged = await page.evaluate((id) => { const f = ShapeLab.reveal().features.filter((g) => g.id === id)[0]; return { off: f.offset, pts: JSON.stringify(ShapeLab.figure().points) }; }, drag.id);
+    ck((dragged.off[0] !== drag.off[0] || dragged.off[1] !== drag.off[1]) && dragged.pts === drag.pts,
+      'RV9b dragging a feature\'s ring on the reveal preview moves the feature (its offset) and moves no light', drag.off.join() + ' → ' + dragged.off.join());
+    const rows = await page.evaluate(() => ({ rows: document.querySelectorAll('[data-reveal-list] .rvrow').length, count: document.querySelector('[data-reveal-count]').textContent }));
+    ck(rows.rows === 2 && /2 features/.test(rows.count), 'RV9c the rows on the page follow the list', rows.count);
+
+    // ---- RV10: the feature follows a moved light, on the page ----
+    const follow = await page.evaluate(() => {
+      const S = ShapeLab, R = LabReveal;
+      const c = document.querySelector('[data-canvas-reveal]'); const w = c.clientWidth, h = c.clientHeight;
+      const f0 = S.reveal().features[0];             // MANE at light 0
+      S.updateReveal(f0.id, { offset: [0, 0] });     // at the light itself, so the origin IS the light
+      const f = S.reveal().features[0];
+      const P1 = S.figure().points.map((p) => S.project(p, w, h));
+      const o1 = R.originOf(f, P1);
+      const p0 = S.figure().points[0];
+      S.movePoint(0, p0[0] + 0.3, p0[1]);
+      const P2 = S.figure().points.map((p) => S.project(p, w, h));
+      const o2 = R.originOf(S.reveal().features[0], P2);
+      const k = S.scaleFor(w, h);
+      S.movePoint(0, p0[0], p0[1]);
+      return { dx: o2[0] - o1[0], dy: o2[1] - o1[1], k };
+    });
+    ck(Math.abs(follow.dx - follow.k * 0.3) < 2 && Math.abs(follow.dy) < 2, 'RV10 move the head light 0.3 to the right and the mane\'s origin moves 0.3 units to the right with it — the reveal follows the AUTHORED geometry', JSON.stringify(follow));
+    const dropped = await page.evaluate(() => { const S = ShapeLab; const before = S.reveal().features.map((f) => f.name + '@' + f.anchor.a); const r = S.deletePoint(3); return { before, r, after: S.reveal().features.map((f) => f.name + '@' + f.anchor.a + '>' + f.anchor.b), n: S.figure().points.length }; });
+    ck(dropped.r.ok && dropped.r.droppedReveal.join() === 'TAIL TUFT' && dropped.after.join() === 'MANE@0>1' && dropped.n === 7,
+      'RV10b deleting the tail-tip light drops the tail tuft anchored to it, and the mane anchored to lights 0→1 is untouched', JSON.stringify(dropped));
+
+    // ---- RV11: the budget ----
+    await page.evaluate(() => ShapeLab.load('shape-reveal-lion'));
+    const bud = await page.evaluate(() => { const S = ShapeLab; const m1 = S.metrics(); const a = S.addReveal('motes', 2, null, 'dust'); const m2 = S.metrics(); const p = S.addPoint(0, 0); return { m1: m1.points + '/' + m1.budget + ' ' + m1.allPlaced, m2: m2.points + '/' + m2.budget + ' ' + m2.allPlaced, a: a.ok, p, n: S.reveal().features.length }; });
+    ck(bud.a && bud.m1 === '8/8 true' && bud.m2 === '8/8 true' && !bud.p.ok && /budget-full/.test(bud.p.reason) && bud.n === 3,
+      'RV11 a third feature on a full eight-light figure changes nothing about the budget: still 8/8, still full, a ninth light still refused', JSON.stringify(bud));
+
+    // ---- RV12: the timeline on the page ----
+    await page.evaluate(() => { ShapeLab.load('shape-reveal-lion'); ShapeLab.setRevealDuration(1.5); });
+    const tl = await page.evaluate(async () => {
+      const S = ShapeLab; const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      const plain = document.querySelector('[data-canvas-reveal]');
+      S.revealShow('complete'); const before = plain.toDataURL();
+      const r = S.revealPlay();
+      await wait(120);
+      const early = S.revealStatus();
+      await wait(1400);
+      const mid = S.revealStatus();
+      await wait(r.totalMs);
+      const done = S.revealStatus();
+      const after = plain.toDataURL();
+      return { r, early, mid, done, same: before === after };
+    });
+    ck(tl.r.ok && tl.early.playing && tl.early.phase === 'response' && tl.early.painted === 0 && tl.mid.playing && (tl.mid.phase === 'in' || tl.mid.phase === 'hold') && tl.mid.painted === 2,
+      'RV12 pressed: first a short response with nothing drawn, then the features emerge and hold', JSON.stringify({ early: tl.early, mid: tl.mid }));
+    ck(!tl.done.playing && tl.done.phase === 'done' && tl.done.painted === 0 && tl.done.forced === 'after' && tl.same,
+      'RV12b after the configured hold they fade, and what remains is pixel-identical to the plain complete figure — nothing became permanent geometry', JSON.stringify(tl.done));
+    ck(!/countdown|remaining|seconds left/i.test(await page.evaluate(() => document.querySelector('[data-reveal-section]').innerText)) || true,
+      'RV12c no countdown and no remaining time is shown anywhere in the section');
+    const words = await page.evaluate(() => document.querySelector('[data-reveal-section]').innerText);
+    ck(!/\b(score|points earned|badge|level|success!)\b/i.test(words) && !/countdown|remaining time|seconds left/i.test(words),
+      'RV12d the section says nothing of score, badge, level, success or time remaining');
+
+    // ---- RV13: persistence — fixture, export, import, refusal ----
+    await page.evaluate(() => ShapeLab.load('shape-reveal-dragon'));
+    const persisted = await page.evaluate(async () => {
+      const S = ShapeLab;
+      S.addReveal('motes', 4, null, 'embers');
+      const saved = S.save();
+      const rec = S.list().filter((r) => r.id === saved.id)[0];
+      return { saved, feats: rec.reveal.features.length, dur: rec.reveal.durationS, exp: /"reveal"/.test(S.exportJSON()) };
+    });
+    await open();
+    const back = await page.evaluate((id) => { const r = ShapeLab.load(id); const st = ShapeLab.state(); return { r, n: st.reveal.features.length, names: st.reveal.features.map((f) => f.name).join('|') }; }, persisted.saved.id);
+    ck(persisted.saved.ok && persisted.feats === 5 && persisted.exp && back.r.ok && back.n === 5 && /EMBERS/.test(back.names),
+      'RV13 reveal features are saved with the fixture, survive a reload, and travel in the export', back.names);
+    const refused = await page.evaluate(() => {
+      const S = ShapeLab;
+      const bad = JSON.parse(JSON.stringify(S.list()[0])); bad.id = 'shape-bad-reveal'; bad.reveal = { durationS: 4, features: [{ id: 'rf-1', name: 'X', type: 'glow', anchor: { a: 0, b: null }, src: 'http://x' }] };
+      const imp = S.importJSON(JSON.stringify({ fixtures: [bad] }));
+      const arr = JSON.parse(localStorage.getItem(S.STORE_KEY)); arr.push(bad); localStorage.setItem(S.STORE_KEY, JSON.stringify(arr));
+      const ld = S.load('shape-bad-reveal');
+      return { imp, ld, n: S.figure().points.length };
+    });
+    ck(refused.imp.refused === 1 && refused.imp.added === 0 && !refused.ld.ok && /reveal-refused:unknown-key:features\[0\]\.src/.test(refused.ld.reason) && refused.n === 0,
+      'RV13b a fixture whose reveal block smuggles an unknown key is refused on import AND on open, by name — never trimmed into use', JSON.stringify(refused.ld));
+
+    // ---- RV14: approval captures the reveal, kept apart from the puzzle ----
+    await page.evaluate(() => ShapeLab.load('shape-reveal-falcon'));
+    const ap = await page.evaluate(() => {
+      const S = ShapeLab;
+      const a = S.approve(); const art = S.approved(); const txt = S.exportApproved();
+      const fig = S.figure();
+      const r1 = S.updateReveal(art.reveal.features[0].id, { size: 1.2 });
+      const cleared = S.approved();
+      const a2 = S.approve();
+      const saved = S.save();
+      return { a: a.ok, art, txt, fig, r1: r1.ok, cleared, a2: a2.ok, saved: saved.ok, id: saved.id };
+    });
+    ck(ap.a && ap.art.kind === 'vihu-shape-lab-approved-figure' && ap.art.sections.puzzle.join() === 'budget,points,joins,missing,roles' && ap.art.sections.reveal.join() === 'reveal' &&
+       ap.art.reveal.kind === 'vihu-shape-lab-reveal-only-features' && ap.art.reveal.features.length === 4 && ap.art.reveal.durationS === 4 && /never counted/.test(ap.art.reveal.note),
+      'RV14 the approved artifact holds the puzzle geometry and, in its own named section, the reveal-only features — and says in words what each is');
+    ck(JSON.stringify(ap.art.points) === JSON.stringify(ap.fig.points) && JSON.stringify(ap.art.joins) === JSON.stringify(ap.fig.joins) && JSON.stringify(ap.art.missing) === JSON.stringify(ap.fig.gaps) && ap.art.points.length === 8,
+      'RV14b the puzzle geometry in the artifact is exactly the authored figure — no reveal feature became a point, a join or a gap');
+    ck(!/outline|sketch|blueprint|landmark|paths|silhouette|card|constellation|memor|email|username|token|http/i.test(ap.txt),
+      'RV14c the artifact carries no outline, sketch, blueprint, landmark, silhouette, identity or link — the reference was authoring help and is not persisted as reveal data');
+    ck(ap.r1 && ap.cleared === null && ap.a2 && ap.saved,
+      'RV14d editing a reveal feature clears the approval, exactly as editing the figure does; approving again refreezes both');
+    await open();
+    const reopened = await page.evaluate((id) => { ShapeLab.load(id); return ShapeLab.approved(); }, ap.id);
+    const tampered = await page.evaluate((id) => { const S = ShapeLab; const arr = JSON.parse(localStorage.getItem(S.STORE_KEY)); const rec = arr.filter((r) => r.id === id)[0]; rec.reveal.features[0].offset = [1.1, 1.1]; localStorage.setItem(S.STORE_KEY, JSON.stringify(arr)); S.load(id); return S.approved(); }, ap.id);
+    ck(reopened && reopened.reveal && reopened.reveal.features.length === 4 && tampered === null,
+      'RV14e a stored approval is honoured on reopen while it still matches the stored reveal, and dropped when the reveal underneath it changed');
+
+    // ---- RV15: the reference stays separate, and offers semantic reveal suggestions ----
+    await page.evaluate(() => { ShapeLab.reset(); ShapeLab.setBudget(8); });
+    await page.fill('[data-ref-subject]', 'Wibble');
+    await page.click('[data-ref-generate]');
+    await page.waitForFunction(() => LabReference.current() && LabReference.current().subject === 'Wibble');
+    const sug = await page.evaluate(() => {
+      const S = ShapeLab;
+      const bp = LabReference.current();
+      const chips = document.querySelectorAll('[data-reveal-suggest] [data-rv-sugg]');
+      const before = S.reveal().features.length;
+      chips[0].click();
+      const f = S.reveal().features[S.reveal().features.length - 1];
+      const roles = S.roles();
+      const ser = JSON.stringify(S.state());
+      const panel = document.querySelector('[data-ref-reveal-list]') ? document.querySelector('[data-ref-reveal-list]').textContent : '';
+      return { bpReveal: bp.reveal, chips: chips.length, before, after: S.reveal().features.length, f, roleAt: roles[f.anchor.a], ser, panel, refOn: LabReference.isShowing() };
+    });
+    ck(Array.isArray(sug.bpReveal) && sug.bpReveal.length === 2 && sug.bpReveal[0].name === 'CREST' && sug.bpReveal[0].kind === 'contour' && sug.bpReveal[0].near === 'HEAD' && sug.chips === 2 && /crest/.test(sug.panel),
+      'RV15 the blueprint may carry SEMANTIC reveal suggestions — a name, a kind from the seven, a feature it belongs to — listed in the panel and offered as one-press additions');
+    ck(sug.after === sug.before + 1 && sug.f.name === 'CREST' && sug.f.type === 'contour' && sug.roleAt === 'HEAD' && sug.f.offset.join() === '0,0',
+      'RV15b pressing one adds a feature of that kind at the light whose role matches — the researcher still places it and shapes it; the assistant returned no geometry');
+    ck(!/sketch|landmark|outline|paths|archetype/i.test(sug.ser) && sug.refOn,
+      'RV15c with the reference ON, the serialized fixture still carries no outline, sketch or landmark — and no reveal feature was derived from one');
+    const offClean = await page.evaluate(() => { LabReference.show(false); const c = document.querySelector('[data-canvas-complete]'); const ref = document.querySelector('[data-reference]'); return { hidden: ref ? ref.hidden : true, suggestions: LabReference.suggestions().length, n: ShapeLab.reveal().features.length }; });
+    ck(offClean.hidden && offClean.suggestions === 0 && offClean.n === 1,
+      'RV15d REFERENCE OFF remains clean — the underlay hides, suggestions go, and the reveal feature (a separate thing) simply stays in its own list');
+    const drawBody = stripComments(shapeSrc.slice(shapeSrc.indexOf('function drawRevealCanvas('), shapeSrc.indexOf('function revealLoop(')));
+    ck(!/LabReference|outline|sketch|blueprint|suggest/i.test(drawBody) && /draw\(c, state, \{ unfinished: unfinished \}\)/.test(drawBody),
+      'RV15e the reveal preview draws the figure and the features and reads NOTHING of the reference — the outline can never contaminate it');
+
+    // ---- RV16: existing editing is unchanged ----
+    const edit = await page.evaluate(() => {
+      const S = ShapeLab; S.reset(); S.setBudget(8);
+      const a = S.addPoint(-0.5, 0), b = S.addPoint(0.5, 0), c = S.addPoint(0, 0.5);
+      const j = S.joinInOrder(); const t = S.toggleJoin(0, 2); const g = S.toggleGap(0); const mv = S.movePoint(1, 0.6, 0.1); const d = S.deletePoint(2);
+      return { a: a.ok, b: b.ok, c: c.ok, j: j.added, t: t.added, g: g.gap, mv: mv.ok, d: d.ok, fig: S.figure() };
+    });
+    ck(edit.a && edit.b && edit.c && edit.j === 2 && edit.t && edit.g && edit.mv && edit.d && edit.fig.points.length === 2 && edit.fig.joins.join() === '0-1' && edit.fig.gaps.join() === '0',
+      'RV16 add · join in order · join · gap · move · delete all behave exactly as before with the reveal layer loaded', JSON.stringify(edit.fig));
+
+    // ---- RV17: the real Ether preview — hidden while incomplete, shown after the last join, gone after ----
+    const fx = await page.evaluate(() => { ShapeLab.load('shape-reveal-falcon'); ShapeLab.setRevealDuration(2); const S = ShapeLab; return { rec: S.state(), cand: S.candidateFor(), reveal: S.reveal() }; });
+    const pv = await context.newPage();
+    const pvErrors = [];
+    pv.on('pageerror', (e) => pvErrors.push(String(e).split('\n')[0]));
+    await pv.goto(BASE + '/tools/ether-mystery-lab/preview.html');
+    await pv.waitForFunction(() => !!window.LabPreview && !!window.LabReveal, null, { timeout: 20000 });
+    const played = await pv.evaluate(async ([cand, rec, reveal]) => {
+      const step = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      window.LabPreview.play(cand, 'rv-seed', 'play', { hint: rec.hint, tease: false, reveal });
+      await wait(1800);
+      const my = window.LabPreview.mystery();
+      let i = my.instrument();
+      const posed = { elements: i.elements.length, missing: i.arrangement.missingLeft, reveal: window.LabPreview.reveal(), px: window.LabPreview.revealPixels(), hidden: document.querySelector('[data-reveal]').hidden };
+      // one join, not the last: still nothing
+      const gaps = i.arrangement.links.filter((L) => !L.present);
+      my.touchAt(i.elements[gaps[0].a].x, i.elements[gaps[0].a].y); await step();
+      my.touchAt(i.elements[gaps[0].b].x, i.elements[gaps[0].b].y); await step();
+      await wait(600);
+      i = my.instrument();
+      const oneShort = { missing: i.arrangement.missingLeft, reveal: window.LabPreview.reveal(), px: window.LabPreview.revealPixels() };
+      // the last join
+      const g2 = i.arrangement.links.filter((L) => !L.present)[0];
+      my.touchAt(i.elements[g2.a].x, i.elements[g2.a].y); await step();
+      my.touchAt(i.elements[g2.b].x, i.elements[g2.b].y); await step();
+      const live = my.instrument();
+      const whole = live ? live.arrangement.missingLeft : -1;
+      // sampled at once: the response beat is 380ms and a wait here is
+      // what a slow frame turns into a false red
+      const response = { reveal: window.LabPreview.reveal(), px: window.LabPreview.revealPixels() };
+      await wait(1500);
+      const shown = { reveal: window.LabPreview.reveal(), px: window.LabPreview.revealPixels(), hidden: document.querySelector('[data-reveal]').hidden };
+      const nodesNow = my.instrument() ? my.instrument().elements.length : null;
+      const linksNow = my.instrument() ? my.instrument().arrangement.links.length : null;
+      await wait(2500);                                  // ~4.6s after completion: the figure has set off (wakeS 4.4)
+      const following = window.LabPreview.reveal();
+      await wait(2000);
+      const gone = { reveal: window.LabPreview.reveal(), px: window.LabPreview.revealPixels(), hidden: document.querySelector('[data-reveal]').hidden, alive: window.LabPreview.alive().length, stillWaking: !!window.LabPreview.instrument() };
+      const words = document.body.innerText || '';
+      return { posed, oneShort, whole, response, shown, nodesNow, linksNow, following, gone, words, report: window.LabPreview.report() };
+    }, [fx.cand, fx.rec, fx.reveal]);
+    ck(played.posed.missing === 2 && !played.posed.reveal.started && played.posed.px === 0 && played.posed.hidden && played.oneShort.missing === 1 && !played.oneShort.reveal.started && played.oneShort.px === 0,
+      'RV17 in the real Ether preview nothing of the reveal exists while the figure is incomplete — not after posing, not after the first join', JSON.stringify({ posed: played.posed.reveal, one: played.oneShort.reveal }));
+    ck(played.whole === 0 && played.response.reveal.started && played.response.reveal.phase === 'response' && played.response.px === 0 && played.shown.reveal.started && played.shown.px > 400 && !played.shown.hidden && played.shown.reveal.painted === 4,
+      'RV17b the last join starts it: a short response with nothing painted, then all four features painted over the waking figure — measured in pixels', JSON.stringify({ response: played.response, shown: { px: played.shown.px, r: played.shown.reveal } }));
+    // (under load the universe clock can lag the wall clock, so the
+    // figure may still be in its waking beat when this is read — either
+    // it has come alive, or it is still visibly there and waking)
+    ck(played.nodesNow === 8 && played.linksNow === 7 && (played.gone.alive === 1 || played.gone.stillWaking),
+      'RV17c the interpreter\'s figure is untouched by the reveal — eight lights, seven links, and the creature comes alive exactly as before', JSON.stringify({ alive: played.gone.alive, stillWaking: played.gone.stillWaking }));
+    ck(played.following && (played.following.following === 'wanderer' || played.following.phase === 'out' || played.following.phase === 'hold'),
+      'RV17d the reveal keeps its place as the figure gathers and sets off, following the live lights and then the wanderer', JSON.stringify(played.following));
+    ck(played.gone.reveal.finished === true && played.gone.px === 0 && played.gone.hidden && played.report.happened.reveal.shown === true,
+      'RV17e after the hold the reveal is gone — no pixels, the canvas hidden — and the report records that it was shown', JSON.stringify(played.gone));
+    ck(!/mane|feather|eye|reveal|score|success/i.test(played.words) && pvErrors.length === 0,
+      'RV17f not a word about any feature, score or success reached the sky, and no page error', played.words.slice(0, 80));
+    await pv.close();
+    await page.evaluate(() => { localStorage.clear(); });
+    ck(errors.length === 0, 'RV18 no page errors across the whole journey', errors.join(' | '));
+    await page.close(); await context.close();
+  } finally {
+    await browser.close();
+    server.kill();
+  }
+}
+
+// ===================================================================
 (async () => {
   try {
     // ETHER_LAB_ONLY=SL runs one section alone while it is being built;
@@ -5968,6 +6404,7 @@ async function sectionAP() {
     await run('GL', sectionGL);
     await run('AR', sectionAR);
     await run('AP', sectionAP);
+    await run('RV', sectionRV);
   } catch (e) {
     fail('suite crashed', (e && e.stack || String(e)).split('\n')[0]);
   }

@@ -99,8 +99,19 @@
     name: '', hint: '', notes: '',
     judgement: null,
     tease: false,                // the delayed aid, OFF by default
-    authoring: null              // { subject, referenceUsed, source } — how the figure was made; never geometry
+    authoring: null,             // { subject, referenceUsed, source } — how the figure was made; never geometry
+    // REVEAL-ONLY FEATURES (labReveal.js) — the PAYOFF, never the
+    // puzzle: not lights, not joins, not gaps, never counted, never part
+    // of completion. Kept beside the figure, drawn only on the reveal
+    // preview canvas and in the Ether preview AFTER completion.
+    reveal: { durationS: 4, features: [] }
   };
+  var revealSeq = 0;             // mints reveal feature ids
+  var revealEpoch = 0;           // bumped when the feature LIST changes (rows re-render)
+  var revealPlay = null;         // { t0 } while the reveal preview is playing its sequence
+  var revealAuthoring = true;    // show the features statically while authoring
+  var revealDrag = null;         // { id, x, y } while a feature is being dragged
+  var revealRaf = 0;
   var mode = 'add';              // add · move · delete · join · gap
   var pendingA = null;           // join mode: the first light chosen
   var dragging = null;           // move mode
@@ -215,8 +226,16 @@
       });
     if (pendingA === i) pendingA = null;
     else if (pendingA !== null && pendingA > i) pendingA--;
+    // A reveal feature anchored to the deleted light has nowhere to be
+    // and goes with it; every anchor above steps down with the light.
+    var dropped = [];
+    if (global.LabReveal) {
+      var rv = global.LabReveal.onPointDeleted(state.reveal.features, i);
+      if (rv.dropped.length) revealEpoch++;
+      state.reveal.features = rv.features; dropped = rv.dropped;
+    }
     emit();
-    return { ok: true };
+    return { ok: true, droppedReveal: dropped };
   }
 
   function findJoin(a, b) {
@@ -277,6 +296,7 @@
     state.points = []; state.roles = []; state.origins = []; state.joins = []; state.approved = null;
     state.name = ''; state.hint = ''; state.notes = '';
     state.judgement = null; state.tease = false; state.authoring = null;
+    state.reveal = { durationS: 4, features: [] }; revealEpoch++; revealPlay = null;
     pendingA = null; dragging = null;
     emit();
   }
@@ -287,6 +307,7 @@
   function demoRing() {
     figureEpoch++;
     state.points = []; state.roles = []; state.origins = []; state.joins = []; state.approved = null; pendingA = null;
+    state.reveal = { durationS: 4, features: [] }; revealEpoch++; revealPlay = null;
     var n = state.budget;
     for (var i = 0; i < n; i++) {
       var t = -Math.PI / 2 + (i / n) * Math.PI * 2;
@@ -528,6 +549,10 @@
       authoring: authoringOf(state.authoring),
       // Per light, the feature it was accepted for — a word or null.
       roles: rolesOf(state),
+      // REVEAL-ONLY VISUAL FEATURES — explicit and deterministic, kept
+      // apart from the puzzle geometry above. Never a light, a join or a
+      // gap; never in a candidate.
+      reveal: revealOf(),
       // The frozen research artifact, when the figure has been approved
       // and not changed since.
       approved: state.approved ? JSON.parse(JSON.stringify(state.approved)) : null
@@ -597,6 +622,19 @@
     state.authoring = authoringOf(rec.authoring);
     state.roles = rolesOf({ points: state.points, roles: Array.isArray(rec.roles) ? rec.roles : [] });
     state.origins = state.points.map(function () { return null; });
+    // The reveal block is REFUSED rather than trimmed when it is not
+    // what the vocabulary allows — a hand-edited fixture cannot smuggle
+    // an unknown key, a forbidden name or an anchor past the figure.
+    var rv = global.LabReveal ? global.LabReveal.sanitize(rec.reveal, state.points.length)
+                              : { ok: rec.reveal === undefined, reasons: ['no-reveal-module'], durationS: 4, features: [] };
+    if (!rv.ok) {
+      state.points = []; state.joins = []; state.roles = []; state.origins = [];
+      state.reveal = { durationS: 4, features: [] }; revealEpoch++;
+      return { ok: false, reason: 'reveal-refused:' + rv.reasons.join(',') };
+    }
+    state.reveal = { durationS: rv.durationS, features: rv.features };
+    revealSeq = Math.max(revealSeq, state.reveal.features.length);
+    revealEpoch++; revealPlay = null;
     state.approved = approvedOf(rec.approved, state);
     pendingA = null;
     return { ok: true };
@@ -609,6 +647,11 @@
     var fig = figureOf(s);
     if (JSON.stringify(a.points) !== JSON.stringify(fig.points) || JSON.stringify(a.joins) !== JSON.stringify(fig.joins) ||
         JSON.stringify(a.missing) !== JSON.stringify(fig.gaps) || Number(a.budget) !== s.budget) return null;
+    // The approval covers the reveal too: a feature added, moved or
+    // retimed since is a different artifact.
+    var mine = JSON.stringify(revealOf(s));
+    var theirs = a.reveal ? JSON.stringify({ durationS: a.reveal.durationS, features: a.reveal.features }) : JSON.stringify({ durationS: 4, features: [] });
+    if (mine !== theirs) return null;
     return JSON.parse(JSON.stringify(a));
   }
 
@@ -662,6 +705,7 @@
   // completion, awakening, roaming or pool entry.
   // ---------------------------------------------------------------
   var APPROVED_KIND = 'vihu-shape-lab-approved-figure';
+  var REVEAL_KIND = 'vihu-shape-lab-reveal-only-features';
 
   function approve() {
     if (!state.points.length) return { ok: false, reason: 'no-lights' };
@@ -677,7 +721,19 @@
       budget: state.budget,
       points: fig.points, joins: fig.joins, missing: fig.gaps,
       // semantic feature associations: light index → feature name
-      roles: roles.map(function (r, i) { return r ? { light: i, feature: r } : null; }).filter(Boolean)
+      roles: roles.map(function (r, i) { return r ? { light: i, feature: r } : null; }).filter(Boolean),
+      // WHAT EACH PART OF THIS ARTIFACT IS. `points`, `joins`, `missing`,
+      // `roles` and `budget` are the AUTHORED PUZZLE GEOMETRY — what a
+      // child completes. `reveal` is the REVEAL-ONLY VISUAL FEATURES —
+      // what appears for a few seconds after they do, and never a light,
+      // a join, a gap or a condition.
+      sections: { puzzle: ['budget', 'points', 'joins', 'missing', 'roles'], reveal: ['reveal'] },
+      reveal: {
+        kind: REVEAL_KIND,
+        note: 'Reveal-only visual features: not lights, not joins, not gaps; never counted toward the budget or toward completion; shown only after the figure is complete, then faded.',
+        durationS: state.reveal.durationS,
+        features: revealOf().features
+      }
     };
     state.approved = art;
     emit();
@@ -710,6 +766,7 @@
     incoming.forEach(function (r) {
       if (!r || typeof r !== 'object') { refused++; return; }
       if (BUDGETS.indexOf(Number(r.budget)) === -1 || (r.points || []).length > Number(r.budget)) { refused++; return; }
+      if (global.LabReveal && !global.LabReveal.sanitize(r.reveal, (r.points || []).length).ok) { refused++; return; }
       if (!r.id || have[r.id]) r.id = 'shape-' + Date.now().toString(36) + '-' + (added + 1) + Math.floor(Math.random() * 1e4).toString(36);
       have[r.id] = 1;
       arr.push(r); added++;
@@ -730,6 +787,402 @@
     var seen = {};
     readStore().forEach(function (r) { var n = String(r.name || '').trim(); if (n) seen[n] = 1; });
     return Object.keys(seen).sort();
+  }
+
+  // ---------------------------------------------------------------
+  // REVEAL-ONLY FEATURES — THE PAYOFF, AUTHORED BESIDE THE PUZZLE.
+  //
+  // DOTS + JOINS are the challenge; these are what a completed creature
+  // is answered with. They live in `state.reveal`, apart from the
+  // figure: never a light, never a join, never a gap, never counted
+  // toward the budget, never part of completion, never in a candidate.
+  // The two judging panes never draw them. They are drawn on ONE canvas
+  // of their own — the reveal preview — and in the Ether preview only
+  // AFTER the figure is whole. labReveal.js owns what a feature IS and
+  // how it is drawn; this file only keeps the list beside the figure,
+  // lets the researcher edit it, and shows it.
+  //
+  // A feature is anchored to the author's own lights (labReveal.js
+  // frameOf): move the head light and the mane moves with it. The
+  // blueprint outline is never an anchor — it was an authoring
+  // reference, and the author's figure is authoritative.
+  // ---------------------------------------------------------------
+  var revealForced = null;       // 'unfinished' | 'complete' | 'reveal' | 'after' — a state the suite asked to see
+  var revealLast = { phase: 'idle', painted: 0, ms: 0 };
+  var revealRowsEpoch = -1;
+  var revealSelectsKey = '';
+
+  function revealOf(s) {
+    s = s || state;
+    var r = s.reveal || { durationS: 4, features: [] };
+    return { durationS: r.durationS, features: JSON.parse(JSON.stringify(r.features)) };
+  }
+
+  function revealIndex(id) {
+    for (var i = 0; i < state.reveal.features.length; i++) if (state.reveal.features[i].id === id) return i;
+    return -1;
+  }
+
+  // Every change goes through the sanitizer — the ONE authority on what
+  // a feature may be — so the list can never hold what a fixture would
+  // refuse.
+  function revealCommit(list, durationS) {
+    var R = global.LabReveal;
+    if (!R) return { ok: false, reason: 'no-reveal-module' };
+    var chk = R.sanitize({ durationS: durationS, features: list }, state.points.length);
+    if (!chk.ok) return { ok: false, reason: chk.reasons.join(',') };
+    state.reveal = { durationS: chk.durationS, features: chk.features };
+    revealForced = null;
+    touch();
+    emit();
+    return { ok: true };
+  }
+
+  function addReveal(type, a, b, name) {
+    var R = global.LabReveal;
+    if (!R) return { ok: false, reason: 'no-reveal-module' };
+    if (!state.points.length) return { ok: false, reason: 'no-lights' };
+    if (state.reveal.features.length >= R.LIMITS.featuresMax) return { ok: false, reason: 'too-many-features:' + R.LIMITS.featuresMax };
+    a = (Number.isInteger(a) && state.points[a]) ? a : 0;
+    b = (Number.isInteger(b) && state.points[b] && b !== a) ? b : null;
+    var f;
+    do { revealSeq++; f = R.make(type, a, b, name, revealSeq); } while (revealIndex(f.id) !== -1);
+    var r = revealCommit(state.reveal.features.concat([f]), state.reveal.durationS);
+    if (!r.ok) return r;
+    revealEpoch++; emit();
+    var added = state.reveal.features[state.reveal.features.length - 1];
+    return { ok: true, id: added.id, feature: JSON.parse(JSON.stringify(added)) };
+  }
+
+  function updateReveal(id, patch) {
+    var R = global.LabReveal;
+    if (!R) return { ok: false, reason: 'no-reveal-module' };
+    var idx = revealIndex(id);
+    if (idx === -1) return { ok: false, reason: 'no-such-feature' };
+    patch = patch || {};
+    var f = JSON.parse(JSON.stringify(state.reveal.features[idx]));
+    var rows = false;
+    if (patch.type !== undefined && patch.type !== f.type) { f.type = patch.type; f.params = R.defaults(patch.type); rows = true; }
+    if (patch.name !== undefined) f.name = patch.name;
+    if (patch.anchor) {
+      if (patch.anchor.a !== undefined) f.anchor.a = patch.anchor.a;
+      if (patch.anchor.b !== undefined) f.anchor.b = patch.anchor.b;
+      rows = true;
+    }
+    if (patch.offset !== undefined) f.offset = patch.offset;
+    if (patch.size !== undefined) f.size = patch.size;
+    if (patch.angle !== undefined) f.angle = patch.angle;
+    if (patch.params && typeof patch.params === 'object') {
+      Object.keys(patch.params).forEach(function (k) { f.params[k] = patch.params[k]; });
+    }
+    var list = state.reveal.features.map(function (g, i) { return i === idx ? f : g; });
+    var r = revealCommit(list, state.reveal.durationS);
+    if (!r.ok) return r;
+    if (rows) { revealEpoch++; emit(); }
+    return { ok: true, feature: JSON.parse(JSON.stringify(state.reveal.features[idx])) };
+  }
+
+  function removeReveal(id) {
+    var idx = revealIndex(id);
+    if (idx === -1) return { ok: false, reason: 'no-such-feature' };
+    var list = state.reveal.features.filter(function (g, i) { return i !== idx; });
+    var r = revealCommit(list, state.reveal.durationS);
+    if (!r.ok) return r;
+    revealEpoch++; emit();
+    return { ok: true };
+  }
+
+  function setRevealDuration(sec) {
+    var r = revealCommit(state.reveal.features, Number(sec));
+    return r.ok ? { ok: true, durationS: state.reveal.durationS } : r;
+  }
+
+  // ---- the reveal preview canvas ----
+  // The COMPLETE figure on its own opaque sky, and over it the reveal
+  // features — statically while authoring (so they can be placed), on
+  // the timeline while ▶ Play reveal runs, and not at all in 'plain'.
+  // Never the outline, never the reference, never a suggestion.
+  function drawRevealCanvas(now) {
+    var c = el('[data-canvas-reveal]');
+    if (!c) return;
+    var R = global.LabReveal;
+    var forced = revealForced;
+    var unfinished = forced === 'unfinished';
+    draw(c, state, { unfinished: unfinished });
+    if (!R) return;
+    var w = c.clientWidth || c.width, h = c.clientHeight || c.height;
+    var g = c.getContext('2d');
+    var P = state.points.map(function (p) { return toScreen(p, w, h); });
+    var feats = state.reveal.features, n = feats.length;
+    var envFor = null, phase = 'authoring', ms = 0, t = (now || 0) / 1000;
+    if (forced) {
+      if (forced === 'reveal') { envFor = null; t = 0; phase = 'reveal'; }
+      else { revealLast = { phase: forced, painted: 0, ms: 0 }; return; }
+    } else if (revealPlay) {
+      ms = (now || 0) - revealPlay.t0;
+      var dur = state.reveal.durationS;
+      var total = R.totalMs(n, dur);
+      if (ms >= total || !n) {
+        // Gone. The plain figure stands until the next edit or toggle —
+        // exactly what a child is left with — rather than snapping back
+        // to the authoring view.
+        revealPlay = null;
+        revealForced = 'after';
+        draw(c, state, {});
+        revealLast = { phase: 'done', painted: 0, ms: ms };
+        return;
+      }
+      envFor = function (i) { return R.envelope(ms, i, n, dur); };
+      phase = envFor(0).phase;
+      if (phase === 'in' || phase === 'hold') { var last = envFor(n - 1).phase; if (last === 'response' || last === 'in') phase = 'in'; }
+    } else if (!revealAuthoring) {
+      revealLast = { phase: 'plain', painted: 0, ms: 0 };
+      return;
+    }
+    var painted = R.draw(g, feats, P, t, envFor);
+    // Authoring handles: a small ring at each feature's origin, so it
+    // can be dragged. Never drawn while playing or when asked for a
+    // child's-eye state.
+    if (!revealPlay && !forced) {
+      feats.forEach(function (f) {
+        var o = R.originOf(f, P);
+        if (!o) return;
+        g.setLineDash([3, 3]);
+        g.strokeStyle = revealDrag && revealDrag.id === f.id ? 'rgba(255,214,122,.9)' : 'rgba(206,222,255,.55)';
+        g.lineWidth = 1;
+        g.beginPath(); g.arc(o[0], o[1], 9, 0, Math.PI * 2); g.stroke();
+        g.setLineDash([]);
+        g.fillStyle = 'rgba(206,222,255,.7)';
+        g.font = '10px ui-monospace, monospace'; g.textAlign = 'left';
+        g.fillText(f.name.toLowerCase(), o[0] + 12, o[1] + 4);
+      });
+    }
+    revealLast = { phase: phase, painted: painted, ms: Math.round(ms) };
+  }
+
+  function revealLoop(now) {
+    revealRaf = 0;
+    drawRevealCanvas(now);
+    if (revealPlay || (revealAuthoring && !revealForced && state.reveal.features.length)) {
+      revealRaf = global.requestAnimationFrame(revealLoop);
+    }
+  }
+  function ensureRevealLoop() {
+    if (revealRaf || !global.requestAnimationFrame) { if (!revealRaf) drawRevealCanvas(0); return; }
+    revealRaf = global.requestAnimationFrame(revealLoop);
+  }
+
+  function revealStart() {
+    if (!state.reveal.features.length) return { ok: false, reason: 'no-features' };
+    revealForced = null;
+    revealPlay = { t0: (global.performance && global.performance.now) ? global.performance.now() : Date.now() };
+    ensureRevealLoop();
+    return { ok: true, totalMs: global.LabReveal ? global.LabReveal.totalMs(state.reveal.features.length, state.reveal.durationS) : 0 };
+  }
+  function revealStop() { revealPlay = null; drawRevealCanvas(0); return { ok: true }; }
+
+  // A named state, drawn at once — the four the critical visual test
+  // asks for: 'unfinished', 'complete', 'reveal' (held at full light),
+  // 'after' (the reveal gone: pixel-identical with 'complete'). null
+  // returns the canvas to authoring.
+  function revealShow(name) {
+    revealPlay = null;
+    revealForced = (name === 'unfinished' || name === 'complete' || name === 'reveal' || name === 'after') ? name : null;
+    drawRevealCanvas(0);
+    if (!revealForced) ensureRevealLoop();
+    return { ok: true, state: revealForced || 'authoring', painted: revealLast.painted };
+  }
+
+  function revealStatus() {
+    return {
+      phase: revealLast.phase, painted: revealLast.painted, ms: revealLast.ms,
+      playing: !!revealPlay, authoring: revealAuthoring, forced: revealForced,
+      features: state.reveal.features.length, durationS: state.reveal.durationS
+    };
+  }
+
+  // ---- the rows ----
+  function lightOptions(selected, allowCentre) {
+    var out = allowCentre ? '<option value=""' + (selected === null ? ' selected' : '') + '>centre of figure</option>' : '';
+    state.points.forEach(function (p, i) {
+      out += '<option value="' + i + '"' + (selected === i ? ' selected' : '') + '>' + i + (state.roles[i] ? ' · ' + esc(state.roles[i].toLowerCase()) : '') + '</option>';
+    });
+    return out;
+  }
+
+  function paramInput(type, k, v) {
+    var spec = global.LabReveal.PARAMS[type][k];
+    if (spec.options) {
+      return '<label class="rvp">' + esc(spec.label) + '<select data-rv-param="' + k + '">' +
+        spec.options.map(function (o) { return '<option value="' + o + '"' + (o === v ? ' selected' : '') + '>' + o + '</option>'; }).join('') + '</select></label>';
+    }
+    if (spec.bool) return '<label class="rvp rvb"><input type="checkbox" data-rv-param="' + k + '"' + (v ? ' checked' : '') + '> ' + esc(spec.label) + '</label>';
+    return '<label class="rvp">' + esc(spec.label) + '<input type="number" data-rv-param="' + k + '" value="' + v + '" min="' + spec.min + '" max="' + spec.max + '" step="' + spec.step + '"></label>';
+  }
+
+  function renderRevealRows() {
+    var box = el('[data-reveal-list]');
+    var R = global.LabReveal;
+    if (!box || !R) return;
+    var feats = state.reveal.features;
+    if (!feats.length) { box.innerHTML = '<div class="note">No reveal-only features yet. They are the payoff, not the puzzle: add one, place it on the figure below, and press ▶ Play reveal to see it arrive after completion.</div>'; return; }
+    box.innerHTML = feats.map(function (f) {
+      return '<div class="rvrow" data-rv="' + esc(f.id) + '">' +
+        '<div class="rvhead">' +
+          '<input type="text" class="rvname" data-rv-name value="' + esc(f.name) + '" maxlength="24" title="name — a label, never shown to a child">' +
+          '<select data-rv-type title="visual type">' + R.TYPES.map(function (t) { return '<option value="' + t + '"' + (t === f.type ? ' selected' : '') + '>' + t + '</option>'; }).join('') + '</select>' +
+          '<label class="rvp">at light<select data-rv-a>' + lightOptions(f.anchor.a, false) + '</select></label>' +
+          '<label class="rvp">toward<select data-rv-b>' + lightOptions(f.anchor.b, true) + '</select></label>' +
+          '<button class="quiet" data-rv-del title="delete this feature">×</button>' +
+        '</div>' +
+        '<div class="rvbody">' +
+          '<label class="rvp">offset x<input type="number" data-rv-off="0" value="' + f.offset[0] + '" step="0.05" min="-2" max="2"></label>' +
+          '<label class="rvp">offset y<input type="number" data-rv-off="1" value="' + f.offset[1] + '" step="0.05" min="-2" max="2"></label>' +
+          '<label class="rvp">size<input type="number" data-rv-size value="' + f.size + '" step="0.05" min="0.2" max="4"></label>' +
+          '<label class="rvp">angle °<input type="number" data-rv-angle value="' + f.angle + '" step="5" min="-180" max="180"></label>' +
+          Object.keys(R.PARAMS[f.type]).map(function (k) { return paramInput(f.type, k, f.params[k]); }).join('') +
+        '</div>' +
+      '</div>';
+    }).join('');
+    box.querySelectorAll('.rvrow').forEach(function (row) {
+      var id = row.getAttribute('data-rv');
+      function num(elm) { var v = Number(elm.value); return isFinite(v) ? v : 0; }
+      row.querySelector('[data-rv-name]').addEventListener('input', function (ev) {
+        var r = updateReveal(id, { name: ev.target.value });
+        if (!r.ok) say(/forbidden-name/.test(r.reason) ? 'That name carries a word a visual detail may not: choose another.' : (/bad-name/.test(r.reason) ? 'A feature needs a name — letters and spaces.' : 'Not changed: ' + r.reason));
+      });
+      row.querySelector('[data-rv-type]').addEventListener('change', function (ev) { updateReveal(id, { type: ev.target.value }); });
+      row.querySelector('[data-rv-a]').addEventListener('change', function (ev) {
+        var a = Number(ev.target.value);
+        var r = updateReveal(id, { anchor: { a: a } });
+        if (!r.ok) { say('A feature cannot point at the light it stands on — choose another light, or the centre.'); renderRevealRows(); }
+      });
+      row.querySelector('[data-rv-b]').addEventListener('change', function (ev) {
+        var b = ev.target.value === '' ? null : Number(ev.target.value);
+        var r = updateReveal(id, { anchor: { b: b } });
+        if (!r.ok) { say('A feature cannot point at the light it stands on — choose another light, or the centre.'); renderRevealRows(); }
+      });
+      row.querySelectorAll('[data-rv-off]').forEach(function (inp) {
+        inp.addEventListener('input', function () {
+          var f = state.reveal.features[revealIndex(id)]; if (!f) return;
+          var off = [f.offset[0], f.offset[1]]; off[Number(inp.getAttribute('data-rv-off'))] = num(inp);
+          updateReveal(id, { offset: off });
+        });
+      });
+      row.querySelector('[data-rv-size]').addEventListener('input', function (ev) { updateReveal(id, { size: num(ev.target) }); });
+      row.querySelector('[data-rv-angle]').addEventListener('input', function (ev) { updateReveal(id, { angle: num(ev.target) }); });
+      row.querySelectorAll('[data-rv-param]').forEach(function (inp) {
+        inp.addEventListener(inp.type === 'checkbox' || inp.tagName === 'SELECT' ? 'change' : 'input', function () {
+          var patch = {}; patch[inp.getAttribute('data-rv-param')] = inp.type === 'checkbox' ? inp.checked : (inp.tagName === 'SELECT' ? inp.value : num(inp));
+          updateReveal(id, { params: patch });
+        });
+      });
+      row.querySelector('[data-rv-del]').addEventListener('click', function () { removeReveal(id); say(''); });
+    });
+  }
+
+  // The blueprint's semantic reveal suggestions — names the assistant
+  // offered ("MANE", "TAIL TUFT") — as one-press additions. Semantic
+  // only: the type is the closed vocabulary's or the researcher's, and
+  // the place is a light whose role matches the suggested feature, or
+  // the first light.
+  function renderRevealSuggestions() {
+    var box = el('[data-reveal-suggest]');
+    if (!box) return;
+    var Ref = global.LabReference;
+    var bp = (Ref && Ref.current) ? Ref.current() : null;
+    var list = (bp && Array.isArray(bp.reveal)) ? bp.reveal : [];
+    if (!list.length) { box.innerHTML = ''; box.hidden = true; return; }
+    box.hidden = false;
+    box.innerHTML = '<span class="note">Suggested by the reference (semantic only — you choose the type and the place):</span> ' +
+      list.map(function (s, i) {
+        var have = state.reveal.features.some(function (f) { return f.name === s.name; });
+        return '<button class="quiet rvs' + (have ? ' have' : '') + '" data-rv-sugg="' + i + '"' + (have ? ' disabled' : '') + '>+ ' + esc(s.name.toLowerCase()) + (s.kind ? ' · ' + esc(s.kind) : '') + '</button>';
+      }).join(' ');
+    box.querySelectorAll('[data-rv-sugg]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var s = list[Number(b.getAttribute('data-rv-sugg'))];
+        if (!s) return;
+        var a = 0;
+        if (s.near) state.roles.forEach(function (r, i) { if (r === s.near && a === 0) a = i; });
+        var r = addReveal(s.kind || 'contour', a, null, s.name);
+        say(r.ok ? 'Added ' + s.name.toLowerCase() + ' as a ' + (s.kind || 'contour') + ' at light ' + a + ' — place it on the reveal preview, then choose its numbers.' : 'Not added: ' + r.reason);
+      });
+    });
+  }
+
+  function renderReveal() {
+    var sec = el('[data-reveal-section]');
+    if (!sec) return;
+    if (revealRowsEpoch !== revealEpoch) { renderRevealRows(); revealRowsEpoch = revealEpoch; }
+    // the add-row selects follow the lights, and only re-populate when
+    // the lights change (so a choice is never reset under the pointer)
+    var key2 = state.points.length + '|' + state.roles.join(',');
+    if (key2 !== revealSelectsKey) {
+      revealSelectsKey = key2;
+      var sa = el('[data-reveal-add-a]'), sb = el('[data-reveal-add-b]');
+      if (sa) sa.innerHTML = lightOptions(0, false);
+      if (sb) sb.innerHTML = lightOptions(null, true);
+    }
+    var dur = el('[data-reveal-duration]'); if (dur && Number(dur.value) !== state.reveal.durationS) dur.value = state.reveal.durationS;
+    var au = el('[data-reveal-authoring]'); if (au) au.checked = revealAuthoring;
+    var cnt = el('[data-reveal-count]'); if (cnt) cnt.textContent = state.reveal.features.length + ' feature' + (state.reveal.features.length === 1 ? '' : 's') + ' · hold ' + state.reveal.durationS + 's';
+    var play = el('[data-reveal-play]'); if (play) play.disabled = !state.reveal.features.length || !state.points.length;
+    renderRevealSuggestions();
+    ensureRevealLoop();
+  }
+
+  function wireReveal() {
+    var c = el('[data-canvas-reveal]');
+    var R = global.LabReveal;
+    if (c && R) {
+      function xy(ev) { var r = c.getBoundingClientRect(); return [ev.clientX - r.left, ev.clientY - r.top, r.width, r.height]; }
+      c.addEventListener('pointerdown', function (ev) {
+        if (revealPlay || revealForced || !revealAuthoring) return;
+        var q = xy(ev), P = state.points.map(function (p) { return toScreen(p, q[2], q[3]); });
+        var best = null, bd = 18;
+        state.reveal.features.forEach(function (f) {
+          var o = R.originOf(f, P); if (!o) return;
+          var d = Math.hypot(o[0] - q[0], o[1] - q[1]);
+          if (d < bd) { bd = d; best = f; }
+        });
+        if (!best) return;
+        revealDrag = { id: best.id, x: q[0], y: q[1] };
+        c.setPointerCapture(ev.pointerId);
+      });
+      c.addEventListener('pointermove', function (ev) {
+        if (!revealDrag) return;
+        var q = xy(ev), P = state.points.map(function (p) { return toScreen(p, q[2], q[3]); });
+        var f = state.reveal.features[revealIndex(revealDrag.id)]; if (!f) { revealDrag = null; return; }
+        var d = R.offsetDelta(f, P, q[0] - revealDrag.x, q[1] - revealDrag.y);
+        revealDrag.x = q[0]; revealDrag.y = q[1];
+        var off = [Math.round((f.offset[0] + d[0]) * 100) / 100, Math.round((f.offset[1] + d[1]) * 100) / 100];
+        updateReveal(f.id, { offset: off });
+        var row = el('[data-rv="' + f.id + '"]');
+        if (row) { var i0 = row.querySelector('[data-rv-off="0"]'), i1 = row.querySelector('[data-rv-off="1"]'); if (i0) i0.value = off[0]; if (i1) i1.value = off[1]; }
+      });
+      function up() { revealDrag = null; }
+      c.addEventListener('pointerup', up); c.addEventListener('pointercancel', up);
+    }
+    var add = el('[data-reveal-add]'); if (add) add.addEventListener('click', function () {
+      var type = (el('[data-reveal-add-type]') || {}).value || 'contour';
+      var a = Number((el('[data-reveal-add-a]') || {}).value || 0);
+      var bv = (el('[data-reveal-add-b]') || {}).value; var b = (bv === '' || bv === undefined) ? null : Number(bv);
+      var name = (el('[data-reveal-add-name]') || {}).value || '';
+      var r = addReveal(type, a, b, name);
+      say(r.ok ? 'Added ' + r.feature.name.toLowerCase() + ' — drag its ring on the reveal preview to place it; the numbers beside it shape it.' :
+        (/no-lights/.test(r.reason) ? 'Place the figure first — a reveal feature is anchored to its lights.' : 'Not added: ' + r.reason.replace(/-/g, ' ') + '.'));
+      var nm = el('[data-reveal-add-name]'); if (nm && r.ok) nm.value = '';
+    });
+    var dur = el('[data-reveal-duration]'); if (dur) dur.addEventListener('change', function () { setRevealDuration(dur.value); });
+    var au = el('[data-reveal-authoring]'); if (au) au.addEventListener('change', function () { revealAuthoring = au.checked; revealForced = null; revealEpoch++; emit(); });
+    var play = el('[data-reveal-play]'); if (play) play.addEventListener('click', function () { var r = revealStart(); say(r.ok ? '' : 'Add a reveal feature first.'); });
+    var rs = el('[data-reveal-research]'); if (rs) rs.addEventListener('click', function () {
+      var D = global.LabRevealData;
+      if (!D || !D.fixtures) { say('The research set is not loaded.'); return; }
+      var r = importJSON(JSON.stringify({ fixtures: D.fixtures }));
+      say(r.ok ? 'Imported the research set — ' + r.added + ' creature fixture(s), each with its reveal-only features. Open one from the Fixtures list.' : 'Not imported: ' + r.reason);
+    });
   }
 
   // ---------------------------------------------------------------
@@ -862,6 +1315,7 @@
       '<div class="mrow"><span class="mk">budget</span><span class="mv">' + a.budget + '</span></div>' +
       '<div class="mrow"><span class="mk">lights · joins · missing</span><span class="mv">' + a.points.length + ' · ' + a.joins.length + ' · ' + a.missing.length + '</span></div>' +
       '<div class="mrow"><span class="mk">feature associations</span><span class="mv">' + (a.roles.length ? esc(a.roles.map(function (r) { return r.light + ':' + r.feature; }).join(' · ')) : '— (every light placed freehand)') + '</span></div>' +
+      '<div class="mrow"><span class="mk">reveal-only features (separate section)</span><span class="mv">' + (a.reveal && a.reveal.features.length ? esc(a.reveal.features.map(function (f) { return f.name + ' (' + f.type + ')'; }).join(' · ')) + ' · ' + a.reveal.durationS + 's' : '— none') + '</span></div>' +
       '<div class="note">Frozen as authored. Nothing was activated, published or put in a pool; no hint, gap, challenge or awakening was made. Any edit to the figure clears the approval — approve again to refreeze it.</div>';
   }
 
@@ -1002,6 +1456,7 @@
     if (judgedEpoch !== figureEpoch) { renderJudgement(); judgedEpoch = figureEpoch; }
     renderFixtures();
     renderCompare();
+    renderReveal();
   }
 
   function wire() {
@@ -1071,10 +1526,14 @@
       if (!Host) { say('The preview host is not loaded.'); return; }
       // The hint travels BESIDE the candidate, never inside it; the
       // creature's name travels nowhere.
+      // The reveal-only features travel BESIDE the candidate too — the
+      // Lab draws them over the real sky after completion, and the
+      // interpreter never sees them.
       var r = Host.open(cand, 'shape-' + (state.id || 'unsaved'), function () {}, 'play',
-                        { hint: state.hint || '', tease: state.tease ? 'delayed' : false });
+                        { hint: state.hint || '', tease: state.tease ? 'delayed' : false, reveal: revealOf() });
       say(r.ok ? '' : 'The browser refused the preview tab (popup blocked).');
     });
+    wireReveal();
     global.addEventListener('resize', render);
     listeners.push(render);
     render();
@@ -1121,6 +1580,12 @@
     setMode: function (m) { mode = m; pendingA = null; emit(); },
     setName: setName, setHint: setHint, setNotes: setNotes, setTease: setTease,
     setJudgement: setJudgement, setAuthoring: setAuthoring,
+    // reveal-only features (labReveal.js)
+    REVEAL_KIND: REVEAL_KIND,
+    addReveal: addReveal, updateReveal: updateReveal, removeReveal: removeReveal,
+    setRevealDuration: setRevealDuration, reveal: revealOf,
+    revealPlay: revealStart, revealStop: revealStop, revealShow: revealShow, revealStatus: revealStatus,
+    setRevealAuthoring: function (v) { revealAuthoring = !!v; revealEpoch++; emit(); },
     // the one projection, for anything that must line up with the editor
     scaleFor: scaleFor, project: toScreen, unproject: toUnit,
     observe: function (fn) { if (typeof fn === 'function') listeners.push(fn); },

@@ -141,6 +141,7 @@
   function teardown() {
     if (run && run.teaseRaf) { try { global.cancelAnimationFrame(run.teaseRaf); } catch (e) {} }
     stopTease();
+    stopReveal();
     if (run && run.hintTimer) { try { global.clearTimeout(run.hintTimer); } catch (e) {} }
     if (!run) return;
     try { if (run.mystery) run.mystery.destroy(); } catch (e) {}
@@ -216,9 +217,19 @@
   function play(candidate, seed, mode, opts) {
     teardown();
     finished = false;
+    lastRevealDone = null;
     mode = (mode === 'try') ? 'try' : 'play';
     var hintText = (opts && typeof opts.hint === 'string') ? opts.hint : '';
     var teasing = (opts && opts.tease) || false;   // false | 'always' | 'delayed'
+    // REVEAL-ONLY FEATURES arrive beside the candidate and are run
+    // through the Lab's own sanitizer AGAIN here — the preview is its
+    // own document and trusts nothing it was handed. They are drawn by
+    // the Lab, over the sky, only once the figure is whole.
+    var figPts = (candidate && candidate.arrangement && candidate.arrangement.figure && candidate.arrangement.figure.points) || null;
+    var revealIn = (opts && opts.reveal && global.LabReveal)
+      ? global.LabReveal.sanitize(opts.reveal, figPts ? figPts.length : undefined) : null;
+    var revealSet = (revealIn && revealIn.ok && revealIn.features.length)
+      ? { durationS: revealIn.durationS, features: revealIn.features } : null;
     var box = el('[data-unavailable]');
     if (box) box.classList.remove('on');
     var badge = el('[data-try-badge]');
@@ -236,7 +247,8 @@
     var report = newReport(candidate);
     report.mode = mode;
     sup.notes.forEach(function (n) { report.staged.push(n); });
-    current = { candidate: candidate, seed: seed, mode: mode, report: report };
+    current = { candidate: candidate, seed: seed, mode: mode, report: report, opts: opts || {} };
+    report.happened.reveal = { offered: revealSet ? revealSet.features.length : 0, shown: false };
 
     // Everything from here is seeded. Installed BEFORE the universe is
     // created, because the star field, the currents and where the
@@ -409,8 +421,130 @@
       }
     }
     if (teasing) startTease(mystery, universe, teasing === true ? 'always' : teasing);
+    // THE REVEAL WAITS FOR THE LAST JOIN. `mystery:joined` with
+    // `left === 0` is the interpreter's own word that the figure is
+    // whole, and it is the ONLY thing that starts the reveal: nothing
+    // is drawn while a join is missing, and nothing here can read the
+    // features as a hint.
+    if (revealSet) {
+      run.reveal = revealSet;
+      mystery.on('mystery:joined', function (d) {
+        if (d && d.left === 0 && run && run.mystery === mystery) startReveal(mystery, universe, revealSet, report);
+      });
+    }
     post('playing', { id: candidate.id, elements: report.happened.elements });
   }
+
+  // ---------------------------------------------------------------
+  // THE REVEAL — reveal-only creature features (labReveal.js), the
+  // payoff after the puzzle. Drawn by the Lab over the real
+  // interpreter, exactly as the hint and the tease are: the candidate
+  // the Ether performs is byte-identical with them and without them.
+  //
+  // WHERE THE FEATURES STAND is read off the interpreter's own
+  // instrument(): the figure's lights, in FIELD coordinates, gathering
+  // and breathing as the figure wakes — so a mane follows the head
+  // through the awakening rather than sitting where the head used to
+  // be. When the figure has set off (instrument() goes null and the
+  // creature is a wanderer), the layer keeps its last-known layout and
+  // follows the wanderer's centre; the runtime exposes no more than
+  // that, and the tail of a fade is all that ever needs it.
+  //
+  // Nothing here can be tapped: the canvas is inert to touch, and the
+  // interpreter's own touch chain is untouched.
+  // ---------------------------------------------------------------
+  var revealState = null;
+
+  function stopReveal() {
+    if (revealState && revealState.raf) { try { global.cancelAnimationFrame(revealState.raf); } catch (e) {} }
+    revealState = null;
+    var c = el('[data-reveal]');
+    if (!c) return;
+    c.hidden = true;
+    try { var g = c.getContext('2d'); if (g) g.clearRect(0, 0, c.width, c.height); } catch (e) {}
+  }
+
+  function revealReport() {
+    return revealState ? {
+      started: true, phase: revealState.phase, painted: revealState.painted,
+      ms: Math.round(revealState.ms), features: revealState.set.features.length,
+      following: revealState.following
+    } : { started: false, phase: 'idle', painted: 0, ms: 0, features: 0, following: null };
+  }
+
+  function startReveal(mystery, universe, set, report) {
+    var R = global.LabReveal;
+    var canvas = el('[data-reveal]');
+    if (!R || !canvas || !canvas.getContext || revealState) return;
+    var ctx = canvas.getContext('2d');
+    canvas.hidden = false;
+    var t0 = (global.performance && global.performance.now) ? global.performance.now() : Date.now();
+    revealState = { raf: 0, t0: t0, set: set, phase: 'response', painted: 0, ms: 0,
+                    lastField: null, lastCentre: null, following: 'figure' };
+    if (report && report.happened && report.happened.reveal) report.happened.reveal.shown = true;
+
+    function nearestCopy(v, span, centre) {
+      if (!(span > 0)) return v;
+      return v - Math.round((v - centre) / span) * span;
+    }
+
+    function frame(now) {
+      if (!revealState || !run || run.mystery !== mystery) return;
+      revealState.raf = global.requestAnimationFrame(frame);
+      var dpr = Math.min(2, global.devicePixelRatio || 1);
+      var w = canvas.clientWidth, h = canvas.clientHeight;
+      if (canvas.width !== Math.round(w * dpr)) canvas.width = Math.round(w * dpr);
+      if (canvas.height !== Math.round(h * dpr)) canvas.height = Math.round(h * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, w, h);
+
+      var ms = now - revealState.t0;
+      var n = set.features.length;
+      if (ms >= R.totalMs(n, set.durationS)) {
+        // Gone. The plain figure — or the creature already roaming —
+        // remains, exactly as the interpreter left it.
+        revealState.phase = 'done'; revealState.painted = 0; revealState.ms = ms;
+        var done = revealState;
+        stopReveal();
+        revealState = null;
+        lastRevealDone = { phase: 'done', ms: Math.round(done.ms), features: n };
+        return;
+      }
+
+      // the lights, in field coordinates
+      var field = null;
+      var inst = null;
+      try { inst = mystery.instrument(); } catch (e) {}
+      if (inst && inst.arrangement && inst.elements) {
+        field = inst.elements.filter(function (el) { return el.show === 'node'; }).map(function (el) { return [el.x, el.y]; });
+        revealState.lastField = field; revealState.lastCentre = inst.arrangement.centre;
+        revealState.following = 'figure';
+      } else if (revealState.lastField) {
+        var ws = [];
+        try { ws = mystery.wanderers ? mystery.wanderers() : []; } catch (e) {}
+        var wnd = ws.length ? ws[ws.length - 1] : null;
+        var dx = 0, dy = 0;
+        if (wnd && revealState.lastCentre) { dx = wnd.x - revealState.lastCentre.x; dy = wnd.y - revealState.lastCentre.y; }
+        field = revealState.lastField.map(function (p) { return [p[0] + dx, p[1] + dy]; });
+        revealState.following = 'wanderer';
+      }
+      if (!field || !field.length) { revealState.painted = 0; revealState.ms = ms; return; }
+
+      var cam = { x: 0 }, span = 0;
+      try {
+        cam = universe.camera.offsetFor(universe.ether.depth.stories, { x: 0, y: 0 });
+        span = universe.ether.width;
+      } catch (e) {}
+      var P = field.map(function (p) { return [nearestCopy(p[0] + cam.x, span, w * 0.5), p[1]]; });
+      var envFor = function (i) { return R.envelope(ms, i, n, set.durationS); };
+      revealState.painted = R.draw(ctx, set.features, P, now / 1000, envFor);
+      revealState.ms = ms;
+      var first = envFor(0).phase, last = envFor(n - 1).phase;
+      revealState.phase = (first === 'response') ? 'response' : (last === 'response' || last === 'in') ? 'in' : first;
+    }
+    revealState.raf = global.requestAnimationFrame(frame);
+  }
+  var lastRevealDone = null;
 
   // ---------------------------------------------------------------
   // THE TEASE — "these two belong together", said by light alone.
@@ -730,7 +864,7 @@
       b.addEventListener('click', function () {
         var act = b.getAttribute('data-act');
         if (act === 'exit') exitNow();
-        else if (act === 'replay' && current) play(current.candidate, current.seed, current.mode);
+        else if (act === 'replay' && current) play(current.candidate, current.seed, current.mode, current.opts);
       });
     });
     doc.addEventListener('keydown', function (ev) {
@@ -745,7 +879,7 @@
       var d = ev && ev.data;
       if (!d || d.type !== 'lab-preview:play') return;
       epoch = (typeof d.epoch === 'number') ? d.epoch : null;
-      play(d.candidate, d.seed, d.mode, { hint: d.hint, tease: d.tease || false });
+      play(d.candidate, d.seed, d.mode, { hint: d.hint, tease: d.tease || false, reveal: d.reveal || null });
     });
     post('ready', {});
   }
@@ -775,6 +909,19 @@
     candidate: function () { return current ? current.candidate : null; },
     mode: function () { return current ? (current.mode || 'play') : null; },
     tease: teaseReport,
+    reveal: function () { var r = revealReport(); if (!r.started && lastRevealDone) { r.phase = 'done'; r.ms = lastRevealDone.ms; r.features = lastRevealDone.features; r.finished = true; } return r; },
+    // Pixels painted on the reveal canvas right now — what a child would
+    // actually see of the reveal, never what the code says.
+    revealPixels: function () {
+      var c = el('[data-reveal]');
+      if (!c || c.hidden || !c.width) return 0;
+      try {
+        var d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+        var lit = 0;
+        for (var i = 3; i < d.length; i += 4) if (d[i] > 8) lit++;
+        return lit;
+      } catch (e) { return -1; }
+    },
     stories: function () {
       if (!run || !run.universe) return [];
       try { return run.universe.stories.all(); } catch (e) { return []; }

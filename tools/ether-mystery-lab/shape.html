@@ -122,6 +122,21 @@
   .bp-s.l2 { color: var(--dim); } .bp-s.l3 { color: var(--dim); opacity: .75; }
   .bp-s.focus { border-color: var(--mid); color: var(--mid); }
   .flow li { margin: 1px 0; }
+  /* REVEAL-ONLY FEATURES — the payoff's own canvas and rows. Never the
+     two judging panes: those draw the puzzle and nothing else. */
+  canvas.reveal { width: 100%; max-width: 560px; aspect-ratio: 1 / 1; display: block; border-radius: 10px;
+                  border: 1px solid var(--line); cursor: grab; touch-action: none; }
+  .rvrow { border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; margin: 6px 0; background: var(--panel2); }
+  .rvhead { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .rvhead input.rvname { width: 140px; font-weight: 700; color: var(--gold); }
+  .rvhead select { width: auto; font-size: 12px; padding: 3px 4px; }
+  .rvbody { display: flex; gap: 6px 10px; flex-wrap: wrap; margin-top: 4px; }
+  .rvp { display: inline-flex; flex-direction: column; font-size: 10px; color: var(--dim); margin: 0; letter-spacing: .04em; }
+  .rvp input[type=number] { width: 68px; background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 5px; padding: 2px 4px; font: inherit; font-size: 12px; }
+  .rvp select { width: auto; font-size: 12px; padding: 2px 4px; }
+  .rvp.rvb { flex-direction: row; align-items: center; gap: 4px; align-self: end; }
+  .rvs { font-size: 11px; } .rvs.have { opacity: .45; }
+  .rv-status { font-size: 11px; color: var(--dim); letter-spacing: .04em; }
 </style>
 </head>
 <body>
@@ -275,6 +290,36 @@
     <div class="note">Opens the real Ether preview with this figure's exact points, joins and gaps: two-tap interaction, completion, and the existing awakening. The creature name never travels; the hint travels beside the figure. Available only where the real Ether can perform the figure.</div>
   </section>
 
+  <section data-reveal-section>
+    <h2>Reveal-only features <span class="rv-status" data-reveal-count>0 features</span></h2>
+    <div class="note"><b>DOTS + JOINS are the challenge. These are the payoff.</b> A reveal-only feature appears ONLY after the figure is completely solved, stays a few seconds, and fades. It is not a star, not a join, not a gap — it is never connected by a child, never counted toward the budget, never part of completion, and never in the candidate the Ether performs. It is anchored to <em>your</em> lights (move a light and it follows), never to the reference outline.</div>
+    <div class="row" data-reveal-suggest hidden></div>
+    <div data-reveal-list></div>
+    <div class="row" style="margin-top:8px">
+      <select data-reveal-add-type style="width:auto" title="visual type">
+        <option value="contour">contour — flowing strokes (mane, hair, ear line)</option>
+        <option value="fill">fill — a soft silhouette (membrane, fin, lobe)</option>
+        <option value="lines">lines — accents across a part (stripes, feathers, rings)</option>
+        <option value="texture">texture — a field of small marks (scales)</option>
+        <option value="spike">spike — tapered appendages (horns, tusks, ridges)</option>
+        <option value="glow">glow — one soft light (an eye, a lantern)</option>
+        <option value="motes">motes — a few drifting lights</option>
+      </select>
+      <label class="rvp">at light<select data-reveal-add-a style="width:auto"></select></label>
+      <label class="rvp">toward<select data-reveal-add-b style="width:auto"></select></label>
+      <input type="text" data-reveal-add-name placeholder="name (e.g. mane)" maxlength="24" autocomplete="off" style="width:140px">
+      <button data-reveal-add>+ Add feature</button>
+    </div>
+    <div class="row">
+      <button data-reveal-play class="primary" disabled>▶ Play reveal</button>
+      <label class="rvp" style="flex-direction:row;align-items:center;gap:6px">hold for <input type="number" data-reveal-duration value="4" min="1.5" max="10" step="0.5" style="width:60px"> seconds</label>
+      <label style="margin:0"><input type="checkbox" data-reveal-authoring checked> show features while authoring</label>
+      <button data-reveal-research class="quiet" title="import the six research creatures with their reveal features as fixtures">Load research set</button>
+    </div>
+    <canvas class="reveal" data-canvas-reveal></canvas>
+    <div class="note" style="margin-top:6px"><b>Reveal preview</b> — the complete figure on its own sky. While authoring, the features stand at full light with a small ring at each one's origin: drag the ring to move it, and shape it with its numbers. ▶ Play reveal runs the whole sequence: completion → a short response → the features emerge → hold → fade → the plain figure remains. Nothing on screen counts the time and nothing in the Ether does; the hold is simply how long they stay. Turn off <em>show features while authoring</em> to see the plain complete figure here. The two panes above never show them, and the unfinished figure never can.</div>
+  </section>
+
   <section data-approve-section data-approve-state="unapproved">
     <h2>Approve figure</h2>
     <div class="row">
@@ -284,7 +329,7 @@
     <div class="note" data-approve-why></div>
     <div class="approved" data-approved hidden></div>
     <textarea data-approved-out hidden readonly style="min-height:90px;font-family:ui-monospace,monospace;font-size:11px"></textarea>
-    <div class="note">Freezes the authored figure as the research artifact: points, joins, gaps, the selected budget, and which feature each light was accepted for. Never the outline, the sketch, the blueprint or anything private. Approving activates nothing and publishes nothing — no hint, no gaps, no challenge, no completion, no awakening, no pool entry. Saved with the fixture; any later edit clears it.</div>
+    <div class="note">Freezes the authored figure as the research artifact: points, joins, gaps, the selected budget, and which feature each light was accepted for — the <b>puzzle geometry</b> — and, in its own clearly separate section, the <b>reveal-only features</b> with their placement, appearance and hold. Never the outline, the sketch, the blueprint or anything private. Approving activates nothing and publishes nothing — no hint, no gaps, no challenge, no completion, no awakening, no pool entry. Saved with the fixture; any later edit clears it.</div>
   </section>
 
   <section>
@@ -334,13 +379,15 @@
 </div>
 </main>
 
-<script src="../../js/etherGrammar.js?lab=f05d0aef26"></script>
-<script src="labKit.js?lab=f05d0aef26"></script>
-<script src="labPreviewHost.js?lab=f05d0aef26"></script>
-<script src="labConnection.js?lab=f05d0aef26"></script>
-<script src="labBlueprint.js?lab=f05d0aef26"></script>
-<script src="labOutline.js?lab=f05d0aef26"></script>
-<script src="labShape.js?lab=f05d0aef26"></script>
-<script src="labReference.js?lab=f05d0aef26"></script>
+<script src="../../js/etherGrammar.js?lab=3b227312b1"></script>
+<script src="labKit.js?lab=3b227312b1"></script>
+<script src="labPreviewHost.js?lab=3b227312b1"></script>
+<script src="labConnection.js?lab=3b227312b1"></script>
+<script src="labBlueprint.js?lab=3b227312b1"></script>
+<script src="labOutline.js?lab=3b227312b1"></script>
+<script src="labReveal.js?lab=3b227312b1"></script>
+<script src="labRevealData.js?lab=3b227312b1"></script>
+<script src="labShape.js?lab=3b227312b1"></script>
+<script src="labReference.js?lab=3b227312b1"></script>
 </body>
 </html>
