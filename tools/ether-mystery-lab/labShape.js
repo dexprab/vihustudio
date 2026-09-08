@@ -59,6 +59,30 @@
 // an 8-light figure are compared at the same size, and scale can never
 // be used to flatter a budget.
 //
+// THE RESEARCHER WORKFLOW (the Shape Lab cleanup sprint). The page reads
+// as one instrument in six stages — CREATE → SHAPE → CONNECT → REVEAL →
+// TEST → APPROVE — and this file grew the four things that make that
+// coherent rather than a rearrangement of buttons:
+//   - AN AUTHORING HISTORY. Undo / Redo over the authored figure and the
+//     reveal (points, roles, joins, gaps, budget, reveal features) —
+//     snapshots taken BEFORE every mutating operation, a drag coalesced
+//     into one step, and NEVER touched by a preview or a test state.
+//     Loading a different figure clears it: history belongs to one
+//     figure. It is not faked: undo restores exactly the snapshot.
+//   - A SELECTION. In the Connect tool a light is selected, then another;
+//     a click on a line SELECTS the connection (it no longer deletes it),
+//     and explicit JOIN · UNJOIN · MISSING act on what is selected. The
+//     pair gesture the product owner asked for is untouched: two lights
+//     clicked connect, the same two clicked again disconnect.
+//   - SCOPED RESETS that say what they reset: Reset points (back to the
+//     starting points; connections and the reveal features anchored to
+//     the removed lights go with them, said so), Reset connections
+//     (joins and missing marks only; points stay), Reset reveal (the
+//     reveal only; the puzzle stays), Reset everything (confirmed).
+//   - A STATUS a person can read: BUILDING · READY TO TEST · READY TO
+//     APPROVE · APPROVED, with one sentence saying what to do next in
+//     workflow words, never a validator reason.
+//
 // A JOIN IS SAVED AS "a-b", NEVER AS A PAIR OF INTEGERS. A list of
 // integer pairs is what a Magic Card's constellation looks like, and
 // the Stars guard refuses that shape on sight (Decision 58). The
@@ -113,14 +137,64 @@
   var revealDrag = null;         // { id, x, y } while a feature is being dragged
   var revealRaf = 0;
   var mode = 'add';              // add · move · delete · join · gap
-  var pendingA = null;           // join mode: the first light chosen
+  var pendingA = null;           // join mode: the first light chosen (= sel.a)
+  var sel = { a: null, b: null, join: null };   // the Connect selection: a light, a pair, a connection
   var dragging = null;           // move mode
+  var tested = false;            // a TEST state has been shown for this figure since its last change (UI only)
+  var savedSnap = '';            // what the store / the opened fixture holds — for "unsaved changes"
+  var armedOpen = null;          // a fixture id whose Open is waiting for a second press
+  // THE AUTHORING HISTORY — undo / redo over the authored figure and
+  // the reveal. Snapshots of the AUTHORED state only; a preview, a test
+  // state, a judgement, a name or a note never enters it.
+  var history = { past: [], future: [], max: 100, coalesce: false };
   var showNumbers = true;
   var listeners = [];
   var figureEpoch = 0;          // bumped when a different figure is opened
   var judgedEpoch = -1;
 
   function emit() { listeners.forEach(function (f) { try { f(); } catch (e) {} }); }
+
+  function snapshot() {
+    return JSON.stringify({ budget: state.budget, points: state.points, roles: state.roles, origins: state.origins, joins: state.joins, reveal: state.reveal });
+  }
+  // Record BEFORE a mutation. While a drag is coalescing, only its first
+  // step is recorded; the rest ride on it.
+  function record() {
+    if (history.coalesce) return;
+    history.past.push(snapshot());
+    if (history.past.length > history.max) history.past.shift();
+    history.future = [];
+  }
+  // A recorded step that changed nothing is not a step.
+  function unrecordIfSame() {
+    if (history.coalesce) return;
+    if (history.past.length && history.past[history.past.length - 1] === snapshot()) history.past.pop();
+  }
+  function restore(snap) {
+    var t = JSON.parse(snap);
+    state.budget = t.budget; state.points = t.points; state.roles = t.roles; state.origins = t.origins;
+    state.joins = t.joins; state.reveal = t.reveal;
+    revealEpoch++; revealPlay = null; revealForced = null;
+    clearSelection(); dragging = null;
+    touch();
+    emit();
+  }
+  function undo() {
+    if (!history.past.length) return { ok: false, reason: 'nothing-to-undo' };
+    history.future.push(snapshot());
+    restore(history.past.pop());
+    return { ok: true, undoLeft: history.past.length, redoLeft: history.future.length };
+  }
+  function redo() {
+    if (!history.future.length) return { ok: false, reason: 'nothing-to-redo' };
+    history.past.push(snapshot());
+    restore(history.future.pop());
+    return { ok: true, undoLeft: history.past.length, redoLeft: history.future.length };
+  }
+  function clearHistory() { history.past = []; history.future = []; history.coalesce = false; }
+  function historyDepth() { return { undo: history.past.length, redo: history.future.length }; }
+  function clearSelection() { sel = { a: null, b: null, join: null }; pendingA = null; }
+  function isDirty() { return snapshot() !== savedSnap; }
   function clamp(v) { return Math.max(-COORD, Math.min(COORD, Math.round(v * 100) / 100)); }
   function key(a, b) { return Math.min(a, b) + '-' + Math.max(a, b); }
 
@@ -128,7 +202,7 @@
   // EDITING
   // ---------------------------------------------------------------
   // The figure changed: an approval no longer describes it.
-  function touch() { state.approved = null; }
+  function touch() { state.approved = null; tested = false; }
 
   // THE SUGGESTED POINTS ARE THE STARTING FIGURE. Decided by the product
   // owner after the first real lion: "the suggested points are also part
@@ -150,6 +224,7 @@
   function placeSuggestions() {
     var Ref = global.LabReference;
     if (!Ref || !Ref.suggestions || !Ref.isShowing || !Ref.isShowing()) return { ok: false, reason: 'no-reference', placed: 0 };
+    record();
     var placed = 0;
     Ref.suggestions().filter(function (x) { return x.budgeted; }).forEach(function (x) {
       if (state.points.length >= state.budget) return;
@@ -162,7 +237,7 @@
       state.origins.push([x.x, x.y]);
       placed++;
     });
-    if (placed) { touch(); emit(); }
+    if (placed) { touch(); emit(); } else unrecordIfSame();
     return { ok: true, placed: placed };
   }
 
@@ -176,8 +251,8 @@
     b = Number(b);
     if (BUDGETS.indexOf(b) === -1) return { ok: false, reason: 'not-a-budget' };
     var was = state.budget;
+    if (was !== b) { record(); touch(); }
     state.budget = b;
-    if (was !== b) touch();
     // A bigger budget opens more suggested places, and they are placed as
     // lights at once (the seam above); a smaller one places nothing and
     // deletes nothing.
@@ -196,6 +271,7 @@
     if (state.points.length >= state.budget) {
       return { ok: false, reason: 'budget-full:' + state.budget };
     }
+    record();
     state.points.push([clamp(x), clamp(y)]);
     state.roles.push(role ? String(role).toUpperCase().slice(0, 24) : null);
     state.origins.push(role ? [clamp(x), clamp(y)] : null);
@@ -206,6 +282,7 @@
 
   function movePoint(i, x, y) {
     if (!state.points[i]) return { ok: false, reason: 'no-such-light' };
+    record();
     state.points[i] = [clamp(x), clamp(y)];
     touch();
     emit();
@@ -214,6 +291,8 @@
 
   function deletePoint(i) {
     if (!state.points[i]) return { ok: false, reason: 'no-such-light' };
+    record();
+    var joinsGone = state.joins.filter(function (j) { return j.a === i || j.b === i; }).length;
     state.points.splice(i, 1);
     state.roles.splice(i, 1);
     state.origins.splice(i, 1);
@@ -224,8 +303,7 @@
       .map(function (j) {
         return { a: j.a > i ? j.a - 1 : j.a, b: j.b > i ? j.b - 1 : j.b, gap: !!j.gap };
       });
-    if (pendingA === i) pendingA = null;
-    else if (pendingA !== null && pendingA > i) pendingA--;
+    clearSelection();
     // A reveal feature anchored to the deleted light has nowhere to be
     // and goes with it; every anchor above steps down with the light.
     var dropped = [];
@@ -235,7 +313,7 @@
       state.reveal.features = rv.features; dropped = rv.dropped;
     }
     emit();
-    return { ok: true, droppedReveal: dropped };
+    return { ok: true, droppedReveal: dropped, joinsRemoved: joinsGone };
   }
 
   function findJoin(a, b) {
@@ -253,8 +331,9 @@
       return { ok: false, reason: 'not-two-lights' };
     }
     var i = findJoin(a, b);
+    record();
     touch();
-    if (i !== -1) { state.joins.splice(i, 1); emit(); return { ok: true, removed: true }; }
+    if (i !== -1) { state.joins.splice(i, 1); if (sel.join !== null) sel.join = null; emit(); return { ok: true, removed: true }; }
     state.joins.push({ a: Math.min(a, b), b: Math.max(a, b), gap: false });
     emit();
     return { ok: true, added: true };
@@ -269,13 +348,14 @@
   // ever removed — the chain is left open (the author closes it, or
   // rearranges it, with the same click gestures as before).
   function joinInOrder() {
+    record();
     var added = 0;
     for (var i = 0; i + 1 < state.points.length; i++) {
       if (findJoin(i, i + 1) !== -1) continue;
       state.joins.push({ a: i, b: i + 1, gap: false });
       added++;
     }
-    if (added) { touch(); emit(); }
+    if (added) { touch(); emit(); } else unrecordIfSame();
     return { ok: true, added: added, lights: state.points.length };
   }
 
@@ -284,6 +364,7 @@
   function toggleGap(joinIndex) {
     var j = state.joins[joinIndex];
     if (!j) return { ok: false, reason: 'no-such-join' };
+    record();
     j.gap = !j.gap;
     touch();
     emit();
@@ -296,9 +377,141 @@
     state.points = []; state.roles = []; state.origins = []; state.joins = []; state.approved = null;
     state.name = ''; state.hint = ''; state.notes = '';
     state.judgement = null; state.tease = false; state.authoring = null;
-    state.reveal = { durationS: 4, features: [] }; revealEpoch++; revealPlay = null;
-    pendingA = null; dragging = null;
+    state.reveal = { durationS: 4, features: [] }; revealEpoch++; revealPlay = null; revealForced = null;
+    clearSelection(); dragging = null; tested = false; armedOpen = null;
+    clearHistory(); savedSnap = snapshot();
     emit();
+  }
+
+  // ---------------------------------------------------------------
+  // SCOPED RESETS — each one says what it resets, and each is one
+  // undoable step. Reset everything is the old reset(): it is the one
+  // that starts the session over, and the page confirms it first.
+  // ---------------------------------------------------------------
+  // Back to the STARTING POINTS: every light goes, and with them every
+  // connection and every reveal feature anchored to a light (a feature
+  // with no light to stand on cannot exist). If a reference is showing,
+  // its budgeted suggested points are placed again — the same starting
+  // figure Generate gave. The reveal's hold time is kept.
+  function resetPoints() {
+    record();
+    var hadReveal = state.reveal.features.length;
+    state.points = []; state.roles = []; state.origins = []; state.joins = [];
+    state.reveal = { durationS: state.reveal.durationS, features: [] }; revealEpoch++; revealPlay = null; revealForced = null;
+    clearSelection(); dragging = null;
+    touch();
+    history.coalesce = true;                       // the re-placement rides on this one step
+    var placed = 0;
+    try { placed = placeSuggestions().placed || 0; } finally { history.coalesce = false; }
+    emit();
+    return { ok: true, placed: placed, revealDropped: hadReveal };
+  }
+  // Connections and missing marks only. Every point stays where it is;
+  // the reveal is untouched (it is anchored to lights, not to joins).
+  function resetConnections() {
+    if (!state.joins.length) return { ok: true, removed: 0 };
+    record();
+    var n = state.joins.length;
+    state.joins = [];
+    clearSelection();
+    touch();
+    emit();
+    return { ok: true, removed: n };
+  }
+  // The reveal only. The puzzle — points, connections, missing — stays.
+  function resetReveal() {
+    if (!state.reveal.features.length && state.reveal.durationS === 4) return { ok: true, removed: 0 };
+    record();
+    var n = state.reveal.features.length;
+    state.reveal = { durationS: 4, features: [] }; revealEpoch++; revealPlay = null; revealForced = null;
+    touch();
+    emit();
+    return { ok: true, removed: n };
+  }
+
+  // ---------------------------------------------------------------
+  // THE CONNECT SELECTION — a light, then a pair, or a connection.
+  // Explicit JOIN / UNJOIN / MISSING act on it; the pair gesture
+  // (two lights clicked → connected; the same two again → disconnected)
+  // is unchanged, and a click on a LINE selects it rather than removing
+  // it, so removing a connection is always a deliberate second act.
+  // ---------------------------------------------------------------
+  function selection() {
+    var j = sel.join !== null && state.joins[sel.join] ? state.joins[sel.join] : null;
+    return { a: sel.a, b: sel.b, join: sel.join, joined: !!j, missing: !!(j && j.gap),
+             canJoin: sel.a !== null && sel.b !== null && sel.a !== sel.b && findJoin(sel.a, sel.b) === -1,
+             canUnjoin: !!j, canMissing: !!j };
+  }
+  function selectLight(i) {
+    if (!state.points[i]) return { ok: false, reason: 'no-such-light' };
+    if (sel.a === null || (sel.a !== null && sel.b !== null)) { sel = { a: i, b: null, join: null }; }
+    else if (sel.a === i) { clearSelection(); }
+    else {
+      // the pair gesture: connect, or — already connected — disconnect;
+      // either way the pair stays selected so JOIN / UNJOIN can answer it
+      var a = sel.a, r = toggleJoin(a, i);
+      sel = { a: a, b: i, join: r.added ? findJoin(a, i) : null };
+    }
+    pendingA = sel.a;
+    emit();
+    return { ok: true, selection: selection() };
+  }
+  function selectJoin(ji) {
+    var j = state.joins[ji];
+    if (!j) return { ok: false, reason: 'no-such-join' };
+    sel = { a: j.a, b: j.b, join: ji }; pendingA = sel.a;
+    emit();
+    return { ok: true, selection: selection() };
+  }
+  function joinSelected() {
+    var x = selection();
+    if (!x.canJoin) return { ok: false, reason: 'select-two-lights' };
+    var r = toggleJoin(sel.a, sel.b);
+    sel.join = findJoin(sel.a, sel.b); pendingA = sel.a;
+    emit();
+    return { ok: r.ok && r.added, selection: selection() };
+  }
+  function unjoinSelected() {
+    var x = selection();
+    if (!x.canUnjoin) return { ok: false, reason: 'select-a-connection' };
+    var j = state.joins[sel.join];
+    var r = toggleJoin(j.a, j.b);
+    sel = { a: j.a, b: j.b, join: null }; pendingA = sel.a;
+    emit();
+    return { ok: r.ok && r.removed, selection: selection() };
+  }
+  function toggleMissingSelected() {
+    var x = selection();
+    if (!x.canMissing) return { ok: false, reason: 'select-a-connection' };
+    var r = toggleGap(sel.join);
+    return { ok: r.ok, missing: r.gap, selection: selection() };
+  }
+
+  // ---------------------------------------------------------------
+  // STATUS — where the researcher is, in workflow words. Never a
+  // validator reason: those stay in Advanced / Research details.
+  // ---------------------------------------------------------------
+  function markTested() { tested = true; emit(); return { ok: true }; }
+  function status() {
+    var m = metrics();
+    var Ref = global.LabReference;
+    var refOn = !!(Ref && Ref.isShowing && Ref.isShowing());
+    var name = String(state.name || (state.authoring && state.authoring.subject) || '').trim();
+    var st = 'BUILDING', next = '';
+    if (state.approved) { st = 'APPROVED'; next = 'Frozen as approved. Save the fixture to keep it; editing anything clears the approval.'; }
+    else if (!m.points) { next = refOn ? 'Place points: the suggested points are a starting figure — accept them, move them, or add your own.' : 'Add points on the AUTHOR pane, or generate a reference to start from.'; }
+    else if (m.overBudget) { next = 'Over the ' + m.budget + '-point budget by ' + m.overBudget + ' — delete ' + m.overBudget + ' point' + (m.overBudget === 1 ? '' : 's') + ', or choose a bigger budget. Nothing is removed for you.'; }
+    else if (m.points < 2) { next = 'Add at least one more point, then connect them.'; }
+    else if (m.connections === 0) { next = 'Connect the points — the Connect tool joins them in order, then select two points to change a connection.'; }
+    else if (m.missing === 0) { next = 'Leave one connection missing — that is what the child completes.'; }
+    else if (!tested) { st = 'READY TO TEST'; next = 'Test it: UNFINISHED, then COMPLETE, then COME ALIVE.' + (m.aboveProduction ? ' (This budget tests here; the real Ether performs up to ' + m.productionBudget + ' points.)' : ''); }
+    else { st = 'READY TO APPROVE'; next = 'Looks right? Approve the creature, then save the fixture.'; }
+    return {
+      name: name,
+      points: m.points, connections: m.connections, missing: m.missing, reveal: state.reveal.features.length,
+      budget: m.budget, overBudget: m.overBudget, state: st, next: next, tested: tested, dirty: isDirty(),
+      line: m.points + ' POINT' + (m.points === 1 ? '' : 'S') + ' · ' + m.connections + ' CONNECTED · ' + m.missing + ' MISSING' + (state.reveal.features.length ? ' · ' + state.reveal.features.length + ' REVEAL' : '')
+    };
   }
 
   // A NEUTRAL DEMONSTRATION SHAPE, and deliberately not a creature: a
@@ -316,6 +529,7 @@
     }
     for (var k = 0; k < n; k++) state.joins.push({ a: Math.min(k, (k + 1) % n), b: Math.max(k, (k + 1) % n), gap: false });
     state.joins[0].gap = true;
+    clearSelection(); clearHistory(); tested = false;
     emit();
   }
 
@@ -443,8 +657,9 @@
     s.joins.forEach(function (j) {
       if (!P[j.a] || !P[j.b]) return;
       if (j.gap && opts.unfinished) return;              // the unfinished figure: nothing at all
-      g.strokeStyle = (j.gap && opts.editing) ? LINE_MISSING : LINE;
-      g.lineWidth = lw;
+      var selected = opts.editing && s === state && sel.join !== null && state.joins[sel.join] === j;
+      g.strokeStyle = selected ? 'rgba(255,210,122,.95)' : ((j.gap && opts.editing) ? LINE_MISSING : LINE);
+      g.lineWidth = selected ? lw * 2.2 : lw;
       if (j.gap && opts.editing) g.setLineDash([4, 6]); else g.setLineDash([]);
       g.beginPath(); g.moveTo(P[j.a][0], P[j.a][1]); g.lineTo(P[j.b][0], P[j.b][1]); g.stroke();
     });
@@ -466,7 +681,13 @@
       var rg = g.createRadialGradient(p[0], p[1], 0, p[0], p[1], r);
       rg.addColorStop(0, HALO + '.34)'); rg.addColorStop(1, HALO + '0)');
       g.fillStyle = rg; g.beginPath(); g.arc(p[0], p[1], r, 0, Math.PI * 2); g.fill();
-      g.fillStyle = (opts.editing && pendingA === i) ? '#ffd27a' : CORE;
+      var picked = opts.editing && s === state && (sel.a === i || sel.b === i);
+      if (picked) {
+        // the selected light: a gold ring around it, obvious at a glance
+        g.strokeStyle = 'rgba(255,210,122,.95)'; g.lineWidth = 2; g.setLineDash([]);
+        g.beginPath(); g.arc(p[0], p[1], core + 6, 0, Math.PI * 2); g.stroke();
+      }
+      g.fillStyle = picked ? '#ffd27a' : CORE;
       g.beginPath(); g.arc(p[0], p[1], core, 0, Math.PI * 2); g.fill();
       if (opts.editing && opts.numbers) {
         g.fillStyle = 'rgba(241,234,208,.55)';
@@ -596,6 +817,7 @@
     arr = arr.map(function (r) { if (r.id === rec.id) { replaced = true; return rec; } return r; });
     if (!replaced) arr.push(rec);
     var ok = writeStore(arr);
+    if (ok) savedSnap = snapshot();
     emit();
     return { ok: ok, id: rec.id };
   }
@@ -613,7 +835,8 @@
     // A fixture never exceeds its own budget: extra lights are REFUSED
     // rather than trimmed, so a hand-edited file cannot smuggle one in.
     if (state.points.length > state.budget) {
-      state.points = []; state.joins = [];
+      state.points = []; state.joins = []; state.roles = []; state.origins = [];
+      clearSelection(); clearHistory();
       return { ok: false, reason: 'fixture-exceeds-budget' };
     }
     state.name = rec.name || ''; state.hint = rec.hint || ''; state.notes = rec.notes || '';
@@ -636,7 +859,8 @@
     revealSeq = Math.max(revealSeq, state.reveal.features.length);
     revealEpoch++; revealPlay = null;
     state.approved = approvedOf(rec.approved, state);
-    pendingA = null;
+    clearSelection(); clearHistory(); tested = false; armedOpen = null;
+    savedSnap = snapshot();
     return { ok: true };
   }
 
@@ -831,6 +1055,7 @@
     if (!R) return { ok: false, reason: 'no-reveal-module' };
     var chk = R.sanitize({ durationS: durationS, features: list }, state.points.length);
     if (!chk.ok) return { ok: false, reason: chk.reasons.join(',') };
+    record();
     state.reveal = { durationS: chk.durationS, features: chk.features };
     revealForced = null;
     touch();
@@ -1031,7 +1256,7 @@
         '<div class="rvhead">' +
           '<input type="text" class="rvname" data-rv-name value="' + esc(f.name) + '" maxlength="24" title="name — a label, never shown to a child">' +
           '<select data-rv-type title="visual type">' + R.TYPES.map(function (t) { return '<option value="' + t + '"' + (t === f.type ? ' selected' : '') + '>' + t + '</option>'; }).join('') + '</select>' +
-          '<label class="rvp">at light<select data-rv-a>' + lightOptions(f.lights.a, false) + '</select></label>' +
+          '<label class="rvp">at point<select data-rv-a>' + lightOptions(f.lights.a, false) + '</select></label>' +
           '<label class="rvp">toward<select data-rv-b>' + lightOptions(f.lights.b, true) + '</select></label>' +
           '<button class="quiet" data-rv-del title="delete this feature">×</button>' +
         '</div>' +
@@ -1148,6 +1373,7 @@
         });
         if (!best) return;
         revealDrag = { id: best.id, x: q[0], y: q[1] };
+        record(); history.coalesce = true;           // one drag, one undo step
         c.setPointerCapture(ev.pointerId);
       });
       c.addEventListener('pointermove', function (ev) {
@@ -1161,7 +1387,7 @@
         var row = el('[data-rv="' + f.id + '"]');
         if (row) { var i0 = row.querySelector('[data-rv-off="0"]'), i1 = row.querySelector('[data-rv-off="1"]'); if (i0) i0.value = off[0]; if (i1) i1.value = off[1]; }
       });
-      function up() { revealDrag = null; }
+      function up() { if (revealDrag) { history.coalesce = false; unrecordIfSame(); } revealDrag = null; }
       c.addEventListener('pointerup', up); c.addEventListener('pointercancel', up);
     }
     var add = el('[data-reveal-add]'); if (add) add.addEventListener('click', function () {
@@ -1171,12 +1397,16 @@
       var name = (el('[data-reveal-add-name]') || {}).value || '';
       var r = addReveal(type, a, b, name);
       say(r.ok ? 'Added ' + r.feature.name.toLowerCase() + ' — drag its ring on the reveal preview to place it; the numbers beside it shape it.' :
-        (/no-lights/.test(r.reason) ? 'Place the figure first — a reveal feature is anchored to its lights.' : 'Not added: ' + r.reason.replace(/-/g, ' ') + '.'));
+        (/no-lights/.test(r.reason) ? 'Place the figure first — a reveal feature is anchored to its points.' : 'Not added: ' + r.reason.replace(/-/g, ' ') + '.'));
       var nm = el('[data-reveal-add-name]'); if (nm && r.ok) nm.value = '';
     });
     var dur = el('[data-reveal-duration]'); if (dur) dur.addEventListener('change', function () { setRevealDuration(dur.value); });
     var au = el('[data-reveal-authoring]'); if (au) au.addEventListener('change', function () { revealAuthoring = au.checked; revealForced = null; revealEpoch++; emit(); });
     var play = el('[data-reveal-play]'); if (play) play.addEventListener('click', function () { var r = revealStart(); say(r.ok ? '' : 'Add a reveal feature first.'); });
+    var rr = el('[data-reset-reveal]'); if (rr) rr.addEventListener('click', function () {
+      var r = resetReveal();
+      say(r.removed ? 'Reveal reset — ' + r.removed + ' feature' + (r.removed === 1 ? '' : 's') + ' removed. Points, connections and missing marks are exactly as they were. Undo brings the reveal back.' : 'No reveal features to reset.');
+    });
     var rs = el('[data-reveal-research]'); if (rs) rs.addEventListener('click', function () {
       var D = global.LabRevealData;
       if (!D || !D.fixtures) { say('The research set is not loaded.'); return; }
@@ -1211,23 +1441,34 @@
           if (sn) { u = [sn.x, sn.y]; role = sn.name || null; }
           var r = addPoint(u[0], u[1], role);
           if (!r.ok) say(overBudget()
-            ? 'The figure already has ' + state.points.length + ' lights — more than this ' + state.budget + '-light budget holds. Take some away, or choose a larger budget.'
-            : 'This budget is full — ' + state.budget + ' lights. Choose a larger budget or take one away.');
+            ? 'The figure already has ' + state.points.length + ' points — more than this ' + state.budget + '-point budget holds. Take some away, or choose a larger budget.'
+            : 'This budget is full — ' + state.budget + ' points. Choose a larger budget or take one away.');
           // Accepting a feature's suggestion brings that feature into
           // focus, so its related points appear for the next press.
           else if (role && Ref && Ref.focus && Ref.focused && Ref.focused() !== role) Ref.focus(role);
         }
       } else if (mode === 'move') {
-        if (pi !== -1) { dragging = pi; canvas.setPointerCapture(ev.pointerId); }
+        if (pi !== -1) { dragging = pi; record(); history.coalesce = true; canvas.setPointerCapture(ev.pointerId); }
       } else if (mode === 'delete') {
-        if (pi !== -1) deletePoint(pi);
+        if (pi !== -1) {
+          var dr = deletePoint(pi);
+          if (dr.ok) say('Removed point ' + pi + (dr.joinsRemoved || dr.droppedReveal.length
+            ? ' — ' + (dr.joinsRemoved ? dr.joinsRemoved + ' connection' + (dr.joinsRemoved === 1 ? '' : 's') : '') + (dr.joinsRemoved && dr.droppedReveal.length ? ' and ' : '') + (dr.droppedReveal.length ? dr.droppedReveal.length + ' reveal feature' + (dr.droppedReveal.length === 1 ? '' : 's') : '') + ' went with it. Undo brings them back.'
+            : '.'));
+        }
       } else if (mode === 'join') {
         if (pi !== -1) {
-          if (pendingA === null || pendingA === pi) { pendingA = (pendingA === pi) ? null : pi; emit(); }
-          else { toggleJoin(pendingA, pi); pendingA = null; emit(); }
+          var before = selection();
+          selectLight(pi);
+          var after = selection();
+          if (after.a !== null && after.b === null) say('Point ' + after.a + ' selected — select another point to connect them, or a connection to change it.');
+          else if (after.a === null) say('');
+          else if (after.joined) say('Connected ' + after.a + ' and ' + after.b + '. Press MISSING to leave it for the child to complete, or UNJOIN to take it away.');
+          else if (before.a !== null) say('Disconnected ' + after.a + ' and ' + after.b + '. JOIN connects them again; Undo does too.');
         } else {
           ji = joinAt(x, y, w, h);
-          if (ji !== -1) { state.joins.splice(ji, 1); emit(); }
+          if (ji !== -1) { selectJoin(ji); var sj = selection(); say('Connection ' + sj.a + '–' + sj.b + ' selected' + (sj.missing ? ' (missing)' : '') + ' — UNJOIN removes it, MISSING ' + (sj.missing ? 'restores it.' : 'leaves it for the child to complete.')); }
+          else { clearSelection(); emit(); }
         }
       } else if (mode === 'gap') {
         ji = joinAt(x, y, w, h);
@@ -1239,7 +1480,7 @@
       var q = xy(ev), u = toUnit(q[0], q[1], q[2], q[3]);
       movePoint(dragging, u[0], u[1]);
     });
-    function up() { dragging = null; }
+    function up() { if (dragging !== null) { history.coalesce = false; unrecordIfSame(); } dragging = null; }
     canvas.addEventListener('pointerup', up);
     canvas.addEventListener('pointercancel', up);
   }
@@ -1266,7 +1507,7 @@
       ['points', m.points + ' / ' + m.budget + ' (' + m.percentUsed + '%)' + (m.overBudget ? ' — EXCEEDS the selected budget by ' + m.overBudget : '')],
       ['all points placed', m.allPlaced ? 'yes' : (m.overBudget ? 'over budget' : 'no')],
       ['connections', String(m.connections)],
-      ['missing joins', String(m.missing)],
+      ['missing connections', String(m.missing)],
       ['connected components (unfinished)', String(m.components)],
       ['real validator', fmtValidator(m)]
     ];
@@ -1281,7 +1522,7 @@
       if (why) {
         why.textContent = can ? '' :
           (m.overBudget
-            ? 'The figure has ' + m.points + ' lights and the selected budget is ' + m.budget + ' — it exceeds the budget by ' + m.overBudget + '. Nothing was removed; take lights away by hand, or choose a larger budget.'
+            ? 'The figure has ' + m.points + ' points and the selected budget is ' + m.budget + ' — it exceeds the budget by ' + m.overBudget + '. Nothing was removed; take points away by hand, or choose a larger budget.'
             : m.aboveProduction
             ? 'The real Ether performs up to ' + m.productionBudget + ' lights. A ' + m.budget + '-light figure can be judged here and cannot be played there — the runtime is not changed by this tool.'
             : (m.missing === 0 ? 'Mark at least one join as missing — a figure with no gap is not unfinished.'
@@ -1297,11 +1538,23 @@
     if (why) {
       why.textContent = state.approved ? '' :
         (!state.points.length ? 'Place at least one light to have a figure to approve.'
-          : m.overBudget ? 'The figure exceeds the selected budget by ' + m.overBudget + ' — take lights away or choose a larger budget before approving.'
+          : m.overBudget ? 'The figure exceeds the selected budget by ' + m.overBudget + ' — take points away or choose a larger budget before approving.'
           : '');
     }
     var sec = el('[data-approve-section]');
     if (sec) sec.setAttribute('data-approve-state', state.approved ? 'approved' : 'unapproved');
+    var sum = el('[data-approve-summary]');
+    if (sum) {
+      var st = status();
+      sum.innerHTML = [
+        ['CREATURE', st.name || '— (unnamed)'],
+        ['POINTS', st.points + ' of ' + st.budget + (st.overBudget ? ' — over by ' + st.overBudget : '')],
+        ['CONNECTIONS', String(st.connections)],
+        ['MISSING CONNECTIONS', String(st.missing)],
+        ['REVEAL FEATURES', String(st.reveal)],
+        ['STATUS', st.state]
+      ].map(function (r) { return '<div class="mrow"><span class="mk">' + r[0] + '</span><span class="mv">' + esc(r[1]) + '</span></div>'; }).join('');
+    }
     if (!box) return;
     if (!state.approved) {
       box.hidden = true; box.innerHTML = '';
@@ -1313,7 +1566,7 @@
     box.innerHTML = '<div class="approved-head">APPROVED FIGURE</div>' +
       '<div class="mrow"><span class="mk">approved</span><span class="mv">' + esc(a.approvedAt) + '</span></div>' +
       '<div class="mrow"><span class="mk">budget</span><span class="mv">' + a.budget + '</span></div>' +
-      '<div class="mrow"><span class="mk">lights · joins · missing</span><span class="mv">' + a.points.length + ' · ' + a.joins.length + ' · ' + a.missing.length + '</span></div>' +
+      '<div class="mrow"><span class="mk">points · connections · missing</span><span class="mv">' + a.points.length + ' · ' + a.joins.length + ' · ' + a.missing.length + '</span></div>' +
       '<div class="mrow"><span class="mk">feature associations</span><span class="mv">' + (a.roles.length ? esc(a.roles.map(function (r) { return r.light + ':' + r.feature; }).join(' · ')) : '— (every light placed freehand)') + '</span></div>' +
       '<div class="mrow"><span class="mk">reveal-only features (separate section)</span><span class="mv">' + (a.reveal && a.reveal.features.length ? esc(a.reveal.features.map(function (f) { return f.name + ' (' + f.type + ')'; }).join(' · ')) + ' · ' + a.reveal.durationS + 's' : '— none') + '</span></div>' +
       '<div class="note">Frozen as authored. Nothing was activated, published or put in a pool; no hint, gap, challenge or awakening was made. Any edit to the figure clears the approval — approve again to refreeze it.</div>';
@@ -1373,7 +1626,7 @@
         var jud = r.judgement ? (r.judgement.complete || '—') + ' · ' + (r.judgement.unfinished || '—') : '—';
         return '<div class="frow' + (r.id === state.id ? ' open' : '') + '">' +
           '<span class="fb">' + r.budget + '</span>' +
-          '<span class="fi">' + (r.points || []).length + ' lights · ' + (r.joins || []).length + ' joins · ' + (r.missing || []).length + ' missing</span>' +
+          '<span class="fi">' + (r.points || []).length + ' points · ' + (r.joins || []).length + ' connections · ' + (r.missing || []).length + ' missing</span>' +
           '<span class="fj">' + esc(jud) + '</span>' +
           '<button data-open="' + r.id + '">Open</button>' +
           '<select data-dup="' + r.id + '"><option value="">Duplicate to…</option>' +
@@ -1384,7 +1637,16 @@
       return '<div class="fgroup"><div class="fname">' + esc(n) + '</div>' + rows + '</div>';
     }).join('');
     box.querySelectorAll('[data-open]').forEach(function (b) {
-      b.addEventListener('click', function () { load(b.getAttribute('data-open')); say(''); });
+      b.addEventListener('click', function () {
+        var id = b.getAttribute('data-open');
+        if (isDirty() && state.points.length && armedOpen !== id) {
+          armedOpen = id;
+          say('Opening this fixture will replace the creature you are working on, which has unsaved changes. Press Open again to replace it, or Save fixture first.');
+          return;
+        }
+        armedOpen = null;
+        var r = load(id); say(r.ok ? '' : 'Could not open it: ' + String(r.reason).replace(/-/g, ' ') + '.');
+      });
     });
     box.querySelectorAll('[data-dup]').forEach(function (s) {
       s.addEventListener('change', function () {
@@ -1411,7 +1673,7 @@
     var rows = compare(current);
     if (!rows.length) { box.innerHTML = '<div class="note">Nothing saved under that name.</div>'; return; }
     box.innerHTML = rows.map(function (r, i) {
-      return '<div class="ctile"><div class="ctitle">' + r.budget + ' lights</div>' +
+      return '<div class="ctile"><div class="ctitle">' + r.budget + ' points</div>' +
         '<canvas class="ccanvas" data-ci="' + i + '" data-state="complete"></canvas>' +
         '<canvas class="ccanvas" data-ci="' + i + '" data-state="unfinished"></canvas>' +
         '<div class="csub">' + (r.points || []).length + ' placed · ' + (r.missing || []).length + ' missing' +
@@ -1424,6 +1686,41 @@
         return { a: ab[0], b: ab[1], gap: (r.missing || []).indexOf(k) !== -1 };
       }) };
       draw(c, s, { unfinished: c.getAttribute('data-state') === 'unfinished' });
+    });
+  }
+
+  // THE STATUS STRIP, the history buttons, the Connect controls and the
+  // TEST readout — the workflow made visible. Every value here is a word
+  // a researcher reads; the validator's own reasons stay in Advanced.
+  function renderWorkflow() {
+    var st = status();
+    var n1 = el('[data-status-name]'); if (n1) n1.textContent = st.name ? st.name.toUpperCase() : 'NEW CREATURE';
+    var n2 = el('[data-status-line]'); if (n2) n2.textContent = st.line;
+    var n3 = el('[data-status-state]'); if (n3) { n3.textContent = st.state; n3.setAttribute('data-state', st.state.toLowerCase().replace(/ /g, '-')); }
+    var n4 = el('[data-status-next]'); if (n4) n4.textContent = st.next;
+    var hd = historyDepth();
+    var un = el('[data-undo]'); if (un) { un.disabled = !hd.undo; un.title = hd.undo ? 'Undo (' + hd.undo + ')' : 'Nothing to undo'; }
+    var rd = el('[data-redo]'); if (rd) { rd.disabled = !hd.redo; rd.title = hd.redo ? 'Redo (' + hd.redo + ')' : 'Nothing to redo'; }
+    var x = selection();
+    var jb = el('[data-join]'); if (jb) jb.disabled = !x.canJoin;
+    var ub = el('[data-unjoin]'); if (ub) ub.disabled = !x.canUnjoin;
+    var mb = el('[data-missing]'); if (mb) { mb.disabled = !x.canMissing; mb.textContent = x.missing ? 'Restore connection' : 'Mark missing'; }
+    var sr = el('[data-selection]');
+    if (sr) sr.textContent = x.a === null ? (mode === 'join' ? 'Nothing selected — click a point, or a connection.' : 'Choose the Connect tool, then click a point.')
+      : x.b === null ? 'Selected: point ' + x.a
+      : x.joined ? 'Selected: connection ' + x.a + '–' + x.b + (x.missing ? ' (missing — the child completes it)' : ' (connected)')
+      : 'Selected: points ' + x.a + ' and ' + x.b + ' (not connected)';
+    var rp = el('[data-reset-points]'); if (rp) rp.disabled = !state.points.length;
+    var rc = el('[data-reset-connections]'); if (rc) rc.disabled = !state.joins.length;
+    var rv = el('[data-reset-reveal]'); if (rv) rv.disabled = !state.reveal.features.length && state.reveal.durationS === 4;
+    var ts = el('[data-test-state]');
+    if (ts) {
+      var f = revealForced;
+      ts.textContent = revealPlay ? 'COME ALIVE — the reveal is playing' : f === 'unfinished' ? 'UNFINISHED — what the child first meets' : f === 'complete' ? 'COMPLETE — every connection made' : f === 'after' ? 'COME ALIVE — done; the plain creature remains' : f === 'reveal' ? 'COME ALIVE — the reveal held' : 'Authoring view — the complete creature with its reveal features';
+    }
+    doc.querySelectorAll('[data-test]').forEach(function (b) {
+      var k = b.getAttribute('data-test');
+      b.classList.toggle('on', (k === 'unfinished' && revealForced === 'unfinished') || (k === 'complete' && revealForced === 'complete') || (k === 'alive' && (!!revealPlay || revealForced === 'after' || revealForced === 'reveal')) || (k === 'authoring' && !revealForced && !revealPlay));
     });
   }
 
@@ -1451,7 +1748,8 @@
     var hn = el('[data-hint]'); if (hn && hn.value !== state.hint) hn.value = state.hint;
     var nt = el('[data-notes]'); if (nt && nt.value !== state.notes) nt.value = state.notes;
     var tz = el('[data-tease]'); if (tz) tz.checked = !!state.tease;
-    var op = el('[data-opened]'); if (op) op.textContent = state.id ? ('fixture ' + state.id) : 'unsaved figure';
+    var op = el('[data-opened]'); if (op) op.textContent = (state.id ? ('fixture ' + state.id) : 'unsaved figure') + (isDirty() && state.points.length ? ' · unsaved changes' : '');
+    renderWorkflow();
     renderMetrics();
     if (judgedEpoch !== figureEpoch) { renderJudgement(); judgedEpoch = figureEpoch; }
     renderFixtures();
@@ -1466,18 +1764,18 @@
       b.addEventListener('click', function () {
         var r = setBudget(Number(b.getAttribute('data-budget')));
         say(!r.ok ? 'Not a budget.' : r.overBudget
-          ? 'The figure has ' + r.lights + ' lights — ' + r.overBudget + ' more than this ' + state.budget + '-light budget holds. It is kept whole; nothing is trimmed for you. Take lights away by hand if you want it to fit.'
+          ? 'The figure has ' + r.lights + ' points — ' + r.overBudget + ' more than this ' + state.budget + '-point budget holds. It is kept whole; nothing is trimmed for you. Take points away by hand if you want it to fit.'
           : '');
       });
     });
     doc.querySelectorAll('[data-mode]').forEach(function (b) {
       b.addEventListener('click', function () {
-        mode = b.getAttribute('data-mode'); pendingA = null;
+        mode = b.getAttribute('data-mode'); clearSelection();
         if (mode === 'join') {
           var jr = joinInOrder();
           say(jr.lights < 2 ? 'Place two or more lights first.'
-            : jr.added ? 'Joined the lights in their order — ' + jr.added + ' new join' + (jr.added === 1 ? '' : 's') + '. Click two lights to change a join, or a line to remove it.'
-            : 'The lights are already joined in their order. Click two lights to change a join, or a line to remove it.');
+            : jr.added ? 'Joined the lights in their order — ' + jr.added + ' new join' + (jr.added === 1 ? '' : 's') + '. Click a point and another point to connect or disconnect them; click a line to select a connection, then Unjoin or Mark missing.'
+            : 'The lights are already joined in their order. Click a point and another point to connect or disconnect them; click a line to select a connection, then Unjoin or Mark missing.');
         }
         emit();
       });
@@ -1488,11 +1786,60 @@
     var hn = el('[data-hint]'); if (hn) hn.addEventListener('input', function () { state.hint = hn.value; });
     var nt = el('[data-notes]'); if (nt) nt.addEventListener('input', function () { state.notes = nt.value; });
     var tz = el('[data-tease]'); if (tz) tz.addEventListener('change', function () { state.tease = tz.checked; });
-    var rs = el('[data-reset]'); if (rs) rs.addEventListener('click', function () { reset(); say(''); });
+    // RESET EVERYTHING asks first — an inline confirmation, never a
+    // browser dialog — and says what it will remove.
+    var rs = el('[data-reset]'); if (rs) rs.addEventListener('click', function () {
+      var box = el('[data-reset-confirm-box]'); if (box) { box.hidden = false; } else { reset(); say(''); }
+    });
+    var rc = el('[data-reset-confirm]'); if (rc) rc.addEventListener('click', function () {
+      var box = el('[data-reset-confirm-box]'); if (box) box.hidden = true;
+      reset();
+      say('Started again — points, connections, missing marks and reveal are gone; the label and notes too. The reference, if one is showing, is still there.');
+    });
+    var rx = el('[data-reset-cancel]'); if (rx) rx.addEventListener('click', function () { var box = el('[data-reset-confirm-box]'); if (box) box.hidden = true; say(''); });
+    var rpt = el('[data-reset-points]'); if (rpt) rpt.addEventListener('click', function () {
+      var r = resetPoints();
+      say('Points reset' + (r.placed ? ' — the ' + r.placed + ' suggested points are placed again as the starting figure' : ' — every point removed') + '. Connections went with them' + (r.revealDropped ? ', and so did ' + r.revealDropped + ' reveal feature' + (r.revealDropped === 1 ? '' : 's') + ' that stood on them' : '') + '. Undo brings it all back.');
+    });
+    var rcn = el('[data-reset-connections]'); if (rcn) rcn.addEventListener('click', function () {
+      var r = resetConnections();
+      say(r.removed ? 'Connections reset — ' + r.removed + ' removed, every point exactly where it was, the reveal untouched. Undo brings them back.' : 'No connections to reset.');
+    });
+    var un = el('[data-undo]'); if (un) un.addEventListener('click', function () { var r = undo(); say(r.ok ? 'Undone.' + (r.undoLeft ? ' (' + r.undoLeft + ' more)' : '') : 'Nothing to undo.'); });
+    var rd = el('[data-redo]'); if (rd) rd.addEventListener('click', function () { var r = redo(); say(r.ok ? 'Redone.' : 'Nothing to redo.'); });
+    doc.addEventListener('keydown', function (ev) {
+      var t = ev.target; if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT')) return;
+      if ((ev.ctrlKey || ev.metaKey) && !ev.altKey && (ev.key === 'z' || ev.key === 'Z')) { ev.preventDefault(); if (ev.shiftKey) redo(); else undo(); }
+      else if ((ev.ctrlKey || ev.metaKey) && (ev.key === 'y' || ev.key === 'Y')) { ev.preventDefault(); redo(); }
+    });
+    var jb = el('[data-join]'); if (jb) jb.addEventListener('click', function () { var r = joinSelected(); say(r.ok ? 'Connected ' + r.selection.a + ' and ' + r.selection.b + '.' : 'Select two points that are not connected, then press JOIN.'); });
+    var ub = el('[data-unjoin]'); if (ub) ub.addEventListener('click', function () { var r = unjoinSelected(); say(r.ok ? 'Disconnected ' + r.selection.a + ' and ' + r.selection.b + '. JOIN or Undo brings it back.' : 'Select a connection first — click a line, or two connected points.'); });
+    var mb = el('[data-missing]'); if (mb) mb.addEventListener('click', function () { var r = toggleMissingSelected(); say(r.ok ? (r.missing ? 'Marked missing — the child will make this connection. It shows dashed here and is absent on the JUDGE pane.' : 'Connection restored.') : 'Select a connection first — click a line, or two connected points.'); });
+    var jo = el('[data-join-order]'); if (jo) jo.addEventListener('click', function () {
+      var jr = joinInOrder();
+      say(jr.lights < 2 ? 'Place two or more points first.' : jr.added ? 'Connected the points in their order — ' + jr.added + ' new connection' + (jr.added === 1 ? '' : 's') + '. Existing connections and missing marks were kept.' : 'The points are already connected in their order.');
+    });
+    doc.querySelectorAll('[data-test]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var k = b.getAttribute('data-test');
+        // the state is shown FIRST and the tested mark (which re-renders
+        // the strip and the readout) second, so the readout names the
+        // state that is actually on the canvas
+        if (k === 'unfinished') { revealShow('unfinished'); markTested(); say('UNFINISHED — this is what the child first meets: the missing connections are simply not there.'); }
+        else if (k === 'complete') { revealShow('complete'); markTested(); say('COMPLETE — every connection made, no reveal yet.'); }
+        else if (k === 'alive') {
+          if (state.reveal.features.length) { var r = revealStart(); markTested(); say(r.ok ? 'COME ALIVE — the reveal plays: completion, a short response, the features emerge, hold, fade. For the awakening and the roaming, press ▶ Play in Ether.' : ''); }
+          else { revealShow('complete'); markTested(); say('COME ALIVE — no reveal features yet, so the complete creature is all there is to show here. Add one in REVEAL, or press ▶ Play in Ether to see it wake and roam.'); }
+        }
+        else { revealShow(null); emit(); say(''); }
+      });
+    });
     var dm = el('[data-demo]'); if (dm) dm.addEventListener('click', function () { demoRing(); say('A neutral ring at this budget — not a creature, only the tool working.'); });
     var sv = el('[data-save]'); if (sv) sv.addEventListener('click', function () {
-      var r = save(); say(r.ok ? 'Saved as ' + r.id + '.' : (/exceeds-budget/.test(r.reason || '') ? 'Not saved: the figure exceeds the selected budget. Take lights away or choose a larger budget first — nothing is trimmed for you.' : 'Could not save — this browser refused storage.'));
+      var r = save(); say(r.ok ? 'Saved as ' + r.id + '.' : (/exceeds-budget/.test(r.reason || '') ? 'Not saved: the figure exceeds the selected budget. Take points away or choose a larger budget first — nothing is trimmed for you.' : 'Could not save — this browser refused storage.'));
     });
+    // OPEN a fixture over unsaved work asks for a second press — the
+    // current figure would be replaced, and that must never be silent.
     var nw = el('[data-new]'); if (nw) nw.addEventListener('click', function () {
       // The same figure, unsaved, so a variation can be saved beside
       // its original rather than over it.
@@ -1509,7 +1856,7 @@
     var cs = el('[data-compare-name]'); if (cs) cs.addEventListener('change', renderCompare);
     var ps = el('[data-ref-place]'); if (ps) ps.addEventListener('click', function () {
       var r = placeSuggestions();
-      say(r.ok ? (r.placed ? 'Placed ' + r.placed + ' suggested point' + (r.placed === 1 ? '' : 's') + ' as lights — yours to move, delete or add to.' : 'Every suggested place already holds a light, or the budget is full.') : 'No reference is showing — nothing to place.');
+      say(r.ok ? (r.placed ? 'Placed ' + r.placed + ' suggested point' + (r.placed === 1 ? '' : 's') + ' as points — yours to move, delete or add to.' : 'Every suggested place already holds a light, or the budget is full.') : 'No reference is showing — nothing to place.');
     });
     var ap = el('[data-approve]'); if (ap) ap.addEventListener('click', function () {
       var r = approve();
@@ -1531,6 +1878,7 @@
       // interpreter never sees them.
       var r = Host.open(cand, 'shape-' + (state.id || 'unsaved'), function () {}, 'play',
                         { hint: state.hint || '', tease: state.tease ? 'delayed' : false, reveal: revealOf() });
+      if (r.ok) markTested();
       say(r.ok ? '' : 'The browser refused the preview tab (popup blocked).');
     });
     wireReveal();
@@ -1577,7 +1925,13 @@
     toggleJoin: toggleJoin, joinInOrder: joinInOrder, toggleGap: toggleGap, reset: reset, demoRing: demoRing,
     approve: approve, exportApproved: exportApproved, APPROVED_KIND: APPROVED_KIND,
     placeSuggestions: placeSuggestions,
-    setMode: function (m) { mode = m; pendingA = null; emit(); },
+    setMode: function (m) { mode = m; clearSelection(); emit(); },
+    // the researcher workflow: history, selection, scoped resets, status
+    undo: undo, redo: redo, historyDepth: historyDepth,
+    selection: selection, selectLight: selectLight, selectJoin: selectJoin,
+    joinSelected: joinSelected, unjoinSelected: unjoinSelected, toggleMissingSelected: toggleMissingSelected,
+    resetPoints: resetPoints, resetConnections: resetConnections, resetReveal: resetReveal, resetAll: reset,
+    status: status, markTested: markTested, isDirty: isDirty,
     setName: setName, setHint: setHint, setNotes: setNotes, setTease: setTease,
     setJudgement: setJudgement, setAuthoring: setAuthoring,
     // reveal-only features (labReveal.js)

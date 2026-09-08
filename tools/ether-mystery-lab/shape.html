@@ -16,22 +16,48 @@
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--ink);
          font: 14px/1.5 -apple-system, "Segoe UI", Roboto, sans-serif; }
-  header { padding: 12px 20px; border-bottom: 1px solid var(--line);
+  header { padding: 10px 20px; border-bottom: 1px solid var(--line);
            display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; }
   header h1 { font-size: 17px; margin: 0; color: var(--gold); font-weight: 600; }
   header .sub { color: var(--dim); font-size: 12px; }
   header a { color: var(--dim); font-size: 12px; margin-left: auto; }
-  #budgetLabel { font-weight: 700; font-size: 13px; letter-spacing: .06em;
+  #budgetLabel { font-weight: 700; font-size: 12px; letter-spacing: .06em;
                  padding: 4px 10px; border-radius: 6px; background: #3a3418; color: var(--gold); }
-  main { display: grid; grid-template-columns: 300px 1fr 320px; gap: 14px;
+  /* THE STATUS STRIP — one line a researcher reads: the creature, the
+     count, the state, and the next thing to do. */
+  .status { display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+            padding: 8px 20px; border-bottom: 1px solid var(--line); background: var(--panel); }
+  .status .sname { font-weight: 700; color: var(--gold); letter-spacing: .06em; font-size: 13px; }
+  .status .sline { color: var(--ink); font-size: 13px; letter-spacing: .04em; }
+  .status .sstate { font-weight: 700; font-size: 11px; letter-spacing: .1em; padding: 3px 9px; border-radius: 6px;
+                    border: 1px solid var(--line); color: var(--dim); }
+  .status .sstate[data-state="ready-to-test"] { color: var(--mid); border-color: var(--mid); }
+  .status .sstate[data-state="ready-to-approve"] { color: var(--gold); border-color: var(--gold); }
+  .status .sstate[data-state="approved"] { color: var(--good); border-color: var(--good); }
+  .status .snext { color: var(--dim); font-size: 12px; flex: 1 1 240px; }
+  .status .snext::before { content: "next · "; letter-spacing: .06em; font-size: 11px; }
+  main { display: grid; grid-template-columns: 300px 1fr 360px; gap: 14px;
          padding: 14px 20px; align-items: start; }
-  @media (max-width: 1240px) { main { grid-template-columns: 1fr; } }
+  main > div { min-width: 0; }                 /* a long <option> must never widen a column */
+  /* THE TWO PANES STAY IN VIEW while the researcher works down the steps
+     on either side — the centre column holds nothing else, so nothing
+     ever scrolls underneath them. On one column they flow like the rest. */
+  main > div.centre { position: sticky; top: 12px; }
+  main > div.centre > section { max-height: calc(100vh - 24px); overflow: auto; margin-bottom: 0; }
+  @media (max-width: 1240px) { main > div.centre { position: static; } main > div.centre > section { max-height: none; margin-bottom: 14px; } }
+  select { min-width: 0; max-width: 100%; }
+  @media (max-width: 1240px) { main { grid-template-columns: minmax(0, 1fr); } }
   section { background: var(--panel); border: 1px solid var(--line);
             border-radius: 10px; padding: 12px; margin-bottom: 14px; }
   section h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em;
-               color: var(--dim); margin: 0 0 8px; }
+               color: var(--dim); margin: 0 0 8px; display: flex; align-items: center; gap: 8px; }
+  /* the staged workflow — a numbered step, and one sentence under it */
+  section.step h2 { color: var(--ink); }
+  .stepn { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px;
+           border-radius: 50%; background: #3a3418; color: var(--gold); font-size: 11px; font-weight: 700; }
+  .lead { color: var(--dim); font-size: 12px; margin: -4px 0 8px; }
   label { display: block; margin: 8px 0 2px; color: var(--dim); font-size: 12px; }
-  input[type=text], select, textarea {
+  input[type=text], input[type=password], select, textarea {
     width: 100%; background: var(--panel2); color: var(--ink);
     border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; font: inherit; }
   textarea { min-height: 54px; font-size: 12px; }
@@ -41,12 +67,14 @@
   button.on { border-color: var(--gold); color: var(--gold); background: #2a2a1e; }
   button.primary { background: #3a3418; border-color: var(--gold); color: var(--gold); font-weight: 600; }
   button.quiet { color: var(--dim); font-size: 12px; padding: 4px 8px; }
+  button.danger { border-color: #6b2b2b; color: var(--warn); }
   button:disabled { opacity: .45; cursor: default; }
   .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 6px 0; }
   .note { color: var(--dim); font-size: 12px; line-height: 1.45; }
   .say { color: var(--mid); font-size: 12px; margin: 6px 0; min-height: 1.2em; }
   .stage { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   .pane h3 { font-size: 11px; letter-spacing: .08em; color: var(--dim); margin: 0 0 6px; text-transform: uppercase; }
+  .pane h3 b { color: var(--gold); }
   canvas.figure { width: 100%; aspect-ratio: 1 / 1; display: block; border-radius: 10px;
                   border: 1px solid var(--line); cursor: crosshair; touch-action: none; }
   canvas.figure.readonly { cursor: default; }
@@ -72,6 +100,8 @@
   .csub { color: var(--dim); font-size: 11px; margin-top: 6px; }
   canvas.ccanvas { width: 100%; aspect-ratio: 1 / 1; display: block; border-radius: 6px; margin-bottom: 6px; }
   details summary { cursor: pointer; color: var(--dim); font-size: 12px; }
+  details.adv { border-top: 1px dashed var(--line); margin-top: 8px; padding-top: 6px; }
+  details.adv > summary { letter-spacing: .06em; text-transform: uppercase; font-size: 11px; }
   /* CREATE FROM CREATURE — the reference underlay sits UNDER the editor
      canvas and never receives a pointer; the editor stays on top. */
   .pane { position: relative; }
@@ -112,6 +142,9 @@
   .approved { border: 1px solid var(--good); border-radius: 8px; padding: 8px 10px; margin: 6px 0; }
   .approved-head { color: var(--good); font-weight: 700; letter-spacing: .08em; font-size: 12px; margin-bottom: 4px; }
   [data-approve-state="approved"] h2 { color: var(--good); }
+  .summary { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 12px; margin: 6px 0 8px; }
+  .summary .sk { color: var(--dim); letter-spacing: .06em; font-size: 11px; }
+  .summary .sv { color: var(--ink); font-weight: 600; }
   body.over-budget #budgetLabel { color: var(--warn); border-color: var(--warn); }
   [data-budget] { min-width: 0; padding: 6px 9px; }
   .bp-focus { background: none; border: none; padding: 0; color: var(--ink); font: inherit; font-weight: 700; cursor: pointer; text-align: left; }
@@ -153,21 +186,104 @@
   .rvp.rvb { flex-direction: row; align-items: center; gap: 4px; align-self: end; }
   .rvs { font-size: 11px; } .rvs.have { opacity: .45; }
   .rv-status { font-size: 11px; color: var(--dim); letter-spacing: .04em; }
+  .sel { font-size: 12px; color: var(--mid); min-height: 1.2em; margin: 4px 0; }
+  .confirm { border: 1px solid var(--warn); border-radius: 8px; padding: 8px 10px; margin: 6px 0; }
+  .confirm[hidden] { display: none; }
+  .testline { font-size: 12px; color: var(--gold); letter-spacing: .04em; margin: 4px 0; }
+  /* a phone: one column, the two panes stacked, controls wrapping — the
+     media rules come LAST so they win the cascade (a lesson this file has
+     already learned once, in the Ether's own stylesheet) */
+  @media (max-width: 640px) {
+    main { padding: 10px; } header, .status { padding-left: 10px; padding-right: 10px; }
+    .stage { grid-template-columns: 1fr; }
+    .row button { flex: 1 1 auto; }
+    .rvhead input.rvname, input[data-reveal-add-name] { width: 100% !important; }
+    select, .frow select, .rvp select { max-width: 100%; }
+    textarea, input { max-width: 100%; }
+  }
 </style>
 </head>
 <body>
 <header>
   <h1>✏️ Creature Shape Lab</h1>
-  <span class="sub">research instrument — draw a figure in the Ether's own language, judge it yourself. Never child-facing.</span>
+  <span class="sub">research instrument — draw a creature in the Ether's own language, judge it yourself. Never child-facing.</span>
   <span id="budgetLabel" data-budget-label>TESTING 8 POINTS</span>
   <a href="gallery.html">🔬 Candidate Gallery</a>
   <a href="index.html" style="margin-left:0">← Ether Mystery Lab</a>
 </header>
+<div class="status" data-status>
+  <span class="sname" data-status-name>NEW CREATURE</span>
+  <span class="sline" data-status-line>0 POINTS</span>
+  <span class="sstate" data-status-state data-state="building">BUILDING</span>
+  <span class="snext" data-status-next>Name a creature and generate a reference, or place points by hand.</span>
+</div>
 
 <main>
-<div><!-- left: budget, tools, create-from-creature, figure metadata -->
-  <section>
-    <h2>Point budget</h2>
+<div><!-- left: CREATE → SHAPE → CONNECT -->
+  <section class="step" data-step="create" data-ref-section data-ref-outcome="none">
+    <h2><span class="stepn">1</span> Create</h2>
+    <div class="lead">Name a creature. The reference helps you see it; your points become the Ether figure.</div>
+    <label>Creature</label>
+    <div class="row">
+      <input type="text" data-ref-subject placeholder="e.g. Tiger" autocomplete="off" maxlength="40" style="flex:1 1 140px">
+      <button data-ref-generate class="primary">Generate reference</button>
+    </div>
+    <label>Idea — optional, one line: what you hope the creature feels like</label>
+    <input type="text" data-ref-idea placeholder="e.g. heavy and old, all mane, looking straight at you" autocomplete="off" maxlength="200">
+    <div class="say ref-status" data-ref-status></div>
+    <div class="row" style="margin-top:8px">
+      <button data-ref-toggle disabled>REFERENCE — none</button>
+      <button data-ref-another disabled class="quiet">Try another interpretation</button>
+      <button data-ref-restore disabled class="quiet">Bring back the previous one</button>
+      <button data-ref-discard disabled class="quiet">Discard reference</button>
+    </div>
+    <div class="note"><b>REFERENCE ON</b> draws the outline and the suggested points under your lights; <b>OFF</b> shows the Ether figure alone — your points and connections stay exactly where they are either way. The reference takes no clicks, is never on the JUDGE pane, and never travels with the creature.</div>
+    <div class="srclabel" style="margin-top:10px">Reference source</div>
+    <div class="row" data-ref-source-row>
+      <button data-conn-mode="fixture" class="on">Fixture</button>
+      <button data-conn-mode="endpoint">LLM — Endpoint</button>
+      <button data-conn-mode="direct">LLM — Direct (dev)</button>
+    </div>
+    <div class="note conn-status" data-conn-status></div>
+    <div class="note" data-ref-source-note>Fixture sends nothing anywhere and answers with ONE generic body plan for every subject — the pipeline, never the creature. Choose an LLM source for a real reference.</div>
+    <div class="note" data-ref-source></div>
+    <details class="adv">
+      <summary>Advanced — connection, research set, what happened</summary>
+      <div data-conn-endpoint-fields hidden>
+        <label>lab-generate function URL</label>
+        <input type="text" data-conn-url placeholder="https://&lt;project&gt;.supabase.co/functions/v1/lab-generate" autocomplete="off">
+        <label>Session access token (administrator)</label>
+        <input type="password" data-conn-token autocomplete="off">
+        <div class="note">The deployed relay. The provider key lives in the function's own environment; the caller must be in <code>platform_admins</code>. Test connection reports the live build, whether a provider key is configured, and the model.</div>
+      </div>
+      <div data-conn-direct-fields hidden>
+        <div class="warnbox">Development only. The key is held in memory for this page and nowhere else — never stored, never exported, never logged. Clear it when you are done.</div>
+        <label>Your provider API key</label>
+        <input type="password" data-conn-key autocomplete="off" placeholder="sk-…">
+        <label>Model</label>
+        <input type="text" data-conn-model value="gpt-4.1-mini" autocomplete="off">
+      </div>
+      <div class="row" data-conn-actions hidden>
+        <button data-conn-test class="quiet">Test connection</button>
+        <button data-conn-clear class="quiet">Disconnect / clear</button>
+      </div>
+      <div class="row" style="margin-top:6px">
+        <label style="margin:0;flex:0 0 auto">Translation research set</label>
+        <select data-ref-research style="flex:1 1 120px"></select>
+        <button data-ref-research-load class="quiet">Load constructed blueprint</button>
+      </div>
+      <div class="note">Hand-written blueprints with an Ether interpretation, for judging the translation layer where no model is reachable. Labelled CONSTRUCTED everywhere they show — never a fixture, never called generated. The idea line travels as its own line under the subject, never as the subject; plain words and punctuation, nothing else is sent.</div>
+      <details data-ref-trace-panel>
+        <summary>What happened on the last generation</summary>
+        <div data-ref-trace class="trace"></div>
+      </details>
+    </details>
+  </section>
+
+  <section class="step" data-step="shape">
+    <h2><span class="stepn">2</span> Shape</h2>
+    <div class="lead">Choose how many points, then add, move and delete them over the reference.</div>
+    <div class="srclabel">Points</div>
     <div class="row">
       <button data-budget="8" class="on">8</button>
       <button data-budget="10">10</button>
@@ -176,148 +292,51 @@
       <button data-budget="18">18</button>
       <button data-budget="20">20</button>
     </div>
-    <div class="note">8 is the production budget; 10–20 are Lab authoring budgets, judged here and refused by the real validator beside the figure. A budget is an authoring target: shrinking it under a bigger figure keeps every light and says the figure <b>exceeds</b> it. Nothing is trimmed, and nothing here changes the runtime.</div>
-  </section>
-
-  <section>
-    <h2>Tool</h2>
+    <div class="note">8 is what the Ether performs today; 10–20 are research budgets, judged here and shown as refused beside the figure. Changing the budget never removes a point: shrink it under a bigger figure and every point stays, and the figure is marked as <b>exceeding</b> it until you take points away yourself.</div>
+    <div class="row" style="margin-top:8px">
+      <label style="margin:0"><input type="checkbox" data-ref-suggest checked disabled> suggested points</label>
+      <label style="margin:0"><input type="checkbox" data-ref-labels checked disabled> labels</label>
+      <button data-ref-place class="quiet">Place suggested points</button>
+    </div>
+    <div class="note">Suggested points are places on the reference — a head, a shoulder, a wing tip — ranked by what the blueprint says matters and cut to the budget. The budgeted ones are placed as your starting figure when the reference arrives and when the budget grows; they are real points from then on, yours to move, delete or add to. A point you delete stands as a faint mark again until you accept it back (a click near it) or press <b>Place suggested points</b>.</div>
+    <div class="srclabel" style="margin-top:8px">Tool</div>
     <div class="row">
       <button data-mode="add" class="on">Add</button>
       <button data-mode="move">Move</button>
       <button data-mode="delete">Delete</button>
-      <button data-mode="join">Join</button>
-      <button data-mode="gap">Gap</button>
     </div>
-    <div class="note">
-      <b>Add</b> — click empty sky to place a light. <b>Move</b> — drag a light.
-      <b>Delete</b> — click a light. <b>Join</b> — pressing it joins the lights in their order (1→2→3…), adding only the joins that are missing and removing nothing; then click one light and another to change a join (again to remove; or click a line to remove it).
-      <b>Gap</b> — click a line to mark it missing; click again to restore.
-    </div>
+    <div class="note"><b>Add</b> — click empty sky. <b>Move</b> — drag a point; its connections and reveal features follow. <b>Delete</b> — click a point; the connections on it go with it.</div>
     <div class="row">
-      <label style="margin:0"><input type="checkbox" data-numbers checked> show light numbers</label>
+      <button data-undo disabled>↶ Undo</button>
+      <button data-redo disabled>↷ Redo</button>
+      <button data-reset-points class="quiet" disabled>Reset points</button>
+      <label style="margin:0 0 0 auto"><input type="checkbox" data-numbers checked> numbers</label>
     </div>
-    <div class="row">
-      <button data-reset>Reset</button>
-      <button data-demo class="quiet">Neutral demo ring</button>
-    </div>
-    <div class="note">Joins are straight. The Ether figure system has no curved connection, so none is offered here.</div>
+    <div class="note">Undo and Redo cover every point, connection, missing mark and reveal edit (Ctrl/⌘ Z · Shift Z). <b>Reset points</b> removes every point — and with them every connection and every reveal feature standing on one — then places the suggested points again if a reference is showing. Undo brings it all back.</div>
   </section>
 
-  <section data-ref-section data-ref-outcome="none">
-    <h2>Create from creature</h2>
-    <div class="srclabel">Reference source</div>
-    <div class="row" data-ref-source-row>
-      <button data-conn-mode="fixture" class="on">Fixture</button>
-      <button data-conn-mode="endpoint">LLM — Endpoint</button>
-      <button data-conn-mode="direct">LLM — Direct (dev)</button>
-    </div>
-    <div class="note conn-status" data-conn-status></div>
-    <div data-conn-endpoint-fields hidden>
-      <label>lab-generate function URL</label>
-      <input type="text" data-conn-url placeholder="https://&lt;project&gt;.supabase.co/functions/v1/lab-generate" autocomplete="off">
-      <label>Session access token (administrator)</label>
-      <input type="password" data-conn-token autocomplete="off">
-      <div class="note">The deployed relay. The provider key lives in the function's own environment; the caller must be in <code>platform_admins</code>. Test connection reports the live build, whether a provider key is configured, and the model.</div>
-    </div>
-    <div data-conn-direct-fields hidden>
-      <div class="warnbox">Development only. The key is held in memory for this page and nowhere else — never stored, never exported, never logged. Clear it when you are done.</div>
-      <label>Your provider API key</label>
-      <input type="password" data-conn-key autocomplete="off" placeholder="sk-…">
-      <label>Model</label>
-      <input type="text" data-conn-model value="gpt-4.1-mini" autocomplete="off">
-    </div>
-    <div class="row" data-conn-actions hidden>
-      <button data-conn-test class="quiet">Test connection</button>
-      <button data-conn-clear class="quiet">Disconnect / clear</button>
-    </div>
-    <div class="note" data-ref-source-note>Fixture sends nothing anywhere and answers with ONE generic body plan for every subject — the pipeline, never the creature. Choose an LLM source for a real reference.</div>
-
-    <label>Creature or subject — anything</label>
+  <section class="step" data-step="connect">
+    <h2><span class="stepn">3</span> Connect</h2>
+    <div class="lead">Join the points into a creature. Mark the connections the child will make as <b>missing</b>.</div>
     <div class="row">
-      <input type="text" data-ref-subject placeholder="e.g. Tiger" autocomplete="off" maxlength="40" style="flex:1 1 140px">
-      <button data-ref-generate class="primary">Generate reference</button>
+      <button data-mode="join">Connect</button>
+      <button data-mode="gap">Missing</button>
+      <button data-join-order class="quiet">Connect in order</button>
     </div>
-    <label>Author idea — optional, one line: what you hope the figure feels like</label>
-    <input type="text" data-ref-idea placeholder="e.g. heavy and old, all mane, looking straight at you" autocomplete="off" maxlength="200">
-    <div class="note">Semantic only. It travels as its own line under the subject, never as the subject, and colours the assistant's <b>Ether interpretation</b> and reveal suggestions. Plain words and punctuation; nothing else is sent.</div>
-    <div class="row" style="margin-top:6px">
-      <label style="margin:0;flex:0 0 auto">Translation research set</label>
-      <select data-ref-research style="flex:1 1 120px"></select>
-      <button data-ref-research-load class="quiet">Load constructed blueprint</button>
-    </div>
-    <div class="note">Hand-written blueprints with an Ether interpretation, for judging the translation layer where no model is reachable. Labelled CONSTRUCTED everywhere they show — never a fixture, never called generated.</div>
-    <div class="say ref-status" data-ref-status></div>
-    <div class="note" data-ref-source></div>
-    <details data-ref-trace-panel>
-      <summary>What happened on the last generation</summary>
-      <div data-ref-trace class="trace"></div>
-    </details>
-    <div class="row" style="margin-top:8px">
-      <button data-ref-toggle disabled>REFERENCE — none</button>
-      <button data-ref-another disabled class="quiet">Try another interpretation</button>
-      <button data-ref-restore disabled class="quiet">Bring back the previous one</button>
-      <button data-ref-discard disabled class="quiet">Discard reference</button>
-      <button data-ref-place class="quiet">Place suggested points</button>
-    </div>
+    <div class="note"><b>Connect</b> — pressing it connects the points in their order (1→2→3…), adding only what is not yet there and removing nothing. Then click a point and another point: not connected → connected; connected → disconnected. Click a line to select that connection. <b>Missing</b> — click a line to mark it as a connection the child makes (dashed on AUTHOR, absent on JUDGE); click again to restore it. Connections are straight; the Ether figure system has no curved connection, so none is offered here.</div>
+    <div class="sel" data-selection>Choose the Connect tool, then click a point.</div>
     <div class="row">
-      <label style="margin:0"><input type="checkbox" data-ref-labels checked disabled> feature labels</label>
-      <label style="margin:0"><input type="checkbox" data-ref-suggest checked disabled> suggested points</label>
+      <button data-join disabled>Join</button>
+      <button data-unjoin disabled>Unjoin</button>
+      <button data-missing disabled>Mark missing</button>
+      <button data-reset-connections class="quiet" disabled>Reset connections</button>
     </div>
-    <div class="note">The <b>Creature Outline Reference</b> is a simple monochrome silhouette to draw over — composed from the blueprint's features as a visual authoring guide, never the creature. It is drawn under your lights, takes no clicks, is never on the unfinished pane, and has no place in a fixture, a candidate, the preview or the Ether. <b>Suggested points</b> are marked places on the outline — each one a feature or a structural spot (a head, a shoulder, a wing tip, a wing root) — ranked by how diagnostic the blueprint says the feature is, and cut to the budget you have chosen: change the budget and they are recomputed. The budgeted ones are <b>placed as your starting figure</b> when the reference arrives and when the budget grows — real lights, each carrying its feature's name, yours to move, delete or add to; joins and gaps are never made for you, and a light you delete stands as a mark again until you accept it back (a click near it) or press <b>Place suggested points</b>. Choose a feature in the blueprint panel (or accept one of its points) to see that feature's related points in gold. Turn the reference OFF to judge the Ether figure alone: the outline and every suggestion go, your lights and joins stay. A failed or rejected LLM result never becomes a Fixture and never replaces the reference you had.</div>
-    <details><summary>The flow, in ten steps</summary>
-    <ol class="flow">
-      <li>Enter a creature</li><li>Generate a reference</li><li>Choose a budget</li>
-      <li>Place points over the reference</li><li>Move points</li><li>Join points</li>
-      <li>Toggle the reference OFF</li><li>Judge</li><li>Optionally switch budget</li><li>Approve the figure, then save the fixture</li>
-    </ol>
-    </details>
+    <div class="note"><b>Reset connections</b> removes every connection and missing mark; every point stays exactly where it is. Undo brings them back.</div>
   </section>
-
-  <section>
-    <h2>Researcher metadata</h2>
-    <label>Creature name (never rendered, never in a candidate)</label>
-    <input type="text" data-name placeholder="e.g. Falcon" autocomplete="off">
-    <label>Leading hint for the preview (optional — do not name the creature)</label>
-    <input type="text" data-hint placeholder="Something is waiting…" autocomplete="off">
-    <label>Notes</label>
-    <textarea data-notes></textarea>
-    <div class="row" style="margin-top:8px">
-      <button data-save class="primary">Save fixture</button>
-      <button data-new class="quiet">Save as new…</button>
-      <span class="note" data-opened>unsaved figure</span>
-    </div>
-    <div class="say" data-say hidden></div>
-  </section>
-</div>
-
-<div><!-- centre: the two states -->
-  <section>
-    <div class="stage">
-      <div class="pane">
-        <h3>Complete — as drawn <span class="note" style="text-transform:none;letter-spacing:0" data-outline-flag hidden>· over the creature outline</span></h3>
-        <canvas class="figure" data-canvas-complete></canvas>
-      </div>
-      <div class="pane">
-        <h3>Unfinished — missing joins removed <span class="note" style="text-transform:none;letter-spacing:0" data-suggest-flag hidden>· empty suggested places marked faintly</span></h3>
-        <canvas class="figure readonly" data-canvas-unfinished></canvas>
-      </div>
-    </div>
-    <div class="note" style="margin-top:8px">Both are drawn at one fixed scale for every budget, so figures stay comparable. A missing join shows dashed on the left and is simply absent on the right — which is exactly what a child would meet. While a reference is in use the right pane is the starting figure on the bare sky — the suggested points placed as lights — and any suggested place you have left empty is marked faintly there.</div>
-  </section>
-
-  <section>
-    <h2>Play in Ether</h2>
-    <div class="row">
-      <button data-play class="primary" disabled>▶ Play in Ether</button>
-      <label style="margin:0"><input type="checkbox" data-tease> delayed dashed-line aid (off by default)</label>
-    </div>
-    <div class="note" data-play-why></div>
-    <div class="note">Opens the real Ether preview with this figure's exact points, joins and gaps: two-tap interaction, completion, and the existing awakening. The creature name never travels; the hint travels beside the figure. Available only where the real Ether can perform the figure.</div>
-  </section>
-
-  <section data-reveal-section>
-    <h2>Reveal-only features <span class="rv-status" data-reveal-count>0 features</span></h2>
-    <div class="note"><b>DOTS + JOINS are the challenge. These are the payoff.</b> A reveal-only feature appears ONLY after the figure is completely solved, stays a few seconds, and fades. It is not a star, not a join, not a gap — it is never connected by a child, never counted toward the budget, never part of completion, and never in the candidate the Ether performs. It is anchored to <em>your</em> lights (move a light and it follows), never to the reference outline.</div>
+  <section class="step" data-step="reveal" data-reveal-section>
+    <h2><span class="stepn">4</span> Reveal <span class="rv-status" data-reveal-count>0 features</span></h2>
+    <div class="lead"><b>PUZZLE</b> = points + connections, what the child completes. <b>REVEAL</b> = the payoff that appears only once the puzzle is whole.</div>
+    <div class="note">A reveal feature appears ONLY after the creature is completely solved, stays a few seconds, and fades. It is not a point, not a connection, not a missing mark — never connected by a child, never counted toward the budget, never part of completion. It is anchored to <em>your</em> points (move a point and it follows), never to the reference.</div>
     <div class="row" data-reveal-suggest hidden></div>
     <div data-reveal-list></div>
     <div class="row" style="margin-top:8px">
@@ -330,56 +349,107 @@
         <option value="glow">glow — one soft light (an eye, a lantern)</option>
         <option value="motes">motes — a few drifting lights</option>
       </select>
-      <label class="rvp">at light<select data-reveal-add-a style="width:auto"></select></label>
+      <label class="rvp">at point<select data-reveal-add-a style="width:auto"></select></label>
       <label class="rvp">toward<select data-reveal-add-b style="width:auto"></select></label>
       <input type="text" data-reveal-add-name placeholder="name (e.g. mane)" maxlength="24" autocomplete="off" style="width:140px">
       <button data-reveal-add>+ Add feature</button>
     </div>
     <div class="row">
-      <button data-reveal-play class="primary" disabled>▶ Play reveal</button>
       <label class="rvp" style="flex-direction:row;align-items:center;gap:6px">hold for <input type="number" data-reveal-duration value="4" min="1.5" max="10" step="0.5" style="width:60px"> seconds</label>
       <label style="margin:0"><input type="checkbox" data-reveal-authoring checked> show features while authoring</label>
-      <button data-reveal-research class="quiet" title="import the six research creatures with their reveal features as fixtures">Load research set</button>
+      <button data-reset-reveal class="quiet" disabled>Reset reveal</button>
     </div>
-    <canvas class="reveal" data-canvas-reveal></canvas>
-    <div class="note" style="margin-top:6px"><b>Reveal preview</b> — the complete figure on its own sky. While authoring, the features stand at full light with a small ring at each one's origin: drag the ring to move it, and shape it with its numbers. ▶ Play reveal runs the whole sequence: completion → a short response → the features emerge → hold → fade → the plain figure remains. Nothing on screen counts the time and nothing in the Ether does; the hold is simply how long they stay. Turn off <em>show features while authoring</em> to see the plain complete figure here. The two panes above never show them, and the unfinished figure never can.</div>
+    <div class="note">Edit a feature in its row — drag its ring on the preview below to move it, shape it with its numbers, delete it with ✕. <b>Reset reveal</b> removes every reveal feature; points and connections are untouched. Undo brings them back.</div>
   </section>
 
-  <section data-approve-section data-approve-state="unapproved">
-    <h2>Approve figure</h2>
+</div>
+
+<div class="centre"><!-- centre: AUTHOR / JUDGE, always in view -->
+  <section>
+    <div class="stage">
+      <div class="pane">
+        <h3><b>Author</b> — complete, as drawn <span class="note" style="text-transform:none;letter-spacing:0" data-outline-flag hidden>· over the creature outline</span></h3>
+        <canvas class="figure" data-canvas-complete></canvas>
+      </div>
+      <div class="pane">
+        <h3><b>Judge</b> — unfinished, missing connections removed <span class="note" style="text-transform:none;letter-spacing:0" data-suggest-flag hidden>· empty suggested places marked faintly</span></h3>
+        <canvas class="figure readonly" data-canvas-unfinished></canvas>
+      </div>
+    </div>
+    <div class="note" style="margin-top:8px"><b>AUTHOR</b> is where you work: the reference underneath, your points and connections on top, a missing connection dashed. <b>JUDGE</b> is what a child meets: no reference, no outline, and a missing connection simply absent. Both are drawn at one fixed scale for every budget, so creatures stay comparable. While a reference is showing, any suggested place you have left empty is marked faintly on JUDGE.</div>
+    <div class="say" data-say hidden></div>
+  </section>
+
+</div>
+
+<div><!-- right: TEST → APPROVE → reset, then blueprint, judgement, fixtures, advanced -->
+  <section class="step" data-step="test">
+    <h2><span class="stepn">5</span> Test</h2>
+    <div class="lead">See the three states a child sees. Testing changes nothing you authored.</div>
     <div class="row">
-      <button data-approve class="primary" disabled>✓ Approve figure</button>
-      <button data-approved-export class="quiet">Show approved artifact</button>
+      <button data-test="unfinished">Unfinished</button>
+      <button data-test="complete">Complete</button>
+      <button data-test="alive">Come alive</button>
+      <button data-test="authoring" class="quiet on">Back to authoring</button>
+    </div>
+    <div class="testline" data-test-state>Authoring view — the complete creature with its reveal features</div>
+    <canvas class="reveal" data-canvas-reveal></canvas>
+    <div class="note" style="margin-top:6px"><b>Unfinished</b> — the connections marked missing are not there. <b>Complete</b> — every connection made, before any reveal. <b>Come alive</b> — completion, a short response, the reveal features emerge, hold, fade, and the plain creature remains. Nothing on screen counts the time and nothing in the Ether does.</div>
+    <div class="row" style="margin-top:8px">
+      <button data-play class="primary" disabled>▶ Play in Ether</button>
+      <label style="margin:0"><input type="checkbox" data-tease> delayed dashed-line aid (off by default)</label>
+    </div>
+    <div class="note" data-play-why></div>
+    <div class="note">Opens the real Ether preview with this creature's exact points, connections and missing marks: the two-tap interaction, completion, the awakening and the roaming. The creature name never travels; the hint travels beside it. Available only where the real Ether can perform the figure.</div>
+  </section>
+
+  <section class="step" data-step="approve" data-approve-section data-approve-state="unapproved">
+    <h2><span class="stepn">6</span> Approve</h2>
+    <div class="lead">Freeze the creature as the research artifact. Any later edit clears the approval.</div>
+    <div class="summary" data-approve-summary>
+      <span class="sk">CREATURE</span><span class="sv" data-sum="creature">—</span>
+      <span class="sk">POINTS</span><span class="sv" data-sum="points">0</span>
+      <span class="sk">CONNECTIONS</span><span class="sv" data-sum="connections">0</span>
+      <span class="sk">MISSING CONNECTIONS</span><span class="sv" data-sum="missing">0</span>
+      <span class="sk">REVEAL FEATURES</span><span class="sv" data-sum="reveal">0</span>
+      <span class="sk">STATUS</span><span class="sv" data-sum="status">BUILDING</span>
+    </div>
+    <label>Creature name (never rendered, never travels)</label>
+    <input type="text" data-name placeholder="e.g. Falcon" autocomplete="off">
+    <label>Leading hint for the Ether preview (optional — do not name the creature)</label>
+    <input type="text" data-hint placeholder="Something is waiting…" autocomplete="off">
+    <label>Notes</label>
+    <textarea data-notes></textarea>
+    <div class="row" style="margin-top:8px">
+      <button data-approve class="primary" disabled>✓ Approve creature</button>
+      <button data-save class="primary">Save fixture</button>
+      <button data-new class="quiet">Save as new…</button>
+      <span class="note" data-opened>unsaved figure</span>
     </div>
     <div class="note" data-approve-why></div>
     <div class="approved" data-approved hidden></div>
-    <textarea data-approved-out hidden readonly style="min-height:90px;font-family:ui-monospace,monospace;font-size:11px"></textarea>
-    <div class="note">Freezes the authored figure as the research artifact: points, joins, gaps, the selected budget, and which feature each light was accepted for — the <b>puzzle geometry</b> — and, in its own clearly separate section, the <b>reveal-only features</b> with their placement, appearance and hold. Never the outline, the sketch, the blueprint or anything private. Approving activates nothing and publishes nothing — no hint, no gaps, no challenge, no completion, no awakening, no pool entry. Saved with the fixture; any later edit clears it.</div>
+    <div class="note">Approving freezes the puzzle — points, connections, missing marks, the budget, and which feature each point stands for — and, in its own section, the reveal features. Never the reference, the blueprint or anything private. It activates nothing and publishes nothing: no child meets it, and nothing here reaches the Ether. Saved with the fixture.</div>
   </section>
 
   <section>
-    <h2>Compare across budgets</h2>
+    <h2>Reset everything</h2>
     <div class="row">
-      <select data-compare-name style="width:auto"></select>
+      <button data-reset class="danger">Reset everything</button>
     </div>
-    <div class="compare" data-compare></div>
+    <div class="confirm" data-reset-confirm-box hidden>
+      <div style="margin-bottom:6px">Start this creature again? All points, connections and reveal changes will be removed.</div>
+      <div class="row">
+        <button data-reset-confirm class="danger">Yes, start again</button>
+        <button data-reset-cancel class="quiet">Keep working</button>
+      </div>
+    </div>
+    <div class="note">Points, connections, missing marks and the reveal all go, and so do the name, hint and notes; the reference stays if one is showing. For less than everything: <b>Reset points</b> (step 2), <b>Reset connections</b> (step 3), <b>Reset reveal</b> (step 4).</div>
   </section>
-</div>
-
-<div><!-- right: blueprint, metrics, judgement, fixtures -->
   <section>
     <h2>Reference blueprint</h2>
     <div class="legend"><b>BLUEPRINT</b> = what the creature is · <b>ETHER INTERPRETATION</b> = how it should feel abstracted · <b>OUTLINE</b> = visual reference · <b>SUGGESTED POINTS</b> = landmarks · <b>ETHER FIGURE</b> = your own creation · <b>REVEAL</b> = temporary detail</div>
     <div data-ref-panel></div>
-    <div class="row" style="margin-top:6px"><button data-ref-copy class="quiet" disabled>Show blueprint JSON</button></div>
-    <textarea data-ref-json hidden readonly style="min-height:90px;font-family:ui-monospace,monospace;font-size:11px"></textarea>
-    <div class="note" style="margin-top:6px">Semantic help only: what makes the subject recognisable and where each budget is best spent. The outline is composed FROM these features as a visual guide; nothing here is a score, and nothing here becomes geometry unless you place it. The <b>Ether interpretation</b> is art direction in words — character, gesture, how the masses relate, what to exaggerate, what must survive, what not to draw literally, rhythm, movement — and it may only re-order the suggested points and keep a reveal-only characteristic out of them; it never places a light and never runs the reveal.</div>
-  </section>
-
-  <section>
-    <h2>Live metrics</h2>
-    <div data-metrics></div>
-    <div class="note" style="margin-top:6px">Facts only. There is no recognisability score and nothing here asks a model — that judgement is yours, below.</div>
+    <div class="note" style="margin-top:6px">The blueprint tells us what matters; the reference helps us see it; your points become the Ether figure. Nothing here is a score, and nothing here becomes geometry unless you place it. Choose a feature to see its related points in gold.</div>
   </section>
 
   <section>
@@ -391,29 +461,63 @@
   <section>
     <h2>Fixtures</h2>
     <div data-fixtures></div>
-    <details style="margin-top:8px">
+    <div class="note" style="margin-top:6px">Fixtures live in this browser only — research artifacts, never the production pool. Opening one over unsaved work asks for a second press.</div>
+  </section>
+
+  <section>
+    <h2>Advanced / research details</h2>
+    <details class="adv" open>
+      <summary>Live metrics</summary>
+      <div data-metrics></div>
+      <div class="note" style="margin-top:6px">Facts only. There is no recognisability score and nothing here asks a model.</div>
+    </details>
+    <details class="adv">
+      <summary>Compare across budgets</summary>
+      <div class="row"><select data-compare-name style="width:auto"></select></div>
+      <div class="compare" data-compare></div>
+    </details>
+    <details class="adv">
+      <summary>Blueprint JSON</summary>
+      <div class="row" style="margin-top:6px"><button data-ref-copy class="quiet" disabled>Show blueprint JSON</button></div>
+      <textarea data-ref-json hidden readonly style="min-height:90px;font-family:ui-monospace,monospace;font-size:11px"></textarea>
+      <div class="note">The Ether interpretation is art direction in words — character, gesture, what to exaggerate, what must survive, what not to draw literally — and it may only re-order the suggested points and keep a reveal-only characteristic out of them; it never places a point and never runs the reveal.</div>
+    </details>
+    <details class="adv">
+      <summary>Approved artifact</summary>
+      <div class="row"><button data-approved-export class="quiet">Show approved artifact</button></div>
+      <textarea data-approved-out hidden readonly style="min-height:90px;font-family:ui-monospace,monospace;font-size:11px"></textarea>
+    </details>
+    <details class="adv">
       <summary>Export / import</summary>
       <div class="row"><button data-export class="quiet">Export all as JSON</button></div>
       <textarea data-export-out hidden style="min-height:120px;font-family:ui-monospace,monospace;font-size:11px"></textarea>
       <label>Paste fixtures JSON to import</label>
       <textarea data-import-in style="min-height:60px;font-family:ui-monospace,monospace;font-size:11px"></textarea>
       <div class="row"><button data-import class="quiet">Import</button></div>
+      <div class="note">One storage key, <code>vihu.lab.shapes</code>.</div>
     </details>
-    <div class="note" style="margin-top:6px">Fixtures live in this browser only (one storage key, <code>vihu.lab.shapes</code>) — research artifacts, never the production pool.</div>
+    <details class="adv">
+      <summary>Research sets and demo</summary>
+      <div class="row">
+        <button data-reveal-research class="quiet" title="import the six research creatures with their reveal features as fixtures">Load reveal research set</button>
+        <button data-demo class="quiet">Neutral demo ring</button>
+      </div>
+      <div class="note">The demo ring is a neutral figure at the current budget — not a creature, only the tool working.</div>
+    </details>
   </section>
 </div>
 </main>
 
-<script src="../../js/etherGrammar.js?lab=5d1a440c67"></script>
-<script src="labKit.js?lab=5d1a440c67"></script>
-<script src="labPreviewHost.js?lab=5d1a440c67"></script>
-<script src="labConnection.js?lab=5d1a440c67"></script>
-<script src="labBlueprint.js?lab=5d1a440c67"></script>
-<script src="labOutline.js?lab=5d1a440c67"></script>
-<script src="labReveal.js?lab=5d1a440c67"></script>
-<script src="labRevealData.js?lab=5d1a440c67"></script>
-<script src="labShape.js?lab=5d1a440c67"></script>
-<script src="labReference.js?lab=5d1a440c67"></script>
-<script src="labTranslationData.js?lab=5d1a440c67"></script>
+<script src="../../js/etherGrammar.js?lab=0912f490d5"></script>
+<script src="labKit.js?lab=0912f490d5"></script>
+<script src="labPreviewHost.js?lab=0912f490d5"></script>
+<script src="labConnection.js?lab=0912f490d5"></script>
+<script src="labBlueprint.js?lab=0912f490d5"></script>
+<script src="labOutline.js?lab=0912f490d5"></script>
+<script src="labReveal.js?lab=0912f490d5"></script>
+<script src="labRevealData.js?lab=0912f490d5"></script>
+<script src="labShape.js?lab=0912f490d5"></script>
+<script src="labReference.js?lab=0912f490d5"></script>
+<script src="labTranslationData.js?lab=0912f490d5"></script>
 </body>
 </html>

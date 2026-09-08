@@ -9667,6 +9667,57 @@ leads somewhere.
   `docs/ETHER_MYSTERY_LAB.md` → *Ether creature translation V1* ·
   `tools/ether-mystery-lab-test/` section `ET` ·
   `tools/ether-mystery-lab-test/shots/translation/`
+- **THE SHAPE LAB READS AS ONE WORKFLOW NOW, AND EVERY DESTRUCTIVE ACT
+  IS EXPLICIT — LAB ONLY, ZERO PRODUCTION FILES CHANGED.** Five creature
+  experiments had each bolted a panel onto the instrument in the order
+  they were built, so a researcher met the point budget before the
+  creature, the name after the reveal, and a provider's URL beside the
+  creature's own name; *Reset* was one word for everything, a click on a
+  line in Join deleted it with nothing said, and nothing anywhere named
+  the creature's state or the next thing to do. The page is six numbered
+  stages — **CREATE → SHAPE → CONNECT → REVEAL → TEST → APPROVE** — with
+  the AUTHOR / JUDGE panes alone in a sticky centre column so they stay
+  in view while the steps scroll (found rather than designed: the first
+  staged layout scrolled the canvas off screen on every budget press and
+  eleven suite clicks landed on nothing), a status strip derived from
+  `ShapeLab.status()` and never stored (`LION · 12 POINTS · 11 CONNECTED
+  · 1 MISSING` · BUILDING / READY TO TEST / READY TO APPROVE / APPROVED
+  · a human next step), and the technical vocabulary — candidate,
+  interpreter, provider, validator, schema, sanitizer — moved into
+  Advanced disclosures, measured absent from the stages.
+- **UNDO AND REDO ARE A SNAPSHOT HISTORY, AND A PREVIEW IS NOT AN
+  EDIT.** Every add, move (a drag is one step), delete (with the
+  connections and reveal features that went with the point), join,
+  unjoin, missing mark, reveal edit and scoped reset records; UNFINISHED,
+  COMPLETE, COME ALIVE, ▶ Play in Ether and a selection leave the history
+  depth exactly where it was, which is measured. A label — name, hint,
+  notes, judgement — is outside it. Reset everything and opening a
+  fixture start a fresh history: a new beginning is not an undoable edit.
+- **FOUR RESETS, EACH NAMED FOR WHAT IT RESETS, AND THE BIG ONE ASKS
+  FIRST.** *Reset points* takes the points and everything standing on
+  them, then places the suggested points again if a reference shows;
+  *Reset connections* leaves every point where it is; *Reset reveal*
+  leaves the puzzle; *Reset everything* asks inline, in the brief's own
+  words, never through a browser dialog. No control is labelled only
+  "Reset".
+- **A CLICK ON A LINE SELECTS; UNJOIN REMOVES.** JOIN wakes for two
+  unconnected points, UNJOIN and MARK MISSING for a selected connection,
+  the selection is drawn gold and read out in words, and "missing" keeps
+  its one meaning — a connection the child will make. The pair-click
+  gesture (connect, or disconnect) and the Connect tool's join-in-order
+  on press are unchanged, because both are the product owner's own rules
+  and every earlier suite draws a figure with them; `SL6` was turned
+  round with its reason in place.
+- **TESTING MUTATES NOTHING; EDITING AFTER APPROVAL CLEARS IT, AND UNDO
+  DOES NOT QUIETLY RE-APPROVE.** An approval is a decision, never
+  history. Opening a fixture over unsaved work is refused once with the
+  reason and opened on a second press. Section `WF` (92) walks the
+  brief's 31-step researcher journey on a laptop and on a phone (no
+  sideways scroll, panes stacked); six load-bearing checks proved by
+  temporary reversion, restored from a copy — the confirmation removed,
+  a preview recording, an edit keeping its approval, Undo not
+  restoring, the sticky centre removed, a line click deleting again.
+  Detail: `docs/ETHER_MYSTERY_LAB.md` → *The researcher workflow*.
 - Out of scope and not implemented: creature encounters as a reward
   system, creature dialogue, a Companion in the Ether, per-Traveller
   encounter history, more activity rows (story hunt, missing

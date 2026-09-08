@@ -2883,3 +2883,193 @@ idea, ranking hook) · `labReference.js` (panel, comparison, trace,
 idea field, constructed loader) · `labTranslationData.js` (new) ·
 `shape.html`. Screenshots:
 `tools/ether-mystery-lab-test/shots/translation/<creature>-{A,B,C,D}-….png`.
+
+## THE RESEARCHER WORKFLOW — the Shape Lab cleanup (six stages, explicit resets, undo)
+
+Lab only. **Zero production files changed**, the build stays 0769,
+`arrangementNodesMax` stays 8, nothing was activated in the Ether. This
+sprint added no creature intelligence and no capability: it took the
+instrument every earlier creature experiment had bolted a panel onto and
+made it read as one workflow.
+
+### What was confusing
+
+The page had grown by accretion. Budget, Tool, Create-from-creature,
+Researcher metadata, the two panes, Play in Ether, Reveal, Approve and
+Compare stood in the order they were built, so a researcher met the
+point budget before the creature, the name after the reveal, and the
+provider's connection fields on the same footing as the creature's own
+name. Three things were destructive with no warning and no way back:
+*Reset* (one word, everything), a click on a line in Join (deleted the
+join — the only way to remove one, and nothing said so), and a budget
+change under a bigger figure (kept the points but explained itself only
+in the header). Nothing anywhere said what state the creature was in or
+what to do next, and the technical vocabulary — candidate, interpreter,
+provider, validator, schema, sanitizer — sat in the copy a researcher
+read while deciding where a wing tip goes.
+
+### The six stages
+
+`shape.html` is now numbered down the page, in the brief's own order,
+one sentence under each heading:
+
+1. **CREATE** — the creature's name, *Generate reference*, an optional
+   idea line, and **REFERENCE ON / OFF** as the primary control. The
+   reference source (Fixture · LLM — Endpoint · LLM — Direct) is
+   secondary, and every connection field (URL, token, key, model), the
+   translation research set and the generation trace live in an
+   *Advanced* disclosure that opens itself when an LLM source is chosen.
+2. **SHAPE** — the point budget (8 · 10 · 12 · 16 · 18 · 20), suggested
+   points ON/OFF, the three point tools (Add · Move · Delete), **Undo ·
+   Redo · Reset points**.
+3. **CONNECT** — the Connect tool (still joins in order on press, the
+   product owner's rule), the Missing tool, *Connect in order*, a
+   selection readout, and explicit **JOIN · UNJOIN · MARK MISSING ·
+   Reset connections**.
+4. **REVEAL** — PUZZLE = points + connections; REVEAL = the payoff. The
+   feature rows, *+ Add feature*, the hold, **Reset reveal**.
+5. **TEST** — **Unfinished · Complete · Come alive · Back to
+   authoring**, a readout naming the state, the test canvas, and
+   ▶ Play in Ether for the awakening and the roaming.
+6. **APPROVE** — a summary (CREATURE · POINTS · CONNECTIONS · MISSING
+   CONNECTIONS · REVEAL FEATURES · STATUS), the name, hint and notes,
+   **✓ Approve creature**, Save fixture.
+
+Under APPROVE stands **Reset everything**, which asks first — *Start
+this creature again? All points, connections and reveal changes will be
+removed.* — inline, never a browser dialog.
+
+### The two panes, always in view
+
+**AUTHOR** (left: the reference underneath, your points on top, a
+missing connection dashed) and **JUDGE** (right: what a child meets —
+no reference, no outline, a missing connection absent). On a laptop the
+centre column holds nothing else and is `position: sticky`, so the
+panes stay on screen while the steps scroll on either side. This was
+found rather than designed: the first staged layout put the budget
+buttons below the fold, and every canvas click in the suite that
+followed a budget press landed on nothing, because scrolling the button
+into view had scrolled the canvas out. On a phone (≤ 640 px) the panes
+stack, the centre no longer sticks, and nothing scrolls sideways.
+
+### The status strip
+
+One line under the header, read from `ShapeLab.status()`:
+`LION · 12 POINTS · 11 CONNECTED · 1 MISSING` · **BUILDING / READY TO
+TEST / READY TO APPROVE / APPROVED** · a human next step. The state is
+derived, never stored: BUILDING until the creature has points inside
+its budget, at least one connection and one missing connection; READY
+TO TEST until one of the three TEST states has been looked at; READY TO
+APPROVE until approved; and any edit steps it back. The same status
+fills the approval summary, so the strip and the summary cannot
+disagree.
+
+### Undo and Redo
+
+A snapshot history in `labShape.js` — budget, points, roles, origins,
+connections, missing marks and the reveal — bounded at 100 steps.
+Every edit records one step: add, move (a drag is one step, not one per
+pixel), delete (with the connections and reveal features that went with
+the point), join, unjoin, connect-in-order, mark missing, every reveal
+edit, and each scoped reset. **Previews record nothing**: UNFINISHED,
+COMPLETE, COME ALIVE, ▶ Play in Ether and a selection leave the history
+depth exactly where it was, which is measured (`WF19b`). The name,
+hint, notes and judgement are labels, not edits, and are outside the
+history. `Ctrl/⌘ Z`, `Shift Z` and `Ctrl Y` work outside a text field.
+Reset everything and opening a fixture start a fresh history — a new
+beginning is not an undoable edit.
+
+### Resets, each named for what it resets
+
+- **Reset points** — every point, and with them every connection and
+  every reveal feature standing on one; then the suggested points are
+  placed again as the starting figure if a reference is showing. One
+  history step; the say line lists what went.
+- **Reset connections** — every connection and missing mark; every
+  point stays exactly where it is; the reveal stays.
+- **Reset reveal** — every reveal feature and the hold; points and
+  connections untouched.
+- **Reset everything** — asks first; then points, connections, missing
+  marks, reveal, name, hint, notes and judgement; the reference stays.
+
+### JOIN / UNJOIN, and the selection
+
+In Connect: click a point → *Selected: point 3*; click another → they
+are connected (or, already connected, disconnected), and the pair stays
+selected reading *connection 3–7 (connected)*. Click a line → that
+connection is selected. The buttons answer the selection: JOIN wakes for
+two unconnected points, UNJOIN and MARK MISSING for a connection,
+and MARK MISSING reads *Restore connection* on a missing one. The
+selected connection is drawn gold and thicker; selected points get a
+gold ring. **A click on a line no longer deletes it** — `SL6` was
+turned round with its reason in place. "Missing" keeps its one meaning:
+a connection the child will make, dashed on AUTHOR, absent on JUDGE.
+
+### The conflict audit
+
+- *Budget change* — grows the starting figure (the suggested points at
+  the new budget are placed) or, shrinking under a bigger figure, keeps
+  every point and marks the figure as exceeding it; the status says how
+  many to delete and that nothing is removed for you. One history step.
+- *Regenerate reference / switch source* — places the new suggestions;
+  a failed or refused reply leaves the reference in use (unchanged).
+- *Reference ON/OFF* — changes the drawing only; the figure is
+  byte-identical either way (`WF17`).
+- *Move after joins* — connections and anchored reveal features follow.
+- *Delete with joins* — the connections and reveal features on the
+  point go with it; the say line names them; one Undo restores all.
+- *Unjoin* — only the selected connection; its missing mark goes with
+  it.
+- *Reveal edit* — never touches a point or a connection; recorded.
+- *Preview / TEST* — mutates nothing authored (`WF19b`).
+- *Edit after approval* — clears the approval and the tested mark, and
+  Undo of that edit does not silently re-approve (`WF22b`).
+- *Opening a fixture over unsaved work* — refused once with the reason;
+  a second press opens it (`WF28`). *Unsaved changes* is shown beside
+  the fixture id whenever the figure differs from what is stored.
+- *Loading a fixture* — starts a fresh history, clears the selection,
+  and honours a stored approval only while the geometry still matches.
+
+### What could NOT safely change
+
+- The Connect tool still joins the points in order on press. That is
+  the product owner's own rule (`AP11`) and the way every earlier
+  suite draws a figure; the explicit *Connect in order* button sits
+  beside it for a researcher who has switched tools.
+- The pair-click gesture in Connect still connects AND disconnects
+  (`AP4e`, `SL6`): making the second click select-only would have
+  turned every "click one, click another" journey into three clicks.
+- The `[data-budget-label]` wording (`TESTING N POINTS — Lab authoring /
+  research budget · production currently supports 8` and `FIGURE
+  EXCEEDS BUDGET (N lights)`) is pinned by earlier checks and kept.
+- The reveal-feature rows keep their parameter names (offset, size,
+  angle, strands, reach…) — those are the primitives' own knobs.
+- The three source names (Fixture · LLM — Endpoint · LLM — Direct
+  (dev)) are `LabConnection`'s own mode names and are pinned by `AR13`.
+
+### Proved
+
+Section `WF` (92): the statics (six stages in order, every control
+present, the confirmation's exact words, no vague "Reset", the
+technical words absent outside Advanced, every mutating path recording
+and every preview not), the 31-step researcher journey driven on the
+real page, the scoped resets each touching only their own thing, the
+phone layout and the sticky laptop layout. Six load-bearing checks
+proved by temporary reversion, restored from a copy: the confirmation
+removed → the journey stalls at a confirm that never comes; a preview
+recording history → `WF4c`, `WF19b`; an edit no longer clearing the
+approval → `WF22`, `WF22b`; Undo not restoring → `WF10`; the sticky
+centre removed → `WF30b` and eleven canvas clicks land on nothing; a
+line click deleting again → `WF4c` and the journey.
+
+`SL6` (line click) and `SL12` (reset asks first) were turned round with
+their reasons written in place; a two-press `resetAll()` helper replaced
+every direct press of `[data-reset]`.
+
+### Files
+
+`tools/ether-mystery-lab/shape.html` (rewritten as the six stages) ·
+`labShape.js` (history, selection, scoped resets, status, workflow
+rendering, language) · `labReference.js` (opens the Advanced
+disclosure when an LLM source is chosen). Screenshots:
+`tools/ether-mystery-lab-test/shots/workflow/`.

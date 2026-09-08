@@ -57,6 +57,14 @@ const failures = [];
 function ok(n, note) { passed++; console.log('  ok   ' + n + (note ? '  (' + note + ')' : '')); }
 function fail(n, note) { failed++; failures.push(n + (note ? '  (' + note + ')' : '')); console.log('  FAIL ' + n + (note ? '  (' + note + ')' : '')); }
 function ck(c, n, note) { (c ? ok : fail)(n, note); }
+// RESET EVERYTHING is a two-press control since the researcher-workflow
+// sprint: the opener shows an inline confirmation that names what goes,
+// and only its confirm resets. A harness that pressed the opener alone
+// and read an empty figure would be asserting the defect.
+async function resetAll(page) {
+  await page.click('[data-reset]');
+  await page.click('[data-reset-confirm]');
+}
 function read(rel) { return fs.readFileSync(path.join(ROOT, rel), 'utf8'); }
 function stripComments(src) {
   return src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
@@ -4038,7 +4046,7 @@ async function sectionSL() {
     // ---- SL4: a figure at every budget, by clicking ----
     const built = {};
     for (const n of [8, 12, 16, 20]) {
-      await page.click('[data-reset]');
+      await resetAll(page);
       await page.click('[data-budget="' + n + '"]');
       const { g, pts } = await drawRing(n);
       await tool('gap');
@@ -4065,7 +4073,7 @@ async function sectionSL() {
       'SL4e the missing join is the one that was clicked, and no other', JSON.stringify(built[8].s.missing));
 
     // ---- SL5: the budget cannot be exceeded, silently or otherwise ----
-    await page.click('[data-reset]');
+    await resetAll(page);
     await page.click('[data-budget="8"]');
     const eight = await drawRing(8);
     await tool('add');
@@ -4082,7 +4090,7 @@ async function sectionSL() {
     // destructive operation: shrinking is ALLOWED, every light is kept,
     // and the figure is shown to EXCEED the selected budget. What the old
     // check was protecting — nothing is ever trimmed — is still asserted.
-    await page.click('[data-reset]');
+    await resetAll(page);
     await page.click('[data-budget="12"]');
     await drawRing(12);
     await page.click('[data-budget="8"]');
@@ -4113,7 +4121,7 @@ async function sectionSL() {
       badRec.r.reason + ' import:' + JSON.stringify(badRec.imp));
 
     // ---- SL6: connections are editable — add, remove, delete a light, move a light ----
-    await page.click('[data-reset]');
+    await resetAll(page);
     await page.click('[data-budget="8"]');
     const ed = await drawRing(8);
     await tool('join');
@@ -4121,17 +4129,24 @@ async function sectionSL() {
     let A = at(ed.g, ed.pts[2]), B = at(ed.g, ed.pts[3]);
     await page.mouse.click(A.x, A.y); await page.mouse.click(B.x, B.y);
     const afterRemovePair = await readState();
-    // clicking a LINE in Join removes it
+    // clicking a LINE in Connect SELECTS it (the researcher-workflow
+    // sprint: a click on a line used to delete it, and a delete with no
+    // way to see what was about to go is exactly what a researcher asked
+    // to have made explicit); UNJOIN removes the selected connection
     const m45 = mid(ed.g, ed.pts[4], ed.pts[5]);
     await page.mouse.click(m45.x, m45.y);
+    const afterSelectLine = await readState();
+    const selLine = await page.evaluate(() => window.ShapeLab.selection());
+    await page.click('[data-unjoin]');
     const afterRemoveLine = await readState();
     // and the pair once more puts it back
     await page.mouse.click(A.x, A.y); await page.mouse.click(B.x, B.y);
     const afterReadd = await readState();
     ck(afterRemovePair.m.connections === 7 && afterRemovePair.s.joins.indexOf('2-3') === -1 &&
+       afterSelectLine.m.connections === 7 && selLine.joined && selLine.a === 4 && selLine.b === 5 &&
        afterRemoveLine.m.connections === 6 && afterRemoveLine.s.joins.indexOf('4-5') === -1 &&
        afterReadd.m.connections === 7 && afterReadd.s.joins.indexOf('2-3') !== -1,
-      'SL6  a connection is added, removed by its pair, removed by clicking the line, and added back',
+      'SL6  a connection is added, removed by its pair, SELECTED by clicking the line and removed by UNJOIN, and added back',
       [afterRemovePair.m.connections, afterRemoveLine.m.connections, afterReadd.m.connections].join('→'));
     ck(afterRemoveLine.m.components === 2,
       'SL6b the components metric follows: two joins gone from a ring leaves TWO pieces', String(afterRemoveLine.m.components));
@@ -4165,7 +4180,7 @@ async function sectionSL() {
     ck(numbersDrawn, 'SL6e light numbers are drawn while editing, behind a toggle');
 
     // ---- SL7: a missing join is EXPLICIT, and the two states differ exactly there ----
-    await page.click('[data-reset]');
+    await resetAll(page);
     await page.click('[data-budget="8"]');
     const sv = await drawRing(8);
     await tool('gap');
@@ -4330,16 +4345,20 @@ async function sectionSL() {
       'SL11e and every canvas uses ONE fixed scale — nothing auto-fits a figure to flatter a budget');
 
     // ---- SL12: reset ----
+    // RESET EVERYTHING asks first (the researcher-workflow sprint): the
+    // opener shows an inline confirmation, and only its confirm resets.
     const rs = await page.evaluate(() => {
       const S = window.ShapeLab;
       document.querySelector('[data-reset]').click();
-      return { s: S.state(), opened: document.querySelector('[data-opened]').textContent,
+      const askedFirst = !document.querySelector('[data-reset-confirm-box]').hidden && S.state().points.length > 0;
+      document.querySelector('[data-reset-confirm]').click();
+      return { askedFirst, s: S.state(), opened: document.querySelector('[data-opened]').textContent,
                name: document.querySelector('[data-name]').value, count: S.list().length };
     });
-    ck(rs.s.points.length === 0 && rs.s.joins.length === 0 && rs.s.name === '' && rs.s.hint === '' &&
+    ck(rs.askedFirst && rs.s.points.length === 0 && rs.s.joins.length === 0 && rs.s.name === '' && rs.s.hint === '' &&
        rs.s.judgement === null && rs.s.tease === false && rs.s.id === null && /unsaved/.test(rs.opened) &&
        rs.name === '' && rs.count === 4,
-      'SL12 Reset clears the workspace and every field, detaches from the fixture, and deletes nothing saved',
+      'SL12 Reset everything asks first, then clears the workspace and every field, detaches from the fixture, and deletes nothing saved',
       'fixtures still:' + rs.count);
 
     // ---- SL13: export / import round trip ----
@@ -6838,6 +6857,331 @@ async function sectionET() {
 }
 
 // ===================================================================
+// WF. THE RESEARCHER WORKFLOW — the Shape Lab cleanup sprint. Nothing
+// here adds a capability: it proves that the instrument now reads as
+// six stages (CREATE → SHAPE → CONNECT → REVEAL → TEST → APPROVE), that
+// every destructive act is explicit and undoable, that testing never
+// mutates authored data, that the status strip tells the truth, that
+// the technical vocabulary lives in Advanced, and that not one
+// production file moved for it. The journey half walks the brief's own
+// researcher steps in a real browser, on a laptop and on a phone.
+// ===================================================================
+async function sectionWF() {
+  console.log('\n== WF. the researcher workflow (Shape Lab cleanup) ==');
+  const { chromium } = require('playwright');
+  const shapeSrc = read('tools/ether-mystery-lab/labShape.js');
+  const shapeHtml = read('tools/ether-mystery-lab/shape.html');
+  const htmlNoComments = shapeHtml.replace(/<!--[\s\S]*?-->/g, '');
+  const shapeStripped = stripComments(shapeSrc);
+
+  // ---- WF1: production is untouched, measured against git ----
+  const diff = require('child_process').spawnSync('git', ['status', '--porcelain', '--', 'js', 'assets', 'vihuplanet', 'supabase', 'index.html', 'studio.html'], { cwd: ROOT, encoding: 'utf8' }).stdout || '';
+  ck(diff.trim() === '', 'WF1  zero production files changed — js/, assets/, vihuplanet/, supabase/, index.html, studio.html are clean in git', diff.trim() || 'clean');
+  ck(/arrangementNodesMax:\s*8\b/.test(read('js/etherGrammar.js')), 'WF1b the production point limit is still eight');
+  const stamps = (read('index.html').match(/\?v=(\d{4})/g) || []).map((s) => s.slice(3));
+  ck(stamps.length > 0 && stamps.every((s) => s === '0769'), 'WF1c the build is not bumped — nothing shipped to a child', Array.from(new Set(stamps)).join(','));
+  ck(!/experience-pool/.test(htmlNoComments) && !/experience-pool|EtherExperience\b|\.activate\(|status:\s*'active'/.test(shapeStripped),
+    'WF1d the Shape Lab still never loads the production pool and activates nothing');
+
+  // ---- WF2: the six stages, in order, each numbered ----
+  const stepOrder = (htmlNoComments.match(/data-step="([a-z]+)"/g) || []).map((m) => m.replace(/.*="|"/g, ''));
+  ck(stepOrder.join(',') === 'create,shape,connect,reveal,test,approve',
+    'WF2  the page is six numbered stages in the brief\'s order — CREATE → SHAPE → CONNECT → REVEAL → TEST → APPROVE', stepOrder.join(','));
+  const stepNums = (htmlNoComments.match(/<span class="stepn">(\d)<\/span>/g) || []).map((m) => m.replace(/\D/g, ''));
+  ck(stepNums.join('') === '123456', 'WF2b and the numbers read 1–6 down the page', stepNums.join(''));
+  // every control the workflow names has markup
+  const controls = ['[data-status-name]', '[data-status-line]', '[data-status-state]', '[data-status-next]', '[data-undo]', '[data-redo]', '[data-reset-points]',
+    '[data-reset-connections]', '[data-reset-reveal]', '[data-reset]', '[data-reset-confirm-box]', '[data-reset-confirm]', '[data-reset-cancel]',
+    '[data-join]', '[data-unjoin]', '[data-missing]', '[data-join-order]', '[data-selection]', '[data-test="unfinished"]', '[data-test="complete"]',
+    '[data-test="alive"]', '[data-test="authoring"]', '[data-test-state]', '[data-approve-summary]', '[data-approve]', '[data-ref-toggle]', '[data-ref-suggest]'];
+  const missingCtl = controls.filter((c) => htmlNoComments.indexOf(c.slice(1, -1)) === -1);
+  ck(missingCtl.length === 0, 'WF2c every workflow control has markup — status strip, undo/redo, the four resets and the confirmation, JOIN/UNJOIN/MISSING, the three TEST states, the approval summary', missingCtl.join(','));
+  // the confirmation says exactly what the brief asked
+  ck(/Start this creature again\? All points, connections and reveal changes will be removed\./.test(htmlNoComments),
+    'WF2d RESET EVERYTHING asks in the brief\'s own words');
+  // the four resets are named for what they reset — no vague "Reset"
+  const resetLabels = (htmlNoComments.match(/<button data-reset[a-z-]*[^>]*>([^<]*)<\/button>/g) || []).map((m) => m.replace(/<[^>]+>/g, '').trim());
+  ck(resetLabels.length === 6 && resetLabels.every((l) => /^(Reset points|Reset connections|Reset reveal|Reset everything|Yes, start again|Keep working)$/.test(l)),
+    'WF2e the reset controls are RESET POINTS · RESET CONNECTIONS · RESET REVEAL · RESET EVERYTHING — nothing is labelled only "Reset"', resetLabels.join('|'));
+
+  // ---- WF3: the language — technical words live in Advanced only ----
+  // Everything outside <details class="adv"> is what a researcher reads
+  // in the stages; the words below are internals and may appear only
+  // inside those disclosures (or in a code attribute, never as copy).
+  // (the header's link to the Candidate Gallery is that page's own name)
+  const advStripped = htmlNoComments.replace(/<details class="adv"[\s\S]*?<\/details>/g, '').replace(/<style>[\s\S]*?<\/style>/, '').replace(/<header>[\s\S]*?<\/header>/, '').replace(/<script[^>]*><\/script>/g, '');
+  const bodyText = advStripped.replace(/<[^>]+>/g, ' ');
+  const banned = ['arrangement', 'candidate', 'anchors', 'interpreter', 'provider', 'projection', 'sanitiz', 'schema', 'runtime', 'seam', 'validator'];
+  const leaks = banned.filter((w) => new RegExp('\\b' + w, 'i').test(bodyText));
+  ck(leaks.length === 0, 'WF3  outside Advanced the page never says arrangement, candidate, anchors, interpreter, provider, projection, sanitization, schema, runtime, seam or validator', leaks.join(','));
+  ck(/<details class="adv"/.test(htmlNoComments) && /Advanced \/ research details/.test(htmlNoComments) && /Advanced — connection/.test(htmlNoComments),
+    'WF3b the technical material has a home: an Advanced disclosure in CREATE (connection fields, research set, trace) and an Advanced / research details section (metrics, compare, blueprint JSON, artifact, export/import, demo)');
+  ['data-conn-url', 'data-conn-token', 'data-conn-key', 'data-conn-model', 'data-ref-trace', 'data-ref-research', 'data-metrics', 'data-compare', 'data-ref-json', 'data-approved-out', 'data-export', 'data-import', 'data-demo'].forEach((sel) => {
+    const idx = htmlNoComments.indexOf(sel);
+    const before = htmlNoComments.slice(0, idx);
+    const opens = (before.match(/<details class="adv"/g) || []).length, closes = (before.match(/<\/details>/g) || []).length;
+    // closes counts nested inner details too; an Advanced block that is
+    // open at this index has more adv opens than closes of anything
+    ck(idx > 0 && opens > closes - ((before.match(/<details data-ref-trace-panel>/g) || []).length), 'WF3c ' + sel + ' sits inside an Advanced disclosure');
+  });
+  // the words the brief asks for are the words on the page
+  ['POINTS', 'CONNECTIONS', 'MISSING', 'REVEAL', 'REFERENCE', 'TEST', 'APPROVE', 'UNDO', 'REDO'].forEach((w) => {
+    ck(new RegExp(w, 'i').test(bodyText), 'WF3d the stages speak of ' + w);
+  });
+  ck(/no curved connection/i.test(shapeHtml) && /one fixed scale/i.test(shapeHtml) && /empty suggested places/.test(shapeHtml),
+    'WF3e the sentences earlier checks pin are still on the page — no curved connection, one fixed scale, empty suggested places');
+  // the reference hierarchy as the brief states it
+  ck(/blueprint tells us what matters; the reference helps us see it; your points become the Ether figure/i.test(bodyText),
+    'WF3f BLUEPRINT → tells us what matters · REFERENCE → helps us see it · POINTS → become the Ether figure, in one sentence');
+  // PUZZLE vs REVEAL is explicit
+  ck(/PUZZLE.{0,80}points \+ connections/i.test(bodyText) && /REVEAL.{0,40}the payoff/i.test(bodyText), 'WF3g PUZZLE and REVEAL are named as different things in the REVEAL stage');
+
+  // ---- WF4: the history is real, and previews do not enter it ----
+  ck(/function undo\(/.test(shapeSrc) && /function redo\(/.test(shapeSrc) && /function snapshot\(/.test(shapeSrc) && /history\.max\b|max:\s*100/.test(shapeSrc),
+    'WF4  undo and redo are a snapshot history in the editor, bounded');
+  // every mutating path records; revealShow / revealStart / markTested do not
+  const fnBody = (name) => { const m = shapeSrc.match(new RegExp('function ' + name + '\\([^)]*\\)\\s*\\{([\\s\\S]*?)\\n  \\}')); return m ? m[1] : ''; };
+  ['addPoint', 'movePoint', 'deletePoint', 'toggleJoin', 'joinInOrder', 'toggleGap', 'revealCommit', 'resetPoints', 'resetConnections', 'resetReveal'].forEach((f) => {
+    ck(/record\(\)/.test(fnBody(f)), 'WF4b ' + f + ' records a history step');
+  });
+  ['revealShow', 'revealStart', 'markTested', 'selectLight', 'selectJoin', 'setName', 'setHint', 'setNotes'].forEach((f) => {
+    ck(fnBody(f) !== '' && !/record\(\)/.test(fnBody(f)), 'WF4c ' + f + ' records nothing — a preview, a selection or a label is not an edit');
+  });
+
+  // ---- the browser half: the researcher's journey, step by step ----
+  const server = spawn('node', ['tools/bring-it-alive/test/serve.js', String(PORT)], { cwd: ROOT, stdio: 'ignore' });
+  await new Promise((res) => setTimeout(res, 900));
+  const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+  const shotDir = path.join(SHOTS, 'workflow'); fs.mkdirSync(shotDir, { recursive: true });
+  try {
+    const ctx = await browser.newContext({ viewport: { width: 1500, height: 1000 } });
+    const page = await ctx.newPage();
+    const errors = [];
+    page.on('pageerror', (e) => errors.push(String(e).split('\n')[0]));
+    await page.goto(BASE + '/tools/ether-mystery-lab/shape.html');
+    await page.waitForFunction(() => !!window.ShapeLab && !!window.LabReference, null, { timeout: 20000 });
+    const q = (sel) => page.evaluate((s) => { const e = document.querySelector(s); return e ? (e.tagName === 'INPUT' && e.type === 'checkbox' ? e.checked : (e.tagName === 'INPUT' ? e.value : e.textContent)) : null; }, sel);
+    const disabled = (sel) => page.evaluate((s) => document.querySelector(s).disabled, sel);
+    const status = () => page.evaluate(() => window.ShapeLab.status());
+    const fig = () => page.evaluate(() => ({ f: window.ShapeLab.figure(), s: window.ShapeLab.state(), sel: window.ShapeLab.selection(), hd: window.ShapeLab.historyDepth() }));
+    const geom = async () => page.evaluate(() => { const r = document.querySelector('[data-canvas-complete]').getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; });
+    const at = (g, p) => { const k = (Math.min(g.w, g.h) * 0.46) / 1.4; return { x: g.x + g.w / 2 + p[0] * k, y: g.y + g.h / 2 + p[1] * k }; };
+
+    // steps 1–2: open, status reads BUILDING with a next step; the pane stays in view
+    const s0 = await status();
+    ck(s0.state === 'BUILDING' && /generate a reference|Add points/.test(s0.next) && (await q('[data-status-name]')) === 'NEW CREATURE' && /0 POINTS · 0 CONNECTED · 0 MISSING/.test(await q('[data-status-line]')),
+      'WF5  step 1–2: a fresh page reads NEW CREATURE · 0 POINTS · 0 CONNECTED · 0 MISSING · BUILDING, with a human next step', s0.next);
+    // steps 3–4: enter a creature, generate a reference (Fixture — nothing leaves the browser)
+    await page.click('[data-conn-mode="fixture"]');
+    await page.fill('[data-ref-subject]', 'Lion');
+    await page.click('[data-ref-generate]');
+    await page.waitForFunction(() => window.LabReference.current() && window.LabReference.current().subject === 'Lion' && window.ShapeLab.figure().points.length > 0);
+    const s4 = await status(); const f4 = await fig();
+    ck(f4.f.points.length === 8 && f4.s.budget === 8 && /REFERENCE ON/.test(await q('[data-ref-toggle]')) && !(await disabled('[data-undo]')) && s4.state === 'BUILDING' && /Connect/.test(s4.next),
+      'WF6  step 3–4: generating a reference places the suggested points as the starting figure, REFERENCE reads ON, Undo wakes, and the next step says to connect', f4.f.points.length + ' pts · ' + s4.next);
+    // step 5: budget 12 adds, never removes
+    await page.click('[data-budget="12"]');
+    const f5 = await fig();
+    // (the fixture blueprint has eleven landmarks to offer at 12, so the
+    // figure grows to what the reference can name — never padded)
+    const N = f5.f.points.length;
+    ck(N > 8 && N <= 12 && f5.s.budget === 12 && /TESTING 12 POINTS/.test(await q('[data-budget-label]')) && JSON.stringify(f5.f.points.slice(0, 8)) === JSON.stringify(f4.f.points),
+      'WF7  step 5: choosing 12 points GROWS the starting figure; the eight already placed did not move', N + ' pts');
+    // a budget shrink under a bigger figure keeps every point and says so
+    await page.click('[data-budget="8"]');
+    const f5b = await fig(); const s5b = await status();
+    ck(f5b.f.points.length === N && s5b.overBudget === N - 8 && /exceeds|Over the/i.test(s5b.next + ' ' + (await q('[data-budget-label]'))) && /Nothing is removed/.test(s5b.next),
+      'WF7b shrinking the budget under the figure deletes nothing — the status explains it is over and that nothing is removed for you', s5b.next);
+    await page.click('[data-budget="12"]');
+    // step 6–8: move a point, delete a point, undo the delete
+    const p6 = f5.f.points[3];
+    await page.evaluate(() => window.ShapeLab.movePoint(3, 0.11, -0.42));
+    const f6 = await fig();
+    ck(f6.f.points[3][0] === 0.11 && f6.f.points[3][1] === -0.42 && f6.hd.undo >= 1, 'WF8  step 6: a point moves and the move is a history step');
+    await page.click('[data-mode="delete"]');
+    const g6 = await geom(); const d = at(g6, f6.f.points[5]);
+    await page.mouse.click(d.x, d.y);
+    const f7 = await fig();
+    ck(f7.f.points.length === N - 1 && /removed|deleted|Deleted|went/i.test(await q('[data-say]')), 'WF9  step 7: delete says what went', (await q('[data-say]')));
+    await page.click('[data-undo]');
+    const f8 = await fig();
+    ck(f8.f.points.length === N && JSON.stringify(f8.f.points) === JSON.stringify(f6.f.points) && f8.hd.redo === 1, 'WF10 step 8: Undo brings the point back exactly, and Redo is offered');
+    await page.click('[data-redo]'); const f8b = await fig(); await page.click('[data-undo]');
+    ck(f8b.f.points.length === N - 1 && (await fig()).f.points.length === N, 'WF10b Redo redoes the delete; Undo again restores it');
+    // step 9–10: connect in order, then one pair by clicking
+    await page.click('[data-mode="join"]');
+    const f9 = await fig();
+    ck(f9.f.joins.length === N - 1 && new RegExp('Joined the lights in their order — ' + (N - 1) + ' new joins').test(await q('[data-say]')),
+      'WF11 step 9: the Connect tool connects the points in their order — one fewer connections than points — and the say line names the count');
+    const g9 = await geom(); const A = at(g9, f9.f.points[0]), B = at(g9, f9.f.points[N - 1]);
+    await page.mouse.click(A.x, A.y);
+    const selA = await page.evaluate(() => ({ sel: window.ShapeLab.selection(), txt: document.querySelector('[data-selection]').textContent }));
+    await page.mouse.click(B.x, B.y);
+    const f10 = await fig();
+    ck(selA.sel.a === 0 && selA.sel.b === null && /Selected: point 0/.test(selA.txt) && f10.f.joins.length === N && f10.sel.a === 0 && f10.sel.b === N - 1 && f10.sel.joined && new RegExp('connection 0–' + (N - 1) + ' \\(connected\\)').test(await q('[data-selection]')),
+      'WF12 step 10: click a point (selected, the readout says so), click another — connected; the pair stays selected and reads as a connection', selA.txt);
+    // steps 11–12: select a connection by its line, UNJOIN, then JOIN it back
+    await page.evaluate(() => window.ShapeLab.selectJoin(4));
+    const selJ = await page.evaluate(() => ({ sel: window.ShapeLab.selection(), unjoin: document.querySelector('[data-unjoin]').disabled, join: document.querySelector('[data-join]').disabled, miss: document.querySelector('[data-missing]').disabled }));
+    await page.click('[data-unjoin]');
+    const f11 = await fig();
+    ck(selJ.sel.joined && !selJ.unjoin && selJ.join && !selJ.miss && f11.f.joins.length === N - 1 && f11.sel.a === selJ.sel.a && f11.sel.b === selJ.sel.b && !f11.sel.joined,
+      'WF13 step 11: a selected connection offers UNJOIN and MARK MISSING, not JOIN; UNJOIN removes it and the two points stay selected', JSON.stringify(selJ.sel));
+    ck(!(await disabled('[data-join]')), 'WF13b …and JOIN wakes for the now-unconnected pair');
+    await page.click('[data-join]');
+    const f12 = await fig();
+    ck(f12.f.joins.length === N && f12.sel.joined, 'WF14 step 12: JOIN connects the selected pair again');
+    // step 13: mark one connection missing; step 14: the JUDGE pane shows it absent
+    await page.click('[data-missing]');
+    const f13 = await fig(); const s13 = await status();
+    ck(f13.s.missing.length === 1 && f13.sel.missing && /Restore connection/.test(await q('[data-missing]')) && s13.missing === 1 && s13.state === 'READY TO TEST' && new RegExp(N + ' POINTS · ' + N + ' CONNECTED · 1 MISSING').test(await q('[data-status-line]')),
+      'WF15 step 13: MARK MISSING marks the selected connection; the strip reads <N> POINTS · <N> CONNECTED · 1 MISSING and the state becomes READY TO TEST', await q('[data-status-line]'));
+    const judge = await page.evaluate(() => {
+      const S = window.ShapeLab; const j = S.figure().joins; const gap = S.state().missing[0];
+      const cu = document.querySelector('[data-canvas-unfinished]'), cc = document.querySelector('[data-canvas-complete]');
+      // (sampled the way SL5 samples a dash: an 8×8 box along the middle
+      // half of the segment, against the sky at the canvas's left edge)
+      const pr = (c, pa, pb) => {
+        const r = c.getBoundingClientRect(), dpr = c.width / r.width, g = c.getContext('2d');
+        const box = (x, y) => { const d = g.getImageData(Math.round(x) - 4, Math.round(y) - 4, 8, 8).data; let m = 0; for (let i = 0; i < d.length; i += 4) m = Math.max(m, d[i], d[i + 1], d[i + 2]); return m; };
+        let lit = 0;
+        for (let t = 0.3; t <= 0.7; t += 0.04) {
+          const a = S.project([pa[0] * (1 - t) + pb[0] * t, pa[1] * (1 - t) + pb[1] * t], r.width, r.height);
+          lit = Math.max(lit, box(a[0] * dpr, a[1] * dpr) - box(6, a[1] * dpr));
+        }
+        return lit;
+      };
+      const ab = j[gap].split('-').map(Number); const P = S.figure().points;
+      return { onJudge: pr(cu, P[ab[0]], P[ab[1]]), onAuthor: pr(cc, P[ab[0]], P[ab[1]]) };
+    });
+    ck(judge.onAuthor > 60 && judge.onJudge < judge.onAuthor, 'WF16 step 14: the missing connection is drawn (dashed) on AUTHOR and is simply absent on JUDGE', 'author ' + judge.onAuthor + ' judge ' + judge.onJudge);
+    // step 15–16: reference off, judge, back on — points and connections untouched
+    const before15 = JSON.stringify((await fig()).f);
+    await page.click('[data-ref-toggle]');
+    const off = await page.evaluate(() => ({ showing: window.LabReference.isShowing(), txt: document.querySelector('[data-ref-toggle]').textContent }));
+    await page.click('[data-ref-toggle]');
+    const on = await page.evaluate(() => ({ showing: window.LabReference.isShowing() }));
+    ck(!off.showing && /OFF/i.test(off.txt) && on.showing && JSON.stringify((await fig()).f) === before15, 'WF17 step 15–16: REFERENCE OFF shows the creature alone and ON brings the reference back; the figure is byte-identical either way');
+    // step 17–18: add a reveal feature, undo it, redo it
+    await page.evaluate(() => window.ShapeLab.addReveal('contour', 0, 1, 'mane'));
+    const r17 = await status();
+    await page.click('[data-undo]'); const r17u = await status();
+    await page.click('[data-redo]'); const r17r = await status();
+    ck(r17.reveal === 1 && r17u.reveal === 0 && r17r.reveal === 1 && /1 REVEAL/.test(await q('[data-status-line]')),
+      'WF18 step 17–18: a reveal feature is added, undone and redone like any other edit, and the strip counts it');
+    // step 19–21: TEST — three states, and none of them touches the authored data
+    const authored = await page.evaluate(() => JSON.stringify([window.ShapeLab.figure(), window.ShapeLab.state().missing, window.ShapeLab.reveal(), window.ShapeLab.historyDepth()]));
+    await page.click('[data-test="unfinished"]');
+    const t1 = await page.evaluate(() => ({ st: window.ShapeLab.revealStatus().forced, txt: document.querySelector('[data-test-state]').textContent, on: document.querySelector('[data-test="unfinished"]').classList.contains('on') }));
+    await page.click('[data-test="complete"]');
+    const t2 = await page.evaluate(() => ({ st: window.ShapeLab.revealStatus().forced, txt: document.querySelector('[data-test-state]').textContent }));
+    await page.click('[data-test="alive"]');
+    const t3 = await page.evaluate(() => ({ playing: window.ShapeLab.revealStatus().playing, txt: document.querySelector('[data-test-state]').textContent }));
+    await page.waitForTimeout(400);
+    await page.click('[data-test="authoring"]');
+    const after = await page.evaluate(() => JSON.stringify([window.ShapeLab.figure(), window.ShapeLab.state().missing, window.ShapeLab.reveal(), window.ShapeLab.historyDepth()]));
+    ck(t1.st === 'unfinished' && /UNFINISHED/.test(t1.txt) && t1.on && t2.st === 'complete' && /COMPLETE/.test(t2.txt) && t3.playing && /COME ALIVE/.test(t3.txt),
+      'WF19 step 19–21: UNFINISHED, COMPLETE and COME ALIVE are three named states, each says which it is, and COME ALIVE plays the reveal');
+    ck(after === authored, 'WF19b testing mutates NOTHING — points, connections, missing marks, reveal and the history depth are identical after all three states');
+    const s21 = await status();
+    ck(s21.tested && s21.state === 'READY TO APPROVE' && /Approve the creature/.test(s21.next), 'WF19c having tested, the state becomes READY TO APPROVE and the next step says so');
+    // steps 22–25: name it, read the summary, approve, edit, approval clears
+    await page.fill('[data-name]', 'Lion');
+    const sum = await q('[data-approve-summary]');
+    ck(/CREATURE\s*Lion/.test(sum) && new RegExp('POINTS\\s*' + N + ' of 12').test(sum) && new RegExp('CONNECTIONS\\s*' + N).test(sum) && /MISSING CONNECTIONS\s*1/.test(sum) && /REVEAL FEATURES\s*1/.test(sum) && /STATUS\s*READY TO APPROVE/.test(sum),
+      'WF20 step 22–23: the approval summary reads CREATURE · POINTS · CONNECTIONS · MISSING CONNECTIONS · REVEAL FEATURES · STATUS from the same status the strip shows', sum.replace(/\s+/g, ' '));
+    await page.click('[data-approve]');
+    const s23 = await status();
+    ck(s23.state === 'APPROVED' && (await q('[data-status-state]')) === 'APPROVED' && (await disabled('[data-approve]')), 'WF21 step 24: APPROVE CREATURE freezes it — the strip reads APPROVED and the button sleeps');
+    await page.evaluate(() => window.ShapeLab.movePoint(2, 0.3, 0.3));
+    const s24 = await status();
+    ck(s24.state !== 'APPROVED' && !(await disabled('[data-approve]')) && (await page.evaluate(() => window.ShapeLab.state().approved)) === null,
+      'WF22 step 25: editing after approval clears the approval — the state steps back and the creature must be tested again', s24.state);
+    await page.click('[data-undo]');
+    ck((await status()).state !== 'APPROVED', 'WF22b …and Undo of that edit does not silently re-approve: an approval is a decision, never history');
+    // step 26: save, reload, the creature is there
+    await page.click('[data-test="unfinished"]'); await page.click('[data-test="authoring"]');
+    await page.click('[data-approve]');
+    const saved = await page.evaluate(() => window.ShapeLab.save());
+    const beforeReload = await page.evaluate(() => JSON.stringify([window.ShapeLab.figure(), window.ShapeLab.state().missing, window.ShapeLab.reveal(), window.ShapeLab.state().approved && window.ShapeLab.state().approved.kind]));
+    await page.reload(); await page.waitForFunction(() => !!window.ShapeLab && !!window.LabReference, null, { timeout: 20000 });
+    await page.evaluate((id) => window.ShapeLab.load(id), saved.id);
+    const afterReload = await page.evaluate(() => JSON.stringify([window.ShapeLab.figure(), window.ShapeLab.state().missing, window.ShapeLab.reveal(), window.ShapeLab.state().approved && window.ShapeLab.state().approved.kind]));
+    const s26 = await status();
+    ck(saved.ok && afterReload === beforeReload && s26.state === 'APPROVED' && !s26.dirty && !(await disabled('[data-undo]')) === false,
+      'WF23 step 26: save, reload, open — the same points, connections, missing marks, reveal and approval; nothing is dirty and the history starts clean');
+    // steps 27–29: the scoped resets, each proved to touch only its own thing
+    await page.click('[data-reset-connections]');
+    const rc = await fig(); const rcs = await status();
+    ck(rc.f.joins.length === 0 && rc.f.points.length === N && rcs.reveal === 1 && rcs.state !== 'APPROVED' && /every point exactly where it was, the reveal untouched/.test(await q('[data-say]')),
+      'WF24 step 27: RESET CONNECTIONS removes every connection and missing mark — every point stays, the reveal stays, and the approval clears');
+    await page.click('[data-undo]');
+    ck((await fig()).f.joins.length === N, 'WF24b …and Undo brings every connection back');
+    await page.click('[data-reset-reveal]');
+    const rr = await status();
+    ck(rr.reveal === 0 && rr.points === N && rr.connections === N && rr.missing === 1, 'WF25 step 28: RESET REVEAL removes the reveal feature and nothing else');
+    await page.click('[data-undo]');
+    ck((await status()).reveal === 1, 'WF25b …and Undo brings it back');
+    await page.evaluate(() => { const s = document.querySelector('[data-ref-subject]'); s.value = 'Lion'; });
+    // reset points: with a reference showing, the suggested points come back as the starting figure
+    await page.click('[data-reset-points]');
+    const rp = await fig(); const rps = await status();
+    ck(rp.f.joins.length === 0 && rps.reveal === 0 && /Connections went with them/.test(await q('[data-say]')),
+      'WF26 step 29: RESET POINTS removes the points, the connections and the reveal features standing on them — and says so', await q('[data-say]'));
+    await page.click('[data-undo]');
+    const rpu = await status();
+    ck(rpu.points === N && rpu.connections === N && rpu.missing === 1 && rpu.reveal === 1, 'WF26b …and one Undo brings points, connections, missing mark and reveal all back');
+    // step 30: RESET EVERYTHING asks first, cancel keeps everything, confirm clears
+    await page.click('[data-reset]');
+    const box = await page.evaluate(() => ({ shown: !document.querySelector('[data-reset-confirm-box]').hidden, pts: window.ShapeLab.figure().points.length }));
+    await page.click('[data-reset-cancel]');
+    const kept = await page.evaluate(() => ({ shown: !document.querySelector('[data-reset-confirm-box]').hidden, pts: window.ShapeLab.figure().points.length }));
+    await page.click('[data-reset]'); await page.click('[data-reset-confirm]');
+    const gone = await status();
+    ck(box.shown && box.pts === N && !kept.shown && kept.pts === N && gone.points === 0 && gone.connections === 0 && gone.reveal === 0 && gone.name === '' && gone.state === 'BUILDING',
+      'WF27 step 30: RESET EVERYTHING asks first; Keep working keeps all twelve; Yes, start again clears points, connections, reveal and the name');
+    ck((await disabled('[data-undo]')), 'WF27b a fresh creature has no history — Reset everything is a new beginning, not an undoable edit');
+    // step 31: opening a fixture over unsaved work asks for a second press
+    await page.evaluate(() => { window.ShapeLab.addPoint(0.2, 0.2); window.ShapeLab.addPoint(-0.2, 0.2); });
+    const openBtn = await page.$('[data-open]');
+    await openBtn.click();
+    const firstPress = await page.evaluate(() => ({ pts: window.ShapeLab.figure().points.length, say: document.querySelector('[data-say]').textContent }));
+    await (await page.$('[data-open]')).click();
+    const secondPress = await page.evaluate(() => ({ pts: window.ShapeLab.figure().points.length, id: window.ShapeLab.state().id }));
+    ck(firstPress.pts === 2 && /unsaved changes.*Press Open again/.test(firstPress.say) && secondPress.pts === N && secondPress.id === saved.id,
+      'WF28 step 31: Open over unsaved work is refused once with the reason, and a second press opens the fixture', firstPress.say);
+    ck(errors.length === 0, 'WF29 no page errors across the whole journey', errors.join(' | '));
+    await page.screenshot({ path: path.join(shotDir, 'desktop-journey.png'), fullPage: false });
+
+    // ---- the phone: one column, both panes stacked, nothing off the edge ----
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.waitForTimeout(300);
+    const mob = await page.evaluate(() => {
+      const cw = document.documentElement.clientWidth;
+      const wide = Array.from(document.querySelectorAll('body *')).filter((e) => { const r = e.getBoundingClientRect(); return r.width > 0 && r.right > cw + 1; }).length;
+      return { sw: document.documentElement.scrollWidth, cw, wide, stage: getComputedStyle(document.querySelector('.stage')).gridTemplateColumns.split(' ').length,
+        sticky: getComputedStyle(document.querySelector('main > div.centre')).position, pane: document.querySelector('[data-canvas-complete]').getBoundingClientRect().width };
+    });
+    ck(mob.sw <= mob.cw && mob.wide === 0 && mob.stage === 1 && mob.sticky === 'static' && mob.pane > 300,
+      'WF30 on a phone (390×844) the page never scrolls sideways, the AUTHOR and JUDGE panes stack, the centre no longer sticks, and the pane is still a usable size', JSON.stringify(mob));
+    // the sticky panes on a laptop: scrolled to step 6, the canvases are still in view
+    await page.setViewportSize({ width: 1500, height: 900 });
+    await page.evaluate(() => { window.ShapeLab.render(); document.querySelector('[data-approve]').scrollIntoView(); });
+    await page.waitForTimeout(500);
+    const lap = await page.evaluate(() => { const r = document.querySelector('[data-canvas-complete]').getBoundingClientRect(); return { top: r.top, bottom: r.bottom, vh: innerHeight, scrollY }; });
+    ck(lap.scrollY > 100 && lap.top >= 0 && lap.bottom <= lap.vh, 'WF30b on a laptop, scrolled down to APPROVE, the two panes are still on screen — they stay put while the steps scroll', JSON.stringify(lap));
+    await page.screenshot({ path: path.join(shotDir, 'desktop-scrolled.png'), fullPage: false });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.evaluate(() => scrollTo(0, 0));
+    await page.screenshot({ path: path.join(shotDir, 'phone.png'), fullPage: false });
+    await page.close(); await ctx.close();
+  } finally {
+    await browser.close();
+    server.kill();
+  }
+}
+
+// ===================================================================
 (async () => {
   try {
     // ETHER_LAB_ONLY=SL runs one section alone while it is being built;
@@ -6862,6 +7206,7 @@ async function sectionET() {
     await run('AP', sectionAP);
     await run('RV', sectionRV);
     await run('ET', sectionET);
+    await run('WF', sectionWF);
   } catch (e) {
     fail('suite crashed', (e && e.stack || String(e)).split('\n')[0]);
   }

@@ -703,6 +703,10 @@
       if (ep) ep.hidden = mode !== 'endpoint';
       if (dr) dr.hidden = mode !== 'direct';
       if (ac) ac.hidden = mode === 'fixture';
+      // The connection fields live in CREATE's Advanced disclosure (the
+      // researcher-workflow sprint): choosing an LLM source opens it, so
+      // the URL, token or key a person now has to type is in front of them.
+      if (mode !== 'fixture') { var adv = (ep || dr) && (ep || dr).closest ? (ep || dr).closest('details') : null; if (adv) adv.open = true; }
       doc.querySelectorAll('[data-conn-mode]').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-conn-mode') === mode); });
       var note = el('[data-ref-source-note]');
       if (note) note.textContent = mode === 'fixture'

@@ -12800,3 +12800,25 @@ with A/B/C/D shots; judged by looking, the layer improves authoring
 decisions every time and the picture never. Section `ET` (55), five
 load-bearing checks proved by reverting; `AR3k` widened with reason. No
 model was reachable; nothing is called generated.
+
+## Lab — the researcher workflow: Shape Lab cleanup
+
+Lab only, zero production files changed, build 0769, nothing activated
+in the Ether. The Shape Lab page — grown by accretion across five
+creature experiments — is rewritten as six numbered stages, CREATE →
+SHAPE → CONNECT → REVEAL → TEST → APPROVE, with the AUTHOR / JUDGE panes
+sticky in the centre (found the hard way: the first staged layout
+scrolled the canvas off screen on every budget press), a status strip
+(`LION · 12 POINTS · 11 CONNECTED · 1 MISSING · READY TO TEST` + a human
+next step, derived never stored), a bounded snapshot Undo/Redo covering
+every edit and no preview, an explicit selection with JOIN / UNJOIN /
+MARK MISSING (a click on a line now selects; it used to delete), four
+resets named for what they reset with RESET EVERYTHING asking first
+inline, TEST states that provably mutate nothing, an approval summary
+fed by the same status, a second-press guard on opening a fixture over
+unsaved work, and every provider/schema/candidate word moved into
+Advanced disclosures. Section `WF` (92) walks the brief's 31-step
+journey on a laptop and a phone; six load-bearing checks proved by
+reverting from a copy; `SL6` and `SL12` turned round with reasons.
+Full Lab suite green. No creature intelligence, no runtime change, no
+child-facing surface.
