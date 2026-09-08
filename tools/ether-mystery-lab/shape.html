@@ -57,7 +57,7 @@
   /* The header and the status strip stick too, so the panes sit at ONE
      viewport position whether or not the page is scrolled: the centre's
      sticky top is the top bar's own measured height (--lab-top, set by
-     labShape.js on load and resize). A pane that shifts by the height of
+     the editor script on load, render and resize). A pane that shifts by the height of
      the header when a control below the fold scrolls into view is a pane
      a click can miss by that much — measured, and it did. */
   .topbar { position: sticky; top: 0; z-index: 5; background: var(--bg); }
