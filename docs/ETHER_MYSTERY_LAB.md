@@ -2939,7 +2939,7 @@ Under APPROVE stands **Reset everything**, which asks first — *Start
 this creature again? All points, connections and reveal changes will be
 removed.* — inline, never a browser dialog.
 
-### The two panes, always in view
+### The two panes, always in view — at one position
 
 **AUTHOR** (left: the reference underneath, your points on top, a
 missing connection dashed) and **JUDGE** (right: what a child meets —
@@ -2949,8 +2949,23 @@ panes stay on screen while the steps scroll on either side. This was
 found rather than designed: the first staged layout put the budget
 buttons below the fold, and every canvas click in the suite that
 followed a budget press landed on nothing, because scrolling the button
-into view had scrolled the canvas out. On a phone (≤ 640 px) the panes
-stack, the centre no longer sticks, and nothing scrolls sideways.
+into view had scrolled the canvas out.
+
+The second finding was subtler. A sticky pane that sits at one offset
+when the page is scrolled and another when it is not is a pane a click
+can miss by exactly that difference — and the header's height CHANGED
+with the budget label, which wraps the header onto a second line at
+some budgets and not others, so `AP4`'s click computed a moment before
+a budget press landed 34 px off. Three things close it: the header and
+the status strip are one sticky top bar, the centre's sticky top is
+that bar's measured height (`--lab-top`, re-measured on every render
+and by a `ResizeObserver`), and the budget label moved onto the status
+strip — it is status — where it is ellipsised rather than wrapped, so
+the top bar's height depends on nothing a researcher does. Measured:
+the AUTHOR canvas is at the same viewport `y` at scroll 0, after a
+budget press, after Reset everything and after scrolling to APPROVE.
+On a phone (≤ 640 px) the panes stack, nothing sticks, the strip
+wraps, and nothing scrolls sideways.
 
 ### The status strip
 

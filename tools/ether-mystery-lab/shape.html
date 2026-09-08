@@ -16,17 +16,28 @@
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--ink);
          font: 14px/1.5 -apple-system, "Segoe UI", Roboto, sans-serif; }
-  header { padding: 10px 20px; border-bottom: 1px solid var(--line);
+  header { padding: 10px 20px; border-bottom: 1px solid var(--line); min-height: 48px;
            display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; }
+  header .sub { flex: 1 1 0; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  header a { white-space: nowrap; }
   header h1 { font-size: 17px; margin: 0; color: var(--gold); font-weight: 600; }
   header .sub { color: var(--dim); font-size: 12px; }
-  header a { color: var(--dim); font-size: 12px; margin-left: auto; }
-  #budgetLabel { font-weight: 700; font-size: 12px; letter-spacing: .06em;
+  header a { color: var(--dim); font-size: 12px; margin-left: 0; }
+  /* the budget label lives on the status strip — it IS status — and is
+     ellipsised rather than wrapped, so the top bar's height never depends
+     on which budget is chosen (a header that grew a line when the label
+     did moved every canvas under it, and a click computed a moment
+     earlier landed 34px off) */
+  #budgetLabel { font-weight: 700; font-size: 11px; letter-spacing: .06em; flex: 0 1 auto; min-width: 0;
+                 overflow: hidden; text-overflow: ellipsis; max-width: 46%;
                  padding: 4px 10px; border-radius: 6px; background: #3a3418; color: var(--gold); }
   /* THE STATUS STRIP — one line a researcher reads: the creature, the
      count, the state, and the next thing to do. */
-  .status { display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
-            padding: 8px 20px; border-bottom: 1px solid var(--line); background: var(--panel); }
+  /* one row, a fixed height: the next-step sentence changes length on
+     every edit, and a strip that wraps moves everything under it */
+  .status { display: flex; align-items: center; gap: 14px; flex-wrap: nowrap; min-height: 40px;
+            padding: 6px 20px; border-bottom: 1px solid var(--line); background: var(--panel); }
+  .status > span { white-space: nowrap; }
   .status .sname { font-weight: 700; color: var(--gold); letter-spacing: .06em; font-size: 13px; }
   .status .sline { color: var(--ink); font-size: 13px; letter-spacing: .04em; }
   .status .sstate { font-weight: 700; font-size: 11px; letter-spacing: .1em; padding: 3px 9px; border-radius: 6px;
@@ -34,17 +45,25 @@
   .status .sstate[data-state="ready-to-test"] { color: var(--mid); border-color: var(--mid); }
   .status .sstate[data-state="ready-to-approve"] { color: var(--gold); border-color: var(--gold); }
   .status .sstate[data-state="approved"] { color: var(--good); border-color: var(--good); }
-  .status .snext { color: var(--dim); font-size: 12px; flex: 1 1 240px; }
+  .status .snext { color: var(--dim); font-size: 12px; flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
   .status .snext::before { content: "next · "; letter-spacing: .06em; font-size: 11px; }
   main { display: grid; grid-template-columns: 300px 1fr 360px; gap: 14px;
-         padding: 14px 20px; align-items: start; }
+         padding: 0 20px 14px; align-items: start; }
+  main > div { padding-top: 14px; }
   main > div { min-width: 0; }                 /* a long <option> must never widen a column */
   /* THE TWO PANES STAY IN VIEW while the researcher works down the steps
      on either side — the centre column holds nothing else, so nothing
      ever scrolls underneath them. On one column they flow like the rest. */
-  main > div.centre { position: sticky; top: 12px; }
+  /* The header and the status strip stick too, so the panes sit at ONE
+     viewport position whether or not the page is scrolled: the centre's
+     sticky top is the top bar's own measured height (--lab-top, set by
+     labShape.js on load and resize). A pane that shifts by the height of
+     the header when a control below the fold scrolls into view is a pane
+     a click can miss by that much — measured, and it did. */
+  .topbar { position: sticky; top: 0; z-index: 5; background: var(--bg); }
+  main > div.centre { position: sticky; top: var(--lab-top, 100px); }
   main > div.centre > section { max-height: calc(100vh - 24px); overflow: auto; margin-bottom: 0; }
-  @media (max-width: 1240px) { main > div.centre { position: static; } main > div.centre > section { max-height: none; margin-bottom: 14px; } }
+  @media (max-width: 1240px) { main > div.centre { position: static; } main > div.centre > section { max-height: none; margin-bottom: 14px; } .topbar { position: static; } }
   select { min-width: 0; max-width: 100%; }
   @media (max-width: 1240px) { main { grid-template-columns: minmax(0, 1fr); } }
   section { background: var(--panel); border: 1px solid var(--line);
@@ -195,6 +214,9 @@
      already learned once, in the Ether's own stylesheet) */
   @media (max-width: 640px) {
     main { padding: 10px; } header, .status { padding-left: 10px; padding-right: 10px; }
+    .status { flex-wrap: wrap; gap: 6px 10px; } .status > span { white-space: normal; overflow: visible; }
+    .status .snext, #budgetLabel { flex: 1 1 100%; max-width: none; white-space: normal; overflow: visible; }
+    header .sub { white-space: normal; flex: 1 1 100%; }
     .stage { grid-template-columns: 1fr; }
     .row button { flex: 1 1 auto; }
     .rvhead input.rvname, input[data-reveal-add-name] { width: 100% !important; }
@@ -204,10 +226,10 @@
 </style>
 </head>
 <body>
+<div class="topbar" data-topbar>
 <header>
   <h1>✏️ Creature Shape Lab</h1>
   <span class="sub">research instrument — draw a creature in the Ether's own language, judge it yourself. Never child-facing.</span>
-  <span id="budgetLabel" data-budget-label>TESTING 8 POINTS</span>
   <a href="gallery.html">🔬 Candidate Gallery</a>
   <a href="index.html" style="margin-left:0">← Ether Mystery Lab</a>
 </header>
@@ -216,6 +238,8 @@
   <span class="sline" data-status-line>0 POINTS</span>
   <span class="sstate" data-status-state data-state="building">BUILDING</span>
   <span class="snext" data-status-next>Name a creature and generate a reference, or place points by hand.</span>
+  <span id="budgetLabel" data-budget-label>TESTING 8 POINTS</span>
+</div>
 </div>
 
 <main>
@@ -508,16 +532,16 @@
 </div>
 </main>
 
-<script src="../../js/etherGrammar.js?lab=0912f490d5"></script>
-<script src="labKit.js?lab=0912f490d5"></script>
-<script src="labPreviewHost.js?lab=0912f490d5"></script>
-<script src="labConnection.js?lab=0912f490d5"></script>
-<script src="labBlueprint.js?lab=0912f490d5"></script>
-<script src="labOutline.js?lab=0912f490d5"></script>
-<script src="labReveal.js?lab=0912f490d5"></script>
-<script src="labRevealData.js?lab=0912f490d5"></script>
-<script src="labShape.js?lab=0912f490d5"></script>
-<script src="labReference.js?lab=0912f490d5"></script>
-<script src="labTranslationData.js?lab=0912f490d5"></script>
+<script src="../../js/etherGrammar.js?lab=0b4ebd1260"></script>
+<script src="labKit.js?lab=0b4ebd1260"></script>
+<script src="labPreviewHost.js?lab=0b4ebd1260"></script>
+<script src="labConnection.js?lab=0b4ebd1260"></script>
+<script src="labBlueprint.js?lab=0b4ebd1260"></script>
+<script src="labOutline.js?lab=0b4ebd1260"></script>
+<script src="labReveal.js?lab=0b4ebd1260"></script>
+<script src="labRevealData.js?lab=0b4ebd1260"></script>
+<script src="labShape.js?lab=0b4ebd1260"></script>
+<script src="labReference.js?lab=0b4ebd1260"></script>
+<script src="labTranslationData.js?lab=0b4ebd1260"></script>
 </body>
 </html>

@@ -1883,6 +1883,18 @@
     });
     wireReveal();
     global.addEventListener('resize', render);
+    // the sticky centre's offset is the top bar's measured height, so the
+    // panes never move when a control below the fold scrolls into view
+    var syncTop = function () {
+      var tb = el('[data-topbar]');
+      if (tb && doc.documentElement) doc.documentElement.style.setProperty('--lab-top', (tb.offsetHeight + 14) + 'px');
+    };
+    syncTop();
+    global.addEventListener('resize', syncTop);
+    // the header wraps differently as the budget label changes, so the
+    // top bar's height is watched rather than measured once
+    if (typeof global.ResizeObserver === 'function') { var tbEl = el('[data-topbar]'); if (tbEl) new global.ResizeObserver(syncTop).observe(tbEl); }
+    listeners.push(syncTop);
     listeners.push(render);
     render();
     consumeHandoff();

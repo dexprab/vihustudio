@@ -9679,7 +9679,12 @@ leads somewhere.
   the AUTHOR / JUDGE panes alone in a sticky centre column so they stay
   in view while the steps scroll (found rather than designed: the first
   staged layout scrolled the canvas off screen on every budget press and
-  eleven suite clicks landed on nothing), a status strip derived from
+  eleven suite clicks landed on nothing — and then, with the panes
+  sticky, a header that grew a line whenever the budget label did moved
+  them 34 px between scroll states and `AP4`'s click missed by exactly
+  that; the header and the status strip are one sticky top bar now, the
+  centre's offset is its measured height, and the budget label lives on
+  the strip ellipsised rather than wrapped), a status strip derived from
   `ShapeLab.status()` and never stored (`LION · 12 POINTS · 11 CONNECTED
   · 1 MISSING` · BUILDING / READY TO TEST / READY TO APPROVE / APPROVED
   · a human next step), and the technical vocabulary — candidate,
