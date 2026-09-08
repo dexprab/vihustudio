@@ -46,9 +46,9 @@
 //   OPENAI_API_KEY    required for real generation (shared with
 //                     companion-chat — one account, one key, one place
 //                     per function's own env)
-//   LAB_MODEL         optional, default gpt-4.1-mini (chat, and image
+//   LAB_MODEL         optional, default gpt-4.1 (chat, and image
 //                     understanding — the same model reads a picture)
-//   LAB_IMAGE_MODEL   optional, default gpt-image-1 — the ARTISTIC IMAGE
+//   LAB_IMAGE_MODEL   optional, default gpt-image-2 — the ARTISTIC IMAGE
 //                     GENERATION provider. An account with no image
 //                     model answers {ok:false, reason:'no-image-model'};
 //                     that is the provider's own answer, relayed as one
@@ -63,7 +63,7 @@
 //
 // Deploy: supabase/DEPLOY_lab_generate.md.
 
-const BUILD = 'LAB2';
+const BUILD = 'LAB3';
 
 // ===== BEGIN GENERATED edgeAuth — do not edit below this line =====
 // Generated from supabase/functions/_shared/edgeAuth.js, which is the
@@ -379,8 +379,8 @@ function json(body: unknown, status = 200): Response {
 
 const PROVIDER_URL = 'https://api.openai.com/v1/chat/completions';
 const PROVIDER_IMAGE_URL = 'https://api.openai.com/v1/images/generations';
-const DEFAULT_MODEL = 'gpt-4.1-mini';
-const DEFAULT_IMAGE_MODEL = 'gpt-image-1';
+const DEFAULT_MODEL = 'gpt-4.1';
+const DEFAULT_IMAGE_MODEL = 'gpt-image-2';
 
 // Bounds on a picture a caller may attach (understand) and on what it
 // may ask a picture of (imagine): a PNG/JPEG/WebP under ~6 MB decoded,
@@ -388,6 +388,7 @@ const DEFAULT_IMAGE_MODEL = 'gpt-image-1';
 const IMAGE_MIMES = ['image/png', 'image/jpeg', 'image/webp'];
 const MAX_IMAGE_B64_CHARS = 8 * 1024 * 1024;
 const MAX_IMAGE_PROMPT_CHARS = 2000;
+const MAX_UNDERSTAND_TOKENS = 4000;
 const MAX_IMAGES = 4;
 
 // Bounds on what a caller may relay. Generous for a research batch,
@@ -554,10 +555,15 @@ function makeHandler(deps: Deps) {
     });
     let umodel = String(env('LAB_MODEL') || DEFAULT_MODEL);
     if (!MODEL_RE.test(umodel)) umodel = DEFAULT_MODEL;
+    // an extraction of twenty points with its reasons needs more room than
+    // a description; the caller may ask for it, within a bound
+    let umax = Number(payload.maxTokens);
+    if (!Number.isInteger(umax) || umax < 200) umax = 1400;
+    if (umax > MAX_UNDERSTAND_TOKENS) umax = MAX_UNDERSTAND_TOKENS;
     const ures = await boundedFetch(doFetch, PROVIDER_URL, {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: umodel, messages: withImage, response_format: { type: 'json_object' }, temperature: 0.2, max_tokens: 1400 }),
+      body: JSON.stringify({ model: umodel, messages: withImage, response_format: { type: 'json_object' }, temperature: 0.2, max_tokens: umax }),
     }, 110000);
     if (!ures) return json({ ok: false, reason: 'unavailable' });
     if (!ures.ok) {

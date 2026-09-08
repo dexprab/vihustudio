@@ -12892,3 +12892,33 @@ same figure for a falcon and a plant pot. Next is silhouette
 primitives in the composer, not a better prompt. Section `TR` (88).
 Golden image not in the repository (Lumo stood in); provider reached
 from Node, never from the browser here.
+
+## Lab — Ether grammar V2, close the loop (open vocabulary; verdict: one blocker remains)
+
+Built the open-vocabulary layer as three separate things (semantic terms ·
+declarative extension proposals · seven closed compiler capabilities), the
+vocabulary decision (SUPPORTED / EXTENSION_REQUIRED / NOT_EXPRESSIBLE) with
+reveal candidates and a hint, rule-based missing-connection derivation, and
+the page flow that recomposes base vs extended and walks the loop in the real
+Ether. Real run on nine creatures: the loop closes for all nine (alive,
+roaming), extensions were rarely needed and never moved a grade — the
+compiler's own abstraction is the single blocker. Recorded, not shipped.
+Lab-only; production diff zero. Detail: `docs/ETHER_MYSTERY_LAB.md` → *Ether
+grammar V2 — close the loop*.
+
+## Lab — Image → Ether creature, end-to-end closure (the simplest bridge; verdict: move forward)
+
+On the product owner's instruction to stop building compilers: prompt →
+gpt-image-2 (streamed) → gpt-4.1 with the actual picture → one JSON
+contract (normalized points with features, connections, missing connections
+with reasons, reveal features, a hint, confidence) → the Lab's validator
+(refuse by shape, repair on record) → the existing Shape Lab workflow →
+REVEAL suggestions as ☐ rows → the existing ▶ Play in Ether. Real run on
+the brief's seven prompts: 7/7 pictures, 14/14 valid extractions, 7/7
+completed, alive and roaming in the real Ether at eight lights; rated
+overall B5 C2 D0 against the compiler's A0 B2 C4 D3 — the lights sit on the
+creature. Two suite-found defects fixed (picture-aligned coordinates; an
+extraction landing as GENERATED · EDITED), two environment facts recorded
+(the proxy's thirty-second silence close, its two projects). Section `EX`
+(55). Lab-only; production diff zero. Detail: `docs/ETHER_MYSTERY_LAB.md`
+→ *Image → Ether creature — end-to-end closure*.

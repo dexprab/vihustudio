@@ -164,6 +164,17 @@
   canvas.source-layer { position: absolute; pointer-events: none; z-index: 0; border-radius: 10px; display: block; }
   canvas.source-layer[hidden] { display: none; }
   .translate-status.ok { color: var(--good); } .translate-status.warn { color: var(--warn); }
+  .vocab-status.ok { color: var(--good); } .vocab-status.warn { color: var(--warn); }
+  .extract-status.ok { color: var(--good); } .extract-status.warn { color: var(--warn); }
+  .vd-decision { font-size: 13px; letter-spacing: .1em; font-weight: 700; margin: 4px 0 6px; }
+  .vd-decision.supported { color: var(--good); } .vd-decision.extension_required { color: var(--gold, #e0b95a); } .vd-decision.not_expressible { color: var(--warn); }
+  .ext-card { border: 1px solid var(--line, #2a3150); border-radius: 8px; padding: 6px 8px; margin: 6px 0; font-size: 12px; }
+  .ext-card.no { opacity: .8; }
+  .ext-h { margin-bottom: 4px; } .ext-status { font-size: 10px; letter-spacing: .08em; color: var(--dim); margin-left: 6px; }
+  .ext-row { margin: 2px 0; } .ext-row > span { color: var(--dim); } .ext-row.good { color: var(--good); } .ext-row.bad { color: var(--warn); }
+  .rv-sugg { border: 1px solid var(--line, #2a3150); border-radius: 8px; padding: 6px 8px; margin: 6px 0; font-size: 12px; }
+  .rv-sugg.accepted { border-color: var(--good); } .rv-sugg.rejected { opacity: .5; } .rv-sugg.requires_extension { border-style: dashed; }
+  .rv-sugg-meta { color: var(--dim); font-size: 11px; margin-left: 6px; } .rv-sugg-why { color: var(--mid); margin: 3px 0; } .rv-sugg-actions { margin-top: 4px; }
   .status .sorigin { font-weight: 700; font-size: 10px; letter-spacing: .1em; padding: 3px 8px; border-radius: 6px; border: 1px solid var(--line); color: var(--dim); }
   .status .sorigin[data-origin="generated"] { color: var(--good); border-color: var(--good); }
   .status .sorigin[data-origin="generated-edited"] { color: var(--mid); border-color: var(--mid); }
@@ -312,12 +323,30 @@
         <button data-imagine-understand class="quiet" disabled>Read it again</button>
         <button data-imagine-unselect class="quiet" disabled>Choose a different one</button>
       </div>
+      <div data-extract-section data-extract-outcome="none" style="margin-top:8px">
+        <div class="row">
+          <button data-extract-go class="primary" disabled>Understand &amp; Build Ether</button>
+        </div>
+        <div class="say extract-status" data-extract-status></div>
+        <div class="note">The picture is read by the vision model, which proposes the Ether figure directly — points, the connections of the complete creature, which connections to leave missing, the reveal features and a hint — at the point budget chosen in step 2. It lands on AUTHOR as GENERATED; every point, connection, missing mark and reveal is yours to correct. Change the budget and the SAME picture is read again at the new budget.</div>
+      </div>
       <div data-translate-section data-translate-outcome="none" style="margin-top:8px">
         <div class="row">
           <button data-translate-go class="primary" disabled>Create Ether creature</button>
         </div>
         <div class="say translate-status" data-translate-status></div>
         <div class="note">From the picture and its understanding, a structural plan is made — masses, the dominant gesture, what attaches to what — and the Ether figure is composed from it and placed on AUTHOR, GENERATED, at a point budget chosen for it. Then it is yours: inspect it on JUDGE, adjust anything, approve.</div>
+      </div>
+      <div data-vocab-section data-vocab-outcome="none" style="margin-top:8px">
+        <div class="srclabel">Can the Ether vocabulary express it?</div>
+        <div class="row">
+          <button data-vocab-go class="quiet" disabled>Check the vocabulary</button>
+          <button data-vocab-mode="base" class="quiet" disabled>Base vocabulary</button>
+          <button data-vocab-mode="extended" class="quiet on" disabled>With extensions</button>
+          <label class="rvp" style="flex-direction:row;align-items:center;gap:6px">compose at <select data-compose-budget style="width:auto"><option value="auto">auto</option><option value="8">8 — what the Ether performs</option><option value="10">10</option><option value="12">12</option><option value="16">16</option><option value="18">18</option><option value="20">20</option></select> points</label>
+        </div>
+        <div class="say vocab-status" data-vocab-status></div>
+        <div class="note">Asked by itself once a creature is composed. The answer is one of <b>SUPPORTED</b>, <b>EXTENSION REQUIRED</b> or <b>NOT EXPRESSIBLE</b>; a proposed extension is a meaning in words — never a drawing, never a rule for one creature — and the compiler says whether it can draw it. <b>Base vocabulary</b> and <b>With extensions</b> compose the same plan both ways so the two can be compared on JUDGE. The decision, the extensions and the suggested reveals are on the right.</div>
       </div>
       <div class="note">The understanding is on the right. It describes what is in the picture — the picture, not the words that asked for it.</div>
     </div>
@@ -453,12 +482,18 @@
       <button data-reset-connections class="quiet" disabled>Reset connections</button>
     </div>
     <div class="note"><b>Reset connections</b> removes every connection and missing mark; every point stays exactly where it is. Undo brings them back.</div>
+    <div class="srclabel" style="margin-top:10px">The unfinished creature</div>
+    <div class="row"><button data-mystery-go class="quiet" disabled>Choose the missing connections</button></div>
+    <div class="note" data-mystery-why></div>
+    <div class="note">For a composed creature: the connections a child will make are chosen from the relationships between its parts — never a part's own edge, never one that would leave a lone point, preferring a part that carries identity and a gap wide enough to see. The leading hint from the vocabulary decision is written into Approve. Everything placed is an ordinary missing mark afterwards: restore any of them, choose others.</div>
   </section>
   <section class="step" data-step="reveal" data-reveal-section>
     <h2><span class="stepn">4</span> Reveal <span class="rv-status" data-reveal-count>0 features</span></h2>
     <div class="lead"><b>PUZZLE</b> = points + connections, what the child completes. <b>REVEAL</b> = the payoff that appears only once the puzzle is whole.</div>
     <div class="note">A reveal feature appears ONLY after the creature is completely solved, stays a few seconds, and fades. It is not a point, not a connection, not a missing mark — never connected by a child, never counted toward the budget, never part of completion. It is anchored to <em>your</em> points (move a point and it follows), never to the reference.</div>
     <div class="row" data-reveal-suggest hidden></div>
+    <div data-reveal-extracted hidden></div>
+    <div data-reveal-suggested hidden></div>
     <div data-reveal-list></div>
     <div class="row" style="margin-top:8px">
       <select data-reveal-add-type style="width:auto" title="visual type">
@@ -586,6 +621,18 @@
   </section>
 
   <section>
+    <h2>Ether extraction</h2>
+    <div data-extract-panel></div>
+    <div class="note" style="margin-top:6px">What the vision model read off the picture: the subject, the points it chose and what each stands for, the connections it left missing and why, the reveal features it suggests, the hint, and how sure it is. Accept or reject the suggested reveals in step 4.</div>
+  </section>
+
+  <section>
+    <h2>Vocabulary decision</h2>
+    <div data-vocab-panel></div>
+    <div class="note" style="margin-top:6px">Whether the current Ether vocabulary can express this being; the extensions it proposed, each with its meaning, why it is needed, what it composes with, what it affects and whether the compiler can draw it — RESEARCH ONLY, never added to anything by itself. Accept or reject the suggested reveals in step 4.</div>
+  </section>
+
+  <section>
     <h2>Reference blueprint</h2>
     <div class="legend"><b>BLUEPRINT</b> = what the creature is · <b>ETHER INTERPRETATION</b> = how it should feel abstracted · <b>OUTLINE</b> = visual reference · <b>SUGGESTED POINTS</b> = landmarks · <b>ETHER FIGURE</b> = your own creation · <b>REVEAL</b> = temporary detail</div>
     <div data-ref-panel></div>
@@ -622,6 +669,14 @@
       <textarea data-translate-json hidden readonly style="min-height:90px;font-family:ui-monospace,monospace;font-size:11px"></textarea>
       <div data-translate-diag class="trace"></div>
       <div class="note">The budget decision, every light with the mass it stands for, every connection with its reason (flow · volume · attach · span · taper · limb · ring), pieces and crossings, and any mass that got no light.</div>
+    </details>
+    <details class="adv">
+      <summary>Ether extraction — request, checks, what was loaded</summary>
+      <div data-extract-diag class="trace"></div>
+    </details>
+    <details class="adv">
+      <summary>Vocabulary decision — request, checks, resolution, missing connections</summary>
+      <div data-vocab-diag class="trace"></div>
     </details>
     <details class="adv">
       <summary>Understanding JSON, and what happened</summary>
@@ -662,20 +717,24 @@
 </div>
 </main>
 
-<script src="../../js/etherGrammar.js?lab=f7cbef8039"></script>
-<script src="labKit.js?lab=f7cbef8039"></script>
-<script src="labPreviewHost.js?lab=f7cbef8039"></script>
-<script src="labConnection.js?lab=f7cbef8039"></script>
-<script src="labBlueprint.js?lab=f7cbef8039"></script>
-<script src="labOutline.js?lab=f7cbef8039"></script>
-<script src="labReveal.js?lab=f7cbef8039"></script>
-<script src="labRevealData.js?lab=f7cbef8039"></script>
-<script src="labShape.js?lab=f7cbef8039"></script>
-<script src="labReference.js?lab=f7cbef8039"></script>
-<script src="labArtworkData.js?lab=f7cbef8039"></script>
-<script src="labImagine.js?lab=f7cbef8039"></script>
-<script src="labEtherComposer.js?lab=f7cbef8039"></script>
-<script src="labTranslate.js?lab=f7cbef8039"></script>
-<script src="labTranslationData.js?lab=f7cbef8039"></script>
+<script src="../../js/etherGrammar.js?lab=442a637f01"></script>
+<script src="labKit.js?lab=442a637f01"></script>
+<script src="labPreviewHost.js?lab=442a637f01"></script>
+<script src="labConnection.js?lab=442a637f01"></script>
+<script src="labBlueprint.js?lab=442a637f01"></script>
+<script src="labOutline.js?lab=442a637f01"></script>
+<script src="labReveal.js?lab=442a637f01"></script>
+<script src="labRevealData.js?lab=442a637f01"></script>
+<script src="labShape.js?lab=442a637f01"></script>
+<script src="labReference.js?lab=442a637f01"></script>
+<script src="labArtworkData.js?lab=442a637f01"></script>
+<script src="labImagine.js?lab=442a637f01"></script>
+<script src="labEtherComposer.js?lab=442a637f01"></script>
+<script src="labTranslate.js?lab=442a637f01"></script>
+<script src="labTranslationData.js?lab=442a637f01"></script>
+<script src="labVocabulary.js?lab=442a637f01"></script>
+<script src="labUnfinished.js?lab=442a637f01"></script>
+<script src="labExtract.js?lab=442a637f01"></script>
+<script src="labClosure.js?lab=442a637f01"></script>
 </body>
 </html>

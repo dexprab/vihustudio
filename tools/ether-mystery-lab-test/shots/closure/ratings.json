@@ -1,0 +1,235 @@
+{
+  "what": "Human ratings of the Ether grammar V2 closure run (real-closure.json → <id>/base.png, extended.png, unfinished.png, ether-1…5.jpg, noreveal-complete.jpg). Rated by looking. base/extended = the completed figure at the automatic budget, composed with the base vocabulary alone vs with everything the model bound; revealAB = the completed structure with the accepted reveals against without (A transformative · B meaningful · C weak · D unnecessary); judge = the eleven judgements of the brief, each A–D.",
+  "scale": {
+    "A": "unmistakable",
+    "B": "recognisable",
+    "C": "suggestive",
+    "D": "failed"
+  },
+  "labels": "lumo, openmoji-dragon, twemoji-mermaid, gameicons-falcon, leo, gameicons-centaur, openmoji-elephant, quill: REAL MODEL for understanding, plan and vocabulary decision (gpt-4.1-mini). octopus: CONSTRUCTED understanding and plan, REAL MODEL decision (text only). lumo stands in for the brief's baby dragon, which is not in the repository. Everything RESEARCH ONLY.",
+  "results": [
+    {
+      "id": "lumo",
+      "stands": "baby dragon (stand-in: Lumo)",
+      "base": "C",
+      "extended": "C",
+      "revealAB": "B",
+      "judge": {
+        "silhouette": "C",
+        "grace": "C",
+        "identity": "C",
+        "diagnostic": "C",
+        "etherNative": "B",
+        "structural": "B",
+        "reveal": "B",
+        "completion": "B",
+        "roaming": "B",
+        "hint": "D",
+        "unfinished": "C"
+      },
+      "sees": "an upright thing with two swept wings and a curling tail — a dragon-ish creature; at eight lights a spine with a diamond and two sticks",
+      "reveal": "the wing membrane (fill) turns a stick wing into a sail and is the one reveal that changes what the figure IS; the smile drawn as lines reads as a ladder on the head; the spikes are fine",
+      "notes": "hint refused twice (the model listed wings); the fallback 'Something is waiting…' was used"
+    },
+    {
+      "id": "openmoji-dragon",
+      "stands": "dragon (second)",
+      "base": "C",
+      "extended": "C",
+      "revealAB": "B",
+      "judge": {
+        "silhouette": "C",
+        "grace": "C",
+        "identity": "C",
+        "diagnostic": "C",
+        "etherNative": "B",
+        "structural": "B",
+        "reveal": "B",
+        "completion": "B",
+        "roaming": "B",
+        "hint": "B",
+        "unfinished": "C"
+      },
+      "sees": "an upright winged thing with a head at the top; the flare on the tongue-flame and the outlined wing are visible but small",
+      "reveal": "horns as spikes at the head and a wing fill — meaningful, and the horns are the clearest 'that is what it was'"
+    },
+    {
+      "id": "twemoji-mermaid",
+      "stands": "mermaid",
+      "base": "B",
+      "extended": "B",
+      "revealAB": "B",
+      "judge": {
+        "silhouette": "B",
+        "grace": "C",
+        "identity": "B",
+        "diagnostic": "B",
+        "etherNative": "B",
+        "structural": "B",
+        "reveal": "B",
+        "completion": "B",
+        "roaming": "B",
+        "hint": "B",
+        "unfinished": "B"
+      },
+      "sees": "a person shape — head, arms out, a torso — ending in a forked tail; the model bound nothing beyond the base kinds, so base and extended are one figure",
+      "reveal": "the tail fin fill and a face glow read; 'a graceful figure of the sea' is the best hint of the run"
+    },
+    {
+      "id": "gameicons-falcon",
+      "stands": "falcon",
+      "base": "D",
+      "extended": "D",
+      "revealAB": "C",
+      "judge": {
+        "silhouette": "D",
+        "grace": "D",
+        "identity": "D",
+        "diagnostic": "C",
+        "etherNative": "B",
+        "structural": "C",
+        "reveal": "C",
+        "completion": "C",
+        "roaming": "B",
+        "hint": "B",
+        "unfinished": "C"
+      },
+      "sees": "a splat of lines around a diagonal — four crossings before and after; the model's own extension (a mirrored terminal cluster) is expressible and changes nothing that matters",
+      "reveal": "feather-tip spikes on one wing; the hooked beak needed a kind the reveal has no primitive for and is correctly shown as requiring an extension"
+    },
+    {
+      "id": "leo",
+      "stands": "lion with wings",
+      "base": "D",
+      "extended": "D",
+      "revealAB": "C",
+      "judge": {
+        "silhouette": "D",
+        "grace": "D",
+        "identity": "D",
+        "diagnostic": "C",
+        "etherNative": "B",
+        "structural": "C",
+        "reveal": "C",
+        "completion": "C",
+        "roaming": "B",
+        "hint": "D",
+        "unfinished": "C"
+      },
+      "sees": "a tangle — twenty lights on a two-segment spine, the outlined wings and the curled tail visible only as more lines; at eight lights a bar with a hook",
+      "reveal": "the mane contour is anchored to a single mane light, so its frame is the whole figure and it draws a C larger than the creature — the researcher would resize it; the default reveal size is in frame units and at eight lights a frame can be the whole figure",
+      "notes": "the model's extension 'glowing-curl' (taper + curl) was expressible and is a capability the composer already had by name"
+    },
+    {
+      "id": "gameicons-centaur",
+      "stands": "centaur",
+      "base": "B",
+      "extended": "B",
+      "revealAB": "C",
+      "judge": {
+        "silhouette": "B",
+        "grace": "C",
+        "identity": "B",
+        "diagnostic": "B",
+        "etherNative": "B",
+        "structural": "B",
+        "reveal": "C",
+        "completion": "B",
+        "roaming": "B",
+        "hint": "C",
+        "unfinished": "B"
+      },
+      "sees": "a human torso and head standing on a four-legged body — the one plan whose flow (horse-body → human-torso → human-head) does the work by itself",
+      "reveal": "the bow as lines on the arm is faint; the tail suggestion attached to no light at eight"
+    },
+    {
+      "id": "openmoji-elephant",
+      "stands": "elephant",
+      "base": "C",
+      "extended": "C",
+      "revealAB": "C",
+      "judge": {
+        "silhouette": "C",
+        "grace": "C",
+        "identity": "C",
+        "diagnostic": "C",
+        "etherNative": "B",
+        "structural": "B",
+        "reveal": "C",
+        "completion": "B",
+        "roaming": "B",
+        "hint": "A",
+        "unfinished": "C"
+      },
+      "sees": "a four-legged thing with something long hanging from one end — the lobed head and the curled trunk are the right idea at a scale too small to read",
+      "reveal": "the ear contour helps a little; 'a gentle giant of the wild plains' is exactly the kind of hint asked for"
+    },
+    {
+      "id": "octopus",
+      "stands": "octopus (CONSTRUCTED)",
+      "base": "C",
+      "extended": "C",
+      "revealAB": "D",
+      "judge": {
+        "silhouette": "C",
+        "grace": "C",
+        "identity": "C",
+        "diagnostic": "C",
+        "etherNative": "B",
+        "structural": "B",
+        "reveal": "D",
+        "completion": "B",
+        "roaming": "B",
+        "hint": "B",
+        "unfinished": "C"
+      },
+      "sees": "a dome with hanging lines — the curl on the arms is the one binding that reads as intended",
+      "reveal": "both supported suggestions were anchored to masses that got no light at eight, so nothing was accepted — the reveal is empty and the completion is only the last line appearing"
+    },
+    {
+      "id": "quill",
+      "stands": "invented creature (ink spirit)",
+      "base": "D",
+      "extended": "D",
+      "revealAB": "C",
+      "judge": {
+        "silhouette": "D",
+        "grace": "D",
+        "identity": "D",
+        "diagnostic": "C",
+        "etherNative": "B",
+        "structural": "C",
+        "reveal": "C",
+        "completion": "C",
+        "roaming": "B",
+        "hint": "D",
+        "unfinished": "C"
+      },
+      "sees": "a tangle with a crest — nine crossings before, six after; the model's extension 'splash-enclosure' needed three capabilities the compiler does not have (irregular, dynamic, droplet-like) and was refused honestly, which is the mechanism working on a figure it could not save",
+      "reveal": "the feather crest contour and the quill spike are there and do not rescue it"
+    }
+  ],
+  "tally": {
+    "base": {
+      "A": 0,
+      "B": 2,
+      "C": 4,
+      "D": 3
+    },
+    "extended": {
+      "A": 0,
+      "B": 2,
+      "C": 4,
+      "D": 3
+    },
+    "revealAB": {
+      "A": 0,
+      "B": 3,
+      "C": 5,
+      "D": 1
+    }
+  },
+  "vocabulary": "Decisions: 6 SUPPORTED, 3 EXTENSION_REQUIRED. Extensions proposed: 3 (2 expressible — both compositions of capabilities the compiler already had by name; 1 refused honestly for three capabilities it lacks). The model bound capabilities directly on 7 of 9 creatures and the extended composition differs from the base one on all 7 — and not one grade moved.",
+  "verdict": "ONE BLOCKER REMAINS. Open vocabulary does NOT solve the current bottleneck: the model binds the capabilities the compiler offers (outline, curl, lobe, mirror, flare) on nearly every creature, the compositions change, and the grades do not — B/C/D exactly as before. The single structural limitation is the compiler itself: it spends lights on the gesture skeleton (spine ends, transitions, width pairs) and attaches parts as small spikes and quads sized from a length table, so a species — which lives in the silhouette's outline — is never where the lights are. The only figures that read (mermaid, centaur) are the ones whose plan's FLOW already is the silhouette. No creature-specific branch exists anywhere (suite-scanned). Not ready for production; and per the product owner's own next brief the direct image → vision-model extraction is what is tested next, not a further compiler.",
+  "loop": "every creature completed in the real Ether at eight lights by real taps, came alive and roamed (walks.json: 9/9 alive, 38–65px travelled in the sample) — the loop closes mechanically for every one the accepted reveals draw over the real sky after completion and follow the wanderer while they last, then fade on the reveal's own hold"
+}

@@ -9860,6 +9860,41 @@ leads somewhere.
   `action, image, messages`, checked for every private word and every
   ground-truth sentence — and no plan, picture, token or figure reaches
   storage. Section `TR` (88).
+- **THE OPEN VOCABULARY WAS TRIED, AND IT IS NOT THE ANSWER** (Ether
+  grammar V2, close the loop — Lab only, zero production files changed).
+  The model may propose a semantic extension as DATA (a meaning, why it is
+  needed, what it composes with, a construction of one base term plus
+  modifiers), and the compiler judges every construction against SEVEN
+  closed, generic capabilities (outline · curl · flare · lobe · continuous
+  · sweep · mirror) — NOT EXPRESSIBLE is named, never approximated. Real
+  run on nine creatures: the model bound capabilities on seven and the
+  figures changed on all seven, and **not one grade moved** (base and
+  extended both A0 B2 C4 D3). Every creature completed in the real Ether at
+  eight lights, came alive and roamed. **The single blocker is the
+  compiler's abstraction** — lights spent on a gesture skeleton, parts as
+  spikes — and no vocabulary binding changes where the lights go. Per the
+  product owner's next brief the direct image → vision-model extraction is
+  tested instead; no further compiler is proposed.
+- **THE SIMPLEST BRIDGE WORKS, AND IT IS THE ONE TO MOVE FORWARD WITH**
+  (Image → Ether creature, end-to-end closure — Lab only, zero production
+  files changed). On the product owner's instruction to build no compiler,
+  no vocabulary and no species library: gpt-image-2 draws the creature,
+  gpt-4.1 reads THE ACTUAL PICTURE into one JSON document — normalized
+  points with their features, connections, missing connections chosen for
+  meaning, reveal suggestions, a hint, confidence — the Lab's validator
+  refuses by shape and repairs on record, Shape Lab lets the researcher
+  correct it, and the existing Ether runtime makes it alive. Real run on
+  the brief's seven prompts: **7/7 pictures, 14/14 valid extractions, 7/7
+  alive and roaming at eight lights**, rated overall **B5 C2 D0** against
+  the compiler's A0 B2 C4 D3 — the lights sit ON the creature, which no
+  compiler managed. Two things named, not fixed: eight lights cannot hold
+  a wing's outline or a mane (dragon and winged lion stay C, both read at
+  twelve), and the model lists missing connections separately from
+  connections (repaired on record, 13 of 14). Two environment facts kept
+  for the next person: the agent proxy closes a connection silent for
+  thirty seconds, so image generation streams; and it answers from two
+  projects, one without gpt-4.1, so `model_not_found` is retried on
+  record. Section `EX` (55).
 - Out of scope and not implemented: creature encounters as a reward
   system, creature dialogue, a Companion in the Ether, per-Traveller
   encounter history, more activity rows (story hunt, missing

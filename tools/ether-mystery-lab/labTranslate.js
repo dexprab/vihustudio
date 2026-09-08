@@ -316,7 +316,7 @@
         status('The plan was refused by the validator — ' + v.reasons.slice(0, 3).join(', ') + (v.reasons.length > 3 ? '…' : '') + '. Nothing was composed. ' + kept, 'warn'); render();
         return { ok: false, reason: 'invalid-plan', reasons: v.reasons };
       }
-      var fig = K.compose(v.plan);
+      var fig = K.compose(v.plan, chosenCap() ? { cap: chosenCap() } : {});
       trace.compose = fig.ok ? { ok: true, points: fig.points.length, joins: fig.joins.length, budget: fig.budget, components: fig.diagnostics.components, crossings: fig.diagnostics.crossings, dropped: fig.diagnostics.dropped } : { ok: false, reason: fig.reason };
       if (!fig.ok) {
         trace.outcome = 'uncomposable';
@@ -329,13 +329,45 @@
       trace.outcome = r.source === 'fixture' ? 'fixture' : 'generated';
       status((r.source === 'fixture' ? 'Fixture plan composed — a generic stand-in, not the creature. ' : 'Ether creature generated (' + (r.model || mode) + '): ') + fig.points.length + ' lights, ' + fig.joins.length + ' connections, ' + fig.diagnostics.components + ' piece' + (fig.diagnostics.components === 1 ? '' : 's') + (fig.diagnostics.crossings ? ', ' + fig.diagnostics.crossings + ' crossing' + (fig.diagnostics.crossings === 1 ? '' : 's') : '') + (fig.diagnostics.dropped.length ? ', no light for: ' + fig.diagnostics.dropped.join(', ') : '') + '. Judge it on the right, then adjust or approve.', 'ok');
       render();
-      return { ok: true, source: r.source, points: fig.points.length, loaded: loaded };
+      var done = { ok: true, source: r.source, points: fig.points.length, loaded: loaded };
+      notifyTranslated(done);
+      return done;
     }).catch(function () {
       state.busy = false; trace.answer = { ok: false, reason: 'error' }; trace.outcome = 'failed';
       status('The plan request failed (' + mode + '). ' + kept, 'warn'); render();
       return { ok: false, reason: 'error' };
     });
   }
+
+  // RECOMPOSE the held plan with a resolved vocabulary (Ether grammar
+  // V2): the same plan, the same composer, different capabilities per
+  // mass — and the figure replaces the generated one in the Shape Lab
+  // in one history step. `caps` null means the base vocabulary alone.
+  // THE AUTHOR-SELECTED BUDGET. "auto" lets complexity decide; a number
+  // caps the composer there — 8 is what the Ether performs today, and
+  // composing AT it is how the loop is walked in the real sky.
+  function chosenCap() { var n = el('[data-compose-budget]'); var v = n ? Number(n.value) : 0; return v > 0 ? v : null; }
+  function recompose(caps, note, cap) {
+    var K = global.LabEtherComposer, S = global.ShapeLab, I = global.LabImagine;
+    if (!state.plan || !K || !S) return { ok: false, reason: 'no-plan' };
+    var o = caps ? { caps: caps } : {};
+    var c = cap || chosenCap(); if (c) o.cap = c;
+    var fig = K.compose(state.plan, o);
+    if (!fig.ok) return { ok: false, reason: fig.reason };
+    // the same figure again is not a change — nothing is reloaded and the
+    // status line that described the translation is left standing
+    if (state.figure && JSON.stringify(fig.points) === JSON.stringify(state.figure.points) && JSON.stringify(fig.joins) === JSON.stringify(state.figure.joins)) return { ok: true, unchanged: true, figure: JSON.parse(JSON.stringify(fig)) };
+    state.figure = fig;
+    var meta = state.planMeta || {};
+    var analysis = I && I.analysis ? I.analysis() : null;
+    var loaded = S.loadGenerated({ budget: fig.budget, points: fig.points, roles: fig.roles, joins: fig.joins, source: meta.source === 'fixture' ? 'fixture' : 'translation', subject: analysis ? analysis.subject : null });
+    if (state.last) state.last.compose = { ok: true, points: fig.points.length, joins: fig.joins.length, budget: fig.budget, components: fig.diagnostics.components, crossings: fig.diagnostics.crossings, dropped: fig.diagnostics.dropped, vocabulary: fig.diagnostics.vocabulary };
+    status((note || 'Recomposed') + ': ' + fig.points.length + ' lights, ' + fig.joins.length + ' connections, ' + fig.diagnostics.components + ' piece' + (fig.diagnostics.components === 1 ? '' : 's') + (fig.diagnostics.crossings ? ', ' + fig.diagnostics.crossings + ' crossing' + (fig.diagnostics.crossings === 1 ? '' : 's') : '') + '.', 'ok');
+    render();
+    return { ok: true, figure: JSON.parse(JSON.stringify(fig)), loaded: loaded };
+  }
+  var translated = [];
+  function notifyTranslated(r) { translated.forEach(function (fn) { try { fn(r); } catch (e) { /* a listener's own error is its own */ } }); }
 
   // ---------------------------------------------------------------
   // THE SOURCE PANE and the underlay under AUTHOR
@@ -386,6 +418,9 @@
       underImg.src = sel.dataUrl;
     } else paint();
   }
+  // the chosen picture's own aspect (width over height), once it has
+  // loaded — what an extraction needs to land its points on the underlay
+  function sourceAspect() { return underImg && underImg.naturalWidth && underImg.naturalHeight ? underImg.naturalWidth / underImg.naturalHeight : 1; }
   function setUnderlay(v) { state.underlay = !!v; render(); if (global.ShapeLab && global.ShapeLab.render) global.ShapeLab.render(); return state.underlay; }
 
   function renderSource() {
@@ -475,7 +510,8 @@
     LIMITS: LIMITS, SCHEMA: SCHEMA, ROLES: ROLES.slice(), KINDS: KINDS.slice(), SIZES: SIZES.slice(), SHAPES: SHAPES.slice(), GESTURES: GESTURES.slice(), CURVES: CURVES.slice(),
     FACINGS: FACINGS.slice(), RELATIONS: RELATIONS.slice(), SIDES: SIDES.slice(), TREATS: TREATS.slice(), COMPLEXITIES: COMPLEXITIES.slice(), FORBIDDEN_KEYS: FORBIDDEN_KEYS.slice(),
     planMessages: planMessages, validatePlan: validatePlan, parsePlan: parsePlan, fixturePlan: fixturePlan,
-    translate: translate, setUnderlay: setUnderlay, underlayShowing: underlayShowing,
+    translate: translate, recompose: recompose, onTranslated: function (fn) { if (typeof fn === 'function') translated.push(fn); },
+    setUnderlay: setUnderlay, underlayShowing: underlayShowing, sourceAspect: sourceAspect,
     plan: function () { return state.plan ? JSON.parse(JSON.stringify(state.plan)) : null; },
     planMeta: function () { return state.planMeta ? JSON.parse(JSON.stringify(state.planMeta)) : null; },
     figure: function () { return state.figure ? JSON.parse(JSON.stringify(state.figure)) : null; },

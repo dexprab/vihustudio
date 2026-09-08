@@ -3566,3 +3566,177 @@ The old outline composer is not used by this path.
 `tools/ether-mystery-lab-test/render-translation.js` ·
 `tools/ether-mystery-lab-test/shots/translate/` (the real run, the
 ratings, seventeen screenshots)
+
+## Ether grammar V2 — close the loop (the open vocabulary, and the verdict)
+
+**Lab only. Zero production files changed. Build stays 0769.**
+
+The closure experiment: could the semantic-compiler route express arbitrary
+beings once its vocabulary was allowed to grow? Three things kept apart in
+`labVocabulary.js` — a SEMANTIC vocabulary (the composer's nine base terms,
+with meanings), EXTENSION PROPOSALS (declarative data: name, meaning, why
+needed, what it expresses, what it composes with, what it affects, examples,
+and a CONSTRUCTION of one base term plus modifiers), and the compiler's
+RENDERER CAPABILITIES (seven, closed, generic: outline · curl · flare · lobe ·
+continuous · sweep · mirror). For each picture the model answers SUPPORTED ·
+EXTENSION_REQUIRED · NOT_EXPRESSIBLE, proposes extensions, binds terms to the
+plan's masses, offers reveal candidates (name · reason · importance · role ·
+appearance · kind, classified SUPPORTED_REVEAL / REQUIRES_EXTENSION /
+NOT_SUITABLE_FOR_REVEAL) and writes the leading hint. The compiler judges
+every construction: a modifier it has no capability for is NOT EXPRESSIBLE by
+name, never approximated. `labUnfinished.js` chooses the missing connections
+by the creature experiments' own rules (only a relationship between parts,
+never a stray light, a detached part preferred, wide, spread, few).
+`labClosure.js` runs it on the page: the decision, the extension cards, a
+Base / With extensions toggle that recomposes the same plan both ways, the
+suggested reveals in step 4 (accept · reject), and *Choose the missing
+connections* in step 3. The existing ▶ Play in Ether walks the loop at eight.
+
+**The real run** (`real-closure.js`, `render-closure.js`,
+`shots/closure/`): nine creatures — Lumo standing in for the absent baby
+dragon, a second dragon, mermaid, falcon, lion with wings, centaur, elephant,
+a CONSTRUCTED octopus (no picture exists in the repository), and Quill as the
+invented creature. 9/9 decisions valid; 6 SUPPORTED, 3 EXTENSION_REQUIRED;
+3 extensions proposed, 2 expressible (both compositions of capabilities the
+compiler already had), 1 refused honestly (three capabilities it lacks). The
+model bound capabilities directly on 7 of 9 and the extended figure differs
+from the base one on all 7. **Every creature completed in the real Ether at
+eight lights by real taps, came alive and roamed** (walks.json, 9/9).
+
+**The verdict (ratings.json): open vocabulary does NOT solve the
+bottleneck.** Base A0 B2 C4 D3 → extended A0 B2 C4 D3 — the compositions
+changed and not one grade moved. The single structural limitation is the
+compiler itself: it spends lights on the gesture skeleton and attaches parts
+as small spikes and quads, so a species — which lives in the outline — is
+never where the lights are. Reveal A/B: B3 C5 D1 — meaningful where a fill
+turns a stick wing into a sail, weak where a contour's frame is a whole
+figure at eight lights. Two contract faults were the Lab's and were
+repaired on record (composing with a capability name was refused as
+unknown; hints listed body parts). Not moved toward production; the product
+owner's next brief tests the direct image → vision-model extraction instead.
+Suite section `CL` (90).
+
+## Image → Ether creature — end-to-end closure (the simplest bridge)
+
+**Lab only. Zero production files changed. Build stays 0769.**
+
+The product owner's instruction after the V2 verdict: stop building
+compilers. *Let the image model create. Let the vision model understand. Let
+Shape Lab correct. Let the existing Ether runtime make it alive.* So the
+bridge is one contract and no geometry engine at all:
+
+    creative prompt
+      → gpt-image-2 (the Lab's own presentation instruction: one creature,
+        full body, readable silhouette, no text, no interface)
+      → gpt-4.1, WITH THE ACTUAL PICTURE, answering one JSON document
+      → the Lab's validator
+      → Shape Lab (the existing six-stage workflow: SOURCE · AUTHOR · JUDGE)
+      → REVEAL stage: suggested reveals as ☐ rows, Accept / Reject / Edit
+      → ▶ Play in Ether — the existing preview, js/etherMystery.js unmodified
+
+**The contract** (`labExtract.js` → `extractMessages(budget)`): the model
+returns `subject`, `points[{id, x, y, feature}]` in normalized picture
+coordinates (0..1 — acceptable for a researcher tool, and the brief says so),
+`connections[{a, b}]`, `missingConnections[{a, b, reason}]` chosen for meaning
+and never at random, `revealFeatures[{name, reason, type
+diagnostic|character|accent|magic, near[ids]}]`, a `hint` that names a nature
+and never the answer, and `confidence{overall, identity, structure}`. The
+budget the researcher chose travels in the contract (one or two gaps at
+eight, two or three above); changing the budget reads the SAME picture again
+at the new budget — never a new creature. Models are exactly `gpt-image-2`
+and `gpt-4.1`, as defaults in `labConnection.js` and in `lab-generate`
+(build `LAB3`, with a bounded `maxTokens` for an extraction's longer answer);
+none of the retired image models is named anywhere on the path.
+
+**The validator refuses by shape and repairs on record.** Too many points are
+cut to the budget; a coordinate that is not a number or far off the picture
+refuses the extraction, one just over the edge is clamped; a duplicate id is
+dropped with the connections that named it; a connection to a point that does
+not exist, a self-connection and a duplicate are dropped; a missing connection
+the model forgot to list as a connection is added and left missing; one that
+would strand a point is kept as a connection instead; when none of the model's
+gaps can be left out the Lab chooses the widest safe ones and says so, so a
+figure always has a mystery; at most three gaps and at least two connections
+always remain; a reveal anchored to nothing is dropped and an unknown type
+becomes `character`; an instruction or a digit in the hint refuses the HINT
+alone and the figure loads with the honest fallback; markup in any string or
+a private key at any depth refuses the whole extraction; prose is refused as
+not JSON. Every repair is written on the record and shown in the extraction
+panel, which is words a researcher can argue with — the points, why each gap,
+the reveals, the confidence — labelled with the model that answered.
+
+**Two things the suite found before a person did.** The points landed beside
+the picture rather than on it: the editor's unit space and the source
+underlay's box are not the same size, so `toEditor()` now maps picture
+coordinates through the underlay's own half-extent and the picture's aspect
+(the picture's centre at the editor's centre, its edge at the underlay's
+edge). And the extraction landed as GENERATED · EDITED before anybody touched
+it, because its gaps and hint were applied as edits after the load —
+`ShapeLab.loadGenerated()` now takes a gap flag on a join and the hint, so an
+extraction is ONE generated figure in ONE history step.
+
+**The real run** (`real-extract.js`, `render-extract.js`, `shots/extract/`):
+the brief's seven prompts verbatim — panda, mermaid, baby dragon, falcon, lion
+with wings, giant whale, an imaginary fox-like creature — all *made of stars
+in a night sky*. Every stage is REAL MODEL and labelled so; a failed stage
+would say FAILED and substitute nothing.
+
+- **Pictures: 7/7**, 23–70 s each, all single-subject, full-body, readable
+  silhouettes on a night sky (rated A, all seven). Two environment facts,
+  measured: the agent proxy closes a connection that is silent for thirty
+  seconds, and an image takes longer than that to make — so generation uses
+  `stream: true` and reads the completed event; and the proxy answers from
+  two projects, one of which has no `gpt-4.1`, so a `model_not_found` is
+  retried (12 of 14 extractions on the first attempt, the other two on the
+  second) and every retry is on the record.
+- **Extractions: 14/14 valid** at eight and at twelve, identity confidence
+  0.97–0.99. 13 of 14 were repaired on record for the same thing — the model
+  lists its missing connections SEPARATELY from its connections, so each was
+  added as a connection and then left missing; one of its gaps would have
+  stranded a point and was kept; the falcon's two gaps at eight are the
+  Lab's own fallback. The suite re-validates every committed raw reply into
+  exactly the committed extraction on every run.
+- **The loop: 7/7** at eight lights in the real Ether — posed with the
+  model's hint, each gap made by two real taps, every accepted reveal drawn
+  once the figure is whole, then alive and roaming (47–88 px in the sample;
+  `walks.json`).
+
+**The ratings** (`ratings.json`, by looking): image A7 · recognition B5 C2 ·
+unfinished B5 C2 · reveal B1 C6 · alive B7 · **overall B5 C2 D0**. Against
+the V2 compiler run's A0 B2 C4 D3, no D anywhere: the extraction's lights sit
+ON the creature — a seated panda with its ears, a mermaid with arms and a
+forked tail, a whale wedge with a raised fluke, a fox with its tail up, a
+spread bird — which is the thing no compiler managed. The two C's are the
+baby dragon and the winged lion, where the species lives in a wing's outline
+or a mane that eight lights cannot hold (the same ceiling the eight-point
+study found by hand); both read at twelve. The reveal is the weak column:
+BALEEN LINES on the whale is the one reveal that changes what the figure IS,
+and every contour at its default frame size is a ring larger than the head —
+a reveal-default problem the earlier sprints already recorded.
+
+**Verdict: good enough to move forward.** Two things are named rather than
+fixed here: the production budget of eight against creatures whose identity
+is an outline, and the missing-connection half of the contract (state in the
+prompt that a missing connection is ALSO a connection, or keep repairing on
+record). Nothing reaches production: `js/etherMystery.js` performs what the
+Lab hands it, and the Lab hands it nothing but the researcher's approval.
+
+Section `EX` (55): the defaults and the retired models; no creature word and
+no branch on a subject in the module; nothing stored, no request of its own,
+no production module named; the contract's budget, coordinates, priority
+order, reveals, hint and privacy; every malformed-output case above; the
+committed run re-validated, walked and rated; the page journey against a
+stubbed endpoint — GENERATED figure, the panel, the ☐ rows, what left
+(action, picture, answer room, two messages), nothing in storage or export,
+Accept/Reject, edit, budget re-read, and each refusal on screen with the
+figure in use untouched and no fixture substituted; the real Ether loop; the
+copy; the phone; zero page errors; and the production diff against the base
+of this line of sprints (empty). `EX6` is the check that caught the
+edited-on-load defect.
+
+Files: `tools/ether-mystery-lab/labExtract.js` · `labConnection.js` ·
+`labShape.js` (`loadGenerated` gaps + hint) · `shape.html` ·
+`supabase/functions/lab-generate/index.ts` (`LAB3`) ·
+`tools/ether-mystery-lab-test/real-extract.js` · `render-extract.js` ·
+`shots/extract/` (source pictures, author/judge canvases, the sky as JPEG,
+`real-extract.json`, `walks.json`, `ratings.json`).

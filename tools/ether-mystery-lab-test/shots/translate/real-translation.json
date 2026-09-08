@@ -407,6 +407,18 @@
      "kept": 14,
      "cap": 14,
      "budget": 16,
+     "vocabulary": {
+      "mode": "base",
+      "capabilities": [],
+      "revealOnly": []
+     },
+     "order": [
+      "gesture",
+      "silhouette",
+      "structure",
+      "diagnostic",
+      "reveal-only"
+     ],
      "components": 1,
      "crossings": 1,
      "dropped": [
@@ -1014,6 +1026,18 @@
      "kept": 20,
      "cap": 20,
      "budget": 20,
+     "vocabulary": {
+      "mode": "base",
+      "capabilities": [],
+      "revealOnly": []
+     },
+     "order": [
+      "gesture",
+      "silhouette",
+      "structure",
+      "diagnostic",
+      "reveal-only"
+     ],
      "components": 1,
      "crossings": 0,
      "dropped": [],
@@ -1581,6 +1605,18 @@
      "kept": 14,
      "cap": 14,
      "budget": 16,
+     "vocabulary": {
+      "mode": "base",
+      "capabilities": [],
+      "revealOnly": []
+     },
+     "order": [
+      "gesture",
+      "silhouette",
+      "structure",
+      "diagnostic",
+      "reveal-only"
+     ],
      "components": 1,
      "crossings": 0,
      "dropped": [],
@@ -2085,6 +2121,18 @@
      "kept": 14,
      "cap": 14,
      "budget": 16,
+     "vocabulary": {
+      "mode": "base",
+      "capabilities": [],
+      "revealOnly": []
+     },
+     "order": [
+      "gesture",
+      "silhouette",
+      "structure",
+      "diagnostic",
+      "reveal-only"
+     ],
      "components": 1,
      "crossings": 9,
      "dropped": [
@@ -2592,6 +2640,18 @@
      "kept": 14,
      "cap": 14,
      "budget": 16,
+     "vocabulary": {
+      "mode": "base",
+      "capabilities": [],
+      "revealOnly": []
+     },
+     "order": [
+      "gesture",
+      "silhouette",
+      "structure",
+      "diagnostic",
+      "reveal-only"
+     ],
      "components": 1,
      "crossings": 8,
      "dropped": [
@@ -3075,6 +3135,18 @@
      "kept": 14,
      "cap": 14,
      "budget": 16,
+     "vocabulary": {
+      "mode": "base",
+      "capabilities": [],
+      "revealOnly": []
+     },
+     "order": [
+      "gesture",
+      "silhouette",
+      "structure",
+      "diagnostic",
+      "reveal-only"
+     ],
      "components": 1,
      "crossings": 0,
      "dropped": [],
@@ -3544,6 +3616,18 @@
      "kept": 14,
      "cap": 14,
      "budget": 16,
+     "vocabulary": {
+      "mode": "base",
+      "capabilities": [],
+      "revealOnly": []
+     },
+     "order": [
+      "gesture",
+      "silhouette",
+      "structure",
+      "diagnostic",
+      "reveal-only"
+     ],
      "components": 1,
      "crossings": 1,
      "dropped": [],
@@ -4028,6 +4112,18 @@
      "kept": 14,
      "cap": 14,
      "budget": 16,
+     "vocabulary": {
+      "mode": "base",
+      "capabilities": [],
+      "revealOnly": []
+     },
+     "order": [
+      "gesture",
+      "silhouette",
+      "structure",
+      "diagnostic",
+      "reveal-only"
+     ],
      "components": 1,
      "crossings": 4,
      "dropped": [],
@@ -4333,48 +4429,44 @@
    "figure": {
     "points": [
      [
-      -0.49,
-      0.02
+      -0.72,
+      0.05
      ],
      [
-      -0.21,
-      0.04
+      -0.31,
+      0.07
      ],
      [
-      0.37,
-      -0.02
+      0.54,
+      -0.01
      ],
      [
-      0.75,
-      -0.13
+      1.1,
+      -0.18
      ],
      [
-      0.1,
-      0.18
+      0.14,
+      0.29
      ],
      [
-      0.06,
-      -0.13
+      -1.09,
+      -0.64
      ],
      [
-      0.47,
-      1.1
+      -0.36,
+      0.64
      ],
      [
-      0.26,
-      -1.1
+      -0.67,
+      0.64
      ],
      [
-      -0.25,
-      0.42
+      -1.1,
+      -0.16
      ],
      [
-      -0.46,
-      0.42
-     ],
-     [
-      -0.75,
-      -0.12
+      0.74,
+      0.16
      ]
     ],
     "roles": [
@@ -4383,12 +4475,11 @@
      "TRUNK",
      "TRUNK",
      "HEAD",
-     "HEAD",
-     "EARS",
      "EARS",
      "LEGS",
      "LEGS",
-     "TAIL"
+     "TAIL",
+     "TUSKS"
     ],
     "joins": [
      {
@@ -4417,69 +4508,67 @@
       "why": "volume"
      },
      {
-      "a": 1,
-      "b": 5,
-      "why": "volume"
-     },
-     {
-      "a": 2,
-      "b": 5,
-      "why": "volume"
-     },
-     {
       "a": 4,
-      "b": 6,
+      "b": 5,
       "why": "span"
      },
      {
-      "a": 5,
+      "a": 0,
+      "b": 6,
+      "why": "limb"
+     },
+     {
+      "a": 0,
       "b": 7,
-      "why": "span"
+      "why": "limb"
      },
      {
       "a": 0,
       "b": 8,
-      "why": "limb"
-     },
-     {
-      "a": 0,
-      "b": 9,
-      "why": "limb"
-     },
-     {
-      "a": 0,
-      "b": 10,
       "why": "taper (rejoined)"
+     },
+     {
+      "a": 4,
+      "b": 9,
+      "why": "attach"
      }
     ],
-    "budget": 12,
+    "budget": 10,
     "masses": [
      "body",
      "head",
      "trunk",
      "trunk",
      "head",
-     "head",
-     "ears",
      "ears",
      "legs",
      "legs",
-     "tail"
+     "tail",
+     "tusks"
     ],
     "diagnostics": {
-     "candidates": 16,
-     "kept": 11,
-     "cap": 11,
-     "budget": 12,
-     "components": 1,
-     "crossings": 0,
-     "dropped": [
-      "tusks"
+     "candidates": 15,
+     "kept": 10,
+     "cap": 10,
+     "budget": 10,
+     "vocabulary": {
+      "mode": "base",
+      "capabilities": [],
+      "revealOnly": []
+     },
+     "order": [
+      "gesture",
+      "silhouette",
+      "structure",
+      "diagnostic",
+      "reveal-only"
      ],
-     "merged": 3,
+     "components": 1,
+     "crossings": 1,
+     "dropped": [],
+     "merged": 2,
      "notes": [
       "light for \"ears\" (root) shares the light of \"head\"",
-      "light for \"ears\" (root (other side)) shares the light of \"head\"",
       "light for \"tail\" (root) shares the light of \"body\""
      ],
      "allocation": [
@@ -4488,8 +4577,8 @@
        "mass": "body",
        "tag": "root end + tail root",
        "p": [
-        -0.49,
-        0.02
+        -0.72,
+        0.05
        ]
       },
       {
@@ -4497,8 +4586,8 @@
        "mass": "head",
        "tag": "transition body→head",
        "p": [
-        -0.21,
-        0.04
+        -0.31,
+        0.07
        ]
       },
       {
@@ -4506,8 +4595,8 @@
        "mass": "trunk",
        "tag": "transition head→trunk",
        "p": [
-        0.37,
-        -0.02
+        0.54,
+        -0.01
        ]
       },
       {
@@ -4515,8 +4604,8 @@
        "mass": "trunk",
        "tag": "tip end",
        "p": [
-        0.75,
-        -0.13
+        1.1,
+        -0.18
        ]
       },
       {
@@ -4524,62 +4613,53 @@
        "mass": "head",
        "tag": "width + ears root",
        "p": [
-        0.1,
-        0.18
+        0.14,
+        0.29
        ]
       },
       {
        "light": 5,
-       "mass": "head",
-       "tag": "width + ears root (other side)",
+       "mass": "ears",
+       "tag": "tip",
        "p": [
-        0.06,
-        -0.13
+        -1.09,
+        -0.64
        ]
       },
       {
        "light": 6,
-       "mass": "ears",
-       "tag": "tip",
+       "mass": "legs",
+       "tag": "foot",
        "p": [
-        0.47,
-        1.1
+        -0.36,
+        0.64
        ]
       },
       {
        "light": 7,
-       "mass": "ears",
-       "tag": "tip (other side)",
+       "mass": "legs",
+       "tag": "foot",
        "p": [
-        0.26,
-        -1.1
+        -0.67,
+        0.64
        ]
       },
       {
        "light": 8,
-       "mass": "legs",
-       "tag": "foot",
+       "mass": "tail",
+       "tag": "tip",
        "p": [
-        -0.25,
-        0.42
+        -1.1,
+        -0.16
        ]
       },
       {
        "light": 9,
-       "mass": "legs",
-       "tag": "foot",
-       "p": [
-        -0.46,
-        0.42
-       ]
-      },
-      {
-       "light": 10,
-       "mass": "tail",
+       "mass": "tusks",
        "tag": "tip",
        "p": [
-        -0.75,
-        -0.12
+        0.74,
+        0.16
        ]
       }
      ]
@@ -4889,6 +4969,18 @@
      "kept": 10,
      "cap": 10,
      "budget": 10,
+     "vocabulary": {
+      "mode": "base",
+      "capabilities": [],
+      "revealOnly": []
+     },
+     "order": [
+      "gesture",
+      "silhouette",
+      "structure",
+      "diagnostic",
+      "reveal-only"
+     ],
      "components": 1,
      "crossings": 0,
      "dropped": [
@@ -5296,6 +5388,18 @@
      "kept": 10,
      "cap": 10,
      "budget": 10,
+     "vocabulary": {
+      "mode": "base",
+      "capabilities": [],
+      "revealOnly": []
+     },
+     "order": [
+      "gesture",
+      "silhouette",
+      "structure",
+      "diagnostic",
+      "reveal-only"
+     ],
      "components": 1,
      "crossings": 0,
      "dropped": [],
@@ -5726,6 +5830,18 @@
      "kept": 14,
      "cap": 14,
      "budget": 16,
+     "vocabulary": {
+      "mode": "base",
+      "capabilities": [],
+      "revealOnly": []
+     },
+     "order": [
+      "gesture",
+      "silhouette",
+      "structure",
+      "diagnostic",
+      "reveal-only"
+     ],
      "components": 1,
      "crossings": 4,
      "dropped": [],
@@ -6145,6 +6261,18 @@
      "kept": 10,
      "cap": 10,
      "budget": 10,
+     "vocabulary": {
+      "mode": "base",
+      "capabilities": [],
+      "revealOnly": []
+     },
+     "order": [
+      "gesture",
+      "silhouette",
+      "structure",
+      "diagnostic",
+      "reveal-only"
+     ],
      "components": 1,
      "crossings": 0,
      "dropped": [],
@@ -6568,6 +6696,18 @@
      "kept": 13,
      "cap": 14,
      "budget": 16,
+     "vocabulary": {
+      "mode": "base",
+      "capabilities": [],
+      "revealOnly": []
+     },
+     "order": [
+      "gesture",
+      "silhouette",
+      "structure",
+      "diagnostic",
+      "reveal-only"
+     ],
      "components": 1,
      "crossings": 0,
      "dropped": [],
@@ -7050,6 +7190,18 @@
      "kept": 14,
      "cap": 14,
      "budget": 16,
+     "vocabulary": {
+      "mode": "base",
+      "capabilities": [],
+      "revealOnly": []
+     },
+     "order": [
+      "gesture",
+      "silhouette",
+      "structure",
+      "diagnostic",
+      "reveal-only"
+     ],
      "components": 1,
      "crossings": 3,
      "dropped": [],
@@ -7502,6 +7654,18 @@
      "kept": 13,
      "cap": 14,
      "budget": 16,
+     "vocabulary": {
+      "mode": "base",
+      "capabilities": [],
+      "revealOnly": []
+     },
+     "order": [
+      "gesture",
+      "silhouette",
+      "structure",
+      "diagnostic",
+      "reveal-only"
+     ],
      "components": 1,
      "crossings": 0,
      "dropped": [],
@@ -7906,6 +8070,18 @@
      "kept": 10,
      "cap": 10,
      "budget": 10,
+     "vocabulary": {
+      "mode": "base",
+      "capabilities": [],
+      "revealOnly": []
+     },
+     "order": [
+      "gesture",
+      "silhouette",
+      "structure",
+      "diagnostic",
+      "reveal-only"
+     ],
      "components": 1,
      "crossings": 1,
      "dropped": [
@@ -8010,5 +8186,5 @@
    "ok": true
   }
  ],
- "recomposed": "2026-09-08T14:26:04.885Z"
+ "recomposed": "2026-09-08T16:14:54.270Z"
 }

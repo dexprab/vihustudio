@@ -1,0 +1,390 @@
+{
+ "run": "2026-09-08T16:25:17.039Z",
+ "walks": {
+  "panda": {
+   "b12": {
+    "n": 10,
+    "j": 14,
+    "missing": [
+     12,
+     13
+    ],
+    "hint": "A gentle stargazer from the bamboo forests is waiting…",
+    "playable": false,
+    "components": 1
+   },
+   "b8": {
+    "n": 8,
+    "j": 9,
+    "missing": [
+     8
+    ],
+    "hint": "A gentle dreamer from the starlit forests is waiting…",
+    "playable": true,
+    "components": 1,
+    "reveals": [
+     "STARRY EYE PATCH/glow",
+     "SPARKLING NOSE/contour",
+     "GLITTERING FUR/texture"
+    ],
+    "walk": {
+     "hint": "A gentle dreamer from the starlit forests is waiting…",
+     "hintOn": true,
+     "missing": 1,
+     "elements": 8,
+     "steps": [
+      0
+     ]
+    },
+    "reveal": {
+     "offered": 3,
+     "shown": true
+    },
+    "roam": {
+     "alive": 1,
+     "travelled": 67,
+     "samples": 16
+    },
+    "noReveal": {
+     "hint": "A gentle dreamer from the starlit forests is waiting…",
+     "hintOn": true,
+     "missing": 1,
+     "elements": 8,
+     "steps": [
+      0
+     ]
+    }
+   }
+  },
+  "mermaid": {
+   "b12": {
+    "n": 9,
+    "j": 10,
+    "missing": [
+     8,
+     9
+    ],
+    "hint": "A shimmering dweller of the cosmic sea is waiting…",
+    "playable": false,
+    "components": 1
+   },
+   "b8": {
+    "n": 8,
+    "j": 9,
+    "missing": [
+     8
+    ],
+    "hint": "A shimmering dweller of the cosmic sea is waiting…",
+    "playable": true,
+    "components": 1,
+    "reveals": [
+     "SPARKLING TAIL/spike"
+    ],
+    "walk": {
+     "hint": "A shimmering dweller of the cosmic sea is waiting…",
+     "hintOn": true,
+     "missing": 1,
+     "elements": 8,
+     "steps": [
+      0
+     ]
+    },
+    "reveal": {
+     "offered": 1,
+     "shown": true
+    },
+    "roam": {
+     "alive": 1,
+     "travelled": 60,
+     "samples": 15
+    },
+    "noReveal": {
+     "hint": "A shimmering dweller of the cosmic sea is waiting…",
+     "hintOn": true,
+     "missing": 1,
+     "elements": 8,
+     "steps": [
+      0
+     ]
+    }
+   }
+  },
+  "baby-dragon": {
+   "b12": {
+    "n": 11,
+    "j": 13,
+    "missing": [
+     11,
+     12
+    ],
+    "hint": "A magical friend from the night sky is waiting to shine…",
+    "playable": false,
+    "components": 1
+   },
+   "b8": {
+    "n": 7,
+    "j": 8,
+    "missing": [
+     7
+    ],
+    "hint": "A playful spark of the night sky is waiting to soar…",
+    "playable": true,
+    "components": 1,
+    "reveals": [
+     "BIG SPARKLING EYES/glow",
+     "WING SPARKLES/motes",
+     "TAIL FIN/fill"
+    ],
+    "walk": {
+     "hint": "A playful spark of the night sky is waiting to soar…",
+     "hintOn": true,
+     "missing": 1,
+     "elements": 7,
+     "steps": [
+      0
+     ]
+    },
+    "reveal": {
+     "offered": 3,
+     "shown": true
+    },
+    "roam": {
+     "alive": 1,
+     "travelled": 48,
+     "samples": 15
+    },
+    "noReveal": {
+     "hint": "A playful spark of the night sky is waiting to soar…",
+     "hintOn": true,
+     "missing": 1,
+     "elements": 7,
+     "steps": [
+      0
+     ]
+    }
+   }
+  },
+  "falcon": {
+   "b12": {
+    "n": 8,
+    "j": 10,
+    "missing": [
+     8,
+     9
+    ],
+    "hint": "A guardian of the starry night is waiting in the sky…",
+    "playable": true,
+    "components": 1
+   },
+   "b8": {
+    "n": 6,
+    "j": 8,
+    "missing": [
+     6,
+     7
+    ],
+    "hint": "A guardian of the night sky is waiting…",
+    "playable": true,
+    "components": 1,
+    "reveals": [
+     "GLOWING EYES/glow",
+     "RADIANT TALONS/spike"
+    ],
+    "walk": {
+     "hint": "A guardian of the night sky is waiting…",
+     "hintOn": true,
+     "missing": 2,
+     "elements": 6,
+     "steps": [
+      1,
+      0
+     ]
+    },
+    "reveal": {
+     "offered": 2,
+     "shown": true
+    },
+    "roam": {
+     "alive": 1,
+     "travelled": 88,
+     "samples": 16
+    },
+    "noReveal": {
+     "hint": "A guardian of the night sky is waiting…",
+     "hintOn": true,
+     "missing": 2,
+     "elements": 6,
+     "steps": [
+      1,
+      0
+     ]
+    }
+   }
+  },
+  "winged-lion": {
+   "b12": {
+    "n": 11,
+    "j": 12,
+    "missing": [
+     10,
+     11
+    ],
+    "hint": "A guardian of the starlit skies is waiting…",
+    "playable": false,
+    "components": 1
+   },
+   "b8": {
+    "n": 6,
+    "j": 7,
+    "missing": [
+     6
+    ],
+    "hint": "A guardian of the starlit skies is waiting…",
+    "playable": true,
+    "components": 1,
+    "reveals": [
+     "GLOWING WINGS/spike",
+     "RADIANT MANE/contour",
+     "GLOWING TAIL TIP/lines"
+    ],
+    "walk": {
+     "hint": "A guardian of the starlit skies is waiting…",
+     "hintOn": true,
+     "missing": 1,
+     "elements": 6,
+     "steps": [
+      0
+     ]
+    },
+    "reveal": {
+     "offered": 3,
+     "shown": true
+    },
+    "roam": {
+     "alive": 1,
+     "travelled": 62,
+     "samples": 16
+    },
+    "noReveal": {
+     "hint": "A guardian of the starlit skies is waiting…",
+     "hintOn": true,
+     "missing": 1,
+     "elements": 6,
+     "steps": [
+      0
+     ]
+    }
+   }
+  },
+  "whale": {
+   "b12": {
+    "n": 10,
+    "j": 12,
+    "missing": [
+     10,
+     11
+    ],
+    "hint": "A gentle giant drifts through the endless night…",
+    "playable": false,
+    "components": 1
+   },
+   "b8": {
+    "n": 8,
+    "j": 9,
+    "missing": [
+     8
+    ],
+    "hint": "A gentle giant drifts through the endless night…",
+    "playable": true,
+    "components": 1,
+    "reveals": [
+     "EYE/glow",
+     "BALEEN LINES/lines"
+    ],
+    "walk": {
+     "hint": "A gentle giant drifts through the endless night…",
+     "hintOn": true,
+     "missing": 1,
+     "elements": 8,
+     "steps": [
+      0
+     ]
+    },
+    "reveal": {
+     "offered": 2,
+     "shown": true
+    },
+    "roam": {
+     "alive": 1,
+     "travelled": 75,
+     "samples": 16
+    },
+    "noReveal": {
+     "hint": "A gentle giant drifts through the endless night…",
+     "hintOn": true,
+     "missing": 1,
+     "elements": 8,
+     "steps": [
+      0
+     ]
+    }
+   }
+  },
+  "star-fox": {
+   "b12": {
+    "n": 11,
+    "j": 14,
+    "missing": [
+     12,
+     13
+    ],
+    "hint": "A clever spirit of the night sky is waiting to be revealed…",
+    "playable": false,
+    "components": 1
+   },
+   "b8": {
+    "n": 7,
+    "j": 7,
+    "missing": [
+     6
+    ],
+    "hint": "A clever spirit of the night sky is waiting…",
+    "playable": true,
+    "components": 1,
+    "reveals": [
+     "STARFIELD FUR/texture",
+     "GLOWING EYES/glow",
+     "FLUFFY MANE/contour",
+     "SPARKLING TAIL/glow"
+    ],
+    "walk": {
+     "hint": "A clever spirit of the night sky is waiting…",
+     "hintOn": true,
+     "missing": 1,
+     "elements": 7,
+     "steps": [
+      0
+     ]
+    },
+    "reveal": {
+     "offered": 4,
+     "shown": true
+    },
+    "roam": {
+     "alive": 1,
+     "travelled": 47,
+     "samples": 15
+    },
+    "noReveal": {
+     "hint": "A clever spirit of the night sky is waiting…",
+     "hintOn": true,
+     "missing": 1,
+     "elements": 7,
+     "steps": [
+      0
+     ]
+    }
+   }
+  }
+ }
+}

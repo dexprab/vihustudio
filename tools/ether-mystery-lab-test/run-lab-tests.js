@@ -498,10 +498,12 @@ async function sectionE() {
   ck(r.status === 403 && r.body.reason === 'forbidden',
     'E2 a non-admin session is 403 — this can never be a public LLM');
 
-  // E3 — admin ping: build, and whether a key is configured.
+  // E3 — admin ping: build, and whether a key is configured. (LAB3 and
+  // gpt-image-2 / gpt-4.1 are the defaults since the end-to-end closure —
+  // the product owner's brief names both; the retired ids are refused by EX1b.)
   r = await drive('admin-token', { action: 'ping' });
-  ck(r.status === 200 && r.body.ok && r.body.build === 'LAB2' && r.body.provider === 'none' && r.body.imageModel === 'gpt-image-1',
-    'E3 admin ping reports the build (LAB2), an unconfigured provider, and the image model it would use');
+  ck(r.status === 200 && r.body.ok && r.body.build === 'LAB3' && r.body.provider === 'none' && r.body.imageModel === 'gpt-image-2',
+    'E3 admin ping reports the build (LAB3), an unconfigured provider, and the image model it would use');
   r = await drive('admin-token', { action: 'ping' }, { OPENAI_API_KEY: 'sk-test' });
   ck(r.body.provider === 'configured' && JSON.stringify(r.body).indexOf('sk-test') === -1,
     'E3b a configured key is reported as a word, never echoed');
@@ -5398,7 +5400,7 @@ async function sectionAR() {
     await page.waitForFunction(() => LabReference.current() && LabReference.current().subject === 'Octopus');
     const dr = await page.evaluate(() => ({ badge: document.querySelector('[data-ref-panel-source]').textContent, meta: LabReference.meta(), outcome: document.querySelector('[data-ref-section]').getAttribute('data-ref-outcome'),
       ls: JSON.stringify(localStorage), ss: JSON.stringify(sessionStorage), cookie: document.cookie, exp: window.ShapeLab.exportJSON() }));
-    ck(directHits >= 2 && dr.badge === 'LLM — Direct (dev) (gpt-4.1-mini)' && dr.meta.mode === 'direct' && dr.meta.source === 'generated' && dr.outcome === 'generated' &&
+    ck(directHits >= 2 && dr.badge === 'LLM — Direct (dev) (gpt-4.1)' && dr.meta.mode === 'direct' && dr.meta.source === 'generated' && dr.outcome === 'generated' &&
        lastBody && lastBody.messages && lastBody.messages[1].content === 'Subject: Octopus' && !/\b(card|stars|constellation|memor|story|email|username|creator|companion)\b/i.test(JSON.stringify(lastBody)) &&
        !/sk-test-direct/.test(dr.ls + dr.ss + dr.cookie + dr.exp),
       'AR13f selecting LLM — Direct (dev) invokes the Direct transport at the provider host, is badged LLM — Direct (dev), sends the subject plus the contract only, and the key reaches no storage, export or cookie', dr.badge);
@@ -7342,14 +7344,14 @@ async function sectionIM() {
   }
   const B64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
   let r = await drive({ action: 'ping' });
-  ck(r.body.ok && r.body.build === 'LAB2' && r.body.imageModel === 'gpt-image-1' && r.body.provider === 'configured', 'IM6  ping reports build LAB2 and the image model it would use');
+  ck(r.body.ok && r.body.build === 'LAB3' && r.body.imageModel === 'gpt-image-2' && r.body.provider === 'configured', 'IM6  ping reports build LAB3 and the image model it would use');
   r = await drive({ action: 'imagine', prompt: 'a lion with wings' }, 'no-model');
   ck(r.status === 200 && r.body.ok === false && r.body.reason === 'no-image-model' && JSON.stringify(r.body).indexOf('proj_SECRET') === -1 && JSON.stringify(r.body).indexOf('sk-test') === -1,
     'IM6b an account with no image model answers ONE word — no-image-model — and neither the provider\'s message nor the key leaves', JSON.stringify(r.body));
-  ck(calls.length === 1 && /images\/generations/.test(calls[0].url) && calls[0].body.model === 'gpt-image-1' && calls[0].body.n === 3 && calls[0].body.prompt === 'a lion with wings',
+  ck(calls.length === 1 && /images\/generations/.test(calls[0].url) && calls[0].body.model === 'gpt-image-2' && calls[0].body.n === 3 && calls[0].body.prompt === 'a lion with wings',
     'IM6c the provider was asked once, for three interpretations, with the Lab\'s own prompt');
   r = await drive({ action: 'imagine', prompt: 'a lion with wings', n: 9 }, 'ok');
-  ck(r.body.ok && r.body.images.length === 3 && r.body.images[0] === 'AAAA' && r.body.model === 'gpt-image-1' && calls[0].body.n === 4, 'IM6d a good answer passes the pictures through as base64, and a request for nine is clamped to four');
+  ck(r.body.ok && r.body.images.length === 3 && r.body.images[0] === 'AAAA' && r.body.model === 'gpt-image-2' && calls[0].body.n === 4, 'IM6d a good answer passes the pictures through as base64, and a request for nine is clamped to four');
   r = await drive({ action: 'imagine', prompt: 'a lion with wings' }, 'busy');
   ck(r.body.reason === 'provider-busy', 'IM6e a busy provider is provider-busy');
   r = await drive({ action: 'imagine', prompt: 'a lion with wings' }, 'error');
@@ -7359,10 +7361,10 @@ async function sectionIM() {
   r = await drive({ action: 'imagine', prompt: 'x' }, 'ok', { OPENAI_API_KEY: '' });
   ck(r.body.reason === 'not-configured', 'IM6h no key → not-configured');
   r = await drive({ action: 'understand', messages: um.messages, image: { mime: 'image/png', b64: B64 } }, 'ok');
-  ck(r.body.ok && typeof r.body.text === 'string' && r.body.model === 'gpt-4.1-mini' && calls.length === 1, 'IM6i understand relays the model\'s text back once');
+  ck(r.body.ok && typeof r.body.text === 'string' && r.body.model === 'gpt-4.1' && calls.length === 1, 'IM6i understand relays the model\'s text back once');
   const sentU = calls[0].body;
   const lastU = sentU.messages[sentU.messages.length - 1];
-  ck(sentU.model === 'gpt-4.1-mini' && sentU.response_format.type === 'json_object' && typeof sentU.messages[0].content === 'string' && Array.isArray(lastU.content) && lastU.content[0].type === 'text' && lastU.content[0].text === um.messages[1].content && lastU.content[1].type === 'image_url' && lastU.content[1].image_url.url === 'data:image/png;base64,' + B64 && lastU.content[1].image_url.detail === 'high',
+  ck(sentU.model === 'gpt-4.1' && sentU.response_format.type === 'json_object' && typeof sentU.messages[0].content === 'string' && Array.isArray(lastU.content) && lastU.content[0].type === 'text' && lastU.content[0].text === um.messages[1].content && lastU.content[1].type === 'image_url' && lastU.content[1].image_url.url === 'data:image/png;base64,' + B64 && lastU.content[1].image_url.detail === 'high',
     'IM6j the picture is attached to the last user message as an image part beside the Lab\'s own text, and structured output is demanded — the browser never built that shape');
   const badImgs = [{ mime: 'text/html', b64: B64 }, { mime: 'image/png', b64: 'short' }, { mime: 'image/png', b64: '<script>' + B64 }, { mime: 'image/png', b64: 'A'.repeat(8 * 1024 * 1024 + 1) }];
   let refusedImgs = 0;
@@ -7582,14 +7584,14 @@ async function sectionIM() {
     await page.click('[data-imagine-create]');
     await page.waitForFunction(() => document.querySelector('[data-imagine-section]').getAttribute('data-imagine-outcome') === 'unavailable', null, { timeout: 8000 });
     const dun = await S(() => ({ st: document.querySelector('[data-imagine-status]').textContent, n: window.LabImagine.state().generations.length }));
-    ck(/UNAVAILABLE/.test(dun.st) && dun.n === 4 && directBodies.some((d) => /images\/generations/.test(d.url) && d.body.model === 'gpt-image-1' && d.body.n === 3),
+    ck(/UNAVAILABLE/.test(dun.st) && dun.n === 4 && directBodies.some((d) => /images\/generations/.test(d.url) && d.body.model === 'gpt-image-2' && d.body.n === 3),
       'IM13 on the Direct path the provider\'s model_not_found becomes UNAVAILABLE on screen — the same word, from the same kind of answer');
     await page.click('[data-imagine-understand]');
     await page.waitForFunction(() => window.LabImagine.analysis().subject === 'read directly', null, { timeout: 8000 });
     const dr = await S(() => ({ a: window.LabImagine.analysis(), ls: JSON.stringify(localStorage), ss: JSON.stringify(sessionStorage), cookie: document.cookie, exp: window.ShapeLab.exportJSON(), badge: document.querySelector('[data-imagine-panel-source]').textContent }));
     const dsent = directBodies.filter((d) => /chat\/completions/.test(d.url)).pop().body;
     const dlast = dsent.messages[dsent.messages.length - 1];
-    ck(dr.a.mode === 'direct' && /· direct ·/.test(dr.badge) && dsent.model === 'gpt-4.1-mini' && dsent.response_format.type === 'json_object' && Array.isArray(dlast.content) && dlast.content[1].type === 'image_url' && /^data:image\/png;base64,/.test(dlast.content[1].image_url.url) && dlast.content[1].image_url.detail === 'high',
+    ck(dr.a.mode === 'direct' && /· direct ·/.test(dr.badge) && dsent.model === 'gpt-4.1' && dsent.response_format.type === 'json_object' && Array.isArray(dlast.content) && dlast.content[1].type === 'image_url' && /^data:image\/png;base64,/.test(dlast.content[1].image_url.url) && dlast.content[1].image_url.detail === 'high',
       'IM13b Direct attaches the picture as an image part on the last user message and demands structured output — the same shape the endpoint builds');
     ck(!/sk-test-direct/.test(dr.ls + dr.ss + dr.cookie + dr.exp) && !/sk-test-direct/.test(JSON.stringify(dsent.messages)), 'IM13c the key reaches no storage, no cookie, no export and no message body');
     await page.unroute('https://api.openai.com/**');
@@ -7975,6 +7977,638 @@ async function sectionTR() {
 }
 
 // ===================================================================
+// ===================================================================
+// CL. ETHER GRAMMAR V2 — CLOSE THE LOOP: the open vocabulary, the
+// deterministic compiler's seven capabilities, the unfinished creature,
+// the hint, the reveal suggestions, and the whole loop walked in the
+// real Ether at eight lights. Production untouched.
+// ===================================================================
+async function sectionCL() {
+  console.log('\n== CL. Ether grammar V2 — the open vocabulary and the closed loop ==');
+  const { chromium } = require('playwright');
+  const Vocab = require(path.join(ROOT, 'tools/ether-mystery-lab/labVocabulary.js'));
+  const Unf = require(path.join(ROOT, 'tools/ether-mystery-lab/labUnfinished.js'));
+  const Composer = require(path.join(ROOT, 'tools/ether-mystery-lab/labEtherComposer.js'));
+  const Translate = require(path.join(ROOT, 'tools/ether-mystery-lab/labTranslate.js'));
+  const vSrc = read('tools/ether-mystery-lab/labVocabulary.js'), vStripped = stripComments(vSrc);
+  const uSrc = read('tools/ether-mystery-lab/labUnfinished.js'), uStripped = stripComments(uSrc);
+  const cSrc = read('tools/ether-mystery-lab/labClosure.js'), cStripped = stripComments(cSrc);
+  const coStripped = stripComments(read('tools/ether-mystery-lab/labEtherComposer.js'));
+  const shapeHtml = read('tools/ether-mystery-lab/shape.html');
+  const shotDir = path.join(SHOTS, 'closure'); fs.mkdirSync(shotDir, { recursive: true });
+
+  // ---- CL1: three things kept apart, and none of them a creature ----
+  const sem = Object.keys(Vocab.SEMANTIC), caps = Object.keys(Vocab.CAPABILITIES);
+  ck(sem.length === 9 && sem.every((k) => typeof Vocab.SEMANTIC[k].meaning === 'string' && Vocab.SEMANTIC[k].meaning.length > 20 && Vocab.SEMANTIC[k].affects.every((a) => Vocab.AFFECTS.indexOf(a) !== -1)),
+    'CL1  the semantic vocabulary is nine base terms with a meaning each — the composer\'s own primitives, written down', sem.join(','));
+  ck(caps.length === 7 && caps.join() === 'outline,curl,flare,lobe,continuous,sweep,mirror' && caps.every((k) => Vocab.CAPABILITIES[k].on.every((b) => sem.indexOf(b) !== -1)) && Vocab.CAPABILITIES.sweep.values.length === 4,
+    'CL1b the renderer capabilities are SEVEN, closed, generic, and each names the base terms it applies to', caps.join(','));
+  const creatureWords = /\b(tiger|falcon|elephant|dragon|penguin|whale|bird|lion|fox|bear|octopus|cat|dog|fish|butterfly|snake|horse|mermaid|centaur|eagle|wing|wings|tail|trunk|mane|horn|beak|fin|hair|tusk)\b/i;
+  // (the vocabulary file's STRING LITERALS are the meanings shown to the
+  // model and the hint's own part-list — "a wing, a fin, an ear" explains a
+  // span by example and is not a branch; the code around them is scanned)
+  const vCode = vStripped.replace(/'(?:[^'\\]|\\.)*'/g, "''").replace(/\/[^/\n]+\/[gimsuy]*/g, '/re/');
+  ck(!creatureWords.test(vCode) && !creatureWords.test(uStripped) && !creatureWords.test(cStripped) && !creatureWords.test(coStripped),
+    'CL1c no creature word and no creature part in the vocabulary\'s code, the derivation, the page flow or the composer — the open vocabulary describes RELATIONSHIPS', [vCode, uStripped, cStripped, coStripped].map((t) => (t.match(creatureWords) || [''])[0]).join(','));
+  ck(!/subject\s*===|===\s*subject|switch\s*\(\s*(subject|name|creature|species)\b|\bif\s*\(\s*(creature|species|subject)\b/.test(vStripped + uStripped + cStripped + coStripped),
+    'CL1d no branch on a subject, a species or a creature anywhere in the four files');
+  ck(!/Math\.random/.test(vStripped + uStripped + coStripped) && !/localStorage|sessionStorage|indexedDB|document\.cookie/.test(vStripped + uStripped + cStripped),
+    'CL1e nothing is random, and none of the three new modules writes to storage — an extension is session research data');
+  ck(!/\bnew Function\b|\beval\s*\(|\bFunction\s*\(/.test(vStripped + uStripped + cStripped + coStripped), 'CL1f nothing anywhere turns text into code — a proposal is data and only ever data');
+  ck(!/\bEtherMystery\b|\bEtherGrammar\b|\bEtherLife\b|\bEtherExperience\b|experience-pool|\bMagicCard\b|\bCompanionMemory\b/.test(vStripped + uStripped + cStripped),
+    'CL1g none of the three names the interpreter, the grammar, the pool, a card or a memory — no route from a decision to production');
+
+  // ---- CL2: an extension is validated by shape, and judged by the compiler ----
+  const plan2 = { masses: [{ id: 'body' }, { id: 'reach' }, { id: 'trail' }, { id: 'crown' }, { id: 'top' }] };
+  const goodExt = { name: 'reaching-membrane', meaning: 'a broad reaching span closed into a silhouette and swept behind the shoulder', whyNeeded: 'a span alone is a line', expresses: 'a closed reaching shape', visualEffect: 'the reach reads as a shape', composesWith: ['span', 'outline', 'attachment'], affects: ['silhouette', 'identity'], examples: ['a flier in the picture'], construction: { base: 'span', modifiers: ['outline', 'sweep:back', 'mirror'] } };
+  const dec = (over) => Vocab.validateDecision(Object.assign({ decision: 'EXTENSION_REQUIRED', reason: 'needs a shape', extensions: [goodExt], apply: [{ mass: 'reach', terms: ['reaching-membrane'] }, { mass: 'trail', terms: ['curl', 'flare'] }, { mass: 'top', terms: ['sweep'] }], revealCandidates: [], hint: 'A hunter of the open sky is waiting' }, over || {}), plan2, 'a wibble');
+  const d1 = dec();
+  ck(d1.ok && d1.decision.decision === 'EXTENSION_REQUIRED' && d1.decision.extensions.length === 1 && d1.decision.extensions[0].compiler.ok && d1.decision.extensions[0].status === 'RESEARCH ONLY' && JSON.stringify(d1.decision.extensions[0].compiler.caps) === '{"outline":true,"sweep":"back","mirror":true}',
+    'CL2  a well-formed proposal is accepted, marked RESEARCH ONLY, and the compiler says it can draw it — as outline + sweep:back + mirror on a span', JSON.stringify(d1.reasons));
+  const bad = (ext) => Vocab.validateDecision({ decision: 'EXTENSION_REQUIRED', reason: 'x', extensions: [ext], apply: [], revealCandidates: [], hint: 'Something is waiting' }, plan2, 'a wibble');
+  const notCap = bad(Object.assign({}, goodExt, { name: 'shimmer-edge', construction: { base: 'span', modifiers: ['shimmer'] } }));
+  ck(notCap.ok && notCap.decision.extensions.length === 1 && !notCap.decision.extensions[0].compiler.ok && /no-such-capability:shimmer/.test(notCap.decision.extensions[0].compiler.reasons.join()),
+    'CL2b a modifier the compiler has no capability for is NOT EXPRESSIBLE, and the reason names it — never approximated');
+  const wrongBase = bad(Object.assign({}, goodExt, { name: 'curly-ring', construction: { base: 'enclosure', modifiers: ['curl'] } }));
+  ck(wrongBase.ok && !wrongBase.decision.extensions[0].compiler.ok && /capability-not-on-base:curl\/enclosure/.test(wrongBase.decision.extensions[0].compiler.reasons.join()),
+    'CL2c a capability on a base it does not apply to is NOT EXPRESSIBLE by name');
+  const withCode = bad(Object.assign({}, goodExt, { meaning: 'function (ctx) { ctx.arc(0, 0, 5) }' }));
+  const withCoords = bad(Object.assign({}, goodExt, { visualEffect: 'the tip sits at 0.25, 0.75 from the root' }));
+  const withNumber = bad(Object.assign({}, goodExt, { examples: ['a flier'], composesWith: ['span'], affects: ['silhouette'], construction: { base: 'span', modifiers: ['outline'] }, meaning: 'reach', whyNeeded: 'x', expresses: 'y', extra: 3 }));
+  ck(!withCode.ok && /bad-text/.test(withCode.reasons.join()) && !withCoords.ok && /bad-text/.test(withCoords.reasons.join()) && !withNumber.ok && /number:/.test(withNumber.reasons.join()),
+    'CL2d code in a meaning, a coordinate in a sentence and a number anywhere each refuse the whole decision — an extension is never a drawing');
+  const scoped = bad(Object.assign({}, goodExt, { species: 'a particular one' }));
+  const scoped2 = Vocab.validateDecision({ decision: 'SUPPORTED', reason: 'x', extensions: [], apply: [], revealCandidates: [], hint: 'Something is waiting', rule: { when: 'x' } }, plan2, 'w');
+  ck(!scoped.ok && /forbidden-key:.*species/.test(scoped.reasons.join()) && !scoped2.ok && /forbidden-key:(rule|.*when)/.test(scoped2.reasons.join()),
+    'CL2e a proposal that would scope itself to one creature — species, rule, when — is refused by name: a rule for one animal is the failure this experiment exists to avoid');
+  const dupName = bad(Object.assign({}, goodExt, { name: 'span' }));
+  const noCompose = bad(Object.assign({}, goodExt, { composesWith: ['nonsense-term'] }));
+  ck(dupName.ok && dupName.decision.refused.length === 1 && /name-is-already-a-term/.test(dupName.decision.refused[0].reasons.join()) && noCompose.ok && /composes-with-unknown-term/.test(noCompose.decision.refused[0].reasons.join()),
+    'CL2f a proposal named after an existing term, or composing with a term nobody has, is refused on its own and the rest of the decision stands');
+  const capCompose = bad(Object.assign({}, goodExt, { name: 'forked-reach', composesWith: ['outline', 'flare'], construction: { base: 'span', modifiers: ['outline', 'flare'] } }));
+  ck(capCompose.ok && capCompose.decision.extensions.length === 1 && !capCompose.decision.extensions[0].compiler.ok && /capability-not-on-base:flare\/span/.test(capCompose.decision.extensions[0].compiler.reasons.join()),
+    'CL2g composing with a CAPABILITY is composing with vocabulary (the first real run refused "outline/flare" as unknown) — accepted, and the compiler still judges the construction');
+  const badWord = Vocab.validateDecision({ decision: 'MAYBE', reason: 'x', extensions: [], apply: [], revealCandidates: [], hint: 'x' }, plan2, 'w');
+  const unknownTop = Vocab.validateDecision({ decision: 'SUPPORTED', reason: 'x', extensions: [], apply: [], revealCandidates: [], hint: 'x', points: [] }, plan2, 'w');
+  const repaired = Vocab.validateDecision({ decision: 'EXTENSION_REQUIRED', reason: 'x', extensions: [], apply: [], revealCandidates: [], hint: 'Something is waiting' }, plan2, 'w');
+  ck(!badWord.ok && /bad-decision/.test(badWord.reasons.join()) && !unknownTop.ok && /forbidden-key:points/.test(unknownTop.reasons.join()) && repaired.ok && repaired.decision.decision === 'SUPPORTED' && /EXTENSION_REQUIRED with no extension/.test(repaired.repairs.join()),
+    'CL2h the decision is one of three words, a geometry key at the top refuses everything, and EXTENSION_REQUIRED with nothing proposed is repaired to SUPPORTED on record');
+  const revealOnly = bad(Object.assign({}, goodExt, { name: 'shimmer-later', affects: ['reveal'], construction: { base: 'mass', modifiers: [] } }));
+  const ro = Vocab.resolve(Object.assign({}, revealOnly.decision, { apply: [{ mass: 'crown', terms: ['shimmer-later'] }] }), 'extended');
+  ck(revealOnly.ok && ro.caps.crown && ro.caps.crown.revealOnly === true, 'CL2i an extension that affects the reveal alone marks its mass reveal-only — never a light, kept for the payoff');
+
+  // ---- CL3: resolve — base ignores everything; extended honours what the compiler can draw ----
+  const rb = Vocab.resolve(d1.decision, 'base'), re = Vocab.resolve(d1.decision, 'extended');
+  ck(rb.mode === 'base' && Object.keys(rb.caps).length === 0 && rb.used.length === 0, 'CL3  base mode resolves to nothing bound, whatever was proposed — the current vocabulary alone');
+  ck(re.mode === 'extended' && JSON.stringify(re.caps.reach) === '{"outline":true,"sweep":"back","mirror":true}' && JSON.stringify(re.caps.trail) === '{"curl":true,"flare":true}' && re.used.join() === 'reaching-membrane' && re.ignored.join() === 'top:sweep',
+    'CL3b extended mode binds an expressible extension\'s capabilities and a capability named directly; sweep with no value is ignored and said so', JSON.stringify(re));
+  const rn = Vocab.resolve(Object.assign({}, notCap.decision, { apply: [{ mass: 'reach', terms: ['shimmer-edge'] }] }), 'extended');
+  ck(rn.notExpressible.length === 1 && rn.notExpressible[0].term === 'shimmer-edge' && !Object.keys(rn.caps.reach || {}).length, 'CL3c a binding to an inexpressible extension contributes NOTHING to the figure, and is recorded as not expressible');
+
+  // ---- CL4: the seven capabilities, measured on one plan ----
+  const hand = { masses: [
+      { id: 'head', role: 'primary', kind: 'mass', size: 'large', shape: 'round', label: 'HEAD' },
+      { id: 'body', role: 'primary', kind: 'mass', size: 'dominant', shape: 'oval', label: 'BODY' },
+      { id: 'trail', role: 'diagnostic', kind: 'taper', size: 'large', shape: 'long', label: 'TRAIL' },
+      { id: 'reach', role: 'diagnostic', kind: 'span', size: 'dominant', shape: 'wide', label: 'REACH' },
+      { id: 'crown', role: 'diagnostic', kind: 'terminal', size: 'small', shape: 'thin', label: 'CROWN' },
+      { id: 'stand', role: 'secondary', kind: 'branch', size: 'small', shape: 'thin', label: 'STAND' } ],
+    gesture: { kind: 'upright', flow: ['body', 'head'], curve: 'gentle', facing: 'left', note: 'stands' },
+    relationships: [ { from: 'trail', relation: 'extends-from', to: 'body', side: 'back' }, { from: 'reach', relation: 'spans-from', to: 'body', side: 'back' }, { from: 'crown', relation: 'rises-from', to: 'head', side: 'top' }, { from: 'stand', relation: 'supports', to: 'body', side: 'bottom' } ],
+    proportion: [], mustSurvive: ['head', 'reach', 'trail'], simplify: [], revealOnly: [], complexity: 'rich', movement: 'sways' };
+  const base = Composer.compose(hand);
+  const tagOf = (f, re2) => f.diagnostics.allocation.filter((a) => re2.test(a.tag));
+  const withCap = (id, c) => Composer.compose(hand, { caps: { [id]: c } });
+  const outl = withCap('reach', { outline: true });
+  ck(base.ok && outl.ok && tagOf(outl, /trailing root/).length === 1 && outl.joins.filter((j) => j.why === 'outline').length >= 2 && tagOf(base, /trailing root/).length === 0,
+    'CL4  OUTLINE closes a span back onto the body — a trailing root appears and two outline joins with it; a base span is a stick with a corner');
+  const swB = withCap('reach', { sweep: 'back' }), swF = withCap('reach', { sweep: 'forward' });
+  const tipX = (f) => tagOf(f, /^reach tip$|(^|\+ )reach tip$/)[0] || f.diagnostics.allocation.filter((a) => a.mass === 'reach' && /tip/.test(a.tag))[0];
+  ck(swB.ok && swF.ok && tipX(swB) && tipX(swF) && tipX(swB).p[0] > tipX(swF).p[0], 'CL4b SWEEP moves the tip: back and forward put it on opposite sides of the root (facing left, back is +x)');
+  const curl = withCap('trail', { curl: true });
+  const trailTip = (f) => f.diagnostics.allocation.filter((a) => a.mass === 'trail' && /tip/.test(a.tag))[0], trailMid = (f) => f.diagnostics.allocation.filter((a) => a.mass === 'trail' && /mid/.test(a.tag))[0];
+  ck(curl.ok && trailTip(curl) && trailMid(curl) && trailTip(curl).p[1] < trailMid(curl).p[1] && Math.abs(trailTip(curl).p[0] - trailMid(curl).p[0]) < Math.abs(trailTip(base).p[0] - trailMid(base).p[0]) + 0.01,
+    'CL4c CURL bends the taper on itself: the tip climbs above the mid and no longer reaches away');
+  const flare = withCap('trail', { flare: true });
+  ck(flare.ok && tagOf(flare, /fork tip/).length === 2 && flare.joins.filter((j) => j.why === 'flare').length === 3, 'CL4d FLARE forks a taper\'s end into two lights joined to each other and to the mid');
+  const flareT = withCap('crown', { flare: true });
+  ck(flareT.ok && tagOf(flareT, /flare tip/).length === 2, 'CL4e FLARE on a terminal widens it into a pair');
+  const lobe = withCap('body', { lobe: true });
+  ck(lobe.ok && tagOf(lobe, /lobe edge/).length === 2 && lobe.joins.some((j) => j.why === 'lobe') && tagOf(base, /lobe edge/).length === 0, 'CL4f LOBE gives a flow mass a flat far edge — two edge lights joined to each other');
+  const cont = withCap('body', { continuous: true });
+  ck(cont.ok && cont.points.length === base.points.length - 1 && !cont.diagnostics.allocation.some((a) => /transition/.test(a.tag)) && cont.joins.some((j) => /flow/.test(j.why)),
+    'CL4g CONTINUOUS drops the boundary light between two flow masses and the flow joins straight across', base.points.length + '→' + cont.points.length);
+  const mirr = withCap('reach', { mirror: true });
+  ck(mirr.ok && tagOf(mirr, /other side/).length >= 1 && tagOf(base, /other side/).length === 0, 'CL4h MIRROR reflects a single span across an upright flow — the other side appears');
+  const each = ['outline', 'curl', 'flare', 'lobe', 'continuous', 'sweep', 'mirror'].map((c) => {
+    const id = c === 'lobe' || c === 'continuous' ? 'body' : c === 'curl' || c === 'flare' ? 'trail' : 'reach';
+    const f = Composer.compose(hand, { caps: { [id]: { [c]: c === 'sweep' ? 'down' : true } } });
+    return f.ok && JSON.stringify(f.points) !== JSON.stringify(base.points) || JSON.stringify(f.joins) !== JSON.stringify(base.joins);
+  });
+  ck(each.every(Boolean), 'CL4i every one of the seven changes the figure on its own — none is decorative', each.join());
+  const renamed = JSON.parse(JSON.stringify(hand)); renamed.masses.forEach((m) => { m.id = 'q' + m.id; m.label = 'Q' + m.label; }); renamed.gesture.flow = renamed.gesture.flow.map((i) => 'q' + i); renamed.relationships.forEach((r) => { r.from = 'q' + r.from; r.to = 'q' + r.to; }); renamed.mustSurvive = renamed.mustSurvive.map((i) => 'q' + i);
+  const allCaps = { reach: { outline: true, sweep: 'back', mirror: true }, trail: { curl: true }, body: { lobe: true }, crown: { flare: true } };
+  const qCaps = {}; Object.keys(allCaps).forEach((k) => { qCaps['q' + k] = allCaps[k]; });
+  const fa = Composer.compose(hand, { caps: allCaps }), fq = Composer.compose(renamed, { caps: qCaps });
+  ck(fa.ok && fq.ok && JSON.stringify(fa.points) === JSON.stringify(fq.points) && JSON.stringify(fa.joins) === JSON.stringify(fq.joins), 'CL4j with every capability bound, renaming every mass changes not one light — capabilities are read by relationship, never by name');
+  ck(fa.diagnostics.vocabulary.mode === 'extended' && fa.diagnostics.vocabulary.capabilities.length === 6 && base.diagnostics.vocabulary.mode === 'base' && fa.diagnostics.order.join() === 'gesture,silhouette,structure,diagnostic,reveal-only',
+    'CL4k the diagnostics say which vocabulary composed the figure, which capabilities were used, and the order of construction', JSON.stringify(fa.diagnostics.vocabulary));
+  const ro2 = Composer.compose(hand, { caps: { crown: { revealOnly: true } } });
+  ck(ro2.ok && !ro2.masses.some((m) => m === 'crown') && ro2.diagnostics.vocabulary.revealOnly.join() === 'crown' && !ro2.diagnostics.dropped.some((d) => d === 'crown'),
+    'CL4l a reveal-only mass gets no light and is not "dropped" — it is kept for the reveal, and the diagnostics say so');
+  const capped = Composer.compose(hand, { caps: allCaps, cap: 8 });
+  ck(capped.ok && capped.points.length <= 8 && capped.diagnostics.components === 1, 'CL4m the author-selected budget still caps the extended composition, and the figure is still one piece', capped.points.length + 'L/' + capped.diagnostics.components + 'pc');
+
+  // ---- CL5: the unfinished creature — relationships, never structure; never a stray light ----
+  const uf = Unf.derive({ points: fa.points, joins: fa.joins, masses: fa.masses }, hand);
+  const deg = fa.points.map(() => 0); fa.joins.forEach((j) => { deg[j.a]++; deg[j.b]++; });
+  ck(uf.ok && uf.missing.length >= 1 && uf.missing.length <= 3 && uf.remaining >= 2, 'CL5  one to three missing connections, at least two joins remaining', JSON.stringify(uf.gaps));
+  ck(uf.ok && uf.missing.every((i) => Unf.RELATIONSHIP.test(fa.joins[i].why)) && uf.missing.every((i) => fa.masses[fa.joins[i].a] !== fa.masses[fa.joins[i].b]),
+    'CL5b every missing connection is a RELATIONSHIP between two parts — never a part\'s own edge, volume, ring, outline or flare');
+  const ends = uf.ok ? uf.missing.map((i) => [fa.joins[i].a, fa.joins[i].b]) : [];
+  const flat = [].concat.apply([], ends);
+  ck(uf.ok && ends.every(([a, b]) => deg[a] >= 2 && deg[b] >= 2) && new Set(flat).size === flat.length, 'CL5c both ends of every gap keep another join — no stray light — and no two gaps share a light');
+  const uf2 = Unf.derive({ points: fa.points, joins: fa.joins, masses: fa.masses }, hand);
+  ck(uf.ok && JSON.stringify(uf) === JSON.stringify(uf2), 'CL5d the derivation is deterministic');
+  ck(uf.ok && uf.gaps.some((g) => g.between.some((m) => hand.mustSurvive.indexOf(m) !== -1 || m === 'crown')) && uf.gaps.every((g) => /transition|attachment/.test(g.reason)),
+    'CL5e a part that carries identity is preferred, and every gap says why it was chosen');
+  const uf8 = Unf.derive({ points: capped.points, joins: capped.joins, masses: capped.masses }, hand);
+  ck(uf8.ok && uf8.missing.length >= 1 && uf8.remaining >= 2, 'CL5f at eight lights there is still a meaningful gap to leave', JSON.stringify(uf8.gaps || uf8));
+  const tri = Unf.derive({ points: [[0, 0], [1, 0], [0, 1]], joins: [{ a: 0, b: 1, why: 'volume' }, { a: 1, b: 2, why: 'volume' }, { a: 0, b: 2, why: 'volume' }], masses: ['m', 'm', 'm'] }, null);
+  ck(!tri.ok && tri.reason === 'no-relationship-can-be-missing', 'CL5g a figure whose every join is structure has no gap to give, and says so rather than cutting an edge');
+
+  // ---- CL6: the hint — an invitation, never an instruction, never the answer ----
+  const H = (h, s) => Vocab.validHint(h, s);
+  ck(H('A hunter of the open sky is waiting…', 'falcon').ok && H('A giant of the frozen north is waiting…', 'polar bear').ok && H('Something ancient is waiting to wake', 'dragon').ok && H('Something ancient is waiting to wake', 'dragon').hint.slice(-1) === '…',
+    'CL6  the brief\'s own hints pass, and one without an ending is given its ellipsis');
+  ck(!H('Connect the dots to finish the bird', 'falcon').ok && H('Connect the dots to finish the bird', 'falcon').reason === 'instruction', 'CL6b an instruction is refused');
+  ck(!H('A falcon is waiting…', 'a falcon in flight').ok && /names-the-subject/.test(H('A falcon is waiting…', 'a falcon in flight').reason), 'CL6c the subject\'s own name is refused');
+  ck(!H('A creature with wings and a curling tail awaits…', 'a small dragon').ok && H('A creature with wings and a curling tail awaits…', 'a small dragon').reason === 'names-a-part', 'CL6d a hint that lists body parts is the answer read out, and is refused');
+  ck(H('Something small and young is waiting…', 'a small young dragon').ok, 'CL6e a describing word from the subject line — small, young — may stay: it reveals nothing');
+  ck(!H('Wait 3 seconds', 'x').ok && !H('A scary monster is here', 'x').ok && !H('Hi', 'x').ok, 'CL6f a digit, an unkind word and a hint too short to mean anything are refused');
+
+  // ---- CL7: the contract — what is asked, and what is never sent ----
+  const dm = Vocab.decisionMessages({ subject: 'a wibble', composition: 'c', architecture: ['a'], diagnosticFeatures: ['d'], gesture: 'g', abstraction: {}, revealCandidates: [] }, hand);
+  const sysD = dm.messages[0].content, usrD = dm.messages[1].content;
+  ck(dm.ok && dm.messages.length === 2 && /SUPPORTED/.test(sysD) && /EXTENSION_REQUIRED/.test(sysD) && /NOT_EXPRESSIBLE/.test(sysD) && /AN EXTENSION IS A MEANING, NEVER A DRAWING/.test(sysD) && /never a body part of one kind of animal/i.test(sysD),
+    'CL7  the contract asks for exactly one of three decisions and says an extension is a meaning, never a drawing, never a rule for one creature');
+  ck(caps.every((c) => sysD.indexOf(c + ' ') !== -1 || sysD.indexOf(c + '\n') !== -1 || sysD.indexOf(c + ' (') !== -1) && sem.every((t) => sysD.indexOf(t + ' — ') !== -1) && /never a coordinate/i.test(sysD) && /SVG, code or markup/.test(sysD),
+    'CL7b every semantic term and every capability is named in the contract from the vocabulary itself, and it says words only — never a coordinate, SVG, code or markup');
+  ck(/REVEAL CANDIDATES/.test(sysD) && Vocab.REVEAL_TYPES.every((t) => sysD.indexOf(t + ' (') !== -1) && /NEVER list its body parts/.test(sysD) && /revealCandidates/.test(sysD),
+    'CL7c it asks for reveal candidates as semantic data with the seven reveal primitives named, and for a hint that names a nature and never a part');
+  ck(!/\b(card|stars|constellation|memor|username|creator|companion|email|session|token|orbit|circle)\b/i.test(sysD + usrD) && /"masses"/.test(usrD) && !/points|coordinates/.test(usrD),
+    'CL7d what leaves is the question, the understanding and the plan\'s structure — no private word, no geometry');
+
+  // ---- CL8: the committed real run — labelled, re-validated, not drifting ----
+  const closurePath = path.join(shotDir, 'real-closure.json');
+  const realRun = fs.existsSync(closurePath) ? JSON.parse(fs.readFileSync(closurePath, 'utf8')) : null;
+  ck(!!realRun && realRun.results.length >= 8 && realRun.results.every((r) => r.labels && r.labels.understanding && r.labels.plan && r.labels.decision),
+    'CL8  the real closure run is committed, at least eight creatures, and every stage of every result is labelled', realRun ? realRun.results.length + ' results' : 'missing');
+  if (realRun) {
+    const octo = realRun.results.filter((r) => r.id === 'octopus')[0], lumo = realRun.results.filter((r) => r.id === 'lumo')[0];
+    ck(octo && /CONSTRUCTED/.test(octo.labels.understanding) && /CONSTRUCTED/.test(octo.labels.plan) && /text only/.test(octo.labels.decision) && lumo && /STAND-IN/.test(lumo.stands),
+      'CL8b the octopus says CONSTRUCTED on the stages that were, and the dragon says it is a stand-in — nothing constructed is called a real result');
+    const revalid = realRun.results.filter((r) => r.ok).map((r) => { const v = Vocab.parseDecision(r.raw, r.plan, r.analysis.subject); return { id: r.id, ok: v.ok, same: v.ok && JSON.stringify(v.decision) === JSON.stringify(r.decision) }; });
+    ck(revalid.length >= 8 && revalid.every((x) => x.ok && x.same), 'CL8c every committed raw reply re-validates through the real validator into exactly the committed decision', revalid.filter((x) => !x.same).map((x) => x.id).join(',') || 'all');
+    const redo = realRun.results.filter((r) => r.ok).map((r) => { const ext = Vocab.resolve(r.decision, 'extended'); const f = Composer.compose(r.plan, Object.keys(ext.caps).length ? { caps: ext.caps } : {}); return { id: r.id, same: f.ok && JSON.stringify(f.points) === JSON.stringify(r.compositions.extended.points) && JSON.stringify(f.joins) === JSON.stringify(r.compositions.extended.joins) }; });
+    ck(redo.every((x) => x.same), 'CL8d recomposing every committed plan with its committed decision gives the committed figure — the composer has not drifted from what was rated', redo.filter((x) => !x.same).map((x) => x.id).join(',') || 'all');
+    const differ = realRun.results.filter((r) => r.ok && Object.keys(Vocab.resolve(r.decision, 'extended').caps).length).filter((r) => JSON.stringify(r.compositions.base.points) !== JSON.stringify(r.compositions.extended.points));
+    ck(differ.length >= 5, 'CL8e wherever the model bound a capability, the extended composition differs from the base one — the vocabulary reaches the figure', differ.map((r) => r.id).join(','));
+    const supp = realRun.results.filter((r) => r.ok && r.decision.revealCandidates.some((c) => c.support === 'SUPPORTED_REVEAL'));
+    ck(supp.length >= 7, 'CL8f the model offers supported reveal candidates for nearly every creature', supp.map((r) => r.id + ':' + r.decision.revealCandidates.filter((c) => c.support === 'SUPPORTED_REVEAL').length).join(','));
+    const gaps8 = realRun.results.filter((r) => r.ok && r.compositions.extended8.ok && r.compositions.extended8.unfinished.missing && r.compositions.extended8.unfinished.missing.length >= 1);
+    ck(gaps8.length === realRun.results.filter((r) => r.ok).length, 'CL8g every creature has a meaningful missing connection at eight lights', gaps8.length + '/' + realRun.results.length);
+    const walksPath = path.join(shotDir, 'walks.json');
+    const walks = fs.existsSync(walksPath) ? JSON.parse(fs.readFileSync(walksPath, 'utf8')).walks : null;
+    const walked = walks ? Object.keys(walks).filter((k) => walks[k].walk && walks[k].walk.steps.length && walks[k].walk.steps[walks[k].walk.steps.length - 1] === 0 && walks[k].roam && walks[k].roam.alive === 1 && walks[k].roam.travelled > 30) : [];
+    ck(walks && walked.length >= 8, 'CL8h the committed walks show every creature completed in the real Ether at eight lights, alive and roaming', walks ? walked.length + '/' + Object.keys(walks).length : 'missing');
+    const ratingsPath = path.join(shotDir, 'ratings.json');
+    const ratings = fs.existsSync(ratingsPath) ? JSON.parse(fs.readFileSync(ratingsPath, 'utf8')) : null;
+    ck(!!ratings && ratings.results.length >= 8 && ratings.results.every((x) => /^[ABCD]$/.test(x.base) && /^[ABCD]$/.test(x.extended) && /^[ABCD]$/.test(x.revealAB) && x.judge && Object.keys(x.judge).length === 11) && ratings.results.every((x) => realRun.results.some((r) => r.id === x.id)),
+      'CL8i the ratings are committed: base and extended each A–D, the reveal A/B each A–D, eleven judgements per creature, and every rated id is a run result');
+    ck(!!ratings && typeof ratings.verdict === 'string' && /MOVE TOWARD PRODUCTION|ONE BLOCKER/.test(ratings.verdict), 'CL8j and the closure verdict is written down in the brief\'s own words');
+  }
+
+  // ---- the browser half ----
+  const server = spawn('node', ['tools/bring-it-alive/test/serve.js', String(PORT)], { cwd: ROOT, stdio: 'ignore' });
+  await new Promise((res) => setTimeout(res, 900));
+  const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+  try {
+    const ctx = await browser.newContext({ viewport: { width: 1500, height: 1100 } });
+    const page = await ctx.newPage();
+    const errors = [];
+    page.on('pageerror', (e) => errors.push(String(e).split('\n')[0]));
+    const requests = [];
+    page.on('request', (q) => requests.push(q.url()));
+    await page.goto(BASE + '/tools/ether-mystery-lab/shape.html');
+    await page.waitForFunction(() => !!window.LabClosure && !!window.LabVocabulary && !!window.LabUnfinished && !!window.LabTranslate && !!window.ShapeLab, null, { timeout: 20000 });
+    const S = (fn, arg) => page.evaluate(fn, arg);
+
+    // ---- CL9: loading does nothing; the fixture path answers SUPPORTED, sends nothing ----
+    const load = await S(() => ({ ls: Object.keys(localStorage).length, ss: Object.keys(sessionStorage).length, go: document.querySelector('[data-vocab-go]').disabled, mb: document.querySelector('[data-vocab-mode="base"]').disabled, my: document.querySelector('[data-mystery-go]').disabled, d: window.LabClosure.decision(), controls: ['[data-vocab-section]', '[data-vocab-status]', '[data-vocab-panel]', '[data-vocab-diag]', '[data-reveal-suggested]', '[data-mystery-go]', '[data-mystery-why]', '[data-compose-budget]'].filter((c) => !document.querySelector(c)) }));
+    ck(load.ls === 0 && load.ss === 0 && load.go && load.mb && load.my && !load.d && load.controls.length === 0 && errors.length === 0, 'CL9  loading the page asks nothing, decides nothing, stores nothing; every closure control exists and is shut until a creature is composed', JSON.stringify(load));
+    await page.setInputFiles('[data-imagine-file]', path.join(ROOT, 'tools/ether-mystery-lab/artwork/twemoji-mermaid.png'));
+    await page.waitForFunction(() => window.LabImagine.state().page === 'understood', null, { timeout: 8000 });
+    const before = requests.length;
+    await page.click('[data-translate-go]');
+    await page.waitForFunction(() => document.querySelector('[data-vocab-section]').getAttribute('data-vocab-outcome') === 'fixture', null, { timeout: 8000 });
+    const fx = await S(() => ({ d: window.LabClosure.decision(), meta: window.LabClosure.meta(), status: document.querySelector('[data-vocab-status]').textContent, panel: document.querySelector('[data-vocab-panel]').innerText, mode: window.LabClosure.mode(), n: window.ShapeLab.state().points.length, mb: document.querySelector('[data-vocab-mode="base"]').disabled, sugg: document.querySelector('[data-reveal-suggested]').hidden }));
+    ck(fx.d && fx.d.decision === 'SUPPORTED' && fx.meta.source === 'fixture' && /Fixture decision/.test(fx.status) && /FIXTURE — no model looked/i.test(fx.panel) && fx.d.extensions.length === 0 && fx.d.apply.length === 0 && fx.sugg && !fx.mb && requests.slice(before).every((u) => !/openai|fn\.local|supabase/.test(u)),
+      'CL9b after a fixture translation the decision is asked by itself: SUPPORTED, badged FIXTURE, nothing bound, no suggestions, no request made', fx.status.slice(0, 80));
+    const nBase = await (async () => { await page.click('[data-vocab-mode="base"]'); return S(() => window.ShapeLab.state().points.length + '/' + window.ShapeLab.state().joins.length); })();
+    const nExt = await (async () => { await page.click('[data-vocab-mode="extended"]'); return S(() => window.ShapeLab.state().points.length + '/' + window.ShapeLab.state().joins.length); })();
+    ck(nBase === nExt, 'CL9c with nothing bound, base and extended compose the same figure', nBase + ' vs ' + nExt);
+
+    // ---- CL10: the stubbed endpoint — a real decision, shown as words a researcher can act on ----
+    const plan = realRun ? realRun.results.filter((r) => r.id === 'lumo')[0].plan : hand;
+    const decision = { decision: 'EXTENSION_REQUIRED', reason: 'the wings need to read as membranes and the tail curls', extensions: [
+      { name: 'reaching-membrane', meaning: 'a broad reaching span closed into a silhouette and swept back', whyNeeded: 'a span alone is a stick', expresses: 'a closed reaching shape', visualEffect: 'the reach reads as a shape', composesWith: ['span', 'attachment'], affects: ['silhouette', 'identity'], examples: ['a flier'], construction: { base: 'span', modifiers: ['outline', 'sweep:back'] } },
+      { name: 'shimmer-edge', meaning: 'a soft shimmering edge', whyNeeded: 'nothing shimmers', expresses: 'shimmer', composesWith: ['mass'], affects: ['silhouette'], examples: [], construction: { base: 'mass', modifiers: ['shimmer'] } }],
+      apply: [{ mass: 'wings', terms: ['reaching-membrane'] }, { mass: 'tail', terms: ['curl'] }],
+      revealCandidates: [{ name: 'Horns', reason: 'distinctive identity feature', importance: 'high', role: 'diagnostic', appearance: 'emerge', near: 'horns', kind: 'spike' }, { name: 'Eye glow', reason: 'character', importance: 'medium', role: 'magic', appearance: 'glow', near: 'head', kind: 'glow' }, { name: 'Wing veins', reason: 'detail', importance: 'low', role: 'texture', appearance: 'appear', near: 'wings', kind: 'veins' }],
+      hint: 'Something small and ancient is waiting to wake' };
+    let bodies = []; let decisionAnswer = 'good';
+    await page.route('https://fn.local/lab-generate', (route) => {
+      const body = JSON.parse(route.request().postData() || '{}'); bodies.push(body);
+      if (body.action === 'ping') return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, build: 'LAB2', provider: 'configured', model: 'gpt-4.1-mini' }) });
+      if (body.action === 'understand') {
+        const sys = String(body.messages[0].content);
+        if (/GESTURE FIRST/.test(sys)) return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, text: JSON.stringify(plan), model: 'gpt-4.1-mini', build: 'LAB2' }) });
+        if (/vocabulary reviewer/.test(sys)) {
+          if (decisionAnswer === 'down') return route.abort();
+          const text = decisionAnswer === 'good' ? JSON.stringify(decision) : decisionAnswer === 'code' ? JSON.stringify(Object.assign({}, decision, { extensions: [Object.assign({}, decision.extensions[0], { meaning: 'function (ctx) { ctx.arc() }' })] })) : 'SUPPORTED, I think.';
+          return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, text, model: 'gpt-4.1-mini', build: 'LAB2' }) });
+        }
+        const good = { subject: 'a small winged being', character: ['calm'], composition: 'An upright figure.', architecture: ['a body', 'a head on top'], diagnosticFeatures: ['wings'], modifiers: [], proportion: 'The head is big.', gesture: 'One coherent gesture: standing.', abstraction: { survives: ['wings'], doNotDrawLiterally: ['texture'], note: '' }, revealCandidates: ['horns'], promptFidelity: { agreement: 'matches', differences: [] } };
+        return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, text: JSON.stringify(good), model: 'gpt-4.1-mini', build: 'LAB2' }) });
+      }
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, model: 'gpt-4.1-mini', build: 'LAB2', text: '{}' }) });
+    });
+    await page.click('[data-conn-mode="endpoint"]');
+    await page.fill('[data-conn-url]', 'https://fn.local/lab-generate');
+    await page.fill('[data-conn-token]', 'admin-session-token');
+    await page.click('[data-conn-test]');
+    await page.waitForFunction(() => /CONNECTED/.test(document.querySelector('[data-conn-status]').textContent));
+    await page.setInputFiles('[data-imagine-file]', path.join(ROOT, 'assets/lumo/hero.png'));
+    await page.waitForFunction(() => document.querySelector('[data-imagine-section]').getAttribute('data-understand-outcome') === 'generated', null, { timeout: 8000 });
+    bodies = [];
+    await page.click('[data-translate-go]');
+    await page.waitForFunction(() => document.querySelector('[data-vocab-section]').getAttribute('data-vocab-outcome') === 'generated', null, { timeout: 10000 });
+    const gen = await S(() => ({ d: window.LabClosure.decision(), meta: window.LabClosure.meta(), res: window.LabClosure.resolved(), status: document.querySelector('[data-vocab-status]').textContent, panel: document.querySelector('[data-vocab-panel]').innerText, n: window.ShapeLab.state().points.length, j: window.ShapeLab.state().joins.length, pts: JSON.stringify(window.ShapeLab.state().points), origin: window.ShapeLab.origin(), ls: JSON.stringify(localStorage), ss: JSON.stringify(sessionStorage), exp: window.ShapeLab.exportJSON(), sugg: document.querySelector('[data-reveal-suggested]').innerText }));
+    ck(gen.d && gen.d.decision === 'EXTENSION_REQUIRED' && gen.meta.source === 'generated' && gen.meta.model === 'gpt-4.1-mini' && /EXTENSION REQUIRED/.test(gen.status) && /2 extensions proposed, 1 expressible, 1 not/.test(gen.status) && gen.origin === 'generated',
+      'CL10 when the model answers, the decision is shown labelled with the model, and the figure is recomposed with what it bound', gen.status.slice(0, 100));
+    ck(/EXTENSION REQUIRED/.test(gen.panel) && /✓ reaching-membrane/.test(gen.panel) && /RESEARCH ONLY/.test(gen.panel) && /Meaning:/.test(gen.panel) && /Why needed:/.test(gen.panel) && /Composes with:/.test(gen.panel) && /Visual effect:/.test(gen.panel) && /Affects:/.test(gen.panel) && /Can be drawn: yes/.test(gen.panel),
+      'CL10b an expressible extension is a card: name, meaning, why needed, composes with, visual effect, affects, RESEARCH ONLY, and that the compiler can draw it');
+    ck(/○ shimmer-edge/.test(gen.panel) && /NOT EXPRESSIBLE — no-such-capability:shimmer/.test(gen.panel), 'CL10c an inexpressible one is shown ○ with the capability it would need, named');
+    ck(gen.res && gen.res.mode === 'extended' && JSON.stringify(gen.res.caps.wings) === '{"outline":true,"sweep":"back"}' && gen.res.caps.tail.curl === true, 'CL10d the resolution is what the compiler was handed: outline + sweep:back on the wings mass, curl on the tail mass');
+    const sentD = bodies.filter((b) => b.action === 'understand' && /vocabulary reviewer/.test(String(b.messages[0].content))).pop();
+    ck(sentD && Object.keys(sentD).sort().join() === 'action,image,messages' && sentD.image.b64.length > 64 && sentD.messages.length === 2 && !/\b(card|stars|constellation|memor|username|creator|companion|email|session|token|orbit|circle)\b/i.test(JSON.stringify(sentD.messages)) && !/-?\d\.\d+\s*,\s*-?\d\.\d+/.test(JSON.stringify(sentD.messages)),
+      'CL10e what left for the decision is action, the picture, and two text messages — the question, the understanding and the plan — with no private word and no coordinate');
+    ck(!/admin-session-token|reaching-membrane|shimmer|base64|data:image/.test(gen.ls + gen.ss + gen.exp), 'CL10f the token, the extensions and the picture reach no storage and no export — an extension is never persisted');
+    const toBase = await (async () => { await page.click('[data-vocab-mode="base"]'); return S(() => ({ pts: JSON.stringify(window.ShapeLab.state().points), res: window.LabClosure.resolved(), status: document.querySelector('[data-vocab-status]').textContent, panel: document.querySelector('[data-vocab-panel]').innerText })); })();
+    const toExt = await (async () => { await page.click('[data-vocab-mode="extended"]'); return S(() => ({ pts: JSON.stringify(window.ShapeLab.state().points) })); })();
+    ck(toBase.res.mode === 'base' && Object.keys(toBase.res.caps).length === 0 && /base vocabulary alone/.test(toBase.panel) && toBase.pts !== gen.pts && toExt.pts === gen.pts,
+      'CL10g Base vocabulary recomposes the same plan with nothing bound — a different figure — and With extensions brings the bound one back', JSON.stringify({ same: toBase.pts === gen.pts }));
+    // refused and failed decisions keep what was there
+    for (const [ans, label, outcome] of [['code', 'a reply with code in an extension', 'rejected'], ['prose', 'a prose reply', 'rejected'], ['down', 'a dead transport', 'failed']]) {
+      decisionAnswer = ans;
+      await page.click('[data-vocab-go]');
+      await page.waitForFunction((o) => document.querySelector('[data-vocab-section]').getAttribute('data-vocab-outcome') === o, outcome, { timeout: 8000 });
+      const r = await S(() => ({ d: window.LabClosure.decision(), status: document.querySelector('[data-vocab-status]').textContent, goOn: !document.querySelector('[data-vocab-go]').disabled, n: window.ShapeLab.state().points.length }));
+      ck(r.d && r.d.decision === 'EXTENSION_REQUIRED' && /still here/.test(r.status) && !/Fixture decision/.test(r.status) && r.goOn && r.n === gen.n, 'CL10h ' + label + ' is ' + outcome + ' on screen: the decision in use is untouched, no fixture is substituted, the button comes back', r.status.slice(0, 90));
+    }
+    decisionAnswer = 'good';
+
+    // ---- CL11: reveal suggestions — accept, reject, and what cannot be accepted ----
+    const sugg = await S(() => window.LabClosure.suggestions().map((s) => s.name + ':' + s.support + ':' + s.state));
+    ck(sugg.join() === 'HORNS:SUPPORTED_REVEAL:offered,EYE GLOW:SUPPORTED_REVEAL:offered,WING VEINS:REQUIRES_EXTENSION:offered', 'CL11 the three suggestions are classified: two supported, one requiring an extension', sugg.join());
+    ck(/SUGGESTED REVEALS/i.test(gen.sugg) && /HORNS/.test(gen.sugg) && /supported/.test(gen.sugg) && /requires extension/.test(gen.sugg) && /research information/.test(gen.sugg) && /Accept/.test(gen.sugg) && /Reject/.test(gen.sugg),
+      'CL11b they are shown in REVEAL with their role, importance, arrival and support, an Accept for the supported ones, and the extension one marked research information');
+    const acc = await S(() => { const a = window.LabClosure.acceptReveal('HORNS'); const rej = window.LabClosure.rejectReveal('EYE GLOW'); const no = window.LabClosure.acceptReveal('WING VEINS'); const st = window.ShapeLab.state(); const fig = window.LabTranslate.figure(); const hornsLights = fig.masses.map((m, i) => m === 'horns' ? i : -1).filter((i) => i >= 0); return { a, rej, no, feats: st.reveal.features.map((f) => f.name + '/' + f.type + '/' + f.lights.a + '-' + f.lights.b), hornsLights, states: window.LabClosure.suggestions().map((s) => s.state), ui: document.querySelector('[data-reveal-suggested]').innerText }; });
+    ck(acc.a.ok && acc.feats.length === 1 && /^HORNS\/spike\//.test(acc.feats[0]) && acc.hornsLights.indexOf(Number(acc.feats[0].split('/')[2].split('-')[0])) !== -1,
+      'CL11c Accept makes an ordinary reveal feature of the suggested kind, anchored to the mass\'s own lights', JSON.stringify({ feats: acc.feats, horns: acc.hornsLights }));
+    ck(acc.rej.ok && !acc.no.ok && acc.no.reason === 'REQUIRES_EXTENSION' && acc.states.join() === 'accepted,rejected,offered' && /✓ HORNS/.test(acc.ui) && /✕ EYE GLOW/.test(acc.ui),
+      'CL11d Reject stands down a suggestion, and a REQUIRES_EXTENSION one cannot be accepted — nothing is auto-approved');
+    const edited = await S(() => { const f = window.ShapeLab.state().reveal.features[0]; const r = window.ShapeLab.updateReveal(f.id, { size: 1.5 }); return { ok: r && r.ok !== false, size: window.ShapeLab.state().reveal.features[0].size }; });
+    ck(edited.ok && edited.size === 1.5, 'CL11e an accepted reveal is editable like any feature the researcher added by hand');
+
+    // ---- CL12: the unfinished creature at eight — the loop in the real Ether ----
+    await page.selectOption('[data-compose-budget]', '8');
+    await page.waitForFunction(() => window.ShapeLab.state().points.length <= 8);
+    await page.click('[data-mystery-go]');
+    const my = await S(() => { const st = window.ShapeLab.state(); const fig = window.LabTranslate.figure(); const m = window.LabClosure.mystery(); return { n: st.points.length, missing: st.missing, hint: st.hint, play: window.ShapeLab.playable(), m, why: document.querySelector('[data-mystery-why]').textContent, gapWhy: (m ? m.gaps : []).map((g) => fig.joins[g.join].why), gapMass: (m ? m.gaps : []).map((g) => fig.masses[fig.joins[g.join].a] + '|' + fig.masses[fig.joins[g.join].b]) }; });
+    ck(my.n === 8 && my.m && my.m.placed >= 1 && my.missing.length === my.m.placed && my.play, 'CL12 at eight lights the missing connections are chosen and placed, and the creature is playable', JSON.stringify({ n: my.n, missing: my.missing, placed: my.m && my.m.placed }));
+    ck(my.gapWhy.every((w) => /^(attach|flow|continuous|limb)/.test(w)) && my.gapMass.every((s) => s.split('|')[0] !== s.split('|')[1]) && /wide enough to see/.test(my.why),
+      'CL12b every chosen gap is a relationship between two parts and its reason is on screen', JSON.stringify(my.gapWhy));
+    ck(my.hint === 'Something small and ancient is waiting to wake…', 'CL12c the model\'s hint is written into the figure with its ellipsis — the fallback is used only when no hint was given', my.hint);
+    const undo = await S(() => { window.ShapeLab.undo(); const a = window.ShapeLab.state().missing.length; window.ShapeLab.redo(); return { a, b: window.ShapeLab.state().missing.length }; });
+    ck(undo.b === my.missing.length && undo.a < my.missing.length, 'CL12d the placed gaps are ordinary editor history — undo takes one back, redo restores it');
+    // accept a supported reveal that exists at eight, then play
+    await S(() => { window.LabClosure.suggestions().filter((s) => s.support === 'SUPPORTED_REVEAL').forEach((s) => window.LabClosure.acceptReveal(s.name)); });
+    const [pop] = await Promise.all([ctx.waitForEvent('page'), page.click('[data-play]')]);
+    await pop.waitForFunction(() => !!window.LabPreview && !!window.LabPreview.mystery && window.LabPreview.mystery(), null, { timeout: 20000 });
+    await pop.waitForTimeout(1800);
+    const walk = await pop.evaluate(async () => {
+      const my2 = window.LabPreview.mystery(); let i = my2.instrument();
+      const hintEl = document.querySelector('[data-hint]');
+      const out = { hint: hintEl.textContent, hintOn: hintEl.classList.contains('on'), missing: i.arrangement.missingLeft, elements: i.elements.length, steps: [], offered: window.LabPreview.report().happened.reveal.offered };
+      let g = 30;
+      while (g-- > 0 && i && i.arrangement && i.arrangement.missingLeft > 0) {
+        const gap = i.arrangement.links.filter((L) => !L.present)[0];
+        my2.touchAt(i.elements[gap.a].x, i.elements[gap.a].y); my2.touchAt(i.elements[gap.b].x, i.elements[gap.b].y);
+        i = my2.instrument(); out.steps.push({ left: i ? i.arrangement.missingLeft : 'gone', alive: window.LabPreview.alive().length });
+      }
+      await new Promise((r) => setTimeout(r, 2200));
+      out.reveal = window.LabPreview.reveal();
+      out.hintAfter = hintEl.classList.contains('on');
+      await new Promise((r) => setTimeout(r, 4500));
+      out.alive = window.LabPreview.alive().length;
+      const p = [];
+      for (let s = 0; s < 12; s++) { const w = window.LabPreview.alive()[0]; if (w) p.push([w.x, w.y]); await new Promise((r) => setTimeout(r, 300)); }
+      let d = 0; for (let s = 1; s < p.length; s++) d += Math.hypot(p[s][0] - p[s - 1][0], p[s][1] - p[s - 1][1]);
+      out.travelled = d; out.shown = window.LabPreview.report().happened.reveal.shown;
+      return out;
+    });
+    await pop.close();
+    ck(walk.hint === my.hint && walk.hintOn && walk.elements === 8 && walk.missing === my.missing.length, 'CL12e the real Ether poses the eight-light creature with its gaps, and the hint is on screen beside it', JSON.stringify({ hint: walk.hint, missing: walk.missing }));
+    ck(walk.steps.length === my.missing.length && walk.steps.every((s, k) => k === walk.steps.length - 1 ? s.left === 0 : s.alive === 0), 'CL12f each join is made by two real taps and nothing wakes a join early', JSON.stringify(walk.steps));
+    ck(walk.offered >= 1 && walk.shown === true && walk.reveal && (walk.reveal.started || walk.reveal.finished), 'CL12g the accepted reveal features are drawn over the real sky once the figure is whole', JSON.stringify({ offered: walk.offered, shown: walk.shown, phase: walk.reveal && walk.reveal.phase }));
+    ck(walk.alive === 1 && walk.travelled > 30 && !walk.hintAfter, 'CL12h then it comes alive and roams, and the hint has withdrawn', JSON.stringify({ alive: walk.alive, travelled: Math.round(walk.travelled) }));
+    await page.screenshot({ path: path.join(shotDir, 'shape-lab-closure.png') });
+
+    // ---- CL13: the page still says nothing technical outside Advanced; a phone fits ----
+    const tech = await S(() => { const words = /\b(arrangement|candidate|anchors|interpreter|provider|projection|sanitization|schema|runtime|seam|validator)\b/i; const leaks = []; document.querySelectorAll('[data-vocab-section], [data-vocab-panel], [data-reveal-suggested], [data-mystery-why]').forEach((n) => { if (n.closest('details.adv')) return; const t = n.innerText || ''; const m = t.match(words); if (m) leaks.push(m[0]); }); return leaks; });
+    ck(tech.length === 0, 'CL13 the closure copy — decision, extension cards, suggestions, gaps — says nothing technical outside Advanced', tech.join(','));
+    const phone = await ctx.newPage({ viewport: { width: 390, height: 844 } });
+    await phone.goto(BASE + '/tools/ether-mystery-lab/shape.html');
+    await phone.waitForFunction(() => !!window.LabClosure);
+    const ph = await phone.evaluate(() => ({ sx: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth, sect: !!document.querySelector('[data-vocab-section]') }));
+    ck(ph.sect && ph.sx <= ph.cw + 1, 'CL13b on a phone the new sections add no sideways scroll', ph.sx + ' vs ' + ph.cw);
+    await phone.close();
+    ck(errors.length === 0, 'CL14 the page raised no error through the whole closure journey', errors.join(' | '));
+  } finally { await browser.close(); server.kill(); }
+
+  // ---- CL15: production is byte-for-byte what it was ----
+  const { execSync } = require('child_process');
+  let prodDiff = null;
+  // (supabase/functions/lab-generate is the Lab's own administrators-only
+  // relay and moves with the Lab; everything else under supabase/ is product)
+  try { prodDiff = execSync("git diff --stat 57ae98b1 -- js/ vihuplanet/ assets/ index.html studio.html css/ supabase/ renderer/ ':!supabase/functions/lab-generate'", { cwd: ROOT, encoding: 'utf8' }).trim(); } catch (e) { prodDiff = 'git unavailable'; }
+  ck(prodDiff === '', 'CL15 production is unchanged against the base of this line of sprints — js/, vihuplanet/, assets/, css/, supabase/ (but the Lab relay), renderer/, index.html, studio.html', prodDiff.split('\n').slice(-1)[0] || 'empty');
+  const prodSrcs = ['js/etherMystery.js', 'js/etherExperience.js', 'js/etherLife.js', 'js/etherRipple.js', 'js/etherGrammar.js', 'assets/ether/experience-pool.js'].map((f) => read(f)).join('\n');
+  ck(!/labVocabulary|labClosure|labUnfinished|LabVocabulary|LabClosure|LabUnfinished/.test(prodSrcs), 'CL15b no production file names any of the three new modules');
+}
+
+// ===================================================================
+// EX. IMAGE → ETHER CREATURE, END TO END: the simplest bridge — the
+// vision model proposes points, connections, missing connections, reveal
+// features and a hint straight from the picture; the Lab validates,
+// repairs on record, refuses what cannot be repaired, and the researcher
+// corrects. Production untouched.
+// ===================================================================
+async function sectionEX() {
+  console.log('\n== EX. image → gpt-4.1 extraction → Shape Lab → the loop ==');
+  const { chromium } = require('playwright');
+  const Extract = require(path.join(ROOT, 'tools/ether-mystery-lab/labExtract.js'));
+  const exSrc = read('tools/ether-mystery-lab/labExtract.js'), exStripped = stripComments(exSrc);
+  const shapeHtml = read('tools/ether-mystery-lab/shape.html');
+  const connSrc = read('tools/ether-mystery-lab/labConnection.js');
+  const fnSrc = read('supabase/functions/lab-generate/index.ts');
+  const shotDir = path.join(SHOTS, 'extract'); fs.mkdirSync(shotDir, { recursive: true });
+
+  // ---- EX1: the models, and the boundary ----
+  ck(/DEFAULT_MODEL = 'gpt-4\.1'/.test(fnSrc) && /DEFAULT_IMAGE_MODEL = 'gpt-image-2'/.test(fnSrc) && /DEFAULT_DIRECT_MODEL = 'gpt-4\.1'/.test(connSrc) && /DEFAULT_DIRECT_IMAGE_MODEL = 'gpt-image-2'/.test(connSrc),
+    'EX1  the defaults are gpt-4.1 for understanding and gpt-image-2 for the picture, in the function and in the direct transport alike');
+  ck(!/gpt-image-1\b|gpt-image-1\.5|chatgpt-image-latest|gpt-4\.1-mini/.test(stripComments(connSrc) + stripComments(fnSrc.replace(/\/\/.*$/gm, ''))), 'EX1b none of the retired image models and no smaller model is named as a default anywhere on the path');
+  ck(/BUILD = 'LAB3'/.test(fnSrc) && /MAX_UNDERSTAND_TOKENS = 4000/.test(fnSrc) && /payload\.maxTokens/.test(fnSrc) && /maxTokens\(opts\)/.test(connSrc), 'EX1c the function is a new build, and an extraction may ask for more answer room within a bound — never unbounded');
+  const creatureWords = /\b(tiger|falcon|elephant|dragon|penguin|whale|bird|lion|fox|bear|octopus|cat|dog|fish|butterfly|snake|horse|mermaid|centaur|eagle|panda)\b/i;
+  const exCode = exStripped.replace(/'(?:[^'\\]|\\.)*'/g, "''").replace(/\/[^/\n]+\/[gimsuy]*/g, '/re/');
+  ck(!creatureWords.test(exCode) && !/subject\s*===|===\s*subject|switch\s*\(\s*(subject|species|creature)\b/.test(exStripped), 'EX1d no creature word in the extraction module\'s code and no branch on a subject — the vision model derives everything from the picture');
+  ck(!/localStorage|sessionStorage|indexedDB|document\.cookie|fetch\(|XMLHttpRequest|api\.openai/.test(exStripped) && /C\.understand\(/.test(exStripped), 'EX1e the module stores nothing and makes no request of its own — the picture goes through LabConnection.understand(), the transport the Lab already had');
+  ck(!/\bEtherMystery\b|\bEtherGrammar\b|\bEtherLife\b|\bEtherExperience\b|experience-pool|\bMagicCard\b|\bCompanionMemory\b/.test(exStripped), 'EX1f it names no production module — there is no route from an extraction to the Ether but the researcher\'s approval');
+  ck(!/labExtract|LabExtract/.test(['js/etherMystery.js', 'js/etherExperience.js', 'js/etherLife.js', 'js/etherRipple.js', 'js/etherGrammar.js', 'assets/ether/experience-pool.js'].map(read).join('\n')), 'EX1g and no production file names it');
+
+  // ---- EX2: the contract ----
+  const m8 = Extract.extractMessages(8), m12 = Extract.extractMessages(12), mBad = Extract.extractMessages(99);
+  const sys8 = m8.messages[0].content;
+  ck(m8.ok && m8.budget === 8 && m12.budget === 12 && mBad.budget === 12 && /at most 8/.test(sys8) && /one or two/.test(sys8) && /two or three/.test(m12.messages[0].content), 'EX2  the contract carries the researcher\'s budget and asks for one or two gaps at eight, two or three above');
+  ck(/NORMALIZED coordinates/.test(sys8) && /x from 0 at the left to 1 at the right/.test(sys8) && /MINIMUM useful points/.test(sys8) && /1\. the overall silhouette, 2\. the major gesture/.test(sys8) && /Not at random/.test(sys8) && /never leave a point with no line/.test(sys8),
+    'EX2b it asks for normalized coordinates, the minimum useful points in the brief\'s priority order, and missing connections chosen for meaning, never at random');
+  ck(/REVEAL FEATURES/.test(sys8) && /diagnostic \| character \| accent \| magic/.test(sys8) && /Never a structural part/.test(sys8) && /HINT\./.test(sys8) && /without naming it/.test(sys8) && /"confidence"/.test(sys8) && /No SVG, no code, no markup/.test(sys8),
+    'EX2c it asks for reveal features apart from the points, a hint that names a nature, confidence, and no SVG, code or markup');
+  ck(!/\b(card|stars|constellation|memor|username|creator|companion|email|session|token|orbit|circle)\b/i.test(sys8 + m8.messages[1].content), 'EX2d the contract carries no private word');
+
+  // ---- EX3: the validator — repair on record, refuse what cannot be repaired ----
+  const good = { subject: 'a being', points: [
+    { id: 'p1', x: 0.5, y: 0.1, feature: 'head' }, { id: 'p2', x: 0.5, y: 0.3, feature: 'neck' }, { id: 'p3', x: 0.5, y: 0.6, feature: 'body' },
+    { id: 'p4', x: 0.2, y: 0.25, feature: 'left tip' }, { id: 'p5', x: 0.8, y: 0.25, feature: 'right tip' }, { id: 'p6', x: 0.35, y: 0.9, feature: 'foot' }, { id: 'p7', x: 0.65, y: 0.9, feature: 'foot' }, { id: 'p8', x: 0.8, y: 0.7, feature: 'tail tip' } ],
+    connections: [{ a: 'p1', b: 'p2' }, { a: 'p2', b: 'p3' }, { a: 'p2', b: 'p4' }, { a: 'p2', b: 'p5' }, { a: 'p4', b: 'p3' }, { a: 'p5', b: 'p3' }, { a: 'p3', b: 'p6' }, { a: 'p3', b: 'p7' }, { a: 'p3', b: 'p8' }, { a: 'p6', b: 'p7' }],
+    missingConnections: [{ a: 'p2', b: 'p4', reason: 'a root' }, { a: 'p3', b: 'p6', reason: 'a leg' }],
+    revealFeatures: [{ name: 'Crown', reason: 'identity', type: 'diagnostic', near: ['p1'] }, { name: 'Eye glow', reason: 'accent', type: 'magic', near: ['p1', 'p2'] }],
+    hint: 'A quiet giant is waiting in the deep', confidence: { overall: 0.8, identity: 0.7, structure: 0.9 } };
+  const v = Extract.validateExtraction(JSON.parse(JSON.stringify(good)), 8);
+  ck(v.ok && v.extraction.points.length === 8 && v.extraction.joins.length === 10 && v.extraction.missing.length === 2 && v.extraction.revealFeatures.length === 2 && v.extraction.hint === 'A quiet giant is waiting in the deep…' && v.extraction.confidence.identity === 0.7 && v.repairs.length === 0,
+    'EX3  a well-formed extraction is accepted whole: points, connections, two gaps, two reveals, the hint with its ellipsis, the confidence', JSON.stringify(v.reasons) + ' ' + JSON.stringify(v.repairs));
+  const tooMany = Extract.validateExtraction(Object.assign({}, good, { points: good.points.concat([{ id: 'p9', x: 0.1, y: 0.1, feature: 'extra' }, { id: 'p10', x: 0.9, y: 0.9, feature: 'extra' }]) }), 8);
+  ck(tooMany.ok && tooMany.extraction.points.length === 8 && tooMany.repairs.some((r) => /beyond the budget of 8/.test(r)), 'EX3b too many points: cut to the budget, on record');
+  const badCoord = Extract.validateExtraction(Object.assign({}, good, { points: good.points.map((p, i) => i === 2 ? Object.assign({}, p, { x: 'left' }) : p) }), 8);
+  const offPic = Extract.validateExtraction(Object.assign({}, good, { points: good.points.map((p, i) => i === 2 ? Object.assign({}, p, { x: 3.2 }) : p) }), 8);
+  const edge = Extract.validateExtraction(Object.assign({}, good, { points: good.points.map((p, i) => i === 2 ? Object.assign({}, p, { x: 1.04 }) : p) }), 8);
+  ck(!badCoord.ok && /bad-coordinate/.test(badCoord.reasons.join()) && !offPic.ok && /off-the-picture/.test(offPic.reasons.join()) && edge.ok && edge.extraction.points[2].x === 1 && edge.repairs.some((r) => /clamped/.test(r)),
+    'EX3c a coordinate that is not a number, or far off the picture, refuses the extraction; one just over the edge is clamped on record');
+  const dup = Extract.validateExtraction(Object.assign({}, good, { points: good.points.map((p, i) => i === 4 ? Object.assign({}, p, { id: 'p4' }) : p) }), 8);
+  ck(dup.ok && dup.extraction.points.length === 7 && dup.repairs.some((r) => /duplicate id/.test(r)) && dup.repairs.some((r) => /names a point that does not exist/.test(r)), 'EX3d a duplicate id is dropped on record, and the connections that named the lost point are dropped with it');
+  const badConn = Extract.validateExtraction(Object.assign({}, good, { connections: good.connections.concat([{ a: 'p1', b: 'p99' }, { a: 'p3', b: 'p3' }, { a: 'p1', b: 'p2' }]) }), 8);
+  ck(badConn.ok && badConn.extraction.joins.length === 10 && badConn.repairs.some((r) => /does not exist/.test(r)) && badConn.repairs.some((r) => /to itself/.test(r)), 'EX3e a connection to a point that does not exist, a self-connection and a duplicate are dropped — on record, never a crash');
+  const strand = Extract.validateExtraction(Object.assign({}, good, { missingConnections: [{ a: 'p3', b: 'p8', reason: 'the tail' }, { a: 'p1', b: 'p2', reason: 'the neck' }] }), 8);
+  ck(strand.ok && strand.extraction.missing.length >= 1 && strand.repairs.some((r) => /lone point/.test(r)) && strand.extraction.missing.every((mi) => { const j = strand.extraction.joins[mi]; return j.a !== 7 && j.b !== 7; }),
+    'EX3f a missing connection that would strand a point (the tail tip has one line) is kept as a connection instead, on record', JSON.stringify(strand.repairs));
+  const allStrand = Extract.validateExtraction(Object.assign({}, good, { missingConnections: [{ a: 'p3', b: 'p8', reason: 'x' }] }), 8);
+  ck(allStrand.ok && allStrand.extraction.missing.length >= 1 && allStrand.extraction.gaps.every((g) => /chosen by the Lab/.test(g.reason)) && allStrand.repairs.some((r) => /chosen by the Lab/.test(r)),
+    'EX3g when none of the model\'s gaps can be left out, the Lab chooses the widest safe ones and says so — a figure always has a mystery');
+  const notListed = Extract.validateExtraction(Object.assign({}, good, { missingConnections: [{ a: 'p4', b: 'p5', reason: 'across' }] }), 8);
+  ck(notListed.ok && notListed.extraction.joins.length === 11 && notListed.extraction.missing.length === 1 && notListed.repairs.some((r) => /was not among the connections/.test(r)), 'EX3h a missing connection the model forgot to list as a connection is added and left missing, on record');
+  const fourGaps = Extract.validateExtraction(Object.assign({}, good, { missingConnections: [{ a: 'p2', b: 'p4' }, { a: 'p3', b: 'p6' }, { a: 'p2', b: 'p5' }, { a: 'p3', b: 'p7' }] }), 8);
+  ck(fourGaps.ok && fourGaps.extraction.missing.length <= 3 && fourGaps.extraction.joins.length - fourGaps.extraction.missing.length >= 2, 'EX3i at most three gaps, and at least two connections always remain');
+  const badReveal = Extract.validateExtraction(Object.assign({}, good, { revealFeatures: [{ name: 'Fog', reason: 'x', type: 'weather', near: ['p42'] }, { name: 'Ridge', reason: 'y', type: 'texture', near: ['p3', 'p3', 'nope'] }, { reason: 'no name', type: 'magic', near: ['p1'] }] }), 8);
+  ck(badReveal.ok && badReveal.extraction.revealFeatures.length === 1 && badReveal.extraction.revealFeatures[0].name === 'RIDGE' && badReveal.extraction.revealFeatures[0].near.join() === '2' && badReveal.repairs.some((r) => /anchored to no real point/.test(r)) && badReveal.repairs.some((r) => /→ character/.test(r)),
+    'EX3j a reveal anchored to nothing is dropped, an unknown type becomes character, anchors are real and unique, and a nameless one is dropped — all on record');
+  const badHint = Extract.validateExtraction(Object.assign({}, good, { hint: 'Connect the dots to finish it' }), 8);
+  const digitHint = Extract.validateExtraction(Object.assign({}, good, { hint: 'Wait 3 seconds and see' }), 8);
+  ck(badHint.ok && badHint.extraction.hint === null && badHint.repairs.some((r) => /hint refused \(instruction\)/.test(r)) && digitHint.extraction.hint === null, 'EX3k an instruction or a digit in the hint refuses the hint alone; the figure still loads with the honest fallback');
+  ck(!Extract.parseExtraction('I see a lovely creature with eight points.', 8).ok && Extract.parseExtraction('```json\n' + JSON.stringify(good) + '\n```', 8).ok && !Extract.validateExtraction({ subject: 'x', points: [{ id: 'a', x: 0.1, y: 0.1 }, { id: 'b', x: 0.2, y: 0.2 }] }, 8).ok,
+    'EX3l prose is refused as not JSON, a fenced JSON is read, and two points are too few');
+  ck(!Extract.validateExtraction(Object.assign({}, good, { subject: '<script>alert(1)</script>' }), 8).ok && !Extract.validateExtraction(Object.assign({}, good, { revealFeatures: [{ name: 'X', reason: 'y', type: 'magic', near: ['p1'], card: 'z' }] }), 8).ok,
+    'EX3m markup in a string and a private key at any depth refuse the whole extraction');
+  const fx = Extract.parseExtraction(Extract.fixtureExtraction(8), 8);
+  ck(fx.ok && fx.extraction.points.length === 8 && /fixture/i.test(fx.extraction.subject) && fx.extraction.missing.length === 1, 'EX3n the fixture is a ring that says it is one, and it passes the same validator');
+  const ed = Extract.toEditor(good.points, 1), edWide = Extract.toEditor(good.points, 2);
+  ck(ed.length === 8 && Math.abs(ed[0][0]) < 0.01 && Math.abs(ed[0][1] - (0.1 - 0.5) * 2 * Extract.PICTURE_HALF) < 0.02 && ed[0][1] < ed[2][1] && Math.abs(edWide[0][1]) < Math.abs(ed[0][1]) && Math.abs(Extract.PICTURE_HALF - 0.43 / 0.46 * 1.4) < 1e-9,
+    'EX3o picture coordinates land where the underlay draws them — the picture\'s centre at the editor\'s centre, its edge at the underlay\'s edge, a wide picture shorter on its short axis, up still up');
+
+  // ---- EX4: the committed real run — labelled, re-validated, drawn, rated ----
+  const runPath = path.join(shotDir, 'real-extract.json');
+  const run = fs.existsSync(runPath) ? JSON.parse(fs.readFileSync(runPath, 'utf8')) : null;
+  ck(!!run && run.imageModel === 'gpt-image-2' && run.model === 'gpt-4.1' && run.results.length === 7, 'EX4  the real run is committed: seven prompts, gpt-image-2 and gpt-4.1', run ? run.results.length + ' results' : 'missing');
+  if (run) {
+    const prompts = run.results.map((r) => r.prompt);
+    ck(prompts[0] === 'A panda made of stars in a night sky' && prompts[6] === 'An imaginary creature that looks like a fox, made of stars in a night sky', 'EX4b the prompts are the brief\'s own, verbatim, the invented creature last');
+    const withImage = run.results.filter((r) => r.image && r.image.ok);
+    ck(withImage.length >= 6 && withImage.every((r) => fs.existsSync(path.join(shotDir, r.image.file)) && /REAL MODEL/.test(r.labels.image)) && run.results.every((r) => r.labels && (r.image.ok ? /REAL MODEL/.test(r.labels.image) : /FAILED/.test(r.labels.image))),
+      'EX4c every picture that exists is a real gpt-image-2 picture on disk, labelled so; a failed one says FAILED and substitutes nothing', withImage.length + '/7');
+    const ex8 = run.results.filter((r) => r.extractions && r.extractions[8] && r.extractions[8].ok);
+    ck(ex8.length >= 6 && ex8.every((r) => { const v2 = Extract.parseExtraction(r.extractions[8].raw, 8); return v2.ok && JSON.stringify(v2.extraction) === JSON.stringify(r.extractions[8].extraction); }),
+      'EX4d every committed raw reply at eight re-validates into exactly the committed extraction', ex8.length + '/7');
+    ck(ex8.every((r) => r.extractions[8].extraction.points.length <= 8 && r.extractions[8].extraction.missing.length >= 1 && r.extractions[8].extraction.revealFeatures.length >= 1), 'EX4e at eight every extraction is within budget, has a gap, and offers a reveal');
+    const walksPath = path.join(shotDir, 'walks.json');
+    const walks = fs.existsSync(walksPath) ? JSON.parse(fs.readFileSync(walksPath, 'utf8')).walks : null;
+    const walked = walks ? Object.keys(walks).filter((k) => walks[k].b8 && walks[k].b8.walk && walks[k].b8.walk.steps.length && walks[k].b8.walk.steps[walks[k].b8.walk.steps.length - 1] === 0 && walks[k].b8.roam && walks[k].b8.roam.alive === 1 && walks[k].b8.roam.travelled > 30) : [];
+    ck(walks && walked.length >= 6, 'EX4f the committed walks show every extracted creature completed in the real Ether at eight, alive and roaming', walks ? walked.length + '/' + Object.keys(walks).length : 'missing');
+    const ratingsPath = path.join(shotDir, 'ratings.json');
+    const ratings = fs.existsSync(ratingsPath) ? JSON.parse(fs.readFileSync(ratingsPath, 'utf8')) : null;
+    ck(!!ratings && ratings.results.length === 7 && ratings.results.every((x) => ['image', 'recognition', 'unfinished', 'reveal', 'alive', 'overall'].every((k) => /^[ABCD]$/.test(x[k]))) && typeof ratings.verdict === 'string',
+      'EX4g the ratings are committed — image quality, Ether recognition, unfinished mystery, reveal quality, come alive, overall, each A–D — with the verdict');
+  }
+
+  // ---- the browser half ----
+  const server = spawn('node', ['tools/bring-it-alive/test/serve.js', String(PORT)], { cwd: ROOT, stdio: 'ignore' });
+  await new Promise((res) => setTimeout(res, 900));
+  const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+  try {
+    const ctx = await browser.newContext({ viewport: { width: 1500, height: 1100 } });
+    const page = await ctx.newPage();
+    const errors = [];
+    page.on('pageerror', (e) => errors.push(String(e).split('\n')[0]));
+    const requests = [];
+    page.on('request', (q) => requests.push(q.url()));
+    await page.goto(BASE + '/tools/ether-mystery-lab/shape.html');
+    await page.waitForFunction(() => !!window.LabExtract && !!window.ShapeLab && !!window.LabConnection && !!window.LabImagine, null, { timeout: 20000 });
+    const S = (fn, arg) => page.evaluate(fn, arg);
+    const load = await S(() => ({ ls: Object.keys(localStorage).length, ss: Object.keys(sessionStorage).length, go: document.querySelector('[data-extract-go]').disabled, label: document.querySelector('[data-extract-go]').textContent, controls: ['[data-extract-section]', '[data-extract-status]', '[data-extract-panel]', '[data-extract-diag]', '[data-reveal-extracted]'].filter((c) => !document.querySelector(c)) }));
+    ck(load.ls === 0 && load.ss === 0 && load.go && /Understand & Build Ether at \d+ points/.test(load.label) && load.controls.length === 0 && errors.length === 0, 'EX5  loading the page extracts nothing and stores nothing; the button is shut until a picture is chosen, and names the budget');
+    // fixture
+    await page.setInputFiles('[data-imagine-file]', path.join(ROOT, 'assets/lumo/hero.png'));
+    await page.waitForFunction(() => window.LabImagine.state().page === 'understood', null, { timeout: 8000 });
+    await S(() => window.ShapeLab.setBudget(8));
+    const before = requests.length;
+    await page.click('[data-extract-go]');
+    await page.waitForFunction(() => document.querySelector('[data-extract-section]').getAttribute('data-extract-outcome') === 'fixture', null, { timeout: 8000 });
+    const fx2 = await S(() => ({ n: window.ShapeLab.state().points.length, missing: window.ShapeLab.state().missing, status: document.querySelector('[data-extract-status]').textContent, panel: document.querySelector('[data-extract-panel]').innerText, origin: window.ShapeLab.origin(), meta: window.LabExtract.meta() }));
+    ck(fx2.n === 8 && fx2.missing.length === 1 && /Fixture ring loaded — not the creature/.test(fx2.status) && /FIXTURE — a ring, no model looked/i.test(fx2.panel) && fx2.meta.source === 'fixture' && requests.slice(before).every((u) => !/openai|fn\.local|supabase/.test(u)),
+      'EX5b in fixture mode a ring of eight loads, says it is a fixture on the button, the badge and the record, and nothing leaves the browser');
+    // stubbed endpoint
+    const ex = JSON.parse(JSON.stringify(good));
+    let bodies = []; let answer = 'good';
+    await page.route('https://fn.local/lab-generate', (route) => {
+      const body = JSON.parse(route.request().postData() || '{}'); bodies.push(body);
+      if (body.action === 'ping') return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, build: 'LAB3', provider: 'configured', model: 'gpt-4.1', imageModel: 'gpt-image-2' }) });
+      if (body.action === 'understand') {
+        const sys = String(body.messages[0].content);
+        if (/ETHER EXTRACTION/.test(sys)) {
+          if (answer === 'down') return route.abort();
+          const text = answer === 'good' ? JSON.stringify(ex) : answer === 'many' ? JSON.stringify(Object.assign({}, ex, { points: ex.points.concat(ex.points.map((p, i) => Object.assign({}, p, { id: 'q' + i }))) })) : answer === 'coords' ? JSON.stringify(Object.assign({}, ex, { points: ex.points.map((p) => Object.assign({}, p, { x: 'far' })) })) : 'I see a being.';
+          return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, text, model: 'gpt-4.1', build: 'LAB3' }) });
+        }
+        const g = { subject: 'a being from the stub', character: ['calm'], composition: 'An upright figure.', architecture: ['a body', 'a head on top'], diagnosticFeatures: ['a crown'], modifiers: [], proportion: 'The head is big.', gesture: 'One coherent gesture: standing.', abstraction: { survives: ['the crown'], doNotDrawLiterally: ['texture'], note: '' }, revealCandidates: ['crown'], promptFidelity: { agreement: 'matches', differences: [] } };
+        return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, text: JSON.stringify(g), model: 'gpt-4.1', build: 'LAB3' }) });
+      }
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, model: 'gpt-4.1', build: 'LAB3', text: '{}' }) });
+    });
+    await page.click('[data-conn-mode="endpoint"]');
+    await page.fill('[data-conn-url]', 'https://fn.local/lab-generate');
+    await page.fill('[data-conn-token]', 'admin-session-token');
+    await page.click('[data-conn-test]');
+    await page.waitForFunction(() => /CONNECTED/.test(document.querySelector('[data-conn-status]').textContent));
+    await page.setInputFiles('[data-imagine-file]', path.join(ROOT, 'assets/lumo/hero.png'));
+    await page.waitForFunction(() => document.querySelector('[data-imagine-section]').getAttribute('data-understand-outcome') === 'generated', null, { timeout: 8000 });
+    bodies = [];
+    await page.click('[data-extract-go]');
+    await page.waitForFunction(() => document.querySelector('[data-extract-section]').getAttribute('data-extract-outcome') === 'generated', null, { timeout: 8000 });
+    const gen = await S(() => ({ st: window.ShapeLab.state(), status: document.querySelector('[data-extract-status]').textContent, panel: document.querySelector('[data-extract-panel]').innerText, origin: window.ShapeLab.origin(), meta: window.LabExtract.meta(), play: window.ShapeLab.playable(), sugg: window.LabExtract.suggestions(), ui: document.querySelector('[data-reveal-extracted]').innerText, ls: JSON.stringify(localStorage), ss: JSON.stringify(sessionStorage), exp: window.ShapeLab.exportJSON(), unf: document.querySelector('[data-canvas-unfinished]').getBoundingClientRect().width }));
+    ck(gen.st.points.length === 8 && gen.st.joins.length === 10 && gen.st.missing.length === 2 && gen.st.roles[0] === 'HEAD' && gen.st.hint === 'A quiet giant is waiting in the deep…' && gen.origin === 'generated' && gen.meta.source === 'generated' && gen.meta.model === 'gpt-4.1' && gen.play,
+      'EX6  a model extraction lands as one GENERATED figure: its points with their features, its connections, its gaps marked missing, its hint written — and it is playable', JSON.stringify({ n: gen.st.points.length, j: gen.st.joins.length, m: gen.st.missing, h: gen.st.hint, role0: gen.st.roles && gen.st.roles[0], origin: gen.origin, meta: gen.meta, play: gen.play }));
+    ck(/ETHER EXTRACTION \(GPT-4\.1\)/i.test(gen.panel) && /MISSING CONNECTIONS/i.test(gen.panel) && /a root/.test(gen.panel) && /REVEAL SUGGESTIONS/i.test(gen.panel) && /CONFIDENCE/i.test(gen.panel) && /identity 0\.7/.test(gen.panel),
+      'EX6b the extraction is shown as words a researcher can argue with — the points, why each gap, the reveals, the confidence — and labelled with the model');
+    ck(gen.sugg.length === 2 && gen.sugg[0].name === 'CROWN' && gen.sugg[0].kind === 'spike' && gen.sugg[1].kind === 'glow' && /SUGGESTED REVEALS/i.test(gen.ui) && /☐ CROWN/.test(gen.ui) && /Accept/.test(gen.ui) && /Reject/.test(gen.ui),
+      'EX6c the reveal suggestions are in step 4 as ☐ rows with their reason, a starting kind by type, Accept and Reject — nothing auto-approved');
+    const sentX = bodies.filter((b) => b.action === 'understand' && /ETHER EXTRACTION/.test(String(b.messages[0].content))).pop();
+    ck(sentX && Object.keys(sentX).sort().join() === 'action,image,maxTokens,messages' && sentX.maxTokens === 3000 && sentX.image.b64.length > 64 && sentX.messages.length === 2 && !/\b(card|stars|constellation|memor|username|creator|companion|email|session|token|orbit|circle)\b/i.test(JSON.stringify(sentX.messages)),
+      'EX6d what left is action, the picture, the answer room and two text messages — the contract with the budget — and no private word');
+    ck(!/admin-session-token|base64|data:image|ETHER EXTRACTION|A quiet giant/.test(gen.ls + gen.ss) && !/base64|data:image|ETHER EXTRACTION/.test(gen.exp), 'EX6e the token, the picture and the contract reach no storage and no export');
+    const acc = await S(() => { const a = window.LabExtract.acceptReveal(0, 'spike'); const r = window.LabExtract.rejectReveal(1); const no = window.LabExtract.acceptReveal(9); const st = window.ShapeLab.state(); return { a, r, no, feats: st.reveal.features.map((f) => f.name + '/' + f.type + '/' + f.lights.a + '-' + f.lights.b), states: window.LabExtract.suggestions().map((s) => s.state), ui: document.querySelector('[data-reveal-extracted]').innerText }; });
+    ck(acc.a.ok && acc.feats.length === 1 && /^CROWN\/spike\/0-/.test(acc.feats[0]) && acc.r.ok && !acc.no.ok && acc.states.join() === 'accepted,rejected' && /☑ CROWN/.test(acc.ui) && /☒ EYE GLOW/.test(acc.ui),
+      'EX6f Accept makes an ordinary reveal feature of the chosen kind anchored at the named point; Reject stands one down; a suggestion that does not exist is refused', JSON.stringify(acc.feats));
+    const edited = await S(() => { const f = window.ShapeLab.state().reveal.features[0]; window.ShapeLab.updateReveal(f.id, { size: 1.4 }); window.ShapeLab.movePoint(0, 0.2, -1.0); return { size: window.ShapeLab.state().reveal.features[0].size, origin: window.ShapeLab.origin(), p0: window.ShapeLab.state().points[0] }; });
+    ck(edited.size === 1.4 && edited.origin === 'generated-edited' && edited.p0[0] === 0.2, 'EX6g the accepted reveal and every point are the researcher\'s to edit — a moved point marks the figure GENERATED · EDITED');
+    // the budget changes → the same picture is read again
+    bodies = [];
+    await S(() => window.ShapeLab.setBudget(12));
+    await page.waitForFunction(() => window.LabExtract.meta() && window.LabExtract.meta().budget === 12, null, { timeout: 8000 });
+    const re = await S(() => ({ meta: window.LabExtract.meta(), n: window.ShapeLab.state().points.length }));
+    const sent12 = bodies.filter((b) => b.action === 'understand' && /ETHER EXTRACTION/.test(String(b.messages[0].content))).pop();
+    ck(re.meta.budget === 12 && sent12 && /at most 12/.test(sent12.messages[0].content) && sent12.image.b64 === sentX.image.b64, 'EX6h changing the budget reads the SAME picture again at the new budget — never a new creature');
+    await S(() => window.ShapeLab.setBudget(8));
+    await page.waitForFunction(() => window.LabExtract.meta() && window.LabExtract.meta().budget === 8, null, { timeout: 8000 });
+    // malformed replies keep what was there
+    for (const [ans, label, outcome] of [['many', 'too many points', 'generated'], ['coords', 'coordinates that are not numbers', 'rejected'], ['prose', 'a prose reply', 'rejected'], ['down', 'a dead transport', 'failed']]) {
+      answer = ans;
+      await page.click('[data-extract-go]');
+      await page.waitForFunction((o) => document.querySelector('[data-extract-section]').getAttribute('data-extract-outcome') === o, outcome, { timeout: 8000 });
+      const r = await S(() => ({ n: window.ShapeLab.state().points.length, status: document.querySelector('[data-extract-status]').textContent, goOn: !document.querySelector('[data-extract-go]').disabled, last: window.LabExtract.last() }));
+      if (outcome === 'generated') ck(r.n === 8 && r.last.parse.repairs.some((x) => /beyond the budget/.test(x)), 'EX6i ' + label + ' are cut to the budget on record and the figure still loads', String(r.n));
+      else ck(r.n === 8 && /still here/.test(r.status) && !/Fixture ring/.test(r.status) && r.goOn && r.last.outcome === outcome, 'EX6i ' + label + ' is ' + outcome + ' on screen: the figure in use is untouched, no fixture is substituted, the button comes back', r.status.slice(0, 80));
+    }
+    answer = 'good';
+    await page.click('[data-extract-go]');
+    await page.waitForFunction(() => document.querySelector('[data-extract-section]').getAttribute('data-extract-outcome') === 'generated', null, { timeout: 8000 });
+    // the loop in the real Ether
+    await S(() => { window.LabExtract.acceptReveal(0, 'spike'); window.LabExtract.acceptReveal(1, 'glow'); });
+    const [pop] = await Promise.all([ctx.waitForEvent('page'), page.click('[data-play]')]);
+    await pop.waitForFunction(() => !!window.LabPreview && !!window.LabPreview.mystery && window.LabPreview.mystery(), null, { timeout: 20000 });
+    await pop.waitForTimeout(1800);
+    const walk = await pop.evaluate(async () => {
+      const my = window.LabPreview.mystery(); let i = my.instrument();
+      const hintEl = document.querySelector('[data-hint]');
+      const out = { hint: hintEl.textContent, hintOn: hintEl.classList.contains('on'), missing: i.arrangement.missingLeft, elements: i.elements.length, steps: [], offered: window.LabPreview.report().happened.reveal.offered };
+      let g = 30;
+      while (g-- > 0 && i && i.arrangement && i.arrangement.missingLeft > 0) {
+        const gap = i.arrangement.links.filter((L) => !L.present)[0];
+        my.touchAt(i.elements[gap.a].x, i.elements[gap.a].y); my.touchAt(i.elements[gap.b].x, i.elements[gap.b].y);
+        i = my.instrument(); out.steps.push({ left: i ? i.arrangement.missingLeft : 'gone', alive: window.LabPreview.alive().length });
+      }
+      await new Promise((r) => setTimeout(r, 2200));
+      out.shown = window.LabPreview.report().happened.reveal.shown;
+      await new Promise((r) => setTimeout(r, 4500));
+      out.alive = window.LabPreview.alive().length;
+      const p = [];
+      for (let s = 0; s < 12; s++) { const w = window.LabPreview.alive()[0]; if (w) p.push([w.x, w.y]); await new Promise((r) => setTimeout(r, 300)); }
+      let d = 0; for (let s = 1; s < p.length; s++) d += Math.hypot(p[s][0] - p[s - 1][0], p[s][1] - p[s - 1][1]);
+      out.travelled = d; out.hintAfter = hintEl.classList.contains('on');
+      return out;
+    });
+    await pop.close();
+    ck(walk.hint === 'A quiet giant is waiting in the deep…' && walk.hintOn && walk.elements === 8 && walk.missing === 2, 'EX7  the real Ether poses the extracted creature with its two gaps and the model\'s hint', JSON.stringify({ hint: walk.hint, missing: walk.missing }));
+    ck(walk.steps.length === 2 && walk.steps[0].left === 1 && walk.steps[0].alive === 0 && walk.steps[1].left === 0, 'EX7b each gap is made by two real taps and nothing wakes a join early', JSON.stringify(walk.steps));
+    ck(walk.offered === 2 && walk.shown === true, 'EX7c the two accepted reveals are drawn over the real sky once the figure is whole');
+    ck(walk.alive === 1 && walk.travelled > 30 && !walk.hintAfter, 'EX7d then it comes alive and roams, and the hint has withdrawn', JSON.stringify({ alive: walk.alive, travelled: Math.round(walk.travelled) }));
+    await page.screenshot({ path: path.join(shotDir, 'shape-lab-extract.png') });
+    const tech = await S(() => { const words = /\b(arrangement|candidate|anchors|interpreter|provider|projection|sanitization|schema|runtime|seam|validator)\b/i; const leaks = []; document.querySelectorAll('[data-extract-section], [data-extract-panel], [data-reveal-extracted]').forEach((n) => { if (n.closest('details.adv')) return; const m = (n.innerText || '').match(words); if (m) leaks.push(m[0]); }); return leaks; });
+    ck(tech.length === 0, 'EX8  the extraction copy says nothing technical outside Advanced', tech.join(','));
+    const phone = await ctx.newPage({ viewport: { width: 390, height: 844 } });
+    await phone.goto(BASE + '/tools/ether-mystery-lab/shape.html');
+    await phone.waitForFunction(() => !!window.LabExtract);
+    const ph = await phone.evaluate(() => ({ sx: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth }));
+    ck(ph.sx <= ph.cw + 1, 'EX8b on a phone the extraction section adds no sideways scroll', ph.sx + ' vs ' + ph.cw);
+    await phone.close();
+    ck(errors.length === 0, 'EX9  the page raised no error through the whole extraction journey', errors.join(' | '));
+  } finally { await browser.close(); server.kill(); }
+
+  const { execSync } = require('child_process');
+  let prodDiff = null;
+  try { prodDiff = execSync('git diff --stat 57ae98b1 -- js/ vihuplanet/ assets/ index.html studio.html css/ renderer/', { cwd: ROOT, encoding: 'utf8' }).trim(); } catch (e) { prodDiff = 'git unavailable'; }
+  ck(prodDiff === '', 'EX10 production Ether is unchanged against the base of this line of sprints — js/, vihuplanet/, assets/, css/, renderer/, index.html, studio.html', prodDiff.split('\n').slice(-1)[0] || 'empty');
+}
+
 (async () => {
   try {
     // ETHER_LAB_ONLY=SL runs one section alone while it is being built;
@@ -8002,6 +8636,8 @@ async function sectionTR() {
     await run('WF', sectionWF);
     await run('IM', sectionIM);
     await run('TR', sectionTR);
+    await run('CL', sectionCL);
+    await run('EX', sectionEX);
   } catch (e) {
     fail('suite crashed', (e && e.stack || String(e)).split('\n')[0]);
   }

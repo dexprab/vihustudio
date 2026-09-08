@@ -1,0 +1,129 @@
+{
+  "what": "Human ratings of the image → Ether creature closure run (real-extract.json → <id>/source.png, author-8.png, judge-8.png, author-12.png, judge-12.png, ether-1…5.jpg, noreveal-complete.jpg). Rated by looking. image = the gpt-image-2 picture as a creative source; recognition = the completed eight-light Ether figure read WITHOUT the picture (judge-8.png / ether-2-complete.png); unfinished = the gap as a mystery (does the missing join read as something to do, and is the creature still recognisable without it); reveal = the accepted reveal suggestions at their default size against no reveal (A transformative · B meaningful · C weak · D unnecessary); alive = the completion → awakening → roaming loop in the real sky; overall A–D.",
+  "scale": {
+    "A": "unmistakable",
+    "B": "recognisable",
+    "C": "suggestive",
+    "D": "failed"
+  },
+  "labels": "Every row: REAL MODEL — the picture by gpt-image-2 (streamed), the extraction by gpt-4.1 with the actual picture attached; nothing constructed, nothing substituted. Everything RESEARCH ONLY; nothing reaches production.",
+  "results": [
+    {
+      "id": "panda",
+      "image": "A",
+      "recognition": "B",
+      "unfinished": "B",
+      "reveal": "C",
+      "alive": "B",
+      "overall": "B",
+      "sees": "a seated round body with two ear lights on top and four limb lights — a panda, or at least a bear; the ears carry it. The twelve-light figure is the better panda, and it cannot be played (production is eight).",
+      "reveal_note": "eye-patch glow reads; the nose CONTOUR at its default frame size is a ring larger than the head and the fur TEXTURE a field over the body — both need resizing by the researcher, which is a reveal default problem the earlier sprints already recorded, not an extraction one"
+    },
+    {
+      "id": "mermaid",
+      "image": "A",
+      "recognition": "B",
+      "unfinished": "B",
+      "reveal": "C",
+      "alive": "B",
+      "overall": "B",
+      "sees": "a head, two arms out, a torso running down into a forked tail — the second figure whose silhouette the lights actually sit on; the missing join is the tail fork, which is exactly the part a person would want to finish",
+      "reveal_note": "one supported reveal landed at eight (STAR HAIR as a contour); it is faint against the tail, which the figure already carries"
+    },
+    {
+      "id": "baby-dragon",
+      "image": "A",
+      "recognition": "C",
+      "unfinished": "C",
+      "reveal": "C",
+      "alive": "B",
+      "overall": "C",
+      "sees": "seven lights — head, both wing tips, body, two feet and the tail — joined as a kite with legs; the model spent lights on the wing tips and none on the wing's outline, so it is a winged thing with a tail rather than a dragon. The picture is the best of the seven and the figure the second weakest.",
+      "reveal_note": "STAR HORNS as spikes at the head are the one reveal that says dragon; the eye glow helps; the wing sparkles as motes are decoration"
+    },
+    {
+      "id": "falcon",
+      "image": "A",
+      "recognition": "B",
+      "unfinished": "B",
+      "reveal": "C",
+      "alive": "B",
+      "overall": "B",
+      "sees": "six lights, a spread bird — head, two wing tips, body, tail, a talon light — with two gaps left by the Lab's fallback (the model's own two missing joins would each have stranded a point); recognisable as a bird in flight, not as a falcon, which the whole study already found is the ceiling at eight",
+      "reveal_note": "talon spikes and eye glow read; the feather LINES are faint"
+    },
+    {
+      "id": "winged-lion",
+      "image": "A",
+      "recognition": "C",
+      "unfinished": "C",
+      "reveal": "C",
+      "alive": "B",
+      "overall": "C",
+      "sees": "six lights — head, two wing tips, a haunch, two feet — drawn as a fork on a triangle; a winged something standing up, and without the picture more bird than lion. The twelve-light figure has the body, the four legs and the tail and reads as a winged quadruped.",
+      "reveal_note": "the mane CONTOUR at its default size is again a ring the size of the figure (the same finding as the V2 closure run); the wing spikes are the honest reveal"
+    },
+    {
+      "id": "whale",
+      "image": "A",
+      "recognition": "B",
+      "unfinished": "B",
+      "reveal": "B",
+      "alive": "B",
+      "overall": "B",
+      "sees": "a long wedge — a broad head end, a belly line, a narrowing back and a raised fluke — a whale or a big fish, and the picture's giant is in it; the gap is along the belly, which reads as the body being open",
+      "reveal_note": "BALEEN LINES along the belly are the one reveal of the run that changes what the figure IS — they say whale where the lights said fish"
+    },
+    {
+      "id": "star-fox",
+      "image": "A",
+      "recognition": "B",
+      "unfinished": "B",
+      "reveal": "C",
+      "alive": "B",
+      "overall": "B",
+      "sees": "seven lights — snout, ear tips, back, a leg, the tail curling up — a fox-ish quadruped with a big tail, which is what the prompt asked for; the gap is at the tail",
+      "reveal_note": "four reveals offered; the tail glow and the eye glow read, the fur texture and the mane contour are too large at eight"
+    }
+  ],
+  "tally": {
+    "image": {
+      "A": 7,
+      "B": 0,
+      "C": 0,
+      "D": 0
+    },
+    "recognition": {
+      "A": 0,
+      "B": 5,
+      "C": 2,
+      "D": 0
+    },
+    "unfinished": {
+      "A": 0,
+      "B": 5,
+      "C": 2,
+      "D": 0
+    },
+    "reveal": {
+      "A": 0,
+      "B": 1,
+      "C": 6,
+      "D": 0
+    },
+    "alive": {
+      "A": 0,
+      "B": 7,
+      "C": 0,
+      "D": 0
+    },
+    "overall": {
+      "A": 0,
+      "B": 5,
+      "C": 2,
+      "D": 0
+    }
+  },
+  "against_v2": "The V2 closure run (shots/closure/ratings.json) graded A0 B2 C4 D3 on nine creatures with the compiler; this run grades A0 B5 C2 D0 on seven with the picture read directly. No D anywhere, and the two C's are the two creatures whose species lives in an outline (a dragon's wing, a lion's mane) that eight lights cannot hold — the same ceiling the eight-point study found by hand.",
+  "verdict": "GOOD ENOUGH TO MOVE FORWARD, with two things named. The simplest bridge works: gpt-image-2 draws a readable single creature every time (7/7 A), gpt-4.1 reads the actual picture into points that sit ON the creature (14/14 valid at eight and twelve; 12 of 14 on the first attempt, the other two on the second once the proxy's model_not_found is retried), and the existing Ether runtime completes, awakens and roams every one of the seven at eight lights with no production change. The figures are honest silhouettes rather than tangles — the extraction's lights are where the creature is, which is the thing no compiler managed. Named: (1) at eight lights a wing's outline and a mane cannot be held, so dragon and winged lion stay at C until the production budget question is decided; (2) the model lists missing connections SEPARATELY from connections (13 of 14 replies were repaired on the record — the model's gaps were added as connections and then left missing — and one of its gaps would have stranded a point and was kept as a connection instead; the falcon's two gaps at eight are the Lab's own), and the reveal defaults are sized in frame units and come out oversized — both are Lab-side, both are recorded, neither is a reason to keep the compiler."
+}

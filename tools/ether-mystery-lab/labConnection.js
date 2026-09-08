@@ -38,8 +38,8 @@
   var DIRECT_URL = 'https://api.openai.com/v1/chat/completions';
   var DIRECT_MODELS_URL = 'https://api.openai.com/v1/models';
   var DIRECT_IMAGE_URL = 'https://api.openai.com/v1/images/generations';
-  var DEFAULT_DIRECT_MODEL = 'gpt-4.1-mini';
-  var DEFAULT_DIRECT_IMAGE_MODEL = 'gpt-image-1';
+  var DEFAULT_DIRECT_MODEL = 'gpt-4.1';
+  var DEFAULT_DIRECT_IMAGE_MODEL = 'gpt-image-2';
   var IMAGE_MIMES = ['image/png', 'image/jpeg', 'image/webp'];
   var REQUEST_MS = 120000;
   var PROBE_MS = 15000;
@@ -247,6 +247,9 @@
   // builds a provider request shape. The reply is TEXT — the caller's
   // validator decides what it is.
   // ---------------------------------------------------------------
+  // how much room the answer may take — a description needs 1400, an
+  // extraction of twenty points with reasons more; bounded either way
+  function maxTokens(opts) { var n = Number(opts && opts.maxTokens); return Number.isInteger(n) && n >= 200 ? Math.min(n, 4000) : 1400; }
   function understand(opts) {
     opts = opts || {};
     if (state.mode === 'fixture') {
@@ -268,7 +271,7 @@
       return bounded(DIRECT_URL, {
         method: 'POST',
         headers: { 'Authorization': 'Bearer ' + state.directKey, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: state.directModel, messages: content, response_format: { type: 'json_object' }, temperature: 0.2, max_tokens: 1400 })
+        body: JSON.stringify({ model: state.directModel, messages: content, response_format: { type: 'json_object' }, temperature: 0.2, max_tokens: maxTokens(opts) })
       }, REQUEST_MS).then(function (res) {
         if (!res) return { ok: false, reason: 'unavailable' };
         if (!res.ok) return directRefusal(res, false);
@@ -282,7 +285,7 @@
     if (!state.endpointUrl) return Promise.resolve({ ok: false, reason: 'not-configured' });
     return bounded(state.endpointUrl, {
       method: 'POST', headers: headersForEndpoint(),
-      body: JSON.stringify({ action: 'understand', messages: msgs, image: { mime: img.mime, b64: img.b64 } })
+      body: JSON.stringify(opts.maxTokens ? { action: 'understand', messages: msgs, image: { mime: img.mime, b64: img.b64 }, maxTokens: maxTokens(opts) } : { action: 'understand', messages: msgs, image: { mime: img.mime, b64: img.b64 } })
     }, REQUEST_MS).then(function (res) {
       if (!res) return { ok: false, reason: 'unavailable' };
       return res.json().catch(function () { return null; }).then(function (body) {

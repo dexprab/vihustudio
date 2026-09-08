@@ -54,6 +54,29 @@
 // cuts the list from the bottom. A light that only exists because a
 // feature exists is the last to be kept.
 //
+// V2 — THE OPEN VOCABULARY (Ether grammar V2, close the loop). Beyond
+// its base primitives the composer has SEVEN renderer capabilities,
+// generic and closed (labVocabulary.js → CAPABILITIES), applied per
+// mass from a resolved vocabulary decision that arrives as DATA in
+// opts.caps — never read from a name, never from a species:
+//
+//   OUTLINE     a span or taper is closed into a silhouette — a trailing
+//               edge back to the body, a base width — so it is a shape
+//   CURL        a taper bends back on itself as it thins
+//   FLARE       the end of a taper or terminal widens into two
+//   LOBE        a mass gets a broad flat far edge instead of a point
+//   CONTINUOUS  two flow masses become one form: no boundary light, and
+//               their silhouettes join across
+//   SWEEP       a reaching structure leans back, forward, up or down
+//   MIRROR      the structure is reflected across the flow
+//
+// THE ORDER OF CONSTRUCTION is the product's own: 1. the primary
+// GESTURE (the spine), 2. the primary SILHOUETTE (volume, lobes, the
+// outlines of what reaches out), 3. STRUCTURAL relationships (what
+// attaches to what), 4. DIAGNOSTIC features (kept by priority), 5.
+// REVEAL-ONLY features (never composed as lights — returned for the
+// reveal). Nothing is head + body + leg + leg + tail placed apart.
+//
 // WHAT COMES OUT is data for the Shape Lab: points in the editor's own
 // unit space, a role (mass label) per point, the complete connection
 // graph, the budget chosen, and diagnostics a person can read —
@@ -139,7 +162,13 @@
     (plan.proportion || []).forEach(function (p) { treat[p.mass] = TREAT[p.treat] || 1; });
     var survive = {};
     (plan.mustSurvive || []).forEach(function (id) { survive[id] = true; });
-    var flowIds = (plan.gesture.flow || []).filter(function (id) { return byId[id]; });
+    // the resolved vocabulary: per mass, the capabilities the compiler may
+    // use — {outline, curl, flare, lobe, continuous, sweep:<dir>, mirror,
+    // revealOnly}. Absent means the base vocabulary alone.
+    var caps = opts.caps || {};
+    function capOf(id, k) { return caps[id] ? caps[id][k] : undefined; }
+    var revealOnlyIds = plan.masses.filter(function (m) { return capOf(m.id, 'revealOnly'); }).map(function (m) { return m.id; });
+    var flowIds = (plan.gesture.flow || []).filter(function (id) { return byId[id] && !capOf(id, 'revealOnly'); });
     if (flowIds.length < 2) return { ok: false, reason: 'flow-too-short' };
     var spine = spineFor(plan.gesture);
 
@@ -225,30 +254,52 @@
       if (i === 0) spineLights.push(light(spine.at(0), id, PRI.spineEnd, [], 'root end'));
       var tEnd = bounds[i][1];
       var owner = i === flowIds.length - 1 ? id : flowIds[i + 1];
-      spineLights.push(light(spine.at(tEnd), owner, i === flowIds.length - 1 ? PRI.spineEnd : PRI.transition, [], i === flowIds.length - 1 ? 'tip end' : 'transition ' + id + '→' + owner));
+      var last = i === flowIds.length - 1;
+      var continuous = !last && (capOf(id, 'continuous') || capOf(owner, 'continuous'));
+      var li = light(spine.at(tEnd), owner, last ? PRI.spineEnd : PRI.transition, [], last ? 'tip end' : 'transition ' + id + '→' + owner);
+      // CONTINUOUS: one form changes into the next with no boundary — the
+      // transition light is never kept, and the flow joins straight across
+      // it (a dropped light's joins climb to what it hung from)
+      if (continuous) { cands[li].skip = true; cands[li].hang = spineLights[spineLights.length - 1]; log.push('"' + id + '" flows continuously into "' + owner + '": no boundary light'); }
+      spineLights.push(li);
     });
     for (var k = 1; k < spineLights.length; k++) join(spineLights[k - 1], spineLights[k], 'flow');
     // volume for the masses that dominate the flow: a width pair across the spine
+    var widths = [];
     flowIds.forEach(function (id, i) {
       var m = byId[id];
       var big = m.size === 'dominant' || treat[id] === TREAT.dominant || treat[id] === TREAT.oversized;
       var large = m.size === 'large';
-      if (!big && !large) return;
+      var lobe = !!capOf(id, 'lobe');
+      if (!big && !large && !lobe) return;
       var pl = placed[id];
       var n = perp(pl.dir);
       var half = pl.r * (m.shape === 'wide' || m.shape === 'round' ? 1.0 : m.shape === 'thin' || m.shape === 'long' ? 0.55 : 0.8);
-      var wp = big ? PRI.dominantWidth : (survive[id] ? PRI.surviveWidth : PRI.largeWidth);
+      var wp = big ? PRI.dominantWidth : (survive[id] || lobe ? PRI.surviveWidth : PRI.largeWidth);
+      // LOBE: the volume sits at the mass's far end and the two lights are
+      // joined to each other — a broad flat edge rather than a diamond
+      var c = lobe ? add(pl.c, mul(pl.dir, (pl.extent || 0) * 0.32)) : pl.c;
       // a width light hangs from the spine light that bounds its mass, so
       // anything joined to it when it is dropped climbs back to the spine
-      var a = light(add(pl.c, mul(n, half)), id, wp, [], 'width', spineLights[i]);
-      var b = light(add(pl.c, mul(n, -half)), id, wp, [], 'width', spineLights[i]);
+      var a = light(add(c, mul(n, half)), id, wp, [], lobe ? 'lobe edge' : 'width', spineLights[i]);
+      var b = light(add(c, mul(n, -half)), id, wp, [], lobe ? 'lobe edge' : 'width', spineLights[i]);
+      widths[i] = { a: a, b: b };
       // each side joins the two spine lights that bound this mass — a diamond of volume
       join(a, spineLights[i], 'volume'); join(a, spineLights[i + 1], 'volume');
       join(b, spineLights[i], 'volume'); join(b, spineLights[i + 1], 'volume');
+      if (lobe) join(a, b, 'lobe');
+    });
+    // CONTINUOUS silhouettes: where one form flows into the next, each
+    // side's edge joins across, so the outline is unbroken
+    flowIds.forEach(function (id, i) {
+      var next = flowIds[i + 1];
+      if (!next || !widths[i] || !widths[i + 1]) return;
+      if (!(capOf(id, 'continuous') || capOf(next, 'continuous'))) return;
+      join(widths[i].a, widths[i + 1].a, 'continuous'); join(widths[i].b, widths[i + 1].b, 'continuous');
     });
 
     // ---- 2. attachments, by relationship, until nothing new can be placed ----
-    var rels = (plan.relationships || []).slice();
+    var rels = (plan.relationships || []).filter(function (r) { return !capOf(r.from, 'revealOnly') && !capOf(r.to, 'revealOnly'); });
     var guard = 0;
     while (rels.length && guard++ < 40) {
       var progressed = false;
@@ -265,7 +316,7 @@
       }
       if (!progressed) break;
     }
-    var orphans = plan.masses.filter(function (m) { return !placed[m.id]; }).map(function (m) { return m.id; });
+    var orphans = plan.masses.filter(function (m) { return !placed[m.id] && !capOf(m.id, 'revealOnly'); }).map(function (m) { return m.id; });
     // a mass nobody related to anything: hang it off the largest flow mass so it is not lost, and say so
     orphans.forEach(function (id) {
       var parent = flowIds[0];
@@ -317,21 +368,50 @@
       var root = add(parent.c, mul(d, reachOf(parent, d)));
       var anchor = nearestPoint(parentMass.id, root);
       var kind = child.kind;
-      var sym = rel.symmetric === true || side === 'both';
+      var sym = rel.symmetric === true || side === 'both' || !!capOf(child.id, 'mirror');
+      var cOutline = !!capOf(child.id, 'outline'), cCurl = !!capOf(child.id, 'curl'), cFlare = !!capOf(child.id, 'flare'), cSweep = capOf(child.id, 'sweep') || null;
       placed[child.id] = { c: add(root, mul(d, L / 2)), r: r, dir: d, points: [], onFlow: false };
 
       if (kind === 'taper') {
         // a tail, a trunk, a neck: root at the parent's edge, a tip L away,
         // curling: the mid-point bends up and the tip comes back a little
         var up = [0, -1];
-        var mid = add(add(root, mul(d, L * 0.5)), mul(up, L * 0.28));
-        var tip = add(add(root, mul(d, L * 0.95)), mul(up, L * 0.55 * (child.size === 'tiny' ? 0.3 : 1)));
+        // SWEEP leans the whole taper: up lifts it, down drops it, back and
+        // forward pull it along the body
+        var lift = cSweep === 'up' ? 1.6 : cSweep === 'down' ? -0.6 : 1;
+        var along0 = cSweep === 'back' ? (parent.onFlow ? mul(parent.dir, -1) : [-spine.fx, 0]) : cSweep === 'forward' ? (parent.onFlow ? parent.dir : [spine.fx, 0]) : null;
+        var dd = along0 ? norm(add(mul(d, 0.6), mul(along0, 0.8))) : d;
+        var mid = add(add(root, mul(dd, L * (cCurl ? 0.55 : 0.5))), mul(up, L * (cCurl ? 0.5 : 0.28) * lift));
+        // CURL: the tip climbs above the mid and comes back over it toward
+        // the body, so the taper bends on itself rather than pointing away
+        var tip = cCurl ? add(add(root, mul(dd, L * 0.4)), mul(up, L * 0.98 * lift))
+          : add(add(root, mul(dd, L * 0.95)), mul(up, L * 0.55 * (child.size === 'tiny' ? 0.3 : 1) * lift));
         var iRoot = light(root, child.id, Math.min(pri, PRI.diagnostic), [], 'root', anchor);
-        var iTip = light(tip, child.id, pri, [iRoot], 'tip', iRoot);
-        var iMid = light(mid, child.id, PRI.extra + (survive[child.id] ? 0 : 2), [iRoot, iTip], 'mid', iRoot);
-        join(anchor, iRoot, 'attach'); join(iRoot, iMid, 'taper'); join(iMid, iTip, 'taper');
-        // when the mid is dropped the root still meets the tip
-        cands[iMid].fallbackJoin = [iRoot, iTip];
+        var iMid, iTip;
+        if (cFlare) {
+          // FLARE: the tip is a fork — two lights across the taper's own
+          // direction, each joined to the mid and to each other
+          iMid = light(mid, child.id, Math.min(pri, PRI.diagnostic), [iRoot], 'mid', iRoot);
+          var across = perp(norm(sub(tip, mid)));
+          var fa = light(add(tip, mul(across, L * 0.3)), child.id, pri, [iMid], 'fork tip', iMid);
+          var fb = light(add(tip, mul(across, -L * 0.3)), child.id, pri, [iMid], 'fork tip', iMid);
+          join(anchor, iRoot, 'attach'); join(iRoot, iMid, 'taper'); join(iMid, fa, 'flare'); join(iMid, fb, 'flare'); join(fa, fb, 'flare');
+          iTip = fa;
+        } else {
+          iTip = light(tip, child.id, pri, [iRoot], 'tip', iRoot);
+          iMid = light(mid, child.id, cCurl ? Math.min(pri, PRI.diagnostic) : PRI.extra + (survive[child.id] ? 0 : 2), [iRoot, iTip], 'mid', iRoot);
+          join(anchor, iRoot, 'attach'); join(iRoot, iMid, 'taper'); join(iMid, iTip, 'taper');
+          // when the mid is dropped the root still meets the tip
+          cands[iMid].fallbackJoin = [iRoot, iTip];
+        }
+        if (cOutline) {
+          // OUTLINE: a base width across the root, each edge joined to the
+          // mid — the taper is a shape with a body, not a line
+          var acrossR = perp(d);
+          var oa = light(add(root, mul(acrossR, r * 0.7)), child.id, Math.min(pri, PRI.diagnostic) + 1, [iRoot], 'edge', iRoot);
+          var ob = light(add(root, mul(acrossR, -r * 0.7)), child.id, Math.min(pri, PRI.diagnostic) + 1, [iRoot], 'edge', iRoot);
+          join(anchor, oa, 'outline'); join(anchor, ob, 'outline'); join(oa, iMid, 'outline'); join(ob, iMid, 'outline');
+        }
         placed[child.id].c = mid;
       } else if (kind === 'span') {
         // a wing, a fin, an ear: from a root on the parent to a tip, with a
@@ -345,10 +425,28 @@
         // wings the model called symmetric ONE wing, reaching back, because
         // the pair was a side-view afterthought filed under EXTRA.
         var back = [-spine.fx, 0], up = [0, -1], fwd = [spine.fx, 0];
-        var mirrored = side === 'both' || side === 'around';
         var lateral = side === 'left' || side === 'right';
+        // A PAIR IS MIRRORED ACROSS THE FLOW ONLY WHERE THE VIEWER SEES BOTH
+        // SIDES — a spine standing upright or facing the viewer. On a side
+        // view (a horizontal spine) the far one of a pair leaves the same
+        // root more steeply; reflecting it across the spine would put one
+        // wing above the body and one below it (measured on an elephant's
+        // ears). A mass already given a lateral side IS one of a pair.
+        var seesBoth = !parent.onFlow || Math.abs(parent.dir[1]) >= Math.abs(parent.dir[0]);
+        var mirrored = !lateral && seesBoth && (side === 'both' || side === 'around' || !!capOf(child.id, 'mirror'));
+        if (!lateral && !mirrored && capOf(child.id, 'mirror')) sym = true;
         var lean = lateral || mirrored ? add(mul(lateral ? d : mirrorAxis(parent), 1), mul(up, 0.75))
           : side === 'top' ? add(mul(back, 0.5), mul(up, 1)) : side === 'front' ? add(mul(fwd, 1), mul(up, 0.5)) : add(mul(back, 1), mul(up, 0.75));
+        // SWEEP: the tip falls behind the shoulder (back), reaches ahead
+        // (forward), rises (up) or droops (down) — the one line a swept
+        // wing has and a level one does not
+        // "back" and "forward" are along the FLOW the span leaves — behind
+        // the shoulder is toward the root end of the spine, not world-left
+        var rearward = parent.onFlow ? mul(parent.dir, -1) : back, ahead = parent.onFlow ? parent.dir : fwd;
+        if (cSweep === 'back') lean = add(lean, mul(rearward, 1.3));
+        else if (cSweep === 'forward') lean = add(lean, mul(ahead, 1.3));
+        else if (cSweep === 'up') lean = add(lean, mul(up, 1.4));
+        else if (cSweep === 'down') lean = add(add(lean, mul(up, -1.2)), [0, 0.6]);
         var reach = norm(lean);
         var spanRoot = mirrored ? add(parent.c, mul(mirrorAxis(parent), parent.r * 0.6)) : root;
         var spanAnchor = mirrored ? nearestPoint(parentMass.id, spanRoot) : anchor;
@@ -357,8 +455,17 @@
           var corner = add(r0, mul(norm(add(mul(reachV, 0.35), mul(along, 1))), L * 0.7));
           var iR = light(r0, child.id, Math.min(pri, PRI.diagnostic), [], 'root' + label, spanAnchor);
           var iT = light(tipS, child.id, tipPri, [iR], 'tip' + label, iR);
-          var iC = light(corner, child.id, cornerPri, [iR, iT], 'trailing corner' + label, iR);
-          join(spanAnchor, iR, 'attach'); join(iR, iT, 'span'); join(iT, iC, 'span'); join(iC, iR, 'span');
+          // OUTLINE: the trailing corner is silhouette, kept with the tip,
+          // and a second root closes the shape back onto the body — a
+          // leading edge AND a trailing edge, a wing rather than a stick
+          var iC = light(corner, child.id, cOutline ? Math.min(pri, PRI.diagnostic) + 1 : cornerPri, [iR, iT], 'trailing corner' + label, iR);
+          join(spanAnchor, iR, 'attach'); join(iR, iT, 'span'); join(iT, iC, 'span');
+          if (cOutline) {
+            var r2 = add(r0, mul(norm(along), Math.max(0.1, parent.r * 0.7)));
+            var a2 = nearestPoint(parentMass.id, r2);
+            var iR2 = light(r2, child.id, Math.min(pri, PRI.diagnostic) + 1, [iR], 'trailing root' + label, iR);
+            join(iC, iR2, 'outline'); join(iR2, iR, 'outline'); join(a2, iR2, 'attach');
+          } else join(iC, iR, 'span');
           return { root: iR, tip: iT, tipAt: tipS };
         }
         var along1 = lateral || mirrored ? (mirrored ? mirrorAxis(parent) : d) : (side === 'front' ? fwd : back);
@@ -411,7 +518,14 @@
       } else if (kind === 'terminal') {
         // one small thing at the end of something; a pair spreads across
         var tipT = add(root, mul(d, Math.max(0.12, L * 0.5)));
-        if (sym) {
+        if (cFlare && !sym) {
+          // FLARE: the terminal widens into two, joined — a fan, a fork
+          var acrossT = perp(d);
+          var iBase = light(add(root, mul(d, L * 0.2)), child.id, Math.min(pri, PRI.diagnostic), [], 'base', anchor);
+          var fa2 = light(add(tipT, mul(acrossT, L * 0.35)), child.id, pri, [iBase], 'flare tip', iBase);
+          var fb2 = light(add(tipT, mul(acrossT, -L * 0.35)), child.id, pri, [iBase], 'flare tip', iBase);
+          join(anchor, iBase, 'attach'); join(iBase, fa2, 'flare'); join(iBase, fb2, 'flare'); join(fa2, fb2, 'flare');
+        } else if (sym) {
           var across = perp(d);
           var i1t = light(add(tipT, mul(across, parent.r * 0.45)), child.id, pri, [], 'tip', anchor);
           var i2t = light(add(tipT, mul(across, -parent.r * 0.45)), child.id, pri + 1, [], 'tip', anchor);
@@ -453,10 +567,18 @@
         placed[child.id] = { c: add(root, mul(d, L / 2)), r: r, dir: d, points: [iRf, iTf], onFlow: true };
         placed[child.id].points = [iRf, iTf];
       } else {
-        // a plain mass hanging off another: one light at its centre
+        // a plain mass hanging off another: one light at its centre — or,
+        // LOBED, two lights across its far edge joined to each other
         var cM = add(root, mul(d, r));
-        var iM = light(cM, child.id, pri, [], 'centre', anchor);
-        join(anchor, iM, 'attach');
+        if (capOf(child.id, 'lobe')) {
+          var acrossM = perp(d);
+          var la = light(add(add(root, mul(d, r * 1.4)), mul(acrossM, r * 0.9)), child.id, pri, [], 'lobe edge', anchor);
+          var lb = light(add(add(root, mul(d, r * 1.4)), mul(acrossM, -r * 0.9)), child.id, pri, [], 'lobe edge', anchor);
+          join(anchor, la, 'attach'); join(anchor, lb, 'attach'); join(la, lb, 'lobe');
+        } else {
+          var iM = light(cM, child.id, pri, [], 'centre', anchor);
+          join(anchor, iM, 'attach');
+        }
         placed[child.id].c = cM;
       }
     }
@@ -475,8 +597,9 @@
     var kept = {};
     var count = 0;
     order.forEach(function (i) {
-      if (kept[i]) return;
-      var need = [i].concat(cands[i].needs.filter(function (n) { return !kept[n]; }));
+      if (kept[i] || cands[i].skip) return;
+      var need = [i].concat(cands[i].needs.filter(function (n) { return !kept[n] && !cands[n].skip; }));
+      if (need.some(function (n) { return cands[n].skip; })) return;
       if (count + need.length > cap) return;
       need.forEach(function (n) { kept[n] = true; });
       count += need.length;
@@ -539,9 +662,13 @@
     var budget = BUDGETS.filter(function (b) { return b >= points.length; })[0] || BUDGETS[BUDGETS.length - 1];
     // a mass is dropped when NO kept light is its — a light it shares with
     // another mass (a fin on the very tip of a tail) is still its light
-    var dropped = plan.masses.filter(function (m) { var pl = placed[m.id]; return !pl || !pl.points.some(function (i) { return index[i] !== undefined; }); }).map(function (m) { return m.id; });
+    var dropped = plan.masses.filter(function (m) { if (capOf(m.id, 'revealOnly')) return false; var pl = placed[m.id]; return !pl || !pl.points.some(function (i) { return index[i] !== undefined; }); }).map(function (m) { return m.id; });
+    var usedCaps = {};
+    Object.keys(caps).forEach(function (id) { Object.keys(caps[id] || {}).forEach(function (k) { if (k !== 'revealOnly' && byId[id]) usedCaps[k] = true; }); });
     var diag = {
       candidates: cands.length, kept: points.length, cap: cap, budget: budget,
+      vocabulary: { mode: opts.caps ? 'extended' : 'base', capabilities: Object.keys(usedCaps), revealOnly: revealOnlyIds },
+      order: ['gesture', 'silhouette', 'structure', 'diagnostic', 'reveal-only'],
       components: components(points.length, joinList),
       crossings: crossings(points, joinList),
       dropped: dropped, merged: log.filter(function (l) { return /merged|shares the light/.test(l); }).length,

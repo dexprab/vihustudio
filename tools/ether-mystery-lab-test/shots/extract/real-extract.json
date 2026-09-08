@@ -1,0 +1,2513 @@
+{
+ "run": "2026-09-08T16:14:29.369Z",
+ "imageModel": "gpt-image-2",
+ "model": "gpt-4.1",
+ "note": "Every stage is REAL MODEL; a failed stage says FAILED and nothing is substituted.",
+ "results": [
+  {
+   "id": "panda",
+   "prompt": "A panda made of stars in a night sky",
+   "labels": {
+    "image": "REAL MODEL (gpt-image-2, streamed)",
+    "extraction": "REAL MODEL (gpt-4.1, with the generated picture)"
+   },
+   "image": {
+    "ok": true,
+    "file": "panda/source.png",
+    "model": "gpt-image-2",
+    "ms": 32546,
+    "events": 2,
+    "imagePrompt": "A panda made of stars in a night sky.\nPresentation: one single creature, full body, the whole subject visible and centred, with a clear readable silhouette; expressive and characterful; on a plain uncluttered background. No text, no letters, no labels, no watermark, no interface, no borders, no diagram, and no second creature competing for attention. A finished, visually coherent piece of artwork suitable for a later study of its shape.",
+    "bytes": 1841233
+   },
+   "extractions": {
+    "8": {
+     "budget": 8,
+     "model": "gpt-4.1",
+     "ms": 5114,
+     "usage": {
+      "prompt": 1658,
+      "completion": 653
+     },
+     "raw": "{\n  \"subject\": \"starry panda bear\",\n  \"points\": [\n    { \"id\": \"p1\", \"x\": 0.38, \"y\": 0.19, \"feature\": \"left ear\" },\n    { \"id\": \"p2\", \"x\": 0.62, \"y\": 0.19, \"feature\": \"right ear\" },\n    { \"id\": \"p3\", \"x\": 0.50, \"y\": 0.28, \"feature\": \"top of head\" },\n    { \"id\": \"p4\", \"x\": 0.35, \"y\": 0.45, \"feature\": \"left cheek\" },\n    { \"id\": \"p5\", \"x\": 0.65, \"y\": 0.45, \"feature\": \"right cheek\" },\n    { \"id\": \"p6\", \"x\": 0.32, \"y\": 0.82, \"feature\": \"left front paw\" },\n    { \"id\": \"p7\", \"x\": 0.68, \"y\": 0.82, \"feature\": \"right front paw\" },\n    { \"id\": \"p8\", \"x\": 0.75, \"y\": 0.65, \"feature\": \"back hip\" }\n  ],\n  \"connections\": [\n    { \"a\": \"p1\", \"b\": \"p3\" },\n    { \"a\": \"p2\", \"b\": \"p3\" },\n    { \"a\": \"p1\", \"b\": \"p4\" },\n    { \"a\": \"p2\", \"b\": \"p5\" },\n    { \"a\": \"p4\", \"b\": \"p6\" },\n    { \"a\": \"p5\", \"b\": \"p7\" },\n    { \"a\": \"p7\", \"b\": \"p8\" },\n    { \"a\": \"p8\", \"b\": \"p5\" }\n  ],\n  \"missingConnections\": [\n    { \"a\": \"p6\", \"b\": \"p7\", \"reason\": \"Leaving the line between the front paws open creates a visible gap at the base, inviting completion and emphasizing the stance.\" }\n  ],\n  \"revealFeatures\": [\n    { \"name\": \"Starry Eye Patch\", \"reason\": \"instantly recognizable and adds character\", \"type\": \"diagnostic\", \"near\": [\"p4\"] },\n    { \"name\": \"Sparkling Nose\", \"reason\": \"adds charm and focus to the face\", \"type\": \"character\", \"near\": [\"p3\"] },\n    { \"name\": \"Glittering Fur\", \"reason\": \"magical accent that enhances the cosmic feel\", \"type\": \"magic\", \"near\": [\"p5\", \"p8\"] }\n  ],\n  \"hint\": \"A gentle dreamer from the starlit forests is waiting…\",\n  \"confidence\": { \"overall\": 0.98, \"identity\": 0.99, \"structure\": 0.97 }\n}",
+     "validator": {
+      "ok": true,
+      "reasons": [],
+      "repairs": [
+       "missingConnections[0] was not among the connections — added as one, then left missing"
+      ]
+     },
+     "extraction": {
+      "subject": "starry panda bear",
+      "budget": 8,
+      "points": [
+       {
+        "id": "p1",
+        "x": 0.38,
+        "y": 0.19,
+        "feature": "LEFT EAR"
+       },
+       {
+        "id": "p2",
+        "x": 0.62,
+        "y": 0.19,
+        "feature": "RIGHT EAR"
+       },
+       {
+        "id": "p3",
+        "x": 0.5,
+        "y": 0.28,
+        "feature": "TOP OF HEAD"
+       },
+       {
+        "id": "p4",
+        "x": 0.35,
+        "y": 0.45,
+        "feature": "LEFT CHEEK"
+       },
+       {
+        "id": "p5",
+        "x": 0.65,
+        "y": 0.45,
+        "feature": "RIGHT CHEEK"
+       },
+       {
+        "id": "p6",
+        "x": 0.32,
+        "y": 0.82,
+        "feature": "LEFT FRONT PAW"
+       },
+       {
+        "id": "p7",
+        "x": 0.68,
+        "y": 0.82,
+        "feature": "RIGHT FRONT PAW"
+       },
+       {
+        "id": "p8",
+        "x": 0.75,
+        "y": 0.65,
+        "feature": "BACK HIP"
+       }
+      ],
+      "joins": [
+       {
+        "a": 0,
+        "b": 2
+       },
+       {
+        "a": 1,
+        "b": 2
+       },
+       {
+        "a": 0,
+        "b": 3
+       },
+       {
+        "a": 1,
+        "b": 4
+       },
+       {
+        "a": 3,
+        "b": 5
+       },
+       {
+        "a": 4,
+        "b": 6
+       },
+       {
+        "a": 6,
+        "b": 7
+       },
+       {
+        "a": 4,
+        "b": 7
+       },
+       {
+        "a": 5,
+        "b": 6
+       }
+      ],
+      "missing": [
+       8
+      ],
+      "gaps": [
+       {
+        "join": 8,
+        "reason": "Leaving the line between the front paws open creates a visible gap at the base, inviting completion and emphasizing the stance."
+       }
+      ],
+      "revealFeatures": [
+       {
+        "name": "STARRY EYE PATCH",
+        "reason": "instantly recognizable and adds character",
+        "type": "diagnostic",
+        "near": [
+         3
+        ],
+        "kind": "glow"
+       },
+       {
+        "name": "SPARKLING NOSE",
+        "reason": "adds charm and focus to the face",
+        "type": "character",
+        "near": [
+         2
+        ],
+        "kind": "contour"
+       },
+       {
+        "name": "GLITTERING FUR",
+        "reason": "magical accent that enhances the cosmic feel",
+        "type": "magic",
+        "near": [
+         4,
+         7
+        ],
+        "kind": "texture"
+       }
+      ],
+      "hint": "A gentle dreamer from the starlit forests is waiting…",
+      "confidence": {
+       "overall": 0.98,
+       "identity": 0.99,
+       "structure": 0.97
+      }
+     },
+     "ok": true,
+     "attempts": 1
+    },
+    "12": {
+     "budget": 12,
+     "model": "gpt-4.1",
+     "ms": 5487,
+     "usage": {
+      "prompt": 1658,
+      "completion": 822
+     },
+     "raw": "{ \"subject\": \"starry panda bear standing\",\n  \"points\": [\n    { \"id\": \"p1\", \"x\": 0.385, \"y\": 0.195, \"feature\": \"left ear\" },\n    { \"id\": \"p2\", \"x\": 0.615, \"y\": 0.195, \"feature\": \"right ear\" },\n    { \"id\": \"p3\", \"x\": 0.500, \"y\": 0.270, \"feature\": \"top of head\" },\n    { \"id\": \"p4\", \"x\": 0.340, \"y\": 0.420, \"feature\": \"left cheek\" },\n    { \"id\": \"p5\", \"x\": 0.660, \"y\": 0.420, \"feature\": \"right cheek\" },\n    { \"id\": \"p6\", \"x\": 0.250, \"y\": 0.700, \"feature\": \"left front paw\" },\n    { \"id\": \"p7\", \"x\": 0.410, \"y\": 0.820, \"feature\": \"left hind paw\" },\n    { \"id\": \"p8\", \"x\": 0.590, \"y\": 0.820, \"feature\": \"right hind paw\" },\n    { \"id\": \"p9\", \"x\": 0.750, \"y\": 0.700, \"feature\": \"right front paw\" },\n    { \"id\": \"p10\", \"x\": 0.500, \"y\": 0.600, \"feature\": \"belly\" }\n  ],\n  \"connections\": [\n    { \"a\": \"p1\", \"b\": \"p3\" },\n    { \"a\": \"p3\", \"b\": \"p2\" },\n    { \"a\": \"p1\", \"b\": \"p4\" },\n    { \"a\": \"p2\", \"b\": \"p5\" },\n    { \"a\": \"p4\", \"b\": \"p6\" },\n    { \"a\": \"p6\", \"b\": \"p7\" },\n    { \"a\": \"p7\", \"b\": \"p10\" },\n    { \"a\": \"p10\", \"b\": \"p8\" },\n    { \"a\": \"p8\", \"b\": \"p9\" },\n    { \"a\": \"p9\", \"b\": \"p5\" },\n    { \"a\": \"p4\", \"b\": \"p10\" },\n    { \"a\": \"p5\", \"b\": \"p10\" }\n  ],\n  \"missingConnections\": [\n    { \"a\": \"p3\", \"b\": \"p10\", \"reason\": \"Leaving out the neck/body join makes the head float, inviting completion and clarifying the body.\" },\n    { \"a\": \"p7\", \"b\": \"p8\", \"reason\": \"Leaving out the belly curve between hind paws makes the stance incomplete but clear to finish.\" }\n  ],\n  \"revealFeatures\": [\n    { \"name\": \"Eye patches\", \"reason\": \"instantly recognizable and iconic for this being\", \"type\": \"diagnostic\", \"near\": [\"p4\", \"p5\"] },\n    { \"name\": \"Star sparkle\", \"reason\": \"adds magic and celestial character\", \"type\": \"magic\", \"near\": [\"p3\", \"p10\"] },\n    { \"name\": \"Nose shine\", \"reason\": \"gives personality and focus to the face\", \"type\": \"character\", \"near\": [\"p3\"] }\n  ],\n  \"hint\": \"A gentle stargazer from the bamboo forests is waiting…\",\n  \"confidence\": { \"overall\": 0.98, \"identity\": 0.99, \"structure\": 0.97 }\n}",
+     "validator": {
+      "ok": true,
+      "reasons": [],
+      "repairs": [
+       "missingConnections[0] was not among the connections — added as one, then left missing",
+       "missingConnections[1] was not among the connections — added as one, then left missing"
+      ]
+     },
+     "extraction": {
+      "subject": "starry panda bear standing",
+      "budget": 12,
+      "points": [
+       {
+        "id": "p1",
+        "x": 0.385,
+        "y": 0.195,
+        "feature": "LEFT EAR"
+       },
+       {
+        "id": "p2",
+        "x": 0.615,
+        "y": 0.195,
+        "feature": "RIGHT EAR"
+       },
+       {
+        "id": "p3",
+        "x": 0.5,
+        "y": 0.27,
+        "feature": "TOP OF HEAD"
+       },
+       {
+        "id": "p4",
+        "x": 0.34,
+        "y": 0.42,
+        "feature": "LEFT CHEEK"
+       },
+       {
+        "id": "p5",
+        "x": 0.66,
+        "y": 0.42,
+        "feature": "RIGHT CHEEK"
+       },
+       {
+        "id": "p6",
+        "x": 0.25,
+        "y": 0.7,
+        "feature": "LEFT FRONT PAW"
+       },
+       {
+        "id": "p7",
+        "x": 0.41,
+        "y": 0.82,
+        "feature": "LEFT HIND PAW"
+       },
+       {
+        "id": "p8",
+        "x": 0.59,
+        "y": 0.82,
+        "feature": "RIGHT HIND PAW"
+       },
+       {
+        "id": "p9",
+        "x": 0.75,
+        "y": 0.7,
+        "feature": "RIGHT FRONT PAW"
+       },
+       {
+        "id": "p10",
+        "x": 0.5,
+        "y": 0.6,
+        "feature": "BELLY"
+       }
+      ],
+      "joins": [
+       {
+        "a": 0,
+        "b": 2
+       },
+       {
+        "a": 1,
+        "b": 2
+       },
+       {
+        "a": 0,
+        "b": 3
+       },
+       {
+        "a": 1,
+        "b": 4
+       },
+       {
+        "a": 3,
+        "b": 5
+       },
+       {
+        "a": 5,
+        "b": 6
+       },
+       {
+        "a": 6,
+        "b": 9
+       },
+       {
+        "a": 7,
+        "b": 9
+       },
+       {
+        "a": 7,
+        "b": 8
+       },
+       {
+        "a": 4,
+        "b": 8
+       },
+       {
+        "a": 3,
+        "b": 9
+       },
+       {
+        "a": 4,
+        "b": 9
+       },
+       {
+        "a": 2,
+        "b": 9
+       },
+       {
+        "a": 6,
+        "b": 7
+       }
+      ],
+      "missing": [
+       12,
+       13
+      ],
+      "gaps": [
+       {
+        "join": 12,
+        "reason": "Leaving out the neck/body join makes the head float, inviting completion and clarifying the body."
+       },
+       {
+        "join": 13,
+        "reason": "Leaving out the belly curve between hind paws makes the stance incomplete but clear to finish."
+       }
+      ],
+      "revealFeatures": [
+       {
+        "name": "EYE PATCHES",
+        "reason": "instantly recognizable and iconic for this being",
+        "type": "diagnostic",
+        "near": [
+         3,
+         4
+        ],
+        "kind": "glow"
+       },
+       {
+        "name": "STAR SPARKLE",
+        "reason": "adds magic and celestial character",
+        "type": "magic",
+        "near": [
+         2,
+         9
+        ],
+        "kind": "motes"
+       },
+       {
+        "name": "NOSE SHINE",
+        "reason": "gives personality and focus to the face",
+        "type": "character",
+        "near": [
+         2
+        ],
+        "kind": "glow"
+       }
+      ],
+      "hint": "A gentle stargazer from the bamboo forests is waiting…",
+      "confidence": {
+       "overall": 0.98,
+       "identity": 0.99,
+       "structure": 0.97
+      }
+     },
+     "ok": true,
+     "attempts": 1
+    }
+   }
+  },
+  {
+   "id": "mermaid",
+   "prompt": "A mermaid made of stars in a night sky",
+   "labels": {
+    "image": "REAL MODEL (gpt-image-2, streamed)",
+    "extraction": "REAL MODEL (gpt-4.1, with the generated picture)"
+   },
+   "image": {
+    "ok": true,
+    "file": "mermaid/source.png",
+    "model": "gpt-image-2",
+    "ms": 23522,
+    "events": 2,
+    "imagePrompt": "A mermaid made of stars in a night sky.\nPresentation: one single creature, full body, the whole subject visible and centred, with a clear readable silhouette; expressive and characterful; on a plain uncluttered background. No text, no letters, no labels, no watermark, no interface, no borders, no diagram, and no second creature competing for attention. A finished, visually coherent piece of artwork suitable for a later study of its shape.",
+    "bytes": 1523252
+   },
+   "extractions": {
+    "8": {
+     "budget": 8,
+     "model": "gpt-4.1",
+     "ms": 4873,
+     "usage": {
+      "prompt": 1658,
+      "completion": 659
+     },
+     "raw": "{ \"subject\": \"starry mermaid figure in space\",\n  \"points\": [\n    { \"id\": \"p1\", \"x\": 0.525, \"y\": 0.185, \"feature\": \"head\" },\n    { \"id\": \"p2\", \"x\": 0.335, \"y\": 0.305, \"feature\": \"left hand\" },\n    { \"id\": \"p3\", \"x\": 0.655, \"y\": 0.395, \"feature\": \"right hand\" },\n    { \"id\": \"p4\", \"x\": 0.495, \"y\": 0.355, \"feature\": \"waist\" },\n    { \"id\": \"p5\", \"x\": 0.465, \"y\": 0.595, \"feature\": \"hip/curve\" },\n    { \"id\": \"p6\", \"x\": 0.585, \"y\": 0.765, \"feature\": \"tail upper tip\" },\n    { \"id\": \"p7\", \"x\": 0.385, \"y\": 0.885, \"feature\": \"tail left tip\" },\n    { \"id\": \"p8\", \"x\": 0.595, \"y\": 0.945, \"feature\": \"tail right tip\" }\n  ],\n  \"connections\": [\n    { \"a\": \"p1\", \"b\": \"p2\" },\n    { \"a\": \"p2\", \"b\": \"p4\" },\n    { \"a\": \"p1\", \"b\": \"p3\" },\n    { \"a\": \"p3\", \"b\": \"p4\" },\n    { \"a\": \"p4\", \"b\": \"p5\" },\n    { \"a\": \"p5\", \"b\": \"p6\" },\n    { \"a\": \"p6\", \"b\": \"p7\" },\n    { \"a\": \"p6\", \"b\": \"p8\" }\n  ],\n  \"missingConnections\": [\n    { \"a\": \"p7\", \"b\": \"p8\", \"reason\": \"Closing the tail fin makes the lower silhouette complete and clearly mermaid-like; leaving it open keeps the mystery and invites the child to finish the tail.\" }\n  ],\n  \"revealFeatures\": [\n    { \"name\": \"Star hair\", \"reason\": \"swirling, glowing hair adds magic and identity\", \"type\": \"magic\", \"near\": [\"p1\"] },\n    { \"name\": \"Glowing chest star\", \"reason\": \"central bright star draws focus and adds character\", \"type\": \"accent\", \"near\": [\"p4\"] },\n    { \"name\": \"Sparkling tail\", \"reason\": \"distinctive glittering effect unique to this being\", \"type\": \"diagnostic\", \"near\": [\"p6\"] }\n  ],\n  \"hint\": \"A shimmering dweller of the cosmic sea is waiting…\",\n  \"confidence\": { \"overall\": 0.98, \"identity\": 0.97, \"structure\": 0.99 }\n}",
+     "validator": {
+      "ok": true,
+      "reasons": [],
+      "repairs": [
+       "missingConnections[0] was not among the connections — added as one, then left missing"
+      ]
+     },
+     "extraction": {
+      "subject": "starry mermaid figure in space",
+      "budget": 8,
+      "points": [
+       {
+        "id": "p1",
+        "x": 0.525,
+        "y": 0.185,
+        "feature": "HEAD"
+       },
+       {
+        "id": "p2",
+        "x": 0.335,
+        "y": 0.305,
+        "feature": "LEFT HAND"
+       },
+       {
+        "id": "p3",
+        "x": 0.655,
+        "y": 0.395,
+        "feature": "RIGHT HAND"
+       },
+       {
+        "id": "p4",
+        "x": 0.495,
+        "y": 0.355,
+        "feature": "WAIST"
+       },
+       {
+        "id": "p5",
+        "x": 0.465,
+        "y": 0.595,
+        "feature": "HIP CURVE"
+       },
+       {
+        "id": "p6",
+        "x": 0.585,
+        "y": 0.765,
+        "feature": "TAIL UPPER TIP"
+       },
+       {
+        "id": "p7",
+        "x": 0.385,
+        "y": 0.885,
+        "feature": "TAIL LEFT TIP"
+       },
+       {
+        "id": "p8",
+        "x": 0.595,
+        "y": 0.945,
+        "feature": "TAIL RIGHT TIP"
+       }
+      ],
+      "joins": [
+       {
+        "a": 0,
+        "b": 1
+       },
+       {
+        "a": 1,
+        "b": 3
+       },
+       {
+        "a": 0,
+        "b": 2
+       },
+       {
+        "a": 2,
+        "b": 3
+       },
+       {
+        "a": 3,
+        "b": 4
+       },
+       {
+        "a": 4,
+        "b": 5
+       },
+       {
+        "a": 5,
+        "b": 6
+       },
+       {
+        "a": 5,
+        "b": 7
+       },
+       {
+        "a": 6,
+        "b": 7
+       }
+      ],
+      "missing": [
+       8
+      ],
+      "gaps": [
+       {
+        "join": 8,
+        "reason": "Closing the tail fin makes the lower silhouette complete and clearly mermaid-like; leaving it open keeps the mystery and invites the child to finish the tail."
+       }
+      ],
+      "revealFeatures": [
+       {
+        "name": "STAR HAIR",
+        "reason": "swirling, glowing hair adds magic and identity",
+        "type": "magic",
+        "near": [
+         0
+        ],
+        "kind": "contour"
+       },
+       {
+        "name": "GLOWING CHEST STAR",
+        "reason": "central bright star draws focus and adds character",
+        "type": "accent",
+        "near": [
+         3
+        ],
+        "kind": "lines"
+       },
+       {
+        "name": "SPARKLING TAIL",
+        "reason": "distinctive glittering effect unique to this being",
+        "type": "diagnostic",
+        "near": [
+         5
+        ],
+        "kind": "spike"
+       }
+      ],
+      "hint": "A shimmering dweller of the cosmic sea is waiting…",
+      "confidence": {
+       "overall": 0.98,
+       "identity": 0.97,
+       "structure": 0.99
+      }
+     },
+     "ok": true,
+     "attempts": 1
+    },
+    "12": {
+     "budget": 12,
+     "model": "gpt-4.1",
+     "ms": 6969,
+     "usage": {
+      "prompt": 1658,
+      "completion": 727
+     },
+     "raw": "{ \"subject\": \"celestial mermaid made of stars\",\n  \"points\": [\n    { \"id\": \"p1\", \"x\": 0.525, \"y\": 0.155, \"feature\": \"head\" },\n    { \"id\": \"p2\", \"x\": 0.345, \"y\": 0.265, \"feature\": \"left hand\" },\n    { \"id\": \"p3\", \"x\": 0.565, \"y\": 0.325, \"feature\": \"right hand\" },\n    { \"id\": \"p4\", \"x\": 0.475, \"y\": 0.285, \"feature\": \"shoulder\" },\n    { \"id\": \"p5\", \"x\": 0.495, \"y\": 0.415, \"feature\": \"waist\" },\n    { \"id\": \"p6\", \"x\": 0.545, \"y\": 0.595, \"feature\": \"hip\" },\n    { \"id\": \"p7\", \"x\": 0.600, \"y\": 0.765, \"feature\": \"tail bend\" },\n    { \"id\": \"p8\", \"x\": 0.410, \"y\": 0.860, \"feature\": \"left tail fin tip\" },\n    { \"id\": \"p9\", \"x\": 0.670, \"y\": 0.900, \"feature\": \"right tail fin tip\" }\n  ],\n  \"connections\": [\n    { \"a\": \"p1\", \"b\": \"p4\" },\n    { \"a\": \"p4\", \"b\": \"p2\" },\n    { \"a\": \"p4\", \"b\": \"p3\" },\n    { \"a\": \"p4\", \"b\": \"p5\" },\n    { \"a\": \"p5\", \"b\": \"p6\" },\n    { \"a\": \"p6\", \"b\": \"p7\" },\n    { \"a\": \"p7\", \"b\": \"p8\" },\n    { \"a\": \"p7\", \"b\": \"p9\" }\n  ],\n  \"missingConnections\": [\n    { \"a\": \"p1\", \"b\": \"p2\", \"reason\": \"Leaving out the arc from head to left hand makes the gesture incomplete but invites the child to close the upper silhouette.\" },\n    { \"a\": \"p6\", \"b\": \"p9\", \"reason\": \"Leaving out the lower curve to the right tail fin tip makes the tail's end unfinished, inviting completion.\" }\n  ],\n  \"revealFeatures\": [\n    { \"name\": \"Star Hair\", \"reason\": \"swirling, luminous hair is magical and distinctive\", \"type\": \"magic\", \"near\": [\"p1\"] },\n    { \"name\": \"Glowing Chest Star\", \"reason\": \"central bright star adds celestial identity\", \"type\": \"diagnostic\", \"near\": [\"p4\"] },\n    { \"name\": \"Sparkling Tail\", \"reason\": \"tail is studded with bright stars, accentuating the form\", \"type\": \"accent\", \"near\": [\"p7\"] }\n  ],\n  \"hint\": \"A shimmering dweller of the cosmic sea is waiting…\",\n  \"confidence\": { \"overall\": 0.97, \"identity\": 0.98, \"structure\": 0.95 }\n}",
+     "validator": {
+      "ok": true,
+      "reasons": [],
+      "repairs": [
+       "missingConnections[0] was not among the connections — added as one, then left missing",
+       "missingConnections[1] was not among the connections — added as one, then left missing"
+      ]
+     },
+     "extraction": {
+      "subject": "celestial mermaid made of stars",
+      "budget": 12,
+      "points": [
+       {
+        "id": "p1",
+        "x": 0.525,
+        "y": 0.155,
+        "feature": "HEAD"
+       },
+       {
+        "id": "p2",
+        "x": 0.345,
+        "y": 0.265,
+        "feature": "LEFT HAND"
+       },
+       {
+        "id": "p3",
+        "x": 0.565,
+        "y": 0.325,
+        "feature": "RIGHT HAND"
+       },
+       {
+        "id": "p4",
+        "x": 0.475,
+        "y": 0.285,
+        "feature": "SHOULDER"
+       },
+       {
+        "id": "p5",
+        "x": 0.495,
+        "y": 0.415,
+        "feature": "WAIST"
+       },
+       {
+        "id": "p6",
+        "x": 0.545,
+        "y": 0.595,
+        "feature": "HIP"
+       },
+       {
+        "id": "p7",
+        "x": 0.6,
+        "y": 0.765,
+        "feature": "TAIL BEND"
+       },
+       {
+        "id": "p8",
+        "x": 0.41,
+        "y": 0.86,
+        "feature": "LEFT TAIL FIN TIP"
+       },
+       {
+        "id": "p9",
+        "x": 0.67,
+        "y": 0.9,
+        "feature": "RIGHT TAIL FIN TIP"
+       }
+      ],
+      "joins": [
+       {
+        "a": 0,
+        "b": 3
+       },
+       {
+        "a": 1,
+        "b": 3
+       },
+       {
+        "a": 2,
+        "b": 3
+       },
+       {
+        "a": 3,
+        "b": 4
+       },
+       {
+        "a": 4,
+        "b": 5
+       },
+       {
+        "a": 5,
+        "b": 6
+       },
+       {
+        "a": 6,
+        "b": 7
+       },
+       {
+        "a": 6,
+        "b": 8
+       },
+       {
+        "a": 0,
+        "b": 1
+       },
+       {
+        "a": 5,
+        "b": 8
+       }
+      ],
+      "missing": [
+       8,
+       9
+      ],
+      "gaps": [
+       {
+        "join": 8,
+        "reason": "Leaving out the arc from head to left hand makes the gesture incomplete but invites the child to close the upper silhouette."
+       },
+       {
+        "join": 9,
+        "reason": "Leaving out the lower curve to the right tail fin tip makes the tail's end unfinished, inviting completion."
+       }
+      ],
+      "revealFeatures": [
+       {
+        "name": "STAR HAIR",
+        "reason": "swirling, luminous hair is magical and distinctive",
+        "type": "magic",
+        "near": [
+         0
+        ],
+        "kind": "contour"
+       },
+       {
+        "name": "GLOWING CHEST STAR",
+        "reason": "central bright star adds celestial identity",
+        "type": "diagnostic",
+        "near": [
+         3
+        ],
+        "kind": "spike"
+       },
+       {
+        "name": "SPARKLING TAIL",
+        "reason": "tail is studded with bright stars, accentuating the form",
+        "type": "accent",
+        "near": [
+         6
+        ],
+        "kind": "lines"
+       }
+      ],
+      "hint": "A shimmering dweller of the cosmic sea is waiting…",
+      "confidence": {
+       "overall": 0.97,
+       "identity": 0.98,
+       "structure": 0.95
+      }
+     },
+     "ok": true,
+     "attempts": 1
+    }
+   }
+  },
+  {
+   "id": "baby-dragon",
+   "prompt": "A baby dragon made of stars in a night sky",
+   "labels": {
+    "image": "REAL MODEL (gpt-image-2, streamed)",
+    "extraction": "REAL MODEL (gpt-4.1, with the generated picture)"
+   },
+   "image": {
+    "ok": true,
+    "file": "baby-dragon/source.png",
+    "model": "gpt-image-2",
+    "ms": 24495,
+    "events": 2,
+    "imagePrompt": "A baby dragon made of stars in a night sky.\nPresentation: one single creature, full body, the whole subject visible and centred, with a clear readable silhouette; expressive and characterful; on a plain uncluttered background. No text, no letters, no labels, no watermark, no interface, no borders, no diagram, and no second creature competing for attention. A finished, visually coherent piece of artwork suitable for a later study of its shape.",
+    "bytes": 1677270
+   },
+   "extractions": {
+    "8": {
+     "budget": 8,
+     "model": "gpt-4.1",
+     "ms": 4644,
+     "usage": {
+      "prompt": 1658,
+      "completion": 634
+     },
+     "raw": "{\n  \"subject\": \"starry baby dragon with wings\",\n  \"points\": [\n    { \"id\": \"p1\", \"x\": 0.48, \"y\": 0.19, \"feature\": \"head\" },\n    { \"id\": \"p2\", \"x\": 0.33, \"y\": 0.41, \"feature\": \"left wing tip\" },\n    { \"id\": \"p3\", \"x\": 0.67, \"y\": 0.41, \"feature\": \"right wing tip\" },\n    { \"id\": \"p4\", \"x\": 0.50, \"y\": 0.60, \"feature\": \"body base\" },\n    { \"id\": \"p5\", \"x\": 0.32, \"y\": 0.84, \"feature\": \"left foot\" },\n    { \"id\": \"p6\", \"x\": 0.68, \"y\": 0.84, \"feature\": \"right foot\" },\n    { \"id\": \"p7\", \"x\": 0.92, \"y\": 0.73, \"feature\": \"tail tip\" }\n  ],\n  \"connections\": [\n    { \"a\": \"p1\", \"b\": \"p2\" },\n    { \"a\": \"p2\", \"b\": \"p4\" },\n    { \"a\": \"p4\", \"b\": \"p5\" },\n    { \"a\": \"p4\", \"b\": \"p6\" },\n    { \"a\": \"p4\", \"b\": \"p3\" },\n    { \"a\": \"p3\", \"b\": \"p1\" },\n    { \"a\": \"p4\", \"b\": \"p7\" }\n  ],\n  \"missingConnections\": [\n    { \"a\": \"p1\", \"b\": \"p4\", \"reason\": \"Leaving out the neck/body join makes the head float, inviting the child to complete the main gesture and unify the figure.\" }\n  ],\n  \"revealFeatures\": [\n    { \"name\": \"Star horns\", \"reason\": \"distinctive magical horns on the head\", \"type\": \"diagnostic\", \"near\": [\"p1\"] },\n    { \"name\": \"Big sparkling eyes\", \"reason\": \"adds character and cuteness\", \"type\": \"character\", \"near\": [\"p1\"] },\n    { \"name\": \"Wing sparkles\", \"reason\": \"accentuates the magical wings\", \"type\": \"accent\", \"near\": [\"p2\", \"p3\"] },\n    { \"name\": \"Tail fin\", \"reason\": \"fin at the tail tip is a unique accent\", \"type\": \"accent\", \"near\": [\"p7\"] }\n  ],\n  \"hint\": \"A playful spark of the night sky is waiting to soar…\",\n  \"confidence\": { \"overall\": 0.98, \"identity\": 0.98, \"structure\": 0.97 }\n}",
+     "validator": {
+      "ok": true,
+      "reasons": [],
+      "repairs": [
+       "missingConnections[0] was not among the connections — added as one, then left missing"
+      ]
+     },
+     "extraction": {
+      "subject": "starry baby dragon with wings",
+      "budget": 8,
+      "points": [
+       {
+        "id": "p1",
+        "x": 0.48,
+        "y": 0.19,
+        "feature": "HEAD"
+       },
+       {
+        "id": "p2",
+        "x": 0.33,
+        "y": 0.41,
+        "feature": "LEFT WING TIP"
+       },
+       {
+        "id": "p3",
+        "x": 0.67,
+        "y": 0.41,
+        "feature": "RIGHT WING TIP"
+       },
+       {
+        "id": "p4",
+        "x": 0.5,
+        "y": 0.6,
+        "feature": "BODY BASE"
+       },
+       {
+        "id": "p5",
+        "x": 0.32,
+        "y": 0.84,
+        "feature": "LEFT FOOT"
+       },
+       {
+        "id": "p6",
+        "x": 0.68,
+        "y": 0.84,
+        "feature": "RIGHT FOOT"
+       },
+       {
+        "id": "p7",
+        "x": 0.92,
+        "y": 0.73,
+        "feature": "TAIL TIP"
+       }
+      ],
+      "joins": [
+       {
+        "a": 0,
+        "b": 1
+       },
+       {
+        "a": 1,
+        "b": 3
+       },
+       {
+        "a": 3,
+        "b": 4
+       },
+       {
+        "a": 3,
+        "b": 5
+       },
+       {
+        "a": 2,
+        "b": 3
+       },
+       {
+        "a": 0,
+        "b": 2
+       },
+       {
+        "a": 3,
+        "b": 6
+       },
+       {
+        "a": 0,
+        "b": 3
+       }
+      ],
+      "missing": [
+       7
+      ],
+      "gaps": [
+       {
+        "join": 7,
+        "reason": "Leaving out the neck/body join makes the head float, inviting the child to complete the main gesture and unify the figure."
+       }
+      ],
+      "revealFeatures": [
+       {
+        "name": "STAR HORNS",
+        "reason": "distinctive magical horns on the head",
+        "type": "diagnostic",
+        "near": [
+         0
+        ],
+        "kind": "spike"
+       },
+       {
+        "name": "BIG SPARKLING EYES",
+        "reason": "adds character and cuteness",
+        "type": "character",
+        "near": [
+         0
+        ],
+        "kind": "glow"
+       },
+       {
+        "name": "WING SPARKLES",
+        "reason": "accentuates the magical wings",
+        "type": "accent",
+        "near": [
+         1,
+         2
+        ],
+        "kind": "motes"
+       },
+       {
+        "name": "TAIL FIN",
+        "reason": "fin at the tail tip is a unique accent",
+        "type": "accent",
+        "near": [
+         6
+        ],
+        "kind": "fill"
+       }
+      ],
+      "hint": "A playful spark of the night sky is waiting to soar…",
+      "confidence": {
+       "overall": 0.98,
+       "identity": 0.98,
+       "structure": 0.97
+      }
+     },
+     "ok": true,
+     "attempts": 1
+    },
+    "12": {
+     "budget": 12,
+     "model": "gpt-4.1",
+     "ms": 6964,
+     "usage": {
+      "prompt": 1658,
+      "completion": 866
+     },
+     "raw": "{ \"subject\": \"starry baby dragon with big eyes and wings\",\n  \"points\": [\n    { \"id\": \"p1\", \"x\": 0.44, \"y\": 0.19, \"feature\": \"head tip\" },\n    { \"id\": \"p2\", \"x\": 0.33, \"y\": 0.34, \"feature\": \"left cheek\" },\n    { \"id\": \"p3\", \"x\": 0.51, \"y\": 0.39, \"feature\": \"right cheek\" },\n    { \"id\": \"p4\", \"x\": 0.41, \"y\": 0.60, \"feature\": \"chest\" },\n    { \"id\": \"p5\", \"x\": 0.28, \"y\": 0.84, \"feature\": \"left front foot\" },\n    { \"id\": \"p6\", \"x\": 0.48, \"y\": 0.87, \"feature\": \"right front foot\" },\n    { \"id\": \"p7\", \"x\": 0.55, \"y\": 0.66, \"feature\": \"belly\" },\n    { \"id\": \"p8\", \"x\": 0.69, \"y\": 0.85, \"feature\": \"right back foot\" },\n    { \"id\": \"p9\", \"x\": 0.87, \"y\": 0.73, \"feature\": \"tail tip\" },\n    { \"id\": \"p10\", \"x\": 0.09, \"y\": 0.39, \"feature\": \"left wing tip\" },\n    { \"id\": \"p11\", \"x\": 0.93, \"y\": 0.27, \"feature\": \"right wing tip\" }\n  ],\n  \"connections\": [\n    { \"a\": \"p1\", \"b\": \"p2\" },\n    { \"a\": \"p2\", \"b\": \"p4\" },\n    { \"a\": \"p4\", \"b\": \"p5\" },\n    { \"a\": \"p5\", \"b\": \"p6\" },\n    { \"a\": \"p6\", \"b\": \"p7\" },\n    { \"a\": \"p7\", \"b\": \"p8\" },\n    { \"a\": \"p8\", \"b\": \"p9\" },\n    { \"a\": \"p2\", \"b\": \"p10\" },\n    { \"a\": \"p3\", \"b\": \"p11\" },\n    { \"a\": \"p1\", \"b\": \"p3\" },\n    { \"a\": \"p3\", \"b\": \"p4\" }\n  ],\n  \"missingConnections\": [\n    { \"a\": \"p4\", \"b\": \"p7\", \"reason\": \"Leaving the belly open invites the child to complete the main body curve.\" },\n    { \"a\": \"p1\", \"b\": \"p11\", \"reason\": \"Leaving the head-to-right-wing join open makes the wing's attachment a satisfying finish.\" }\n  ],\n  \"revealFeatures\": [\n    { \"name\": \"Big Sparkling Eyes\", \"reason\": \"adds character and cuteness\", \"type\": \"character\", \"near\": [\"p2\", \"p3\"] },\n    { \"name\": \"Star Horns\", \"reason\": \"distinctive dragon feature\", \"type\": \"diagnostic\", \"near\": [\"p1\"] },\n    { \"name\": \"Wing Membranes\", \"reason\": \"magical accent\", \"type\": \"magic\", \"near\": [\"p10\", \"p11\"] },\n    { \"name\": \"Tail Spikes\", \"reason\": \"accentuates tail identity\", \"type\": \"accent\", \"near\": [\"p9\"] }\n  ],\n  \"hint\": \"A magical friend from the night sky is waiting to shine…\",\n  \"confidence\": { \"overall\": 0.98, \"identity\": 0.98, \"structure\": 0.97 }\n}",
+     "validator": {
+      "ok": true,
+      "reasons": [],
+      "repairs": [
+       "missingConnections[0] was not among the connections — added as one, then left missing",
+       "missingConnections[1] was not among the connections — added as one, then left missing"
+      ]
+     },
+     "extraction": {
+      "subject": "starry baby dragon with big eyes and wings",
+      "budget": 12,
+      "points": [
+       {
+        "id": "p1",
+        "x": 0.44,
+        "y": 0.19,
+        "feature": "HEAD TIP"
+       },
+       {
+        "id": "p2",
+        "x": 0.33,
+        "y": 0.34,
+        "feature": "LEFT CHEEK"
+       },
+       {
+        "id": "p3",
+        "x": 0.51,
+        "y": 0.39,
+        "feature": "RIGHT CHEEK"
+       },
+       {
+        "id": "p4",
+        "x": 0.41,
+        "y": 0.6,
+        "feature": "CHEST"
+       },
+       {
+        "id": "p5",
+        "x": 0.28,
+        "y": 0.84,
+        "feature": "LEFT FRONT FOOT"
+       },
+       {
+        "id": "p6",
+        "x": 0.48,
+        "y": 0.87,
+        "feature": "RIGHT FRONT FOOT"
+       },
+       {
+        "id": "p7",
+        "x": 0.55,
+        "y": 0.66,
+        "feature": "BELLY"
+       },
+       {
+        "id": "p8",
+        "x": 0.69,
+        "y": 0.85,
+        "feature": "RIGHT BACK FOOT"
+       },
+       {
+        "id": "p9",
+        "x": 0.87,
+        "y": 0.73,
+        "feature": "TAIL TIP"
+       },
+       {
+        "id": "p10",
+        "x": 0.09,
+        "y": 0.39,
+        "feature": "LEFT WING TIP"
+       },
+       {
+        "id": "p11",
+        "x": 0.93,
+        "y": 0.27,
+        "feature": "RIGHT WING TIP"
+       }
+      ],
+      "joins": [
+       {
+        "a": 0,
+        "b": 1
+       },
+       {
+        "a": 1,
+        "b": 3
+       },
+       {
+        "a": 3,
+        "b": 4
+       },
+       {
+        "a": 4,
+        "b": 5
+       },
+       {
+        "a": 5,
+        "b": 6
+       },
+       {
+        "a": 6,
+        "b": 7
+       },
+       {
+        "a": 7,
+        "b": 8
+       },
+       {
+        "a": 1,
+        "b": 9
+       },
+       {
+        "a": 2,
+        "b": 10
+       },
+       {
+        "a": 0,
+        "b": 2
+       },
+       {
+        "a": 2,
+        "b": 3
+       },
+       {
+        "a": 3,
+        "b": 6
+       },
+       {
+        "a": 0,
+        "b": 10
+       }
+      ],
+      "missing": [
+       11,
+       12
+      ],
+      "gaps": [
+       {
+        "join": 11,
+        "reason": "Leaving the belly open invites the child to complete the main body curve."
+       },
+       {
+        "join": 12,
+        "reason": "Leaving the head-to-right-wing join open makes the wing's attachment a satisfying finish."
+       }
+      ],
+      "revealFeatures": [
+       {
+        "name": "BIG SPARKLING EYES",
+        "reason": "adds character and cuteness",
+        "type": "character",
+        "near": [
+         1,
+         2
+        ],
+        "kind": "glow"
+       },
+       {
+        "name": "STAR HORNS",
+        "reason": "distinctive dragon feature",
+        "type": "diagnostic",
+        "near": [
+         0
+        ],
+        "kind": "spike"
+       },
+       {
+        "name": "WING MEMBRANES",
+        "reason": "magical accent",
+        "type": "magic",
+        "near": [
+         9,
+         10
+        ],
+        "kind": "fill"
+       },
+       {
+        "name": "TAIL SPIKES",
+        "reason": "accentuates tail identity",
+        "type": "accent",
+        "near": [
+         8
+        ],
+        "kind": "spike"
+       }
+      ],
+      "hint": "A magical friend from the night sky is waiting to shine…",
+      "confidence": {
+       "overall": 0.98,
+       "identity": 0.98,
+       "structure": 0.97
+      }
+     },
+     "ok": true,
+     "attempts": 2
+    }
+   }
+  },
+  {
+   "id": "falcon",
+   "prompt": "A falcon made of stars in a night sky",
+   "labels": {
+    "image": "REAL MODEL (gpt-image-2, streamed)",
+    "extraction": "REAL MODEL (gpt-4.1, with the generated picture)"
+   },
+   "image": {
+    "ok": true,
+    "file": "falcon/source.png",
+    "model": "gpt-image-2",
+    "ms": 41045,
+    "events": 2,
+    "imagePrompt": "A falcon made of stars in a night sky.\nPresentation: one single creature, full body, the whole subject visible and centred, with a clear readable silhouette; expressive and characterful; on a plain uncluttered background. No text, no letters, no labels, no watermark, no interface, no borders, no diagram, and no second creature competing for attention. A finished, visually coherent piece of artwork suitable for a later study of its shape.",
+    "bytes": 1734401
+   },
+   "extractions": {
+    "8": {
+     "budget": 8,
+     "model": "gpt-4.1",
+     "ms": 4698,
+     "usage": {
+      "prompt": 1658,
+      "completion": 578
+     },
+     "raw": "{\n  \"subject\": \"glowing celestial bird with wings spread\",\n  \"points\": [\n    { \"id\": \"p1\", \"x\": 0.5, \"y\": 0.22, \"feature\": \"head\" },\n    { \"id\": \"p2\", \"x\": 0.13, \"y\": 0.13, \"feature\": \"left wing tip\" },\n    { \"id\": \"p3\", \"x\": 0.87, \"y\": 0.13, \"feature\": \"right wing tip\" },\n    { \"id\": \"p4\", \"x\": 0.5, \"y\": 0.88, \"feature\": \"tail tip\" },\n    { \"id\": \"p5\", \"x\": 0.28, \"y\": 0.56, \"feature\": \"left foot\" },\n    { \"id\": \"p6\", \"x\": 0.72, \"y\": 0.56, \"feature\": \"right foot\" }\n  ],\n  \"connections\": [\n    { \"a\": \"p1\", \"b\": \"p2\" },\n    { \"a\": \"p1\", \"b\": \"p3\" },\n    { \"a\": \"p1\", \"b\": \"p5\" },\n    { \"a\": \"p1\", \"b\": \"p6\" },\n    { \"a\": \"p5\", \"b\": \"p4\" },\n    { \"a\": \"p6\", \"b\": \"p4\" }\n  ],\n  \"missingConnections\": [\n    { \"a\": \"p2\", \"b\": \"p4\", \"reason\": \"Closing the left wing to the tail completes the silhouette and makes the figure whole.\" },\n    { \"a\": \"p3\", \"b\": \"p4\", \"reason\": \"Closing the right wing to the tail balances the figure and finishes the outline.\" }\n  ],\n  \"revealFeatures\": [\n    { \"name\": \"Glowing Eyes\", \"reason\": \"adds a magical, watchful character\", \"type\": \"character\", \"near\": [\"p1\"] },\n    { \"name\": \"Star Feathers\", \"reason\": \"distinctive celestial accent\", \"type\": \"accent\", \"near\": [\"p2\", \"p3\"] },\n    { \"name\": \"Radiant Talons\", \"reason\": \"emphasizes the being's power\", \"type\": \"character\", \"near\": [\"p5\", \"p6\"] }\n  ],\n  \"hint\": \"A guardian of the night sky is waiting…\",\n  \"confidence\": { \"overall\": 0.98, \"identity\": 0.98, \"structure\": 0.99 }\n}",
+     "validator": {
+      "ok": true,
+      "reasons": [],
+      "repairs": [
+       "missingConnections[0] was not among the connections — added as one, then left missing",
+       "missingConnections[1] was not among the connections — added as one, then left missing"
+      ]
+     },
+     "extraction": {
+      "subject": "glowing celestial bird with wings spread",
+      "budget": 8,
+      "points": [
+       {
+        "id": "p1",
+        "x": 0.5,
+        "y": 0.22,
+        "feature": "HEAD"
+       },
+       {
+        "id": "p2",
+        "x": 0.13,
+        "y": 0.13,
+        "feature": "LEFT WING TIP"
+       },
+       {
+        "id": "p3",
+        "x": 0.87,
+        "y": 0.13,
+        "feature": "RIGHT WING TIP"
+       },
+       {
+        "id": "p4",
+        "x": 0.5,
+        "y": 0.88,
+        "feature": "TAIL TIP"
+       },
+       {
+        "id": "p5",
+        "x": 0.28,
+        "y": 0.56,
+        "feature": "LEFT FOOT"
+       },
+       {
+        "id": "p6",
+        "x": 0.72,
+        "y": 0.56,
+        "feature": "RIGHT FOOT"
+       }
+      ],
+      "joins": [
+       {
+        "a": 0,
+        "b": 1
+       },
+       {
+        "a": 0,
+        "b": 2
+       },
+       {
+        "a": 0,
+        "b": 4
+       },
+       {
+        "a": 0,
+        "b": 5
+       },
+       {
+        "a": 3,
+        "b": 4
+       },
+       {
+        "a": 3,
+        "b": 5
+       },
+       {
+        "a": 1,
+        "b": 3
+       },
+       {
+        "a": 2,
+        "b": 3
+       }
+      ],
+      "missing": [
+       6,
+       7
+      ],
+      "gaps": [
+       {
+        "join": 6,
+        "reason": "Closing the left wing to the tail completes the silhouette and makes the figure whole."
+       },
+       {
+        "join": 7,
+        "reason": "Closing the right wing to the tail balances the figure and finishes the outline."
+       }
+      ],
+      "revealFeatures": [
+       {
+        "name": "GLOWING EYES",
+        "reason": "adds a magical, watchful character",
+        "type": "character",
+        "near": [
+         0
+        ],
+        "kind": "glow"
+       },
+       {
+        "name": "STAR FEATHERS",
+        "reason": "distinctive celestial accent",
+        "type": "accent",
+        "near": [
+         1,
+         2
+        ],
+        "kind": "lines"
+       },
+       {
+        "name": "RADIANT TALONS",
+        "reason": "emphasizes the being's power",
+        "type": "character",
+        "near": [
+         4,
+         5
+        ],
+        "kind": "spike"
+       }
+      ],
+      "hint": "A guardian of the night sky is waiting…",
+      "confidence": {
+       "overall": 0.98,
+       "identity": 0.98,
+       "structure": 0.99
+      }
+     },
+     "ok": true,
+     "attempts": 1
+    },
+    "12": {
+     "budget": 12,
+     "model": "gpt-4.1",
+     "ms": 6027,
+     "usage": {
+      "prompt": 1658,
+      "completion": 688
+     },
+     "raw": "{ \"subject\": \"glowing celestial bird with wings spread\",\n  \"points\": [\n    { \"id\": \"p1\", \"x\": 0.50, \"y\": 0.22, \"feature\": \"head\" },\n    { \"id\": \"p2\", \"x\": 0.19, \"y\": 0.13, \"feature\": \"left wing tip\" },\n    { \"id\": \"p3\", \"x\": 0.81, \"y\": 0.13, \"feature\": \"right wing tip\" },\n    { \"id\": \"p4\", \"x\": 0.32, \"y\": 0.36, \"feature\": \"left wing base\" },\n    { \"id\": \"p5\", \"x\": 0.68, \"y\": 0.36, \"feature\": \"right wing base\" },\n    { \"id\": \"p6\", \"x\": 0.50, \"y\": 0.60, \"feature\": \"body base\" },\n    { \"id\": \"p7\", \"x\": 0.39, \"y\": 0.80, \"feature\": \"left tail tip\" },\n    { \"id\": \"p8\", \"x\": 0.61, \"y\": 0.80, \"feature\": \"right tail tip\" }\n  ],\n  \"connections\": [\n    { \"a\": \"p1\", \"b\": \"p4\" },\n    { \"a\": \"p4\", \"b\": \"p2\" },\n    { \"a\": \"p1\", \"b\": \"p5\" },\n    { \"a\": \"p5\", \"b\": \"p3\" },\n    { \"a\": \"p1\", \"b\": \"p6\" },\n    { \"a\": \"p6\", \"b\": \"p7\" },\n    { \"a\": \"p6\", \"b\": \"p8\" },\n    { \"a\": \"p7\", \"b\": \"p8\" }\n  ],\n  \"missingConnections\": [\n    { \"a\": \"p4\", \"b\": \"p6\", \"reason\": \"Leaving out the left body edge makes the silhouette incomplete but invites the child to close the body.\" },\n    { \"a\": \"p5\", \"b\": \"p6\", \"reason\": \"Leaving out the right body edge similarly invites completion and balances the mystery.\" }\n  ],\n  \"revealFeatures\": [\n    { \"name\": \"Glowing Eyes\", \"reason\": \"adds a magical, watchful character\", \"type\": \"character\", \"near\": [\"p1\"] },\n    { \"name\": \"Sparkling Feathers\", \"reason\": \"emphasizes the celestial, magical nature\", \"type\": \"magic\", \"near\": [\"p2\", \"p3\"] },\n    { \"name\": \"Radiant Talons\", \"reason\": \"adds accent and detail to the base\", \"type\": \"accent\", \"near\": [\"p6\"] }\n  ],\n  \"hint\": \"A guardian of the starry night is waiting in the sky…\",\n  \"confidence\": { \"overall\": 0.98, \"identity\": 0.98, \"structure\": 0.99 }\n}",
+     "validator": {
+      "ok": true,
+      "reasons": [],
+      "repairs": [
+       "missingConnections[0] was not among the connections — added as one, then left missing",
+       "missingConnections[1] was not among the connections — added as one, then left missing"
+      ]
+     },
+     "extraction": {
+      "subject": "glowing celestial bird with wings spread",
+      "budget": 12,
+      "points": [
+       {
+        "id": "p1",
+        "x": 0.5,
+        "y": 0.22,
+        "feature": "HEAD"
+       },
+       {
+        "id": "p2",
+        "x": 0.19,
+        "y": 0.13,
+        "feature": "LEFT WING TIP"
+       },
+       {
+        "id": "p3",
+        "x": 0.81,
+        "y": 0.13,
+        "feature": "RIGHT WING TIP"
+       },
+       {
+        "id": "p4",
+        "x": 0.32,
+        "y": 0.36,
+        "feature": "LEFT WING BASE"
+       },
+       {
+        "id": "p5",
+        "x": 0.68,
+        "y": 0.36,
+        "feature": "RIGHT WING BASE"
+       },
+       {
+        "id": "p6",
+        "x": 0.5,
+        "y": 0.6,
+        "feature": "BODY BASE"
+       },
+       {
+        "id": "p7",
+        "x": 0.39,
+        "y": 0.8,
+        "feature": "LEFT TAIL TIP"
+       },
+       {
+        "id": "p8",
+        "x": 0.61,
+        "y": 0.8,
+        "feature": "RIGHT TAIL TIP"
+       }
+      ],
+      "joins": [
+       {
+        "a": 0,
+        "b": 3
+       },
+       {
+        "a": 1,
+        "b": 3
+       },
+       {
+        "a": 0,
+        "b": 4
+       },
+       {
+        "a": 2,
+        "b": 4
+       },
+       {
+        "a": 0,
+        "b": 5
+       },
+       {
+        "a": 5,
+        "b": 6
+       },
+       {
+        "a": 5,
+        "b": 7
+       },
+       {
+        "a": 6,
+        "b": 7
+       },
+       {
+        "a": 3,
+        "b": 5
+       },
+       {
+        "a": 4,
+        "b": 5
+       }
+      ],
+      "missing": [
+       8,
+       9
+      ],
+      "gaps": [
+       {
+        "join": 8,
+        "reason": "Leaving out the left body edge makes the silhouette incomplete but invites the child to close the body."
+       },
+       {
+        "join": 9,
+        "reason": "Leaving out the right body edge similarly invites completion and balances the mystery."
+       }
+      ],
+      "revealFeatures": [
+       {
+        "name": "GLOWING EYES",
+        "reason": "adds a magical, watchful character",
+        "type": "character",
+        "near": [
+         0
+        ],
+        "kind": "glow"
+       },
+       {
+        "name": "SPARKLING FEATHERS",
+        "reason": "emphasizes the celestial, magical nature",
+        "type": "magic",
+        "near": [
+         1,
+         2
+        ],
+        "kind": "lines"
+       },
+       {
+        "name": "RADIANT TALONS",
+        "reason": "adds accent and detail to the base",
+        "type": "accent",
+        "near": [
+         5
+        ],
+        "kind": "spike"
+       }
+      ],
+      "hint": "A guardian of the starry night is waiting in the sky…",
+      "confidence": {
+       "overall": 0.98,
+       "identity": 0.98,
+       "structure": 0.99
+      }
+     },
+     "ok": true,
+     "attempts": 1
+    }
+   }
+  },
+  {
+   "id": "winged-lion",
+   "prompt": "A lion with wings made of stars in a night sky",
+   "labels": {
+    "image": "REAL MODEL (gpt-image-2, streamed)",
+    "extraction": "REAL MODEL (gpt-4.1, with the generated picture)"
+   },
+   "image": {
+    "ok": true,
+    "file": "winged-lion/source.png",
+    "model": "gpt-image-2",
+    "ms": 38256,
+    "events": 2,
+    "imagePrompt": "A lion with wings made of stars in a night sky.\nPresentation: one single creature, full body, the whole subject visible and centred, with a clear readable silhouette; expressive and characterful; on a plain uncluttered background. No text, no letters, no labels, no watermark, no interface, no borders, no diagram, and no second creature competing for attention. A finished, visually coherent piece of artwork suitable for a later study of its shape.",
+    "bytes": 1623539
+   },
+   "extractions": {
+    "8": {
+     "budget": 8,
+     "model": "gpt-4.1",
+     "ms": 4131,
+     "usage": {
+      "prompt": 1658,
+      "completion": 547
+     },
+     "raw": "{\n  \"subject\": \"majestic lion with large, glowing wings\",\n  \"points\": [\n    { \"id\": \"p1\", \"x\": 0.51, \"y\": 0.23, \"feature\": \"head\" },\n    { \"id\": \"p2\", \"x\": 0.18, \"y\": 0.13, \"feature\": \"left wing tip\" },\n    { \"id\": \"p3\", \"x\": 0.83, \"y\": 0.10, \"feature\": \"right wing tip\" },\n    { \"id\": \"p4\", \"x\": 0.38, \"y\": 0.93, \"feature\": \"left front paw\" },\n    { \"id\": \"p5\", \"x\": 0.62, \"y\": 0.93, \"feature\": \"right front paw\" },\n    { \"id\": \"p6\", \"x\": 0.13, \"y\": 0.77, \"feature\": \"tail tip\" }\n  ],\n  \"connections\": [\n    { \"a\": \"p2\", \"b\": \"p1\" },\n    { \"a\": \"p1\", \"b\": \"p3\" },\n    { \"a\": \"p1\", \"b\": \"p4\" },\n    { \"a\": \"p1\", \"b\": \"p5\" },\n    { \"a\": \"p4\", \"b\": \"p5\" },\n    { \"a\": \"p4\", \"b\": \"p6\" }\n  ],\n  \"missingConnections\": [\n    { \"a\": \"p5\", \"b\": \"p6\", \"reason\": \"Completing this closes the lower body and tail, making the silhouette whole and more recognizable as a lion.\" }\n  ],\n  \"revealFeatures\": [\n    { \"name\": \"Glowing Wings\", \"reason\": \"magical, defining feature\", \"type\": \"diagnostic\", \"near\": [\"p2\", \"p3\"] },\n    { \"name\": \"Radiant Mane\", \"reason\": \"adds majesty and character\", \"type\": \"character\", \"near\": [\"p1\"] },\n    { \"name\": \"Glowing Tail Tip\", \"reason\": \"accentuates the magical nature\", \"type\": \"accent\", \"near\": [\"p6\"] }\n  ],\n  \"hint\": \"A guardian of the starlit skies is waiting…\",\n  \"confidence\": { \"overall\": 0.98, \"identity\": 0.97, \"structure\": 0.99 }\n}",
+     "validator": {
+      "ok": true,
+      "reasons": [],
+      "repairs": [
+       "missingConnections[0] was not among the connections — added as one, then left missing"
+      ]
+     },
+     "extraction": {
+      "subject": "majestic lion with large, glowing wings",
+      "budget": 8,
+      "points": [
+       {
+        "id": "p1",
+        "x": 0.51,
+        "y": 0.23,
+        "feature": "HEAD"
+       },
+       {
+        "id": "p2",
+        "x": 0.18,
+        "y": 0.13,
+        "feature": "LEFT WING TIP"
+       },
+       {
+        "id": "p3",
+        "x": 0.83,
+        "y": 0.1,
+        "feature": "RIGHT WING TIP"
+       },
+       {
+        "id": "p4",
+        "x": 0.38,
+        "y": 0.93,
+        "feature": "LEFT FRONT PAW"
+       },
+       {
+        "id": "p5",
+        "x": 0.62,
+        "y": 0.93,
+        "feature": "RIGHT FRONT PAW"
+       },
+       {
+        "id": "p6",
+        "x": 0.13,
+        "y": 0.77,
+        "feature": "TAIL TIP"
+       }
+      ],
+      "joins": [
+       {
+        "a": 0,
+        "b": 1
+       },
+       {
+        "a": 0,
+        "b": 2
+       },
+       {
+        "a": 0,
+        "b": 3
+       },
+       {
+        "a": 0,
+        "b": 4
+       },
+       {
+        "a": 3,
+        "b": 4
+       },
+       {
+        "a": 3,
+        "b": 5
+       },
+       {
+        "a": 4,
+        "b": 5
+       }
+      ],
+      "missing": [
+       6
+      ],
+      "gaps": [
+       {
+        "join": 6,
+        "reason": "Completing this closes the lower body and tail, making the silhouette whole and more recognizable as a lion."
+       }
+      ],
+      "revealFeatures": [
+       {
+        "name": "GLOWING WINGS",
+        "reason": "magical, defining feature",
+        "type": "diagnostic",
+        "near": [
+         1,
+         2
+        ],
+        "kind": "spike"
+       },
+       {
+        "name": "RADIANT MANE",
+        "reason": "adds majesty and character",
+        "type": "character",
+        "near": [
+         0
+        ],
+        "kind": "contour"
+       },
+       {
+        "name": "GLOWING TAIL TIP",
+        "reason": "accentuates the magical nature",
+        "type": "accent",
+        "near": [
+         5
+        ],
+        "kind": "lines"
+       }
+      ],
+      "hint": "A guardian of the starlit skies is waiting…",
+      "confidence": {
+       "overall": 0.98,
+       "identity": 0.97,
+       "structure": 0.99
+      }
+     },
+     "ok": true,
+     "attempts": 1
+    },
+    "12": {
+     "budget": 12,
+     "model": "gpt-4.1",
+     "ms": 6243,
+     "usage": {
+      "prompt": 1658,
+      "completion": 862
+     },
+     "raw": "{ \"subject\": \"winged lion with glowing wings\",\n  \"points\": [\n    { \"id\": \"p1\", \"x\": 0.51, \"y\": 0.23, \"feature\": \"head\" },\n    { \"id\": \"p2\", \"x\": 0.36, \"y\": 0.85, \"feature\": \"left front paw\" },\n    { \"id\": \"p3\", \"x\": 0.64, \"y\": 0.85, \"feature\": \"right front paw\" },\n    { \"id\": \"p4\", \"x\": 0.45, \"y\": 0.67, \"feature\": \"left shoulder\" },\n    { \"id\": \"p5\", \"x\": 0.57, \"y\": 0.67, \"feature\": \"right shoulder\" },\n    { \"id\": \"p6\", \"x\": 0.09, \"y\": 0.13, \"feature\": \"left wing tip\" },\n    { \"id\": \"p7\", \"x\": 0.93, \"y\": 0.10, \"feature\": \"right wing tip\" },\n    { \"id\": \"p8\", \"x\": 0.18, \"y\": 0.46, \"feature\": \"left wing base\" },\n    { \"id\": \"p9\", \"x\": 0.84, \"y\": 0.44, \"feature\": \"right wing base\" },\n    { \"id\": \"p10\", \"x\": 0.18, \"y\": 0.81, \"feature\": \"tail base\" },\n    { \"id\": \"p11\", \"x\": 0.08, \"y\": 0.77, \"feature\": \"tail tip\" }\n  ],\n  \"connections\": [\n    { \"a\": \"p1\", \"b\": \"p4\" },\n    { \"a\": \"p4\", \"b\": \"p2\" },\n    { \"a\": \"p1\", \"b\": \"p5\" },\n    { \"a\": \"p5\", \"b\": \"p3\" },\n    { \"a\": \"p4\", \"b\": \"p8\" },\n    { \"a\": \"p8\", \"b\": \"p6\" },\n    { \"a\": \"p5\", \"b\": \"p9\" },\n    { \"a\": \"p9\", \"b\": \"p7\" },\n    { \"a\": \"p4\", \"b\": \"p10\" },\n    { \"a\": \"p10\", \"b\": \"p11\" }\n  ],\n  \"missingConnections\": [\n    { \"a\": \"p1\", \"b\": \"p2\", \"reason\": \"Leaving the head-to-paw join open highlights the upright, majestic stance and invites the child to complete the lion's chest.\" },\n    { \"a\": \"p1\", \"b\": \"p3\", \"reason\": \"Leaving the head-to-other-paw join open keeps the symmetry and lets the child close the front of the lion.\" },\n    { \"a\": \"p10\", \"b\": \"p11\", \"reason\": \"Leaving the tail base-to-tip join open makes the tail's curve a fun, obvious finish.\" }\n  ],\n  \"revealFeatures\": [\n    { \"name\": \"Glowing Wings\", \"reason\": \"magical, sparkling identity\", \"type\": \"diagnostic\", \"near\": [\"p6\", \"p7\"] },\n    { \"name\": \"Majestic Mane\", \"reason\": \"adds regal character\", \"type\": \"character\", \"near\": [\"p1\"] },\n    { \"name\": \"Glowing Tail Tip\", \"reason\": \"magical accent\", \"type\": \"accent\", \"near\": [\"p11\"] }\n  ],\n  \"hint\": \"A guardian of the starlit skies is waiting…\",\n  \"confidence\": { \"overall\": 0.97, \"identity\": 0.98, \"structure\": 0.95 }\n}",
+     "validator": {
+      "ok": true,
+      "reasons": [],
+      "repairs": [
+       "missingConnections[0] was not among the connections — added as one, then left missing",
+       "missingConnections[1] was not among the connections — added as one, then left missing",
+       "missingConnections[2] would leave a lone point — kept as a connection instead"
+      ]
+     },
+     "extraction": {
+      "subject": "winged lion with glowing wings",
+      "budget": 12,
+      "points": [
+       {
+        "id": "p1",
+        "x": 0.51,
+        "y": 0.23,
+        "feature": "HEAD"
+       },
+       {
+        "id": "p2",
+        "x": 0.36,
+        "y": 0.85,
+        "feature": "LEFT FRONT PAW"
+       },
+       {
+        "id": "p3",
+        "x": 0.64,
+        "y": 0.85,
+        "feature": "RIGHT FRONT PAW"
+       },
+       {
+        "id": "p4",
+        "x": 0.45,
+        "y": 0.67,
+        "feature": "LEFT SHOULDER"
+       },
+       {
+        "id": "p5",
+        "x": 0.57,
+        "y": 0.67,
+        "feature": "RIGHT SHOULDER"
+       },
+       {
+        "id": "p6",
+        "x": 0.09,
+        "y": 0.13,
+        "feature": "LEFT WING TIP"
+       },
+       {
+        "id": "p7",
+        "x": 0.93,
+        "y": 0.1,
+        "feature": "RIGHT WING TIP"
+       },
+       {
+        "id": "p8",
+        "x": 0.18,
+        "y": 0.46,
+        "feature": "LEFT WING BASE"
+       },
+       {
+        "id": "p9",
+        "x": 0.84,
+        "y": 0.44,
+        "feature": "RIGHT WING BASE"
+       },
+       {
+        "id": "p10",
+        "x": 0.18,
+        "y": 0.81,
+        "feature": "TAIL BASE"
+       },
+       {
+        "id": "p11",
+        "x": 0.08,
+        "y": 0.77,
+        "feature": "TAIL TIP"
+       }
+      ],
+      "joins": [
+       {
+        "a": 0,
+        "b": 3
+       },
+       {
+        "a": 1,
+        "b": 3
+       },
+       {
+        "a": 0,
+        "b": 4
+       },
+       {
+        "a": 2,
+        "b": 4
+       },
+       {
+        "a": 3,
+        "b": 7
+       },
+       {
+        "a": 5,
+        "b": 7
+       },
+       {
+        "a": 4,
+        "b": 8
+       },
+       {
+        "a": 6,
+        "b": 8
+       },
+       {
+        "a": 3,
+        "b": 9
+       },
+       {
+        "a": 9,
+        "b": 10
+       },
+       {
+        "a": 0,
+        "b": 1
+       },
+       {
+        "a": 0,
+        "b": 2
+       }
+      ],
+      "missing": [
+       10,
+       11
+      ],
+      "gaps": [
+       {
+        "join": 10,
+        "reason": "Leaving the head-to-paw join open highlights the upright, majestic stance and invites the child to complete the lion's chest."
+       },
+       {
+        "join": 11,
+        "reason": "Leaving the head-to-other-paw join open keeps the symmetry and lets the child close the front of the lion."
+       }
+      ],
+      "revealFeatures": [
+       {
+        "name": "GLOWING WINGS",
+        "reason": "magical, sparkling identity",
+        "type": "diagnostic",
+        "near": [
+         5,
+         6
+        ],
+        "kind": "spike"
+       },
+       {
+        "name": "MAJESTIC MANE",
+        "reason": "adds regal character",
+        "type": "character",
+        "near": [
+         0
+        ],
+        "kind": "contour"
+       },
+       {
+        "name": "GLOWING TAIL TIP",
+        "reason": "magical accent",
+        "type": "accent",
+        "near": [
+         10
+        ],
+        "kind": "lines"
+       }
+      ],
+      "hint": "A guardian of the starlit skies is waiting…",
+      "confidence": {
+       "overall": 0.97,
+       "identity": 0.98,
+       "structure": 0.95
+      }
+     },
+     "ok": true,
+     "attempts": 1
+    }
+   }
+  },
+  {
+   "id": "whale",
+   "prompt": "A giant whale made of stars in a night sky",
+   "labels": {
+    "image": "REAL MODEL (gpt-image-2, streamed)",
+    "extraction": "REAL MODEL (gpt-4.1, with the generated picture)"
+   },
+   "image": {
+    "ok": true,
+    "file": "whale/source.png",
+    "model": "gpt-image-2",
+    "ms": 31925,
+    "events": 2,
+    "imagePrompt": "A giant whale made of stars in a night sky.\nPresentation: one single creature, full body, the whole subject visible and centred, with a clear readable silhouette; expressive and characterful; on a plain uncluttered background. No text, no letters, no labels, no watermark, no interface, no borders, no diagram, and no second creature competing for attention. A finished, visually coherent piece of artwork suitable for a later study of its shape.",
+    "bytes": 1611327
+   },
+   "extractions": {
+    "8": {
+     "budget": 8,
+     "model": "gpt-4.1",
+     "ms": 4853,
+     "usage": {
+      "prompt": 1658,
+      "completion": 647
+     },
+     "raw": "{\n  \"subject\": \"starry whale in space\",\n  \"points\": [\n    { \"id\": \"p1\", \"x\": 0.08, \"y\": 0.48, \"feature\": \"snout tip\" },\n    { \"id\": \"p2\", \"x\": 0.38, \"y\": 0.36, \"feature\": \"head top\" },\n    { \"id\": \"p3\", \"x\": 0.60, \"y\": 0.40, \"feature\": \"back arch\" },\n    { \"id\": \"p4\", \"x\": 0.93, \"y\": 0.20, \"feature\": \"tail fin tip upper\" },\n    { \"id\": \"p5\", \"x\": 0.87, \"y\": 0.44, \"feature\": \"tail root\" },\n    { \"id\": \"p6\", \"x\": 0.77, \"y\": 0.78, \"feature\": \"tail fin tip lower\" },\n    { \"id\": \"p7\", \"x\": 0.55, \"y\": 0.80, \"feature\": \"belly curve\" },\n    { \"id\": \"p8\", \"x\": 0.32, \"y\": 0.66, \"feature\": \"pectoral fin tip\" }\n  ],\n  \"connections\": [\n    { \"a\": \"p1\", \"b\": \"p2\" },\n    { \"a\": \"p2\", \"b\": \"p3\" },\n    { \"a\": \"p3\", \"b\": \"p4\" },\n    { \"a\": \"p4\", \"b\": \"p5\" },\n    { \"a\": \"p5\", \"b\": \"p6\" },\n    { \"a\": \"p6\", \"b\": \"p7\" },\n    { \"a\": \"p7\", \"b\": \"p8\" },\n    { \"a\": \"p8\", \"b\": \"p1\" }\n  ],\n  \"missingConnections\": [\n    { \"a\": \"p3\", \"b\": \"p7\", \"reason\": \"This join closes the body silhouette, making the whale's bulk clear; leaving it out leaves an intriguing gap in the belly.\" }\n  ],\n  \"revealFeatures\": [\n    { \"name\": \"Eye\", \"reason\": \"adds life and focus\", \"type\": \"character\", \"near\": [\"p2\"] },\n    { \"name\": \"Baleen lines\", \"reason\": \"distinctive whale mouth texture\", \"type\": \"diagnostic\", \"near\": [\"p1\"] },\n    { \"name\": \"Star sparkles\", \"reason\": \"magical cosmic accent\", \"type\": \"magic\", \"near\": [\"p3\", \"p5\"] }\n  ],\n  \"hint\": \"A gentle giant drifts through the endless night…\",\n  \"confidence\": { \"overall\": 0.97, \"identity\": 0.98, \"structure\": 0.95 }\n}",
+     "validator": {
+      "ok": true,
+      "reasons": [],
+      "repairs": [
+       "missingConnections[0] was not among the connections — added as one, then left missing"
+      ]
+     },
+     "extraction": {
+      "subject": "starry whale in space",
+      "budget": 8,
+      "points": [
+       {
+        "id": "p1",
+        "x": 0.08,
+        "y": 0.48,
+        "feature": "SNOUT TIP"
+       },
+       {
+        "id": "p2",
+        "x": 0.38,
+        "y": 0.36,
+        "feature": "HEAD TOP"
+       },
+       {
+        "id": "p3",
+        "x": 0.6,
+        "y": 0.4,
+        "feature": "BACK ARCH"
+       },
+       {
+        "id": "p4",
+        "x": 0.93,
+        "y": 0.2,
+        "feature": "TAIL FIN TIP UPPER"
+       },
+       {
+        "id": "p5",
+        "x": 0.87,
+        "y": 0.44,
+        "feature": "TAIL ROOT"
+       },
+       {
+        "id": "p6",
+        "x": 0.77,
+        "y": 0.78,
+        "feature": "TAIL FIN TIP LOWER"
+       },
+       {
+        "id": "p7",
+        "x": 0.55,
+        "y": 0.8,
+        "feature": "BELLY CURVE"
+       },
+       {
+        "id": "p8",
+        "x": 0.32,
+        "y": 0.66,
+        "feature": "PECTORAL FIN TIP"
+       }
+      ],
+      "joins": [
+       {
+        "a": 0,
+        "b": 1
+       },
+       {
+        "a": 1,
+        "b": 2
+       },
+       {
+        "a": 2,
+        "b": 3
+       },
+       {
+        "a": 3,
+        "b": 4
+       },
+       {
+        "a": 4,
+        "b": 5
+       },
+       {
+        "a": 5,
+        "b": 6
+       },
+       {
+        "a": 6,
+        "b": 7
+       },
+       {
+        "a": 0,
+        "b": 7
+       },
+       {
+        "a": 2,
+        "b": 6
+       }
+      ],
+      "missing": [
+       8
+      ],
+      "gaps": [
+       {
+        "join": 8,
+        "reason": "This join closes the body silhouette, making the whale's bulk clear; leaving it out leaves an intriguing gap in the belly."
+       }
+      ],
+      "revealFeatures": [
+       {
+        "name": "EYE",
+        "reason": "adds life and focus",
+        "type": "character",
+        "near": [
+         1
+        ],
+        "kind": "glow"
+       },
+       {
+        "name": "BALEEN LINES",
+        "reason": "distinctive whale mouth texture",
+        "type": "diagnostic",
+        "near": [
+         0
+        ],
+        "kind": "lines"
+       },
+       {
+        "name": "STAR SPARKLES",
+        "reason": "magical cosmic accent",
+        "type": "magic",
+        "near": [
+         2,
+         4
+        ],
+        "kind": "motes"
+       }
+      ],
+      "hint": "A gentle giant drifts through the endless night…",
+      "confidence": {
+       "overall": 0.97,
+       "identity": 0.98,
+       "structure": 0.95
+      }
+     },
+     "ok": true,
+     "attempts": 1
+    },
+    "12": {
+     "budget": 12,
+     "model": "gpt-4.1",
+     "ms": 5398,
+     "usage": {
+      "prompt": 1658,
+      "completion": 799
+     },
+     "raw": "{\n  \"subject\": \"starry whale in space\",\n  \"points\": [\n    { \"id\": \"p1\", \"x\": 0.08, \"y\": 0.47, \"feature\": \"snout tip\" },\n    { \"id\": \"p2\", \"x\": 0.33, \"y\": 0.38, \"feature\": \"eye\" },\n    { \"id\": \"p3\", \"x\": 0.53, \"y\": 0.42, \"feature\": \"back peak\" },\n    { \"id\": \"p4\", \"x\": 0.93, \"y\": 0.22, \"feature\": \"tail fin tip upper\" },\n    { \"id\": \"p5\", \"x\": 0.85, \"y\": 0.41, \"feature\": \"tail root\" },\n    { \"id\": \"p6\", \"x\": 0.93, \"y\": 0.36, \"feature\": \"tail fin tip lower\" },\n    { \"id\": \"p7\", \"x\": 0.74, \"y\": 0.71, \"feature\": \"belly curve\" },\n    { \"id\": \"p8\", \"x\": 0.56, \"y\": 0.79, \"feature\": \"pectoral fin tip\" },\n    { \"id\": \"p9\", \"x\": 0.29, \"y\": 0.67, \"feature\": \"lower jaw\" },\n    { \"id\": \"p10\", \"x\": 0.22, \"y\": 0.77, \"feature\": \"rear flipper tip\" }\n  ],\n  \"connections\": [\n    { \"a\": \"p1\", \"b\": \"p2\" },\n    { \"a\": \"p2\", \"b\": \"p3\" },\n    { \"a\": \"p3\", \"b\": \"p4\" },\n    { \"a\": \"p4\", \"b\": \"p5\" },\n    { \"a\": \"p5\", \"b\": \"p6\" },\n    { \"a\": \"p6\", \"b\": \"p7\" },\n    { \"a\": \"p7\", \"b\": \"p8\" },\n    { \"a\": \"p8\", \"b\": \"p9\" },\n    { \"a\": \"p9\", \"b\": \"p10\" },\n    { \"a\": \"p10\", \"b\": \"p1\" }\n  ],\n  \"missingConnections\": [\n    { \"a\": \"p3\", \"b\": \"p7\", \"reason\": \"Leaving out the main body curve invites the child to complete the whale's mass, making the silhouette whole.\" },\n    { \"a\": \"p8\", \"b\": \"p2\", \"reason\": \"This join would close the pectoral fin to the head, a key gesture for the whale's swimming pose.\" }\n  ],\n  \"revealFeatures\": [\n    { \"name\": \"Starry Eye\", \"reason\": \"Adds life and focus to the being\", \"type\": \"character\", \"near\": [\"p2\"] },\n    { \"name\": \"Glowing Tail Edge\", \"reason\": \"Accentuates the tail's sweep\", \"type\": \"accent\", \"near\": [\"p4\", \"p6\"] },\n    { \"name\": \"Belly Lines\", \"reason\": \"Shows the whale's unique ventral grooves\", \"type\": \"diagnostic\", \"near\": [\"p7\"] }\n  ],\n  \"hint\": \"A gentle giant drifts through the endless night…\",\n  \"confidence\": { \"overall\": 0.98, \"identity\": 0.99, \"structure\": 0.97 }\n}",
+     "validator": {
+      "ok": true,
+      "reasons": [],
+      "repairs": [
+       "missingConnections[0] was not among the connections — added as one, then left missing",
+       "missingConnections[1] was not among the connections — added as one, then left missing"
+      ]
+     },
+     "extraction": {
+      "subject": "starry whale in space",
+      "budget": 12,
+      "points": [
+       {
+        "id": "p1",
+        "x": 0.08,
+        "y": 0.47,
+        "feature": "SNOUT TIP"
+       },
+       {
+        "id": "p2",
+        "x": 0.33,
+        "y": 0.38,
+        "feature": "EYE"
+       },
+       {
+        "id": "p3",
+        "x": 0.53,
+        "y": 0.42,
+        "feature": "BACK PEAK"
+       },
+       {
+        "id": "p4",
+        "x": 0.93,
+        "y": 0.22,
+        "feature": "TAIL FIN TIP UPPER"
+       },
+       {
+        "id": "p5",
+        "x": 0.85,
+        "y": 0.41,
+        "feature": "TAIL ROOT"
+       },
+       {
+        "id": "p6",
+        "x": 0.93,
+        "y": 0.36,
+        "feature": "TAIL FIN TIP LOWER"
+       },
+       {
+        "id": "p7",
+        "x": 0.74,
+        "y": 0.71,
+        "feature": "BELLY CURVE"
+       },
+       {
+        "id": "p8",
+        "x": 0.56,
+        "y": 0.79,
+        "feature": "PECTORAL FIN TIP"
+       },
+       {
+        "id": "p9",
+        "x": 0.29,
+        "y": 0.67,
+        "feature": "LOWER JAW"
+       },
+       {
+        "id": "p10",
+        "x": 0.22,
+        "y": 0.77,
+        "feature": "REAR FLIPPER TIP"
+       }
+      ],
+      "joins": [
+       {
+        "a": 0,
+        "b": 1
+       },
+       {
+        "a": 1,
+        "b": 2
+       },
+       {
+        "a": 2,
+        "b": 3
+       },
+       {
+        "a": 3,
+        "b": 4
+       },
+       {
+        "a": 4,
+        "b": 5
+       },
+       {
+        "a": 5,
+        "b": 6
+       },
+       {
+        "a": 6,
+        "b": 7
+       },
+       {
+        "a": 7,
+        "b": 8
+       },
+       {
+        "a": 8,
+        "b": 9
+       },
+       {
+        "a": 0,
+        "b": 9
+       },
+       {
+        "a": 2,
+        "b": 6
+       },
+       {
+        "a": 1,
+        "b": 7
+       }
+      ],
+      "missing": [
+       10,
+       11
+      ],
+      "gaps": [
+       {
+        "join": 10,
+        "reason": "Leaving out the main body curve invites the child to complete the whale's mass, making the silhouette whole."
+       },
+       {
+        "join": 11,
+        "reason": "This join would close the pectoral fin to the head, a key gesture for the whale's swimming pose."
+       }
+      ],
+      "revealFeatures": [
+       {
+        "name": "STARRY EYE",
+        "reason": "Adds life and focus to the being",
+        "type": "character",
+        "near": [
+         1
+        ],
+        "kind": "glow"
+       },
+       {
+        "name": "GLOWING TAIL EDGE",
+        "reason": "Accentuates the tail's sweep",
+        "type": "accent",
+        "near": [
+         3,
+         5
+        ],
+        "kind": "lines"
+       },
+       {
+        "name": "BELLY LINES",
+        "reason": "Shows the whale's unique ventral grooves",
+        "type": "diagnostic",
+        "near": [
+         6
+        ],
+        "kind": "lines"
+       }
+      ],
+      "hint": "A gentle giant drifts through the endless night…",
+      "confidence": {
+       "overall": 0.98,
+       "identity": 0.99,
+       "structure": 0.97
+      }
+     },
+     "ok": true,
+     "attempts": 2
+    }
+   }
+  },
+  {
+   "id": "star-fox",
+   "prompt": "An imaginary creature that looks like a fox, made of stars in a night sky",
+   "labels": {
+    "image": "REAL MODEL (gpt-image-2, streamed)",
+    "extraction": "REAL MODEL (gpt-4.1, with the generated picture)"
+   },
+   "image": {
+    "ok": true,
+    "file": "star-fox/source.png",
+    "model": "gpt-image-2",
+    "ms": 69550,
+    "events": 2,
+    "imagePrompt": "An imaginary creature that looks like a fox, made of stars in a night sky.\nPresentation: one single creature, full body, the whole subject visible and centred, with a clear readable silhouette; expressive and characterful; on a plain uncluttered background. No text, no letters, no labels, no watermark, no interface, no borders, no diagram, and no second creature competing for attention. A finished, visually coherent piece of artwork suitable for a later study of its shape.",
+    "bytes": 1559163
+   },
+   "extractions": {
+    "8": {
+     "budget": 8,
+     "model": "gpt-4.1",
+     "ms": 5305,
+     "usage": {
+      "prompt": 1658,
+      "completion": 630
+     },
+     "raw": "{\n  \"subject\": \"starry fox with a large bushy tail\",\n  \"points\": [\n    { \"id\": \"p1\", \"x\": 0.34, \"y\": 0.13, \"feature\": \"left ear tip\" },\n    { \"id\": \"p2\", \"x\": 0.56, \"y\": 0.12, \"feature\": \"right ear tip\" },\n    { \"id\": \"p3\", \"x\": 0.44, \"y\": 0.23, \"feature\": \"nose\" },\n    { \"id\": \"p4\", \"x\": 0.29, \"y\": 0.77, \"feature\": \"front left paw\" },\n    { \"id\": \"p5\", \"x\": 0.47, \"y\": 0.82, \"feature\": \"front right paw\" },\n    { \"id\": \"p6\", \"x\": 0.62, \"y\": 0.77, \"feature\": \"back right paw\" },\n    { \"id\": \"p7\", \"x\": 0.85, \"y\": 0.52, \"feature\": \"tail tip\" }\n  ],\n  \"connections\": [\n    { \"a\": \"p1\", \"b\": \"p3\" },\n    { \"a\": \"p2\", \"b\": \"p3\" },\n    { \"a\": \"p3\", \"b\": \"p4\" },\n    { \"a\": \"p4\", \"b\": \"p5\" },\n    { \"a\": \"p5\", \"b\": \"p6\" },\n    { \"a\": \"p6\", \"b\": \"p7\" },\n    { \"a\": \"p7\", \"b\": \"p3\" }\n  ],\n  \"missingConnections\": [\n    { \"a\": \"p7\", \"b\": \"p3\", \"reason\": \"Closing the loop from the tail tip back to the head completes the magical silhouette and makes the tail's flow clear.\" }\n  ],\n  \"revealFeatures\": [\n    { \"name\": \"Starfield fur\", \"reason\": \"magical, cosmic identity\", \"type\": \"diagnostic\", \"near\": [\"p3\"] },\n    { \"name\": \"Glowing eyes\", \"reason\": \"adds character and life\", \"type\": \"character\", \"near\": [\"p3\"] },\n    { \"name\": \"Fluffy mane\", \"reason\": \"accentuates the fox's magical look\", \"type\": \"accent\", \"near\": [\"p3\"] },\n    { \"name\": \"Sparkling tail\", \"reason\": \"signature feature, adds magic\", \"type\": \"magic\", \"near\": [\"p7\"] }\n  ],\n  \"hint\": \"A clever spirit of the night sky is waiting…\",\n  \"confidence\": { \"overall\": 0.98, \"identity\": 0.98, \"structure\": 0.97 }\n}",
+     "validator": {
+      "ok": true,
+      "reasons": [],
+      "repairs": []
+     },
+     "extraction": {
+      "subject": "starry fox with a large bushy tail",
+      "budget": 8,
+      "points": [
+       {
+        "id": "p1",
+        "x": 0.34,
+        "y": 0.13,
+        "feature": "LEFT EAR TIP"
+       },
+       {
+        "id": "p2",
+        "x": 0.56,
+        "y": 0.12,
+        "feature": "RIGHT EAR TIP"
+       },
+       {
+        "id": "p3",
+        "x": 0.44,
+        "y": 0.23,
+        "feature": "NOSE"
+       },
+       {
+        "id": "p4",
+        "x": 0.29,
+        "y": 0.77,
+        "feature": "FRONT LEFT PAW"
+       },
+       {
+        "id": "p5",
+        "x": 0.47,
+        "y": 0.82,
+        "feature": "FRONT RIGHT PAW"
+       },
+       {
+        "id": "p6",
+        "x": 0.62,
+        "y": 0.77,
+        "feature": "BACK RIGHT PAW"
+       },
+       {
+        "id": "p7",
+        "x": 0.85,
+        "y": 0.52,
+        "feature": "TAIL TIP"
+       }
+      ],
+      "joins": [
+       {
+        "a": 0,
+        "b": 2
+       },
+       {
+        "a": 1,
+        "b": 2
+       },
+       {
+        "a": 2,
+        "b": 3
+       },
+       {
+        "a": 3,
+        "b": 4
+       },
+       {
+        "a": 4,
+        "b": 5
+       },
+       {
+        "a": 5,
+        "b": 6
+       },
+       {
+        "a": 2,
+        "b": 6
+       }
+      ],
+      "missing": [
+       6
+      ],
+      "gaps": [
+       {
+        "join": 6,
+        "reason": "Closing the loop from the tail tip back to the head completes the magical silhouette and makes the tail's flow clear."
+       }
+      ],
+      "revealFeatures": [
+       {
+        "name": "STARFIELD FUR",
+        "reason": "magical, cosmic identity",
+        "type": "diagnostic",
+        "near": [
+         2
+        ],
+        "kind": "texture"
+       },
+       {
+        "name": "GLOWING EYES",
+        "reason": "adds character and life",
+        "type": "character",
+        "near": [
+         2
+        ],
+        "kind": "glow"
+       },
+       {
+        "name": "FLUFFY MANE",
+        "reason": "accentuates the fox's magical look",
+        "type": "accent",
+        "near": [
+         2
+        ],
+        "kind": "contour"
+       },
+       {
+        "name": "SPARKLING TAIL",
+        "reason": "signature feature, adds magic",
+        "type": "magic",
+        "near": [
+         6
+        ],
+        "kind": "glow"
+       }
+      ],
+      "hint": "A clever spirit of the night sky is waiting…",
+      "confidence": {
+       "overall": 0.98,
+       "identity": 0.98,
+       "structure": 0.97
+      }
+     },
+     "ok": true,
+     "attempts": 1
+    },
+    "12": {
+     "budget": 12,
+     "model": "gpt-4.1",
+     "ms": 6982,
+     "usage": {
+      "prompt": 1658,
+      "completion": 860
+     },
+     "raw": "{ \"subject\": \"starry fox with large tail\",\n  \"points\": [\n    { \"id\": \"p1\", \"x\": 0.335, \"y\": 0.145, \"feature\": \"left ear tip\" },\n    { \"id\": \"p2\", \"x\": 0.493, \"y\": 0.108, \"feature\": \"right ear tip\" },\n    { \"id\": \"p3\", \"x\": 0.408, \"y\": 0.242, \"feature\": \"forehead\" },\n    { \"id\": \"p4\", \"x\": 0.362, \"y\": 0.325, \"feature\": \"nose\" },\n    { \"id\": \"p5\", \"x\": 0.258, \"y\": 0.525, \"feature\": \"left front paw\" },\n    { \"id\": \"p6\", \"x\": 0.423, \"y\": 0.662, \"feature\": \"right front paw\" },\n    { \"id\": \"p7\", \"x\": 0.579, \"y\": 0.646, \"feature\": \"right hind paw\" },\n    { \"id\": \"p8\", \"x\": 0.355, \"y\": 0.777, \"feature\": \"left hind paw\" },\n    { \"id\": \"p9\", \"x\": 0.729, \"y\": 0.545, \"feature\": \"tail base\" },\n    { \"id\": \"p10\", \"x\": 0.874, \"y\": 0.401, \"feature\": \"tail tip upper\" },\n    { \"id\": \"p11\", \"x\": 0.889, \"y\": 0.671, \"feature\": \"tail tip lower\" }\n  ],\n  \"connections\": [\n    { \"a\": \"p1\", \"b\": \"p3\" },\n    { \"a\": \"p2\", \"b\": \"p3\" },\n    { \"a\": \"p3\", \"b\": \"p4\" },\n    { \"a\": \"p4\", \"b\": \"p5\" },\n    { \"a\": \"p5\", \"b\": \"p8\" },\n    { \"a\": \"p8\", \"b\": \"p7\" },\n    { \"a\": \"p7\", \"b\": \"p9\" },\n    { \"a\": \"p9\", \"b\": \"p10\" },\n    { \"a\": \"p10\", \"b\": \"p11\" },\n    { \"a\": \"p11\", \"b\": \"p9\" },\n    { \"a\": \"p6\", \"b\": \"p4\" },\n    { \"a\": \"p6\", \"b\": \"p7\" }\n  ],\n  \"missingConnections\": [\n    { \"a\": \"p9\", \"b\": \"p8\", \"reason\": \"Leaving the body-to-tail join open highlights the magical tail and invites completion.\" },\n    { \"a\": \"p5\", \"b\": \"p6\", \"reason\": \"Leaving the front leg connection open makes the stance more mysterious and asks for a finishing touch.\" }\n  ],\n  \"revealFeatures\": [\n    { \"name\": \"Starry Eyes\", \"reason\": \"Gives the being a magical, intelligent look\", \"type\": \"character\", \"near\": [\"p3\"] },\n    { \"name\": \"Glowing Tail Swirls\", \"reason\": \"Defines the magical nature of the tail\", \"type\": \"magic\", \"near\": [\"p10\", \"p11\"] },\n    { \"name\": \"Sparkling Fur\", \"reason\": \"Accentuates the celestial theme\", \"type\": \"accent\", \"near\": [\"p4\", \"p7\"] }\n  ],\n  \"hint\": \"A clever spirit of the night sky is waiting to be revealed…\",\n  \"confidence\": { \"overall\": 0.98, \"identity\": 0.98, \"structure\": 0.97 }\n}",
+     "validator": {
+      "ok": true,
+      "reasons": [],
+      "repairs": [
+       "missingConnections[0] was not among the connections — added as one, then left missing",
+       "missingConnections[1] was not among the connections — added as one, then left missing"
+      ]
+     },
+     "extraction": {
+      "subject": "starry fox with large tail",
+      "budget": 12,
+      "points": [
+       {
+        "id": "p1",
+        "x": 0.335,
+        "y": 0.145,
+        "feature": "LEFT EAR TIP"
+       },
+       {
+        "id": "p2",
+        "x": 0.493,
+        "y": 0.108,
+        "feature": "RIGHT EAR TIP"
+       },
+       {
+        "id": "p3",
+        "x": 0.408,
+        "y": 0.242,
+        "feature": "FOREHEAD"
+       },
+       {
+        "id": "p4",
+        "x": 0.362,
+        "y": 0.325,
+        "feature": "NOSE"
+       },
+       {
+        "id": "p5",
+        "x": 0.258,
+        "y": 0.525,
+        "feature": "LEFT FRONT PAW"
+       },
+       {
+        "id": "p6",
+        "x": 0.423,
+        "y": 0.662,
+        "feature": "RIGHT FRONT PAW"
+       },
+       {
+        "id": "p7",
+        "x": 0.579,
+        "y": 0.646,
+        "feature": "RIGHT HIND PAW"
+       },
+       {
+        "id": "p8",
+        "x": 0.355,
+        "y": 0.777,
+        "feature": "LEFT HIND PAW"
+       },
+       {
+        "id": "p9",
+        "x": 0.729,
+        "y": 0.545,
+        "feature": "TAIL BASE"
+       },
+       {
+        "id": "p10",
+        "x": 0.874,
+        "y": 0.401,
+        "feature": "TAIL TIP UPPER"
+       },
+       {
+        "id": "p11",
+        "x": 0.889,
+        "y": 0.671,
+        "feature": "TAIL TIP LOWER"
+       }
+      ],
+      "joins": [
+       {
+        "a": 0,
+        "b": 2
+       },
+       {
+        "a": 1,
+        "b": 2
+       },
+       {
+        "a": 2,
+        "b": 3
+       },
+       {
+        "a": 3,
+        "b": 4
+       },
+       {
+        "a": 4,
+        "b": 7
+       },
+       {
+        "a": 6,
+        "b": 7
+       },
+       {
+        "a": 6,
+        "b": 8
+       },
+       {
+        "a": 8,
+        "b": 9
+       },
+       {
+        "a": 9,
+        "b": 10
+       },
+       {
+        "a": 8,
+        "b": 10
+       },
+       {
+        "a": 3,
+        "b": 5
+       },
+       {
+        "a": 5,
+        "b": 6
+       },
+       {
+        "a": 7,
+        "b": 8
+       },
+       {
+        "a": 4,
+        "b": 5
+       }
+      ],
+      "missing": [
+       12,
+       13
+      ],
+      "gaps": [
+       {
+        "join": 12,
+        "reason": "Leaving the body-to-tail join open highlights the magical tail and invites completion."
+       },
+       {
+        "join": 13,
+        "reason": "Leaving the front leg connection open makes the stance more mysterious and asks for a finishing touch."
+       }
+      ],
+      "revealFeatures": [
+       {
+        "name": "STARRY EYES",
+        "reason": "Gives the being a magical, intelligent look",
+        "type": "character",
+        "near": [
+         2
+        ],
+        "kind": "glow"
+       },
+       {
+        "name": "GLOWING TAIL SWIRLS",
+        "reason": "Defines the magical nature of the tail",
+        "type": "magic",
+        "near": [
+         9,
+         10
+        ],
+        "kind": "glow"
+       },
+       {
+        "name": "SPARKLING FUR",
+        "reason": "Accentuates the celestial theme",
+        "type": "accent",
+        "near": [
+         3,
+         6
+        ],
+        "kind": "texture"
+       }
+      ],
+      "hint": "A clever spirit of the night sky is waiting to be revealed…",
+      "confidence": {
+       "overall": 0.98,
+       "identity": 0.98,
+       "structure": 0.97
+      }
+     },
+     "ok": true,
+     "attempts": 1
+    }
+   }
+  }
+ ],
+ "revalidated": "2026-09-08T16:19:23.829Z"
+}

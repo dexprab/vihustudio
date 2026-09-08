@@ -279,8 +279,11 @@
       var a = Number(j.a), b = Number(j.b);
       if (!(a >= 0 && b >= 0 && a < state.points.length && b < state.points.length) || a === b) return;
       var k = key(a, b); if (seen[k]) return; seen[k] = true;
-      state.joins.push({ a: Math.min(a, b), b: Math.max(a, b), gap: false });
+      // a gap the generation itself named (an image extraction lists its
+      // missing connections) is part of the generated figure, not an edit
+      state.joins.push({ a: Math.min(a, b), b: Math.max(a, b), gap: !!j.gap });
     });
+    if (typeof fig.hint === 'string') state.hint = fig.hint;
     state.approved = null; tested = false;
     state.generated = { source: fig.source === 'fixture' ? 'fixture' : 'translation', at: Date.now(), edited: false };
     // the understanding's subject names the figure unless the researcher
