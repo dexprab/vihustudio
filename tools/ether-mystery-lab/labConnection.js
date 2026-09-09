@@ -66,8 +66,26 @@
     return status();
   }
   function setDirectKey(k) { state.directKey = (k && String(k)) || null; state.probed = null; return status(); }
+  // TWO MODELS, TWO FIELDS. The understanding model answers chat
+  // completions (image understanding, the plan, the blueprint) and the
+  // image model draws pictures. A picture model on the chat path is the
+  // one mistake the page used to allow — its only field fed the chat
+  // model, so typing gpt-image-2 there sent gpt-image-2 to
+  // /chat/completions, which the provider answers with a bare 500
+  // (measured). Each path now refuses a name that plainly belongs to the
+  // other, with a sentence of its own, before anything leaves.
   function setDirectModel(m) { if (m) state.directModel = String(m); }
   function setDirectImageModel(m) { if (m) state.directImageModel = String(m); }
+  function models() { return { model: state.directModel, imageModel: state.directImageModel, defaults: { model: DEFAULT_DIRECT_MODEL, imageModel: DEFAULT_DIRECT_IMAGE_MODEL } }; }
+  function looksLikeImageModel(m) { return /^(gpt-image|dall-e)/i.test(String(m || '')); }
+  function chatModelRefusal() { return looksLikeImageModel(state.directModel) ? { ok: false, reason: 'image-model-on-chat-path' } : null; }
+  // A refusal the Lab itself made is said in a sentence, never as a code.
+  function explain(reason) {
+    if (reason === 'image-model-on-chat-path') return 'the Understanding model field holds an image model (' + state.directModel + '); understanding needs a chat model such as ' + DEFAULT_DIRECT_MODEL;
+    if (reason === 'chat-model-on-image-path') return 'the Image model field holds a chat model (' + state.directImageModel + '); drawing needs an image model such as ' + DEFAULT_DIRECT_IMAGE_MODEL;
+    return reason;
+  }
+  function imageModelRefusal() { return state.directImageModel && !looksLikeImageModel(state.directImageModel) ? { ok: false, reason: 'chat-model-on-image-path' } : null; }
   function setEndpoint(url, token) {
     state.endpointUrl = (url && String(url).replace(/\/+$/, '')) || '';
     state.endpointToken = (token && String(token)) || null;
@@ -208,6 +226,7 @@
     if (typeof opts.prompt !== 'string' || !opts.prompt.trim()) return Promise.resolve({ ok: false, reason: 'bad-prompt' });
     if (state.mode === 'direct') {
       if (!state.directKey) return Promise.resolve({ ok: false, reason: 'not-configured' });
+      if (imageModelRefusal()) return Promise.resolve(imageModelRefusal());
       return bounded(DIRECT_IMAGE_URL, {
         method: 'POST',
         headers: { 'Authorization': 'Bearer ' + state.directKey, 'Content-Type': 'application/json' },
@@ -261,6 +280,7 @@
     var msgs = Array.isArray(opts.messages) ? opts.messages : [];
     if (state.mode === 'direct') {
       if (!state.directKey) return Promise.resolve({ ok: false, reason: 'not-configured' });
+      if (chatModelRefusal()) return Promise.resolve(chatModelRefusal());
       var content = msgs.map(function (m, i) {
         if (i !== msgs.length - 1 || m.role !== 'user') return m;
         return { role: 'user', content: [
@@ -315,6 +335,7 @@
     }
     if (state.mode === 'direct') {
       if (!state.directKey) return Promise.resolve({ ok: false, reason: 'not-configured' });
+      if (chatModelRefusal()) return Promise.resolve(chatModelRefusal());
       return bounded(DIRECT_URL, {
         method: 'POST',
         headers: {
@@ -364,6 +385,8 @@
     setDirectKey: setDirectKey,
     setDirectModel: setDirectModel,
     setDirectImageModel: setDirectImageModel,
+    models: models,
+    explain: explain,
     setEndpoint: setEndpoint,
     disconnect: disconnect,
     status: status,

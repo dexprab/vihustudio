@@ -12922,3 +12922,15 @@ extraction landing as GENERATED · EDITED), two environment facts recorded
 (the proxy's thirty-second silence close, its two projects). Section `EX`
 (55). Lab-only; production diff zero. Detail: `docs/ETHER_MYSTERY_LAB.md`
 → *Image → Ether creature — end-to-end closure*.
+
+## Lab — Two models, two fields (the image-pipeline 500, diagnosed and guarded)
+
+The first live image → extraction run failed with the provider's bare
+500 on every picture. Traced read-only and reproduced from Node: the
+Direct panel's single *Model* field fed the CHAT model, so the image
+model's name typed there sent gpt-image-2 to `/chat/completions`. The
+panel now has an Understanding model field and an Image model field,
+both seeded from the transport; each Direct path refuses a model that
+belongs to the other path with a sentence naming the field. Section
+`MM` (12), guard proved by reverting. Lab-only; production diff zero.
+Detail: `docs/ETHER_MYSTERY_LAB.md` → *Two models, two fields*.

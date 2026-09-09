@@ -410,8 +410,11 @@
         <div class="warnbox">Development only. The key is held in memory for this page and nowhere else — never stored, never exported, never logged. Clear it when you are done.</div>
         <label>Your provider API key</label>
         <input type="password" data-conn-key autocomplete="off" placeholder="sk-…">
-        <label>Model</label>
-        <input type="text" data-conn-model value="gpt-4.1-mini" autocomplete="off">
+        <label>Understanding model (reads pictures, writes plans — a chat model)</label>
+        <input type="text" data-conn-model value="gpt-4.1" autocomplete="off">
+        <label>Image model (draws pictures)</label>
+        <input type="text" data-conn-image-model value="gpt-image-2" autocomplete="off">
+        <div class="note">Two models, two jobs. A picture model typed into the understanding field used to reach the chat call and come back as the provider's 500; each field now feeds only its own path, and a name that belongs to the other is refused before anything is sent.</div>
       </div>
       <div class="row" data-conn-actions hidden>
         <button data-conn-test class="quiet">Test connection</button>
@@ -717,24 +720,24 @@
 </div>
 </main>
 
-<script src="../../js/etherGrammar.js?lab=442a637f01"></script>
-<script src="labKit.js?lab=442a637f01"></script>
-<script src="labPreviewHost.js?lab=442a637f01"></script>
-<script src="labConnection.js?lab=442a637f01"></script>
-<script src="labBlueprint.js?lab=442a637f01"></script>
-<script src="labOutline.js?lab=442a637f01"></script>
-<script src="labReveal.js?lab=442a637f01"></script>
-<script src="labRevealData.js?lab=442a637f01"></script>
-<script src="labShape.js?lab=442a637f01"></script>
-<script src="labReference.js?lab=442a637f01"></script>
-<script src="labArtworkData.js?lab=442a637f01"></script>
-<script src="labImagine.js?lab=442a637f01"></script>
-<script src="labEtherComposer.js?lab=442a637f01"></script>
-<script src="labTranslate.js?lab=442a637f01"></script>
-<script src="labTranslationData.js?lab=442a637f01"></script>
-<script src="labVocabulary.js?lab=442a637f01"></script>
-<script src="labUnfinished.js?lab=442a637f01"></script>
-<script src="labExtract.js?lab=442a637f01"></script>
-<script src="labClosure.js?lab=442a637f01"></script>
+<script src="../../js/etherGrammar.js?lab=afe872ca4e"></script>
+<script src="labKit.js?lab=afe872ca4e"></script>
+<script src="labPreviewHost.js?lab=afe872ca4e"></script>
+<script src="labConnection.js?lab=afe872ca4e"></script>
+<script src="labBlueprint.js?lab=afe872ca4e"></script>
+<script src="labOutline.js?lab=afe872ca4e"></script>
+<script src="labReveal.js?lab=afe872ca4e"></script>
+<script src="labRevealData.js?lab=afe872ca4e"></script>
+<script src="labShape.js?lab=afe872ca4e"></script>
+<script src="labReference.js?lab=afe872ca4e"></script>
+<script src="labArtworkData.js?lab=afe872ca4e"></script>
+<script src="labImagine.js?lab=afe872ca4e"></script>
+<script src="labEtherComposer.js?lab=afe872ca4e"></script>
+<script src="labTranslate.js?lab=afe872ca4e"></script>
+<script src="labTranslationData.js?lab=afe872ca4e"></script>
+<script src="labVocabulary.js?lab=afe872ca4e"></script>
+<script src="labUnfinished.js?lab=afe872ca4e"></script>
+<script src="labExtract.js?lab=afe872ca4e"></script>
+<script src="labClosure.js?lab=afe872ca4e"></script>
 </body>
 </html>

@@ -8609,6 +8609,112 @@ async function sectionEX() {
   ck(prodDiff === '', 'EX10 production Ether is unchanged against the base of this line of sprints — js/, vihuplanet/, assets/, css/, renderer/, index.html, studio.html', prodDiff.split('\n').slice(-1)[0] || 'empty');
 }
 
+// ================================================================
+// MM. TWO MODELS, TWO FIELDS — the understanding model and the image
+// model each have a field on the Direct panel, each feeds only its own
+// path, both are seeded from the transport, and a name that belongs to
+// the other path is refused in a sentence before anything leaves.
+// Found by the product owner: the one Model field fed the CHAT model,
+// so gpt-image-2 typed there reached /chat/completions and came back as
+// the provider's bare 500 on every picture (reproduced from Node, 2/2).
+// ================================================================
+async function sectionMM() {
+  console.log('\n== MM. two models, two fields ==');
+  const { chromium } = require('playwright');
+  const connSrc = fs.readFileSync(path.join(ROOT, 'tools/ether-mystery-lab/labConnection.js'), 'utf8');
+  const shapeSrc = fs.readFileSync(path.join(ROOT, 'tools/ether-mystery-lab/shape.html'), 'utf8');
+  const indexSrc = fs.readFileSync(path.join(ROOT, 'tools/ether-mystery-lab/index.html'), 'utf8');
+  ck(/data-conn-model\b/.test(shapeSrc) && /data-conn-image-model\b/.test(shapeSrc) && /id="directModel"/.test(indexSrc) && /id="directImageModel"/.test(indexSrc) && !/gpt-4\.1-mini/.test(shapeSrc) && !/gpt-4\.1-mini/.test(indexSrc),
+    'MM1  both Lab pages carry an Understanding model field AND an Image model field on the Direct panel, and neither advertises gpt-4.1-mini any more');
+  // Node: the transport's own answers
+  // the sandbox has a fetch that never answers, so a request that DOES
+  // leave comes back 'unavailable' — distinguishable from a refusal
+  const sandbox = { window: {}, console, AbortController, setTimeout, clearTimeout, fetch: () => Promise.reject(new Error('no network in the sandbox')) };
+  sandbox.window.window = sandbox.window; sandbox.window.fetch = sandbox.fetch;
+  vm.createContext(sandbox);
+  vm.runInContext(connSrc, sandbox);
+  const Conn = sandbox.window.LabConnection;
+  const m0 = Conn.models();
+  ck(m0.model === 'gpt-4.1' && m0.imageModel === 'gpt-image-2' && m0.defaults.model === 'gpt-4.1' && m0.defaults.imageModel === 'gpt-image-2', 'MM2  LabConnection.models() reports the two live models and their defaults — gpt-4.1 for understanding, gpt-image-2 for pictures', JSON.stringify(m0));
+  ck(/image model/.test(Conn.explain('image-model-on-chat-path')) && /Understanding model field/.test(Conn.explain('image-model-on-chat-path')) && /Image model field/.test(Conn.explain('chat-model-on-image-path')) && Conn.explain('unavailable') === 'unavailable',
+    'MM2b the two refusals explain themselves in a sentence that names the FIELD to fix; any other reason passes through unchanged');
+  Conn.setMode('direct'); Conn.setDirectKey('sk-test');
+  Conn.setDirectModel('gpt-image-2');
+  const r1 = await Conn.understand({ messages: [{ role: 'system', content: 'x' }, { role: 'user', content: 'y' }], image: { mime: 'image/png', b64: 'A'.repeat(100) } });
+  const r2 = await Conn.generate({ messages: [{ role: 'user', content: 'y' }] });
+  ck(r1 && !r1.ok && r1.reason === 'image-model-on-chat-path' && r2 && !r2.ok && r2.reason === 'image-model-on-chat-path', 'MM3  an image model in the understanding slot is refused by understand() AND generate() before any request is made', (r1 && r1.reason) + '/' + (r2 && r2.reason));
+  Conn.setDirectModel('gpt-4.1'); Conn.setDirectImageModel('gpt-4.1');
+  const r3 = await Conn.imagine({ prompt: 'a creature' });
+  ck(r3 && !r3.ok && r3.reason === 'chat-model-on-image-path', 'MM3b a chat model in the image slot is refused by imagine() before any request is made', r3 && r3.reason);
+  Conn.setDirectImageModel('dall-e-3');
+  const r4 = await Conn.imagine({ prompt: 'a creature' }).catch(() => ({ ok: false, reason: 'threw' }));
+  ck(r4 && r4.reason === 'unavailable', 'MM3c an image model of another family (dall-e) is not mistaken for a chat model — the request leaves (and meets the sandbox\'s dead network)', r4 && r4.reason);
+
+  // ---- the browser half ----
+  const server = spawn('node', ['tools/bring-it-alive/test/serve.js', String(PORT)], { cwd: ROOT, stdio: 'ignore' });
+  await new Promise((res) => setTimeout(res, 900));
+  const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+  try {
+    const ctx = await browser.newContext({ viewport: { width: 1500, height: 1100 } });
+    const page = await ctx.newPage();
+    const errors = [];
+    page.on('pageerror', (e) => errors.push(String(e).split('\n')[0]));
+    await page.goto(BASE + '/tools/ether-mystery-lab/shape.html');
+    await page.waitForFunction(() => !!window.LabExtract && !!window.ShapeLab && !!window.LabConnection && !!window.LabImagine && !!window.LabReference, null, { timeout: 20000 });
+    const S = (fn, arg) => page.evaluate(fn, arg);
+    const seeded = await S(() => ({ m: document.querySelector('[data-conn-model]').value, im: document.querySelector('[data-conn-image-model]').value, live: window.LabConnection.models() }));
+    ck(seeded.m === seeded.live.model && seeded.im === seeded.live.imageModel && seeded.m === 'gpt-4.1' && seeded.im === 'gpt-image-2',
+      'MM4  on load both fields show exactly what the transport holds — the page can never advertise a model the transport is not using', JSON.stringify(seeded));
+    // the provider, stubbed: records which model each path sends
+    const sent = [];
+    await page.route('https://api.openai.com/**', (route) => {
+      const url = route.request().url();
+      if (/\/models$/.test(url)) return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [{ id: 'gpt-4.1' }] }) });
+      const body = JSON.parse(route.request().postData() || '{}');
+      sent.push({ url: url.replace('https://api.openai.com', ''), model: body.model });
+      if (/images\/generations/.test(url)) return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [{ b64_json: fs.readFileSync(path.join(ROOT, 'assets/lumo/hero.png')).toString('base64') }] }) });
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ choices: [{ message: { content: JSON.stringify({ subject: 'a being', character: ['calm'], composition: 'An upright figure.', architecture: ['a body'], diagnosticFeatures: ['a crown'], modifiers: [], proportion: 'The head is big.', gesture: 'One coherent gesture: standing.', abstraction: { survives: ['the crown'], doNotDrawLiterally: [], note: '' }, revealCandidates: [], promptFidelity: { agreement: 'matches', differences: [] } }) } }] }) });
+    });
+    await page.click('[data-conn-mode="direct"]');
+    await page.fill('[data-conn-key]', 'sk-test-two-fields');
+    await page.click('[data-conn-test]');
+    await page.waitForFunction(() => /CONNECTED \(direct\)/.test(document.querySelector('[data-conn-status]').textContent));
+    // the product owner's own mistake: the image model typed into the understanding field
+    await page.fill('[data-conn-model]', 'gpt-image-2');
+    await page.setInputFiles('[data-imagine-file]', path.join(ROOT, 'assets/lumo/hero.png'));
+    await page.waitForFunction(() => document.querySelector('[data-imagine-section]').getAttribute('data-understand-outcome') === 'failed', null, { timeout: 8000 });
+    const wrong = await S(() => ({ status: document.querySelector('[data-imagine-understand-status]').textContent, live: window.LabConnection.models() }));
+    const chatHits = sent.filter((q) => /chat\/completions/.test(q.url)).length;
+    ck(chatHits === 0 && /Understanding model field holds an image model \(gpt-image-2\)/.test(wrong.status) && !/500|server_error/.test(wrong.status) && /No fixture was substituted/.test(wrong.status),
+      'MM5  gpt-image-2 in the understanding field: the picture is NOT sent to the chat path, and the failure names the field — never the provider\'s 500', wrong.status.slice(0, 120) + ' · chat hits ' + chatHits);
+    // put it right, and the same picture reads
+    await page.fill('[data-conn-model]', 'gpt-4.1');
+    await page.click('[data-imagine-understand]');
+    await page.waitForFunction(() => window.LabImagine.state().page === 'understood', null, { timeout: 8000 });
+    const right = sent.filter((q) => /chat\/completions/.test(q.url));
+    ck(right.length === 1 && right[0].model === 'gpt-4.1', 'MM5b corrected, Read it again sends the same picture to the chat path with the understanding model', JSON.stringify(right));
+    // the image field feeds only the picture path
+    await page.fill('[data-conn-image-model]', 'gpt-image-2');
+    await S(() => window.LabImagine.setProvider('openai-image'));
+    await page.fill('[data-imagine-prompt]', 'A small owl made of stars');
+    await page.click('[data-imagine-create]');
+    await page.waitForFunction(() => document.querySelector('[data-imagine-section]').getAttribute('data-imagine-outcome') === 'generated', null, { timeout: 8000 });
+    const img = sent.filter((q) => /images\/generations/.test(q.url));
+    ck(img.length === 1 && img[0].model === 'gpt-image-2' && sent.filter((q) => /chat\/completions/.test(q.url)).every((q) => q.model === 'gpt-4.1'),
+      'MM6  the image field feeds only the picture path and the understanding field only the chat path — measured on the requests themselves', JSON.stringify(sent));
+    // the mirror mistake: a chat model in the image field
+    await page.fill('[data-conn-image-model]', 'gpt-4.1');
+    const imgBefore = sent.filter((q) => /images\/generations/.test(q.url)).length;
+    await page.click('[data-imagine-create]');
+    await page.waitForFunction(() => document.querySelector('[data-imagine-section]').getAttribute('data-imagine-outcome') === 'failed', null, { timeout: 8000 });
+    const mirror = await S(() => document.querySelector('[data-imagine-status]').textContent);
+    ck(sent.filter((q) => /images\/generations/.test(q.url)).length === imgBefore && /Image model field holds a chat model \(gpt-4\.1\)/.test(mirror),
+      'MM6b a chat model in the image field: nothing is sent to the picture path, and the failure names that field', mirror.slice(0, 120));
+    ck(errors.length === 0, 'MM7  no page error through the whole journey', errors.join(' | '));
+    await page.unroute('https://api.openai.com/**');
+  } finally { await browser.close(); server.kill(); }
+}
+
 (async () => {
   try {
     // ETHER_LAB_ONLY=SL runs one section alone while it is being built;
@@ -8638,6 +8744,7 @@ async function sectionEX() {
     await run('TR', sectionTR);
     await run('CL', sectionCL);
     await run('EX', sectionEX);
+    await run('MM', sectionMM);
   } catch (e) {
     fail('suite crashed', (e && e.stack || String(e)).split('\n')[0]);
   }

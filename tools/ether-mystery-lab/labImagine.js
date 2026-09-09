@@ -448,7 +448,7 @@
         trace.outcome = r.reason === 'no-image-model' ? 'unavailable' : 'failed';
         status(r.reason === 'no-image-model'
           ? provider.label + ' is UNAVAILABLE — the account has no image model (the provider answered "no image model"). Choose the Fixture artistic source. Nothing was replaced. ' + kept
-          : 'Creating failed — ' + r.reason + ' (' + provider.label + ' · ' + mode + '). Nothing was replaced. ' + kept, 'warn');
+          : 'Creating failed — ' + (C && C.explain ? C.explain(r.reason) : r.reason) + ' (' + provider.label + ' · ' + mode + '). Nothing was replaced. ' + kept, 'warn');
         emit();
         return { ok: false, reason: r.reason };
       }
@@ -575,7 +575,7 @@
       if (!r || !r.ok) {
         var reason = (r && r.reason) || 'unavailable';
         trace.answer = { ok: false, reason: reason }; trace.outcome = 'failed';
-        understandStatus('Reading the picture failed — ' + reason + ' (' + mode + '). No fixture was substituted. ' + kept, 'warn'); emit();
+        understandStatus('Reading the picture failed — ' + (C.explain ? C.explain(reason) : reason) + ' (' + mode + '). No fixture was substituted. ' + kept, 'warn'); emit();
         return { ok: false, reason: reason };
       }
       trace.answer = { ok: true, source: r.source, model: r.model || null, chars: String(r.text || '').length };

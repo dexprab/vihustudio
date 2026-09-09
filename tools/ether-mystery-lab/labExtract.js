@@ -299,7 +299,7 @@
       if (!r || !r.ok) {
         var reason = (r && r.reason) || 'unavailable';
         trace.answer = { ok: false, reason: reason }; trace.outcome = 'failed';
-        status('The extraction failed — ' + reason + ' (' + mode + '). No fixture was substituted. ' + kept, 'warn'); render();
+        status('The extraction failed — ' + (C.explain ? C.explain(reason) : reason) + ' (' + mode + '). No fixture was substituted. ' + kept, 'warn'); render();
         return { ok: false, reason: reason };
       }
       trace.answer = { ok: true, source: r.source, model: r.model || null, chars: String(r.text || '').length };

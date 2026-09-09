@@ -9895,6 +9895,21 @@ leads somewhere.
   thirty seconds, so image generation streams; and it answers from two
   projects, one without gpt-4.1, so `model_not_found` is retried on
   record. Section `EX` (55).
+- **ONE FIELD FED THE WRONG MODEL, AND THE PROVIDER'S 500 HID IT** (Two
+  models, two fields — Lab only, zero production files changed). The
+  first live run failed on every picture with *"provider answered 500
+  (server_error)"*. Diagnosed read-only before anything was touched: the
+  Direct panel's only *Model* field fed the CHAT model, so typing the
+  image model's name there sent `gpt-image-2` to `/chat/completions`,
+  which the provider answers with a bare 500 rather than a refusal that
+  names the fault — reproduced 2/2 from Node, and 7/7 fine with gpt-4.1.
+  The panel now carries an Understanding model field and an Image model
+  field, both **seeded from the transport** so the page never advertises
+  a model it is not using (it used to show `gpt-4.1-mini`), and each
+  Direct path refuses a model that belongs to the other with a sentence
+  naming the field, before anything leaves the browser. **A refusal the
+  Lab can make itself is never left to the provider to make badly.**
+  Section `MM` (12), the guard proved by reverting.
 - Out of scope and not implemented: creature encounters as a reward
   system, creature dialogue, a Companion in the Ether, per-Traveller
   encounter history, more activity rows (story hunt, missing

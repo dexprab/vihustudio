@@ -3740,3 +3740,47 @@ Files: `tools/ether-mystery-lab/labExtract.js` · `labConnection.js` ·
 `tools/ether-mystery-lab-test/real-extract.js` · `render-extract.js` ·
 `shots/extract/` (source pictures, author/judge canvases, the sky as JPEG,
 `real-extract.json`, `walks.json`, `ratings.json`).
+
+## Two models, two fields (a diagnosed 500, and the guard that names it)
+
+**Lab only. Zero production files changed. Build stays 0769.**
+
+Reported by the product owner from the first live run of the image
+pipeline: gpt-image-2 drew the picture, the picture appeared in SOURCE,
+and both the understanding and the extraction failed with *"provider
+answered 500 (server_error)"*. Traced without touching anything, then
+reproduced from Node: the request that failed carried `model:
+"gpt-image-2"` on `/chat/completions`. The Direct panel had ONE field,
+labelled *Model*, and it fed `setDirectModel()` — the CHAT model — while
+the image model had no field at all; so the natural thing to type when
+choosing an image source (the image model's name) rerouted every
+understanding call to a picture model, and the provider answers that
+with a bare 500 and *"The server had an error while processing your
+request"* rather than a 400 that names the fault. Reproduced 2/2 with
+that one change; 7/7 fine with gpt-4.1. The field also advertised
+`gpt-4.1-mini` while the transport sent `gpt-4.1`, a model this project
+cannot use anyway.
+
+**What changed.** The Direct panel on both Lab pages now has two fields —
+*Understanding model (reads pictures, writes plans — a chat model)*, and
+*Image model (draws pictures)* — each wired to its own setter and both
+**seeded from the transport on load** (`LabConnection.models()`), so the
+page can never show a model the transport is not using. Each Direct path
+refuses a name that plainly belongs to the other before anything leaves
+the browser: an image model (`gpt-image-*`, `dall-e*`) in the
+understanding slot is refused by `understand()` and `generate()`, a chat
+model in the image slot by `imagine()`, and `LabConnection.explain()`
+turns the two reasons into a sentence that names the field to fix.
+Every surface — the front door, the extraction, the blueprint — reports
+that sentence in place of the provider's 500. The Endpoint path needs
+nothing: `LAB_MODEL` and `LAB_IMAGE_MODEL` were already two values.
+
+Section `MM` (12): both fields present and no `gpt-4.1-mini` default,
+the transport's two models and their defaults, the two refusals in Node,
+seeding measured against the live transport, the product owner's own
+mistake driven on the real page (zero chat requests leave, the sentence
+names the field, *Read it again* after correcting sends the same picture
+with gpt-4.1), each field feeding only its own path measured on the
+requests, and the mirror mistake. Proved by reverting the understand
+guard: `MM3` red and `MM5` stalls because the picture DID reach the chat
+path.
