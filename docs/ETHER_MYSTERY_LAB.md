@@ -3784,3 +3784,123 @@ with gpt-4.1), each field feeding only its own path measured on the
 requests, and the mirror mistake. Proved by reverting the understand
 guard: `MM3` red and `MM5` stalls because the picture DID reach the chat
 path.
+
+## Trace the image, don't invent a skeleton (the extraction contract, rewritten)
+
+The product owner's own acceptance test failed on a boat: the unfinished
+figure created no wish to complete it, the completed figure did not look
+like the source, and Come Alive did not feel alive. This sprint fixes the
+EXTRACTION and nothing else — not Reveal, not roaming, not the Shape Lab's
+six stages, not the runtime, not the pool. Lab only; production diff zero.
+
+### Why the previous extraction failed
+
+The first extraction contract asked for *"a simplified interpretation, not
+a tracing"* and told the model to prioritise points by ANATOMY — *the
+overall silhouette · the major gesture · the important transitions (neck,
+hips, shoulder) · diagnostic features · meaningful terminals* — with one
+feature word per point. Measured on the boat (`shots/extract/boat/
+before.json`, the same picture read by that contract): six lights named
+*mast top · left prow curl · hull bottom · right prow curl · mast base ·
+sail tip*, joined as a triangle on a diamond — a sailboat GLYPH with its
+"mast base" in the middle of the sail and its "hull bottom" inside the
+hull, not at the keel. At twelve it came back in two pieces. The model had
+reasoned *boat = hull + mast + sail* from the subject's name and placed
+lights where those parts ought to be. That is a skeleton, and a skeleton
+of a generic boat looks like nothing in particular when the picture is
+hidden.
+
+### What changed
+
+`labExtract.js`'s contract now OPENS with the brief's critical instruction
+verbatim — *You are extracting a simplified visual tracing of the supplied
+image. Do not construct a generic anatomical skeleton from the subject's
+name…* — and everything after it is written from that: the source image
+is the visual truth; the budget is a SAMPLING budget over the visible
+shape (eight: the strongest silhouette points; twelve: the major contour
+structure; sixteen and above: secondary structure), never a list of parts
+to fit in; a point carries one of four PICTURE roles — `silhouette ·
+junction · internal · terminal` — and no anatomical name is required for
+any point; connections are VISIBLE relationships only, a line drawing of
+this picture and not a single outline around it, one connected piece, no
+invented geometry; and a missing connection is **an existing visual
+connection that we choose to withhold** — never a line that is not in the
+complete figure. Reveal is optional and secondary and may be empty; no
+confidence is asked for.
+
+The validator changed in three places, each on record. A point with no
+role, or a body part where a role should be, is read as `silhouette` and
+noted — never refused for a word. A missing connection that is not among
+the connections is **dropped**, where the first contract ADDED it as a
+connection and then left it missing — which let the model invent a line
+through the back door; the Lab's fallback (withhold the widest safe
+existing join) still guarantees a gap. And the figure's number of pieces
+is counted and written down; a figure in several pieces is never stitched
+(that would invent a line) — the researcher joins them where the picture
+shows them meeting.
+
+The contract took three wordings, and all three are committed because
+each was measured. **v1** (`real-extract.trace-v1.json`, the boat's
+`trace-v1-*` figures): the lights landed on the picture, and the joins
+were wrong — six of sixteen figures in more than one piece, eight-light
+outlines drawn as blobs with nothing inside, the boat's eight spent on the
+stays (ropes). **v2** (`-v2`): *a line drawing, not an outline; one piece;
+a thin line never earns a point before the masses* — 16/16 one piece, but
+the model under-spent the budget (seven lights at twelve) and still traced
+ropes. **v3**, shipped: *exactly N, or as close as the shape allows; a thin
+line is not structure — no point on it, no line along it; a withheld pair
+must also appear in connections* — 15/16 at the full budget, 16/16 one
+piece, invented gaps down from 9/16 to 2/16.
+
+### The boat, before and after
+
+| | before (anatomical) | after (tracing v3) |
+|---|---|---|
+| eight lights | a triangle sail on a diamond hull; a glyph — **B** | prows, keel, mast base, mast top, yard, flag: a mast with a crossbar on a hull — **B** |
+| twelve lights | TWO pieces, sail-and-deck above a hull V — **C** | ten lights: the hull's whole curve, the deck, the mast, the sail's triangle, the flag — **A** |
+| unfinished | the hull's top line missing — **C** | the sail's foot and forestay withheld: the sail hangs unattached until joined — **A** at twelve, **B** at eight |
+
+### The seven creatures (`ratings.json`)
+
+| | image | complete @8 | unfinished @8 | complete @12 |
+|---|---|---|---|---|
+| panda | A | B | B | B |
+| mermaid | A | B | C | B |
+| baby dragon | A | C | C | B |
+| falcon | A | B | B | B |
+| winged lion | A | C | C | C |
+| whale | A | B | B | B |
+| star fox | A | B | B | B |
+
+COMPLETE at eight: A0 B6 C2 over the boat and the seven — the SAME five
+creatures at B and the SAME two at C as the anatomical run, for the same
+reason: eight lights cannot hold a wing's outline and a body, and a
+tracing's eight go to the strongest silhouette, which for a winged
+creature is its wings. What moved is where the lights are and what happens
+above eight: at twelve the boat is A and the dragon B, where the
+anatomical boat at twelve was two pieces. UNFINISHED at eight: B5 C3 —
+where the MODEL chose the gap it is visible (the sail's foot, the whale's
+back, the fox's tail); where the Lab had to choose (the mermaid's figure is
+a tree, so any withheld line strands a limb rather than opening a hole) or
+the figure is a bare outline (dragon, lion) the gap is not a mystery.
+
+### Judged, and stopped
+
+The boat is recognisable; the creatures are where they were at eight and
+better at twelve. Per the brief, no further contract change, no Reveal
+work, no roaming work and no architecture proposal. The thing that would
+move the eight-light grade is the production budget question, which is a
+product decision and not this sprint's.
+
+**Harness note.** `render-extract.js` measures roaming from the moment
+the wanderer sets off rather than from a fixed wall-clock offset: a
+background popup's frame clock runs slow under load, so the 4.4 s hold
+after completion outlasted the renderer's waits and sixteen fixed samples
+measured the hold (1–7 px) instead of the roam. It now waits for the
+wanderer, then samples until it has plainly travelled or a bound passes.
+
+Suite: section `EX` — `EX2b`–`EX2b4`, `EX2c` pin the contract; `EX3a`,
+`EX3a2` the roles and the optional reveal; `EX3h`, `EX3h2` turned round
+(an unlisted gap is dropped, never added); `EX4`–`EX4g` the eight-result
+run, the boat before beside the after, every point roled, no gap ever
+added; `EX6`, `EX6b` the roles landing in the Shape Lab.

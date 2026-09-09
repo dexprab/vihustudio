@@ -1,129 +1,40 @@
 {
-  "what": "Human ratings of the image → Ether creature closure run (real-extract.json → <id>/source.png, author-8.png, judge-8.png, author-12.png, judge-12.png, ether-1…5.jpg, noreveal-complete.jpg). Rated by looking. image = the gpt-image-2 picture as a creative source; recognition = the completed eight-light Ether figure read WITHOUT the picture (judge-8.png / ether-2-complete.png); unfinished = the gap as a mystery (does the missing join read as something to do, and is the creature still recognisable without it); reveal = the accepted reveal suggestions at their default size against no reveal (A transformative · B meaningful · C weak · D unnecessary); alive = the completion → awakening → roaming loop in the real sky; overall A–D.",
-  "scale": {
-    "A": "unmistakable",
-    "B": "recognisable",
-    "C": "suggestive",
-    "D": "failed"
+  "what": "Human ratings of the TRACE-THE-IMAGE extraction run (real-extract.json → <id>/source.png, author-8.png, judge-8.png, author-12.png, judge-12.png, ether-1…5.jpg; boat/before-*.png is the SAME boat picture read by the previous anatomical contract). Rated by looking. image = the gpt-image-2 picture as a creative source; complete = the COMPLETED eight-light figure read WITH THE SOURCE HIDDEN (judge-8.png / ether-2-complete.jpg) — does it still look like THIS image; unfinished = the eight-light figure with its gap (does the missing line read as something to complete, and is it still recognisable without it); complete12 / unfinished12 = the same at twelve (research budget, not playable); overall A–D at eight.",
+  "scale": { "A": "unmistakable", "B": "recognisable", "C": "suggestive", "D": "failed" },
+  "labels": "Every row: REAL MODEL — the picture by gpt-image-2 (streamed), the extraction by gpt-4.1 with the actual picture attached, under the tracing contract (its third wording — v1 and v2 are committed as real-extract.trace-v1.json / -v2.json and the boat's trace-v1-*/trace-v2-* figures). Nothing constructed, nothing substituted. RESEARCH ONLY; nothing reaches production.",
+  "boat_before": {
+    "contract": "anatomical (labExtract.js as of 0d0db615) — boat/before.json, before-author-8.png, before-judge-8.png, before-author-12.png, before-judge-12.png",
+    "complete": "B",
+    "unfinished": "C",
+    "complete12": "C",
+    "sees": "at eight: six lights named mast top · left prow curl · hull bottom · right prow curl · mast base · sail tip, joined as a triangle sail sitting on a diamond hull — a sailboat GLYPH that could be any boat, with its 'mast base' in the middle of the sail and its 'hull bottom' inside the hull rather than at the keel: the lights are where a boat's parts OUGHT to be, not where this picture's are. At twelve it came back in TWO pieces (a sail-and-deck above, a hull V below, not joined) — the anatomical list was filled in and the picture's own outline never followed."
   },
-  "labels": "Every row: REAL MODEL — the picture by gpt-image-2 (streamed), the extraction by gpt-4.1 with the actual picture attached; nothing constructed, nothing substituted. Everything RESEARCH ONLY; nothing reaches production.",
   "results": [
-    {
-      "id": "panda",
-      "image": "A",
-      "recognition": "B",
-      "unfinished": "B",
-      "reveal": "C",
-      "alive": "B",
-      "overall": "B",
-      "sees": "a seated round body with two ear lights on top and four limb lights — a panda, or at least a bear; the ears carry it. The twelve-light figure is the better panda, and it cannot be played (production is eight).",
-      "reveal_note": "eye-patch glow reads; the nose CONTOUR at its default frame size is a ring larger than the head and the fur TEXTURE a field over the body — both need resizing by the researcher, which is a reveal default problem the earlier sprints already recorded, not an extraction one"
-    },
-    {
-      "id": "mermaid",
-      "image": "A",
-      "recognition": "B",
-      "unfinished": "B",
-      "reveal": "C",
-      "alive": "B",
-      "overall": "B",
-      "sees": "a head, two arms out, a torso running down into a forked tail — the second figure whose silhouette the lights actually sit on; the missing join is the tail fork, which is exactly the part a person would want to finish",
-      "reveal_note": "one supported reveal landed at eight (STAR HAIR as a contour); it is faint against the tail, which the figure already carries"
-    },
-    {
-      "id": "baby-dragon",
-      "image": "A",
-      "recognition": "C",
-      "unfinished": "C",
-      "reveal": "C",
-      "alive": "B",
-      "overall": "C",
-      "sees": "seven lights — head, both wing tips, body, two feet and the tail — joined as a kite with legs; the model spent lights on the wing tips and none on the wing's outline, so it is a winged thing with a tail rather than a dragon. The picture is the best of the seven and the figure the second weakest.",
-      "reveal_note": "STAR HORNS as spikes at the head are the one reveal that says dragon; the eye glow helps; the wing sparkles as motes are decoration"
-    },
-    {
-      "id": "falcon",
-      "image": "A",
-      "recognition": "B",
-      "unfinished": "B",
-      "reveal": "C",
-      "alive": "B",
-      "overall": "B",
-      "sees": "six lights, a spread bird — head, two wing tips, body, tail, a talon light — with two gaps left by the Lab's fallback (the model's own two missing joins would each have stranded a point); recognisable as a bird in flight, not as a falcon, which the whole study already found is the ceiling at eight",
-      "reveal_note": "talon spikes and eye glow read; the feather LINES are faint"
-    },
-    {
-      "id": "winged-lion",
-      "image": "A",
-      "recognition": "C",
-      "unfinished": "C",
-      "reveal": "C",
-      "alive": "B",
-      "overall": "C",
-      "sees": "six lights — head, two wing tips, a haunch, two feet — drawn as a fork on a triangle; a winged something standing up, and without the picture more bird than lion. The twelve-light figure has the body, the four legs and the tail and reads as a winged quadruped.",
-      "reveal_note": "the mane CONTOUR at its default size is again a ring the size of the figure (the same finding as the V2 closure run); the wing spikes are the honest reveal"
-    },
-    {
-      "id": "whale",
-      "image": "A",
-      "recognition": "B",
-      "unfinished": "B",
-      "reveal": "B",
-      "alive": "B",
-      "overall": "B",
-      "sees": "a long wedge — a broad head end, a belly line, a narrowing back and a raised fluke — a whale or a big fish, and the picture's giant is in it; the gap is along the belly, which reads as the body being open",
-      "reveal_note": "BALEEN LINES along the belly are the one reveal of the run that changes what the figure IS — they say whale where the lights said fish"
-    },
-    {
-      "id": "star-fox",
-      "image": "A",
-      "recognition": "B",
-      "unfinished": "B",
-      "reveal": "C",
-      "alive": "B",
-      "overall": "B",
-      "sees": "seven lights — snout, ear tips, back, a leg, the tail curling up — a fox-ish quadruped with a big tail, which is what the prompt asked for; the gap is at the tail",
-      "reveal_note": "four reveals offered; the tail glow and the eye glow read, the fur texture and the mane contour are too large at eight"
-    }
+    { "id": "boat", "image": "A", "complete": "B", "unfinished": "B", "complete12": "A", "unfinished12": "A", "overall": "B",
+      "sees": "at eight: the two prow curls, the keel, the mast base on the deck, the mast top, the yard's end, the flag tip — a mast with a crossbar and a flag standing on a hull — a boat, plainly, though the sail's triangle is not held at eight. At TWELVE (ten lights) it is the picture: the hull's whole curve prow → keel → prow, the deck line, the mast, the sail as a triangle from mast top to sail tip to mast, the flag — a sailing ship anyone would name at once. The gap at twelve is the forestay and the sail's foot, so the sail hangs unattached until a child joins it: incompleteness a person can see, and completion that finishes the sail." },
+    { "id": "panda", "image": "A", "complete": "B", "unfinished": "B", "complete12": "B", "unfinished12": "B", "overall": "B",
+      "sees": "the head's outline with both ears as corners, a line across at the arms, the body's sides down to two feet — a round, upright bear shape. The ears carry it as they did before; the difference from the anatomical run is that the outline is the picture's own rather than a hexagon drawn around it. The gap is the left side of the body, which reads as an open side." },
+    { "id": "mermaid", "image": "A", "complete": "B", "unfinished": "C", "complete12": "B", "unfinished12": "B", "overall": "B",
+      "sees": "head, both arms held out, the torso down to the hip, the tail's fork — a person with a fish tail, the same reading as before and the same lights in the same places (the tracing and the anatomy agree on a mermaid, because her silhouette IS her parts). The gap chosen at eight is hard to see as a gap: the figure is a tree, so withholding one line leaves a stray-looking arm rather than a visible hole." },
+    { "id": "baby-dragon", "image": "A", "complete": "C", "unfinished": "C", "complete12": "B", "unfinished12": "B", "overall": "C",
+      "sees": "at eight: the crest, the wing tip, the tail curl, two feet and the other wing, joined as an outline — a spiky polygon with a wing; a winged something. Two gaps leave it in two arcs. At twelve the head, the wing's outline, the belly, the legs and the curled tail are all there and it reads as a small sitting dragon. Eight lights cannot hold a wing's outline AND a body — the same ceiling every study found." },
+    { "id": "falcon", "image": "A", "complete": "B", "unfinished": "B", "complete12": "B", "unfinished12": "B", "overall": "B",
+      "sees": "the beak, the head, the chest, the tail tip, both feet, the back — a perched bird in profile, its beak the one light that says which way it faces. A bird, not a falcon (the recorded ceiling). The gaps are the chest-to-tail line and the tail, so the bird's back half is open." },
+    { "id": "winged-lion", "image": "A", "complete": "C", "unfinished": "C", "complete12": "C", "unfinished12": "C", "overall": "C",
+      "sees": "both wings as a W across the top (tip · root · head · root · tip) and the legs as a line below — a crown over a bar. The tracing follows the picture's dominant contour, and the picture's dominant contour is the wings; the lion underneath gets no light. At twelve the two wing-and-leg chains are symmetric and still say nothing about a lion. Unchanged from the anatomical run's C, for the same reason." },
+    { "id": "whale", "image": "A", "complete": "B", "unfinished": "B", "complete12": "B", "unfinished12": "B", "overall": "B",
+      "sees": "the fluke's two tips, the back running to the head, the belly, the fin — a whale's outline, the fluke at one end and the blunt head at the other; a whale or a big fish. The gap is along the back, a visible break in the outline." },
+    { "id": "star-fox", "image": "A", "complete": "B", "unfinished": "B", "complete12": "B", "unfinished12": "B", "overall": "B",
+      "sees": "an ear tip, the head, the snout-to-shoulder line, two front feet, a hind foot, the tail's base and its tip — a four-legged animal with a pointed ear and a big tail; fox-ish, which is what the prompt asked for. The gap is the tail's tip, which reads as the tail not yet drawn." }
   ],
   "tally": {
-    "image": {
-      "A": 7,
-      "B": 0,
-      "C": 0,
-      "D": 0
-    },
-    "recognition": {
-      "A": 0,
-      "B": 5,
-      "C": 2,
-      "D": 0
-    },
-    "unfinished": {
-      "A": 0,
-      "B": 5,
-      "C": 2,
-      "D": 0
-    },
-    "reveal": {
-      "A": 0,
-      "B": 1,
-      "C": 6,
-      "D": 0
-    },
-    "alive": {
-      "A": 0,
-      "B": 7,
-      "C": 0,
-      "D": 0
-    },
-    "overall": {
-      "A": 0,
-      "B": 5,
-      "C": 2,
-      "D": 0
-    }
+    "image": { "A": 8, "B": 0, "C": 0, "D": 0 },
+    "complete": { "A": 0, "B": 6, "C": 2, "D": 0 },
+    "unfinished": { "A": 0, "B": 5, "C": 3, "D": 0 },
+    "complete12": { "A": 1, "B": 6, "C": 1, "D": 0 },
+    "unfinished12": { "A": 1, "B": 6, "C": 1, "D": 0 },
+    "overall": { "A": 0, "B": 6, "C": 2, "D": 0 }
   },
-  "against_v2": "The V2 closure run (shots/closure/ratings.json) graded A0 B2 C4 D3 on nine creatures with the compiler; this run grades A0 B5 C2 D0 on seven with the picture read directly. No D anywhere, and the two C's are the two creatures whose species lives in an outline (a dragon's wing, a lion's mane) that eight lights cannot hold — the same ceiling the eight-point study found by hand.",
-  "verdict": "GOOD ENOUGH TO MOVE FORWARD, with two things named. The simplest bridge works: gpt-image-2 draws a readable single creature every time (7/7 A), gpt-4.1 reads the actual picture into points that sit ON the creature (14/14 valid at eight and twelve; 12 of 14 on the first attempt, the other two on the second once the proxy's model_not_found is retried), and the existing Ether runtime completes, awakens and roams every one of the seven at eight lights with no production change. The figures are honest silhouettes rather than tangles — the extraction's lights are where the creature is, which is the thing no compiler managed. Named: (1) at eight lights a wing's outline and a mane cannot be held, so dragon and winged lion stay at C until the production budget question is decided; (2) the model lists missing connections SEPARATELY from connections (13 of 14 replies were repaired on the record — the model's gaps were added as connections and then left missing — and one of its gaps would have stranded a point and was kept as a connection instead; the falcon's two gaps at eight are the Lab's own), and the reveal defaults are sized in frame units and come out oversized — both are Lab-side, both are recorded, neither is a reason to keep the compiler."
+  "against_anatomical": "The anatomical run (the previous ratings, seven creatures) graded recognition A0 B5 C2 at eight. This run grades complete A0 B6 C2 at eight over the boat and the same seven — the SAME five creatures at B and the SAME two (baby dragon, winged lion) at C, for the same reason: eight lights cannot hold a wing's outline and a body. What changed is not the grade at eight, it is WHERE the lights are and what happens above eight: at twelve the boat is A and the dragon B, where the anatomical boat at twelve was two disconnected pieces. Measured over the three wordings of the tracing contract: v1 left six of sixteen figures in more than one piece and drew eight-light outlines as blobs; v2 made every figure one piece; v3 made the model use the budget (15/16 at the full count, 16/16 one piece) and cut invented gaps from 9/16 to 2/16.",
+  "verdict": "THE BOAT IS FIXED AT TWELVE AND RECOGNISABLE AT EIGHT; THE CREATURES ARE WHERE THEY WERE. The tracing contract does what it says: the lights sit on THIS picture's contour, the pose and the gesture survive, and at twelve the figure is the picture (the boat is an A — hull, deck, mast, sail and flag). At eight lights the grades did not move — B5 C2 across the seven creatures, exactly the anatomical run — because at eight the constraint is the budget, not the reading: the tracing spends its eight on the strongest silhouette and a winged creature's strongest silhouette is its wings. UNFINISHED is B5 C3 at eight: where the model chose the gap it is visible (the boat's sail foot, the whale's back, the fox's tail); where the Lab had to choose (mermaid) or the figure is a bare outline (dragon, lion) the gap is not a mystery. Not done here, by the brief: Reveal, roaming, the production budget, and any further contract change — the next thing that would move the eight-light grade is the production budget question, which is a product decision."
 }

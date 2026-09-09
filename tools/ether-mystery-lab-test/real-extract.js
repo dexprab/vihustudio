@@ -11,7 +11,7 @@
  * no fixture is ever substituted and nothing constructed is labelled a
  * model result.
  *
- * The seven prompts are the brief's own, verbatim. The image prompt is
+ * The boat and the seven prompts are the briefs' own, verbatim. The image prompt is
  * the Lab's own (LabImagine.imagePrompt — the request plus the fixed
  * presentation instruction: one creature, full body, readable silhouette,
  * no text, no labels, no borders, no interface). The extraction contract
@@ -23,7 +23,7 @@
  * to make — a streamed generation keeps bytes moving. Never runs inside
  * the suite.
  *
- *   node tools/ether-mystery-lab-test/real-extract.js              all seven
+ *   node tools/ether-mystery-lab-test/real-extract.js              the boat and the seven
  *   node tools/ether-mystery-lab-test/real-extract.js panda        a subset
  *   node tools/ether-mystery-lab-test/real-extract.js --extract    no image call: extract again from the saved pictures
  *   node tools/ether-mystery-lab-test/real-extract.js --revalidate no model call: re-read the saved replies
@@ -46,7 +46,11 @@ const MODEL = process.env.LAB_MODEL || 'gpt-4.1';
 const KEY = process.env.OPENAI_API_KEY || 'placeholder-the-proxy-injects-the-key';
 const BUDGETS = [8, 12];
 
+// THE BOAT FIRST — the product owner's own acceptance test, the one the
+// anatomical contract failed on: not a creature, so a "generic skeleton
+// from the subject's name" has nowhere to hide. Then the seven, verbatim.
 const PROMPTS = [
+  { id: 'boat', prompt: 'a boat made of stars in night sky' },
   { id: 'panda', prompt: 'A panda made of stars in a night sky' },
   { id: 'mermaid', prompt: 'A mermaid made of stars in a night sky' },
   { id: 'baby-dragon', prompt: 'A baby dragon made of stars in a night sky' },
@@ -129,7 +133,7 @@ function extractOnce(file, budget) {
 function line(x) {
   if (!x.ok) return 'FAILED ' + x.reason + (x.detail ? ' (' + x.detail + ')' : '') + (x.validator ? ' ' + x.validator.reasons.join(',') : '');
   const e = x.extraction;
-  return (x.attempts > 1 ? '(attempt ' + x.attempts + ') ' : '') + e.subject + ' · ' + e.points.length + ' pts · ' + e.joins.length + ' joins · ' + e.missing.length + ' missing · ' + e.revealFeatures.length + ' reveals · hint ' + (e.hint ? '“' + e.hint + '”' : 'none') + ' · identity ' + e.confidence.identity + (x.validator.repairs.length ? ' · tidied ' + x.validator.repairs.length : '');
+  return (x.attempts > 1 ? '(attempt ' + x.attempts + ') ' : '') + e.subject + ' · ' + e.points.length + ' pts · ' + e.joins.length + ' joins · ' + e.missing.length + ' missing · ' + e.revealFeatures.length + ' reveals · hint ' + (e.hint ? '“' + e.hint + '”' : 'none') + ' · roles ' + e.points.map((q) => q.role[0]).join('') + (e.pieces > 1 ? ' · ' + e.pieces + ' PIECES' : '') + (x.validator.repairs.length ? ' · tidied ' + x.validator.repairs.length : '');
 }
 
 function readPrev() { try { return JSON.parse(fs.readFileSync(path.join(OUT, 'real-extract.json'), 'utf8')); } catch (e) { return null; } }

@@ -8392,24 +8392,42 @@ async function sectionEX() {
   const m8 = Extract.extractMessages(8), m12 = Extract.extractMessages(12), mBad = Extract.extractMessages(99);
   const sys8 = m8.messages[0].content;
   ck(m8.ok && m8.budget === 8 && m12.budget === 12 && mBad.budget === 12 && /at most 8/.test(sys8) && /one or two/.test(sys8) && /two or three/.test(m12.messages[0].content), 'EX2  the contract carries the researcher\'s budget and asks for one or two gaps at eight, two or three above');
-  ck(/NORMALIZED coordinates/.test(sys8) && /x from 0 at the left to 1 at the right/.test(sys8) && /MINIMUM useful points/.test(sys8) && /1\. the overall silhouette, 2\. the major gesture/.test(sys8) && /Not at random/.test(sys8) && /never leave a point with no line/.test(sys8),
-    'EX2b it asks for normalized coordinates, the minimum useful points in the brief\'s priority order, and missing connections chosen for meaning, never at random');
-  ck(/REVEAL FEATURES/.test(sys8) && /diagnostic \| character \| accent \| magic/.test(sys8) && /Never a structural part/.test(sys8) && /HINT\./.test(sys8) && /without naming it/.test(sys8) && /"confidence"/.test(sys8) && /No SVG, no code, no markup/.test(sys8),
-    'EX2c it asks for reveal features apart from the points, a hint that names a nature, confidence, and no SVG, code or markup');
+  const CRITICAL = 'You are extracting a simplified visual tracing of the supplied image. Do not construct a generic anatomical skeleton from the subject\'s name. Do not assume what a typical example of this subject looks like. Use the actual visible silhouette and internal structure in the supplied image. If the source image contains an unusual pose, preserve that pose. If the subject is graceful or curved, preserve that gesture. Choose points where the visual contour changes direction or where an important visible structure begins, ends, or joins. The resulting connected points should still look like THIS IMAGE when the source image is hidden.';
+  ck(sys8.indexOf(CRITICAL) === 0 && /THE SOURCE IMAGE IS THE VISUAL TRUTH/.test(sys8) && /NORMALIZED coordinates/.test(sys8) && /x from 0 at the left to 1 at the right/.test(sys8),
+    'EX2b the contract OPENS with the brief\'s critical instruction verbatim — a visual tracing of THIS image, never a skeleton from its name — and asks for normalized coordinates');
+  ck(/SAMPLING budget/.test(sys8) && /STRONGEST silhouette points/.test(sys8) && /major contour structure/.test(m12.messages[0].content) && /secondary structure/.test(Extract.extractMessages(16).messages[0].content) && /Do NOT force anatomy/.test(sys8) && /"silhouette" \(on the outer outline\) \| "junction"/.test(sys8) && /"internal"/.test(sys8) && /"terminal"/.test(sys8) && /No anatomical name is required/.test(sys8),
+    'EX2b2 the budget is a sampling budget — strongest silhouette at eight, contour structure at twelve, secondary structure at sixteen — and a point carries one of four picture roles, never a required body part');
+  ck(/only VISIBLE relationships/.test(sys8) && /Do not invent geometry/.test(sys8) && /AN EXISTING VISUAL CONNECTION THAT WE CHOOSE TO WITHHOLD/.test(sys8) && /never a line that is not in it/.test(sys8) && /Not at random/.test(sys8) && /never leave a point with no line/.test(sys8),
+    'EX2b3 connections are visible relationships only, and a missing connection is an existing connection withheld — never invented');
+  ck(!/transitions \(neck, hips, shoulder\)|diagnostic features \(what makes|not a tracing|one short feature word|"feature":/.test(sys8), 'EX2b4 nothing of the anatomical priority list, the "not a tracing" line or the per-point feature word survives');
+  ck(/REVEAL FEATURES\. Optional and secondary/.test(sys8) && /Zero to five/.test(sys8) && /Leave the list empty/.test(sys8) && /diagnostic \| character \| accent \| magic/.test(sys8) && /Never a structural part/.test(sys8) && /HINT\./.test(sys8) && /without naming it/.test(sys8) && !/"confidence"/.test(sys8) && /No SVG, no code, no markup/.test(sys8),
+    'EX2c reveal features are optional and secondary and may be empty, a hint names a nature, no confidence is asked for, and no SVG, code or markup');
   ck(!/\b(card|stars|constellation|memor|username|creator|companion|email|session|token|orbit|circle)\b/i.test(sys8 + m8.messages[1].content), 'EX2d the contract carries no private word');
 
   // ---- EX3: the validator — repair on record, refuse what cannot be repaired ----
+  // the brief's own output shape: id, x, y, role — no feature name required
   const good = { subject: 'a being', points: [
-    { id: 'p1', x: 0.5, y: 0.1, feature: 'head' }, { id: 'p2', x: 0.5, y: 0.3, feature: 'neck' }, { id: 'p3', x: 0.5, y: 0.6, feature: 'body' },
-    { id: 'p4', x: 0.2, y: 0.25, feature: 'left tip' }, { id: 'p5', x: 0.8, y: 0.25, feature: 'right tip' }, { id: 'p6', x: 0.35, y: 0.9, feature: 'foot' }, { id: 'p7', x: 0.65, y: 0.9, feature: 'foot' }, { id: 'p8', x: 0.8, y: 0.7, feature: 'tail tip' } ],
+    { id: 'p1', x: 0.5, y: 0.1, role: 'terminal' }, { id: 'p2', x: 0.5, y: 0.3, role: 'junction' }, { id: 'p3', x: 0.5, y: 0.6, role: 'junction' },
+    { id: 'p4', x: 0.2, y: 0.25, role: 'terminal' }, { id: 'p5', x: 0.8, y: 0.25, role: 'terminal' }, { id: 'p6', x: 0.35, y: 0.9, role: 'silhouette' }, { id: 'p7', x: 0.65, y: 0.9, role: 'silhouette' }, { id: 'p8', x: 0.8, y: 0.7, role: 'terminal' } ],
     connections: [{ a: 'p1', b: 'p2' }, { a: 'p2', b: 'p3' }, { a: 'p2', b: 'p4' }, { a: 'p2', b: 'p5' }, { a: 'p4', b: 'p3' }, { a: 'p5', b: 'p3' }, { a: 'p3', b: 'p6' }, { a: 'p3', b: 'p7' }, { a: 'p3', b: 'p8' }, { a: 'p6', b: 'p7' }],
     missingConnections: [{ a: 'p2', b: 'p4', reason: 'a root' }, { a: 'p3', b: 'p6', reason: 'a leg' }],
     revealFeatures: [{ name: 'Crown', reason: 'identity', type: 'diagnostic', near: ['p1'] }, { name: 'Eye glow', reason: 'accent', type: 'magic', near: ['p1', 'p2'] }],
-    hint: 'A quiet giant is waiting in the deep', confidence: { overall: 0.8, identity: 0.7, structure: 0.9 } };
+    hint: 'A quiet giant is waiting in the deep' };
   const v = Extract.validateExtraction(JSON.parse(JSON.stringify(good)), 8);
-  ck(v.ok && v.extraction.points.length === 8 && v.extraction.joins.length === 10 && v.extraction.missing.length === 2 && v.extraction.revealFeatures.length === 2 && v.extraction.hint === 'A quiet giant is waiting in the deep…' && v.extraction.confidence.identity === 0.7 && v.repairs.length === 0,
-    'EX3  a well-formed extraction is accepted whole: points, connections, two gaps, two reveals, the hint with its ellipsis, the confidence', JSON.stringify(v.reasons) + ' ' + JSON.stringify(v.repairs));
-  const tooMany = Extract.validateExtraction(Object.assign({}, good, { points: good.points.concat([{ id: 'p9', x: 0.1, y: 0.1, feature: 'extra' }, { id: 'p10', x: 0.9, y: 0.9, feature: 'extra' }]) }), 8);
+  ck(v.ok && v.extraction.points.length === 8 && v.extraction.joins.length === 10 && v.extraction.missing.length === 2 && v.extraction.revealFeatures.length === 2 && v.extraction.hint === 'A quiet giant is waiting in the deep…' && v.extraction.points.map((q) => q.role).join() === 'terminal,junction,junction,terminal,terminal,silhouette,silhouette,terminal' && v.extraction.points[0].feature === 'TERMINAL' && v.repairs.length === 0,
+    'EX3  a well-formed extraction is accepted whole: points with their picture roles, connections, two gaps, two reveals, the hint with its ellipsis — nothing to repair', JSON.stringify(v.reasons) + ' ' + JSON.stringify(v.repairs));
+  const noRole = Extract.validateExtraction(Object.assign({}, good, { points: good.points.map((p, i) => i === 0 ? { id: p.id, x: p.x, y: p.y } : i === 1 ? Object.assign({}, p, { role: 'neck' }) : i === 2 ? Object.assign({}, p, { feature: 'body' }) : p) }), 8);
+  ck(noRole.ok && noRole.extraction.points[0].role === 'silhouette' && noRole.extraction.points[1].role === 'silhouette' && noRole.repairs.filter((r) => /→ silhouette/.test(r)).length === 2 && noRole.extraction.points[2].feature === 'BODY' && noRole.extraction.points[2].role === 'junction',
+    'EX3a a point with no role, or a body part where a role should be, is read as silhouette on record — never refused for a word; an optional label is only a display name', JSON.stringify(noRole.repairs));
+  const noReveal = Extract.validateExtraction(Object.assign({}, good, { revealFeatures: [] }), 8);
+  const noRevealKey = Extract.validateExtraction((() => { const g = Object.assign({}, good); delete g.revealFeatures; return g; })(), 8);
+  ck(noReveal.ok && noReveal.extraction.revealFeatures.length === 0 && noRevealKey.ok && noRevealKey.extraction.revealFeatures.length === 0 && noReveal.repairs.length === 0, 'EX3a2 an empty reveal list, or none at all, is a complete answer — reveal is secondary');
+  const twoPieces = Extract.validateExtraction(Object.assign({}, good, { connections: good.connections.filter((c) => !(c.a === 'p2' && c.b === 'p3') && !(c.a === 'p4' && c.b === 'p3') && !(c.a === 'p5' && c.b === 'p3')), missingConnections: [] }), 8);
+  ck(v.extraction.pieces === 1 && twoPieces.ok && twoPieces.extraction.pieces === 2 && twoPieces.extraction.joins.length === 7 && twoPieces.repairs.some((r) => /figure is 2 pieces — not joined by the Lab/.test(r)) && Extract.countPieces(4, [{ a: 0, b: 1 }]) === 3,
+    'EX3a3 a figure that came back in pieces is counted and written down, and never stitched — a line the picture did not draw is invented geometry', JSON.stringify(twoPieces.repairs));
+  ck(/ONE connected piece/.test(sys8) && /LINE DRAWING of this picture, not a single outline/.test(sys8) && /A THIN LINE in the picture/.test(sys8) && /is NOT structure/.test(sys8) && /Exactly 8, or as close to 8/.test(sys8) && /must ALSO appear in "connections"/.test(sys8),
+    'EX3a4 the three measured corrections are in the contract: one piece and a line drawing (v2), the budget used and a rope never a point (v3), a withheld pair listed in both places (v3)');
+  const tooMany = Extract.validateExtraction(Object.assign({}, good, { points: good.points.concat([{ id: 'p9', x: 0.1, y: 0.1, role: 'internal' }, { id: 'p10', x: 0.9, y: 0.9, role: 'internal' }]) }), 8);
   ck(tooMany.ok && tooMany.extraction.points.length === 8 && tooMany.repairs.some((r) => /beyond the budget of 8/.test(r)), 'EX3b too many points: cut to the budget, on record');
   const badCoord = Extract.validateExtraction(Object.assign({}, good, { points: good.points.map((p, i) => i === 2 ? Object.assign({}, p, { x: 'left' }) : p) }), 8);
   const offPic = Extract.validateExtraction(Object.assign({}, good, { points: good.points.map((p, i) => i === 2 ? Object.assign({}, p, { x: 3.2 }) : p) }), 8);
@@ -8426,8 +8444,16 @@ async function sectionEX() {
   const allStrand = Extract.validateExtraction(Object.assign({}, good, { missingConnections: [{ a: 'p3', b: 'p8', reason: 'x' }] }), 8);
   ck(allStrand.ok && allStrand.extraction.missing.length >= 1 && allStrand.extraction.gaps.every((g) => /chosen by the Lab/.test(g.reason)) && allStrand.repairs.some((r) => /chosen by the Lab/.test(r)),
     'EX3g when none of the model\'s gaps can be left out, the Lab chooses the widest safe ones and says so — a figure always has a mystery');
+  // TURNED ROUND (the trace-the-image sprint): it read "a missing connection
+  // the model forgot to list is ADDED and left missing" — which let the
+  // model invent a line through the back door. A gap is a WITHHELD
+  // connection of the complete figure, never an invented one.
   const notListed = Extract.validateExtraction(Object.assign({}, good, { missingConnections: [{ a: 'p4', b: 'p5', reason: 'across' }] }), 8);
-  ck(notListed.ok && notListed.extraction.joins.length === 11 && notListed.extraction.missing.length === 1 && notListed.repairs.some((r) => /was not among the connections/.test(r)), 'EX3h a missing connection the model forgot to list as a connection is added and left missing, on record');
+  ck(notListed.ok && notListed.extraction.joins.length === 10 && notListed.repairs.some((r) => /not a connection of the complete figure — dropped/.test(r)) && !notListed.repairs.some((r) => /added as one/.test(r)) && notListed.extraction.missing.length >= 1 && notListed.extraction.gaps.every((g) => /chosen by the Lab/.test(g.reason)),
+    'EX3h a missing connection that is not a connection of the complete figure is DROPPED on record, never added — and the Lab then withholds an existing one so the figure still has a gap', JSON.stringify(notListed.repairs));
+  const mixed = Extract.validateExtraction(Object.assign({}, good, { missingConnections: [{ a: 'p4', b: 'p5', reason: 'invented' }, { a: 'p2', b: 'p4', reason: 'real' }] }), 8);
+  ck(mixed.ok && mixed.extraction.joins.length === 10 && mixed.extraction.missing.length === 1 && mixed.extraction.gaps[0].reason === 'real' && mixed.extraction.joins[mixed.extraction.missing[0]].a === 1 && mixed.extraction.joins[mixed.extraction.missing[0]].b === 3,
+    'EX3h2 an invented gap beside a real one: the invented one is dropped and the real one is the figure\'s only gap — the model\'s own choice, not the Lab\'s');
   const fourGaps = Extract.validateExtraction(Object.assign({}, good, { missingConnections: [{ a: 'p2', b: 'p4' }, { a: 'p3', b: 'p6' }, { a: 'p2', b: 'p5' }, { a: 'p3', b: 'p7' }] }), 8);
   ck(fourGaps.ok && fourGaps.extraction.missing.length <= 3 && fourGaps.extraction.joins.length - fourGaps.extraction.missing.length >= 2, 'EX3i at most three gaps, and at least two connections always remain');
   const badReveal = Extract.validateExtraction(Object.assign({}, good, { revealFeatures: [{ name: 'Fog', reason: 'x', type: 'weather', near: ['p42'] }, { name: 'Ridge', reason: 'y', type: 'texture', near: ['p3', 'p3', 'nope'] }, { reason: 'no name', type: 'magic', near: ['p1'] }] }), 8);
@@ -8449,25 +8475,36 @@ async function sectionEX() {
   // ---- EX4: the committed real run — labelled, re-validated, drawn, rated ----
   const runPath = path.join(shotDir, 'real-extract.json');
   const run = fs.existsSync(runPath) ? JSON.parse(fs.readFileSync(runPath, 'utf8')) : null;
-  ck(!!run && run.imageModel === 'gpt-image-2' && run.model === 'gpt-4.1' && run.results.length === 7, 'EX4  the real run is committed: seven prompts, gpt-image-2 and gpt-4.1', run ? run.results.length + ' results' : 'missing');
+  ck(!!run && run.imageModel === 'gpt-image-2' && run.model === 'gpt-4.1' && run.results.length === 8, 'EX4  the real run is committed: the boat and the seven creatures, gpt-image-2 and gpt-4.1', run ? run.results.length + ' results' : 'missing');
   if (run) {
     const prompts = run.results.map((r) => r.prompt);
-    ck(prompts[0] === 'A panda made of stars in a night sky' && prompts[6] === 'An imaginary creature that looks like a fox, made of stars in a night sky', 'EX4b the prompts are the brief\'s own, verbatim, the invented creature last');
+    ck(prompts[0] === 'a boat made of stars in night sky' && prompts[1] === 'A panda made of stars in a night sky' && prompts[7] === 'An imaginary creature that looks like a fox, made of stars in a night sky', 'EX4b the prompts are the briefs\' own, verbatim — the boat first, the invented creature last');
     const withImage = run.results.filter((r) => r.image && r.image.ok);
     ck(withImage.length >= 6 && withImage.every((r) => fs.existsSync(path.join(shotDir, r.image.file)) && /REAL MODEL/.test(r.labels.image)) && run.results.every((r) => r.labels && (r.image.ok ? /REAL MODEL/.test(r.labels.image) : /FAILED/.test(r.labels.image))),
-      'EX4c every picture that exists is a real gpt-image-2 picture on disk, labelled so; a failed one says FAILED and substitutes nothing', withImage.length + '/7');
+      'EX4c every picture that exists is a real gpt-image-2 picture on disk, labelled so; a failed one says FAILED and substitutes nothing', withImage.length + '/8');
     const ex8 = run.results.filter((r) => r.extractions && r.extractions[8] && r.extractions[8].ok);
-    ck(ex8.length >= 6 && ex8.every((r) => { const v2 = Extract.parseExtraction(r.extractions[8].raw, 8); return v2.ok && JSON.stringify(v2.extraction) === JSON.stringify(r.extractions[8].extraction); }),
-      'EX4d every committed raw reply at eight re-validates into exactly the committed extraction', ex8.length + '/7');
-    ck(ex8.every((r) => r.extractions[8].extraction.points.length <= 8 && r.extractions[8].extraction.missing.length >= 1 && r.extractions[8].extraction.revealFeatures.length >= 1), 'EX4e at eight every extraction is within budget, has a gap, and offers a reveal');
+    ck(ex8.length >= 7 && ex8.every((r) => { const v2 = Extract.parseExtraction(r.extractions[8].raw, 8); return v2.ok && JSON.stringify(v2.extraction) === JSON.stringify(r.extractions[8].extraction); }),
+      'EX4d every committed raw reply at eight re-validates into exactly the committed extraction', ex8.length + '/8');
+    // TURNED ROUND: it required every extraction to offer a reveal; reveal is
+    // secondary now and may be empty. What is required instead is the
+    // tracing contract's own shape — a picture role on every point and no
+    // invented gap.
+    const allEx = run.results.map((r) => r.extractions).filter(Boolean).reduce((acc, x) => acc.concat(Object.keys(x).map((b) => x[b]).filter((y) => y.ok)), []);
+    ck(ex8.every((r) => r.extractions[8].extraction.points.length <= 8 && r.extractions[8].extraction.missing.length >= 1) && allEx.length >= 14 && allEx.every((x) => x.extraction.points.every((q) => Extract.ROLES.indexOf(q.role) !== -1) && !x.validator.repairs.some((rp) => /added as one/.test(rp))),
+      'EX4e at eight every extraction is within budget and has a gap; every point of every committed extraction carries one of the four picture roles, and no gap was ever added as a connection', allEx.length + ' extractions');
+    const boat = run.results[0];
+    ck(boat && boat.id === 'boat' && boat.extractions && boat.extractions[8] && boat.extractions[8].ok && boat.extractions[12] && boat.extractions[12].ok, 'EX4e2 the boat — the acceptance test the anatomical contract failed — extracted at eight and at twelve');
+    const before = fs.existsSync(path.join(shotDir, 'boat', 'before.json')) ? JSON.parse(fs.readFileSync(path.join(shotDir, 'boat', 'before.json'), 'utf8')) : null;
+    ck(!!before && before.contract === 'anatomical (labExtract.js as of 0d0db615)' && before.extractions && before.extractions[8] && before.extractions[8].ok && fs.existsSync(path.join(shotDir, 'boat', 'before-judge-8.png')) && fs.existsSync(path.join(shotDir, 'boat', 'judge-8.png')),
+      'EX4e3 the boat BEFORE — the same picture read by the old anatomical contract — is committed beside the after, so the comparison is two figures of one picture and not a memory');
     const walksPath = path.join(shotDir, 'walks.json');
     const walks = fs.existsSync(walksPath) ? JSON.parse(fs.readFileSync(walksPath, 'utf8')).walks : null;
     const walked = walks ? Object.keys(walks).filter((k) => walks[k].b8 && walks[k].b8.walk && walks[k].b8.walk.steps.length && walks[k].b8.walk.steps[walks[k].b8.walk.steps.length - 1] === 0 && walks[k].b8.roam && walks[k].b8.roam.alive === 1 && walks[k].b8.roam.travelled > 30) : [];
-    ck(walks && walked.length >= 6, 'EX4f the committed walks show every extracted creature completed in the real Ether at eight, alive and roaming', walks ? walked.length + '/' + Object.keys(walks).length : 'missing');
+    ck(walks && walked.length >= 7, 'EX4f the committed walks show every extracted figure completed in the real Ether at eight, alive and roaming', walks ? walked.length + '/' + Object.keys(walks).length : 'missing');
     const ratingsPath = path.join(shotDir, 'ratings.json');
     const ratings = fs.existsSync(ratingsPath) ? JSON.parse(fs.readFileSync(ratingsPath, 'utf8')) : null;
-    ck(!!ratings && ratings.results.length === 7 && ratings.results.every((x) => ['image', 'recognition', 'unfinished', 'reveal', 'alive', 'overall'].every((k) => /^[ABCD]$/.test(x[k]))) && typeof ratings.verdict === 'string',
-      'EX4g the ratings are committed — image quality, Ether recognition, unfinished mystery, reveal quality, come alive, overall, each A–D — with the verdict');
+    ck(!!ratings && ratings.results.length === 8 && ratings.results[0].id === 'boat' && ratings.results.every((x) => ['image', 'complete', 'unfinished', 'overall'].every((k) => /^[ABCD]$/.test(x[k])) && typeof x.sees === 'string') && typeof ratings.verdict === 'string' && ratings.boat_before && /^[ABCD]$/.test(ratings.boat_before.complete),
+      'EX4g the ratings are committed — the picture, COMPLETE read with the source hidden, UNFINISHED, overall, each A–D, the boat first with its BEFORE grade — with the verdict');
   }
 
   // ---- the browser half ----
@@ -8525,10 +8562,10 @@ async function sectionEX() {
     await page.click('[data-extract-go]');
     await page.waitForFunction(() => document.querySelector('[data-extract-section]').getAttribute('data-extract-outcome') === 'generated', null, { timeout: 8000 });
     const gen = await S(() => ({ st: window.ShapeLab.state(), status: document.querySelector('[data-extract-status]').textContent, panel: document.querySelector('[data-extract-panel]').innerText, origin: window.ShapeLab.origin(), meta: window.LabExtract.meta(), play: window.ShapeLab.playable(), sugg: window.LabExtract.suggestions(), ui: document.querySelector('[data-reveal-extracted]').innerText, ls: JSON.stringify(localStorage), ss: JSON.stringify(sessionStorage), exp: window.ShapeLab.exportJSON(), unf: document.querySelector('[data-canvas-unfinished]').getBoundingClientRect().width }));
-    ck(gen.st.points.length === 8 && gen.st.joins.length === 10 && gen.st.missing.length === 2 && gen.st.roles[0] === 'HEAD' && gen.st.hint === 'A quiet giant is waiting in the deep…' && gen.origin === 'generated' && gen.meta.source === 'generated' && gen.meta.model === 'gpt-4.1' && gen.play,
-      'EX6  a model extraction lands as one GENERATED figure: its points with their features, its connections, its gaps marked missing, its hint written — and it is playable', JSON.stringify({ n: gen.st.points.length, j: gen.st.joins.length, m: gen.st.missing, h: gen.st.hint, role0: gen.st.roles && gen.st.roles[0], origin: gen.origin, meta: gen.meta, play: gen.play }));
-    ck(/ETHER EXTRACTION \(GPT-4\.1\)/i.test(gen.panel) && /MISSING CONNECTIONS/i.test(gen.panel) && /a root/.test(gen.panel) && /REVEAL SUGGESTIONS/i.test(gen.panel) && /CONFIDENCE/i.test(gen.panel) && /identity 0\.7/.test(gen.panel),
-      'EX6b the extraction is shown as words a researcher can argue with — the points, why each gap, the reveals, the confidence — and labelled with the model');
+    ck(gen.st.points.length === 8 && gen.st.joins.length === 10 && gen.st.missing.length === 2 && gen.st.roles[0] === 'TERMINAL' && gen.st.roles[5] === 'SILHOUETTE' && gen.st.hint === 'A quiet giant is waiting in the deep…' && gen.origin === 'generated' && gen.meta.source === 'generated' && gen.meta.model === 'gpt-4.1' && gen.play,
+      'EX6  a model extraction lands as one GENERATED figure: its points with their picture roles, its connections, its gaps marked missing, its hint written — and it is playable', JSON.stringify({ n: gen.st.points.length, j: gen.st.joins.length, m: gen.st.missing, h: gen.st.hint, role0: gen.st.roles && gen.st.roles[0], origin: gen.origin, meta: gen.meta, play: gen.play }));
+    ck(/ETHER EXTRACTION \(GPT-4\.1\)/i.test(gen.panel) && /MISSING CONNECTIONS/i.test(gen.panel) && /a root/.test(gen.panel) && /REVEAL SUGGESTIONS/i.test(gen.panel) && /READ AS/i.test(gen.panel) && /a tracing of the picture/.test(gen.panel) && /0 terminal · 1 junction/.test(gen.panel) && !/CONFIDENCE/i.test(gen.panel),
+      'EX6b the extraction is shown as words a researcher can argue with — the points with their picture roles, why each gap, the reveals, that it is a tracing — and labelled with the model; no confidence, because none is asked for');
     ck(gen.sugg.length === 2 && gen.sugg[0].name === 'CROWN' && gen.sugg[0].kind === 'spike' && gen.sugg[1].kind === 'glow' && /SUGGESTED REVEALS/i.test(gen.ui) && /☐ CROWN/.test(gen.ui) && /Accept/.test(gen.ui) && /Reject/.test(gen.ui),
       'EX6c the reveal suggestions are in step 4 as ☐ rows with their reason, a starting kind by type, Accept and Reject — nothing auto-approved');
     const sentX = bodies.filter((b) => b.action === 'understand' && /ETHER EXTRACTION/.test(String(b.messages[0].content))).pop();

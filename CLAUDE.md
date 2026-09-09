@@ -9910,6 +9910,51 @@ leads somewhere.
   naming the field, before anything leaves the browser. **A refusal the
   Lab can make itself is never left to the provider to make badly.**
   Section `MM` (12), the guard proved by reverting.
+- **TRACE THE IMAGE, DON'T INVENT A SKELETON** (the extraction contract,
+  rewritten — Lab only, zero production files changed). The product
+  owner's own acceptance test failed on a boat: the completed figure did
+  not look like the source and the unfinished one invited nothing. Read
+  off the boat, the fault was the CONTRACT: it asked for *"a simplified
+  interpretation, not a tracing"* with points prioritised by anatomy and
+  a feature word per point, so the model reasoned *boat = hull + mast +
+  sail* from the subject's NAME and placed lights where those parts ought
+  to be — a glyph of any boat, with its "hull bottom" inside the hull.
+  **The source image is the visual truth now.** The contract opens with
+  the brief's critical instruction verbatim and asks for a visual TRACING
+  of THIS picture: points where the visible contour turns or a visible
+  structure begins, ends or joins, carrying one of four PICTURE roles
+  (silhouette · junction · internal · terminal) and no body-part name;
+  the budget as a SAMPLING budget over the visible shape; connections as
+  visible relationships only, one connected piece, no invented geometry;
+  and a missing connection as **an existing visual connection we choose
+  to withhold** — the validator DROPS an unlisted gap on record where it
+  used to ADD it (which let the model invent a line through the back
+  door), counts the figure's pieces and never stitches them.
+- **THREE WORDINGS, EACH MEASURED, ALL COMMITTED.** v1 put the lights on
+  the picture and joined them wrong (six of sixteen figures in pieces,
+  eight-light outlines as blobs, the boat's lights on its ropes); v2 —
+  *a line drawing, not an outline; one piece; a rope earns no point* —
+  made 16/16 one piece and under-spent the budget; v3 — *use the budget;
+  a thin line is not structure; a withheld pair must also be listed as a
+  connection* — 15/16 at the full count, invented gaps 9/16 → 2/16. The
+  boat: **A at twelve** (hull, deck, mast, sail, flag — where the
+  anatomical contract gave two disconnected pieces), **B at eight**; the
+  seven creatures **B5 C2 at eight, exactly the anatomical run's grades,
+  the same two at C** (baby dragon, winged lion — eight lights cannot
+  hold a wing's outline and a body), and better at twelve. **Stopped
+  there, per the brief**: no Reveal, no roaming, no further contract
+  change, no architecture proposed; what would move the eight-light grade
+  is the production budget question, which is a product decision.
+- **A HARNESS THAT SAMPLES ON A WALL CLOCK MEASURES THE HOLD, NOT THE
+  ROAM.** A background popup's frame clock runs slow under load, so the
+  figure's 4.4 s hold after completion outlasted the renderer's fixed
+  waits and sixteen samples read 1–7 px of "roaming". It waits for the
+  wanderer and samples until it has plainly travelled now.
+- `tools/ether-mystery-lab/labExtract.js` ·
+  `tools/ether-mystery-lab-test/real-extract.js` · `render-extract.js` ·
+  `shots/extract/` (the boat's before beside its after, the three
+  wordings' runs) · `docs/ETHER_MYSTERY_LAB.md` → *Trace the image, don't
+  invent a skeleton* · section `EX`
 - Out of scope and not implemented: creature encounters as a reward
   system, creature dialogue, a Companion in the Ether, per-Traveller
   encounter history, more activity rows (story hunt, missing

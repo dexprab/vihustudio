@@ -3,6 +3,10 @@
  * real-extract.json in the REAL Shape Lab and walks the REAL Ether
  * preview, into shots/extract/<id>/:
  *
+ *   before-author-N.png · before-judge-N.png
+ *                                   where a before.json sits beside the
+ *                                   picture: the SAME picture read by the
+ *                                   previous contract, drawn the same way
  *   author-8.png · judge-8.png      AUTHOR (over the source) and JUDGE
  *                                   (unfinished) at the production budget
  *   author-12.png · judge-12.png    the same at twelve
@@ -58,11 +62,24 @@ async function walkEther(ctx, page, dir, withReveal) {
   const reveal = await pop.evaluate(() => window.LabPreview.report().happened.reveal);
   await pop.waitForTimeout(4200);
   await pop.screenshot({ path: path.join(dir, 'ether-4-alive.jpg'), type: 'jpeg', quality: 82 });
+  // ROAMING IS MEASURED FROM THE MOMENT THE FIGURE SETS OFF, not from a
+  // fixed wall-clock offset: a background popup's frame clock runs slow
+  // under load, so the 4.4s hold after completion can take longer than the
+  // waits above, and a fixed sixteen samples then measured the hold (or
+  // nothing) rather than the roam. Wait for the wanderer to exist, then
+  // sample until it has plainly travelled or a bound passes.
   const roam = await pop.evaluate(async () => {
-    const p = [];
-    for (let s = 0; s < 16; s++) { const w = window.LabPreview.alive()[0]; if (w) p.push([w.x, w.y]); await new Promise((r) => setTimeout(r, 300)); }
-    let d = 0; for (let s = 1; s < p.length; s++) d += Math.hypot(p[s][0] - p[s - 1][0], p[s][1] - p[s - 1][1]);
-    return { alive: window.LabPreview.alive().length, travelled: Math.round(d), samples: p.length };
+    const t0 = Date.now();
+    while (!window.LabPreview.alive()[0] && Date.now() - t0 < 20000) await new Promise((r) => setTimeout(r, 200));
+    const p = []; let d = 0;
+    const t1 = Date.now();
+    while (Date.now() - t1 < 25000) {
+      const w = window.LabPreview.alive()[0]; if (w) p.push([w.x, w.y]);
+      d = 0; for (let s = 1; s < p.length; s++) d += Math.hypot(p[s][0] - p[s - 1][0], p[s][1] - p[s - 1][1]);
+      if (d > 60 && p.length >= 6) break;
+      await new Promise((r) => setTimeout(r, 300));
+    }
+    return { alive: window.LabPreview.alive().length, travelled: Math.round(d), samples: p.length, waitedMs: t1 - t0, sampledMs: Date.now() - t1 };
   });
   await pop.screenshot({ path: path.join(dir, 'ether-5-roam.jpg'), type: 'jpeg', quality: 82 });
   await pop.close();
@@ -86,6 +103,24 @@ async function walkEther(ctx, page, dir, withReveal) {
       await page.setInputFiles('[data-imagine-file]', path.join(OUT, r.image.file));
       await page.waitForFunction(() => window.LabImagine.state().page === 'understood', null, { timeout: 20000 });
       walks[r.id] = {};
+      // BEFORE: the same picture read by the previous (anatomical) contract,
+      // where a before.json was committed beside it — drawn exactly as the
+      // after is, so the comparison is two figures of one picture
+      const beforePath = path.join(dir, 'before.json');
+      if (fs.existsSync(beforePath)) {
+        const bf = JSON.parse(fs.readFileSync(beforePath, 'utf8'));
+        walks[r.id].before = {};
+        for (const b of [12, 8]) {
+          const x = bf.extractions[b];
+          if (!x || !x.ok) { walks[r.id].before['b' + b] = { failed: x ? x.reason : 'missing' }; continue; }
+          await page.evaluate(([e, budget]) => { window.ShapeLab.reset(); window.ShapeLab.setBudget(budget); window.LabExtract.load(e, 'extraction'); window.LabTranslate.setUnderlay(true); }, [x.extraction, b]);
+          await page.waitForTimeout(300);
+          await shot(page, '[data-canvas-complete]', path.join(dir, 'before-author-' + b + '.png'));
+          await shot(page, '[data-canvas-unfinished]', path.join(dir, 'before-judge-' + b + '.png'));
+          const st = await page.evaluate(() => ({ n: window.ShapeLab.state().points.length, j: window.ShapeLab.state().joins.length, missing: window.ShapeLab.state().missing, metrics: window.ShapeLab.metrics() }));
+          walks[r.id].before['b' + b] = { n: st.n, j: st.j, missing: st.missing, components: st.metrics.components, crossings: st.metrics.crossings, contract: bf.contract };
+        }
+      }
       for (const b of [12, 8]) {
         const x = r.extractions[b];
         if (!x || !x.ok) { walks[r.id]['b' + b] = { failed: x ? x.reason : 'missing' }; continue; }

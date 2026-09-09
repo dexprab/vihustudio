@@ -1,0 +1,2832 @@
+{
+ "run": "2026-09-09T03:50:03.427Z",
+ "imageModel": "gpt-image-2",
+ "model": "gpt-4.1",
+ "note": "Every stage is REAL MODEL; a failed stage says FAILED and nothing is substituted.",
+ "results": [
+  {
+   "id": "boat",
+   "prompt": "a boat made of stars in night sky",
+   "labels": {
+    "image": "REAL MODEL (gpt-image-2, streamed)",
+    "extraction": "REAL MODEL (gpt-4.1, with the generated picture)"
+   },
+   "image": {
+    "ok": true,
+    "file": "boat/source.png",
+    "model": "gpt-image-2",
+    "ms": 20895,
+    "events": 2,
+    "imagePrompt": "a boat made of stars in night sky.\nPresentation: one single creature, full body, the whole subject visible and centred, with a clear readable silhouette; expressive and characterful; on a plain uncluttered background. No text, no letters, no labels, no watermark, no interface, no borders, no diagram, and no second creature competing for attention. A finished, visually coherent piece of artwork suitable for a later study of its shape.",
+    "bytes": 1525028
+   },
+   "extractions": {
+    "8": {
+     "budget": 8,
+     "model": "gpt-4.1",
+     "ms": 4081,
+     "usage": {
+      "prompt": 1943,
+      "completion": 434
+     },
+     "raw": "{\n  \"subject\": \"a sparkling constellation ship with sail\",\n  \"points\": [\n    { \"id\": \"p1\", \"x\": 0.13, \"y\": 0.53, \"role\": \"silhouette\" },\n    { \"id\": \"p2\", \"x\": 0.50, \"y\": 0.80, \"role\": \"junction\" },\n    { \"id\": \"p3\", \"x\": 0.87, \"y\": 0.54, \"role\": \"silhouette\" },\n    { \"id\": \"p4\", \"x\": 0.51, \"y\": 0.16, \"role\": \"junction\" },\n    { \"id\": \"p5\", \"x\": 0.75, \"y\": 0.44, \"role\": \"internal\" },\n    { \"id\": \"p6\", \"x\": 0.27, \"y\": 0.44, \"role\": \"internal\" }\n  ],\n  \"connections\": [\n    { \"a\": \"p1\", \"b\": \"p2\" },\n    { \"a\": \"p2\", \"b\": \"p3\" },\n    { \"a\": \"p2\", \"b\": \"p4\" },\n    { \"a\": \"p4\", \"b\": \"p5\" },\n    { \"a\": \"p2\", \"b\": \"p6\" },\n    { \"a\": \"p6\", \"b\": \"p4\" }\n  ],\n  \"missingConnections\": [\n    { \"a\": \"p3\", \"b\": \"p4\", \"reason\": \"Withholding the mast-to-bow sail edge leaves the sail incomplete but clearly suggested.\" }\n  ],\n  \"revealFeatures\": [\n    { \"name\": \"Glittering flag\", \"reason\": \"A sparkling flag is visible at the top of the mast\", \"type\": \"accent\", \"near\": [\"p4\"] }\n  ],\n  \"hint\": \"A shimmering voyager sails among the stars…\"\n}",
+     "validator": {
+      "ok": true,
+      "reasons": [],
+      "repairs": [
+       "missingConnections[0] is not a connection of the complete figure — dropped (a gap is a withheld connection, never an invented one)",
+       "missing connections chosen by the Lab (the model's would each strand a point)"
+      ]
+     },
+     "extraction": {
+      "subject": "a sparkling constellation ship with sail",
+      "budget": 8,
+      "points": [
+       {
+        "id": "p1",
+        "x": 0.13,
+        "y": 0.53,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p2",
+        "x": 0.5,
+        "y": 0.8,
+        "role": "junction",
+        "feature": "JUNCTION"
+       },
+       {
+        "id": "p3",
+        "x": 0.87,
+        "y": 0.54,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p4",
+        "x": 0.51,
+        "y": 0.16,
+        "role": "junction",
+        "feature": "JUNCTION"
+       },
+       {
+        "id": "p5",
+        "x": 0.75,
+        "y": 0.44,
+        "role": "internal",
+        "feature": "INTERNAL"
+       },
+       {
+        "id": "p6",
+        "x": 0.27,
+        "y": 0.44,
+        "role": "internal",
+        "feature": "INTERNAL"
+       }
+      ],
+      "joins": [
+       {
+        "a": 0,
+        "b": 1
+       },
+       {
+        "a": 1,
+        "b": 2
+       },
+       {
+        "a": 1,
+        "b": 3
+       },
+       {
+        "a": 3,
+        "b": 4
+       },
+       {
+        "a": 1,
+        "b": 5
+       },
+       {
+        "a": 3,
+        "b": 5
+       }
+      ],
+      "missing": [
+       2
+      ],
+      "gaps": [
+       {
+        "join": 2,
+        "reason": "chosen by the Lab — none of the model's could be left out without stranding a point"
+       }
+      ],
+      "pieces": 1,
+      "revealFeatures": [
+       {
+        "name": "GLITTERING FLAG",
+        "reason": "A sparkling flag is visible at the top of the mast",
+        "type": "accent",
+        "near": [
+         3
+        ],
+        "kind": "lines"
+       }
+      ],
+      "hint": "A shimmering voyager sails among the stars…",
+      "confidence": {
+       "overall": null,
+       "identity": null,
+       "structure": null
+      }
+     },
+     "ok": true,
+     "attempts": 1
+    },
+    "12": {
+     "budget": 12,
+     "model": "gpt-4.1",
+     "ms": 4030,
+     "usage": {
+      "prompt": 1938,
+      "completion": 552
+     },
+     "raw": "{\n  \"subject\": \"starry sailboat constellation\",\n  \"points\": [\n    { \"id\": \"p1\", \"x\": 0.11, \"y\": 0.53, \"role\": \"terminal\" },\n    { \"id\": \"p2\", \"x\": 0.50, \"y\": 0.80, \"role\": \"junction\" },\n    { \"id\": \"p3\", \"x\": 0.89, \"y\": 0.54, \"role\": \"terminal\" },\n    { \"id\": \"p4\", \"x\": 0.50, \"y\": 0.13, \"role\": \"junction\" },\n    { \"id\": \"p5\", \"x\": 0.73, \"y\": 0.44, \"role\": \"silhouette\" },\n    { \"id\": \"p6\", \"x\": 0.27, \"y\": 0.44, \"role\": \"silhouette\" },\n    { \"id\": \"p7\", \"x\": 0.62, \"y\": 0.21, \"role\": \"terminal\" }\n  ],\n  \"connections\": [\n    { \"a\": \"p1\", \"b\": \"p2\" },\n    { \"a\": \"p2\", \"b\": \"p3\" },\n    { \"a\": \"p2\", \"b\": \"p4\" },\n    { \"a\": \"p4\", \"b\": \"p1\" },\n    { \"a\": \"p4\", \"b\": \"p3\" },\n    { \"a\": \"p4\", \"b\": \"p7\" },\n    { \"a\": \"p4\", \"b\": \"p5\" },\n    { \"a\": \"p2\", \"b\": \"p6\" },\n    { \"a\": \"p6\", \"b\": \"p1\" }\n  ],\n  \"missingConnections\": [\n    { \"a\": \"p2\", \"b\": \"p5\", \"reason\": \"Withholding the lower sail edge makes the sail's shape incomplete but clear.\" },\n    { \"a\": \"p5\", \"b\": \"p3\", \"reason\": \"Withholding the outer sail curve leaves the sail open and invites completion.\" }\n  ],\n  \"revealFeatures\": [\n    { \"name\": \"Star flag\", \"reason\": \"A bright, waving flag at the mast top, visible but not structural\", \"type\": \"accent\", \"near\": [\"p4\"] }\n  ],\n  \"hint\": \"A shimmering traveler glides across the night sky…\"\n}",
+     "validator": {
+      "ok": true,
+      "reasons": [],
+      "repairs": [
+       "missingConnections[0] is not a connection of the complete figure — dropped (a gap is a withheld connection, never an invented one)",
+       "missingConnections[1] is not a connection of the complete figure — dropped (a gap is a withheld connection, never an invented one)",
+       "missing connections chosen by the Lab (the model's would each strand a point)"
+      ]
+     },
+     "extraction": {
+      "subject": "starry sailboat constellation",
+      "budget": 12,
+      "points": [
+       {
+        "id": "p1",
+        "x": 0.11,
+        "y": 0.53,
+        "role": "terminal",
+        "feature": "TERMINAL"
+       },
+       {
+        "id": "p2",
+        "x": 0.5,
+        "y": 0.8,
+        "role": "junction",
+        "feature": "JUNCTION"
+       },
+       {
+        "id": "p3",
+        "x": 0.89,
+        "y": 0.54,
+        "role": "terminal",
+        "feature": "TERMINAL"
+       },
+       {
+        "id": "p4",
+        "x": 0.5,
+        "y": 0.13,
+        "role": "junction",
+        "feature": "JUNCTION"
+       },
+       {
+        "id": "p5",
+        "x": 0.73,
+        "y": 0.44,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p6",
+        "x": 0.27,
+        "y": 0.44,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p7",
+        "x": 0.62,
+        "y": 0.21,
+        "role": "terminal",
+        "feature": "TERMINAL"
+       }
+      ],
+      "joins": [
+       {
+        "a": 0,
+        "b": 1
+       },
+       {
+        "a": 1,
+        "b": 2
+       },
+       {
+        "a": 1,
+        "b": 3
+       },
+       {
+        "a": 0,
+        "b": 3
+       },
+       {
+        "a": 2,
+        "b": 3
+       },
+       {
+        "a": 3,
+        "b": 6
+       },
+       {
+        "a": 3,
+        "b": 4
+       },
+       {
+        "a": 1,
+        "b": 5
+       },
+       {
+        "a": 0,
+        "b": 5
+       }
+      ],
+      "missing": [
+       2,
+       8
+      ],
+      "gaps": [
+       {
+        "join": 2,
+        "reason": "chosen by the Lab — none of the model's could be left out without stranding a point"
+       },
+       {
+        "join": 8,
+        "reason": "chosen by the Lab — none of the model's could be left out without stranding a point"
+       }
+      ],
+      "pieces": 1,
+      "revealFeatures": [
+       {
+        "name": "STAR FLAG",
+        "reason": "A bright, waving flag at the mast top, visible but not structural",
+        "type": "accent",
+        "near": [
+         3
+        ],
+        "kind": "lines"
+       }
+      ],
+      "hint": "A shimmering traveler glides across the night sky…",
+      "confidence": {
+       "overall": null,
+       "identity": null,
+       "structure": null
+      }
+     },
+     "ok": true,
+     "attempts": 1
+    }
+   }
+  },
+  {
+   "id": "panda",
+   "prompt": "A panda made of stars in a night sky",
+   "labels": {
+    "image": "REAL MODEL (gpt-image-2, streamed)",
+    "extraction": "REAL MODEL (gpt-4.1, with the generated picture)"
+   },
+   "image": {
+    "ok": true,
+    "file": "panda/source.png",
+    "model": "gpt-image-2",
+    "ms": 18920,
+    "events": 2,
+    "imagePrompt": "A panda made of stars in a night sky.\nPresentation: one single creature, full body, the whole subject visible and centred, with a clear readable silhouette; expressive and characterful; on a plain uncluttered background. No text, no letters, no labels, no watermark, no interface, no borders, no diagram, and no second creature competing for attention. A finished, visually coherent piece of artwork suitable for a later study of its shape.",
+    "bytes": 1740646
+   },
+   "extractions": {
+    "8": {
+     "budget": 8,
+     "model": "gpt-4.1",
+     "ms": 4248,
+     "usage": {
+      "prompt": 1943,
+      "completion": 552
+     },
+     "raw": "{\n  \"subject\": \"sparkling panda made of stars\",\n  \"points\": [\n    { \"id\": \"p1\", \"x\": 0.5, \"y\": 0.13, \"role\": \"silhouette\" },\n    { \"id\": \"p2\", \"x\": 0.25, \"y\": 0.19, \"role\": \"silhouette\" },\n    { \"id\": \"p3\", \"x\": 0.75, \"y\": 0.19, \"role\": \"silhouette\" },\n    { \"id\": \"p4\", \"x\": 0.18, \"y\": 0.53, \"role\": \"silhouette\" },\n    { \"id\": \"p5\", \"x\": 0.82, \"y\": 0.53, \"role\": \"silhouette\" },\n    { \"id\": \"p6\", \"x\": 0.33, \"y\": 0.91, \"role\": \"terminal\" },\n    { \"id\": \"p7\", \"x\": 0.67, \"y\": 0.91, \"role\": \"terminal\" },\n    { \"id\": \"p8\", \"x\": 0.5, \"y\": 0.52, \"role\": \"junction\" }\n  ],\n  \"connections\": [\n    { \"a\": \"p1\", \"b\": \"p2\" },\n    { \"a\": \"p2\", \"b\": \"p4\" },\n    { \"a\": \"p4\", \"b\": \"p6\" },\n    { \"a\": \"p6\", \"b\": \"p7\" },\n    { \"a\": \"p7\", \"b\": \"p5\" },\n    { \"a\": \"p5\", \"b\": \"p3\" },\n    { \"a\": \"p3\", \"b\": \"p1\" },\n    { \"a\": \"p4\", \"b\": \"p8\" },\n    { \"a\": \"p5\", \"b\": \"p8\" }\n  ],\n  \"missingConnections\": [\n    { \"a\": \"p6\", \"b\": \"p7\", \"reason\": \"Leaving the feet disconnected makes the lower shape incomplete but easy to finish.\" }\n  ],\n  \"revealFeatures\": [\n    { \"name\": \"Sparkling eyes\", \"reason\": \"The eyes glow brightly and stand out from the structure\", \"type\": \"magic\", \"near\": [\"p1\"] }\n  ],\n  \"hint\": \"A gentle, starry friend from the bamboo forests is waiting…\"\n}",
+     "validator": {
+      "ok": true,
+      "reasons": [],
+      "repairs": []
+     },
+     "extraction": {
+      "subject": "sparkling panda made of stars",
+      "budget": 8,
+      "points": [
+       {
+        "id": "p1",
+        "x": 0.5,
+        "y": 0.13,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p2",
+        "x": 0.25,
+        "y": 0.19,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p3",
+        "x": 0.75,
+        "y": 0.19,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p4",
+        "x": 0.18,
+        "y": 0.53,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p5",
+        "x": 0.82,
+        "y": 0.53,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p6",
+        "x": 0.33,
+        "y": 0.91,
+        "role": "terminal",
+        "feature": "TERMINAL"
+       },
+       {
+        "id": "p7",
+        "x": 0.67,
+        "y": 0.91,
+        "role": "terminal",
+        "feature": "TERMINAL"
+       },
+       {
+        "id": "p8",
+        "x": 0.5,
+        "y": 0.52,
+        "role": "junction",
+        "feature": "JUNCTION"
+       }
+      ],
+      "joins": [
+       {
+        "a": 0,
+        "b": 1
+       },
+       {
+        "a": 1,
+        "b": 3
+       },
+       {
+        "a": 3,
+        "b": 5
+       },
+       {
+        "a": 5,
+        "b": 6
+       },
+       {
+        "a": 4,
+        "b": 6
+       },
+       {
+        "a": 2,
+        "b": 4
+       },
+       {
+        "a": 0,
+        "b": 2
+       },
+       {
+        "a": 3,
+        "b": 7
+       },
+       {
+        "a": 4,
+        "b": 7
+       }
+      ],
+      "missing": [
+       3
+      ],
+      "gaps": [
+       {
+        "join": 3,
+        "reason": "Leaving the feet disconnected makes the lower shape incomplete but easy to finish."
+       }
+      ],
+      "pieces": 1,
+      "revealFeatures": [
+       {
+        "name": "SPARKLING EYES",
+        "reason": "The eyes glow brightly and stand out from the structure",
+        "type": "magic",
+        "near": [
+         0
+        ],
+        "kind": "glow"
+       }
+      ],
+      "hint": "A gentle, starry friend from the bamboo forests is waiting…",
+      "confidence": {
+       "overall": null,
+       "identity": null,
+       "structure": null
+      }
+     },
+     "ok": true,
+     "attempts": 1
+    },
+    "12": {
+     "budget": 12,
+     "model": "gpt-4.1",
+     "ms": 5965,
+     "usage": {
+      "prompt": 1938,
+      "completion": 850
+     },
+     "raw": "{\n  \"subject\": \"sparkling panda bear made of stars\",\n  \"points\": [\n    { \"id\": \"p1\", \"x\": 0.5, \"y\": 0.13, \"role\": \"silhouette\" },\n    { \"id\": \"p2\", \"x\": 0.32, \"y\": 0.17, \"role\": \"silhouette\" },\n    { \"id\": \"p3\", \"x\": 0.19, \"y\": 0.27, \"role\": \"silhouette\" },\n    { \"id\": \"p4\", \"x\": 0.23, \"y\": 0.56, \"role\": \"silhouette\" },\n    { \"id\": \"p5\", \"x\": 0.33, \"y\": 0.85, \"role\": \"silhouette\" },\n    { \"id\": \"p6\", \"x\": 0.5, \"y\": 0.93, \"role\": \"silhouette\" },\n    { \"id\": \"p7\", \"x\": 0.67, \"y\": 0.85, \"role\": \"silhouette\" },\n    { \"id\": \"p8\", \"x\": 0.77, \"y\": 0.56, \"role\": \"silhouette\" },\n    { \"id\": \"p9\", \"x\": 0.81, \"y\": 0.27, \"role\": \"silhouette\" },\n    { \"id\": \"p10\", \"x\": 0.68, \"y\": 0.17, \"role\": \"silhouette\" },\n    { \"id\": \"p11\", \"x\": 0.5, \"y\": 0.36, \"role\": \"internal\" },\n    { \"id\": \"p12\", \"x\": 0.5, \"y\": 0.62, \"role\": \"junction\" }\n  ],\n  \"connections\": [\n    { \"a\": \"p1\", \"b\": \"p2\" },\n    { \"a\": \"p2\", \"b\": \"p3\" },\n    { \"a\": \"p3\", \"b\": \"p4\" },\n    { \"a\": \"p4\", \"b\": \"p5\" },\n    { \"a\": \"p5\", \"b\": \"p6\" },\n    { \"a\": \"p6\", \"b\": \"p7\" },\n    { \"a\": \"p7\", \"b\": \"p8\" },\n    { \"a\": \"p8\", \"b\": \"p9\" },\n    { \"a\": \"p9\", \"b\": \"p10\" },\n    { \"a\": \"p10\", \"b\": \"p1\" },\n    { \"a\": \"p11\", \"b\": \"p12\" },\n    { \"a\": \"p12\", \"b\": \"p4\" }\n  ],\n  \"missingConnections\": [\n    { \"a\": \"p12\", \"b\": \"p8\", \"reason\": \"Withholding this connection leaves the arm/side open, inviting completion of the gesture.\" },\n    { \"a\": \"p11\", \"b\": \"p1\", \"reason\": \"Withholding this connection leaves the face-to-body transition open, making the head distinct.\" },\n    { \"a\": \"p5\", \"b\": \"p12\", \"reason\": \"Withholding this connection leaves the lower body open, suggesting the stance.\" }\n  ],\n  \"revealFeatures\": [\n    { \"name\": \"Sparkling eye\", \"reason\": \"A bright, twinkling eye is visible and distinctive\", \"type\": \"magic\", \"near\": [\"p11\"] },\n    { \"name\": \"Star texture\", \"reason\": \"The body is covered in a starry texture\", \"type\": \"accent\", \"near\": [\"p6\"] }\n  ],\n  \"hint\": \"A gentle stargazer from the bamboo forests is waiting…\"\n}",
+     "validator": {
+      "ok": true,
+      "reasons": [],
+      "repairs": [
+       "missingConnections[0] is not a connection of the complete figure — dropped (a gap is a withheld connection, never an invented one)",
+       "missingConnections[1] is not a connection of the complete figure — dropped (a gap is a withheld connection, never an invented one)",
+       "missingConnections[2] is not a connection of the complete figure — dropped (a gap is a withheld connection, never an invented one)",
+       "missing connections chosen by the Lab (the model's would each strand a point)"
+      ]
+     },
+     "extraction": {
+      "subject": "sparkling panda bear made of stars",
+      "budget": 12,
+      "points": [
+       {
+        "id": "p1",
+        "x": 0.5,
+        "y": 0.13,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p2",
+        "x": 0.32,
+        "y": 0.17,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p3",
+        "x": 0.19,
+        "y": 0.27,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p4",
+        "x": 0.23,
+        "y": 0.56,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p5",
+        "x": 0.33,
+        "y": 0.85,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p6",
+        "x": 0.5,
+        "y": 0.93,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p7",
+        "x": 0.67,
+        "y": 0.85,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p8",
+        "x": 0.77,
+        "y": 0.56,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p9",
+        "x": 0.81,
+        "y": 0.27,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p10",
+        "x": 0.68,
+        "y": 0.17,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p11",
+        "x": 0.5,
+        "y": 0.36,
+        "role": "internal",
+        "feature": "INTERNAL"
+       },
+       {
+        "id": "p12",
+        "x": 0.5,
+        "y": 0.62,
+        "role": "junction",
+        "feature": "JUNCTION"
+       }
+      ],
+      "joins": [
+       {
+        "a": 0,
+        "b": 1
+       },
+       {
+        "a": 1,
+        "b": 2
+       },
+       {
+        "a": 2,
+        "b": 3
+       },
+       {
+        "a": 3,
+        "b": 4
+       },
+       {
+        "a": 4,
+        "b": 5
+       },
+       {
+        "a": 5,
+        "b": 6
+       },
+       {
+        "a": 6,
+        "b": 7
+       },
+       {
+        "a": 7,
+        "b": 8
+       },
+       {
+        "a": 8,
+        "b": 9
+       },
+       {
+        "a": 0,
+        "b": 9
+       },
+       {
+        "a": 10,
+        "b": 11
+       },
+       {
+        "a": 3,
+        "b": 11
+       }
+      ],
+      "missing": [
+       3,
+       6
+      ],
+      "gaps": [
+       {
+        "join": 3,
+        "reason": "chosen by the Lab — none of the model's could be left out without stranding a point"
+       },
+       {
+        "join": 6,
+        "reason": "chosen by the Lab — none of the model's could be left out without stranding a point"
+       }
+      ],
+      "pieces": 1,
+      "revealFeatures": [
+       {
+        "name": "SPARKLING EYE",
+        "reason": "A bright, twinkling eye is visible and distinctive",
+        "type": "magic",
+        "near": [
+         10
+        ],
+        "kind": "glow"
+       },
+       {
+        "name": "STAR TEXTURE",
+        "reason": "The body is covered in a starry texture",
+        "type": "accent",
+        "near": [
+         5
+        ],
+        "kind": "texture"
+       }
+      ],
+      "hint": "A gentle stargazer from the bamboo forests is waiting…",
+      "confidence": {
+       "overall": null,
+       "identity": null,
+       "structure": null
+      }
+     },
+     "ok": true,
+     "attempts": 1
+    }
+   }
+  },
+  {
+   "id": "mermaid",
+   "prompt": "A mermaid made of stars in a night sky",
+   "labels": {
+    "image": "REAL MODEL (gpt-image-2, streamed)",
+    "extraction": "REAL MODEL (gpt-4.1, with the generated picture)"
+   },
+   "image": {
+    "ok": true,
+    "file": "mermaid/source.png",
+    "model": "gpt-image-2",
+    "ms": 19789,
+    "events": 2,
+    "imagePrompt": "A mermaid made of stars in a night sky.\nPresentation: one single creature, full body, the whole subject visible and centred, with a clear readable silhouette; expressive and characterful; on a plain uncluttered background. No text, no letters, no labels, no watermark, no interface, no borders, no diagram, and no second creature competing for attention. A finished, visually coherent piece of artwork suitable for a later study of its shape.",
+    "bytes": 1332371
+   },
+   "extractions": {
+    "8": {
+     "budget": 8,
+     "model": "gpt-4.1",
+     "ms": 4263,
+     "usage": {
+      "prompt": 1943,
+      "completion": 577
+     },
+     "raw": "{\n  \"subject\": \"starry mermaid silhouette in space\",\n  \"points\": [\n    { \"id\": \"p1\", \"x\": 0.505, \"y\": 0.104, \"role\": \"silhouette\" },\n    { \"id\": \"p2\", \"x\": 0.217, \"y\": 0.392, \"role\": \"terminal\" },\n    { \"id\": \"p3\", \"x\": 0.355, \"y\": 0.216, \"role\": \"junction\" },\n    { \"id\": \"p4\", \"x\": 0.785, \"y\": 0.398, \"role\": \"terminal\" },\n    { \"id\": \"p5\", \"x\": 0.646, \"y\": 0.218, \"role\": \"junction\" },\n    { \"id\": \"p6\", \"x\": 0.500, \"y\": 0.660, \"role\": \"junction\" },\n    { \"id\": \"p7\", \"x\": 0.312, \"y\": 0.913, \"role\": \"terminal\" },\n    { \"id\": \"p8\", \"x\": 0.687, \"y\": 0.917, \"role\": \"terminal\" }\n  ],\n  \"connections\": [\n    { \"a\": \"p1\", \"b\": \"p3\" },\n    { \"a\": \"p3\", \"b\": \"p2\" },\n    { \"a\": \"p1\", \"b\": \"p5\" },\n    { \"a\": \"p5\", \"b\": \"p4\" },\n    { \"a\": \"p3\", \"b\": \"p6\" },\n    { \"a\": \"p5\", \"b\": \"p6\" },\n    { \"a\": \"p6\", \"b\": \"p7\" },\n    { \"a\": \"p6\", \"b\": \"p8\" }\n  ],\n  \"missingConnections\": [\n    { \"a\": \"p7\", \"b\": \"p8\", \"reason\": \"Completing the tail fin's curve is visually satisfying and leaves a clear, inviting gap.\" }\n  ],\n  \"revealFeatures\": [\n    { \"name\": \"Star flower in hair\", \"reason\": \"A bright accent visible in the picture, not structural\", \"type\": \"accent\", \"near\": [\"p1\"] },\n    { \"name\": \"Glowing eye\", \"reason\": \"A lit detail on the face, not part of the traced structure\", \"type\": \"magic\", \"near\": [\"p1\"] }\n  ],\n  \"hint\": \"A shimmering dreamer from the deep sky is waiting…\"\n}",
+     "validator": {
+      "ok": true,
+      "reasons": [],
+      "repairs": [
+       "missingConnections[0] is not a connection of the complete figure — dropped (a gap is a withheld connection, never an invented one)",
+       "missing connections chosen by the Lab (the model's would each strand a point)"
+      ]
+     },
+     "extraction": {
+      "subject": "starry mermaid silhouette in space",
+      "budget": 8,
+      "points": [
+       {
+        "id": "p1",
+        "x": 0.505,
+        "y": 0.104,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p2",
+        "x": 0.217,
+        "y": 0.392,
+        "role": "terminal",
+        "feature": "TERMINAL"
+       },
+       {
+        "id": "p3",
+        "x": 0.355,
+        "y": 0.216,
+        "role": "junction",
+        "feature": "JUNCTION"
+       },
+       {
+        "id": "p4",
+        "x": 0.785,
+        "y": 0.398,
+        "role": "terminal",
+        "feature": "TERMINAL"
+       },
+       {
+        "id": "p5",
+        "x": 0.646,
+        "y": 0.218,
+        "role": "junction",
+        "feature": "JUNCTION"
+       },
+       {
+        "id": "p6",
+        "x": 0.5,
+        "y": 0.66,
+        "role": "junction",
+        "feature": "JUNCTION"
+       },
+       {
+        "id": "p7",
+        "x": 0.312,
+        "y": 0.913,
+        "role": "terminal",
+        "feature": "TERMINAL"
+       },
+       {
+        "id": "p8",
+        "x": 0.687,
+        "y": 0.917,
+        "role": "terminal",
+        "feature": "TERMINAL"
+       }
+      ],
+      "joins": [
+       {
+        "a": 0,
+        "b": 2
+       },
+       {
+        "a": 1,
+        "b": 2
+       },
+       {
+        "a": 0,
+        "b": 4
+       },
+       {
+        "a": 3,
+        "b": 4
+       },
+       {
+        "a": 2,
+        "b": 5
+       },
+       {
+        "a": 4,
+        "b": 5
+       },
+       {
+        "a": 5,
+        "b": 6
+       },
+       {
+        "a": 5,
+        "b": 7
+       }
+      ],
+      "missing": [
+       4
+      ],
+      "gaps": [
+       {
+        "join": 4,
+        "reason": "chosen by the Lab — none of the model's could be left out without stranding a point"
+       }
+      ],
+      "pieces": 1,
+      "revealFeatures": [
+       {
+        "name": "STAR FLOWER IN HAIR",
+        "reason": "A bright accent visible in the picture, not structural",
+        "type": "accent",
+        "near": [
+         0
+        ],
+        "kind": "contour"
+       },
+       {
+        "name": "GLOWING EYE",
+        "reason": "A lit detail on the face, not part of the traced structure",
+        "type": "magic",
+        "near": [
+         0
+        ],
+        "kind": "glow"
+       }
+      ],
+      "hint": "A shimmering dreamer from the deep sky is waiting…",
+      "confidence": {
+       "overall": null,
+       "identity": null,
+       "structure": null
+      }
+     },
+     "ok": true,
+     "attempts": 1
+    },
+    "12": {
+     "budget": 12,
+     "model": "gpt-4.1",
+     "ms": 5435,
+     "usage": {
+      "prompt": 1938,
+      "completion": 807
+     },
+     "raw": "{\n  \"subject\": \"starry mermaid constellation\",\n  \"points\": [\n    { \"id\": \"p1\", \"x\": 0.512, \"y\": 0.112, \"role\": \"silhouette\" },\n    { \"id\": \"p2\", \"x\": 0.355, \"y\": 0.225, \"role\": \"silhouette\" },\n    { \"id\": \"p3\", \"x\": 0.203, \"y\": 0.444, \"role\": \"terminal\" },\n    { \"id\": \"p4\", \"x\": 0.397, \"y\": 0.341, \"role\": \"junction\" },\n    { \"id\": \"p5\", \"x\": 0.624, \"y\": 0.331, \"role\": \"junction\" },\n    { \"id\": \"p6\", \"x\": 0.771, \"y\": 0.462, \"role\": \"terminal\" },\n    { \"id\": \"p7\", \"x\": 0.573, \"y\": 0.232, \"role\": \"silhouette\" },\n    { \"id\": \"p8\", \"x\": 0.507, \"y\": 0.565, \"role\": \"junction\" },\n    { \"id\": \"p9\", \"x\": 0.326, \"y\": 0.845, \"role\": \"terminal\" },\n    { \"id\": \"p10\", \"x\": 0.509, \"y\": 0.931, \"role\": \"terminal\" },\n    { \"id\": \"p11\", \"x\": 0.682, \"y\": 0.852, \"role\": \"terminal\" }\n  ],\n  \"connections\": [\n    { \"a\": \"p1\", \"b\": \"p2\" },\n    { \"a\": \"p2\", \"b\": \"p3\" },\n    { \"a\": \"p2\", \"b\": \"p4\" },\n    { \"a\": \"p1\", \"b\": \"p7\" },\n    { \"a\": \"p7\", \"b\": \"p5\" },\n    { \"a\": \"p5\", \"b\": \"p6\" },\n    { \"a\": \"p4\", \"b\": \"p8\" },\n    { \"a\": \"p5\", \"b\": \"p8\" },\n    { \"a\": \"p8\", \"b\": \"p9\" },\n    { \"a\": \"p8\", \"b\": \"p10\" },\n    { \"a\": \"p8\", \"b\": \"p11\" }\n  ],\n  \"missingConnections\": [\n    { \"a\": \"p3\", \"b\": \"p4\", \"reason\": \"Leaves the left arm and body junction open for completion.\" },\n    { \"a\": \"p6\", \"b\": \"p5\", \"reason\": \"Leaves the right arm and body junction open for completion.\" },\n    { \"a\": \"p9\", \"b\": \"p10\", \"reason\": \"Leaves the lower tail fin incomplete for a satisfying finish.\" }\n  ],\n  \"revealFeatures\": [\n    { \"name\": \"Star flower in hair\", \"reason\": \"A bright accent in the hair, not structural\", \"type\": \"accent\", \"near\": [\"p1\"] },\n    { \"name\": \"Glowing eye\", \"reason\": \"A lit detail on the face\", \"type\": \"magic\", \"near\": [\"p1\"] },\n    { \"name\": \"Sparkling scales\", \"reason\": \"Texture visible across the tail\", \"type\": \"accent\", \"near\": [\"p8\"] }\n  ],\n  \"hint\": \"A shimmering dweller of the night sky is waiting…\"\n}",
+     "validator": {
+      "ok": true,
+      "reasons": [],
+      "repairs": [
+       "missingConnections[0] is not a connection of the complete figure — dropped (a gap is a withheld connection, never an invented one)",
+       "missingConnections[1] would leave a lone point — kept as a connection instead",
+       "missingConnections[2] is not a connection of the complete figure — dropped (a gap is a withheld connection, never an invented one)",
+       "missing connections chosen by the Lab (the model's would each strand a point)"
+      ]
+     },
+     "extraction": {
+      "subject": "starry mermaid constellation",
+      "budget": 12,
+      "points": [
+       {
+        "id": "p1",
+        "x": 0.512,
+        "y": 0.112,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p2",
+        "x": 0.355,
+        "y": 0.225,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p3",
+        "x": 0.203,
+        "y": 0.444,
+        "role": "terminal",
+        "feature": "TERMINAL"
+       },
+       {
+        "id": "p4",
+        "x": 0.397,
+        "y": 0.341,
+        "role": "junction",
+        "feature": "JUNCTION"
+       },
+       {
+        "id": "p5",
+        "x": 0.624,
+        "y": 0.331,
+        "role": "junction",
+        "feature": "JUNCTION"
+       },
+       {
+        "id": "p6",
+        "x": 0.771,
+        "y": 0.462,
+        "role": "terminal",
+        "feature": "TERMINAL"
+       },
+       {
+        "id": "p7",
+        "x": 0.573,
+        "y": 0.232,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p8",
+        "x": 0.507,
+        "y": 0.565,
+        "role": "junction",
+        "feature": "JUNCTION"
+       },
+       {
+        "id": "p9",
+        "x": 0.326,
+        "y": 0.845,
+        "role": "terminal",
+        "feature": "TERMINAL"
+       },
+       {
+        "id": "p10",
+        "x": 0.509,
+        "y": 0.931,
+        "role": "terminal",
+        "feature": "TERMINAL"
+       },
+       {
+        "id": "p11",
+        "x": 0.682,
+        "y": 0.852,
+        "role": "terminal",
+        "feature": "TERMINAL"
+       }
+      ],
+      "joins": [
+       {
+        "a": 0,
+        "b": 1
+       },
+       {
+        "a": 1,
+        "b": 2
+       },
+       {
+        "a": 1,
+        "b": 3
+       },
+       {
+        "a": 0,
+        "b": 6
+       },
+       {
+        "a": 4,
+        "b": 6
+       },
+       {
+        "a": 4,
+        "b": 5
+       },
+       {
+        "a": 3,
+        "b": 7
+       },
+       {
+        "a": 4,
+        "b": 7
+       },
+       {
+        "a": 7,
+        "b": 8
+       },
+       {
+        "a": 7,
+        "b": 9
+       },
+       {
+        "a": 7,
+        "b": 10
+       }
+      ],
+      "missing": [
+       0,
+       7
+      ],
+      "gaps": [
+       {
+        "join": 7,
+        "reason": "chosen by the Lab — none of the model's could be left out without stranding a point"
+       },
+       {
+        "join": 0,
+        "reason": "chosen by the Lab — none of the model's could be left out without stranding a point"
+       }
+      ],
+      "pieces": 1,
+      "revealFeatures": [
+       {
+        "name": "STAR FLOWER IN HAIR",
+        "reason": "A bright accent in the hair, not structural",
+        "type": "accent",
+        "near": [
+         0
+        ],
+        "kind": "contour"
+       },
+       {
+        "name": "GLOWING EYE",
+        "reason": "A lit detail on the face",
+        "type": "magic",
+        "near": [
+         0
+        ],
+        "kind": "glow"
+       },
+       {
+        "name": "SPARKLING SCALES",
+        "reason": "Texture visible across the tail",
+        "type": "accent",
+        "near": [
+         7
+        ],
+        "kind": "texture"
+       }
+      ],
+      "hint": "A shimmering dweller of the night sky is waiting…",
+      "confidence": {
+       "overall": null,
+       "identity": null,
+       "structure": null
+      }
+     },
+     "ok": true,
+     "attempts": 1
+    }
+   }
+  },
+  {
+   "id": "baby-dragon",
+   "prompt": "A baby dragon made of stars in a night sky",
+   "labels": {
+    "image": "REAL MODEL (gpt-image-2, streamed)",
+    "extraction": "REAL MODEL (gpt-4.1, with the generated picture)"
+   },
+   "image": {
+    "ok": true,
+    "file": "baby-dragon/source.png",
+    "model": "gpt-image-2",
+    "ms": 20828,
+    "events": 2,
+    "imagePrompt": "A baby dragon made of stars in a night sky.\nPresentation: one single creature, full body, the whole subject visible and centred, with a clear readable silhouette; expressive and characterful; on a plain uncluttered background. No text, no letters, no labels, no watermark, no interface, no borders, no diagram, and no second creature competing for attention. A finished, visually coherent piece of artwork suitable for a later study of its shape.",
+    "bytes": 1793675
+   },
+   "extractions": {
+    "8": {
+     "budget": 8,
+     "model": "gpt-4.1",
+     "ms": 4698,
+     "usage": {
+      "prompt": 1943,
+      "completion": 653
+     },
+     "raw": "{\n  \"subject\": \"starry baby dragon with wings\",\n  \"points\": [\n    { \"id\": \"p1\", \"x\": 0.38, \"y\": 0.16, \"role\": \"silhouette\" },\n    { \"id\": \"p2\", \"x\": 0.19, \"y\": 0.41, \"role\": \"terminal\" },\n    { \"id\": \"p3\", \"x\": 0.49, \"y\": 0.57, \"role\": \"junction\" },\n    { \"id\": \"p4\", \"x\": 0.13, \"y\": 0.69, \"role\": \"silhouette\" },\n    { \"id\": \"p5\", \"x\": 0.44, \"y\": 0.89, \"role\": \"silhouette\" },\n    { \"id\": \"p6\", \"x\": 0.81, \"y\": 0.82, \"role\": \"silhouette\" },\n    { \"id\": \"p7\", \"x\": 0.89, \"y\": 0.41, \"role\": \"terminal\" },\n    { \"id\": \"p8\", \"x\": 0.62, \"y\": 0.19, \"role\": \"silhouette\" }\n  ],\n  \"connections\": [\n    { \"a\": \"p1\", \"b\": \"p2\" },\n    { \"a\": \"p2\", \"b\": \"p4\" },\n    { \"a\": \"p4\", \"b\": \"p5\" },\n    { \"a\": \"p5\", \"b\": \"p6\" },\n    { \"a\": \"p6\", \"b\": \"p7\" },\n    { \"a\": \"p7\", \"b\": \"p8\" },\n    { \"a\": \"p8\", \"b\": \"p1\" },\n    { \"a\": \"p3\", \"b\": \"p5\" },\n    { \"a\": \"p3\", \"b\": \"p6\" }\n  ],\n  \"missingConnections\": [\n    { \"a\": \"p1\", \"b\": \"p3\", \"reason\": \"Withholding this connection leaves the head and body visually separated, inviting the child to complete the dragon's neck and chest.\" }\n  ],\n  \"revealFeatures\": [\n    { \"name\": \"Starry eye\", \"reason\": \"The dragon's large, glowing eye stands out and could be revealed after tracing.\", \"type\": \"magic\", \"near\": [\"p1\"] },\n    { \"name\": \"Sparkling crest\", \"reason\": \"A row of glowing spikes on the head is visible and distinctive.\", \"type\": \"accent\", \"near\": [\"p1\", \"p8\"] },\n    { \"name\": \"Glowing belly\", \"reason\": \"The dragon's belly glows with extra starlight.\", \"type\": \"magic\", \"near\": [\"p3\", \"p5\"] }\n  ],\n  \"hint\": \"A magical friend from the night sky is waiting…\"\n}",
+     "validator": {
+      "ok": true,
+      "reasons": [],
+      "repairs": [
+       "missingConnections[0] is not a connection of the complete figure — dropped (a gap is a withheld connection, never an invented one)",
+       "missing connections chosen by the Lab (the model's would each strand a point)"
+      ]
+     },
+     "extraction": {
+      "subject": "starry baby dragon with wings",
+      "budget": 8,
+      "points": [
+       {
+        "id": "p1",
+        "x": 0.38,
+        "y": 0.16,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p2",
+        "x": 0.19,
+        "y": 0.41,
+        "role": "terminal",
+        "feature": "TERMINAL"
+       },
+       {
+        "id": "p3",
+        "x": 0.49,
+        "y": 0.57,
+        "role": "junction",
+        "feature": "JUNCTION"
+       },
+       {
+        "id": "p4",
+        "x": 0.13,
+        "y": 0.69,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p5",
+        "x": 0.44,
+        "y": 0.89,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p6",
+        "x": 0.81,
+        "y": 0.82,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p7",
+        "x": 0.89,
+        "y": 0.41,
+        "role": "terminal",
+        "feature": "TERMINAL"
+       },
+       {
+        "id": "p8",
+        "x": 0.62,
+        "y": 0.19,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       }
+      ],
+      "joins": [
+       {
+        "a": 0,
+        "b": 1
+       },
+       {
+        "a": 1,
+        "b": 3
+       },
+       {
+        "a": 3,
+        "b": 4
+       },
+       {
+        "a": 4,
+        "b": 5
+       },
+       {
+        "a": 5,
+        "b": 6
+       },
+       {
+        "a": 6,
+        "b": 7
+       },
+       {
+        "a": 0,
+        "b": 7
+       },
+       {
+        "a": 2,
+        "b": 4
+       },
+       {
+        "a": 2,
+        "b": 5
+       }
+      ],
+      "missing": [
+       4
+      ],
+      "gaps": [
+       {
+        "join": 4,
+        "reason": "chosen by the Lab — none of the model's could be left out without stranding a point"
+       }
+      ],
+      "pieces": 1,
+      "revealFeatures": [
+       {
+        "name": "STARRY EYE",
+        "reason": "The dragon's large, glowing eye stands out and could be revealed after tracing.",
+        "type": "magic",
+        "near": [
+         0
+        ],
+        "kind": "glow"
+       },
+       {
+        "name": "SPARKLING CREST",
+        "reason": "A row of glowing spikes on the head is visible and distinctive.",
+        "type": "accent",
+        "near": [
+         0,
+         7
+        ],
+        "kind": "contour"
+       },
+       {
+        "name": "GLOWING BELLY",
+        "reason": "The dragon's belly glows with extra starlight.",
+        "type": "magic",
+        "near": [
+         2,
+         4
+        ],
+        "kind": "glow"
+       }
+      ],
+      "hint": "A magical friend from the night sky is waiting…",
+      "confidence": {
+       "overall": null,
+       "identity": null,
+       "structure": null
+      }
+     },
+     "ok": true,
+     "attempts": 1
+    },
+    "12": {
+     "budget": 12,
+     "model": "gpt-4.1",
+     "ms": 5635,
+     "usage": {
+      "prompt": 1938,
+      "completion": 852
+     },
+     "raw": "{\n  \"subject\": \"starry baby dragon with wings\",\n  \"points\": [\n    { \"id\": \"p1\", \"x\": 0.38, \"y\": 0.13, \"role\": \"silhouette\" },\n    { \"id\": \"p2\", \"x\": 0.53, \"y\": 0.09, \"role\": \"silhouette\" },\n    { \"id\": \"p3\", \"x\": 0.67, \"y\": 0.22, \"role\": \"silhouette\" },\n    { \"id\": \"p4\", \"x\": 0.91, \"y\": 0.34, \"role\": \"terminal\" },\n    { \"id\": \"p5\", \"x\": 0.74, \"y\": 0.47, \"role\": \"junction\" },\n    { \"id\": \"p6\", \"x\": 0.87, \"y\": 0.81, \"role\": \"terminal\" },\n    { \"id\": \"p7\", \"x\": 0.56, \"y\": 0.87, \"role\": \"silhouette\" },\n    { \"id\": \"p8\", \"x\": 0.37, \"y\": 0.90, \"role\": \"silhouette\" },\n    { \"id\": \"p9\", \"x\": 0.19, \"y\": 0.81, \"role\": \"silhouette\" },\n    { \"id\": \"p10\", \"x\": 0.08, \"y\": 0.36, \"role\": \"terminal\" },\n    { \"id\": \"p11\", \"x\": 0.25, \"y\": 0.48, \"role\": \"junction\" },\n    { \"id\": \"p12\", \"x\": 0.30, \"y\": 0.22, \"role\": \"silhouette\" }\n  ],\n  \"connections\": [\n    { \"a\": \"p1\", \"b\": \"p2\" },\n    { \"a\": \"p2\", \"b\": \"p3\" },\n    { \"a\": \"p3\", \"b\": \"p4\" },\n    { \"a\": \"p3\", \"b\": \"p5\" },\n    { \"a\": \"p5\", \"b\": \"p6\" },\n    { \"a\": \"p6\", \"b\": \"p7\" },\n    { \"a\": \"p7\", \"b\": \"p8\" },\n    { \"a\": \"p8\", \"b\": \"p9\" },\n    { \"a\": \"p9\", \"b\": \"p10\" },\n    { \"a\": \"p9\", \"b\": \"p11\" },\n    { \"a\": \"p11\", \"b\": \"p12\" },\n    { \"a\": \"p12\", \"b\": \"p1\" }\n  ],\n  \"missingConnections\": [\n    { \"a\": \"p3\", \"b\": \"p4\", \"reason\": \"Withholding the wingtip connection creates a visible gap in the right wing.\" },\n    { \"a\": \"p9\", \"b\": \"p10\", \"reason\": \"Leaving out this line creates a break in the left wing's tip, inviting completion.\" },\n    { \"a\": \"p8\", \"b\": \"p9\", \"reason\": \"This gap at the foot/tail area is visually clear and satisfying to close.\" }\n  ],\n  \"revealFeatures\": [\n    { \"name\": \"Starry eye\", \"reason\": \"The dragon's eye glows brightly and stands out from the traced structure.\", \"type\": \"magic\", \"near\": [\"p1\"] },\n    { \"name\": \"Sparkling chest\", \"reason\": \"A cluster of bright stars on the chest adds magical accent.\", \"type\": \"magic\", \"near\": [\"p7\"] }\n  ],\n  \"hint\": \"A magical creature of the night sky is waiting to shine…\"\n}",
+     "validator": {
+      "ok": true,
+      "reasons": [],
+      "repairs": [
+       "missingConnections[0] would leave a lone point — kept as a connection instead",
+       "missingConnections[1] would leave a lone point — kept as a connection instead"
+      ]
+     },
+     "extraction": {
+      "subject": "starry baby dragon with wings",
+      "budget": 12,
+      "points": [
+       {
+        "id": "p1",
+        "x": 0.38,
+        "y": 0.13,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p2",
+        "x": 0.53,
+        "y": 0.09,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p3",
+        "x": 0.67,
+        "y": 0.22,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p4",
+        "x": 0.91,
+        "y": 0.34,
+        "role": "terminal",
+        "feature": "TERMINAL"
+       },
+       {
+        "id": "p5",
+        "x": 0.74,
+        "y": 0.47,
+        "role": "junction",
+        "feature": "JUNCTION"
+       },
+       {
+        "id": "p6",
+        "x": 0.87,
+        "y": 0.81,
+        "role": "terminal",
+        "feature": "TERMINAL"
+       },
+       {
+        "id": "p7",
+        "x": 0.56,
+        "y": 0.87,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p8",
+        "x": 0.37,
+        "y": 0.9,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p9",
+        "x": 0.19,
+        "y": 0.81,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p10",
+        "x": 0.08,
+        "y": 0.36,
+        "role": "terminal",
+        "feature": "TERMINAL"
+       },
+       {
+        "id": "p11",
+        "x": 0.25,
+        "y": 0.48,
+        "role": "junction",
+        "feature": "JUNCTION"
+       },
+       {
+        "id": "p12",
+        "x": 0.3,
+        "y": 0.22,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       }
+      ],
+      "joins": [
+       {
+        "a": 0,
+        "b": 1
+       },
+       {
+        "a": 1,
+        "b": 2
+       },
+       {
+        "a": 2,
+        "b": 3
+       },
+       {
+        "a": 2,
+        "b": 4
+       },
+       {
+        "a": 4,
+        "b": 5
+       },
+       {
+        "a": 5,
+        "b": 6
+       },
+       {
+        "a": 6,
+        "b": 7
+       },
+       {
+        "a": 7,
+        "b": 8
+       },
+       {
+        "a": 8,
+        "b": 9
+       },
+       {
+        "a": 8,
+        "b": 10
+       },
+       {
+        "a": 10,
+        "b": 11
+       },
+       {
+        "a": 0,
+        "b": 11
+       }
+      ],
+      "missing": [
+       7
+      ],
+      "gaps": [
+       {
+        "join": 7,
+        "reason": "This gap at the foot/tail area is visually clear and satisfying to close."
+       }
+      ],
+      "pieces": 1,
+      "revealFeatures": [
+       {
+        "name": "STARRY EYE",
+        "reason": "The dragon's eye glows brightly and stands out from the traced structure.",
+        "type": "magic",
+        "near": [
+         0
+        ],
+        "kind": "glow"
+       },
+       {
+        "name": "SPARKLING CHEST",
+        "reason": "A cluster of bright stars on the chest adds magical accent.",
+        "type": "magic",
+        "near": [
+         6
+        ],
+        "kind": "glow"
+       }
+      ],
+      "hint": "A magical creature of the night sky is waiting to shine…",
+      "confidence": {
+       "overall": null,
+       "identity": null,
+       "structure": null
+      }
+     },
+     "ok": true,
+     "attempts": 1
+    }
+   }
+  },
+  {
+   "id": "falcon",
+   "prompt": "A falcon made of stars in a night sky",
+   "labels": {
+    "image": "REAL MODEL (gpt-image-2, streamed)",
+    "extraction": "REAL MODEL (gpt-4.1, with the generated picture)"
+   },
+   "image": {
+    "ok": true,
+    "file": "falcon/source.png",
+    "model": "gpt-image-2",
+    "ms": 18333,
+    "events": 2,
+    "imagePrompt": "A falcon made of stars in a night sky.\nPresentation: one single creature, full body, the whole subject visible and centred, with a clear readable silhouette; expressive and characterful; on a plain uncluttered background. No text, no letters, no labels, no watermark, no interface, no borders, no diagram, and no second creature competing for attention. A finished, visually coherent piece of artwork suitable for a later study of its shape.",
+    "bytes": 1619760
+   },
+   "extractions": {
+    "8": {
+     "budget": 8,
+     "model": "gpt-4.1",
+     "ms": 4168,
+     "usage": {
+      "prompt": 1943,
+      "completion": 582
+     },
+     "raw": "{\n  \"subject\": \"starry celestial bird with hooked beak\",\n  \"points\": [\n    { \"id\": \"p1\", \"x\": 0.54, \"y\": 0.17, \"role\": \"silhouette\" },\n    { \"id\": \"p2\", \"x\": 0.62, \"y\": 0.22, \"role\": \"silhouette\" },\n    { \"id\": \"p3\", \"x\": 0.72, \"y\": 0.51, \"role\": \"silhouette\" },\n    { \"id\": \"p4\", \"x\": 0.88, \"y\": 0.83, \"role\": \"terminal\" },\n    { \"id\": \"p5\", \"x\": 0.56, \"y\": 0.92, \"role\": \"silhouette\" },\n    { \"id\": \"p6\", \"x\": 0.36, \"y\": 0.91, \"role\": \"silhouette\" },\n    { \"id\": \"p7\", \"x\": 0.29, \"y\": 0.56, \"role\": \"silhouette\" },\n    { \"id\": \"p8\", \"x\": 0.41, \"y\": 0.28, \"role\": \"junction\" }\n  ],\n  \"connections\": [\n    { \"a\": \"p1\", \"b\": \"p2\" },\n    { \"a\": \"p2\", \"b\": \"p3\" },\n    { \"a\": \"p3\", \"b\": \"p4\" },\n    { \"a\": \"p4\", \"b\": \"p5\" },\n    { \"a\": \"p5\", \"b\": \"p6\" },\n    { \"a\": \"p6\", \"b\": \"p7\" },\n    { \"a\": \"p7\", \"b\": \"p8\" },\n    { \"a\": \"p8\", \"b\": \"p1\" }\n  ],\n  \"missingConnections\": [\n    { \"a\": \"p3\", \"b\": \"p4\", \"reason\": \"Withholding the tip of the tail connection creates a visible gap in the lower outline, inviting completion.\" }\n  ],\n  \"revealFeatures\": [\n    { \"name\": \"Lit eye\", \"reason\": \"A glowing eye stands out in the head area\", \"type\": \"magic\", \"near\": [\"p1\"] },\n    { \"name\": \"Star texture\", \"reason\": \"The body is covered in star-like sparkles\", \"type\": \"accent\", \"near\": [\"p5\", \"p8\"] }\n  ],\n  \"hint\": \"A watcher of the night sky is waiting among the stars…\"\n}",
+     "validator": {
+      "ok": true,
+      "reasons": [],
+      "repairs": []
+     },
+     "extraction": {
+      "subject": "starry celestial bird with hooked beak",
+      "budget": 8,
+      "points": [
+       {
+        "id": "p1",
+        "x": 0.54,
+        "y": 0.17,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p2",
+        "x": 0.62,
+        "y": 0.22,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p3",
+        "x": 0.72,
+        "y": 0.51,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p4",
+        "x": 0.88,
+        "y": 0.83,
+        "role": "terminal",
+        "feature": "TERMINAL"
+       },
+       {
+        "id": "p5",
+        "x": 0.56,
+        "y": 0.92,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p6",
+        "x": 0.36,
+        "y": 0.91,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p7",
+        "x": 0.29,
+        "y": 0.56,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p8",
+        "x": 0.41,
+        "y": 0.28,
+        "role": "junction",
+        "feature": "JUNCTION"
+       }
+      ],
+      "joins": [
+       {
+        "a": 0,
+        "b": 1
+       },
+       {
+        "a": 1,
+        "b": 2
+       },
+       {
+        "a": 2,
+        "b": 3
+       },
+       {
+        "a": 3,
+        "b": 4
+       },
+       {
+        "a": 4,
+        "b": 5
+       },
+       {
+        "a": 5,
+        "b": 6
+       },
+       {
+        "a": 6,
+        "b": 7
+       },
+       {
+        "a": 0,
+        "b": 7
+       }
+      ],
+      "missing": [
+       2
+      ],
+      "gaps": [
+       {
+        "join": 2,
+        "reason": "Withholding the tip of the tail connection creates a visible gap in the lower outline, inviting completion."
+       }
+      ],
+      "pieces": 1,
+      "revealFeatures": [
+       {
+        "name": "LIT EYE",
+        "reason": "A glowing eye stands out in the head area",
+        "type": "magic",
+        "near": [
+         0
+        ],
+        "kind": "glow"
+       },
+       {
+        "name": "STAR TEXTURE",
+        "reason": "The body is covered in star-like sparkles",
+        "type": "accent",
+        "near": [
+         4,
+         7
+        ],
+        "kind": "texture"
+       }
+      ],
+      "hint": "A watcher of the night sky is waiting among the stars…",
+      "confidence": {
+       "overall": null,
+       "identity": null,
+       "structure": null
+      }
+     },
+     "ok": true,
+     "attempts": 1
+    },
+    "12": {
+     "budget": 12,
+     "model": "gpt-4.1",
+     "ms": 4644,
+     "usage": {
+      "prompt": 1938,
+      "completion": 762
+     },
+     "raw": "{\n  \"subject\": \"starry celestial bird of prey\",\n  \"points\": [\n    { \"id\": \"p1\", \"x\": 0.53, \"y\": 0.16, \"role\": \"silhouette\" },\n    { \"id\": \"p2\", \"x\": 0.63, \"y\": 0.21, \"role\": \"silhouette\" },\n    { \"id\": \"p3\", \"x\": 0.70, \"y\": 0.32, \"role\": \"silhouette\" },\n    { \"id\": \"p4\", \"x\": 0.87, \"y\": 0.74, \"role\": \"terminal\" },\n    { \"id\": \"p5\", \"x\": 0.67, \"y\": 0.87, \"role\": \"silhouette\" },\n    { \"id\": \"p6\", \"x\": 0.56, \"y\": 0.88, \"role\": \"junction\" },\n    { \"id\": \"p7\", \"x\": 0.45, \"y\": 0.89, \"role\": \"junction\" },\n    { \"id\": \"p8\", \"x\": 0.33, \"y\": 0.87, \"role\": \"silhouette\" },\n    { \"id\": \"p9\", \"x\": 0.27, \"y\": 0.67, \"role\": \"silhouette\" },\n    { \"id\": \"p10\", \"x\": 0.27, \"y\": 0.36, \"role\": \"silhouette\" },\n    { \"id\": \"p11\", \"x\": 0.41, \"y\": 0.22, \"role\": \"silhouette\" }\n  ],\n  \"connections\": [\n    { \"a\": \"p1\", \"b\": \"p2\" },\n    { \"a\": \"p2\", \"b\": \"p3\" },\n    { \"a\": \"p3\", \"b\": \"p4\" },\n    { \"a\": \"p4\", \"b\": \"p5\" },\n    { \"a\": \"p5\", \"b\": \"p6\" },\n    { \"a\": \"p6\", \"b\": \"p7\" },\n    { \"a\": \"p7\", \"b\": \"p8\" },\n    { \"a\": \"p8\", \"b\": \"p9\" },\n    { \"a\": \"p9\", \"b\": \"p10\" },\n    { \"a\": \"p10\", \"b\": \"p11\" },\n    { \"a\": \"p11\", \"b\": \"p1\" }\n  ],\n  \"missingConnections\": [\n    { \"a\": \"p3\", \"b\": \"p4\", \"reason\": \"Withholding the tip of the tail creates a dramatic break in the flowing outline.\" },\n    { \"a\": \"p6\", \"b\": \"p7\", \"reason\": \"Leaving a gap between the feet emphasizes the stance and invites completion.\" }\n  ],\n  \"revealFeatures\": [\n    { \"name\": \"Glowing eye\", \"reason\": \"A bright, magical eye stands out in the head\", \"type\": \"magic\", \"near\": [\"p1\"] },\n    { \"name\": \"Star sparkles\", \"reason\": \"Twinkling stars are scattered across the body\", \"type\": \"accent\", \"near\": [\"p5\", \"p9\"] }\n  ],\n  \"hint\": \"A silent ruler of the night sky is waiting to soar…\"\n}",
+     "validator": {
+      "ok": true,
+      "reasons": [],
+      "repairs": []
+     },
+     "extraction": {
+      "subject": "starry celestial bird of prey",
+      "budget": 12,
+      "points": [
+       {
+        "id": "p1",
+        "x": 0.53,
+        "y": 0.16,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p2",
+        "x": 0.63,
+        "y": 0.21,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p3",
+        "x": 0.7,
+        "y": 0.32,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p4",
+        "x": 0.87,
+        "y": 0.74,
+        "role": "terminal",
+        "feature": "TERMINAL"
+       },
+       {
+        "id": "p5",
+        "x": 0.67,
+        "y": 0.87,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p6",
+        "x": 0.56,
+        "y": 0.88,
+        "role": "junction",
+        "feature": "JUNCTION"
+       },
+       {
+        "id": "p7",
+        "x": 0.45,
+        "y": 0.89,
+        "role": "junction",
+        "feature": "JUNCTION"
+       },
+       {
+        "id": "p8",
+        "x": 0.33,
+        "y": 0.87,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p9",
+        "x": 0.27,
+        "y": 0.67,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p10",
+        "x": 0.27,
+        "y": 0.36,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p11",
+        "x": 0.41,
+        "y": 0.22,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       }
+      ],
+      "joins": [
+       {
+        "a": 0,
+        "b": 1
+       },
+       {
+        "a": 1,
+        "b": 2
+       },
+       {
+        "a": 2,
+        "b": 3
+       },
+       {
+        "a": 3,
+        "b": 4
+       },
+       {
+        "a": 4,
+        "b": 5
+       },
+       {
+        "a": 5,
+        "b": 6
+       },
+       {
+        "a": 6,
+        "b": 7
+       },
+       {
+        "a": 7,
+        "b": 8
+       },
+       {
+        "a": 8,
+        "b": 9
+       },
+       {
+        "a": 9,
+        "b": 10
+       },
+       {
+        "a": 0,
+        "b": 10
+       }
+      ],
+      "missing": [
+       2,
+       5
+      ],
+      "gaps": [
+       {
+        "join": 2,
+        "reason": "Withholding the tip of the tail creates a dramatic break in the flowing outline."
+       },
+       {
+        "join": 5,
+        "reason": "Leaving a gap between the feet emphasizes the stance and invites completion."
+       }
+      ],
+      "pieces": 1,
+      "revealFeatures": [
+       {
+        "name": "GLOWING EYE",
+        "reason": "A bright, magical eye stands out in the head",
+        "type": "magic",
+        "near": [
+         0
+        ],
+        "kind": "glow"
+       },
+       {
+        "name": "STAR SPARKLES",
+        "reason": "Twinkling stars are scattered across the body",
+        "type": "accent",
+        "near": [
+         4,
+         8
+        ],
+        "kind": "motes"
+       }
+      ],
+      "hint": "A silent ruler of the night sky is waiting to soar…",
+      "confidence": {
+       "overall": null,
+       "identity": null,
+       "structure": null
+      }
+     },
+     "ok": true,
+     "attempts": 1
+    }
+   }
+  },
+  {
+   "id": "winged-lion",
+   "prompt": "A lion with wings made of stars in a night sky",
+   "labels": {
+    "image": "REAL MODEL (gpt-image-2, streamed)",
+    "extraction": "REAL MODEL (gpt-4.1, with the generated picture)"
+   },
+   "image": {
+    "ok": true,
+    "file": "winged-lion/source.png",
+    "model": "gpt-image-2",
+    "ms": 18421,
+    "events": 2,
+    "imagePrompt": "A lion with wings made of stars in a night sky.\nPresentation: one single creature, full body, the whole subject visible and centred, with a clear readable silhouette; expressive and characterful; on a plain uncluttered background. No text, no letters, no labels, no watermark, no interface, no borders, no diagram, and no second creature competing for attention. A finished, visually coherent piece of artwork suitable for a later study of its shape.",
+    "bytes": 1726061
+   },
+   "extractions": {
+    "8": {
+     "budget": 8,
+     "model": "gpt-4.1",
+     "ms": 4027,
+     "usage": {
+      "prompt": 1943,
+      "completion": 586
+     },
+     "raw": "{\n  \"subject\": \"majestic lion with starry wings\",\n  \"points\": [\n    { \"id\": \"p1\", \"x\": 0.08, \"y\": 0.16, \"role\": \"terminal\" },\n    { \"id\": \"p2\", \"x\": 0.36, \"y\": 0.38, \"role\": \"junction\" },\n    { \"id\": \"p3\", \"x\": 0.49, \"y\": 0.22, \"role\": \"silhouette\" },\n    { \"id\": \"p4\", \"x\": 0.63, \"y\": 0.38, \"role\": \"junction\" },\n    { \"id\": \"p5\", \"x\": 0.92, \"y\": 0.16, \"role\": \"terminal\" },\n    { \"id\": \"p6\", \"x\": 0.57, \"y\": 0.77, \"role\": \"silhouette\" },\n    { \"id\": \"p7\", \"x\": 0.42, \"y\": 0.77, \"role\": \"silhouette\" },\n    { \"id\": \"p8\", \"x\": 0.84, \"y\": 0.73, \"role\": \"silhouette\" }\n  ],\n  \"connections\": [\n    { \"a\": \"p1\", \"b\": \"p2\" },\n    { \"a\": \"p2\", \"b\": \"p3\" },\n    { \"a\": \"p3\", \"b\": \"p4\" },\n    { \"a\": \"p4\", \"b\": \"p5\" },\n    { \"a\": \"p3\", \"b\": \"p7\" },\n    { \"a\": \"p7\", \"b\": \"p6\" },\n    { \"a\": \"p6\", \"b\": \"p8\" },\n    { \"a\": \"p8\", \"b\": \"p4\" }\n  ],\n  \"missingConnections\": [\n    { \"a\": \"p7\", \"b\": \"p6\", \"reason\": \"Leaving the lower body open invites completion of the standing pose.\" }\n  ],\n  \"revealFeatures\": [\n    { \"name\": \"Starburst mane\", \"reason\": \"The mane glows with star-like points, visible but not structural\", \"type\": \"magic\", \"near\": [\"p3\"] },\n    { \"name\": \"Starry wings\", \"reason\": \"Wings are filled with glowing stars, accentuating their magical nature\", \"type\": \"magic\", \"near\": [\"p2\", \"p4\"] }\n  ],\n  \"hint\": \"A guardian of the night sky stands ready, its wings shimmering with starlight…\"\n}",
+     "validator": {
+      "ok": true,
+      "reasons": [],
+      "repairs": []
+     },
+     "extraction": {
+      "subject": "majestic lion with starry wings",
+      "budget": 8,
+      "points": [
+       {
+        "id": "p1",
+        "x": 0.08,
+        "y": 0.16,
+        "role": "terminal",
+        "feature": "TERMINAL"
+       },
+       {
+        "id": "p2",
+        "x": 0.36,
+        "y": 0.38,
+        "role": "junction",
+        "feature": "JUNCTION"
+       },
+       {
+        "id": "p3",
+        "x": 0.49,
+        "y": 0.22,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p4",
+        "x": 0.63,
+        "y": 0.38,
+        "role": "junction",
+        "feature": "JUNCTION"
+       },
+       {
+        "id": "p5",
+        "x": 0.92,
+        "y": 0.16,
+        "role": "terminal",
+        "feature": "TERMINAL"
+       },
+       {
+        "id": "p6",
+        "x": 0.57,
+        "y": 0.77,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p7",
+        "x": 0.42,
+        "y": 0.77,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p8",
+        "x": 0.84,
+        "y": 0.73,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       }
+      ],
+      "joins": [
+       {
+        "a": 0,
+        "b": 1
+       },
+       {
+        "a": 1,
+        "b": 2
+       },
+       {
+        "a": 2,
+        "b": 3
+       },
+       {
+        "a": 3,
+        "b": 4
+       },
+       {
+        "a": 2,
+        "b": 6
+       },
+       {
+        "a": 5,
+        "b": 6
+       },
+       {
+        "a": 5,
+        "b": 7
+       },
+       {
+        "a": 3,
+        "b": 7
+       }
+      ],
+      "missing": [
+       5
+      ],
+      "gaps": [
+       {
+        "join": 5,
+        "reason": "Leaving the lower body open invites completion of the standing pose."
+       }
+      ],
+      "pieces": 1,
+      "revealFeatures": [
+       {
+        "name": "STARBURST MANE",
+        "reason": "The mane glows with star-like points, visible but not structural",
+        "type": "magic",
+        "near": [
+         2
+        ],
+        "kind": "contour"
+       },
+       {
+        "name": "STARRY WINGS",
+        "reason": "Wings are filled with glowing stars, accentuating their magical nature",
+        "type": "magic",
+        "near": [
+         1,
+         3
+        ],
+        "kind": "glow"
+       }
+      ],
+      "hint": "A guardian of the night sky stands ready, its wings shimmering with starlight…",
+      "confidence": {
+       "overall": null,
+       "identity": null,
+       "structure": null
+      }
+     },
+     "ok": true,
+     "attempts": 1
+    },
+    "12": {
+     "budget": 12,
+     "model": "gpt-4.1",
+     "ms": 5778,
+     "usage": {
+      "prompt": 1938,
+      "completion": 863
+     },
+     "raw": "{\n  \"subject\": \"majestic winged lion made of stars\",\n  \"points\": [\n    { \"id\": \"p1\", \"x\": 0.08, \"y\": 0.17, \"role\": \"terminal\" },\n    { \"id\": \"p2\", \"x\": 0.32, \"y\": 0.33, \"role\": \"junction\" },\n    { \"id\": \"p3\", \"x\": 0.41, \"y\": 0.22, \"role\": \"silhouette\" },\n    { \"id\": \"p4\", \"x\": 0.50, \"y\": 0.38, \"role\": \"junction\" },\n    { \"id\": \"p5\", \"x\": 0.58, \"y\": 0.22, \"role\": \"silhouette\" },\n    { \"id\": \"p6\", \"x\": 0.68, \"y\": 0.33, \"role\": \"junction\" },\n    { \"id\": \"p7\", \"x\": 0.92, \"y\": 0.17, \"role\": \"terminal\" },\n    { \"id\": \"p8\", \"x\": 0.80, \"y\": 0.67, \"role\": \"silhouette\" },\n    { \"id\": \"p9\", \"x\": 0.67, \"y\": 0.88, \"role\": \"silhouette\" },\n    { \"id\": \"p10\", \"x\": 0.50, \"y\": 0.93, \"role\": \"silhouette\" },\n    { \"id\": \"p11\", \"x\": 0.33, \"y\": 0.88, \"role\": \"silhouette\" },\n    { \"id\": \"p12\", \"x\": 0.20, \"y\": 0.67, \"role\": \"silhouette\" }\n  ],\n  \"connections\": [\n    { \"a\": \"p1\", \"b\": \"p2\" },\n    { \"a\": \"p2\", \"b\": \"p3\" },\n    { \"a\": \"p3\", \"b\": \"p4\" },\n    { \"a\": \"p4\", \"b\": \"p5\" },\n    { \"a\": \"p5\", \"b\": \"p6\" },\n    { \"a\": \"p6\", \"b\": \"p7\" },\n    { \"a\": \"p4\", \"b\": \"p10\" },\n    { \"a\": \"p10\", \"b\": \"p11\" },\n    { \"a\": \"p11\", \"b\": \"p12\" },\n    { \"a\": \"p12\", \"b\": \"p2\" },\n    { \"a\": \"p6\", \"b\": \"p8\" },\n    { \"a\": \"p8\", \"b\": \"p9\" },\n    { \"a\": \"p9\", \"b\": \"p10\" }\n  ],\n  \"missingConnections\": [\n    { \"a\": \"p2\", \"b\": \"p12\", \"reason\": \"Leaves the lower left silhouette open for completion.\" },\n    { \"a\": \"p6\", \"b\": \"p8\", \"reason\": \"Creates a gap at the right wing-body junction, inviting closure.\" },\n    { \"a\": \"p4\", \"b\": \"p10\", \"reason\": \"Leaves the central body unfinished, making the figure mysterious.\" }\n  ],\n  \"revealFeatures\": [\n    { \"name\": \"Star-lit eyes\", \"reason\": \"The eyes glow with starlight, not part of the structure\", \"type\": \"magic\", \"near\": [\"p4\"] },\n    { \"name\": \"Radiant mane\", \"reason\": \"The mane sparkles with stars, accenting the head\", \"type\": \"accent\", \"near\": [\"p3\", \"p4\", \"p5\"] }\n  ],\n  \"hint\": \"A guardian of the night sky stands watchful and bright…\"\n}",
+     "validator": {
+      "ok": true,
+      "reasons": [],
+      "repairs": []
+     },
+     "extraction": {
+      "subject": "majestic winged lion made of stars",
+      "budget": 12,
+      "points": [
+       {
+        "id": "p1",
+        "x": 0.08,
+        "y": 0.17,
+        "role": "terminal",
+        "feature": "TERMINAL"
+       },
+       {
+        "id": "p2",
+        "x": 0.32,
+        "y": 0.33,
+        "role": "junction",
+        "feature": "JUNCTION"
+       },
+       {
+        "id": "p3",
+        "x": 0.41,
+        "y": 0.22,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p4",
+        "x": 0.5,
+        "y": 0.38,
+        "role": "junction",
+        "feature": "JUNCTION"
+       },
+       {
+        "id": "p5",
+        "x": 0.58,
+        "y": 0.22,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p6",
+        "x": 0.68,
+        "y": 0.33,
+        "role": "junction",
+        "feature": "JUNCTION"
+       },
+       {
+        "id": "p7",
+        "x": 0.92,
+        "y": 0.17,
+        "role": "terminal",
+        "feature": "TERMINAL"
+       },
+       {
+        "id": "p8",
+        "x": 0.8,
+        "y": 0.67,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p9",
+        "x": 0.67,
+        "y": 0.88,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p10",
+        "x": 0.5,
+        "y": 0.93,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p11",
+        "x": 0.33,
+        "y": 0.88,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p12",
+        "x": 0.2,
+        "y": 0.67,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       }
+      ],
+      "joins": [
+       {
+        "a": 0,
+        "b": 1
+       },
+       {
+        "a": 1,
+        "b": 2
+       },
+       {
+        "a": 2,
+        "b": 3
+       },
+       {
+        "a": 3,
+        "b": 4
+       },
+       {
+        "a": 4,
+        "b": 5
+       },
+       {
+        "a": 5,
+        "b": 6
+       },
+       {
+        "a": 3,
+        "b": 9
+       },
+       {
+        "a": 9,
+        "b": 10
+       },
+       {
+        "a": 10,
+        "b": 11
+       },
+       {
+        "a": 1,
+        "b": 11
+       },
+       {
+        "a": 5,
+        "b": 7
+       },
+       {
+        "a": 7,
+        "b": 8
+       },
+       {
+        "a": 8,
+        "b": 9
+       }
+      ],
+      "missing": [
+       6,
+       9,
+       10
+      ],
+      "gaps": [
+       {
+        "join": 9,
+        "reason": "Leaves the lower left silhouette open for completion."
+       },
+       {
+        "join": 10,
+        "reason": "Creates a gap at the right wing-body junction, inviting closure."
+       },
+       {
+        "join": 6,
+        "reason": "Leaves the central body unfinished, making the figure mysterious."
+       }
+      ],
+      "pieces": 1,
+      "revealFeatures": [
+       {
+        "name": "STAR LIT EYES",
+        "reason": "The eyes glow with starlight, not part of the structure",
+        "type": "magic",
+        "near": [
+         3
+        ],
+        "kind": "glow"
+       },
+       {
+        "name": "RADIANT MANE",
+        "reason": "The mane sparkles with stars, accenting the head",
+        "type": "accent",
+        "near": [
+         2,
+         3,
+         4
+        ],
+        "kind": "contour"
+       }
+      ],
+      "hint": "A guardian of the night sky stands watchful and bright…",
+      "confidence": {
+       "overall": null,
+       "identity": null,
+       "structure": null
+      }
+     },
+     "ok": true,
+     "attempts": 1
+    }
+   }
+  },
+  {
+   "id": "whale",
+   "prompt": "A giant whale made of stars in a night sky",
+   "labels": {
+    "image": "REAL MODEL (gpt-image-2, streamed)",
+    "extraction": "REAL MODEL (gpt-4.1, with the generated picture)"
+   },
+   "image": {
+    "ok": true,
+    "file": "whale/source.png",
+    "model": "gpt-image-2",
+    "ms": 17078,
+    "events": 2,
+    "imagePrompt": "A giant whale made of stars in a night sky.\nPresentation: one single creature, full body, the whole subject visible and centred, with a clear readable silhouette; expressive and characterful; on a plain uncluttered background. No text, no letters, no labels, no watermark, no interface, no borders, no diagram, and no second creature competing for attention. A finished, visually coherent piece of artwork suitable for a later study of its shape.",
+    "bytes": 1692200
+   },
+   "extractions": {
+    "8": {
+     "budget": 8,
+     "model": "gpt-4.1",
+     "ms": 4233,
+     "usage": {
+      "prompt": 1943,
+      "completion": 511
+     },
+     "raw": "{\n  \"subject\": \"starry whale constellation\",\n  \"points\": [\n    { \"id\": \"p1\", \"x\": 0.07, \"y\": 0.187, \"role\": \"silhouette\" },\n    { \"id\": \"p2\", \"x\": 0.26, \"y\": 0.28, \"role\": \"junction\" },\n    { \"id\": \"p3\", \"x\": 0.22, \"y\": 0.73, \"role\": \"terminal\" },\n    { \"id\": \"p4\", \"x\": 0.41, \"y\": 0.57, \"role\": \"junction\" },\n    { \"id\": \"p5\", \"x\": 0.61, \"y\": 0.74, \"role\": \"terminal\" },\n    { \"id\": \"p6\", \"x\": 0.95, \"y\": 0.38, \"role\": \"silhouette\" },\n    { \"id\": \"p7\", \"x\": 0.58, \"y\": 0.28, \"role\": \"silhouette\" },\n    { \"id\": \"p8\", \"x\": 0.13, \"y\": 0.09, \"role\": \"terminal\" }\n  ],\n  \"connections\": [\n    { \"a\": \"p1\", \"b\": \"p8\" },\n    { \"a\": \"p8\", \"b\": \"p2\" },\n    { \"a\": \"p2\", \"b\": \"p4\" },\n    { \"a\": \"p2\", \"b\": \"p3\" },\n    { \"a\": \"p4\", \"b\": \"p7\" },\n    { \"a\": \"p4\", \"b\": \"p5\" },\n    { \"a\": \"p7\", \"b\": \"p6\" }\n  ],\n  \"missingConnections\": [\n    { \"a\": \"p1\", \"b\": \"p2\", \"reason\": \"Withholding this tail-to-body connection leaves the tail visually incomplete but easy to finish.\" }\n  ],\n  \"revealFeatures\": [\n    { \"name\": \"Starry eye\", \"reason\": \"A bright eye stands out in the constellation\", \"type\": \"magic\", \"near\": [\"p7\"] }\n  ],\n  \"hint\": \"A gentle giant glides among the stars…\"\n}",
+     "validator": {
+      "ok": true,
+      "reasons": [],
+      "repairs": [
+       "missingConnections[0] is not a connection of the complete figure — dropped (a gap is a withheld connection, never an invented one)",
+       "missing connections chosen by the Lab (the model's would each strand a point)"
+      ]
+     },
+     "extraction": {
+      "subject": "starry whale constellation",
+      "budget": 8,
+      "points": [
+       {
+        "id": "p1",
+        "x": 0.07,
+        "y": 0.187,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p2",
+        "x": 0.26,
+        "y": 0.28,
+        "role": "junction",
+        "feature": "JUNCTION"
+       },
+       {
+        "id": "p3",
+        "x": 0.22,
+        "y": 0.73,
+        "role": "terminal",
+        "feature": "TERMINAL"
+       },
+       {
+        "id": "p4",
+        "x": 0.41,
+        "y": 0.57,
+        "role": "junction",
+        "feature": "JUNCTION"
+       },
+       {
+        "id": "p5",
+        "x": 0.61,
+        "y": 0.74,
+        "role": "terminal",
+        "feature": "TERMINAL"
+       },
+       {
+        "id": "p6",
+        "x": 0.95,
+        "y": 0.38,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p7",
+        "x": 0.58,
+        "y": 0.28,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p8",
+        "x": 0.13,
+        "y": 0.09,
+        "role": "terminal",
+        "feature": "TERMINAL"
+       }
+      ],
+      "joins": [
+       {
+        "a": 0,
+        "b": 7
+       },
+       {
+        "a": 1,
+        "b": 7
+       },
+       {
+        "a": 1,
+        "b": 3
+       },
+       {
+        "a": 1,
+        "b": 2
+       },
+       {
+        "a": 3,
+        "b": 6
+       },
+       {
+        "a": 3,
+        "b": 4
+       },
+       {
+        "a": 5,
+        "b": 6
+       }
+      ],
+      "missing": [
+       4
+      ],
+      "gaps": [
+       {
+        "join": 4,
+        "reason": "chosen by the Lab — none of the model's could be left out without stranding a point"
+       }
+      ],
+      "pieces": 1,
+      "revealFeatures": [
+       {
+        "name": "STARRY EYE",
+        "reason": "A bright eye stands out in the constellation",
+        "type": "magic",
+        "near": [
+         6
+        ],
+        "kind": "glow"
+       }
+      ],
+      "hint": "A gentle giant glides among the stars…",
+      "confidence": {
+       "overall": null,
+       "identity": null,
+       "structure": null
+      }
+     },
+     "ok": true,
+     "attempts": 1
+    },
+    "12": {
+     "budget": 12,
+     "model": "gpt-4.1",
+     "ms": 4768,
+     "usage": {
+      "prompt": 1938,
+      "completion": 719
+     },
+     "raw": "{\n  \"subject\": \"starry whale constellation in space\",\n  \"points\": [\n    { \"id\": \"p1\", \"x\": 0.07, \"y\": 0.207, \"role\": \"terminal\" },\n    { \"id\": \"p2\", \"x\": 0.22, \"y\": 0.15, \"role\": \"silhouette\" },\n    { \"id\": \"p3\", \"x\": 0.32, \"y\": 0.31, \"role\": \"junction\" },\n    { \"id\": \"p4\", \"x\": 0.19, \"y\": 0.68, \"role\": \"terminal\" },\n    { \"id\": \"p5\", \"x\": 0.41, \"y\": 0.54, \"role\": \"junction\" },\n    { \"id\": \"p6\", \"x\": 0.73, \"y\": 0.75, \"role\": \"terminal\" },\n    { \"id\": \"p7\", \"x\": 0.82, \"y\": 0.54, \"role\": \"junction\" },\n    { \"id\": \"p8\", \"x\": 0.95, \"y\": 0.36, \"role\": \"terminal\" },\n    { \"id\": \"p9\", \"x\": 0.93, \"y\": 0.28, \"role\": \"silhouette\" },\n    { \"id\": \"p10\", \"x\": 0.73, \"y\": 0.19, \"role\": \"silhouette\" },\n    { \"id\": \"p11\", \"x\": 0.41, \"y\": 0.21, \"role\": \"silhouette\" }\n  ],\n  \"connections\": [\n    { \"a\": \"p1\", \"b\": \"p2\" },\n    { \"a\": \"p2\", \"b\": \"p3\" },\n    { \"a\": \"p3\", \"b\": \"p11\" },\n    { \"a\": \"p11\", \"b\": \"p10\" },\n    { \"a\": \"p10\", \"b\": \"p9\" },\n    { \"a\": \"p9\", \"b\": \"p8\" },\n    { \"a\": \"p8\", \"b\": \"p7\" },\n    { \"a\": \"p7\", \"b\": \"p6\" },\n    { \"a\": \"p3\", \"b\": \"p5\" },\n    { \"a\": \"p5\", \"b\": \"p4\" },\n    { \"a\": \"p5\", \"b\": \"p7\" }\n  ],\n  \"missingConnections\": [\n    { \"a\": \"p2\", \"b\": \"p11\", \"reason\": \"Leaves the back curve open for completion, a key part of the whale's silhouette.\" },\n    { \"a\": \"p5\", \"b\": \"p6\", \"reason\": \"Leaves the lower fin unfinished, inviting the child to complete the flipper.\" }\n  ],\n  \"revealFeatures\": [\n    { \"name\": \"Glowing eye\", \"reason\": \"A bright star marks the whale's eye, visible but not structural\", \"type\": \"magic\", \"near\": [\"p7\"] }\n  ],\n  \"hint\": \"A gentle giant glides among the stars…\"\n}",
+     "validator": {
+      "ok": true,
+      "reasons": [],
+      "repairs": [
+       "missingConnections[0] is not a connection of the complete figure — dropped (a gap is a withheld connection, never an invented one)",
+       "missingConnections[1] is not a connection of the complete figure — dropped (a gap is a withheld connection, never an invented one)",
+       "missing connections chosen by the Lab (the model's would each strand a point)"
+      ]
+     },
+     "extraction": {
+      "subject": "starry whale constellation in space",
+      "budget": 12,
+      "points": [
+       {
+        "id": "p1",
+        "x": 0.07,
+        "y": 0.207,
+        "role": "terminal",
+        "feature": "TERMINAL"
+       },
+       {
+        "id": "p2",
+        "x": 0.22,
+        "y": 0.15,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p3",
+        "x": 0.32,
+        "y": 0.31,
+        "role": "junction",
+        "feature": "JUNCTION"
+       },
+       {
+        "id": "p4",
+        "x": 0.19,
+        "y": 0.68,
+        "role": "terminal",
+        "feature": "TERMINAL"
+       },
+       {
+        "id": "p5",
+        "x": 0.41,
+        "y": 0.54,
+        "role": "junction",
+        "feature": "JUNCTION"
+       },
+       {
+        "id": "p6",
+        "x": 0.73,
+        "y": 0.75,
+        "role": "terminal",
+        "feature": "TERMINAL"
+       },
+       {
+        "id": "p7",
+        "x": 0.82,
+        "y": 0.54,
+        "role": "junction",
+        "feature": "JUNCTION"
+       },
+       {
+        "id": "p8",
+        "x": 0.95,
+        "y": 0.36,
+        "role": "terminal",
+        "feature": "TERMINAL"
+       },
+       {
+        "id": "p9",
+        "x": 0.93,
+        "y": 0.28,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p10",
+        "x": 0.73,
+        "y": 0.19,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p11",
+        "x": 0.41,
+        "y": 0.21,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       }
+      ],
+      "joins": [
+       {
+        "a": 0,
+        "b": 1
+       },
+       {
+        "a": 1,
+        "b": 2
+       },
+       {
+        "a": 2,
+        "b": 10
+       },
+       {
+        "a": 9,
+        "b": 10
+       },
+       {
+        "a": 8,
+        "b": 9
+       },
+       {
+        "a": 7,
+        "b": 8
+       },
+       {
+        "a": 6,
+        "b": 7
+       },
+       {
+        "a": 5,
+        "b": 6
+       },
+       {
+        "a": 2,
+        "b": 4
+       },
+       {
+        "a": 3,
+        "b": 4
+       },
+       {
+        "a": 4,
+        "b": 6
+       }
+      ],
+      "missing": [
+       3,
+       10
+      ],
+      "gaps": [
+       {
+        "join": 10,
+        "reason": "chosen by the Lab — none of the model's could be left out without stranding a point"
+       },
+       {
+        "join": 3,
+        "reason": "chosen by the Lab — none of the model's could be left out without stranding a point"
+       }
+      ],
+      "pieces": 1,
+      "revealFeatures": [
+       {
+        "name": "GLOWING EYE",
+        "reason": "A bright star marks the whale's eye, visible but not structural",
+        "type": "magic",
+        "near": [
+         6
+        ],
+        "kind": "glow"
+       }
+      ],
+      "hint": "A gentle giant glides among the stars…",
+      "confidence": {
+       "overall": null,
+       "identity": null,
+       "structure": null
+      }
+     },
+     "ok": true,
+     "attempts": 1
+    }
+   }
+  },
+  {
+   "id": "star-fox",
+   "prompt": "An imaginary creature that looks like a fox, made of stars in a night sky",
+   "labels": {
+    "image": "REAL MODEL (gpt-image-2, streamed)",
+    "extraction": "REAL MODEL (gpt-4.1, with the generated picture)"
+   },
+   "image": {
+    "ok": true,
+    "file": "star-fox/source.png",
+    "model": "gpt-image-2",
+    "ms": 19754,
+    "events": 2,
+    "imagePrompt": "An imaginary creature that looks like a fox, made of stars in a night sky.\nPresentation: one single creature, full body, the whole subject visible and centred, with a clear readable silhouette; expressive and characterful; on a plain uncluttered background. No text, no letters, no labels, no watermark, no interface, no borders, no diagram, and no second creature competing for attention. A finished, visually coherent piece of artwork suitable for a later study of its shape.",
+    "bytes": 1449646
+   },
+   "extractions": {
+    "8": {
+     "budget": 8,
+     "model": "gpt-4.1",
+     "ms": 4608,
+     "usage": {
+      "prompt": 1943,
+      "completion": 578
+     },
+     "raw": "{\n  \"subject\": \"starry fox with a glowing, swirling tail\",\n  \"points\": [\n    { \"id\": \"p1\", \"x\": 0.32, \"y\": 0.23, \"role\": \"silhouette\" },\n    { \"id\": \"p2\", \"x\": 0.44, \"y\": 0.36, \"role\": \"junction\" },\n    { \"id\": \"p3\", \"x\": 0.22, \"y\": 0.85, \"role\": \"silhouette\" },\n    { \"id\": \"p4\", \"x\": 0.55, \"y\": 0.89, \"role\": \"silhouette\" },\n    { \"id\": \"p5\", \"x\": 0.73, \"y\": 0.81, \"role\": \"silhouette\" },\n    { \"id\": \"p6\", \"x\": 0.87, \"y\": 0.39, \"role\": \"terminal\" },\n    { \"id\": \"p7\", \"x\": 0.62, \"y\": 0.18, \"role\": \"silhouette\" },\n    { \"id\": \"p8\", \"x\": 0.23, \"y\": 0.13, \"role\": \"silhouette\" }\n  ],\n  \"connections\": [\n    { \"a\": \"p8\", \"b\": \"p1\" },\n    { \"a\": \"p1\", \"b\": \"p2\" },\n    { \"a\": \"p2\", \"b\": \"p3\" },\n    { \"a\": \"p3\", \"b\": \"p4\" },\n    { \"a\": \"p4\", \"b\": \"p5\" },\n    { \"a\": \"p5\", \"b\": \"p6\" },\n    { \"a\": \"p6\", \"b\": \"p7\" },\n    { \"a\": \"p7\", \"b\": \"p8\" }\n  ],\n  \"missingConnections\": [\n    { \"a\": \"p5\", \"b\": \"p6\", \"reason\": \"Withholding the curve at the top of the tail leaves the swirl incomplete but inviting to finish.\" }\n  ],\n  \"revealFeatures\": [\n    { \"name\": \"Lit eye\", \"reason\": \"the glowing eye stands out in the picture\", \"type\": \"magic\", \"near\": [\"p2\"] },\n    { \"name\": \"Star clusters\", \"reason\": \"bright star-like spots scattered on the body\", \"type\": \"accent\", \"near\": [\"p2\", \"p4\"] }\n  ],\n  \"hint\": \"A shimmering spirit of the night sky is waiting…\"\n}",
+     "validator": {
+      "ok": true,
+      "reasons": [],
+      "repairs": []
+     },
+     "extraction": {
+      "subject": "starry fox with a glowing, swirling tail",
+      "budget": 8,
+      "points": [
+       {
+        "id": "p1",
+        "x": 0.32,
+        "y": 0.23,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p2",
+        "x": 0.44,
+        "y": 0.36,
+        "role": "junction",
+        "feature": "JUNCTION"
+       },
+       {
+        "id": "p3",
+        "x": 0.22,
+        "y": 0.85,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p4",
+        "x": 0.55,
+        "y": 0.89,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p5",
+        "x": 0.73,
+        "y": 0.81,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p6",
+        "x": 0.87,
+        "y": 0.39,
+        "role": "terminal",
+        "feature": "TERMINAL"
+       },
+       {
+        "id": "p7",
+        "x": 0.62,
+        "y": 0.18,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p8",
+        "x": 0.23,
+        "y": 0.13,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       }
+      ],
+      "joins": [
+       {
+        "a": 0,
+        "b": 7
+       },
+       {
+        "a": 0,
+        "b": 1
+       },
+       {
+        "a": 1,
+        "b": 2
+       },
+       {
+        "a": 2,
+        "b": 3
+       },
+       {
+        "a": 3,
+        "b": 4
+       },
+       {
+        "a": 4,
+        "b": 5
+       },
+       {
+        "a": 5,
+        "b": 6
+       },
+       {
+        "a": 6,
+        "b": 7
+       }
+      ],
+      "missing": [
+       5
+      ],
+      "gaps": [
+       {
+        "join": 5,
+        "reason": "Withholding the curve at the top of the tail leaves the swirl incomplete but inviting to finish."
+       }
+      ],
+      "pieces": 1,
+      "revealFeatures": [
+       {
+        "name": "LIT EYE",
+        "reason": "the glowing eye stands out in the picture",
+        "type": "magic",
+        "near": [
+         1
+        ],
+        "kind": "glow"
+       },
+       {
+        "name": "STAR CLUSTERS",
+        "reason": "bright star-like spots scattered on the body",
+        "type": "accent",
+        "near": [
+         1,
+         3
+        ],
+        "kind": "lines"
+       }
+      ],
+      "hint": "A shimmering spirit of the night sky is waiting…",
+      "confidence": {
+       "overall": null,
+       "identity": null,
+       "structure": null
+      }
+     },
+     "ok": true,
+     "attempts": 1
+    },
+    "12": {
+     "budget": 12,
+     "model": "gpt-4.1",
+     "ms": 4508,
+     "usage": {
+      "prompt": 1938,
+      "completion": 712
+     },
+     "raw": "{\n  \"subject\": \"starry fox with a glowing, cosmic tail\",\n  \"points\": [\n    { \"id\": \"p1\", \"x\": 0.29, \"y\": 0.225, \"role\": \"silhouette\" },\n    { \"id\": \"p2\", \"x\": 0.41, \"y\": 0.13, \"role\": \"silhouette\" },\n    { \"id\": \"p3\", \"x\": 0.53, \"y\": 0.21, \"role\": \"silhouette\" },\n    { \"id\": \"p4\", \"x\": 0.62, \"y\": 0.36, \"role\": \"junction\" },\n    { \"id\": \"p5\", \"x\": 0.82, \"y\": 0.23, \"role\": \"terminal\" },\n    { \"id\": \"p6\", \"x\": 0.74, \"y\": 0.52, \"role\": \"silhouette\" },\n    { \"id\": \"p7\", \"x\": 0.64, \"y\": 0.77, \"role\": \"silhouette\" },\n    { \"id\": \"p8\", \"x\": 0.53, \"y\": 0.82, \"role\": \"junction\" },\n    { \"id\": \"p9\", \"x\": 0.36, \"y\": 0.87, \"role\": \"silhouette\" },\n    { \"id\": \"p10\", \"x\": 0.28, \"y\": 0.68, \"role\": \"junction\" }\n  ],\n  \"connections\": [\n    { \"a\": \"p1\", \"b\": \"p2\" },\n    { \"a\": \"p2\", \"b\": \"p3\" },\n    { \"a\": \"p3\", \"b\": \"p4\" },\n    { \"a\": \"p4\", \"b\": \"p5\" },\n    { \"a\": \"p4\", \"b\": \"p6\" },\n    { \"a\": \"p6\", \"b\": \"p7\" },\n    { \"a\": \"p7\", \"b\": \"p8\" },\n    { \"a\": \"p8\", \"b\": \"p9\" },\n    { \"a\": \"p9\", \"b\": \"p10\" },\n    { \"a\": \"p10\", \"b\": \"p1\" }\n  ],\n  \"missingConnections\": [\n    { \"a\": \"p4\", \"b\": \"p5\", \"reason\": \"Withholding the tip of the cosmic tail for a magical reveal.\" },\n    { \"a\": \"p8\", \"b\": \"p9\", \"reason\": \"Leaving a gap at the lower body for a satisfying completion of the stance.\" }\n  ],\n  \"revealFeatures\": [\n    { \"name\": \"Glowing eyes\", \"reason\": \"the eyes shine brightly, not part of the traced structure\", \"type\": \"magic\", \"near\": [\"p2\"] },\n    { \"name\": \"Star clusters\", \"reason\": \"distinct star-like sparkles across the body\", \"type\": \"accent\", \"near\": [\"p4\", \"p6\"] }\n  ],\n  \"hint\": \"A shimmering spirit of the night sky is waiting to appear…\"\n}",
+     "validator": {
+      "ok": true,
+      "reasons": [],
+      "repairs": [
+       "missingConnections[0] would leave a lone point — kept as a connection instead"
+      ]
+     },
+     "extraction": {
+      "subject": "starry fox with a glowing, cosmic tail",
+      "budget": 12,
+      "points": [
+       {
+        "id": "p1",
+        "x": 0.29,
+        "y": 0.225,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p2",
+        "x": 0.41,
+        "y": 0.13,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p3",
+        "x": 0.53,
+        "y": 0.21,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p4",
+        "x": 0.62,
+        "y": 0.36,
+        "role": "junction",
+        "feature": "JUNCTION"
+       },
+       {
+        "id": "p5",
+        "x": 0.82,
+        "y": 0.23,
+        "role": "terminal",
+        "feature": "TERMINAL"
+       },
+       {
+        "id": "p6",
+        "x": 0.74,
+        "y": 0.52,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p7",
+        "x": 0.64,
+        "y": 0.77,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p8",
+        "x": 0.53,
+        "y": 0.82,
+        "role": "junction",
+        "feature": "JUNCTION"
+       },
+       {
+        "id": "p9",
+        "x": 0.36,
+        "y": 0.87,
+        "role": "silhouette",
+        "feature": "SILHOUETTE"
+       },
+       {
+        "id": "p10",
+        "x": 0.28,
+        "y": 0.68,
+        "role": "junction",
+        "feature": "JUNCTION"
+       }
+      ],
+      "joins": [
+       {
+        "a": 0,
+        "b": 1
+       },
+       {
+        "a": 1,
+        "b": 2
+       },
+       {
+        "a": 2,
+        "b": 3
+       },
+       {
+        "a": 3,
+        "b": 4
+       },
+       {
+        "a": 3,
+        "b": 5
+       },
+       {
+        "a": 5,
+        "b": 6
+       },
+       {
+        "a": 6,
+        "b": 7
+       },
+       {
+        "a": 7,
+        "b": 8
+       },
+       {
+        "a": 8,
+        "b": 9
+       },
+       {
+        "a": 0,
+        "b": 9
+       }
+      ],
+      "missing": [
+       7
+      ],
+      "gaps": [
+       {
+        "join": 7,
+        "reason": "Leaving a gap at the lower body for a satisfying completion of the stance."
+       }
+      ],
+      "pieces": 1,
+      "revealFeatures": [
+       {
+        "name": "GLOWING EYES",
+        "reason": "the eyes shine brightly, not part of the traced structure",
+        "type": "magic",
+        "near": [
+         1
+        ],
+        "kind": "glow"
+       },
+       {
+        "name": "STAR CLUSTERS",
+        "reason": "distinct star-like sparkles across the body",
+        "type": "accent",
+        "near": [
+         3,
+         5
+        ],
+        "kind": "lines"
+       }
+      ],
+      "hint": "A shimmering spirit of the night sky is waiting to appear…",
+      "confidence": {
+       "overall": null,
+       "identity": null,
+       "structure": null
+      }
+     },
+     "ok": true,
+     "attempts": 1
+    }
+   }
+  }
+ ]
+}

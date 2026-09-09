@@ -2,8 +2,26 @@
 // simplest bridge: the vision model looks at the chosen picture and
 // proposes the Ether interpretation DIRECTLY — points in normalized image
 // coordinates, the connections of the complete figure, which of them to
-// leave missing, the reveal features, a hint — and the Shape Lab takes it
+// withhold, optional reveal features, a hint — and the Shape Lab takes it
 // as a starting figure the researcher corrects.
+//
+// SPRINT — FIX ETHER EXTRACTION: TRACE THE IMAGE, DON'T INVENT A SKELETON
+// (Decision 58, Lab only). The first contract asked the model for "a
+// simplified interpretation, not a tracing" with points prioritised by
+// ANATOMY — silhouette, gesture, "transitions (neck, hips, shoulder)",
+// "diagnostic features", terminals — and one feature word per point. On
+// a boat that produced a generic body + mast + sail skeleton that was
+// not the boat in the picture: the model reasoned from the subject's
+// NAME about what such a thing has, and placed points where those parts
+// ought to be. THE SOURCE IMAGE IS THE VISUAL TRUTH NOW: the contract
+// asks for a simplified visual TRACING of THIS picture — points where
+// the visible contour changes direction or a visible structure begins,
+// ends or joins; roles that describe the point's place in the picture
+// (silhouette · junction · internal · terminal), never a body part; the
+// budget as a SAMPLING budget over the visible shape; connections only
+// where a visible relationship runs; and a missing connection as AN
+// EXISTING VISUAL CONNECTION WE CHOOSE TO WITHHOLD, never one invented.
+// Reveal is optional and secondary, and unchanged in how it is drawn.
 //
 // SPRINT — Image → Ether creature, end-to-end closure (Decision 58, Lab
 // only). It deliberately replaces the semantic-compiler route as the
@@ -34,6 +52,9 @@
 
   var BUDGETS = [8, 10, 12, 16, 18, 20];
   var LIMITS = { pointsMin: 3, idChars: 12, featureChars: 24, missingMax: 3, revealMax: 6, reasonChars: 160, hintMin: 8, hintMax: 90, textChars: 300 };
+  // a point's ROLE says where it sits in the picture, never what body part
+  // it is — the brief's four, and nothing anatomical is required
+  var ROLES = ['silhouette', 'junction', 'internal', 'terminal'];
   var REVEAL_TYPES = ['diagnostic', 'character', 'accent', 'magic'];
   // how a reveal TYPE is first drawn — a starting kind the researcher may
   // change on the row before accepting; generic, never per creature
@@ -59,6 +80,13 @@
   // keys that would carry a private thing — refused by name at any depth
   var FORBIDDEN_KEYS = ['card', 'cardId', 'owner', 'ownerId', 'email', 'memories', 'memory', 'orbit', 'circle', 'username', 'creator', 'companion', 'story', 'session', 'token', 'key', 'pattern', 'cells', 'constellation', 'stars', 'code', 'script', 'svg', 'html', 'url', 'href', 'src'];
 
+  function countPieces(n, joins) {
+    var parent = []; for (var i = 0; i < n; i++) parent[i] = i;
+    function find(x) { while (parent[x] !== x) { parent[x] = parent[parent[x]]; x = parent[x]; } return x; }
+    joins.forEach(function (j) { var a = find(j.a), b = find(j.b); if (a !== b) parent[a] = b; });
+    var roots = {}; for (var k = 0; k < n; k++) roots[find(k)] = true;
+    return Object.keys(roots).length;
+  }
   function token(v) { return typeof v === 'string' ? v.trim().toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, LIMITS.idChars) : ''; }
   function text(v, n) { return typeof v === 'string' ? v.trim().replace(/\s+/g, ' ').slice(0, n || LIMITS.textChars) : ''; }
   function num(v) { return typeof v === 'number' && isFinite(v) ? v : (typeof v === 'string' && /^-?\d+(\.\d+)?$/.test(v.trim()) ? Number(v) : null); }
@@ -80,25 +108,28 @@
   // ---------------------------------------------------------------
   function extractMessages(budget) {
     var n = BUDGETS.indexOf(Number(budget)) !== -1 ? Number(budget) : 12;
+    var sampling = n <= 8 ? 'At ' + n + ' points, take only the STRONGEST silhouette points — the few places without which the shape is not this shape.'
+      : n <= 12 ? 'At ' + n + ' points, take the major contour structure — the strongest silhouette points and the main direction changes.'
+      : 'At ' + n + ' points, take the major contour structure and then secondary structure — internal lines and smaller protrusions that are clearly visible.';
     var system = [
-      'You are looking at a picture of a being. Produce its ETHER EXTRACTION: a simplified star-figure a child could complete — a small number of bright points joined by straight lines — that clearly becomes the SAME IDEA as the picture. The picture is the source of truth: describe what is actually there, never what a name suggests.',
-      'POINTS. Choose the MINIMUM useful points, at most ' + n + ', that make the being recognisable as a silhouette of lines. Prioritise, in this order: 1. the overall silhouette, 2. the major gesture (the main body line), 3. the important transitions (neck, hips, shoulder), 4. diagnostic features (what makes THIS being itself), 5. meaningful terminals (a tip, a tusk), 6. symmetry where it is visually important. Do NOT force every anatomical detail into points — this is a simplified interpretation, not a tracing. Give each point an id (p1, p2, …), its position in the picture as NORMALIZED coordinates (x from 0 at the left to 1 at the right, y from 0 at the top to 1 at the bottom), and one short feature word (head, tail tip, wing tip, front foot…).',
-      'CONNECTIONS. The lines of the COMPLETE figure: which points are joined. The result must read as one being in one piece — every point joined to at least one other, the silhouette closed where the picture closes it, and no line that crosses the body for no reason.',
-      'MISSING CONNECTIONS. From those connections choose ' + (n <= 8 ? 'one or two' : 'two or three') + ' that will be LEFT OUT to make the unfinished mystery a child completes. Not at random: the unfinished figure must still be intriguing and keep enough identity, the missing relationship must be visibly noticeable, completing it must make sense, and completion must produce a meaningful improvement. Prefer a join BETWEEN parts (a neck, a wing root, a tail root) over a join inside a part; never leave a point with no line at all. Say why for each.',
-      'REVEAL FEATURES. Separately from the points: two to five features visible in THIS picture that contribute to identity or character, can be withheld without destroying recognition of the unfinished figure, and add impact when they appear after completion — horns, an eye that lights, back spikes, a mane, flowing hair, a tail tuft, a wing\'s membrane, an ear patch. Never a structural part (the body, the head, the legs). Each has a name, a reason, a type (diagnostic | character | accent | magic) and near: the point ids it belongs beside.',
-      'HINT. One short child-friendly line that says what KIND of being is waiting — its nature, where it lives, what it does — without naming it, without listing its body parts, and without telling anyone what to do: like "A hunter of the open sky is waiting…" or "A quiet giant is waiting in the deep…" or "Something ancient is waiting to wake…".',
-      'CONFIDENCE. Three numbers from 0 to 1: overall, identity (would the completed figure be recognised), structure (are the points and lines a coherent one-piece figure).',
+      // the brief's critical instruction, verbatim
+      'You are extracting a simplified visual tracing of the supplied image. Do not construct a generic anatomical skeleton from the subject\'s name. Do not assume what a typical example of this subject looks like. Use the actual visible silhouette and internal structure in the supplied image. If the source image contains an unusual pose, preserve that pose. If the subject is graceful or curved, preserve that gesture. Choose points where the visual contour changes direction or where an important visible structure begins, ends, or joins. The resulting connected points should still look like THIS IMAGE when the source image is hidden.',
+      'THE SOURCE IMAGE IS THE VISUAL TRUTH. Produce its ETHER EXTRACTION: a small number of bright points joined by straight lines that TRACES what is actually visible in THIS picture. Never reason "this kind of thing = a body + a head + limbs" and place points where those parts ought to be; look at this particular image and find the visual path — the outline and the important inner lines — that makes THIS image recognisable.',
+      'POINTS. Exactly ' + n + ', or as close to ' + n + ' as the shape allows — never fewer than the shape can use, at most ' + n + '. The budget is a SAMPLING budget over the visible shape — how finely the visible contour is sampled — not a list of parts to fit in. ' + sampling + ' Do NOT force anatomy into the available points. Place points along the outer silhouette, at major changes of contour direction, on important curves (enough points that a curve still reads as a curve), at distinctive protrusions, on important internal structural lines, and at meaningful junctions — and above all where one visible part MEETS another (where a wing meets a body, a head meets a neck, a sail meets a mast), because those junctions are what the lines will be drawn between. A THIN LINE in the picture — a rope, a string, a ray, a whisker, a strand, a wire — is NOT structure: put no point on it and draw no line along it; the points belong on the outline and the inner edges of the visible MASSES. Give each point an id (p1, p2, …), its position in the picture as NORMALIZED coordinates (x from 0 at the left to 1 at the right, y from 0 at the top to 1 at the bottom), and its role: "silhouette" (on the outer outline) | "junction" (where visible structures meet) | "internal" (on a visible internal line) | "terminal" (the visible end of a structure). No anatomical name is required for any point.',
+      'CONNECTIONS. The lines of the COMPLETE figure, and only VISIBLE relationships: a line runs between two points only where the picture\'s own contour or an internal line actually runs between them. The result is a LINE DRAWING of this picture, not a single outline around it: follow the outer contour the way the picture draws it, AND draw the visible lines INSIDE it where one part meets another — a closed outline with nothing inside is a blob, not this image. Do not invent geometry: never draw a line straight across the shape between two far points, and never a line the picture does not draw. Every point must be joined to at least one other, and the whole figure must be ONE connected piece — where a part is separate in your points, join it along the line where the picture shows it meeting the rest.',
+      'MISSING CONNECTIONS. From those connections choose ' + (n <= 8 ? 'one or two' : 'two or three') + ' to WITHHOLD, so the unfinished figure is a mystery a child completes. A missing connection is AN EXISTING VISUAL CONNECTION THAT WE CHOOSE TO WITHHOLD — it must be one of the connections of the complete figure, never a line that is not in it, so every pair you list here must ALSO appear in "connections" (connections is the whole complete figure; missingConnections repeats the ones withheld). Choose the ones that are meaningful (a child can see where the shape is interrupted), that keep the unfinished figure recognisable, that create clearly visible incompleteness, and whose completion is satisfying. Not at random; never leave a point with no line at all. Say why for each.',
+      'REVEAL FEATURES. Optional and secondary. Zero to five details visible in THIS picture that are NOT part of the traced structure and could appear after completion — a lit eye, a texture, a crest, a glow. Leave the list empty when nothing earns it. Never a structural part. Each has a name, a reason, a type (diagnostic | character | accent | magic) and near: the point ids it belongs beside.',
+      'HINT. One short child-friendly line that says what KIND of thing is waiting — its nature, where it lives, what it does — without naming it, without listing its parts, and without telling anyone what to do: like "A hunter of the open sky is waiting…" or "A quiet giant is waiting in the deep…" or "Something is drifting out on the water…".',
       'Answer with ONE JSON object and nothing else, exactly this shape:',
       '{ "subject": "what the picture shows, in a few words",',
-      '  "points": [ { "id": "p1", "x": 0.42, "y": 0.18, "feature": "head" } ],',
+      '  "points": [ { "id": "p1", "x": 0.42, "y": 0.18, "role": "silhouette" } ],',
       '  "connections": [ { "a": "p1", "b": "p2" } ],',
       '  "missingConnections": [ { "a": "p4", "b": "p7", "reason": "why this one" } ],',
-      '  "revealFeatures": [ { "name": "Horns", "reason": "distinctive identity feature", "type": "diagnostic", "near": ["p3"] } ],',
-      '  "hint": "…",',
-      '  "confidence": { "overall": 0.0, "identity": 0.0, "structure": 0.0 } }',
+      '  "revealFeatures": [ { "name": "Lit eye", "reason": "visible in the picture, not structural", "type": "magic", "near": ["p3"] } ],',
+      '  "hint": "…" }',
       'No other keys. No SVG, no code, no markup, no text outside the JSON.'
     ].join('\n');
-    var user = 'The picture is attached. Give its Ether extraction at ' + n + ' points at most.';
+    var user = 'The picture is attached. Trace THIS picture into its Ether extraction at ' + n + ' points at most.';
     return { ok: true, budget: n, messages: [{ role: 'system', content: system }, { role: 'user', content: user }] };
   }
 
@@ -130,7 +161,14 @@
       if (cx !== x || cy !== y) repairs.push('points[' + i + '] clamped onto the picture');
       if (points.length >= n) { repairs.push('points[' + i + '] beyond the budget of ' + n + ' dropped'); return; }
       index[id] = points.length;
-      points.push({ id: id, x: cx, y: cy, feature: (text(p.feature, LIMITS.featureChars) || 'point').toUpperCase().replace(/[^A-Z ]+/g, ' ').replace(/\s+/g, ' ').trim() || 'POINT' });
+      // the role is one of four places in the picture; a point with none, or
+      // with something else (a body part, say), is read as silhouette on
+      // record — the figure is not refused for a word. A feature label is
+      // OPTIONAL and, when given, is only a display name.
+      var role = token(p.role);
+      if (ROLES.indexOf(role) === -1) { repairs.push('points[' + i + '] role "' + String(p.role == null ? '' : p.role).slice(0, 16) + '" → silhouette'); role = 'silhouette'; }
+      var label = text(p.feature || p.label, LIMITS.featureChars).toUpperCase().replace(/[^A-Z ]+/g, ' ').replace(/\s+/g, ' ').trim();
+      points.push({ id: id, x: cx, y: cy, role: role, feature: label || role.toUpperCase() });
     });
     if (reasons.length) return { ok: false, reasons: reasons, repairs: repairs };
     if (points.length < LIMITS.pointsMin) return { ok: false, reasons: ['too-few-points:' + points.length], repairs: repairs };
@@ -150,9 +188,19 @@
     (Array.isArray(raw.connections) ? raw.connections : []).forEach(function (c, i) { if (c && typeof c === 'object') addJoin(c.a, c.b, 'connections[' + i + ']'); else repairs.push('connections[' + i + '] dropped'); });
     if (!Array.isArray(raw.connections)) repairs.push('no connections given');
     if (joins.length < 2) return { ok: false, reasons: ['too-few-connections:' + joins.length], repairs: repairs };
+    // ONE PIECE is what the contract asks for; a figure that came back in
+    // several is written down, never stitched — a line the picture did
+    // not draw is exactly the invented geometry this contract forbids,
+    // and the researcher joins the pieces where the picture shows them
+    // meeting. `pieces` travels on the extraction so a run can count it.
+    var pieces = countPieces(points.length, joins);
+    if (pieces > 1) repairs.push('figure is ' + pieces + ' pieces — not joined by the Lab (that would invent a line); join them where the picture shows them meeting');
 
-    // missing: among the connections (added if the model forgot to list
-    // one), at most three, never a stray point, at least two remaining
+    // missing: A WITHHELD CONNECTION OF THE COMPLETE FIGURE, never an
+    // invented one — a pair that is not among the connections is DROPPED
+    // on record (the first contract added it, which let the model invent
+    // geometry through the back door); at most three, never a stray
+    // point, at least two remaining
     var missing = [], gaps = [];
     var degree = points.map(function () { return 0; });
     joins.forEach(function (j) { degree[j.a]++; degree[j.b]++; });
@@ -163,7 +211,7 @@
       if (ia === undefined || ib === undefined || ia === ib) { repairs.push('missingConnections[' + i + '] names no real pair — dropped'); return; }
       var k = Math.min(ia, ib) + '-' + Math.max(ia, ib);
       var ji = seen[k];
-      if (ji === undefined) { ji = addJoin(m.a, m.b, 'missingConnections[' + i + ']'); repairs.push('missingConnections[' + i + '] was not among the connections — added as one, then left missing'); degree[ia]++; degree[ib]++; }
+      if (ji === undefined) { repairs.push('missingConnections[' + i + '] is not a connection of the complete figure — dropped (a gap is a withheld connection, never an invented one)'); return; }
       if (missing.indexOf(ji) !== -1) return;
       if (degree[ia] < 2 || degree[ib] < 2) { repairs.push('missingConnections[' + i + '] would leave a lone point — kept as a connection instead'); return; }
       if (joins.length - missing.length - 1 < 2) { repairs.push('missingConnections[' + i + '] would leave fewer than two connections — kept'); return; }
@@ -217,7 +265,7 @@
     function conf(k) { var v = num(c[k]); return v === null ? null : Math.round(Math.min(1, Math.max(0, v)) * 100) / 100; }
     var confidence = { overall: conf('overall'), identity: conf('identity'), structure: conf('structure') };
 
-    return { ok: true, reasons: [], repairs: repairs, extraction: { subject: text(raw.subject, 60) || 'unnamed', budget: n, points: points, joins: joins, missing: missing, gaps: gaps, revealFeatures: reveal, hint: hint, confidence: confidence } };
+    return { ok: true, reasons: [], repairs: repairs, extraction: { subject: text(raw.subject, 60) || 'unnamed', budget: n, points: points, joins: joins, missing: missing, gaps: gaps, pieces: pieces, revealFeatures: reveal, hint: hint, confidence: confidence } };
   }
   function parseExtraction(txt, budget) {
     if (typeof txt !== 'string' || !txt.trim()) return { ok: false, reasons: ['empty'], repairs: [] };
@@ -253,9 +301,9 @@
   function fixtureExtraction(budget) {
     var n = BUDGETS.indexOf(Number(budget)) !== -1 ? Number(budget) : 8;
     var pts = [], conns = [];
-    for (var i = 0; i < n; i++) { var a = (i / n) * Math.PI * 2; pts.push({ id: 'p' + (i + 1), x: 0.5 + 0.38 * Math.cos(a), y: 0.5 + 0.38 * Math.sin(a), feature: 'fixture ' + (i + 1) }); }
+    for (var i = 0; i < n; i++) { var a = (i / n) * Math.PI * 2; pts.push({ id: 'p' + (i + 1), x: 0.5 + 0.38 * Math.cos(a), y: 0.5 + 0.38 * Math.sin(a), role: 'silhouette', feature: 'fixture ' + (i + 1) }); }
     for (var k = 0; k < n; k++) conns.push({ a: 'p' + (k + 1), b: 'p' + ((k + 1) % n + 1) });
-    return JSON.stringify({ subject: 'a fixture ring — no model looked', points: pts, connections: conns, missingConnections: [{ a: 'p1', b: 'p2', reason: 'fixture' }], revealFeatures: [], hint: 'Something is waiting…', confidence: { overall: 0, identity: 0, structure: 0 } });
+    return JSON.stringify({ subject: 'a fixture ring — no model looked', points: pts, connections: conns, missingConnections: [{ a: 'p1', b: 'p2', reason: 'fixture' }], revealFeatures: [], hint: 'Something is waiting…' });
   }
 
   // ---------------------------------------------------------------
@@ -316,7 +364,7 @@
       state.accepted = {}; state.rejected = {}; state.kinds = {}; state.imageId = img.id;
       trace.outcome = r.source === 'fixture' ? 'fixture' : 'generated';
       var e = v.extraction;
-      status((r.source === 'fixture' ? 'Fixture ring loaded — not the creature. ' : 'Ether figure extracted (' + (r.model || mode) + '): ' + e.subject + ' — ') + e.points.length + ' points, ' + e.joins.length + ' connections, ' + e.missing.length + ' missing, ' + e.revealFeatures.length + ' reveal suggestion' + (e.revealFeatures.length === 1 ? '' : 's') + (e.hint ? ', a hint' : '') + (e.confidence.identity != null ? ' · identity ' + e.confidence.identity : '') + '. Judge it on the right; correct anything.', 'ok');
+      status((r.source === 'fixture' ? 'Fixture ring loaded — not the creature. ' : 'Ether figure extracted (' + (r.model || mode) + '): ' + e.subject + ' — ') + e.points.length + ' points, ' + e.joins.length + ' connections, ' + e.missing.length + ' missing, ' + e.revealFeatures.length + ' reveal suggestion' + (e.revealFeatures.length === 1 ? '' : 's') + (e.hint ? ', a hint' : '') + (e.confidence && e.confidence.identity != null ? ' · identity ' + e.confidence.identity : '') + '. Judge it on the right; correct anything.', 'ok');
       render();
       return { ok: true, source: r.source, points: e.points.length, loaded: loaded };
     }).catch(function () {
@@ -380,10 +428,11 @@
     rows.push('<div class="srcbadge ' + (m.source === 'fixture' ? 'fixture' : 'llm') + '">' + (m.source === 'fixture' ? 'FIXTURE — a ring, no model looked' : 'ETHER EXTRACTION (' + esc(m.model || m.mode) + ') · read from the picture') + '</div>');
     rows.push(h('Subject') + '<div class="an-v">' + esc(e.subject) + ' · ' + e.points.length + ' points at a budget of ' + e.budget + '</div>');
     rows.push(h('Points') + '<div class="an-v">' + e.points.map(function (p, i) { return i + ' ' + esc(p.feature.toLowerCase()); }).join(' · ') + '</div>');
+    rows.push(h('Read as') + '<div class="an-v">a tracing of the picture — points where its visible contour turns or a visible structure begins, ends or joins; every missing line is a withheld line of the complete figure' + (e.pieces > 1 ? ' · <b>in ' + e.pieces + ' pieces</b> — join them where the picture shows them meeting' : '') + '</div>');
     rows.push(h('Missing connections') + (e.gaps.length ? '<ul class="an-list">' + e.gaps.map(function (g) { var j = e.joins[g.join]; return '<li><b>' + esc(e.points[j.a].feature.toLowerCase()) + ' ↔ ' + esc(e.points[j.b].feature.toLowerCase()) + '</b>' + (g.reason ? ' — ' + esc(g.reason) : '') + '</li>'; }).join('') + '</ul>' : '<div class="an-v">none kept</div>'));
     rows.push(h('Reveal suggestions') + (e.revealFeatures.length ? '<ul class="an-list">' + e.revealFeatures.map(function (r) { return '<li><b>' + esc(r.name) + '</b> — ' + esc(r.type) + (r.reason ? ' · ' + esc(r.reason) : '') + '</li>'; }).join('') + '</ul>' : '<div class="an-v">none</div>'));
     rows.push(h('Hint') + '<div class="an-v">' + (e.hint ? '“' + esc(e.hint) + '”' : 'none given — the fallback is used') + '</div>');
-    if (e.confidence.overall != null) rows.push(h('Confidence') + '<div class="an-v">overall ' + e.confidence.overall + ' · identity ' + e.confidence.identity + ' · structure ' + e.confidence.structure + '</div>');
+    if (e.confidence && e.confidence.overall != null) rows.push(h('Confidence') + '<div class="an-v">overall ' + e.confidence.overall + ' · identity ' + e.confidence.identity + ' · structure ' + e.confidence.structure + '</div>');
     if (m.repairs && m.repairs.length) rows.push(h('Tidied') + '<div class="an-v">' + esc(m.repairs.join(' · ')) + '</div>');
     box.innerHTML = rows.join('');
   }
@@ -458,8 +507,8 @@
   if (doc) { if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', wire); else wire(); }
 
   var api = {
-    BUDGETS: BUDGETS.slice(), LIMITS: LIMITS, REVEAL_TYPES: REVEAL_TYPES.slice(), KINDS: KINDS.slice(), KIND_FOR_TYPE: KIND_FOR_TYPE, FORBIDDEN_KEYS: FORBIDDEN_KEYS.slice(), FIT: FIT, PICTURE_HALF: PICTURE_HALF,
-    kindFor: kindFor, extractMessages: extractMessages, validateExtraction: validateExtraction, parseExtraction: parseExtraction, fixtureExtraction: fixtureExtraction, toEditor: toEditor,
+    BUDGETS: BUDGETS.slice(), LIMITS: LIMITS, ROLES: ROLES.slice(), REVEAL_TYPES: REVEAL_TYPES.slice(), KINDS: KINDS.slice(), KIND_FOR_TYPE: KIND_FOR_TYPE, FORBIDDEN_KEYS: FORBIDDEN_KEYS.slice(), FIT: FIT, PICTURE_HALF: PICTURE_HALF,
+    kindFor: kindFor, countPieces: countPieces, extractMessages: extractMessages, validateExtraction: validateExtraction, parseExtraction: parseExtraction, fixtureExtraction: fixtureExtraction, toEditor: toEditor,
     extract: extract, load: load, acceptReveal: acceptReveal, rejectReveal: rejectReveal, setKind: setKind, suggestions: suggestions,
     extraction: function () { return state.extraction ? JSON.parse(JSON.stringify(state.extraction)) : null; },
     meta: function () { return state.meta ? JSON.parse(JSON.stringify(state.meta)) : null; },

@@ -12934,3 +12934,20 @@ both seeded from the transport; each Direct path refuses a model that
 belongs to the other path with a sentence naming the field. Section
 `MM` (12), guard proved by reverting. Lab-only; production diff zero.
 Detail: `docs/ETHER_MYSTERY_LAB.md` → *Two models, two fields*.
+
+## Lab — Trace the image, don't invent a skeleton (the extraction contract, rewritten)
+
+The product owner's boat test failed: the anatomical extraction contract
+had the model reason *boat = hull + mast + sail* from the name and place
+lights where those parts ought to be. The contract now opens with the
+brief's critical instruction verbatim and asks for a visual TRACING of
+this picture — picture roles (silhouette · junction · internal ·
+terminal) instead of feature names, the budget as a sampling budget,
+visible relationships only, one piece, and a missing connection as an
+existing connection withheld (the validator DROPS an unlisted gap where it
+used to add one, and counts pieces on record). Three wordings measured and
+all committed. Real run, boat + seven, gpt-image-2 + gpt-4.1: 16/16 valid,
+one piece; the boat A at twelve and B at eight; creatures B5 C2 at eight
+(unchanged) and better at twelve. Stopped there per the brief. Section
+`EX` (65). Lab-only; production diff zero. Detail:
+`docs/ETHER_MYSTERY_LAB.md` → *Trace the image, don't invent a skeleton*.

@@ -1,0 +1,307 @@
+{
+ "contract": "anatomical (labExtract.js as of 0d0db615)",
+ "note": "REAL MODEL — the same boat picture (source.png) read by the previous contract; nothing substituted. The BEFORE half of the boat comparison.",
+ "run": "2026-09-09T03:39:48.761Z",
+ "extractions": {
+  "8": {
+   "budget": 8,
+   "model": "gpt-4.1",
+   "ms": 4245,
+   "raw": "{\n  \"subject\": \"starry sailing ship with a mast and sail\",\n  \"points\": [\n    { \"id\": \"p1\", \"x\": 0.5, \"y\": 0.13, \"feature\": \"mast top\" },\n    { \"id\": \"p2\", \"x\": 0.12, \"y\": 0.54, \"feature\": \"left prow curl\" },\n    { \"id\": \"p3\", \"x\": 0.5, \"y\": 0.68, \"feature\": \"hull bottom\" },\n    { \"id\": \"p4\", \"x\": 0.88, \"y\": 0.54, \"feature\": \"right prow curl\" },\n    { \"id\": \"p5\", \"x\": 0.5, \"y\": 0.48, \"feature\": \"mast base\" },\n    { \"id\": \"p6\", \"x\": 0.78, \"y\": 0.32, \"feature\": \"sail tip\" }\n  ],\n  \"connections\": [\n    { \"a\": \"p1\", \"b\": \"p5\" },\n    { \"a\": \"p5\", \"b\": \"p2\" },\n    { \"a\": \"p2\", \"b\": \"p3\" },\n    { \"a\": \"p3\", \"b\": \"p4\" },\n    { \"a\": \"p4\", \"b\": \"p5\" },\n    { \"a\": \"p1\", \"b\": \"p6\" },\n    { \"a\": \"p6\", \"b\": \"p5\" }\n  ],\n  \"missingConnections\": [\n    { \"a\": \"p2\", \"b\": \"p4\", \"reason\": \"Closing the hull between the two prow curls completes the boat's body, making it clearly a ship.\" }\n  ],\n  \"revealFeatures\": [\n    { \"name\": \"Waving Flag\", \"reason\": \"Adds character and movement to the mast top\", \"type\": \"character\", \"near\": [\"p1\"] },\n    { \"name\": \"Star Sail Texture\", \"reason\": \"Gives the sail its magical, celestial look\", \"type\": \"magic\", \"near\": [\"p6\", \"p5\"] },\n    { \"name\": \"Hull Sparkle\", \"reason\": \"Accentuates the magical nature of the ship\", \"type\": \"accent\", \"near\": [\"p3\"] }\n  ],\n  \"hint\": \"A voyager of the night sky is waiting to set sail…\",\n  \"confidence\": { \"overall\": 0.98, \"identity\": 0.98, \"structure\": 0.99 }\n}",
+   "validator": {
+    "ok": true,
+    "reasons": [],
+    "repairs": [
+     "missingConnections[0] was not among the connections — added as one, then left missing"
+    ]
+   },
+   "extraction": {
+    "subject": "starry sailing ship with a mast and sail",
+    "budget": 8,
+    "points": [
+     {
+      "id": "p1",
+      "x": 0.5,
+      "y": 0.13,
+      "feature": "MAST TOP"
+     },
+     {
+      "id": "p2",
+      "x": 0.12,
+      "y": 0.54,
+      "feature": "LEFT PROW CURL"
+     },
+     {
+      "id": "p3",
+      "x": 0.5,
+      "y": 0.68,
+      "feature": "HULL BOTTOM"
+     },
+     {
+      "id": "p4",
+      "x": 0.88,
+      "y": 0.54,
+      "feature": "RIGHT PROW CURL"
+     },
+     {
+      "id": "p5",
+      "x": 0.5,
+      "y": 0.48,
+      "feature": "MAST BASE"
+     },
+     {
+      "id": "p6",
+      "x": 0.78,
+      "y": 0.32,
+      "feature": "SAIL TIP"
+     }
+    ],
+    "joins": [
+     {
+      "a": 0,
+      "b": 4
+     },
+     {
+      "a": 1,
+      "b": 4
+     },
+     {
+      "a": 1,
+      "b": 2
+     },
+     {
+      "a": 2,
+      "b": 3
+     },
+     {
+      "a": 3,
+      "b": 4
+     },
+     {
+      "a": 0,
+      "b": 5
+     },
+     {
+      "a": 4,
+      "b": 5
+     },
+     {
+      "a": 1,
+      "b": 3
+     }
+    ],
+    "missing": [
+     7
+    ],
+    "gaps": [
+     {
+      "join": 7,
+      "reason": "Closing the hull between the two prow curls completes the boat's body, making it clearly a ship."
+     }
+    ],
+    "revealFeatures": [
+     {
+      "name": "WAVING FLAG",
+      "reason": "Adds character and movement to the mast top",
+      "type": "character",
+      "near": [
+       0
+      ],
+      "kind": "contour"
+     },
+     {
+      "name": "STAR SAIL TEXTURE",
+      "reason": "Gives the sail its magical, celestial look",
+      "type": "magic",
+      "near": [
+       5,
+       4
+      ],
+      "kind": "texture"
+     },
+     {
+      "name": "HULL SPARKLE",
+      "reason": "Accentuates the magical nature of the ship",
+      "type": "accent",
+      "near": [
+       2
+      ],
+      "kind": "motes"
+     }
+    ],
+    "hint": "A voyager of the night sky is waiting to set sail…",
+    "confidence": {
+     "overall": 0.98,
+     "identity": 0.98,
+     "structure": 0.99
+    }
+   },
+   "ok": true,
+   "attempts": 1
+  },
+  "12": {
+   "budget": 12,
+   "model": "gpt-4.1",
+   "ms": 4912,
+   "raw": "{\n  \"subject\": \"starry sailing ship with a flag\",\n  \"points\": [\n    { \"id\": \"p1\", \"x\": 0.50, \"y\": 0.13, \"feature\": \"mast top\" },\n    { \"id\": \"p2\", \"x\": 0.18, \"y\": 0.50, \"feature\": \"left prow curl\" },\n    { \"id\": \"p3\", \"x\": 0.82, \"y\": 0.53, \"feature\": \"right prow curl\" },\n    { \"id\": \"p4\", \"x\": 0.50, \"y\": 0.68, \"feature\": \"keel bottom\" },\n    { \"id\": \"p5\", \"x\": 0.50, \"y\": 0.38, \"feature\": \"mast base\" },\n    { \"id\": \"p6\", \"x\": 0.74, \"y\": 0.37, \"feature\": \"sail tip\" },\n    { \"id\": \"p7\", \"x\": 0.26, \"y\": 0.38, \"feature\": \"left hull top\" },\n    { \"id\": \"p8\", \"x\": 0.74, \"y\": 0.38, \"feature\": \"right hull top\" },\n    { \"id\": \"p9\", \"x\": 0.62, \"y\": 0.13, \"feature\": \"flag tip\" }\n  ],\n  \"connections\": [\n    { \"a\": \"p2\", \"b\": \"p7\" },\n    { \"a\": \"p7\", \"b\": \"p5\" },\n    { \"a\": \"p5\", \"b\": \"p8\" },\n    { \"a\": \"p8\", \"b\": \"p3\" },\n    { \"a\": \"p2\", \"b\": \"p4\" },\n    { \"a\": \"p4\", \"b\": \"p3\" },\n    { \"a\": \"p5\", \"b\": \"p1\" },\n    { \"a\": \"p1\", \"b\": \"p9\" },\n    { \"a\": \"p1\", \"b\": \"p6\" },\n    { \"a\": \"p5\", \"b\": \"p6\" }\n  ],\n  \"missingConnections\": [\n    { \"a\": \"p7\", \"b\": \"p2\", \"reason\": \"Leaving the left prow curl open makes the hull incomplete but intriguing, inviting the child to finish the ship's outline.\" },\n    { \"a\": \"p8\", \"b\": \"p3\", \"reason\": \"Leaving the right prow curl open mirrors the left and keeps the hull as a mystery to complete.\" }\n  ],\n  \"revealFeatures\": [\n    { \"name\": \"Star Flag\", \"reason\": \"Adds character and motion to the ship\", \"type\": \"character\", \"near\": [\"p9\"] },\n    { \"name\": \"Sparkling Sail\", \"reason\": \"Defines the ship as magical and celestial\", \"type\": \"magic\", \"near\": [\"p6\"] },\n    { \"name\": \"Glittering Hull\", \"reason\": \"Accentuates the ship's magical nature\", \"type\": \"accent\", \"near\": [\"p4\"] }\n  ],\n  \"hint\": \"A voyager of the starry night is waiting to set sail…\",\n  \"confidence\": { \"overall\": 0.98, \"identity\": 0.99, \"structure\": 0.97 }\n}",
+   "validator": {
+    "ok": true,
+    "reasons": [],
+    "repairs": []
+   },
+   "extraction": {
+    "subject": "starry sailing ship with a flag",
+    "budget": 12,
+    "points": [
+     {
+      "id": "p1",
+      "x": 0.5,
+      "y": 0.13,
+      "feature": "MAST TOP"
+     },
+     {
+      "id": "p2",
+      "x": 0.18,
+      "y": 0.5,
+      "feature": "LEFT PROW CURL"
+     },
+     {
+      "id": "p3",
+      "x": 0.82,
+      "y": 0.53,
+      "feature": "RIGHT PROW CURL"
+     },
+     {
+      "id": "p4",
+      "x": 0.5,
+      "y": 0.68,
+      "feature": "KEEL BOTTOM"
+     },
+     {
+      "id": "p5",
+      "x": 0.5,
+      "y": 0.38,
+      "feature": "MAST BASE"
+     },
+     {
+      "id": "p6",
+      "x": 0.74,
+      "y": 0.37,
+      "feature": "SAIL TIP"
+     },
+     {
+      "id": "p7",
+      "x": 0.26,
+      "y": 0.38,
+      "feature": "LEFT HULL TOP"
+     },
+     {
+      "id": "p8",
+      "x": 0.74,
+      "y": 0.38,
+      "feature": "RIGHT HULL TOP"
+     },
+     {
+      "id": "p9",
+      "x": 0.62,
+      "y": 0.13,
+      "feature": "FLAG TIP"
+     }
+    ],
+    "joins": [
+     {
+      "a": 1,
+      "b": 6
+     },
+     {
+      "a": 4,
+      "b": 6
+     },
+     {
+      "a": 4,
+      "b": 7
+     },
+     {
+      "a": 2,
+      "b": 7
+     },
+     {
+      "a": 1,
+      "b": 3
+     },
+     {
+      "a": 2,
+      "b": 3
+     },
+     {
+      "a": 0,
+      "b": 4
+     },
+     {
+      "a": 0,
+      "b": 8
+     },
+     {
+      "a": 0,
+      "b": 5
+     },
+     {
+      "a": 4,
+      "b": 5
+     }
+    ],
+    "missing": [
+     0,
+     3
+    ],
+    "gaps": [
+     {
+      "join": 0,
+      "reason": "Leaving the left prow curl open makes the hull incomplete but intriguing, inviting the child to finish the ship's outline."
+     },
+     {
+      "join": 3,
+      "reason": "Leaving the right prow curl open mirrors the left and keeps the hull as a mystery to complete."
+     }
+    ],
+    "revealFeatures": [
+     {
+      "name": "STAR FLAG",
+      "reason": "Adds character and motion to the ship",
+      "type": "character",
+      "near": [
+       8
+      ],
+      "kind": "contour"
+     },
+     {
+      "name": "SPARKLING SAIL",
+      "reason": "Defines the ship as magical and celestial",
+      "type": "magic",
+      "near": [
+       5
+      ],
+      "kind": "fill"
+     },
+     {
+      "name": "GLITTERING HULL",
+      "reason": "Accentuates the ship's magical nature",
+      "type": "accent",
+      "near": [
+       3
+      ],
+      "kind": "lines"
+     }
+    ],
+    "hint": "A voyager of the starry night is waiting to set sail…",
+    "confidence": {
+     "overall": 0.98,
+     "identity": 0.99,
+     "structure": 0.97
+    }
+   },
+   "ok": true,
+   "attempts": 1
+  }
+ }
+}
