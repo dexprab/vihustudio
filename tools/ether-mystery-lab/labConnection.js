@@ -37,8 +37,18 @@
 
   var DIRECT_URL = 'https://api.openai.com/v1/chat/completions';
   var DIRECT_MODELS_URL = 'https://api.openai.com/v1/models';
+  // IMAGES (the creature pipeline, Decision 58 — AI does the authoring).
+  // One request per candidate, in parallel: a partial set still arrives
+  // when one request fails, and no single request has to carry three
+  // pictures inside a relay's own time limit. Fast quality, JPEG, one
+  // size — a source image for a figure of lights, not a poster.
+  var DIRECT_IMAGES_URL = 'https://api.openai.com/v1/images/generations';
+  var IMAGE_MODEL = 'gpt-image-2';
+  var IMAGE_SIZE = '1024x1024';
+  var IMAGE_QUALITY = 'low';
   var DEFAULT_DIRECT_MODEL = 'gpt-4.1-mini';
   var REQUEST_MS = 120000;
+  var IMAGE_MS = 150000;
   var PROBE_MS = 15000;
 
   var state = {
@@ -52,6 +62,7 @@
   };
 
   var inflight = null;            // AbortController of the running call
+  var inflightAll = [];           // every running call — the creature pipeline runs three at once
 
   function setMode(m) {
     if (m === 'fixture' || m === 'endpoint' || m === 'direct') {
@@ -99,6 +110,7 @@
   function bounded(url, init, ms) {
     var ctl = new AbortController();
     inflight = ctl;
+    inflightAll.push(ctl);
     var bell = null;
     var timed = new Promise(function (resolve) {
       bell = setTimeout(function () {
@@ -113,6 +125,7 @@
     ]).then(function (res) {
       clearTimeout(bell);
       if (inflight === ctl) inflight = null;
+      var at = inflightAll.indexOf(ctl); if (at !== -1) inflightAll.splice(at, 1);
       return res;
     });
   }
@@ -120,6 +133,14 @@
   function cancel() {
     if (inflight) { try { inflight.abort(); } catch (e) { /* held */ } inflight = null; return true; }
     return false;
+  }
+  // Every running call at once — a new creature session must leave no
+  // request alive that could answer into it later.
+  function cancelAll() {
+    var n = inflightAll.length;
+    inflightAll.slice().forEach(function (c) { try { c.abort(); } catch (e) { /* held */ } });
+    inflightAll = []; inflight = null;
+    return n;
   }
 
   // Explicit, button-driven — never on load.
@@ -187,10 +208,12 @@
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          model: state.directModel,
+          // a caller may name the model for THIS request (the creature
+          // pipeline reads an image, which the default text model cannot)
+          model: (opts.params && opts.params.model) || state.directModel,
           messages: opts.messages || [],
           response_format: { type: 'json_object' },
-          temperature: 0.9
+          temperature: (opts.params && typeof opts.params.temperature === 'number') ? opts.params.temperature : 0.9
         })
       }, REQUEST_MS).then(function (res) {
         if (!res) return { ok: false, reason: 'unavailable' };
@@ -219,7 +242,7 @@
           var text = body && body.choices && body.choices[0] &&
             body.choices[0].message && body.choices[0].message.content;
           if (!text) return { ok: false, reason: 'malformed' };
-          return { ok: true, text: text, model: state.directModel, source: 'generated' };
+          return { ok: true, text: text, model: (opts.params && opts.params.model) || state.directModel, source: 'generated' };
         });
       });
     }
@@ -231,7 +254,8 @@
       body: JSON.stringify({
         action: 'generate',
         messages: opts.messages || [],
-        model: (opts.params && opts.params.model) || undefined
+        model: (opts.params && opts.params.model) || undefined,
+        temperature: (opts.params && typeof opts.params.temperature === 'number') ? opts.params.temperature : undefined
       })
     }, REQUEST_MS).then(function (res) {
       if (!res) return { ok: false, reason: 'unavailable' };
@@ -244,7 +268,66 @@
     });
   }
 
+  // images({prompt, n, fixture}) → Promise<{ok, images:[{dataUrl, source,
+  // model}], failed} | {ok:false, reason}>. Three bounded requests in
+  // parallel; the honest label rides every image exactly as it rides
+  // every candidate. Fixture mode asks the caller's own producer (an SVG
+  // that says FIXTURE) and reaches no network.
+  function images(opts) {
+    opts = opts || {};
+    var n = Math.max(1, Math.min(3, Number(opts.n) || 3));
+    if (state.mode === 'fixture') {
+      var list = typeof opts.fixture === 'function' ? opts.fixture() : [];
+      return Promise.resolve({ ok: true, images: (list || []).slice(0, n).map(function (u) { return { dataUrl: u, source: 'fixture', model: null }; }), failed: 0 });
+    }
+    var prompt = String(opts.prompt || '');
+    if (!prompt) return Promise.resolve({ ok: false, reason: 'bad-prompt' });
+    var one;
+    if (state.mode === 'direct') {
+      if (!state.directKey) return Promise.resolve({ ok: false, reason: 'not-configured' });
+      one = function () {
+        return bounded(DIRECT_IMAGES_URL, {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + state.directKey, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ model: IMAGE_MODEL, prompt: prompt, n: 1, size: IMAGE_SIZE, quality: IMAGE_QUALITY, output_format: 'jpeg', output_compression: 75 })
+        }, IMAGE_MS).then(function (res) {
+          if (!res) return { ok: false, reason: 'unavailable' };
+          if (!res.ok) return { ok: false, reason: res.status === 429 ? 'provider-busy' : ('provider answered ' + res.status) };
+          return res.json().catch(function () { return null; }).then(function (body) {
+            var b64 = body && body.data && body.data[0] && body.data[0].b64_json;
+            if (!b64) return { ok: false, reason: 'malformed' };
+            return { ok: true, dataUrl: 'data:image/jpeg;base64,' + b64, model: IMAGE_MODEL };
+          });
+        });
+      };
+    } else {
+      if (!state.endpointUrl) return Promise.resolve({ ok: false, reason: 'not-configured' });
+      one = function () {
+        return bounded(state.endpointUrl, {
+          method: 'POST', headers: headersForEndpoint(),
+          body: JSON.stringify({ action: 'image', prompt: prompt })
+        }, IMAGE_MS).then(function (res) {
+          if (!res) return { ok: false, reason: 'unavailable' };
+          return res.json().catch(function () { return null; }).then(function (body) {
+            if (!body) return { ok: false, reason: 'malformed' };
+            if (!body.ok) return { ok: false, reason: body.reason || ('endpoint answered ' + res.status) };
+            if (typeof body.image !== 'string' || !/^[A-Za-z0-9+\/=]+$/.test(body.image)) return { ok: false, reason: 'malformed' };
+            return { ok: true, dataUrl: 'data:image/' + (body.format === 'png' ? 'png' : 'jpeg') + ';base64,' + body.image, model: body.model || IMAGE_MODEL };
+          });
+        });
+      };
+    }
+    var calls = [];
+    for (var i = 0; i < n; i++) calls.push(one());
+    return Promise.all(calls).then(function (rs) {
+      var got = rs.filter(function (r) { return r && r.ok; });
+      if (!got.length) return { ok: false, reason: (rs[0] && rs[0].reason) || 'unavailable' };
+      return { ok: true, images: got.map(function (r) { return { dataUrl: r.dataUrl, source: 'generated', model: r.model }; }), failed: rs.length - got.length };
+    });
+  }
+
   var api = {
+    IMAGE_MODEL: IMAGE_MODEL,
     setMode: setMode,
     setDirectKey: setDirectKey,
     setDirectModel: setDirectModel,
@@ -253,7 +336,9 @@
     status: status,
     probe: probe,
     generate: generate,
+    images: images,
     cancel: cancel,
+    cancelAll: cancelAll,
     // For the suite only: proves the key sits in a closure and nowhere
     // else — it can ask WHETHER one is held, never what it is.
     _holdsDirectKey: function () { return !!state.directKey; }

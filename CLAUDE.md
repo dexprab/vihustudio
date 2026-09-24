@@ -9723,6 +9723,118 @@ leads somewhere.
   a preview recording, an edit keeping its approval, Undo not
   restoring, the sticky centre removed, a line click deleting again.
   Detail: `docs/ETHER_MYSTERY_LAB.md` → *The researcher workflow*.
+- **PROMPT. CHOOSE. THE LAB DOES THE REST — THE SHAPE LAB WITH THE AI
+  DOING THE AUTHORING (Lab only, zero production files changed).** Locked
+  by the product owner: six creature experiments had the researcher
+  placing lights, connecting them, marking gaps, inventing reveals and
+  writing hints by hand, and *"that is NOT the intended workflow anymore."*
+  The researcher now provides exactly two things — WHAT SHOULD EXIST and
+  WHICH GENERATED IMAGE — and `tools/ether-mystery-lab/labCreature.js`
+  produces everything else: gpt-image-2 makes three candidates for the
+  prompt, the researcher chooses one, gpt-4.1 READS THAT IMAGE (vision) and
+  returns an ENCODING — the creature's name, what it saw, a confidence,
+  8–30 named lights, the joins, the missing joins, the hint, 2–5 reveal
+  features classified IDENTITY · LIFE · MAGIC and attached to named
+  lights, a gesture, a movement, a hold time — and `compile()` turns it
+  into the editor's own figure. Review is UNFINISHED · COMPLETE · COME
+  ALIVE; the researcher's controls are APPROVE · REFINE · TRY ANOTHER
+  IMAGE (new pictures for the same words) · TRY ANOTHER ETHER
+  INTERPRETATION (the same picture, read again). The whole six-stage
+  editor survives byte-for-byte under **ADVANCED / RESEARCH** beside the
+  pipeline's instrumentation (metadata, source image, raw model output,
+  validated extraction with every repair named, compiled figure,
+  confidence, log), and every manual control still edits the SAME figure
+  — for inspection and emergency correction, never the workflow.
+- **THE SOURCE IMAGE IS THE CREATIVE AUTHORITY, AND A COORDINATE IS A
+  PLACE IN THE PICTURE.** The model is told to encode what is IN the
+  chosen image — pose, viewpoint, visible parts — never a generic idea of
+  the animal the prompt named. Measured on the same real panda picture:
+  asked for unit-space coordinates the model produced two overlapping
+  blobs; asked for PERCENTAGES of the image frame it produced a seated
+  panda — ears, cheeks, chin, a rounded body. The contract asks for
+  percentages, the conversion to the Ether's unit space is arithmetic and
+  ours, and the compiler fits the figure to the frame (`fitted:k`),
+  because a creature centred in its picture arrives small. The first
+  seven-prompt run under the unit contract is kept as evidence beside
+  the shipped one (`shots/creature-lab-unit-contract/`).
+- **THE COMPILER GUARANTEES WHAT THE CONTRACT ASKS FOR AND A MODEL WILL
+  NOT RELIABLY DELIVER, AND EVERY INTERVENTION IS NAMED.** One connected
+  figure (islands are joined at their closest lights); missing connections
+  that EXIST in the complete figure (an invented one is dropped, never
+  drawn); never a gap that strands a light — a detached PART reads, a
+  detached POINT is a stray star, the creature experiments' own finding;
+  the Lab chooses the widest joins, never two sharing a light, when the
+  model gave too few, and the screen says *chosen by the Lab* or *topped
+  up by the Lab*; reveals anchored to real lights by name, by a containing
+  name, or by the index the model wrote instead of a name (measured on the
+  real reply); a hint that names the creature refused and the fallback
+  line standing; the smallest of the editor's budgets that holds the
+  count. The editor's budgets grew to 8 · 10 · 12 · 16 · 18 · 20 · 24 · 30
+  so it can HOLD what the pipeline makes — 30 is the research ceiling, and
+  production still performs 8 (`arrangementNodesMax` untouched; ▶ Play in
+  Ether is offered only at eight or fewer).
+- **A NAME IS STRIPPED OF THE BOUNDARY VOCABULARY, NEVER REFUSED FOR IT;
+  A JOIN IS READ IN WHATEVER FORM THE MODEL CHOSE.** Two findings from the
+  first real run, both refusals of good creatures. The prompt says *made
+  of stars*, so the model called the creature STAR PANDA — and STAR is a
+  Magic Card word the reveal layer refuses in a feature name; the word
+  goes and `creature-name-stripped` is recorded (the twenty-second entry
+  in this repository's word-inside-its-own-vocabulary family). And the
+  contract asks for `"a-b"` joins, while replies also wrote `[a, b]`
+  pairs, `{a, b}` objects, another dash, and two light NAMES — four
+  creatures were refused as `no-usable-joins` for it; every form is
+  normalised and named (`join-form:…`). Deny-by-shape still holds where
+  it matters: a FORBIDDEN key at any depth refuses the whole reply, an
+  unknown key is dropped by name, a bound is a bound, prose is `not-json`.
+- **COME ALIVE IS A SEQUENCE THE LAB RUNS, NOT ONE THE RESEARCHER
+  BUILDS.** From the last join: the completed figure settles, every light
+  blazes and the light goes out as it settles, the reveal features emerge
+  on `LabReveal`'s own envelope and then SETTLE at half light rather than
+  fading — they travel with the creature — the figure gathers itself in to
+  0.72 and breathes, and at 4.4s it sets off: one heading first, then
+  wandering with pauses, steered back from the edge of the stage. Drawn
+  from the editor's own figure on the Lab's stage canvas; nothing of it is
+  authored, persisted or in a candidate.
+- **EVERY PROMPT IS A NEW CREATURE SESSION, AND A LATE ANSWER IS
+  DROPPED.** The epoch advances, every in-flight request is cancelled
+  (`LabConnection.cancelAll`), the editor is reset, the reference is
+  discarded, the stage stops; every asynchronous step captures the session
+  and its generation counter and refuses a reply for any other, so a slow
+  image model cannot paint a mermaid into a panda and a second TRY ANOTHER
+  IMAGE makes the first press's pictures stale (`stale-dropped` in the
+  session log). MERMAID → PANDA → DRAGON leaves nothing behind, measured:
+  the editor empty, the hint and reveals gone, the result hidden, the
+  reference discarded, every light of the next creature named for it.
+- **THE TRANSPORTS ARE THE EXISTING ONES, WIDENED, AND THE ENDPOINT IS
+  `LAB2`.** `LabConnection.images()` asks for three candidates in
+  parallel (low quality, JPEG, one size — a source for a figure of lights,
+  not a poster; a partial set is still offered); Direct mode calls the
+  provider's images route with the typed key, and `lab-generate` gained an
+  `image` action and the ability to relay a message whose content is
+  PARTS — text plus ONE bounded image data URL, refused by name otherwise
+  — behind the same gate and the same bucket. This is the ONE file outside
+  `tools/` that changed, and it is the Lab's own relay (recorded here as
+  such since the Mystery Lab sprint): the production Ether, the pool, the
+  runtime, the reveal runtime and the privacy boundaries have an empty
+  diff. Fixture mode reaches no network and says FIXTURE on every picture,
+  on the creature and in the sentence. After a FAILED build the review
+  controls stay hidden and the choose step offers READ THIS PICTURE AGAIN
+  — the first real run found the retry hidden with the result it was
+  meant to replace.
+- **THE BUILD ENVIRONMENT'S PROXY IS A FACT OF THE RUN, NOT OF THE
+  PRODUCT.** Measured: an image request over about thirty seconds is cut
+  off by it (so one candidate per request at low quality, 13–19s each,
+  and never `n: 2` at medium), about one connection in six is dropped
+  with HTTP/2 on, and one of three parallel image requests often fails.
+  The walkthrough harness (`creature-walkthrough.js`) launches the browser
+  with HTTP/2 and QUIC off, bypasses the proxy for the Lab's own server
+  (Playwright's `proxy` option forces loopback through it — 405), and
+  re-presses the way a researcher would — Test connection up to three
+  times, CREATE once more, READ THIS PICTURE AGAIN up to twice — counting
+  every re-press in the report. The Lab itself never retries. The
+  credential was network-held in that environment (any bearer token
+  reached the model); the report says so, and a developer elsewhere types
+  their own key.
 - Out of scope and not implemented: creature encounters as a reward
   system, creature dialogue, a Companion in the Ether, per-Traveller
   encounter history, more activity rows (story hunt, missing

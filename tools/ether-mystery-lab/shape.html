@@ -224,12 +224,68 @@
     textarea, input { max-width: 100%; }
   }
 </style>
+
+<style>
+  /* THE SIMPLE FLOW — PROMPT. CHOOSE. THE LAB DOES THE REST. (Decision 58,
+     AI does the authoring). What a researcher meets first; the editor
+     below it is ADVANCED / RESEARCH and is folded away. */
+  .creature { max-width: 1100px; margin: 0 auto; padding: 14px 20px 6px; }
+  .creature .cr-step { border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; margin: 0 0 14px; background: var(--panel); }
+  .creature .cr-step[hidden] { display: none; }
+  .creature h2 { font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--gold); margin: 0 0 10px; font-weight: 700; }
+  .creature input[type=text] { flex: 1 1 260px; font-size: 15px; padding: 9px 12px; }
+  .cr-note { font-size: 13px; color: var(--dim); margin-top: 8px; min-height: 1.4em; }
+  body[data-cr-phase="failed"] .cr-note { color: var(--warn); }
+  body[data-cr-phase="ready"] .cr-note { color: var(--good); }
+  .cr-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  .cr-tile { margin: 0; border: 2px solid var(--line); border-radius: 10px; overflow: hidden; background: #0b0f1c; }
+  .cr-tile.chosen { border-color: var(--gold); }
+  .cr-tile img { display: block; width: 100%; aspect-ratio: 1 / 1; object-fit: cover; }
+  .cr-tile figcaption { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 8px; font-size: 12px; color: var(--dim); }
+  .cr-tile figcaption button { width: auto; flex: 0 0 auto; }
+  .cr-build { color: var(--gold); letter-spacing: .1em; font-size: 13px; }
+  .cr-build::after { content: ''; display: inline-block; width: 10px; height: 10px; margin-left: 10px; border-radius: 50%; border: 2px solid var(--gold); border-top-color: transparent; animation: crspin 1s linear infinite; vertical-align: middle; }
+  @keyframes crspin { to { transform: rotate(360deg); } }
+  .cr-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .cr-pair figure { margin: 0; }
+  .cr-pair figcaption { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--dim); margin-bottom: 6px; }
+  .cr-pair img { display: block; width: 100%; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); }
+  .cr-pair canvas.figure { width: 100%; aspect-ratio: 1 / 1; height: auto; display: block; border-radius: 8px; border: 1px solid var(--line); }
+  .cr-summary { font-size: 15px; color: var(--ink); letter-spacing: .04em; margin: 12px 0 2px; font-weight: 600; text-transform: uppercase; }
+  .cr-seen { font-size: 12px; color: var(--dim); margin: 0 0 10px; }
+  .cr-states button { width: auto; flex: 0 0 auto; }
+  .cr-states button.on { background: #3a3418; border-color: var(--gold); color: var(--gold); }
+  canvas.stage { width: 100%; aspect-ratio: 16 / 10; height: auto; display: block; border-radius: 10px; border: 1px solid var(--line); background: #161C33; margin-top: 8px; }
+  .cr-stateline { font-size: 12px; color: var(--gold); letter-spacing: .04em; margin: 6px 0 0; min-height: 1.3em; }
+  .cr-exp { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 20px; margin-bottom: 8px; }
+  .cr-exp .k { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--dim); }
+  .cr-exp ul { margin: 4px 0 0; padding-left: 18px; }
+  .cr-exp li { margin: 2px 0; }
+  .cr-role { font-size: 10px; letter-spacing: .1em; padding: 1px 6px; border-radius: 4px; background: #2a2f4a; color: var(--gold); vertical-align: middle; }
+  .dim { color: var(--dim); }
+  .cr-actions button { width: auto; flex: 0 0 auto; }
+  .creature input[data-cr-hint] { width: 100%; }
+  details.advanced { margin: 6px 20px 30px; border: 1px dashed var(--line); border-radius: 12px; }
+  details.advanced > summary { cursor: pointer; padding: 12px 16px; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--dim); }
+  details.advanced[open] > summary { border-bottom: 1px dashed var(--line); }
+  .cr-adv { padding: 8px 20px 0; }
+  .cr-adv pre { white-space: pre-wrap; word-break: break-word; font-size: 11px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px; max-height: 320px; overflow: auto; margin: 6px 0; }
+  .cr-adv img { max-width: 320px; border-radius: 8px; border: 1px solid var(--line); }
+  .cr-adv details { margin: 4px 0; }
+  .cr-adv summary { cursor: pointer; font-size: 12px; color: var(--dim); }
+  @media (max-width: 640px) {
+    .creature { padding: 10px; }
+    .cr-tiles, .cr-pair, .cr-exp { grid-template-columns: 1fr; }
+    details.advanced { margin: 6px 10px 30px; }
+    .creature .row button { flex: 1 1 auto; }
+  }
+</style>
 </head>
 <body>
 <div class="topbar" data-topbar>
 <header>
   <h1>✏️ Creature Shape Lab</h1>
-  <span class="sub">research instrument — draw a creature in the Ether's own language, judge it yourself. Never child-facing.</span>
+  <span class="sub">PROMPT. CHOOSE. THE LAB DOES THE REST. — say what should exist, choose the picture, judge the creature. Never child-facing.</span>
   <a href="gallery.html">🔬 Candidate Gallery</a>
   <a href="index.html" style="margin-left:0">← Ether Mystery Lab</a>
 </header>
@@ -237,11 +293,88 @@
   <span class="sname" data-status-name>NEW CREATURE</span>
   <span class="sline" data-status-line>0 POINTS</span>
   <span class="sstate" data-status-state data-state="building">BUILDING</span>
-  <span class="snext" data-status-next>Name a creature and generate a reference, or place points by hand.</span>
+  <span class="snext" data-status-next>Say what should exist, and press CREATE.</span>
   <span id="budgetLabel" data-budget-label>TESTING 8 POINTS</span>
 </div>
 </div>
 
+
+<section class="creature" data-creature>
+  <div class="cr-step" data-cr-section="create">
+    <h2>What should exist?</h2>
+    <div class="row">
+      <input type="text" data-cr-prompt placeholder="a panda made of stars" autocomplete="off" maxlength="120">
+      <button data-cr-create class="primary">Create</button>
+      <button data-cr-cancel class="quiet" hidden>Cancel</button>
+    </div>
+    <div class="cr-note" data-cr-status>Say what should exist, and press CREATE.</div>
+  </div>
+
+  <div class="cr-step" data-cr-section="choose" hidden>
+    <h2>Choose your creature</h2>
+    <div class="cr-tiles" data-cr-images></div>
+    <div class="row" style="margin-top:10px"><button data-cr-retry class="quiet" hidden>Read this picture again</button><button data-cr-another-image class="quiet">Try another image</button></div>
+  </div>
+
+  <div class="cr-step" data-cr-section="building" hidden>
+    <h2>Building creature…</h2>
+    <div class="cr-build">reading the chosen image · lights · connections · missing connections · hint · reveal · come-alive</div>
+  </div>
+
+  <div class="cr-step" data-cr-section="result" hidden>
+    <h2>Your Ether creature</h2>
+    <div class="cr-pair">
+      <figure><figcaption>Source</figcaption><img data-cr-source alt="the chosen source image"></figure>
+      <figure><figcaption>Ether</figcaption><canvas class="figure" data-cr-ether></canvas></figure>
+    </div>
+    <div class="cr-summary" data-cr-summary></div>
+    <div class="cr-seen" data-cr-seen></div>
+    <div class="row cr-states">
+      <button data-cr-state="unfinished">Unfinished</button>
+      <button data-cr-state="complete" class="on">Complete</button>
+      <button data-cr-state="alive">Come alive</button>
+    </div>
+    <canvas class="stage" data-cr-stage></canvas>
+    <div class="cr-stateline" data-cr-stateline></div>
+  </div>
+
+  <div class="cr-step" data-cr-section="experience" hidden>
+    <h2>What the child will experience</h2>
+    <div class="cr-exp">
+      <div><div class="k">Hint — spoken before the child looks</div><input type="text" data-cr-hint maxlength="90" autocomplete="off"></div>
+      <div><div class="k">Missing</div><div data-cr-missing></div></div>
+      <div><div class="k">Reveal — after the last join</div><ul data-cr-reveals></ul></div>
+      <div><div class="k">Alive</div><div class="dim" data-cr-alive></div></div>
+    </div>
+    <div class="row cr-actions">
+      <button data-cr-approve class="primary">Approve</button>
+      <button data-cr-play class="primary" hidden>▶ Play in Ether</button>
+      <span class="dim" data-cr-playnote style="font-size:12px">Play in the real Ether is offered up to 8 lights — production performs 8.</span>
+    </div>
+    <div class="row cr-actions" style="margin-top:8px">
+      <input type="text" data-cr-refine-text placeholder="Refine — e.g. keep the wings more recognisable · use fewer points" autocomplete="off" maxlength="200">
+      <button data-cr-refine>Refine</button>
+    </div>
+    <div class="row cr-actions" style="margin-top:8px">
+      <button data-cr-another-image class="quiet">Try another image</button>
+      <button data-cr-another-interp class="quiet">Try another Ether interpretation</button>
+    </div>
+    <div class="cr-note">TRY ANOTHER IMAGE makes new pictures for the same words. TRY ANOTHER ETHER INTERPRETATION keeps this picture and reads it again.</div>
+  </div>
+</section>
+
+<details class="advanced" data-advanced>
+  <summary>Advanced / research — everything technical lives here</summary>
+  <section class="cr-adv">
+    <h2>Creature pipeline — what happened</h2>
+    <details><summary>Session and generation metadata</summary><pre data-cr-trace>no session</pre></details>
+    <details><summary>Source image</summary><div style="margin:6px 0"><img data-cr-source-adv alt="the chosen source image" hidden></div></details>
+    <details><summary>Raw model output</summary><pre data-cr-raw>—</pre></details>
+    <details><summary>Extraction result (validated, repairs named)</summary><pre data-cr-extraction>—</pre></details>
+    <details><summary>Authored figure (compiled) · confidence <span data-cr-confidence>—</span></summary><pre data-cr-authored>—</pre></details>
+    <details><summary>Log</summary><pre data-cr-log>—</pre></details>
+    <div class="cr-note">The editor below holds exactly the figure above — points, coordinates, connections, missing connections, reveal definitions — and every manual control still works on it, for inspection and emergency correction. It is not the workflow.</div>
+  </section>
 <main>
 <div><!-- left: CREATE → SHAPE → CONNECT -->
   <section class="step" data-step="create" data-ref-section data-ref-outcome="none">
@@ -315,6 +448,8 @@
       <button data-budget="16">16</button>
       <button data-budget="18">18</button>
       <button data-budget="20">20</button>
+<button data-budget="24">24</button>
+<button data-budget="30">30</button>
     </div>
     <div class="note">8 is what the Ether performs today; 10–20 are research budgets, judged here and shown as refused beside the figure. Changing the budget never removes a point: shrink it under a bigger figure and every point stays, and the figure is marked as <b>exceeding</b> it until you take points away yourself.</div>
     <div class="row" style="margin-top:8px">
@@ -531,17 +666,19 @@
   </section>
 </div>
 </main>
+</details>
 
-<script src="../../js/etherGrammar.js?lab=0b4ebd1260"></script>
-<script src="labKit.js?lab=0b4ebd1260"></script>
-<script src="labPreviewHost.js?lab=0b4ebd1260"></script>
-<script src="labConnection.js?lab=0b4ebd1260"></script>
-<script src="labBlueprint.js?lab=0b4ebd1260"></script>
-<script src="labOutline.js?lab=0b4ebd1260"></script>
-<script src="labReveal.js?lab=0b4ebd1260"></script>
-<script src="labRevealData.js?lab=0b4ebd1260"></script>
-<script src="labShape.js?lab=0b4ebd1260"></script>
-<script src="labReference.js?lab=0b4ebd1260"></script>
-<script src="labTranslationData.js?lab=0b4ebd1260"></script>
+<script src="../../js/etherGrammar.js?lab=cd8393e0d0"></script>
+<script src="labKit.js?lab=cd8393e0d0"></script>
+<script src="labPreviewHost.js?lab=cd8393e0d0"></script>
+<script src="labConnection.js?lab=cd8393e0d0"></script>
+<script src="labBlueprint.js?lab=cd8393e0d0"></script>
+<script src="labOutline.js?lab=cd8393e0d0"></script>
+<script src="labReveal.js?lab=cd8393e0d0"></script>
+<script src="labRevealData.js?lab=cd8393e0d0"></script>
+<script src="labShape.js?lab=cd8393e0d0"></script>
+<script src="labReference.js?lab=cd8393e0d0"></script>
+<script src="labCreature.js?lab=cd8393e0d0"></script>
+<script src="labTranslationData.js?lab=cd8393e0d0"></script>
 </body>
 </html>

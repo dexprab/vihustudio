@@ -50,7 +50,7 @@
 //
 // Deploy: supabase/DEPLOY_lab_generate.md.
 
-const BUILD = 'LAB1';
+const BUILD = 'LAB2';   // LAB2: the creature pipeline — an `image` action, and image parts in a message
 
 // ===== BEGIN GENERATED edgeAuth — do not edit below this line =====
 // Generated from supabase/functions/_shared/edgeAuth.js, which is the
@@ -365,7 +365,18 @@ function json(body: unknown, status = 200): Response {
 }
 
 const PROVIDER_URL = 'https://api.openai.com/v1/chat/completions';
+// The creature pipeline (Decision 58 — AI does the authoring): the Lab
+// asks for a source picture, the researcher chooses one, and the text
+// model READS it. Same host, two more routes; the key still lives here
+// and nowhere else, and a failure is still one word.
+const PROVIDER_IMAGES_URL = 'https://api.openai.com/v1/images/generations';
 const DEFAULT_MODEL = 'gpt-4.1-mini';
+const IMAGE_MODEL = 'gpt-image-2';
+const IMAGE_PROMPT_CHARS = 400;
+// One image part per message, bounded: a low-quality JPEG source is a
+// few hundred KB; a data URL over this is not a Lab source image.
+const MAX_IMAGE_PART_CHARS = 6000000;
+const IMAGE_PART_RE = /^data:image\/(png|jpeg|jpg|webp);base64,[A-Za-z0-9+\/=]+$/;
 
 // Bounds on what a caller may relay. Generous for a research batch,
 // impossible for abuse: at most a handful of messages, each capped,
@@ -445,6 +456,30 @@ function makeHandler(deps: Deps) {
     });
   }
 
+  // IMAGE — one candidate picture for the creature pipeline. The Lab
+  // asks three times in parallel; each answer is one base64 JPEG and the
+  // model that made it, never provider text.
+  if (payload.action === 'image') {
+    if (!key) return json({ ok: false, reason: 'not-configured' });
+    const prompt = typeof payload.prompt === 'string' ? payload.prompt.trim() : '';
+    if (!prompt || prompt.length > IMAGE_PROMPT_CHARS || /https?:|data:|<[a-z!\/]/i.test(prompt)) {
+      return json({ ok: false, reason: 'bad-prompt' });
+    }
+    const ires = await boundedFetch(doFetch, PROVIDER_IMAGES_URL, {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: IMAGE_MODEL, prompt, n: 1, size: '1024x1024', quality: 'low', output_format: 'jpeg', output_compression: 75 }),
+    }, 110000);
+    if (!ires) return json({ ok: false, reason: 'unavailable' });
+    if (!ires.ok) return json({ ok: false, reason: ires.status === 429 ? 'provider-busy' : 'unavailable' });
+    let ibody: Record<string, unknown> = {};
+    try { ibody = await ires.json(); } catch { return json({ ok: false, reason: 'malformed' }); }
+    const data = Array.isArray(ibody.data) ? ibody.data[0] as Record<string, unknown> : null;
+    const b64 = data && typeof data.b64_json === 'string' ? data.b64_json : '';
+    if (!b64 || !/^[A-Za-z0-9+\/=]+$/.test(b64)) return json({ ok: false, reason: 'malformed' });
+    return json({ ok: true, image: b64, format: 'jpeg', model: IMAGE_MODEL, build: BUILD });
+  }
+
   if (payload.action !== 'generate') return json({ ok: false, reason: 'unknown-action' });
   if (!key) return json({ ok: false, reason: 'not-configured' });
 
@@ -465,8 +500,28 @@ function makeHandler(deps: Deps) {
     if (role !== 'system' && role !== 'user' && role !== 'assistant') {
       return json({ ok: false, reason: 'bad-messages' });
     }
-    if (typeof content !== 'string' || !content || content.length > MAX_MESSAGE_CHARS) {
-      return json({ ok: false, reason: 'bad-messages' });
+    if (typeof content === 'string') {
+      if (!content || content.length > MAX_MESSAGE_CHARS) return json({ ok: false, reason: 'bad-messages' });
+      continue;
+    }
+    // A message may carry PARTS — text and at most one image, for the
+    // model to read a picture. Each part is checked by shape: text is
+    // text and bounded, an image is a data URL of an image and bounded,
+    // and anything else is refused by name.
+    if (!Array.isArray(content) || !content.length || content.length > 4) return json({ ok: false, reason: 'bad-messages' });
+    let imageParts = 0;
+    for (const part of content as Array<Record<string, unknown>>) {
+      if (!part || typeof part !== 'object') return json({ ok: false, reason: 'bad-messages' });
+      if (part.type === 'text') {
+        if (typeof part.text !== 'string' || !part.text || part.text.length > MAX_MESSAGE_CHARS) return json({ ok: false, reason: 'bad-messages' });
+      } else if (part.type === 'image_url') {
+        const iu = part.image_url as Record<string, unknown> | undefined;
+        const url = iu && typeof iu.url === 'string' ? iu.url : '';
+        if (!url || url.length > MAX_IMAGE_PART_CHARS || !IMAGE_PART_RE.test(url)) return json({ ok: false, reason: 'bad-image-part' });
+        if (++imageParts > 1) return json({ ok: false, reason: 'bad-image-part' });
+      } else {
+        return json({ ok: false, reason: 'bad-messages' });
+      }
     }
   }
 
@@ -519,4 +574,4 @@ function makeHandler(deps: Deps) {
 const handler = makeHandler({ env: (n: string) => (typeof Deno !== 'undefined' ? (Deno.env.get(n) || '') : '') });
 if (typeof Deno !== 'undefined' && Deno.serve) Deno.serve(handler);
 
-export { makeHandler, handler, BUILD, DEFAULT_MODEL, MAX_MESSAGES, MAX_MESSAGE_CHARS };
+export { makeHandler, handler, BUILD, DEFAULT_MODEL, IMAGE_MODEL, MAX_MESSAGES, MAX_MESSAGE_CHARS, MAX_IMAGE_PART_CHARS };

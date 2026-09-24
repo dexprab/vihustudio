@@ -3088,3 +3088,167 @@ every direct press of `[data-reset]`.
 rendering, language) · `labReference.js` (opens the Advanced
 disclosure when an LLM source is chosen). Screenshots:
 `tools/ether-mystery-lab-test/shots/workflow/`.
+
+## PROMPT. CHOOSE. THE LAB DOES THE REST — the Shape Lab with the AI doing the authoring
+
+Six creature experiments in a row had the researcher placing lights,
+connecting them, marking gaps, inventing reveal features and writing
+hints by hand — the machinery was the workflow. The product owner's
+brief closed that: the researcher provides WHAT SHOULD EXIST and WHICH
+GENERATED IMAGE; the Lab produces everything else. This section is that
+Shape Lab. Nothing in it reaches production: no production file
+changed, the pool is never loaded, the build is not bumped.
+
+### The workflow
+
+```
+WHAT SHOULD EXIST?   [ a panda made of stars ]   [ CREATE ]
+        │
+        ▼   gpt-image-2, three candidates in parallel
+CHOOSE YOUR CREATURE   [ image A ] [ image B ] [ image C ]   [ USE THIS ]
+        │
+        ▼   gpt-4.1 READS THE CHOSEN IMAGE (vision) → an ENCODING → compile()
+BUILDING CREATURE…
+        │
+        ▼
+YOUR ETHER CREATURE    SOURCE | ETHER    PANDA · 15 points · 3 missing · 5 reveals
+[ UNFINISHED ] [ COMPLETE ] [ COME ALIVE ]
+WHAT THE CHILD WILL EXPERIENCE   hint · missing · reveals · alive
+[ APPROVE ] [ REFINE … ] [ TRY ANOTHER IMAGE ] [ TRY ANOTHER ETHER INTERPRETATION ]
+        │
+ADVANCED / RESEARCH — everything technical lives here (the whole six-stage editor, unchanged)
+```
+
+The page is `tools/ether-mystery-lab/shape.html`; the primary flow is
+`labCreature.js`; the editor from the previous sprints is byte-for-byte
+the same markup, folded inside `<details data-advanced>` after it. A
+developer's link, `shape.html#advanced`, opens it on load — which is
+how every editor-driven suite section now reaches it.
+
+### What the Lab generates automatically
+
+From the chosen image, one model call returns an ENCODING: the creature's
+name, what the model saw (pose, viewpoint, what is hidden), a confidence,
+**8–30 lights** with names and coordinates ("the fewest that preserve the
+silhouette and the important visible structure"), the joins, the missing
+joins, the hint, 2–5 reveal features each classified IDENTITY · LIFE ·
+MAGIC and attached to a named light (and optionally pointed toward
+another), one sentence of gesture and one of movement, and how long the
+reveal should hold. The contract is `LabCreature.CONTRACT`, calibrated
+against a real gpt-4.1 reply that is committed as evidence
+(`tools/ether-mystery-lab-test/real-panda-encoding.json`).
+
+`validate()` denies by shape — an unknown key is DROPPED by name, a
+forbidden key at any depth REFUSES the whole reply, a bound is a bound —
+and `compile()` then enforces what the contract asks for and a model will
+not reliably deliver:
+
+- **one connected figure** — islands are joined at their closest lights,
+  and the repair is named (`joined-components:N`);
+- **missing connections that exist** — a gap that is not a join of the
+  complete figure is dropped (`drop-invented-missing`), never invented;
+- **never a stranded light** — a gap that would leave a light joined to
+  nothing is refused (`drop-stranding-missing`), because a detached PART
+  reads and a detached POINT reads as a stray star (the creature
+  experiments' own finding);
+- **the Lab chooses when the model gave too few** — the widest joins
+  first, never two sharing a light, up to a target that grows with the
+  figure (2 at ≤10 lights, 3 at ≤20, 4 above), and the missing line on
+  screen says *chosen by the Lab* or *topped up by the Lab*;
+- **reveals anchored to real lights** — by name, by a name that contains
+  the name, or by an index the model wrote instead of a name (measured on
+  the real reply: `"at": "3"`); a part the figure does not have goes to
+  the centre-most light with the repair named; everything then passes
+  `LabReveal.sanitize`;
+- **a hint that never names the creature** — a hint containing the
+  creature's own word is refused and the fallback line stands;
+- **a budget that holds it** — the smallest of the editor's eight budgets
+  (8 · 10 · 12 · 16 · 18 · 20 · 24 · 30) at or above the count. 30 is the
+  research ceiling; production still performs 8 (`arrangementNodesMax`),
+  and ▶ Play in Ether is offered only at eight or fewer lights.
+
+A name is stripped of the boundary vocabulary, never refused for it: the
+first real run called the creature STAR PANDA — the prompt says "made of
+stars" — and STAR is a Magic Card word the reveal layer refuses in a
+feature name. The word goes and `creature-name-stripped` is recorded.
+
+### Come alive
+
+`LabCreature.showState('alive')` runs the sequence on the stage canvas
+by itself, from the editor's own figure: the completed figure settles
+(0.5s), every light blazes and the light goes out as it settles, the
+reveal features emerge on `LabReveal`'s own envelope and then SETTLE at
+half light rather than fading — they travel with the creature — the
+figure gathers itself in to 0.72 and breathes, and at 4.4s it sets off:
+one heading first (going somewhere), then wandering with pauses (looking
+around), steered gently back from the edge of the stage. `stageStatus()`
+reports phase, scale, position and distance travelled for a suite.
+Nothing about the sequence is authored; the researcher presses UNFINISHED
+· COMPLETE · COME ALIVE to review it.
+
+### The session rule, and stale answers
+
+Every prompt starts a completely new creature session: the epoch
+advances, every in-flight request is cancelled (`LabConnection.cancelAll`),
+the editor is reset, the reference is discarded, the stage stops. Every
+asynchronous step captures the session and its generation counter and
+`live()` refuses a reply for any other — so a slow image model cannot
+paint a mermaid into a panda, and a second press of TRY ANOTHER IMAGE
+makes the first press's pictures stale. The session log records
+`stale-dropped` when it happens.
+
+### The transports
+
+`LabConnection.images({prompt, n})` — three bounded requests in
+parallel, low quality, JPEG, one size; a partial set (two of three) is
+still offered; every image carries the honest label. Direct mode calls
+the provider's images route with the typed key; endpoint mode sends
+`{action: 'image', prompt}` to `lab-generate`, which gained that action
+and the ability to relay a message whose content is PARTS (text plus ONE
+image data URL, bounded, refused by name otherwise). Its `BUILD` is
+`LAB2`; redeploy it for the endpoint path. Fixture mode reaches no
+network: SVG stand-ins that say FIXTURE IMAGE, and a generic body plan
+named FIXTURE CREATURE whose `seen` says it is not an interpretation of
+anything.
+
+Measured while building: a single image request over about 30 seconds
+was cut off by the build environment's proxy, and medium quality with
+`n: 2` took longer than that — hence one candidate per request at low
+quality (13–19s each). The proxy also dropped roughly one reused
+connection in six with HTTP/2 on; the walkthrough harness launches the
+browser with HTTP/2 and QUIC off, and re-presses the way a researcher
+would (Test connection up to three times, CREATE once more, READ THIS
+PICTURE AGAIN up to twice), counting every re-press in the report. The
+Lab itself still never retries.
+
+### Refine, and the two kinds of "try another"
+
+REFINE sends the researcher's instruction and the PREVIOUS encoding with
+the same picture, so the model revises rather than starts over — *"use
+fewer points"* comes back as eight lights. TRY ANOTHER IMAGE makes three
+new pictures for the same words and clears the choice and the figure;
+TRY ANOTHER ETHER INTERPRETATION keeps the picture and reads it again
+(higher temperature, the previous encoding shown as what not to repeat).
+After a FAILED build the review controls stay hidden and the choose step
+offers READ THIS PICTURE AGAIN beside TRY ANOTHER IMAGE — the first real
+run found the retry hidden with the result it was meant to replace.
+
+### Advanced / research
+
+The `[data-advanced]` disclosure holds the pipeline panel — session and
+generation metadata (never image bytes: the trace counts them), the
+source image, the raw model output, the validated extraction with every
+repair named, the compiled figure with its confidence, the log — and
+under it the whole editor. Every manual control still edits the SAME
+figure (a light deleted under Advanced changes the simple summary at
+once); it is there for inspection and emergency correction, and it is not
+the workflow.
+
+### Privacy
+
+A request is the contract, the prompt, and the chosen picture — whose
+bytes came from the image model, never from anybody's device. No card,
+constellation, memory, address, username, Creator or Companion word can
+be in it, by construction and by scan. The typed key reaches the provider
+and nowhere else: not storage, not the trace, not an export. Loading the
+page makes no request.

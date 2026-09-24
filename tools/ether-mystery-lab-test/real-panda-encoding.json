@@ -1,0 +1,20 @@
+{
+  "note": "A REAL gpt-4.1 reply, captured on 2026-09-24 while calibrating the creature contract against a real gpt-image-2 panda (the image itself is not committed). Coordinates are PERCENTAGES of the image frame, as the shipped contract asks. Evidence for the parser: what a real reply looks like — names, joins, missing joins copied from the joins, reveals attached by name.",
+  "model": "gpt-4.1-2025-04-14",
+  "usage": {
+    "prompt_tokens": 1597,
+    "completion_tokens": 800,
+    "total_tokens": 2397,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "audio_tokens": 0
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 0,
+      "audio_tokens": 0,
+      "accepted_prediction_tokens": 0,
+      "rejected_prediction_tokens": 0
+    }
+  },
+  "content": "{\n  \"creature\": \"PANDA\",\n  \"seen\": \"A front-facing panda sitting with its left leg curled, both ears and all limbs visible, head slightly tilted.\",\n  \"confidence\": 0.98,\n  \"points\": [\n    { \"name\": \"LEFT EAR\", \"x\": 29, \"y\": 18 },\n    { \"name\": \"RIGHT EAR\", \"x\": 71, \"y\": 19 },\n    { \"name\": \"TOP HEAD\", \"x\": 50, \"y\": 20 },\n    { \"name\": \"LEFT CHEEK\", \"x\": 31, \"y\": 36 },\n    { \"name\": \"RIGHT CHEEK\", \"x\": 69, \"y\": 38 },\n    { \"name\": \"CHIN\", \"x\": 51, \"y\": 45 },\n    { \"name\": \"LEFT SHOULDER\", \"x\": 22, \"y\": 47 },\n    { \"name\": \"RIGHT SHOULDER\", \"x\": 78, \"y\": 54 },\n    { \"name\": \"LEFT ELBOW\", \"x\": 16, \"y\": 63 },\n    { \"name\": \"LEFT PAW\", \"x\": 22, \"y\": 81 },\n    { \"name\": \"RIGHT ELBOW\", \"x\": 80, \"y\": 71 },\n    { \"name\": \"RIGHT PAW\", \"x\": 87, \"y\": 85 },\n    { \"name\": \"BODY BASE\", \"x\": 49, \"y\": 91 },\n    { \"name\": \"LEFT FOOT\", \"x\": 37, \"y\": 88 },\n    { \"name\": \"RIGHT FOOT\", \"x\": 67, \"y\": 93 }\n  ],\n  \"joins\": [\n    \"0-2\", \"2-1\", \"0-3\", \"3-5\", \"5-4\", \"4-1\",\n    \"3-6\", \"6-8\", \"8-9\", \"9-13\", \"13-12\", \"12-14\", \"14-11\", \"11-10\", \"10-7\", \"7-4\", \"12-5\"\n  ],\n  \"missing\": [ \"9-13\", \"12-14\", \"7-4\" ],\n  \"hint\": \"A gentle giant from misty forests is waiting in the stars…\",\n  \"reveals\": [\n    { \"name\": \"LEFT EYE PATCH\", \"kind\": \"fill\", \"role\": \"IDENTITY\", \"at\": \"3\", \"toward\": \"2\", \"why\": \"The iconic eye patch shape is missing from the outline.\" },\n    { \"name\": \"RIGHT EYE PATCH\", \"kind\": \"fill\", \"role\": \"IDENTITY\", \"at\": \"4\", \"toward\": \"2\", \"why\": \"Both eye patches together define the panda's face.\" },\n    { \"name\": \"NOSE GLOW\", \"kind\": \"glow\", \"role\": \"LIFE\", \"at\": \"5\", \"toward\": null, \"why\": \"A soft glow at the nose brings the panda to life.\" },\n    { \"name\": \"EAR CONTOUR\", \"kind\": \"contour\", \"role\": \"IDENTITY\", \"at\": \"0\", \"toward\": \"2\", \"why\": \"Soft fur around the ears adds to the panda's look.\" }\n  ],\n  \"alive\": {\n    \"gesture\": \"The panda sits calmly, head slightly tilted, as if curious or waiting for a friend.\",\n    \"movement\": \"It would gently sway or shift, perhaps lifting a paw in a slow, thoughtful motion.\"\n  },\n  \"holdSeconds\": 5.5\n}"
+}

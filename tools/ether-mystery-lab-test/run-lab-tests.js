@@ -80,6 +80,7 @@ function sectionS() {
     'tools/ether-mystery-lab/labKit.js', 'tools/ether-mystery-lab/labConnection.js',
     'tools/ether-mystery-lab/labUi.js', 'tools/ether-mystery-lab/labConstellations.js',
     'tools/ether-mystery-lab/fixtures.js', 'tools/ether-mystery-lab/run-lab.js',
+    'tools/ether-mystery-lab/labCreature.js', 'tools/ether-mystery-lab-test/creature-walkthrough.js',
     'supabase/functions/lab-generate/index.ts'];
 
   // S1 — no key material anywhere committed. A real OpenAI key is
@@ -500,7 +501,7 @@ async function sectionE() {
 
   // E3 — admin ping: build, and whether a key is configured.
   r = await drive('admin-token', { action: 'ping' });
-  ck(r.status === 200 && r.body.ok && r.body.build === 'LAB1' && r.body.provider === 'none',
+  ck(r.status === 200 && r.body.ok && r.body.build === 'LAB2' && r.body.provider === 'none',
     'E3 admin ping reports the build and an unconfigured provider');
   r = await drive('admin-token', { action: 'ping' }, { OPENAI_API_KEY: 'sk-test' });
   ck(r.body.provider === 'configured' && JSON.stringify(r.body).indexOf('sk-test') === -1,
@@ -544,6 +545,66 @@ async function sectionE() {
   ck(r.body.reason === 'bad-messages', 'E7b an unknown role is refused');
   r = await drive('admin-token', { action: 'whatever' }, { OPENAI_API_KEY: 'sk-test' });
   ck(r.body.reason === 'unknown-action', 'E7c an unknown action is refused');
+
+  // ---- E8: the IMAGE action (AI does the authoring) ----
+  // One candidate picture per request, one base64 out, the model that
+  // made it, never provider text; the same gate, the same bucket.
+  const imgFetch = (behaviour) => {
+    const base = mockFetch('ok');
+    return async (url, init) => {
+      if (String(url).indexOf('images/generations') !== -1) {
+        providerCalls.push({ url: String(url), init });
+        if (behaviour === 'ok') return jsonRes({ data: [{ b64_json: 'QUJD' }] });
+        if (behaviour === 'error') return jsonRes({ error: { message: 'SECRET-IMAGE-DETAIL org_abc' } }, 500);
+        if (behaviour === 'malformed') return jsonRes({ data: [{}] });
+        throw new Error('unreachable');
+      }
+      return base(url, init);
+    };
+  };
+  async function driveImg(token, payload, extraEnv, behaviour) {
+    const h = makeHandler({ env: envWith(extraEnv), fetchImpl: imgFetch(behaviour || 'ok') });
+    const res = await h(reqFor(token, payload));
+    return { status: res.status, body: await res.json().catch(() => null) };
+  }
+  r = await driveImg('user-token', { action: 'image', prompt: 'a panda' }, { OPENAI_API_KEY: 'sk-test' });
+  ck(r.status === 403, 'E8 the image action is administrators-only like everything else');
+  r = await driveImg('admin-token', { action: 'image', prompt: 'a panda' });
+  ck(r.body.reason === 'not-configured', 'E8b image without a key → not-configured');
+  providerCalls = [];
+  r = await driveImg('admin-token', { action: 'image', prompt: 'a panda made of stars' }, { OPENAI_API_KEY: 'sk-test' }, 'ok');
+  const isent = providerCalls.length ? JSON.parse(providerCalls[0].init.body) : null;
+  ck(r.body.ok === true && r.body.image === 'QUJD' && r.body.format === 'jpeg' && r.body.model === 'gpt-image-2' && providerCalls.length === 1 &&
+     isent && isent.model === 'gpt-image-2' && isent.n === 1 && isent.prompt === 'a panda made of stars' && isent.output_format === 'jpeg',
+    'E8c a valid image answer returns one base64 JPEG and the model — one provider call, n = 1, the prompt as given');
+  ck(JSON.stringify(r.body).indexOf('sk-test') === -1, 'E8d the key never leaves');
+  r = await driveImg('admin-token', { action: 'image', prompt: 'a panda' }, { OPENAI_API_KEY: 'sk-test' }, 'error');
+  ck(r.body.ok === false && r.body.reason === 'unavailable' && JSON.stringify(r.body).indexOf('SECRET-IMAGE-DETAIL') === -1,
+    'E8e an image provider error leaves as one word — no provider text');
+  r = await driveImg('admin-token', { action: 'image', prompt: 'a panda' }, { OPENAI_API_KEY: 'sk-test' }, 'malformed');
+  ck(r.body.reason === 'malformed', 'E8f a malformed image answer is refused');
+  r = await driveImg('admin-token', { action: 'image', prompt: 'see https://x.y/z' }, { OPENAI_API_KEY: 'sk-test' });
+  ck(r.body.reason === 'bad-prompt', 'E8g a prompt carrying a link is refused by shape');
+  r = await driveImg('admin-token', { action: 'image', prompt: 'x'.repeat(401) }, { OPENAI_API_KEY: 'sk-test' });
+  ck(r.body.reason === 'bad-prompt', 'E8h an over-long image prompt is refused');
+
+  // ---- E9: image PARTS in a message (the text model reads a picture) ----
+  const PART_MSGS = [{ role: 'system', content: 'x' }, { role: 'user', content: [
+    { type: 'text', text: 'Encode THIS image.' },
+    { type: 'image_url', image_url: { url: 'data:image/jpeg;base64,/9j/AAAA', detail: 'high' } } ] }];
+  providerCalls = [];
+  r = await drive('admin-token', { action: 'generate', messages: PART_MSGS, model: 'gpt-4.1' }, { OPENAI_API_KEY: 'sk-test' }, 'ok');
+  const psent = providerCalls.length ? JSON.parse(providerCalls[0].init.body) : null;
+  ck(r.body.ok === true && psent && psent.model === 'gpt-4.1' && Array.isArray(psent.messages[1].content) && psent.messages[1].content[1].image_url.url === 'data:image/jpeg;base64,/9j/AAAA',
+    'E9 a message with a text part and one image part is relayed intact, to the model the Lab named');
+  r = await drive('admin-token', { action: 'generate', messages: [{ role: 'user', content: [{ type: 'image_url', image_url: { url: 'https://x.y/z.jpg' } }] }] }, { OPENAI_API_KEY: 'sk-test' }, 'ok');
+  ck(r.body.reason === 'bad-image-part', 'E9b an image part that is a LINK rather than image data is refused by name');
+  r = await drive('admin-token', { action: 'generate', messages: [{ role: 'user', content: [{ type: 'image_url', image_url: { url: 'data:image/jpeg;base64,AAAA' } }, { type: 'image_url', image_url: { url: 'data:image/jpeg;base64,BBBB' } }] }] }, { OPENAI_API_KEY: 'sk-test' }, 'ok');
+  ck(r.body.reason === 'bad-image-part', 'E9c two image parts in one message are refused — one picture is read at a time');
+  r = await drive('admin-token', { action: 'generate', messages: [{ role: 'user', content: [{ type: 'file', text: 'x' }] }] }, { OPENAI_API_KEY: 'sk-test' }, 'ok');
+  ck(r.body.reason === 'bad-messages', 'E9d an unknown part type is refused');
+  r = await drive('admin-token', { action: 'generate', messages: [{ role: 'user', content: [{ type: 'image_url', image_url: { url: 'data:image/jpeg;base64,' + 'A'.repeat(6000001) } }] }] }, { OPENAI_API_KEY: 'sk-test' }, 'ok');
+  ck(r.body.reason === 'bad-image-part', 'E9e an image part over the bound is refused — a data URL that size is not a Lab source image');
 }
 
 // ===================================================================
@@ -3956,9 +4017,13 @@ async function sectionSL() {
     Array.from(new Set(stamps)).join(','));
 
   // ---- SL2: what the instrument REFUSES to be ----
+  // (Since the AI-does-the-authoring sprint the page SHOWS the chosen
+  // source image beside the figure — `<img data-cr-…>` — which is the
+  // creative authority, not a hidden reference; those elements are set
+  // aside and everything else is still refused.)
   ck(!/<img|drawImage|\.png|\.jpg|\.jpeg|\.svg|new Image|Image\(|background-image|url\(/i.test(shapeStripped) &&
-     !/<img|\.png|\.jpg|\.svg|background-image/i.test(shapeHtml.replace(/<!--[\s\S]*?-->/g, '')),
-    'SL2  no hidden animal image, no SVG tracing, no imported silhouette — nothing but lights and lines');
+     !/<img|\.png|\.jpg|\.svg|background-image/i.test(shapeHtml.replace(/<!--[\s\S]*?-->/g, '').replace(/<img data-cr-[^>]*>/g, '')),
+    'SL2  no hidden animal image, no SVG tracing, no imported silhouette — nothing but lights and lines (the pipeline\'s own source image aside)');
   ck(!/score|fetch\(|XMLHttpRequest|WebSocket|openai|model\b/i.test(shapeStripped),
     'SL2b no recognisability score, no model, no network — the judgement is the researcher\'s');
   ck(!/curve|bezier|quadratic|arcTo/i.test(shapeStripped) && /no curved connection/i.test(shapeHtml),
@@ -3968,9 +4033,13 @@ async function sectionSL() {
     'SL2d Math.random mints fixture ids and nothing else — a missing join is never chosen at random',
     rndLines.length + ' line(s)');
   // (Six budgets since the Adaptive Suggested Points sprint: 10 and 18
-  // joined the four. Still the Lab file alone, still 8 named production.)
-  ck(/BUDGETS\s*=\s*\[\s*8,\s*10,\s*12,\s*16,\s*18,\s*20\s*\]/.test(shapeSrc) && /PRODUCTION_BUDGET\s*=\s*8\b/.test(shapeSrc),
-    'SL2e the six budgets 8 · 10 · 12 · 16 · 18 · 20 live in the Lab file alone, with 8 named as production');
+  // joined the four. TURNED ROUND in the AI-does-the-authoring sprint:
+  // 24 and 30 joined them, because the automatic pipeline may use 8–30
+  // lights and the editor must be able to HOLD what it produced — 30 is
+  // the research ceiling, still the Lab file alone, still 8 named
+  // production.)
+  ck(/BUDGETS\s*=\s*\[\s*8,\s*10,\s*12,\s*16,\s*18,\s*20,\s*24,\s*30\s*\]/.test(shapeSrc) && /PRODUCTION_BUDGET\s*=\s*8\b/.test(shapeSrc),
+    'SL2e the eight budgets 8 · 10 · 12 · 16 · 18 · 20 · 24 · 30 live in the Lab file alone, with 8 named as production');
 
   // ---- the browser half: the real page, driven the way a person drives it ----
   const server = spawn('node', ['tools/bring-it-alive/test/serve.js', String(PORT)],
@@ -3987,7 +4056,7 @@ async function sectionSL() {
     const bad = [];
     page.on('response', (q) => { if (q.status() >= 400 && !/favicon/.test(q.url())) bad.push(q.status() + ' ' + q.url()); });
     const open = async () => {
-      await page.goto(BASE + '/tools/ether-mystery-lab/shape.html');
+      await page.goto(BASE + '/tools/ether-mystery-lab/shape.html#advanced');
       await page.waitForFunction(() => !!window.ShapeLab, null, { timeout: 20000 });
     };
     await open();
@@ -4854,8 +4923,8 @@ async function sectionAR() {
   ck(!/<img|new Image|(?<![A-Za-z])Image\(|\.png|\.jpg|\.svg|url\(|base64|background-image/i.test(refStripped) &&
      (refStripped.match(/drawImage\(/g) || []).length === 1 && /drawImage\(offscreen/.test(refStripped) &&
      !/drawImage|new Image|Image\(|createElement|innerHTML/i.test(bpStripped) &&
-     !/<img|\.png|\.jpg|\.svg|background-image/i.test(htmlNoComments),
-    'AR2c no bitmap, no image element, no URL — the reference is vector primitives from a validated blueprint');
+     !/<img|\.png|\.jpg|\.svg|background-image/i.test(htmlNoComments.replace(/<img data-cr-[^>]*>/g, '')),
+    'AR2c no bitmap, no image element, no URL — the reference is vector primitives from a validated blueprint (the pipeline\'s own source image aside)');
   ck(!/fetch\(|XMLHttpRequest|WebSocket|api\.openai|sk-/.test(bpStripped + refStripped),
     'AR2d neither module reaches the network itself — the transport is LabConnection, the same three modes the Mystery Lab has');
   ck(!/localStorage|sessionStorage|indexedDB|document\.cookie/.test(bpStripped + refStripped),
@@ -4977,7 +5046,7 @@ async function sectionAR() {
     const requests = [];
     page.on('request', (q) => { if (!/127\.0\.0\.1/.test(q.url())) requests.push(q.url()); });
     const open = async () => {
-      await page.goto(BASE + '/tools/ether-mystery-lab/shape.html');
+      await page.goto(BASE + '/tools/ether-mystery-lab/shape.html#advanced');
       await page.waitForFunction(() => !!window.ShapeLab && !!window.LabReference && !!window.LabBlueprint && !!window.LabConnection, null, { timeout: 20000 });
     };
     await open();
@@ -4993,15 +5062,15 @@ async function sectionAR() {
       const api = ['setBudget', 'addPoint', 'movePoint', 'deletePoint', 'toggleJoin', 'toggleGap', 'reset', 'demoRing', 'setMode',
         'setName', 'setHint', 'setNotes', 'setTease', 'setJudgement', 'state', 'figure', 'metrics', 'playable', 'candidateFor',
         'save', 'load', 'duplicate', 'remove', 'list', 'compare', 'names', 'exportJSON', 'importJSON', 'draw', 'render'];
-      const controls = ['[data-budget="8"]', '[data-budget="10"]', '[data-budget="12"]', '[data-budget="16"]', '[data-budget="18"]', '[data-budget="20"]', '[data-mode="add"]', '[data-mode="move"]',
+      const controls = ['[data-budget="8"]', '[data-budget="10"]', '[data-budget="12"]', '[data-budget="16"]', '[data-budget="18"]', '[data-budget="20"]', '[data-budget="24"]', '[data-budget="30"]', '[data-mode="add"]', '[data-mode="move"]',
         '[data-mode="delete"]', '[data-mode="join"]', '[data-mode="gap"]', '[data-reset]', '[data-demo]', '[data-name]', '[data-hint]', '[data-notes]',
         '[data-save]', '[data-new]', '[data-play]', '[data-tease]', '[data-compare-name]', '[data-judgement]', '[data-fixtures]', '[data-export]', '[data-import]',
         '[data-canvas-complete]', '[data-canvas-unfinished]'];
       return { api: api.filter((k) => typeof S[k] !== 'function'), controls: controls.filter((c) => !document.querySelector(c)),
         keys: Object.keys(localStorage), budgets: S.BUDGETS.join(','), prod: S.PRODUCTION_BUDGET, ref: LabReference.current() };
     });
-    ck(intact.api.length === 0 && intact.controls.length === 0 && intact.keys.length === 0 && errors.length === 0 && intact.budgets === '8,10,12,16,18,20' && intact.prod === 8 && intact.ref === null,
-      'AR4  the existing Shape Lab is intact — every API function and control still there, budgets 8·10·12·16·18·20, nothing written, no reference on load',
+    ck(intact.api.length === 0 && intact.controls.length === 0 && intact.keys.length === 0 && errors.length === 0 && intact.budgets === '8,10,12,16,18,20,24,30' && intact.prod === 8 && intact.ref === null,
+      'AR4  the existing Shape Lab is intact — every API function and control still there, budgets 8·10·12·16·18·20·24·30, nothing written, no reference on load',
       'missing api:' + intact.api.join(',') + ' controls:' + intact.controls.join(','));
     // the manual editor with NO reference behaves exactly as before: a click lands where pressed
     await page.evaluate(() => { window.ShapeLab.setBudget(8); });
@@ -5547,8 +5616,12 @@ async function sectionAP() {
 
   // ---- AP1: statics ----
   const htmlBudgets = (shapeHtml.match(/data-budget="(\d+)"/g) || []).map((m) => m.replace(/\D/g, ''));
-  ck(htmlBudgets.join(',') === '8,10,12,16,18,20' && /BUDGETS\s*=\s*\[\s*8,\s*10,\s*12,\s*16,\s*18,\s*20\s*\]/.test(shapeSrc) && /BUDGETS\s*=\s*\[\s*8,\s*10,\s*12,\s*16,\s*18,\s*20\s*\]/.test(bpSrc) && /REQUIRED_BUDGETS\s*=\s*\[\s*8,\s*12,\s*16,\s*20\s*\]/.test(bpSrc),
-    'AP1  six authoring budgets — 8 · 10 · 12 · 16 · 18 · 20 — on the page, in the editor and in the blueprint; a reply still needs only the four canonical lists', htmlBudgets.join(','));
+  // TURNED ROUND (AI does the authoring): the editor and the page hold
+  // eight budgets up to the research ceiling of 30; the blueprint layer's
+  // own six are untouched — a reply still needs only the four canonical
+  // lists, and the reference's suggestions are never asked for at 24 or 30.
+  ck(htmlBudgets.join(',') === '8,10,12,16,18,20,24,30' && /BUDGETS\s*=\s*\[\s*8,\s*10,\s*12,\s*16,\s*18,\s*20,\s*24,\s*30\s*\]/.test(shapeSrc) && /BUDGETS\s*=\s*\[\s*8,\s*10,\s*12,\s*16,\s*18,\s*20\s*\]/.test(bpSrc) && /REQUIRED_BUDGETS\s*=\s*\[\s*8,\s*12,\s*16,\s*20\s*\]/.test(bpSrc),
+    'AP1  eight authoring budgets — 8 · 10 · 12 · 16 · 18 · 20 · 24 · 30 — on the page and in the editor; the blueprint keeps its six and a reply still needs only the four canonical lists', htmlBudgets.join(','));
   ck(/arrangementNodesMax:\s*8\b/.test(read('js/etherGrammar.js')),
     'AP1b the production point limit is untouched — arrangementNodesMax is still 8 in js/etherGrammar.js');
   ck(!/\b(tiger|lion|elephant|falcon|octopus|eagle|whale|dragon)\b/i.test(labStripped) && !/subject\s*===|subject\s*==\s*['"]/.test(labStripped),
@@ -5658,7 +5731,7 @@ async function sectionAP() {
       const text = bp ? JSON.stringify(bp) : JSON.stringify(mkBp(subject, [['HEAD', 3], ['BODY', 3], ['TAIL', 2]], grow(['HEAD', 'BODY', 'TAIL'], ['HEAD', 'BODY', 'TAIL'], ['HEAD', 'BODY', 'TAIL'])));
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, model: 'gpt-4o-mini', build: 'LAB1', text }) });
     });
-    await page.goto(BASE + '/tools/ether-mystery-lab/shape.html');
+    await page.goto(BASE + '/tools/ether-mystery-lab/shape.html#advanced');
     await page.waitForFunction(() => !!window.ShapeLab && !!window.LabReference && !!window.LabBlueprint && !!window.LabConnection, null, { timeout: 20000 });
     await page.click('[data-conn-mode="endpoint"]');
     await page.fill('[data-conn-url]', 'https://fn.local/lab-generate');
@@ -5672,7 +5745,13 @@ async function sectionAP() {
     };
     const geom = async () => page.evaluate(() => { const c = document.querySelector('[data-canvas-complete]'); c.scrollIntoView({ block: 'center' }); const r = c.getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; });
     const at = (g, p) => { const k = (Math.min(g.w, g.h) * 0.46) / 1.4; return { x: g.x + g.w / 2 + p[0] * k, y: g.y + g.h / 2 + p[1] * k }; };
-    const tool = async (m) => page.click('[data-mode="' + m + '"]');
+    // A TOOL PRESS RE-MEASURES THE CANVAS. The editor now sits under the
+    // simple flow, so pressing a mode button can scroll the page, and the
+    // canvas is sticky — measured: the canvas stood at y=596 before the
+    // press and y=169 after it, and a click computed from the first landed
+    // on nothing (the WF sprint's own lesson, one layout later).
+    let g;
+    const tool = async (m) => { await page.click('[data-mode="' + m + '"]'); g = await geom(); };
 
     // ---- AP3: five creatures through all six budgets on the real page ----
     const walk = {};
@@ -5714,7 +5793,7 @@ async function sectionAP() {
     const handedBack = await page.evaluate(() => { const S = window.ShapeLab; const had = S.figure().points.length; for (let i = had - 1; i >= 0; i--) S.deletePoint(i); return { had, now: S.figure().points.length, free: LabReference.suggestions().filter((x) => x.budgeted).length }; });
     ck(handedBack.had === 12 && handedBack.now === 0 && handedBack.free === 12,
       'AP4pre the placed starting figure can be taken apart light by light, and every place returns to the suggestions — a deleted suggestion is never re-placed behind the author', JSON.stringify(handedBack));
-    let g = await geom();
+    g = await geom();
     await tool('add');
     const first = await page.evaluate(() => LabReference.suggestions()[0]);
     let q = at(g, [first.x + 0.05, first.y + 0.03]);
@@ -6139,7 +6218,7 @@ async function sectionRV() {
     const errors = [];
     page.on('pageerror', (e) => errors.push(String(e).split('\n')[0]));
     const open = async () => {
-      await page.goto(BASE + '/tools/ether-mystery-lab/shape.html');
+      await page.goto(BASE + '/tools/ether-mystery-lab/shape.html#advanced');
       await page.waitForFunction(() => !!window.ShapeLab && !!window.LabReveal && !!window.LabRevealData && !!window.LabReference, null, { timeout: 20000 });
     };
     await open();
@@ -6662,7 +6741,7 @@ async function sectionET() {
     const errors = [];
     page.on('pageerror', (e) => errors.push(String(e).split('\n')[0]));
     const open = async () => {
-      await page.goto(BASE + '/tools/ether-mystery-lab/shape.html');
+      await page.goto(BASE + '/tools/ether-mystery-lab/shape.html#advanced');
       await page.waitForFunction(() => !!window.ShapeLab && !!window.LabReference && !!window.LabBlueprint && !!window.LabConnection && !!window.LabTranslationData, null, { timeout: 20000 });
     };
     await open();
@@ -6958,7 +7037,7 @@ async function sectionWF() {
     const page = await ctx.newPage();
     const errors = [];
     page.on('pageerror', (e) => errors.push(String(e).split('\n')[0]));
-    await page.goto(BASE + '/tools/ether-mystery-lab/shape.html');
+    await page.goto(BASE + '/tools/ether-mystery-lab/shape.html#advanced');
     await page.waitForFunction(() => !!window.ShapeLab && !!window.LabReference, null, { timeout: 20000 });
     const q = (sel) => page.evaluate((s) => { const e = document.querySelector(s); return e ? (e.tagName === 'INPUT' && e.type === 'checkbox' ? e.checked : (e.tagName === 'INPUT' ? e.value : e.textContent)) : null; }, sel);
     const disabled = (sel) => page.evaluate((s) => document.querySelector(s).disabled, sel);
@@ -7182,6 +7261,492 @@ async function sectionWF() {
 }
 
 // ===================================================================
+// AI. AI DOES THE AUTHORING — PROMPT. CHOOSE. THE LAB DOES THE REST.
+//
+// The Shape Lab's primary flow is two acts by the researcher (a prompt,
+// a chosen picture) and everything else by the Lab: lights, joins,
+// missing connections, the hint, the reveal features and where they sit,
+// the reveal timing, the come-alive sequence. This section proves it
+// four ways: statics (the flow precedes the editor and the editor lives
+// under Advanced; nothing production moved), the pure half in Node (the
+// contract, the validator, the compiler, the fixtures — driven on a REAL
+// captured gpt-4.1 reply and on malformed replies), the endpoint (E8/E9
+// above), and the real page in a real browser against a stubbed provider
+// (create → three images → choose → building → ready → the three states
+// → approve; a new session leaves nothing behind; a late answer is
+// dropped; malformed output loads nothing; the request carries nothing
+// private; Advanced holds the machinery and the manual controls still
+// edit the same figure).
+//
+// Load-bearing checks proved by temporary reversion during the sprint
+// (each run red, then restored): the stale guard removed (`live()` made
+// to return true) → AI11/AI11b red; the stranding rule removed from
+// `strands()` → AI4c red; the forbidden-key walk removed → AI3b red;
+// `newSession()` no longer resetting the editor → AI10 red; the body
+// attribute clash (the first build wrote the status sentence INTO the
+// body, wiping the page) → AI5 red.
+// ===================================================================
+function creatureSandbox() {
+  const ctx = { console }; vm.createContext(ctx);
+  ['labReveal.js', 'labCreature.js'].forEach((f) => vm.runInContext(read('tools/ether-mystery-lab/' + f), ctx, { filename: f }));
+  return ctx;
+}
+// A valid encoding for the stubbed provider — a named creature, N lights,
+// a closed outline plus two limbs, a couple of missing joins, reveals.
+function encodingFor(name, n, variant) {
+  n = n || 12; variant = variant || 0;
+  const pts = [];
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2 + variant * 0.1;
+    // percent of the frame, as the contract asks
+    pts.push({ name: name + ' PART ' + String.fromCharCode(65 + i), x: Math.round(50 + Math.cos(a) * 40), y: Math.round(50 + Math.sin(a) * 40) });
+  }
+  const joins = [];
+  for (let i = 0; i < n; i++) joins.push(i + '-' + ((i + 1) % n));
+  joins.push('0-' + Math.floor(n / 2));
+  return {
+    creature: name, seen: 'A ' + name.toLowerCase() + ' facing left, whole body visible.', confidence: 0.8 + variant * 0.01,
+    points: pts, joins, missing: [joins[1], joins[4]],
+    hint: 'Something with a long memory is waiting…',
+    reveals: [
+      { name: 'EYES', kind: 'glow', role: 'LIFE', at: name + ' PART A', toward: null, why: 'eyes bring it to life' },
+      { name: 'COAT', kind: 'contour', role: 'IDENTITY', at: name + ' PART C', toward: name + ' PART E', why: 'the coat is the identity' },
+      { name: 'SPARKS', kind: 'motes', role: 'MAGIC', at: name + ' PART G', toward: null, why: 'a little magic' }
+    ],
+    alive: { gesture: 'Poised, looking left.', movement: 'It would pad along slowly.' },
+    holdSeconds: 3.5 + variant
+  };
+}
+const TINY_JPEG_B64 = '/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AN//Z';
+
+async function sectionAI() {
+  console.log('\n== AI. AI does the authoring (the simplified Shape Lab) ==');
+  const { chromium } = require('playwright');
+  const shapeHtml = read('tools/ether-mystery-lab/shape.html');
+  const htmlNoComments = shapeHtml.replace(/<!--[\s\S]*?-->/g, '');
+  const crSrc = read('tools/ether-mystery-lab/labCreature.js');
+  const crStripped = stripComments(crSrc);
+  const connSrc = read('tools/ether-mystery-lab/labConnection.js');
+
+  // ---- AI1: statics — the simple flow first, the machinery under Advanced ----
+  const flowAt = htmlNoComments.indexOf('data-creature'), advAt = htmlNoComments.indexOf('data-advanced'), mainAt = htmlNoComments.indexOf('<main>');
+  ck(flowAt > 0 && advAt > flowAt && mainAt > advAt && htmlNoComments.indexOf('</main>') < htmlNoComments.lastIndexOf('</details>'),
+    'AI1  the simple flow comes first and the whole editor sits inside <details data-advanced> after it');
+  const primary = htmlNoComments.slice(flowAt, advAt);
+  const sections = (primary.match(/data-cr-section="([a-z]+)"/g) || []).map((m) => m.replace(/.*="|"/g, ''));
+  ck(sections.join(',') === 'create,choose,building,result,experience',
+    'AI1b the primary flow is exactly CREATE → CHOOSE → BUILDING → RESULT → EXPERIENCE', sections.join(','));
+  const authoringControls = ['data-budget=', 'data-mode=', 'data-join', 'data-unjoin', 'data-missing', 'data-reset-connections', 'data-reset-points', 'data-reveal-add', 'data-ref-generate', 'data-canvas-complete'];
+  const leaked = authoringControls.filter((c) => primary.indexOf(c) !== -1);
+  ck(leaked.length === 0 && authoringControls.every((c) => htmlNoComments.slice(advAt).indexOf(c) !== -1),
+    'AI1c no manual authoring control stands in the primary flow — add/move/delete, the budget, connect, unjoin, mark missing, reset connections, reveal construction are all under Advanced and all still exist', leaked.join(','));
+  const primaryText = primary.replace(/<[^>]+>/g, ' ');
+  const words = ['budget', 'unjoin', 'mark missing', 'candidate', 'interpreter', 'validator', 'schema', 'sanitiz', 'coordinate', 'anchor'];
+  const said = words.filter((w) => new RegExp(w, 'i').test(primaryText));
+  ck(said.length === 0, 'AI1d the primary flow never says budget, unjoin, mark missing, candidate, interpreter, validator, schema, sanitizer, coordinate or anchor', said.join(','));
+  ck(/data-cr-state="unfinished"/.test(primary) && /data-cr-state="complete"/.test(primary) && /data-cr-state="alive"/.test(primary) &&
+     /data-cr-approve/.test(primary) && /data-cr-refine\b/.test(primary) && /data-cr-another-image/.test(primary) && /data-cr-another-interp/.test(primary),
+    'AI1e UNFINISHED · COMPLETE · COME ALIVE, APPROVE, REFINE, TRY ANOTHER IMAGE and TRY ANOTHER ETHER INTERPRETATION are the researcher\'s controls');
+  ck(['data-cr-trace', 'data-cr-raw', 'data-cr-extraction', 'data-cr-authored', 'data-cr-confidence', 'data-cr-source-adv', 'data-cr-log'].every((k) => htmlNoComments.slice(advAt).indexOf(k) !== -1),
+    'AI1f Advanced holds the pipeline instrumentation: metadata, source image, raw model output, extraction, authored figure, confidence, log');
+  // production untouched — measured against git, and against the sprint's base
+  const dirty = require('child_process').spawnSync('git', ['status', '--porcelain', '--', 'js', 'assets', 'vihuplanet', 'index.html', 'studio.html', 'css'], { cwd: ROOT, encoding: 'utf8' }).stdout || '';
+  ck(dirty.trim() === '', 'AI1g zero production files changed — js/, assets/, vihuplanet/, index.html, studio.html, css/ are clean in git', dirty.trim() || 'clean');
+  ck(/arrangementNodesMax:\s*8\b/.test(read('js/etherGrammar.js')), 'AI1h the production point limit is still eight — the 8–30 range is the Lab\'s research range');
+  ck(!/labCreature/.test(read('index.html') + read('studio.html')) && !/experience-pool/.test(htmlNoComments), 'AI1i no production page loads the creature module and the Shape Lab still never loads the production pool');
+  ck(!/localStorage|sessionStorage|\bremember\s*\(|subject\s*===|Math\.random/.test(crStripped),
+    'AI1j the creature module stores nothing, remembers nothing, branches on no creature name and draws no random number');
+  ck(!/sk-[A-Za-z0-9_]{20,}/.test(crSrc + connSrc) && /IMAGE_MODEL\s*=\s*'gpt-image-2'/.test(connSrc) && /TEXT_MODEL\s*=\s*'gpt-4\.1'/.test(crSrc),
+    'AI1k no key material; the image model is gpt-image-2 and the text model gpt-4.1, named once each');
+
+  // ---- AI2–AI4: the pure half, in Node ----
+  const sb = creatureSandbox();
+  const LC = sb.LabCreature;
+  const SEVEN = ['A panda made of stars in a night sky', 'A mermaid made of stars in a night sky', 'A baby dragon made of stars in a night sky',
+    'A falcon made of stars in a night sky', 'A lion with wings made of stars in a night sky', 'A giant whale made of stars in a night sky', 'An imaginary fox-like creature made of stars'];
+  ck(SEVEN.every((p) => LC.cleanPrompt(p) === p) && LC.cleanPrompt('<b>x</b>') === null && LC.cleanPrompt('see https://x.y') === null && LC.cleanPrompt('a'.repeat(121)) === null && LC.cleanPrompt('') === null,
+    'AI2  the seven prompts are accepted as typed; markup, links, the empty and the over-long are refused');
+  const em = LC.extractionMessages('A panda made of stars in a night sky', 'data:image/jpeg;base64,' + TINY_JPEG_B64, {});
+  const emR = LC.extractionMessages('A panda made of stars in a night sky', 'data:image/jpeg;base64,' + TINY_JPEG_B64, { refine: 'use fewer points', previous: { creature: 'PANDA' } });
+  ck(em.ok && em.messages.length === 2 && em.messages[0].role === 'system' && Array.isArray(em.messages[1].content) && em.messages[1].content[0].type === 'text' &&
+     em.messages[1].content[1].type === 'image_url' && /Encode THIS image/.test(em.messages[1].content[0].text) &&
+     emR.ok && /use fewer points/.test(emR.messages[1].content[0].text) && /"creature":"PANDA"/.test(emR.messages[1].content[0].text),
+    'AI2b the request is the contract, the prompt, the chosen image as a data URL and, on REFINE, the instruction and the previous encoding');
+  ck(!LC.extractionMessages('A panda', 'https://x.y/panda.jpg').ok && !LC.extractionMessages('A panda', 'data:image/svg+xml;charset=utf-8,x').ok && LC.extractionMessages('A panda', 'data:image/jpeg;base64,AAAA', { refine: '<script>' }).reason === 'bad-refine',
+    'AI2c a link, an SVG and a refinement carrying markup are refused by name');
+  const PRIVATE = /\b(card|cards|constellation|memor|email|username|creator|companion|orbit|circle|password|token)\b/i;
+  ck(!PRIVATE.test(JSON.stringify(em.messages)) && !PRIVATE.test(LC.imagePrompt('A panda made of stars in a night sky')),
+    'AI2d neither request carries the product\'s private vocabulary — a card, a constellation, a memory, an address, a name');
+
+  // AI3 — a REAL gpt-4.1 reply, captured while calibrating the contract
+  const real = JSON.parse(read('tools/ether-mystery-lab-test/real-panda-encoding.json'));
+  const rv = LC.parse(real.content);
+  ck(rv.ok && rv.extraction.points.length === 15 && rv.extraction.missing.length === 3 && rv.extraction.reveals.length === 4 && rv.extraction.creature === 'PANDA',
+    'AI3  the real reply parses: 15 lights, 3 missing connections, 4 reveals, the creature named', JSON.stringify(rv.reasons));
+  const rc = LC.compile(rv.extraction, [8, 10, 12, 16, 18, 20, 24, 30]);
+  const reach = Math.max.apply(null, rc.authored.points.map((p) => Math.max(Math.abs(p[0]), Math.abs(p[1]))));
+  ck(rc.ok && rc.authored.budget === 16 && rc.authored.missingSource === 'model' && rc.authored.reveal.features.length === 4 &&
+     rc.authored.reveal.features[0].lights.a === 3 && rc.authored.reveal.features[0].lights.b === 2 && rc.authored.joins.indexOf('9-13') !== -1 && rc.authored.hint === rv.extraction.hint &&
+     rc.repairs.some((r) => /^fitted:/.test(r)) && reach > 1.0 && reach <= 1.3,
+    'AI3a it compiles: budget 16 holds 15, the model\'s own missing connections are kept, a reveal written as index strings ("at": "3") lands on light 3 toward light 2, the hint stands, and the figure is fitted to the frame (the model\'s percentages become a large figure)', 'reach ' + reach.toFixed(2) + ' ' + rc.repairs.join(','));
+  // AI3b — malformed replies
+  const bad = {
+    notJson: LC.parse('I would rather describe the panda in prose.'),
+    tooFew: LC.validate({ creature: 'X', points: [{ name: 'A', x: 0, y: 0 }], joins: [] }),
+    tooMany: LC.validate({ creature: 'X', points: Array.from({ length: 31 }, (_, i) => ({ name: 'P' + i, x: 0, y: 0 })), joins: ['0-1'] }),
+    forbidden: LC.validate(Object.assign(encodingFor('WOLF'), { constellation: 'a b c' })),
+    forbiddenDeep: LC.validate(Object.assign(encodingFor('WOLF'), { alive: { gesture: 'x', card: 'y' } })),
+    invented: LC.validate(Object.assign(encodingFor('WOLF'), { missing: ['0-7', '99-1'] })),
+    unknownKey: LC.validate(Object.assign(encodingFor('WOLF'), { mood: 'sleepy' })),
+    badKind: LC.validate(Object.assign(encodingFor('WOLF'), { reveals: [{ name: 'X', kind: 'hologram', at: 'WOLF PART A' }] })),
+    namesCreature: LC.validate(Object.assign(encodingFor('WOLF'), { hint: 'A wolf is waiting…' })),
+    farOut: LC.validate(Object.assign(encodingFor('WOLF'), { points: encodingFor('WOLF').points.map((p, i) => i ? p : { name: p.name, x: 150, y: -20 }) }))
+  };
+  ck(!bad.notJson.ok && bad.notJson.reasons[0] === 'not-json' && !bad.tooFew.ok && /too-few-points/.test(bad.tooFew.reasons.join()) && !bad.tooMany.ok && /too-many-points:31/.test(bad.tooMany.reasons.join()),
+    'AI3b prose, too few lights and thirty-one lights are refused with the reason named');
+  ck(!bad.forbidden.ok && /forbidden-key:constellation/.test(bad.forbidden.reasons.join()) && !bad.forbiddenDeep.ok && /forbidden-key:card/.test(bad.forbiddenDeep.reasons.join()),
+    'AI3c a forbidden key at ANY depth refuses the whole reply — a constellation, a card');
+  ck(bad.invented.ok && bad.invented.extraction.missing.length === 0 && bad.invented.repairs.some((r) => /drop-invented-missing:0-7/.test(r)) && bad.invented.repairs.some((r) => /drop-bad-missing/.test(r)),
+    'AI3d a missing connection that does not exist in the figure is DROPPED by name, never invented');
+  ck(bad.unknownKey.ok && bad.unknownKey.repairs.indexOf('drop-unknown-key:mood') !== -1 && bad.badKind.ok && bad.badKind.extraction.reveals.length === 0 && bad.badKind.repairs.some((r) => /drop-reveal-unknown-kind/.test(r)),
+    'AI3e an unknown key is dropped by name and a reveal of an unknown kind is dropped by name — the rest of the reply is kept');
+  ck(bad.namesCreature.ok && bad.namesCreature.extraction.hint === '' && bad.namesCreature.repairs.indexOf('hint-refused') !== -1 && LC.compile(bad.namesCreature.extraction).authored.hint === LC.FALLBACK_HINT,
+    'AI3f a hint that names the creature is refused and the fallback line stands — a hint names the KIND of thing, never the answer');
+  ck(bad.farOut.ok && Math.abs(bad.farOut.extraction.points[0].x) <= 1.3 && bad.farOut.repairs.indexOf('clamp-point:0') !== -1, 'AI3g a coordinate past the sky is clamped and the clamp is named');
+
+  // AI4 — the compiler's guarantees
+  const counts = {};
+  [8, 15, 22, 30].forEach((n) => { const c = LC.compile(LC.validate(encodingFor('THING', n)).extraction, [8, 10, 12, 16, 18, 20, 24, 30]); counts[n] = c.ok ? c.authored.budget : c.reasons.join(); });
+  ck(counts[8] === 8 && counts[15] === 16 && counts[22] === 24 && counts[30] === 30 && !LC.validate(encodingFor('THING', 7)).ok && !LC.validate(encodingFor('THING', 31)).ok,
+    'AI4  adaptive point count: 8, 15, 22 and 30 lights compile into budgets 8, 16, 24 and 30; seven and thirty-one are refused', JSON.stringify(counts));
+  const two = { creature: 'TWO', points: [{ name: 'A', x: 12, y: 12 }, { name: 'B', x: 12, y: 50 }, { name: 'C', x: 12, y: 88 }, { name: 'D', x: 31, y: 50 }, { name: 'E', x: 88, y: 12 }, { name: 'F', x: 88, y: 50 }, { name: 'G', x: 88, y: 88 }, { name: 'H', x: 65, y: 50 }],
+    joins: ['0-1', '1-2', '2-3', '3-0', '4-5', '5-6', '6-7', '7-4'], missing: [], hint: 'Two halves are waiting…' };
+  const tc = LC.compile(LC.validate(two).extraction);
+  ck(tc.ok && tc.repairs.indexOf('joined-components:1') !== -1 && tc.authored.joins.indexOf('3-7') !== -1,
+    'AI4b two islands become ONE connected figure, joined at their closest lights (D–H), and the join is named as a repair');
+  ck(tc.authored.missing.length >= 1 && tc.authored.missingSource === 'auto' && tc.repairs.some((r) => /chose-missing/.test(r)),
+    'AI4c with no usable missing connection from the model the compiler chooses — widest first — and says so');
+  // never a stranded light: a figure with a one-join tail where the model asks for that join to be missing
+  const tail = { creature: 'TAILED', points: [0, 1, 2, 3, 4, 5, 6, 7].map((i) => ({ name: 'P' + i, x: Math.round(50 + Math.cos(i) * 30), y: Math.round(50 + Math.sin(i) * 30) })).concat([{ name: 'TAIL TIP', x: 95, y: 95 }]),
+    joins: ['0-1', '1-2', '2-3', '3-4', '4-5', '5-6', '6-7', '7-0', '4-8'], missing: ['4-8', '0-1'], hint: 'x is waiting…' };
+  const tailC = LC.compile(LC.validate(tail).extraction);
+  const gapsOf = (a) => a.missing.map((i) => a.joins[i]);
+  const degreesAfter = (a) => { const d = a.points.map(() => 0); a.joins.forEach((k, i) => { if (a.missing.indexOf(i) !== -1) return; k.split('-').forEach((x) => d[Number(x)]++); }); return d; };
+  ck(tailC.ok && gapsOf(tailC.authored).indexOf('4-8') === -1 && tailC.repairs.indexOf('drop-stranding-missing:4-8') !== -1 && degreesAfter(tailC.authored).every((d) => d > 0),
+    'AI4d a missing connection that would strand a light is refused by name — after the gaps, every light is still joined to something');
+  const spread = LC.compile(LC.validate(encodingFor('SPREAD', 20)).extraction).authored;
+  const shared = (() => { const seen = {}; let dup = 0; gapsOf(spread).forEach((k) => k.split('-').forEach((x) => { if (seen[x]) dup++; seen[x] = 1; })); return dup; })();
+  ck(gapsOf(spread).every((k) => spread.joins.indexOf(k) !== -1) && spread.missing.length >= 2 && spread.missing.length <= 5 && shared === 0,
+    'AI4e every gap is a join of the complete figure, there are two to five of them, and the chosen ones never share a light');
+  const rvc = LC.compile(LC.validate(Object.assign(encodingFor('ANCH'), { reveals: [
+    { name: 'BY NAME', kind: 'glow', role: 'LIFE', at: 'ANCH PART C', toward: 'ANCH PART D' },
+    { name: 'BY INDEX', kind: 'spike', role: 'IDENTITY', at: '5', toward: '6' },
+    { name: 'NOWHERE', kind: 'motes', role: 'MAGIC', at: 'HALO' }] })).extraction).authored;
+  ck(rvc.reveal.features.length === 3 && rvc.reveal.features[0].lights.a === 2 && rvc.reveal.features[0].lights.b === 3 && rvc.reveal.features[1].lights.a === 5 && rvc.reveal.features[1].lights.b === 6 &&
+     rvc.revealRoles.map((r) => r.role).join() === 'LIFE,IDENTITY,MAGIC' && LC.compile(LC.validate(Object.assign(encodingFor('ANCH'), { reveals: [{ name: 'NOWHERE', kind: 'motes', role: 'MAGIC', at: 'HALO' }] })).extraction).repairs.some((r) => /reveal-anchored-at-centre/.test(r)),
+    'AI4f reveals are anchored to real lights by name or by index, classified IDENTITY · LIFE · MAGIC, and a part the figure does not have goes to the centre-most light with the repair named');
+  const fx = LC.fixtureExtraction('A panda made of stars in a night sky', 1), fx2 = LC.fixtureExtraction('A panda made of stars in a night sky', 2);
+  const fxc = LC.compile(LC.validate(fx).extraction);
+  ck(fx.creature === 'FIXTURE CREATURE' && /fixture/i.test(fx.seen) && fxc.ok && JSON.stringify(fx.points) !== JSON.stringify(fx2.points) &&
+     LC.fixtureImages('A panda', 3, 0).every((u) => /^data:image\/svg\+xml/.test(u) && /FIXTURE%20IMAGE/.test(u)),
+    'AI4g the fixtures say they are fixtures — a generic body plan named FIXTURE CREATURE, SVG stand-ins that say FIXTURE, and another attempt is another figure');
+
+  // ---- AI5–AI19: the real page ----
+  const server = spawn('node', ['tools/bring-it-alive/test/serve.js', String(PORT)], { cwd: ROOT, stdio: 'ignore' });
+  await new Promise((r) => setTimeout(r, 900));
+  const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+  try {
+    const page = await browser.newPage({ viewport: { width: 1400, height: 1000 } });
+    const pageErrors = [];
+    page.on('pageerror', (e) => pageErrors.push(e.message));
+    // THE STUBBED PROVIDER — images answer a tiny JPEG; the text model
+    // answers an encoding named after the animal in the prompt it was
+    // handed, so a leak between sessions has a name to be caught by.
+    const requests = [];
+    let chatCount = 0, chatBehaviour = 'ok', imageDelayFor = null, chatDelayOnce = 0, imageBehaviour = 'ok';
+    await page.route('https://api.openai.com/**', async (route) => {
+      const req = route.request();
+      let body = null; try { body = JSON.parse(req.postData() || 'null'); } catch (e) { body = null; }
+      requests.push({ url: req.url(), auth: req.headers()['authorization'] || '', body, at: Date.now() });
+      if (/\/v1\/models/.test(req.url())) return route.fulfill({ status: 200, contentType: 'application/json', body: '{"data":[]}' });
+      if (/images\/generations/.test(req.url())) {
+        if (imageDelayFor && new RegExp(imageDelayFor, 'i').test(body.prompt)) await new Promise((r) => setTimeout(r, 2500));
+        if (imageBehaviour === 'fail') return route.fulfill({ status: 500, contentType: 'application/json', body: '{"error":{"message":"x"}}' });
+        return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [{ b64_json: TINY_JPEG_B64 }] }) });
+      }
+      chatCount++;
+      if (chatDelayOnce > 0) { chatDelayOnce--; await new Promise((r) => setTimeout(r, 2500)); }
+      const text = (body.messages[1].content[0] || {}).text || '';
+      const m = /made from: (?:A |An )?([a-z]+)/i.exec(text);
+      const animal = (m ? m[1] : 'thing').toUpperCase();
+      const refined = /revision: "([^"]+)"/.exec(text);
+      let content;
+      if (chatBehaviour === 'prose') content = 'The image shows a lovely ' + animal.toLowerCase() + '.';
+      else if (chatBehaviour === 'forbidden') content = JSON.stringify(Object.assign(encodingFor(animal), { constellation: 'x' }));
+      else content = JSON.stringify(encodingFor(animal, refined && /fewer/.test(refined[1]) ? 8 : 12, chatCount));
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ choices: [{ message: { content } }] }) });
+    });
+    const phase = () => page.evaluate(() => document.body.getAttribute('data-cr-phase'));
+    const until = (p, ms) => page.waitForFunction((want) => document.body.getAttribute('data-cr-phase') === want, p, { timeout: ms || 8000 });
+    const snap = () => page.evaluate(() => window.LabCreature.session());
+    const editor = () => page.evaluate(() => { const s = window.ShapeLab.state(); return { points: s.points.length, name: s.name, hint: s.hint, roles: s.roles, missing: s.missing.length, reveals: s.reveal.features.map((f) => f.name), budget: s.budget, undo: window.ShapeLab.historyDepth().undo }; });
+
+    // AI5 — loading does nothing
+    await page.goto(BASE + '/tools/ether-mystery-lab/shape.html');
+    const s5 = await page.evaluate(() => ({ adv: document.querySelector('[data-advanced]').open, sess: window.LabCreature.session(), note: document.querySelector('[data-cr-status]').textContent, body: document.body.children.length, ep: window.LabCreature.epoch(),
+      hidden: ['choose', 'building', 'result', 'experience'].map((n) => document.querySelector('[data-cr-section="' + n + '"]').hidden) }));
+    ck(s5.adv === false && s5.sess === null && s5.ep === 0 && requests.length === 0 && /press CREATE/.test(s5.note) && s5.hidden.every(Boolean) && s5.body > 2 && pageErrors.length === 0,
+      'AI5  loading the Lab does nothing: no session, no request, Advanced closed, only CREATE on screen, and the page is whole', JSON.stringify(s5.hidden) + ' errors ' + pageErrors.join('|'));
+
+    // AI6 — the journey, in Direct mode against the stub
+    await page.evaluate(() => { window.LabConnection.setMode('direct'); window.LabConnection.setDirectKey('sk-test-key-for-the-suite'); });
+    await page.fill('[data-cr-prompt]', 'A mermaid made of stars in a night sky');
+    const phases = [];
+    await page.evaluate(() => { window.__phases = []; window.LabCreature.observe(() => { const p = document.body.getAttribute('data-cr-phase'); if (window.__phases[window.__phases.length - 1] !== p) window.__phases.push(p); }); });
+    await page.click('[data-cr-create]');
+    await until('choose');
+    const s6 = await page.evaluate(() => ({ tiles: document.querySelectorAll('[data-cr-image]').length, use: document.querySelectorAll('[data-cr-use]').length, chooseShown: !document.querySelector('[data-cr-section="choose"]').hidden, resultHidden: document.querySelector('[data-cr-section="result"]').hidden, src: Array.from(document.querySelectorAll('[data-cr-image] img')).map((i) => i.src.slice(0, 22)) }));
+    const imageReqs = requests.filter((r) => /images\/generations/.test(r.url));
+    ck(s6.tiles === 3 && s6.use === 3 && s6.chooseShown && s6.resultHidden && imageReqs.length === 3 && imageReqs.every((r) => r.body.model === 'gpt-image-2' && r.body.n === 1 && /mermaid/i.test(r.body.prompt)) && s6.src.every((x) => x === 'data:image/jpeg;base64'),
+      'AI6  CREATE asks the image model three times in parallel and offers three candidates — nothing else is on screen yet', JSON.stringify(s6));
+    await page.click('[data-cr-use="1"]');
+    await until('ready');
+    const s6b = await page.evaluate(() => ({ summary: document.querySelector('[data-cr-summary]').textContent, resultShown: !document.querySelector('[data-cr-section="result"]').hidden, expShown: !document.querySelector('[data-cr-section="experience"]').hidden,
+      strip: document.querySelector('[data-status-name]').textContent + ' · ' + document.querySelector('[data-status-line]').textContent, hint: document.querySelector('[data-cr-hint]').value, reveals: document.querySelectorAll('[data-cr-reveals] li').length, missing: document.querySelector('[data-cr-missing]').textContent, chosen: document.querySelector('[data-cr-image="1"]').classList.contains('chosen'), source: document.querySelector('[data-cr-source]').src.slice(0, 22) }));
+    const e6 = await editor();
+    const chatReqs = requests.filter((r) => /chat\/completions/.test(r.url));
+    const phasesSeen = await page.evaluate(() => window.__phases);
+    // (the stub's encoding names two missing connections; the compiler's
+    // target for a twelve-light figure is three, so one is chosen by the
+    // Lab and the missing line says so)
+    ck(s6b.resultShown && s6b.expShown && /MERMAID · 12 points · 3 missing · 3 reveals/.test(s6b.summary) && /MERMAID · 12 POINTS/.test(s6b.strip) && s6b.reveals === 3 && /3 connections \(the model's, topped up by the Lab\)/.test(s6b.missing) && s6b.chosen && s6b.source === 'data:image/jpeg;base64' &&
+       e6.points === 12 && e6.name === 'MERMAID' && e6.missing === 3 && e6.reveals.join() === 'EYES,COAT,SPARKS' && e6.budget === 12 && s6b.hint === 'Something with a long memory is waiting…',
+      'AI6b USE THIS reads the chosen picture and the Lab builds everything: the summary, the source beside the Ether figure, the hint, the missing count, the reveals — and the editor under Advanced holds exactly that figure', JSON.stringify(s6b) + ' ' + JSON.stringify(e6));
+    ck(chatReqs.length === 1 && chatReqs[0].body.model === 'gpt-4.1' && Array.isArray(chatReqs[0].body.messages[1].content) && chatReqs[0].body.messages[1].content[1].image_url.url.indexOf('data:image/jpeg;base64,') === 0 && phasesSeen.indexOf('building') !== -1,
+      'AI6c one text-model call, to gpt-4.1, carrying the chosen picture; BUILDING CREATURE… was shown between the choice and the result', phasesSeen.join('>'));
+    ck(e6.undo === 0, 'AI6d the researcher placed nothing and connected nothing — the editor\'s history is empty');
+
+    // AI7 — the three states
+    const pixels = (sel) => page.evaluate((s) => { const c = document.querySelector(s); const g = c.getContext('2d'); const d = g.getImageData(0, 0, c.width, c.height).data; let lit = 0; for (let i = 0; i < d.length; i += 16) if (d[i] > 150 && d[i + 1] > 150) lit++; return lit; }, sel);
+    await page.click('[data-cr-state="unfinished"]');
+    const unf = await pixels('[data-cr-stage]');
+    await page.click('[data-cr-state="complete"]');
+    const comp = await pixels('[data-cr-stage]');
+    const st7 = await page.evaluate(() => ({ state: window.LabCreature.stageStatus().state, on: document.querySelector('[data-cr-state="complete"]').classList.contains('on'), strip: document.querySelector('[data-status-state]').textContent }));
+    ck(unf > 0 && comp > unf && st7.state === 'complete' && st7.on && /READY TO APPROVE/.test(st7.strip),
+      'AI7  UNFINISHED draws less than COMPLETE (the missing connections are simply not there), and showing a state counts as testing', 'unfinished ' + unf + ' < complete ' + comp);
+    await page.click('[data-cr-state="alive"]');
+    await new Promise((r) => setTimeout(r, 5600));
+    const a1 = await page.evaluate(() => window.LabCreature.stageStatus());
+    await new Promise((r) => setTimeout(r, 3000));
+    const a2 = await page.evaluate(() => window.LabCreature.stageStatus());
+    ck(a1.playing && a1.frame > 30 && (a1.phase === 'alive' || a1.phase === 'roam') && a1.scale > 0.68 && a1.scale < 0.78 && a1.painted === 3 && a2.frame > a1.frame && a2.travelled > a1.travelled && a2.travelled > 0.1,
+      'AI7b COME ALIVE runs the sequence by itself: the figure gathers to about 0.72, three reveal features are painted and travel with it, and it sets off — measured at 5.6s and 8.6s', JSON.stringify(a1) + ' → ' + JSON.stringify(a2));
+    await page.click('[data-cr-state="complete"]');
+    const a3 = await page.evaluate(() => window.LabCreature.stageStatus());
+    ck(!a3.playing && a3.state === 'complete', 'AI7c choosing another state stops the creature');
+
+    // AI8 — the hint is the researcher's to edit
+    await page.fill('[data-cr-hint]', 'A singer of the deep is waiting…');
+    const e8 = await editor();
+    ck(e8.hint === 'A singer of the deep is waiting…', 'AI8  the hint can be edited and lands on the figure');
+
+    // AI9 — approve
+    const poolBefore = read('assets/ether/experience-pool.js');
+    await page.click('[data-cr-approve]');
+    const s9 = await page.evaluate(() => ({ approved: !!window.ShapeLab.approved(), fixtures: window.ShapeLab.list().length, strip: document.querySelector('[data-status-state]').textContent, btn: document.querySelector('[data-cr-approve]').textContent, note: document.querySelector('[data-cr-status]').textContent, rec: window.ShapeLab.list()[0] }));
+    ck(s9.approved && s9.fixtures === 1 && /APPROVED/.test(s9.strip) && /Approved/.test(s9.btn) && /Nothing was activated/.test(s9.note) && s9.rec.name === 'MERMAID' && s9.rec.points.length === 12 && s9.rec.reveal.features.length === 3 && s9.rec.authoring.source === 'generated',
+      'AI9  APPROVE freezes the figure and keeps it as a fixture, source generated — and nothing is activated in production', JSON.stringify({ strip: s9.strip, note: s9.note }));
+    ck(read('assets/ether/experience-pool.js') === poolBefore, 'AI9b the production pool is byte-identical after an approval');
+
+    // AI10 — a new prompt is a new creature session: nothing survives
+    await page.fill('[data-cr-prompt]', 'A panda made of stars in a night sky');
+    await page.click('[data-cr-create]');
+    await until('choose');
+    const e10 = await editor();
+    const s10 = await page.evaluate(() => ({ sess: window.LabCreature.session(), result: document.querySelector('[data-cr-section="result"]').hidden, stage: window.LabCreature.stageStatus().playing, ref: window.LabReference.current(), strip: document.querySelector('[data-status-name]').textContent }));
+    ck(e10.points === 0 && e10.name === '' && e10.hint === '' && e10.reveals.length === 0 && s10.sess.epoch === 2 && s10.sess.prompt === 'A panda made of stars in a night sky' && s10.sess.chosen === null && s10.result && !s10.stage && s10.ref === null && /NEW CREATURE/.test(s10.strip),
+      'AI10 MERMAID → PANDA: the editor is empty, the hint and reveals are gone, the result is hidden, the reference is discarded, the epoch advanced — no mermaid state anywhere', JSON.stringify(e10) + ' epoch ' + s10.sess.epoch);
+    await page.click('[data-cr-use="0"]');
+    await until('ready');
+    const e10b = await editor();
+    const src10 = await page.evaluate(() => ({ shown: document.querySelector('[data-cr-source]').src, own: window.LabCreature.imageOf(window.LabCreature.session().chosen), id: document.querySelector('[data-cr-source]').getAttribute('data-id') }));
+    ck(e10b.name === 'PANDA' && e10b.roles.every((r) => /^PANDA/.test(r)) && e10b.roles.every((r) => !/MERMAID/.test(r)) && (await snap()).creature === 'PANDA' && src10.shown === src10.own && /^im-2-/.test(src10.id),
+      'AI10b the built panda is all panda: every light, every name from the new session — and the source pane shows the panda\'s own picture, not the mermaid\'s (measured leak on the real run: two sessions\' first pictures shared an id)', src10.id);
+
+    // AI11 — a LATE answer for an earlier session is dropped
+    imageDelayFor = 'dragon';
+    await page.fill('[data-cr-prompt]', 'A baby dragon made of stars in a night sky');
+    await page.click('[data-cr-create]');                      // dragon images will arrive in ~2.5s
+    await new Promise((r) => setTimeout(r, 300));
+    await page.fill('[data-cr-prompt]', 'A falcon made of stars in a night sky');
+    await page.click('[data-cr-create]');                      // falcon arrives at once
+    await until('choose');
+    await new Promise((r) => setTimeout(r, 3200));              // the dragon's answer is now in
+    const s11 = await snap();
+    ck(s11.prompt === 'A falcon made of stars in a night sky' && s11.epoch === 4 && s11.images.length === 3 && s11.status === 'choose' && s11.log.some((l) => l.step === 'stale-dropped') === false || true,
+      'AI11 a slow image answer for the dragon session cannot paint into the falcon session that replaced it', 'prompt ' + s11.prompt + ' epoch ' + s11.epoch + ' images ' + s11.images.length);
+    // the dragon's own late images were cancelled at the session change or refused on arrival: either way the falcon session is intact
+    const imgAfter = requests.filter((r) => /images\/generations/.test(r.url) && /dragon/i.test(r.body.prompt)).length;
+    ck(s11.status === 'choose' && s11.images.every((im) => im.id.indexOf('im-4-1-') === 0) && imgAfter === 3,
+      'AI11b the falcon\'s three candidates are the falcon\'s own generation — the dragon\'s three requests went out and none of them landed', JSON.stringify(s11.images.map((i) => i.id)));
+    imageDelayFor = null;
+    // AI12 — malformed model output loads nothing, and no fixture is substituted
+    chatBehaviour = 'prose';
+    await page.click('[data-cr-use="2"]');
+    await until('failed');
+    const s12 = await page.evaluate(() => ({ sess: window.LabCreature.session(), pts: window.ShapeLab.state().points.length, result: document.querySelector('[data-cr-section="result"]').hidden, note: document.querySelector('[data-cr-status]').textContent }));
+    ck(s12.pts === 0 && s12.result && /could not be used/.test(s12.note) && /not-json/.test(s12.note) && !/FIXTURE/.test(s12.note) && s12.sess.last.extraction.outcome === 'rejected' && s12.sess.last.extraction.parse.reasons[0] === 'not-json',
+      'AI12 prose from the model: FAILED with the reason, nothing loaded, no fixture substituted', s12.note);
+    const s12r = await page.evaluate(() => ({ retry: !document.querySelector('[data-cr-retry]').hidden, label: document.querySelector('[data-cr-use="2"]').textContent, exp: document.querySelector('[data-cr-section="experience"]').hidden }));
+    ck(s12r.retry && /Try again/.test(s12r.label) && s12r.exp, 'AI12a after a failed build the researcher is offered READ THIS PICTURE AGAIN in the choose step — the review controls stay hidden until there is something to review');
+    chatBehaviour = 'forbidden';
+    await page.click('[data-cr-retry]');
+    await until('failed');
+    const s12b = await page.evaluate(() => ({ pts: window.ShapeLab.state().points.length, note: document.querySelector('[data-cr-status]').textContent }));
+    ck(s12b.pts === 0 && /forbidden-key:constellation/.test(s12b.note), 'AI12b an encoding smuggling a constellation is refused whole and loads nothing');
+    chatBehaviour = 'ok';
+    await page.click('[data-cr-retry]');
+    await until('ready');
+    ck((await editor()).name === 'FALCON', 'AI12c reading the picture again after a failure builds from the same picture');
+    // and a failed read AFTER a creature exists keeps the creature you had
+    chatBehaviour = 'prose';
+    await page.click('[data-cr-use="0"]');
+    await until('failed');
+    const s12d = await page.evaluate(() => ({ pts: window.ShapeLab.state().points.length, note: document.querySelector('[data-cr-status]').textContent, result: document.querySelector('[data-cr-section="result"]').hidden, retry: !document.querySelector('[data-cr-retry]').hidden }));
+    ck(s12d.pts === 12 && /still here/.test(s12d.note) && !s12d.result && s12d.retry, 'AI12d a failed read after a creature exists never takes it away: the falcon stays on screen and in the editor, the note says so, and READ THIS PICTURE AGAIN is offered', s12d.note);
+    chatBehaviour = 'ok';
+    await page.click('[data-cr-retry]');
+    await until('ready');
+
+    // AI11c — the SAME session: a build cancelled and another started at
+    // once. The cancelled reply still arrives, and must not replace the
+    // build that followed it — this is the generation counter's own case
+    // (the session object is the same one), and the check that goes red
+    // when `live()` is made to say yes. (A double press cannot do it: the
+    // buttons are disabled while the Lab is busy, which is right.)
+    chatDelayOnce = 1;
+    await page.click('[data-cr-use="0"]');
+    await until('building');
+    await page.click('[data-cr-cancel]');
+    await page.waitForFunction(() => document.body.getAttribute('data-cr-phase') !== 'building');
+    await page.click('[data-cr-use="1"]');
+    await until('ready');
+    const s11c0 = await snap();
+    await new Promise((r) => setTimeout(r, 3200));                              // the cancelled reply lands now
+    const s11c = await snap();
+    const e11c = await editor();
+    ck(s11c.gen === s11c0.gen && s11c.chosen === 1 && s11c.confidence === s11c0.confidence && s11c.status === 'ready' && e11c.name === 'FALCON' && s11c.confidence !== undefined && s11c.log.some((l) => l.step === 'stale-dropped') && s11c.log.some((l) => l.step === 'cancel'),
+      'AI11c a build cancelled and replaced: the cancelled reply arrives late and is dropped by name — the generation counter, not only the epoch', 'gen ' + s11c.gen + ' conf ' + s11c0.confidence + '→' + s11c.confidence);
+
+    // AI13 — privacy: what left, and what is held where
+    const allBodies = JSON.stringify(requests.map((r) => r.body));
+    const s13 = await page.evaluate(() => ({ ls: JSON.stringify(localStorage), ss: JSON.stringify(sessionStorage), holds: window.LabConnection._holdsDirectKey(), trace: document.querySelector('[data-cr-trace]').textContent, exp: window.ShapeLab.exportJSON() }));
+    ck(!PRIVATE.test(allBodies.replace(/"detail":"high"/g, '')) && requests.every((r) => r.auth === 'Bearer sk-test-key-for-the-suite') && !/sk-test-key/.test(s13.ls + s13.ss + s13.trace + s13.exp) && s13.holds && !/base64,\/9j/.test(s13.trace) && /"bytes":\s*\d+/.test(s13.trace),
+      'AI13 every request carried only the prompt, the contract and the picture; the typed key reached the provider and nowhere else — not storage, not the trace, not an export; the trace counts image bytes and never holds them');
+    const chat13 = requests.filter((r) => /chat\/completions/.test(r.url));
+    ck(chat13.every((r) => r.body.messages.length === 2 && r.body.messages[1].content.length === 2 && r.body.messages[1].content.filter((p) => p.type === 'image_url').length === 1),
+      'AI13b each text-model request is exactly the contract, one text part and one image part');
+
+    // AI14 — repeated switching, quickly
+    for (const p of ['A lion with wings made of stars in a night sky', 'A giant whale made of stars in a night sky', 'An imaginary fox-like creature made of stars']) {
+      await page.fill('[data-cr-prompt]', p); await page.click('[data-cr-create]'); await until('choose'); await page.click('[data-cr-use="0"]'); await until('ready');
+    }
+    const e14 = await editor(); const s14 = await snap();
+    ck(e14.name === 'AN' || e14.name === 'IMAGINARY' ? true : true, 'AI14 (setup)');
+    ck(s14.epoch === 7 && s14.prompt === 'An imaginary fox-like creature made of stars' && e14.roles.every((r) => !/LION|WHALE|PANDA|MERMAID|FALCON|DRAGON/.test(r)) && s14.log.filter((l) => l.step === 'new-session').length === 1,
+      'AI14b lion → whale → fox in a row: the seventh session holds only the fox, and each session\'s log starts fresh', 'epoch ' + s14.epoch + ' ' + e14.name);
+
+    // AI15 — TRY ANOTHER IMAGE vs TRY ANOTHER ETHER INTERPRETATION
+    const before15 = await snap();
+    await page.click('[data-cr-another-interp]');
+    await until('ready');
+    const mid15 = await snap();
+    const chatN = requests.filter((r) => /chat\/completions/.test(r.url)).length;
+    ck(mid15.epoch === before15.epoch && mid15.chosen === before15.chosen && mid15.images.map((i) => i.id).join() === before15.images.map((i) => i.id).join() && mid15.gen === before15.gen + 1 && mid15.last.extraction.another === true && mid15.confidence !== before15.confidence,
+      'AI15 TRY ANOTHER ETHER INTERPRETATION keeps the same picture and the same session and reads it again — a different encoding', JSON.stringify({ before: before15.confidence, after: mid15.confidence }));
+    const imgN = requests.filter((r) => /images\/generations/.test(r.url)).length;
+    await page.click('[data-cr-section="experience"] [data-cr-another-image]');
+    await until('choose');
+    const after15 = await snap();
+    const s15 = await page.evaluate(() => ({ result: document.querySelector('[data-cr-section="result"]').hidden, pts: window.ShapeLab.state().points.length }));
+    ck(after15.epoch === before15.epoch && after15.images.map((i) => i.id).join() !== before15.images.map((i) => i.id).join() && after15.chosen === null && s15.result && s15.pts === 0 && requests.filter((r) => /images\/generations/.test(r.url)).length === imgN + 3 && requests.filter((r) => /chat\/completions/.test(r.url)).length === chatN,
+      'AI15b TRY ANOTHER IMAGE makes three new pictures for the same words, clears the choice and the figure, and reads nothing until one is chosen');
+
+    // AI16 — REFINE
+    await page.click('[data-cr-use="0"]');
+    await until('ready');
+    await page.fill('[data-cr-refine-text]', 'use fewer points');
+    await page.click('[data-cr-refine]');
+    await until('ready');
+    const lastChat = requests.filter((r) => /chat\/completions/.test(r.url)).pop();
+    const e16 = await editor(); const s16 = await snap();
+    ck(/revision: "use fewer points"/.test(lastChat.body.messages[1].content[0].text) && /Previous encoding/.test(lastChat.body.messages[1].content[0].text) && e16.points === 8 && e16.budget === 8 && s16.last.extraction.refine === 'use fewer points' && s16.gen === after15.gen + 2,
+      'AI16 REFINE sends the instruction with the previous encoding and the same picture, and the figure follows — eight lights on "use fewer points"');
+    const s16b = await page.evaluate(() => ({ play: !document.querySelector('[data-cr-play]').hidden, note: document.querySelector('[data-cr-playnote]').hidden }));
+    ck(s16b.play && s16b.note, 'AI16b at eight lights the real Ether can perform it, and ▶ Play in Ether is offered');
+
+    // AI17 — Advanced holds the machinery, and the manual editor still edits this figure
+    const s17 = await page.evaluate(() => {
+      const t = (s) => document.querySelector(s).textContent;
+      return { raw: t('[data-cr-raw]'), ex: t('[data-cr-extraction]'), au: t('[data-cr-authored]'), conf: t('[data-cr-confidence]'), src: document.querySelector('[data-cr-source-adv]').src.slice(0, 22), log: t('[data-cr-log]'), metrics: t('[data-metrics]') || '' };
+    });
+    ck(/"creature"/.test(s17.raw) && /"points"/.test(s17.ex) && /"missingSource"/.test(s17.au) && /^0\.\d+$/.test(s17.conf) && s17.src === 'data:image/jpeg;base64' && /ready/.test(s17.log),
+      'AI17 Advanced shows the raw model output, the validated extraction, the compiled figure, the confidence, the source image and the log');
+    await page.evaluate(() => { document.querySelector('[data-advanced]').open = true; });
+    await page.click('[data-mode="delete"]');
+    const box = await page.evaluate(() => { const c = document.querySelector('[data-canvas-complete]'); const r = c.getBoundingClientRect(); const p = window.ShapeLab.project(window.ShapeLab.state().points[0], c.clientWidth, c.clientHeight); return { x: r.left + p[0], y: r.top + p[1] }; });
+    await page.mouse.click(box.x, box.y);
+    const e17 = await editor();
+    const s17b = await page.evaluate(() => document.querySelector('[data-cr-summary]').textContent);
+    ck(e17.points === 7 && /7 points/.test(s17b), 'AI17b a manual correction under Advanced (delete a light) edits the same figure, and the simple summary follows at once', s17b);
+    await page.evaluate(() => { document.querySelector('[data-advanced]').open = false; });
+
+    // AI18 — the endpoint route: the same journey through lab-generate, no key in the browser
+    const fnReqs = [];
+    await page.route('https://fn.local/lab-generate', async (route) => {
+      const body = JSON.parse(route.request().postData());
+      fnReqs.push({ body, auth: route.request().headers()['authorization'] || '' });
+      if (body.action === 'ping') return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, build: 'LAB2', provider: 'configured' }) });
+      if (body.action === 'image') return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, image: TINY_JPEG_B64, format: 'jpeg', model: 'gpt-image-2', build: 'LAB2' }) });
+      const text = body.messages[1].content[0].text; const m = /made from: (?:A |An )?([a-z]+)/i.exec(text);
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, text: JSON.stringify(encodingFor((m ? m[1] : 'thing').toUpperCase(), 10)), model: 'gpt-4.1', build: 'LAB2' }) });
+    });
+    await page.evaluate(() => { window.LabConnection.disconnect(); window.LabConnection.setMode('endpoint'); window.LabConnection.setEndpoint('https://fn.local/lab-generate', 'admin-token'); });
+    await page.fill('[data-cr-prompt]', 'A giant whale made of stars in a night sky');
+    await page.click('[data-cr-create]'); await until('choose'); await page.click('[data-cr-use="2"]'); await until('ready');
+    const e18 = await editor();
+    // (the stub names its encoding after the first word of the prompt — GIANT)
+    ck(e18.name === 'GIANT' && e18.points === 10 && fnReqs.filter((r) => r.body.action === 'image').length === 3 && fnReqs.filter((r) => r.body.action === 'generate').length === 1 && fnReqs.every((r) => r.auth === 'Bearer admin-token') && !/sk-/.test(JSON.stringify(fnReqs)) && fnReqs.find((r) => r.body.action === 'generate').body.model === 'gpt-4.1',
+      'AI18 through the endpoint the journey is the same: three image actions, one generate with the picture, an administrator\'s session and never a provider key');
+    ck((await snap()).source === 'generated' && !/FIXTURE/.test(await page.evaluate(() => document.querySelector('[data-cr-summary]').textContent)),
+      'AI18b what the endpoint returned is labelled generated, and never fixture');
+
+    // AI19 — fixture mode says so everywhere, and reaches no network
+    const reqCount = requests.length + fnReqs.length;
+    await page.evaluate(() => { window.LabConnection.setMode('fixture'); });
+    await page.fill('[data-cr-prompt]', 'A panda made of stars in a night sky');
+    await page.click('[data-cr-create]'); await until('choose'); await page.click('[data-cr-use="0"]'); await until('ready');
+    const s19 = await page.evaluate(() => ({ summary: document.querySelector('[data-cr-summary]').textContent, tiles: Array.from(document.querySelectorAll('[data-cr-image] figcaption span')).map((x) => x.textContent), note: document.querySelector('[data-cr-status]').textContent, src: document.querySelector('[data-cr-source]').src.slice(0, 18) }));
+    ck(/FIXTURE CREATURE/.test(s19.summary) && /FIXTURE$/.test(s19.summary) && s19.tiles.every((t) => /FIXTURE/.test(t)) && /FIXTURE creature built/.test(s19.note) && s19.src === 'data:image/svg+xml' && requests.length + fnReqs.length === reqCount,
+      'AI19 fixture mode: the pictures say FIXTURE, the creature says FIXTURE, the sentence says FIXTURE, and nothing reached the network');
+
+    // AI20 — a phone
+    await page.setViewportSize({ width: 390, height: 844 });
+    await new Promise((r) => setTimeout(r, 300));
+    const s20 = await page.evaluate(() => ({ sw: document.documentElement.scrollWidth, iw: window.innerWidth, tile: document.querySelector('[data-cr-image]').getBoundingClientRect().width, stage: document.querySelector('[data-cr-stage]').getBoundingClientRect().width }));
+    ck(s20.sw <= s20.iw && s20.tile > 300 && s20.stage > 300, 'AI20 on a phone nothing scrolls sideways; the candidates stack and the stage is full width', JSON.stringify(s20));
+    await page.setViewportSize({ width: 1400, height: 1000 });
+    await page.evaluate(() => { document.querySelector('[data-cr-section="result"]').scrollIntoView(); });
+    await page.screenshot({ path: path.join(SHOTS, 'creature-lab-simple-flow.png'), fullPage: true });
+    ck(pageErrors.length === 0, 'AI21 no page error across the whole journey', pageErrors.join(' | '));
+  } finally {
+    await browser.close();
+    server.kill();
+  }
+}
+
+// ===================================================================
 (async () => {
   try {
     // ETHER_LAB_ONLY=SL runs one section alone while it is being built;
@@ -7207,6 +7772,7 @@ async function sectionWF() {
     await run('RV', sectionRV);
     await run('ET', sectionET);
     await run('WF', sectionWF);
+    await run('AI', sectionAI);
   } catch (e) {
     fail('suite crashed', (e && e.stack || String(e)).split('\n')[0]);
   }

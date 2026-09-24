@@ -92,7 +92,7 @@
 (function (global) {
   'use strict';
 
-  var BUDGETS = [8, 10, 12, 16, 18, 20];
+  var BUDGETS = [8, 10, 12, 16, 18, 20, 24, 30];   // 24 and 30: the automatic pipeline's research ceiling (Decision 58, AI does the authoring)
   var PRODUCTION_BUDGET = 8;       // shown, never enforced here — the validator says so
   var STORE_KEY = 'vihu.lab.shapes';
   var LAB_VERSION = 'shape-lab-1';
@@ -862,6 +862,18 @@
     clearSelection(); clearHistory(); tested = false; armedOpen = null;
     savedSnap = snapshot();
     return { ok: true };
+  }
+
+  // LOAD AN AUTHORED FIGURE INTO THE WORKING STATE — the automatic
+  // pipeline's door (labCreature.js). The same hydrate a fixture takes,
+  // with no fixture id and no approval: the store is untouched, the
+  // history starts fresh, and every editing control under Advanced
+  // edits exactly this figure from here on.
+  function loadFigure(rec) {
+    if (!rec || typeof rec !== 'object') return { ok: false, reason: 'no-record' };
+    var r = hydrate(Object.assign({}, rec, { id: null, approved: null }));
+    emit();
+    return r;
   }
 
   // A stored approval is honoured only while it still describes the
@@ -1937,6 +1949,7 @@
     toggleJoin: toggleJoin, joinInOrder: joinInOrder, toggleGap: toggleGap, reset: reset, demoRing: demoRing,
     approve: approve, exportApproved: exportApproved, APPROVED_KIND: APPROVED_KIND,
     placeSuggestions: placeSuggestions,
+    loadFigure: loadFigure,
     setMode: function (m) { mode = m; clearSelection(); emit(); },
     // the researcher workflow: history, selection, scoped resets, status
     undo: undo, redo: redo, historyDepth: historyDepth,
