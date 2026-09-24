@@ -12826,3 +12826,131 @@ child-facing surface.
 ## Lab — PROMPT. CHOOSE. THE LAB DOES THE REST (the Shape Lab with the AI doing the authoring)
 
 The Shape Lab's primary flow is now two acts — a prompt, and a chosen picture — and `tools/ether-mystery-lab/labCreature.js` does the rest: gpt-image-2 makes three candidates, gpt-4.1 reads the chosen one (vision) and returns an encoding, and `compile()` turns it into the editor's own figure with every guarantee enforced mechanically and every repair named (one connected figure, missing connections that exist and strand nobody, reveals anchored to real lights, a hint that never names the creature, a budget that holds the count — the editor's budgets reach 30 now, production still performs 8). Review is UNFINISHED · COMPLETE · COME ALIVE (a sequence the Lab runs), with APPROVE · REFINE · TRY ANOTHER IMAGE · TRY ANOTHER ETHER INTERPRETATION; the whole six-stage editor survives under ADVANCED / RESEARCH beside the pipeline's instrumentation. Every prompt is a new session and a late answer is dropped. Three findings from the first real runs changed the contract: percentages of the image frame instead of unit coordinates (a seated panda instead of two blobs on the same picture), a boundary word stripped from a name rather than refusing the creature (STAR PANDA), and joins read in whatever form the model chose. `lab-generate` is `LAB2` (an `image` action and image parts). Detail: `docs/ETHER_MYSTERY_LAB.md` → *PROMPT. CHOOSE. THE LAB DOES THE REST*; the seven-prompt real runs under both contracts are in `tools/ether-mystery-lab-test/shots/creature-lab*/`; suite section `AI`.
+## Lab — prompt → artistic creature → image understanding, proof V1
+
+Lab only, zero production files changed, build 0769, nothing activated
+in the Ether. The Shape Lab's CREATE stage gains a front door in front
+of the untouched name → blueprint flow: a creative prompt (never
+reduced to a noun) → a gallery of interpretations → choose one, refine
+(the words kept, a line added, every set retained, previous/forward),
+→ the CHOSEN PICTURE read by the model into a structured semantic
+analysis — subject, character, composition, masses, diagnostic
+features, modifiers, proportion, gesture (one gesture or a collection
+of parts, asked in as many words), what survives the abstraction,
+reveal payoff candidates, and fidelity to the prompt. Deny-by-shape
+validator; the image is the source of truth. ARTISTIC IMAGE GENERATION
+is a provider table (fixture — existing artwork · openai-image), and on
+this account the model provider is UNAVAILABLE from the transport's
+own `no-image-model` (gpt-image-1 → `model_not_found`, measured), never
+a flag — ruled an unavailable capability by the product owner, not
+worked around. The fixture is seventeen real pictures: the five
+Companions plus openly-licensed mermaids, elephants, birds of prey, a
+centaur and dragons with licences and per-picture ground truth that is
+never sent. `LabConnection` gains `imagine()` and `understand()` in all
+three modes; `lab-generate` becomes LAB2 with both actions behind the
+same gate and bucket. REAL RESULT: gpt-4.1-mini read all seventeen
+pictures, 17/17 valid, and understood them as compositions — the
+winged lion's wings "emerge symmetrically from the shoulders" over a
+quadruped body in "one coherent gesture of reaching"; the centaur's
+"human torso seamlessly attached to the horse body at the waist"; the
+mermaid silhouette "one coherent flowing gesture from head to tail";
+the falcon's moon "a graphic element… not a literal part of the bird";
+and two deliberate prompt/picture mismatches reported `differs`. Found
+and recorded: prompt bias on near-misses (an eagle called a falcon),
+one contradictory expression read, one misplaced face, one missed
+wing; recommended for the next contract — a viewpoint field, an
+explicit relationships list, modifiers held to the visible. Section
+`IM` (104) plus the committed real run re-validated by the suite.
+Stops at the handoff: no points, joins, gaps or reveal from an image.
+
+## Lab — image → Ether creature translation, proof V1
+
+Lab only, zero production files changed, build 0769, nothing activated
+in the Ether. The Shape Lab's CREATE stage goes one step past the
+understanding: **Create Ether creature** asks gpt-4.1-mini for an
+ETHER TRANSLATION PLAN in a controlled vocabulary of words — gesture
+first (kind · curve · facing · the flow of masses rear to head), then
+every other mass by its relationship to one already standing, with
+its side and whether it is a pair; proportion, what must survive,
+what to simplify, what is reveal-only, complexity, movement — never a
+coordinate (`LabTranslate.validatePlan` refuses geometry keys at any
+depth and a number anywhere, repairs vocabulary drift on record, and
+refuses structure a composer could only guess at). A deterministic
+composer (`labEtherComposer.js`: spine first, masses on the flow,
+attachments by relationship through flow · mass · taper · span ·
+branch · terminal · enclosure, essentials-before-extras allocation, a
+budget floored at what must survive, one piece by construction,
+diagnostics) turns it into a complete figure that enters the editor
+as GENERATED beside the source picture. No creature word, no branch
+on a name, no randomness; renaming every mass moves nothing. REAL
+RESULT: 17/17 plans valid on the first attempt; composed, rendered,
+rated, six GENERIC composer defects fixed (mirrored pairs, spans by
+side, side limbs not feet, rejoin-on-drop, the real edge of a flow
+mass, survive over width), recomposed and re-rated — A 0 · B 3 · C 11
+· D 3. Final product test answered NO, not yet, and the failure is
+located: the model's meaning is mostly right (facing wrong on four,
+surface details as masses), and the composer's abstraction — a
+diamond for every volume, a spike for every attachment — draws the
+same figure for a falcon and a plant pot. Next is silhouette
+primitives in the composer, not a better prompt. Section `TR` (88).
+Golden image not in the repository (Lumo stood in); provider reached
+from Node, never from the browser here.
+
+## Lab — Ether grammar V2, close the loop (open vocabulary; verdict: one blocker remains)
+
+Built the open-vocabulary layer as three separate things (semantic terms ·
+declarative extension proposals · seven closed compiler capabilities), the
+vocabulary decision (SUPPORTED / EXTENSION_REQUIRED / NOT_EXPRESSIBLE) with
+reveal candidates and a hint, rule-based missing-connection derivation, and
+the page flow that recomposes base vs extended and walks the loop in the real
+Ether. Real run on nine creatures: the loop closes for all nine (alive,
+roaming), extensions were rarely needed and never moved a grade — the
+compiler's own abstraction is the single blocker. Recorded, not shipped.
+Lab-only; production diff zero. Detail: `docs/ETHER_MYSTERY_LAB.md` → *Ether
+grammar V2 — close the loop*.
+
+## Lab — Image → Ether creature, end-to-end closure (the simplest bridge; verdict: move forward)
+
+On the product owner's instruction to stop building compilers: prompt →
+gpt-image-2 (streamed) → gpt-4.1 with the actual picture → one JSON
+contract (normalized points with features, connections, missing connections
+with reasons, reveal features, a hint, confidence) → the Lab's validator
+(refuse by shape, repair on record) → the existing Shape Lab workflow →
+REVEAL suggestions as ☐ rows → the existing ▶ Play in Ether. Real run on
+the brief's seven prompts: 7/7 pictures, 14/14 valid extractions, 7/7
+completed, alive and roaming in the real Ether at eight lights; rated
+overall B5 C2 D0 against the compiler's A0 B2 C4 D3 — the lights sit on the
+creature. Two suite-found defects fixed (picture-aligned coordinates; an
+extraction landing as GENERATED · EDITED), two environment facts recorded
+(the proxy's thirty-second silence close, its two projects). Section `EX`
+(55). Lab-only; production diff zero. Detail: `docs/ETHER_MYSTERY_LAB.md`
+→ *Image → Ether creature — end-to-end closure*.
+
+## Lab — Two models, two fields (the image-pipeline 500, diagnosed and guarded)
+
+The first live image → extraction run failed with the provider's bare
+500 on every picture. Traced read-only and reproduced from Node: the
+Direct panel's single *Model* field fed the CHAT model, so the image
+model's name typed there sent gpt-image-2 to `/chat/completions`. The
+panel now has an Understanding model field and an Image model field,
+both seeded from the transport; each Direct path refuses a model that
+belongs to the other path with a sentence naming the field. Section
+`MM` (12), guard proved by reverting. Lab-only; production diff zero.
+Detail: `docs/ETHER_MYSTERY_LAB.md` → *Two models, two fields*.
+
+## Lab — Trace the image, don't invent a skeleton (the extraction contract, rewritten)
+
+The product owner's boat test failed: the anatomical extraction contract
+had the model reason *boat = hull + mast + sail* from the name and place
+lights where those parts ought to be. The contract now opens with the
+brief's critical instruction verbatim and asks for a visual TRACING of
+this picture — picture roles (silhouette · junction · internal ·
+terminal) instead of feature names, the budget as a sampling budget,
+visible relationships only, one piece, and a missing connection as an
+existing connection withheld (the validator DROPS an unlisted gap where it
+used to add one, and counts pieces on record). Three wordings measured and
+all committed. Real run, boat + seven, gpt-image-2 + gpt-4.1: 16/16 valid,
+one piece; the boat A at twelve and B at eight; creatures B5 C2 at eight
+(unchanged) and better at twelve. Stopped there per the brief. Section
+`EX` (65). Lab-only; production diff zero. Detail:
+`docs/ETHER_MYSTERY_LAB.md` → *Trace the image, don't invent a skeleton*.

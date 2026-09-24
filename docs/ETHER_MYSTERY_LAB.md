@@ -3202,11 +3202,14 @@ makes the first press's pictures stale. The session log records
 `LabConnection.images({prompt, n})` — three bounded requests in
 parallel, low quality, JPEG, one size; a partial set (two of three) is
 still offered; every image carries the honest label. Direct mode calls
-the provider's images route with the typed key; endpoint mode sends
-`{action: 'image', prompt}` to `lab-generate`, which gained that action
-and the ability to relay a message whose content is PARTS (text plus ONE
-image data URL, bounded, refused by name otherwise). Its `BUILD` is
-`LAB2`; redeploy it for the endpoint path. Fixture mode reaches no
+the provider's images route with the typed key (the Image model field's
+model); endpoint mode sends `{action: 'imagine', prompt, n: 1, quality:
+'low', format: 'jpeg'}` to `lab-generate` — the same `imagine` route the
+prompt → visual → understanding front door uses, which takes those two
+options from two short lists — and the function relays a `generate`
+message whose content is PARTS (text plus ONE image data URL, bounded,
+refused by name otherwise). Its `BUILD` is `LAB3`; redeploy it for the
+endpoint path. Fixture mode reaches no
 network: SVG stand-ins that say FIXTURE IMAGE, and a generic body plan
 named FIXTURE CREATURE whose `seen` says it is not an interpretation of
 anything.
@@ -3286,3 +3289,818 @@ The unit-contract run is kept beside it
 which needed re-reads and two of which never built, with a panda whose
 figure read as two blobs. Screenshots: `shots/creature-lab/<slug>-complete.png`
 and `-alive.png`, with the chosen picture beside each.
+---
+
+## PROMPT → ARTISTIC CREATURE → IMAGE UNDERSTANDING — proof V1 (the Shape Lab's front door)
+
+Lab only, zero production files changed, build 0769, nothing activated
+in the Ether. The Shape Lab's CREATE stage gains a new entry point in
+front of the name → blueprint flow, which stays exactly as it was:
+**say what should exist → look at what it could be → choose one →
+(refine) → the chosen PICTURE is read by the model into a structured,
+semantic description.** It stops there. Nothing in this sprint turns an
+image into points, joins, missing joins or reveal geometry; the
+analysis contract has no field for any of those and refuses them by
+name.
+
+### The headline, as measured
+
+```
+IMAGE GENERATION:    UNAVAILABLE — API access limitation
+                     (gpt-image-1 answers model_not_found for this project;
+                      every gpt-image-* model does; the newer image routes
+                      require organisation verification)
+IMAGE UNDERSTANDING: REAL
+MODEL:               gpt-4.1-mini
+```
+
+Seventeen real pictures were read by the real model through the same
+contract the Lab uses, and all seventeen replies passed the validator.
+The results, beside a person's own description of each picture, are
+committed: `tools/ether-mystery-lab-test/shots/imagine/real-understanding.md`
+(and `.json`, the raw replies included). They were produced by
+`tools/ether-mystery-lab-test/real-understanding.js`, which never runs
+inside the suite — it costs money and needs the network — but whose
+committed output the suite re-validates on every run (`IM16`).
+
+### The researcher workflow
+
+1. **CREATE — "What should exist?"** Type a creative prompt — *a
+   smiling dragon with enormous wings* stays that sentence and is never
+   reduced to a noun — and press **Create**.
+2. **ARTISTIC SOURCE** is a visible two-way control — **Fixture —
+   existing artwork · OpenAI image generation** — and the line under it
+   says what each is. The fixture shows the whole gallery of existing
+   pictures, ordered so the ones sharing a word with the prompt come
+   first, every card tagged FIXTURE with its title; the status line
+   reads *ARTISTIC SOURCE: Fixture — chosen by you, not generated*. The
+   image-model provider, on a real connection, asks the image model for
+   three interpretations; on this account it comes back **UNAVAILABLE**
+   — from the transport's own `no-image-model`, never from a flag.
+3. **YOUR IDEAS — choose one.** Click a picture to pick it out
+   (double-click uses it at once), then **Use this creature**. **Try
+   another interpretation** makes a new set from the same words;
+   **Refine** keeps the words and adds a line ("make it friendlier and
+   more playful, with a longer tail"), up to six times; **Bring back
+   previous** / **Forward again** walk through every set made on this
+   page. Nothing is ever thrown away, and the selection survives a new
+   set.
+4. **SELECTED CREATURE** — the chosen picture, large, badged SELECTED,
+   with its title, label and credit — and the model reads it at once.
+   **Read it again** re-reads; **Choose a different one** unselects.
+5. **UNDERSTANDING** (right column) — subject · character · primary
+   composition · body and masses · diagnostic features · modifiers ·
+   proportion and emphasis · gesture and flow · what should survive the
+   abstraction · do not draw literally · could be a reveal payoff ·
+   against the prompt. Badged *IMAGE UNDERSTANDING (gpt-4.1-mini) ·
+   endpoint · read from a fixture picture*, or *FIXTURE — a placeholder,
+   no model looked at the picture* when the connection is Fixture. Raw
+   JSON and the trace live under Advanced.
+6. **Or bring a picture** — a PNG/JPEG/WebP of the researcher's own is
+   used straight away, labelled UPLOADED.
+
+The **connection** (Fixture · LLM — Endpoint · LLM — Direct) is the
+existing `LabConnection` control, shared with the reference flow. It
+now reads pictures as well: in Fixture the understanding is a
+placeholder that says on its face that no model looked; on either LLM
+mode the picture goes to the model.
+
+### How OpenAI is connected — one transport, two new calls
+
+`labConnection.js` gains `imagine({prompt, n, fixture})` → `{ok,
+images:[{mime,b64}], model, source}` and `understand({messages, image,
+fixture})` → `{ok, text, model, source}`, in all three modes: Fixture
+answers with the caller's own producer and never touches the network;
+Direct (dev-only, closure-held key) posts to `images/generations` and to
+`chat/completions` with the picture attached as an `image_url` part on
+the last user message (`detail: high`, structured output demanded);
+Endpoint sends `action: imagine` / `action: understand` to
+`supabase/functions/lab-generate`, which is now build **LAB2** and
+carries both actions behind the same administrators-only gate, the
+same `lab-generate` bucket and the same bounds (a picture is validated
+by type and size before any call; a provider refusal is one word; the
+one refusal that is a property of the ACCOUNT — the image model not
+existing for the project — is relayed as `no-image-model`). The
+provider's free-text error, which carries organisation and project
+ids, never leaves either path. `sync-shared.js --check` stays green:
+the generated gate block is untouched.
+
+### The provider abstraction, and why UNAVAILABLE is not hard-coded
+
+`LabImagine.PROVIDERS` is a table — `fixture` (kind fixture) and
+`openai-image` (kind model) — and CREATE branches on `kind`, never on
+an id. No provider carries an availability flag; the suite fails on
+one. UNAVAILABLE is reached in exactly one way: the transport answers
+`no-image-model`, which is what the provider's `model_not_found` (or an
+image model name it says does not exist) becomes. The day the account
+has an image model, the same button produces three labelled IMAGE
+MODEL pictures with nothing in the Lab changed — `IM12b` drives that
+path against a stubbed endpoint and `IM13` against a stubbed provider.
+
+### The fixture is real artwork
+
+`labArtworkData.js` names seventeen pictures: the product's own five
+Companions (Lumo — a smiling dragon with enormous wings; Leo — a lion
+with wings; Leafy, Quill and Nimbus — three invented beings), read from
+`assets/` without copying, and twelve openly-licensed creature pictures
+rasterized into `tools/ether-mystery-lab/artwork/` with their licence
+texts: three mermaids, three elephants, a falcon and an eagle, a
+centaur and three more dragons — Twemoji (CC BY 4.0), OpenMoji (CC
+BY-SA 4.0) and game-icons.net (CC BY 3.0). Every entry carries
+`visible`: a description written by a person looking at the picture,
+which is the ground truth the real run is judged against and which is
+NEVER sent to the model (`IM5e` checks every request the contract
+builds against every ground-truth sentence). Ordering is word overlap
+over the entries' tags — string overlap over data — and there is no
+`subject === …`, no species branch and no creature word anywhere in
+the front door's code (`IM2`, `IM2b`).
+
+### The analysis contract (`LabImagine.SCHEMA`)
+
+```
+subject             string — what is depicted, in a few words
+character           1–6 words/phrases — what the visual communicates
+composition         1–2 sentences — the dominant visual organisation
+architecture        1–8 phrases — the major masses and how they RELATE
+diagnosticFeatures  1–10 names — what makes THIS concept recognisable
+modifiers           0–8 phrases — the creative modifications actually visible
+proportion          1–2 sentences — what is exaggerated, compressed, dominant
+gesture             1–2 sentences — how the whole flows; ONE gesture or a
+                    collection of parts (the contract asks this in as many words)
+abstraction         { survives 1–8, doNotDrawLiterally 0–8, note? }
+revealCandidates    0–8 names — a reveal-only payoff later; names, never geometry
+promptFidelity      { agreement: matches|partly|differs, differences 0–6 }
+```
+
+Every value is words. The validator (`validateAnalysis`) is deny by
+shape: an unknown key at any depth is refused by name; a geometry,
+runtime, credential or private key (`points`, `joins`, `missing`,
+`svg`, `x`, `path`, `pattern`, `constellation`, `stars`, `card`,
+`email`, `memories`, `username`, `url`, `image`, `code`, `html`…)
+refuses the whole analysis; a coordinate-shaped string, a pixel
+measure, SVG, markup, a link, a data URI or code is refused as text; a
+number where a word should be is refused; every missing required field
+is named; an over-long sentence is cut at a word and RECORDED; an
+unknown agreement becomes `unknown` and is recorded. What comes out is
+a clean copy built field by field. A reply is text until proven an
+analysis (fenced or wrapped JSON is read; prose is refused).
+
+**The image is the source of truth.** The contract tells the model so
+in its own instructions, hands it the creative prompt as context only,
+and asks for `promptFidelity`. Measured: the serpentine Twemoji dragon
+read against *a smiling dragon with enormous wings* came back
+`differs — no wings visible`, and the sea-dragon silhouette read
+against *a playful sea creature with butterfly wings* came back
+`differs — no butterfly wings visible; creature appears more
+dragon-like`. Nimbus read against *a sleepy cloud sprite carrying a
+little moon* came back `partly — sprite is awake and smiling, not
+sleepy; moon is a symbol on the body, not carried separately`, which is
+exactly right.
+
+### The real results, judged as compositions
+
+The question is not whether the model names the creature. It is
+whether it understands the picture as a composition — masses, where
+parts attach, what the whole body is doing, what makes this particular
+picture read as what it is.
+
+**Strong (a designer could build from this alone):**
+
+- **Leo, the winged lion** — "a large, rounded lion head with a full
+  mane sits atop a sturdy, quadruped body / two large, colorful wings
+  emerge symmetrically from the lion's shoulders / the tail curls upward
+  and ends in a glowing lantern / the extended front paw reaches toward
+  a butterfly"; gesture "one coherent gesture of reaching and
+  curiosity, with the wings and extended paw directing attention forward
+  and upward"; proportion "the wings are oversized… the head and mane
+  are large and expressive relative to the body". Feline body, grounded
+  gesture, mane/head relationship, wing placement and wing/body
+  relationship, dominant proportions: all present.
+- **Lumo, the smiling dragon** — "large membranous wings attached at the
+  shoulders", "a compact, upright stance with wings spread wide on
+  either side, creating a balanced horizontal extension", modifiers
+  `smiling, oversized wings`, and "one coherent, confident gesture with
+  an upright posture and wings creating a wide, open frame". Dragon
+  identity AND the expression modifier, both kept.
+- **The centaur** — "human torso seamlessly attached to the horse body
+  at the waist", "the human upper body is proportionally smaller and
+  simplified compared to the horse body, which dominates". The
+  human/horse structural transition is named, not just the two halves.
+- **The mermaid silhouette** — "a flowing, curved body forming an
+  S-shape with a clear division between the upper humanoid torso and
+  the lower fish tail, creating a smooth vertical gesture"; "one
+  coherent flowing gesture… from head to tail". The continuous
+  body-to-tail flow, not a list of head/torso/tail.
+- **The falcon with the moon** — the crescent recognised as "a graphic
+  element that complements the falcon but is not a literal part of the
+  bird", the wings "broad and angular, dominating the composition", the
+  gesture "a strong diagonal thrust". Two overlapping shapes, told apart.
+- **Quill and Nimbus (invented)** — no anatomy forced: "ink-like fluid
+  forms extending from head and cape edges", "lower body blends into a
+  cloud base that curls around the feet", the pen "held upright in
+  right hand", exaggerated head-to-body proportion named in both.
+
+**Weak, and where the contract or the model fell short:**
+
+- **Prompt bias on the subject and the modifiers.** The OpenMoji eagle
+  (white head, yellow hooked beak) read against *a falcon* came back
+  `subject: stylized falcon` with `matches` softened only to `partly`
+  for style; the Twemoji elephant read against *a tiny elephant with
+  huge ears* came back `tiny body` and `matches` although the picture
+  is one bulky mass. The contract says the picture wins; on
+  near-misses the model leans toward the prompt's own words.
+- **An expression read wrong, and contradicted within one reply.** The
+  Twemoji dragon frowns; the reply listed `smiling` among modifiers and
+  `playful, friendly, cheerful` as character, while its own
+  `promptFidelity` said "expression is more neutral than smiling".
+  Two fields disagreeing in one answer is a contract gap: modifiers
+  should be held to what is visible as strictly as fidelity is.
+- **One placement error.** Leafy's face is on the pot; the reply put
+  "two small plant-like eyes emerge from the soil among the leaves" —
+  and then, correctly, "smiling face" in the features. A designer
+  following the masses list would place the eyes in the wrong mass.
+- **One wing missed.** The OpenMoji eagle raises two wings; the reply
+  saw "a large wing".
+- **Hedging on a clear thing.** The OpenMoji dragon's red flame was
+  "tongue or flame", twice.
+- **Architecture is sometimes a parts list.** On the simplest
+  pictures (the emoji elephants) the masses are named but their
+  relationships are thin; on the richer pictures the relationships are
+  there. The contract asks for relationships; a dedicated field would
+  make them mandatory.
+
+**Does the same architecture handle real · hybrid · mythical · modified
+· invented?** Yes, with the caveats above: real (three elephants, two
+birds), hybrid (Leo, the centaur, three mermaids), mythical (four
+dragons), modified (the smiling dragon, the tiny elephant, the fixture
+mismatches), invented (Leafy, Quill, Nimbus) — one contract, no special
+case, 17/17 valid.
+
+**Is the output enough for a later Ether translation?** For the strong
+cases, yes: `abstraction.survives` plus `gesture` plus `proportion` say
+what to spend lights on, what to keep as a reveal, and what shape the
+whole should read as. Three things the next contract should add, found
+by this run: a **viewpoint** field (side / front / three-quarter — the
+translation needs it and the model volunteers it inconsistently); an
+explicit **relationships** list (part → attaches to → part), so the
+masses cannot collapse into a list; and a rule that **modifiers name
+only what is visible and must agree with `promptFidelity`**. None of
+that is built here — this sprint stops at the handoff.
+
+### Privacy and security, verified
+
+- What leaves for a picture read is the fixed contract, the creative
+  prompt (and its refinements), and the picture — `IM12e` pins the
+  request to exactly `action, image, messages`, checks the messages
+  for `card`, `stars`, `constellation`, `memor`, `username`,
+  `creator`, `companion`, `email`, `session`, `token`, and checks every
+  ground-truth sentence against it.
+- What leaves for image generation is `action, n, prompt` (`IM12c`).
+- The key stays in `LabConnection`'s closure: `IM13c` proves it reaches
+  no storage, no cookie, no export and no message body; `IM12f` the
+  same for the endpoint token, the picture and the analysis.
+- No image and no analysis is stored anywhere: the front door has no
+  storage call (`IM2c`), and loading the page writes nothing (`IM7`).
+- The endpoint never echoes provider text (`IM6b`, `IM6f`, `IM6m`,
+  `IM6o`).
+
+### Production boundary
+
+`js/`, `assets/`, `vihuplanet/`, `index.html` and `studio.html` are
+untouched — `git diff --stat` against the branch base is empty for all
+of them, the build stamps still read 0769, `arrangementNodesMax` is
+still eight, and the Shape Lab still loads no file that mounts the
+Ether. What changed outside the Lab is `supabase/functions/lab-generate`
+(the Lab's own endpoint) and its runbook.
+
+### Files
+
+`tools/ether-mystery-lab/labImagine.js` · `labArtworkData.js` ·
+`artwork/` · `labConnection.js` (imagine, understand) · `shape.html` ·
+`supabase/functions/lab-generate/index.ts` (LAB2) ·
+`supabase/DEPLOY_lab_generate.md` ·
+`tools/ether-mystery-lab-test/run-lab-tests.js` section `IM` ·
+`tools/ether-mystery-lab-test/real-understanding.js` ·
+`tools/ether-mystery-lab-test/shots/imagine/`
+
+## Image → Ether creature translation, proof V1
+
+The step after the understanding. The Shape Lab's CREATE stage gains
+one button under the selected picture — **Create Ether creature** —
+and the answer is a complete Ether figure in the editor, labelled
+GENERATED, with the picture it came from standing beside it. Lab
+only; `js/`, `assets/`, `vihuplanet/`, `index.html` and `studio.html`
+are untouched and the build stays 0769.
+
+### The division of labour
+
+**The model decides MEANING; the composer decides GEOMETRY.** That
+line is the whole design, and it is enforced rather than hoped for.
+
+- `LabTranslate.planMessages(analysis)` builds the plan request: one
+  fixed contract, then the picture's own understanding as context;
+  the transport attaches the picture. The contract asks for GESTURE
+  FIRST — the dominant gesture of the whole figure and which masses
+  lie along its main body line, rear to head — and then for every
+  other mass by its RELATIONSHIP to one already standing: rises from
+  the top of, extends from the back of, spans from, surrounds,
+  supports from below, hangs from, attaches to, flows into, pairs
+  with; which side; whether it is a pair. Plus proportion, what must
+  survive, what to simplify, what is reveal-only, complexity and
+  movement. Words only, in a controlled vocabulary.
+- `LabTranslate.validatePlan(raw)` denies by shape: a geometry,
+  runtime, credential or private key at any depth refuses the plan by
+  name; a NUMBER anywhere — a value, or a decimal pair in a sentence —
+  is a coordinate in disguise and is refused; SVG, markup, a link, a
+  data URI and code are refused as text; an unknown key is refused.
+  Vocabulary drift ("wing" for span, "huge" for large, "standing" for
+  upright) is REPAIRED to the vocabulary and every repair is recorded.
+  Structure a composer could only guess at — a flow of one, an id
+  nobody declared, a mass related to itself, nothing to survive — is
+  refused with its reason. A mass no relationship reaches is allowed
+  and named; the composer hangs it off the largest flow mass and says
+  so.
+- `LabEtherComposer.compose(plan)` lays the SPINE of the gesture
+  (upright · seated · grounded · reaching · flowing · coiled ·
+  diagonal · spread · rearing · floating, bent by the curve, pointed
+  by the facing), gives every flow mass a stretch of it by weight,
+  puts a light at each end and at every transition, a width pair on
+  the masses that dominate, and then attaches the rest by
+  relationship through a small primitive vocabulary — flow · mass ·
+  taper · span · branch · terminal · enclosure · transition ·
+  attachment. Lights are allocated by priority: the spine's ends and
+  transitions, then what must survive, then the dominant volume, then
+  the diagnostic structures, then widths, then the secondary ones,
+  with every refining light (a tail's mid, a wing's trailing corner)
+  after every defining one. The budget FLOORS at the essentials and
+  complexity sets the room beyond — a plan that says "simple" and
+  names five things that must survive keeps all five. A candidate
+  standing where one already stands IS that light. A join to a
+  dropped light climbs to what that light hung from, so every figure
+  is one piece by construction. The result is fitted to the sky and
+  reported: components, crossings, what was dropped, what shares a
+  light, and an allocation naming every light.
+- No creature word, no branch on a subject, a label or a mass id, no
+  `Math.random`. Renaming every mass in a plan moves not one light
+  (`TR2e`); numbers smuggled onto a plan move not one light either
+  (`TR6`).
+
+### What a figure looks like on the page
+
+SOURCE — the chosen picture, on the left · AUTHOR — the figure, with
+the source faintly under it (SOURCE UNDER — ON/OFF; its own inert
+canvas beneath the editor, never under JUDGE, never in a fixture) ·
+JUDGE — the figure alone. The status strip carries GENERATED; one
+edit makes it GENERATED · EDITED; undo gives GENERATED back; Reset
+everything is AUTHORED again. The generated figure walks the existing
+SHAPE → CONNECT → REVEAL → TEST → APPROVE path with nothing bolted on.
+The plan is shown as words a person can argue with; the JSON, the
+composition and the trace sit under Advanced.
+
+### The real run, and the first round of generic fixes
+
+`tools/ether-mystery-lab-test/real-translation.js` sends every
+picture in the manifest — with the REAL understanding already
+committed for it — through the same contract to gpt-4.1-mini (from
+Node; the browser here cannot reach the provider), validates, composes,
+and writes every raw reply, plan, repair, figure and diagnostic to
+`shots/translate/real-translation.json`. `render-translation.js` draws
+each one back into the real Shape Lab and screenshots SOURCE · AUTHOR
+· JUDGE. **17/17 plans valid on the first attempt.**
+
+The first composed round was rated, and then the composer was
+corrected ONLY where the same defect showed on several creatures —
+never per creature:
+
+| defect, measured | seen on | fix |
+|---|---|---|
+| a symmetric span on BOTH sides gave ONE wing reaching back | Lumo, the eagle | a mirrored pair across the spine |
+| every span reached up-and-back whatever its side | the falcon (both wings left) | a span honours its side |
+| every branch was feet | Lumo's arms under its feet | a branch to a side is a limb |
+| a child of a dropped parent was an island | the quill, the elephant (three pieces) | a join climbs to what the dropped light hung from |
+| an attachment started at a circle inside a flow mass | horns lost into the head's top light; a crown on the same light | reach to the mass's real edge along the spine |
+| a width pair outranked what must survive | the elephant's ear, tusk, legs, tail all dropped | survive over width; budget floored at the essentials |
+
+`real-translation.js --recompose` re-runs the composer on the saved
+plans without a request; `TR8c` requires the committed figures to be
+what today's composer makes of the committed plans.
+
+### The ratings
+
+`shots/translate/ratings.json` — A unmistakable · B recognisable ·
+C generic creature · D wrong, judged on the JUDGE pane first.
+
+Round one: **A 0 · B 1 · C 13 · D 3.** Round two: **A 0 · B 3 · C 11
+· D 3.** The centaur (a human torso and head on a four-legged body),
+the emoji mermaid (a person shape ending in a forked tail) and Lumo (an
+upright creature with two wings, horns and a tail) are recognisable.
+The winged lion, the ink spirit and the spread-winged falcon are
+tangles. Everything else is a generic creature.
+
+The golden image the brief names — an uploaded baby dragon — is not in
+the repository; Lumo stood in for it and for *a smiling dragon*.
+
+### Where it fails, and whose failure it is
+
+**LLM semantic.** FACING is wrong on four of seventeen (a picture
+facing left called right — the trunk then hangs at the wrong end).
+Surface details are listed as masses (eyes, a smile, a butterfly, a
+crescent moon) and spend lights. "Simple" is chosen for creatures with
+five must-survive features (fixed on the composer side by the floor).
+One eagle was given one wing, not a pair. Everything else the model
+said — the gesture kind, the flow order, the relationships — is almost
+always what a person would say: `horse-body → human-torso →
+human-head`; `tail → torso → head` on an S; wings on both sides,
+symmetric; a mane that surrounds the head.
+
+**Deterministic.** The composer draws the SAME KIND OF FIGURE for
+everything: a spine, a diamond for every volume, a spike for every
+attachment. A span is a triangle, so a wing has no outline; a taper
+curls a fixed way, so a tail cannot coil; a mass is a diamond, so a
+plant pot has no flat top and an elephant no bulk. Where several
+attachments leave one short spine the joins cross (the winged lion,
+the ink spirit, the falcon). Rendering is not a failure class here —
+the Shape Lab draws what it is given.
+
+### FINAL PRODUCT TEST — can an artistic image become an Ether
+version that still feels like the same creature?
+
+**NO — not yet.** It fails at ABSTRACTION in the composer, not at
+understanding in the model. What a species lives in — the outline of
+a wing, the curl of a tail, the width of an ear, the flatness of a
+pot — is exactly what a spine-plus-attachment vocabulary cannot draw.
+The next step is not a better prompt; it is silhouette primitives in
+the composer: an outlined span (root, leading tip, trailing tip,
+corner), a curling taper (a real arc, not a fixed bend), a wide flat
+mass, and a way for attachments leaving one mass to take different
+angles so they do not cross.
+
+### Privacy, and what leaves
+
+What leaves for a plan is `action, image, messages` — the same picture
+the understanding was read from, the fixed contract, and the picture's
+own understanding — checked for every private word (`card`, `stars`,
+`constellation`, `memor`, `username`, `creator`, `companion`, `email`,
+`session`, `token`) and every ground-truth sentence (`TR3d`, `TR12c`).
+No plan, picture, token, contract or figure reaches storage or an
+export (`TR12d`). Both new modules make no request of their own
+(`TR1f`), write to no storage (`TR1e`), and name nothing that mounts
+the Ether or reads the pool (`TR1d`). A refused reply — geometry, a
+coordinate in a sentence, prose — and a dead transport each leave the
+figure in use untouched, substitute no fixture, and hand the button
+back (`TR12f`). With the Fixture connection the plan is a generic
+stand-in that says so on every light and on the status line.
+
+### Not built, deliberately
+
+IMAGE → MISSING JOINS, MISSING JOINS → HINT, COMPLETION → AWAKENING.
+The manual point budget stays; the automatic one is the composer's.
+The old outline composer is not used by this path.
+
+### Files
+
+`tools/ether-mystery-lab/labTranslate.js` · `labEtherComposer.js` ·
+`labShape.js` (loadGenerated, origin) · `shape.html` ·
+`tools/ether-mystery-lab-test/run-lab-tests.js` section `TR` (88) ·
+`tools/ether-mystery-lab-test/real-translation.js` ·
+`tools/ether-mystery-lab-test/render-translation.js` ·
+`tools/ether-mystery-lab-test/shots/translate/` (the real run, the
+ratings, seventeen screenshots)
+
+## Ether grammar V2 — close the loop (the open vocabulary, and the verdict)
+
+**Lab only. Zero production files changed. Build stays 0769.**
+
+The closure experiment: could the semantic-compiler route express arbitrary
+beings once its vocabulary was allowed to grow? Three things kept apart in
+`labVocabulary.js` — a SEMANTIC vocabulary (the composer's nine base terms,
+with meanings), EXTENSION PROPOSALS (declarative data: name, meaning, why
+needed, what it expresses, what it composes with, what it affects, examples,
+and a CONSTRUCTION of one base term plus modifiers), and the compiler's
+RENDERER CAPABILITIES (seven, closed, generic: outline · curl · flare · lobe ·
+continuous · sweep · mirror). For each picture the model answers SUPPORTED ·
+EXTENSION_REQUIRED · NOT_EXPRESSIBLE, proposes extensions, binds terms to the
+plan's masses, offers reveal candidates (name · reason · importance · role ·
+appearance · kind, classified SUPPORTED_REVEAL / REQUIRES_EXTENSION /
+NOT_SUITABLE_FOR_REVEAL) and writes the leading hint. The compiler judges
+every construction: a modifier it has no capability for is NOT EXPRESSIBLE by
+name, never approximated. `labUnfinished.js` chooses the missing connections
+by the creature experiments' own rules (only a relationship between parts,
+never a stray light, a detached part preferred, wide, spread, few).
+`labClosure.js` runs it on the page: the decision, the extension cards, a
+Base / With extensions toggle that recomposes the same plan both ways, the
+suggested reveals in step 4 (accept · reject), and *Choose the missing
+connections* in step 3. The existing ▶ Play in Ether walks the loop at eight.
+
+**The real run** (`real-closure.js`, `render-closure.js`,
+`shots/closure/`): nine creatures — Lumo standing in for the absent baby
+dragon, a second dragon, mermaid, falcon, lion with wings, centaur, elephant,
+a CONSTRUCTED octopus (no picture exists in the repository), and Quill as the
+invented creature. 9/9 decisions valid; 6 SUPPORTED, 3 EXTENSION_REQUIRED;
+3 extensions proposed, 2 expressible (both compositions of capabilities the
+compiler already had), 1 refused honestly (three capabilities it lacks). The
+model bound capabilities directly on 7 of 9 and the extended figure differs
+from the base one on all 7. **Every creature completed in the real Ether at
+eight lights by real taps, came alive and roamed** (walks.json, 9/9).
+
+**The verdict (ratings.json): open vocabulary does NOT solve the
+bottleneck.** Base A0 B2 C4 D3 → extended A0 B2 C4 D3 — the compositions
+changed and not one grade moved. The single structural limitation is the
+compiler itself: it spends lights on the gesture skeleton and attaches parts
+as small spikes and quads, so a species — which lives in the outline — is
+never where the lights are. Reveal A/B: B3 C5 D1 — meaningful where a fill
+turns a stick wing into a sail, weak where a contour's frame is a whole
+figure at eight lights. Two contract faults were the Lab's and were
+repaired on record (composing with a capability name was refused as
+unknown; hints listed body parts). Not moved toward production; the product
+owner's next brief tests the direct image → vision-model extraction instead.
+Suite section `CL` (90).
+
+## Image → Ether creature — end-to-end closure (the simplest bridge)
+
+**Lab only. Zero production files changed. Build stays 0769.**
+
+The product owner's instruction after the V2 verdict: stop building
+compilers. *Let the image model create. Let the vision model understand. Let
+Shape Lab correct. Let the existing Ether runtime make it alive.* So the
+bridge is one contract and no geometry engine at all:
+
+    creative prompt
+      → gpt-image-2 (the Lab's own presentation instruction: one creature,
+        full body, readable silhouette, no text, no interface)
+      → gpt-4.1, WITH THE ACTUAL PICTURE, answering one JSON document
+      → the Lab's validator
+      → Shape Lab (the existing six-stage workflow: SOURCE · AUTHOR · JUDGE)
+      → REVEAL stage: suggested reveals as ☐ rows, Accept / Reject / Edit
+      → ▶ Play in Ether — the existing preview, js/etherMystery.js unmodified
+
+**The contract** (`labExtract.js` → `extractMessages(budget)`): the model
+returns `subject`, `points[{id, x, y, feature}]` in normalized picture
+coordinates (0..1 — acceptable for a researcher tool, and the brief says so),
+`connections[{a, b}]`, `missingConnections[{a, b, reason}]` chosen for meaning
+and never at random, `revealFeatures[{name, reason, type
+diagnostic|character|accent|magic, near[ids]}]`, a `hint` that names a nature
+and never the answer, and `confidence{overall, identity, structure}`. The
+budget the researcher chose travels in the contract (one or two gaps at
+eight, two or three above); changing the budget reads the SAME picture again
+at the new budget — never a new creature. Models are exactly `gpt-image-2`
+and `gpt-4.1`, as defaults in `labConnection.js` and in `lab-generate`
+(build `LAB3`, with a bounded `maxTokens` for an extraction's longer answer);
+none of the retired image models is named anywhere on the path.
+
+**The validator refuses by shape and repairs on record.** Too many points are
+cut to the budget; a coordinate that is not a number or far off the picture
+refuses the extraction, one just over the edge is clamped; a duplicate id is
+dropped with the connections that named it; a connection to a point that does
+not exist, a self-connection and a duplicate are dropped; a missing connection
+the model forgot to list as a connection is added and left missing; one that
+would strand a point is kept as a connection instead; when none of the model's
+gaps can be left out the Lab chooses the widest safe ones and says so, so a
+figure always has a mystery; at most three gaps and at least two connections
+always remain; a reveal anchored to nothing is dropped and an unknown type
+becomes `character`; an instruction or a digit in the hint refuses the HINT
+alone and the figure loads with the honest fallback; markup in any string or
+a private key at any depth refuses the whole extraction; prose is refused as
+not JSON. Every repair is written on the record and shown in the extraction
+panel, which is words a researcher can argue with — the points, why each gap,
+the reveals, the confidence — labelled with the model that answered.
+
+**Two things the suite found before a person did.** The points landed beside
+the picture rather than on it: the editor's unit space and the source
+underlay's box are not the same size, so `toEditor()` now maps picture
+coordinates through the underlay's own half-extent and the picture's aspect
+(the picture's centre at the editor's centre, its edge at the underlay's
+edge). And the extraction landed as GENERATED · EDITED before anybody touched
+it, because its gaps and hint were applied as edits after the load —
+`ShapeLab.loadGenerated()` now takes a gap flag on a join and the hint, so an
+extraction is ONE generated figure in ONE history step.
+
+**The real run** (`real-extract.js`, `render-extract.js`, `shots/extract/`):
+the brief's seven prompts verbatim — panda, mermaid, baby dragon, falcon, lion
+with wings, giant whale, an imaginary fox-like creature — all *made of stars
+in a night sky*. Every stage is REAL MODEL and labelled so; a failed stage
+would say FAILED and substitute nothing.
+
+- **Pictures: 7/7**, 23–70 s each, all single-subject, full-body, readable
+  silhouettes on a night sky (rated A, all seven). Two environment facts,
+  measured: the agent proxy closes a connection that is silent for thirty
+  seconds, and an image takes longer than that to make — so generation uses
+  `stream: true` and reads the completed event; and the proxy answers from
+  two projects, one of which has no `gpt-4.1`, so a `model_not_found` is
+  retried (12 of 14 extractions on the first attempt, the other two on the
+  second) and every retry is on the record.
+- **Extractions: 14/14 valid** at eight and at twelve, identity confidence
+  0.97–0.99. 13 of 14 were repaired on record for the same thing — the model
+  lists its missing connections SEPARATELY from its connections, so each was
+  added as a connection and then left missing; one of its gaps would have
+  stranded a point and was kept; the falcon's two gaps at eight are the
+  Lab's own fallback. The suite re-validates every committed raw reply into
+  exactly the committed extraction on every run.
+- **The loop: 7/7** at eight lights in the real Ether — posed with the
+  model's hint, each gap made by two real taps, every accepted reveal drawn
+  once the figure is whole, then alive and roaming (47–88 px in the sample;
+  `walks.json`).
+
+**The ratings** (`ratings.json`, by looking): image A7 · recognition B5 C2 ·
+unfinished B5 C2 · reveal B1 C6 · alive B7 · **overall B5 C2 D0**. Against
+the V2 compiler run's A0 B2 C4 D3, no D anywhere: the extraction's lights sit
+ON the creature — a seated panda with its ears, a mermaid with arms and a
+forked tail, a whale wedge with a raised fluke, a fox with its tail up, a
+spread bird — which is the thing no compiler managed. The two C's are the
+baby dragon and the winged lion, where the species lives in a wing's outline
+or a mane that eight lights cannot hold (the same ceiling the eight-point
+study found by hand); both read at twelve. The reveal is the weak column:
+BALEEN LINES on the whale is the one reveal that changes what the figure IS,
+and every contour at its default frame size is a ring larger than the head —
+a reveal-default problem the earlier sprints already recorded.
+
+**Verdict: good enough to move forward.** Two things are named rather than
+fixed here: the production budget of eight against creatures whose identity
+is an outline, and the missing-connection half of the contract (state in the
+prompt that a missing connection is ALSO a connection, or keep repairing on
+record). Nothing reaches production: `js/etherMystery.js` performs what the
+Lab hands it, and the Lab hands it nothing but the researcher's approval.
+
+Section `EX` (55): the defaults and the retired models; no creature word and
+no branch on a subject in the module; nothing stored, no request of its own,
+no production module named; the contract's budget, coordinates, priority
+order, reveals, hint and privacy; every malformed-output case above; the
+committed run re-validated, walked and rated; the page journey against a
+stubbed endpoint — GENERATED figure, the panel, the ☐ rows, what left
+(action, picture, answer room, two messages), nothing in storage or export,
+Accept/Reject, edit, budget re-read, and each refusal on screen with the
+figure in use untouched and no fixture substituted; the real Ether loop; the
+copy; the phone; zero page errors; and the production diff against the base
+of this line of sprints (empty). `EX6` is the check that caught the
+edited-on-load defect.
+
+Files: `tools/ether-mystery-lab/labExtract.js` · `labConnection.js` ·
+`labShape.js` (`loadGenerated` gaps + hint) · `shape.html` ·
+`supabase/functions/lab-generate/index.ts` (`LAB3`) ·
+`tools/ether-mystery-lab-test/real-extract.js` · `render-extract.js` ·
+`shots/extract/` (source pictures, author/judge canvases, the sky as JPEG,
+`real-extract.json`, `walks.json`, `ratings.json`).
+
+## Two models, two fields (a diagnosed 500, and the guard that names it)
+
+**Lab only. Zero production files changed. Build stays 0769.**
+
+Reported by the product owner from the first live run of the image
+pipeline: gpt-image-2 drew the picture, the picture appeared in SOURCE,
+and both the understanding and the extraction failed with *"provider
+answered 500 (server_error)"*. Traced without touching anything, then
+reproduced from Node: the request that failed carried `model:
+"gpt-image-2"` on `/chat/completions`. The Direct panel had ONE field,
+labelled *Model*, and it fed `setDirectModel()` — the CHAT model — while
+the image model had no field at all; so the natural thing to type when
+choosing an image source (the image model's name) rerouted every
+understanding call to a picture model, and the provider answers that
+with a bare 500 and *"The server had an error while processing your
+request"* rather than a 400 that names the fault. Reproduced 2/2 with
+that one change; 7/7 fine with gpt-4.1. The field also advertised
+`gpt-4.1-mini` while the transport sent `gpt-4.1`, a model this project
+cannot use anyway.
+
+**What changed.** The Direct panel on both Lab pages now has two fields —
+*Understanding model (reads pictures, writes plans — a chat model)*, and
+*Image model (draws pictures)* — each wired to its own setter and both
+**seeded from the transport on load** (`LabConnection.models()`), so the
+page can never show a model the transport is not using. Each Direct path
+refuses a name that plainly belongs to the other before anything leaves
+the browser: an image model (`gpt-image-*`, `dall-e*`) in the
+understanding slot is refused by `understand()` and `generate()`, a chat
+model in the image slot by `imagine()`, and `LabConnection.explain()`
+turns the two reasons into a sentence that names the field to fix.
+Every surface — the front door, the extraction, the blueprint — reports
+that sentence in place of the provider's 500. The Endpoint path needs
+nothing: `LAB_MODEL` and `LAB_IMAGE_MODEL` were already two values.
+
+Section `MM` (12): both fields present and no `gpt-4.1-mini` default,
+the transport's two models and their defaults, the two refusals in Node,
+seeding measured against the live transport, the product owner's own
+mistake driven on the real page (zero chat requests leave, the sentence
+names the field, *Read it again* after correcting sends the same picture
+with gpt-4.1), each field feeding only its own path measured on the
+requests, and the mirror mistake. Proved by reverting the understand
+guard: `MM3` red and `MM5` stalls because the picture DID reach the chat
+path.
+
+## Trace the image, don't invent a skeleton (the extraction contract, rewritten)
+
+The product owner's own acceptance test failed on a boat: the unfinished
+figure created no wish to complete it, the completed figure did not look
+like the source, and Come Alive did not feel alive. This sprint fixes the
+EXTRACTION and nothing else — not Reveal, not roaming, not the Shape Lab's
+six stages, not the runtime, not the pool. Lab only; production diff zero.
+
+### Why the previous extraction failed
+
+The first extraction contract asked for *"a simplified interpretation, not
+a tracing"* and told the model to prioritise points by ANATOMY — *the
+overall silhouette · the major gesture · the important transitions (neck,
+hips, shoulder) · diagnostic features · meaningful terminals* — with one
+feature word per point. Measured on the boat (`shots/extract/boat/
+before.json`, the same picture read by that contract): six lights named
+*mast top · left prow curl · hull bottom · right prow curl · mast base ·
+sail tip*, joined as a triangle on a diamond — a sailboat GLYPH with its
+"mast base" in the middle of the sail and its "hull bottom" inside the
+hull, not at the keel. At twelve it came back in two pieces. The model had
+reasoned *boat = hull + mast + sail* from the subject's name and placed
+lights where those parts ought to be. That is a skeleton, and a skeleton
+of a generic boat looks like nothing in particular when the picture is
+hidden.
+
+### What changed
+
+`labExtract.js`'s contract now OPENS with the brief's critical instruction
+verbatim — *You are extracting a simplified visual tracing of the supplied
+image. Do not construct a generic anatomical skeleton from the subject's
+name…* — and everything after it is written from that: the source image
+is the visual truth; the budget is a SAMPLING budget over the visible
+shape (eight: the strongest silhouette points; twelve: the major contour
+structure; sixteen and above: secondary structure), never a list of parts
+to fit in; a point carries one of four PICTURE roles — `silhouette ·
+junction · internal · terminal` — and no anatomical name is required for
+any point; connections are VISIBLE relationships only, a line drawing of
+this picture and not a single outline around it, one connected piece, no
+invented geometry; and a missing connection is **an existing visual
+connection that we choose to withhold** — never a line that is not in the
+complete figure. Reveal is optional and secondary and may be empty; no
+confidence is asked for.
+
+The validator changed in three places, each on record. A point with no
+role, or a body part where a role should be, is read as `silhouette` and
+noted — never refused for a word. A missing connection that is not among
+the connections is **dropped**, where the first contract ADDED it as a
+connection and then left it missing — which let the model invent a line
+through the back door; the Lab's fallback (withhold the widest safe
+existing join) still guarantees a gap. And the figure's number of pieces
+is counted and written down; a figure in several pieces is never stitched
+(that would invent a line) — the researcher joins them where the picture
+shows them meeting.
+
+The contract took three wordings, and all three are committed because
+each was measured. **v1** (`real-extract.trace-v1.json`, the boat's
+`trace-v1-*` figures): the lights landed on the picture, and the joins
+were wrong — six of sixteen figures in more than one piece, eight-light
+outlines drawn as blobs with nothing inside, the boat's eight spent on the
+stays (ropes). **v2** (`-v2`): *a line drawing, not an outline; one piece;
+a thin line never earns a point before the masses* — 16/16 one piece, but
+the model under-spent the budget (seven lights at twelve) and still traced
+ropes. **v3**, shipped: *exactly N, or as close as the shape allows; a thin
+line is not structure — no point on it, no line along it; a withheld pair
+must also appear in connections* — 15/16 at the full budget, 16/16 one
+piece, invented gaps down from 9/16 to 2/16.
+
+### The boat, before and after
+
+| | before (anatomical) | after (tracing v3) |
+|---|---|---|
+| eight lights | a triangle sail on a diamond hull; a glyph — **B** | prows, keel, mast base, mast top, yard, flag: a mast with a crossbar on a hull — **B** |
+| twelve lights | TWO pieces, sail-and-deck above a hull V — **C** | ten lights: the hull's whole curve, the deck, the mast, the sail's triangle, the flag — **A** |
+| unfinished | the hull's top line missing — **C** | the sail's foot and forestay withheld: the sail hangs unattached until joined — **A** at twelve, **B** at eight |
+
+### The seven creatures (`ratings.json`)
+
+| | image | complete @8 | unfinished @8 | complete @12 |
+|---|---|---|---|---|
+| panda | A | B | B | B |
+| mermaid | A | B | C | B |
+| baby dragon | A | C | C | B |
+| falcon | A | B | B | B |
+| winged lion | A | C | C | C |
+| whale | A | B | B | B |
+| star fox | A | B | B | B |
+
+COMPLETE at eight: A0 B6 C2 over the boat and the seven — the SAME five
+creatures at B and the SAME two at C as the anatomical run, for the same
+reason: eight lights cannot hold a wing's outline and a body, and a
+tracing's eight go to the strongest silhouette, which for a winged
+creature is its wings. What moved is where the lights are and what happens
+above eight: at twelve the boat is A and the dragon B, where the
+anatomical boat at twelve was two pieces. UNFINISHED at eight: B5 C3 —
+where the MODEL chose the gap it is visible (the sail's foot, the whale's
+back, the fox's tail); where the Lab had to choose (the mermaid's figure is
+a tree, so any withheld line strands a limb rather than opening a hole) or
+the figure is a bare outline (dragon, lion) the gap is not a mystery.
+
+### Judged, and stopped
+
+The boat is recognisable; the creatures are where they were at eight and
+better at twelve. Per the brief, no further contract change, no Reveal
+work, no roaming work and no architecture proposal. The thing that would
+move the eight-light grade is the production budget question, which is a
+product decision and not this sprint's.
+
+**Harness note.** `render-extract.js` measures roaming from the moment
+the wanderer sets off rather than from a fixed wall-clock offset: a
+background popup's frame clock runs slow under load, so the 4.4 s hold
+after completion outlasted the renderer's waits and sixteen fixed samples
+measured the hold (1–7 px) instead of the roam. It now waits for the
+wanderer, then samples until it has plainly travelled or a bound passes.
+
+Suite: section `EX` — `EX2b`–`EX2b4`, `EX2c` pin the contract; `EX3a`,
+`EX3a2` the roles and the optional reveal; `EX3h`, `EX3h2` turned round
+(an unlisted gap is dropped, never added); `EX4`–`EX4g` the eight-result
+run, the boat before beside the after, every point roled, no gap ever
+added; `EX6`, `EX6b` the roles landing in the Shape Lab.

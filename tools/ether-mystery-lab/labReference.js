@@ -596,7 +596,7 @@
         var reason = (r && r.reason) || 'unavailable';
         trace.answer = { ok: false, reason: reason };
         trace.outcome = 'failed';
-        status('LLM request failed — ' + reason + ' (' + sourceLabel(mode) + '). No fixture was substituted. ' + kept, 'warn');
+        status('LLM request failed — ' + (Conn.explain ? Conn.explain(reason) : reason) + ' (' + sourceLabel(mode) + '). No fixture was substituted. ' + kept, 'warn');
         paintControls();
         return { ok: false, reason: reason };
       }
@@ -724,8 +724,15 @@
     if (tok) tok.addEventListener('input', function () { Conn.setEndpoint(v('[data-conn-url]'), v('[data-conn-token]')); paintConn(); });
     var key = el('[data-conn-key]');
     if (key) key.addEventListener('input', function () { Conn.setDirectKey(key.value); paintConn(); });
-    var mdl = el('[data-conn-model]');
+    // Two fields, two setters, seeded FROM the transport so the page never
+    // shows a model the transport is not using (the old field advertised
+    // gpt-4.1-mini while the transport sent gpt-4.1).
+    var mdl = el('[data-conn-model]'), imdl = el('[data-conn-image-model]');
+    var seed = Conn.models ? Conn.models() : null;
+    if (mdl && seed) mdl.value = seed.model;
+    if (imdl && seed) imdl.value = seed.imageModel;
     if (mdl) mdl.addEventListener('input', function () { Conn.setDirectModel(mdl.value); });
+    if (imdl) imdl.addEventListener('input', function () { Conn.setDirectImageModel(imdl.value); });
     var test = el('[data-conn-test]');
     if (test) test.addEventListener('click', function () {
       test.disabled = true;

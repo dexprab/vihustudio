@@ -1,0 +1,192 @@
+{
+ "run": "2026-09-08T16:01:13.204Z",
+ "walks": {
+  "lumo": {
+   "placed": 2,
+   "reveals": [
+    "WING MEMBRANES",
+    "SMILE",
+    "SPIKES ALONG BACK"
+   ],
+   "playable": true,
+   "walk": {
+    "hint": "Something is waiting…",
+    "hintOn": true,
+    "missing": 2,
+    "steps": [
+     1,
+     0
+    ]
+   },
+   "roam": {
+    "alive": 1,
+    "travelled": 38,
+    "samples": 15
+   }
+  },
+  "openmoji-dragon": {
+   "placed": 1,
+   "reveals": [
+    "HORNS",
+    "WING SHAPE"
+   ],
+   "playable": true,
+   "walk": {
+    "hint": "A bold and playful creature of myth and fire is waiting…",
+    "hintOn": true,
+    "missing": 1,
+    "steps": [
+     0
+    ]
+   },
+   "roam": {
+    "alive": 1,
+    "travelled": 53,
+    "samples": 14
+   }
+  },
+  "twemoji-mermaid": {
+   "placed": 1,
+   "reveals": [
+    "TAIL FIN",
+    "SMILING FACE"
+   ],
+   "playable": true,
+   "walk": {
+    "hint": "A graceful figure of the sea is waiting to be discovered…",
+    "hintOn": true,
+    "missing": 1,
+    "steps": [
+     0
+    ]
+   },
+   "roam": {
+    "alive": 1,
+    "travelled": 65,
+    "samples": 16
+   }
+  },
+  "gameicons-falcon": {
+   "placed": 1,
+   "reveals": [
+    "HOOKED BEAK",
+    "FEATHER TIPS"
+   ],
+   "playable": true,
+   "walk": {
+    "hint": "A swift hunter of the sky is poised in dynamic flight…",
+    "hintOn": true,
+    "missing": 1,
+    "steps": [
+     0
+    ]
+   },
+   "roam": {
+    "alive": 1,
+    "travelled": 56,
+    "samples": 16
+   }
+  },
+  "leo": {
+   "placed": 1,
+   "reveals": [
+    "WING COLORS",
+    "MANE"
+   ],
+   "playable": true,
+   "walk": {
+    "hint": "Something is waiting…",
+    "hintOn": true,
+    "missing": 1,
+    "steps": [
+     0
+    ]
+   },
+   "roam": {
+    "alive": 1,
+    "travelled": 49,
+    "samples": 16
+   }
+  },
+  "gameicons-centaur": {
+   "placed": 1,
+   "reveals": [
+    "BOW"
+   ],
+   "playable": true,
+   "walk": {
+    "hint": "A warrior blending human skill and equine strength is waiting…",
+    "hintOn": true,
+    "missing": 1,
+    "steps": [
+     0
+    ]
+   },
+   "roam": {
+    "alive": 1,
+    "travelled": 65,
+    "samples": 16
+   }
+  },
+  "openmoji-elephant": {
+   "placed": 1,
+   "reveals": [
+    "EAR SHAPE"
+   ],
+   "playable": true,
+   "walk": {
+    "hint": "A gentle giant of the wild plains is waiting…",
+    "hintOn": true,
+    "missing": 1,
+    "steps": [
+     0
+    ]
+   },
+   "roam": {
+    "alive": 1,
+    "travelled": 61,
+    "samples": 16
+   }
+  },
+  "octopus": {
+   "placed": 1,
+   "reveals": [],
+   "playable": true,
+   "walk": {
+    "hint": "A clever creature of the ocean depths is waiting…",
+    "hintOn": true,
+    "missing": 1,
+    "steps": [
+     0
+    ]
+   },
+   "roam": {
+    "alive": 1,
+    "travelled": 56,
+    "samples": 16
+   }
+  },
+  "quill": {
+   "placed": 2,
+   "reveals": [
+    "FEATHER CREST",
+    "QUILL PEN"
+   ],
+   "playable": true,
+   "walk": {
+    "hint": "Something is waiting…",
+    "hintOn": true,
+    "missing": 2,
+    "steps": [
+     1,
+     0
+    ]
+   },
+   "roam": {
+    "alive": 1,
+    "travelled": 46,
+    "samples": 16
+   }
+  }
+ }
+}

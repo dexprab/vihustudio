@@ -1,0 +1,1374 @@
+{
+ "run": "2026-09-08T13:11:54.472Z",
+ "model": "gpt-4.1-mini",
+ "imageGeneration": {
+  "available": false,
+  "reason": "model_not_found",
+  "model": "gpt-image-1"
+ },
+ "results": [
+  {
+   "id": "lumo",
+   "title": "Lumo — the Story Dragon",
+   "file": "../../assets/lumo/hero.png",
+   "bytes": 1065813,
+   "prompt": "a smiling dragon with enormous wings",
+   "model": "gpt-4.1-mini",
+   "ms": 9997,
+   "visible": "A teal-green cartoon dragon standing upright on two legs, facing three-quarters left, with a small closed-mouth smile and large friendly eyes. Two enormous bat-like wings spread wide behind and above it, edged with claws; two curved cream horns and a fin-like crest on the head; a pale cream plated belly running from chest to tail; small arms held near the chest; a long tail curling to the right with a ridge of spines; a faint teal shadow pool under the feet. Upright, symmetrical, open-armed posture — the wings dominate the silhouette.",
+   "usage": {
+    "prompt": 2400,
+    "completion": 411
+   },
+   "servedModel": "gpt-4.1-mini-2025-04-14",
+   "validator": {
+    "ok": true,
+    "reasons": [],
+    "repairs": []
+   },
+   "raw": "{\n  \"subject\": \"a smiling cartoon dragon\",\n  \"character\": [\"friendly\", \"confident\", \"playful\", \"approachable\"],\n  \"composition\": \"a compact, upright stance with wings spread wide on either side, creating a balanced horizontal extension\",\n  \"architecture\": [\n    \"large head with prominent eyes and a smiling mouth\",\n    \"two curved horns on top of the head\",\n    \"a row of small spikes running from the head down the back\",\n    \"broad chest and belly with segmented scales\",\n    \"muscular arms and legs with claws\",\n    \"large membranous wings attached at the shoulders\",\n    \"long tail curving behind with small spikes along the top\"\n  ],\n  \"diagnosticFeatures\": [\"horns\", \"large eyes\", \"smiling mouth\", \"wing membranes\", \"spikes\", \"claws\", \"segmented belly scales\", \"curved tail\"],\n  \"modifiers\": [\"smiling\", \"oversized wings\", \"cartoonish proportions\", \"rounded features\", \"bright turquoise and cream coloring\"],\n  \"proportion\": \"head and eyes are slightly oversized for a cute effect; wings are large relative to the body; limbs are stout and muscular\",\n  \"gesture\": \"the dragon reads as one coherent, confident gesture with an upright posture and wings creating a wide, open frame\",\n  \"abstraction\": {\n    \"survives\": [\"head with horns\", \"smiling mouth\", \"large eyes\", \"wing outline\", \"body with segmented belly\", \"tail with spikes\"],\n    \"doNotDrawLiterally\": [\"detailed scales\", \"color gradients\", \"facial expression nuances\"],\n    \"note\": \"The overall friendly and confident stance should be preserved in abstraction.\"\n  },\n  \"revealCandidates\": [\"horns\", \"wing membranes\", \"smile\", \"spikes along back\", \"claws\"],\n  \"promptFidelity\": {\n    \"agreement\": \"matches\",\n    \"differences\": []\n  }\n}",
+   "analysis": {
+    "subject": "a smiling cartoon dragon",
+    "character": [
+     "friendly",
+     "confident",
+     "playful",
+     "approachable"
+    ],
+    "composition": "a compact, upright stance with wings spread wide on either side, creating a balanced horizontal extension",
+    "architecture": [
+     "large head with prominent eyes and a smiling mouth",
+     "two curved horns on top of the head",
+     "a row of small spikes running from the head down the back",
+     "broad chest and belly with segmented scales",
+     "muscular arms and legs with claws",
+     "large membranous wings attached at the shoulders",
+     "long tail curving behind with small spikes along the top"
+    ],
+    "diagnosticFeatures": [
+     "horns",
+     "large eyes",
+     "smiling mouth",
+     "wing membranes",
+     "spikes",
+     "claws",
+     "segmented belly scales",
+     "curved tail"
+    ],
+    "modifiers": [
+     "smiling",
+     "oversized wings",
+     "cartoonish proportions",
+     "rounded features",
+     "bright turquoise and cream coloring"
+    ],
+    "proportion": "head and eyes are slightly oversized for a cute effect; wings are large relative to the body; limbs are stout and muscular",
+    "gesture": "the dragon reads as one coherent, confident gesture with an upright posture and wings creating a wide, open frame",
+    "abstraction": {
+     "survives": [
+      "head with horns",
+      "smiling mouth",
+      "large eyes",
+      "wing outline",
+      "body with segmented belly",
+      "tail with spikes"
+     ],
+     "doNotDrawLiterally": [
+      "detailed scales",
+      "color gradients",
+      "facial expression nuances"
+     ],
+     "note": "The overall friendly and confident stance should be preserved in abstraction."
+    },
+    "revealCandidates": [
+     "horns",
+     "wing membranes",
+     "smile",
+     "spikes along back",
+     "claws"
+    ],
+    "promptFidelity": {
+     "agreement": "matches",
+     "differences": []
+    }
+   },
+   "ok": true
+  },
+  {
+   "id": "leo",
+   "title": "Leo — the Lantern Lion",
+   "file": "../../assets/leosaurus/hero.png",
+   "bytes": 206771,
+   "prompt": "a lion with wings",
+   "model": "gpt-4.1-mini",
+   "ms": 7569,
+   "visible": "A cartoon lion cub with a large golden mane, all four paws on the ground in a mid-step, side-on facing left, body low and grounded, one forepaw lifted toward a glowing orange butterfly in front of its nose. Two large feathered wings in purple, blue and teal rise from its shoulders, one spread up behind the head and one behind the back. A small open book hangs on a cord at its chest; a lit golden lantern hangs from the curled tip of its tail at the right. The mane and the wings are the two dominant masses; the pose is a walking cat, not a flying one.",
+   "usage": {
+    "prompt": 1012,
+    "completion": 389
+   },
+   "servedModel": "gpt-4.1-mini-2025-04-14",
+   "validator": {
+    "ok": true,
+    "reasons": [],
+    "repairs": []
+   },
+   "raw": "{\n  \"subject\": \"a lion with wings\",\n  \"character\": [\"playful\", \"curious\", \"bright\", \"fantastical\", \"friendly\"],\n  \"composition\": \"The lion is shown in a dynamic, forward-reaching pose with one paw extended toward a glowing butterfly, wings spread wide behind it, creating a balanced and engaging diagonal flow.\",\n  \"architecture\": [\n    \"a large, rounded lion head with a full mane sits atop a sturdy, quadruped body\",\n    \"two large, colorful wings emerge symmetrically from the lion's shoulders\",\n    \"the tail curls upward and ends in a glowing lantern\",\n    \"the extended front paw reaches toward a butterfly hovering nearby\"\n  ],\n  \"diagnosticFeatures\": [\"mane\", \"lion paws\", \"lion face\", \"large feathered wings\", \"curled tail\", \"lantern\", \"butterfly\"],\n  \"modifiers\": [\"winged\", \"smiling\", \"glowing lantern on tail\", \"brightly colored wings\", \"playful gesture\"],\n  \"proportion\": \"The wings are oversized and vibrant compared to the lion's body, emphasizing the fantastical element; the head and mane are large and expressive relative to the body.\",\n  \"gesture\": \"The creature reads as one coherent gesture of reaching and curiosity, with the wings and extended paw directing attention forward and upward.\",\n  \"abstraction\": {\n    \"survives\": [\"mane\", \"wing shapes\", \"extended paw\", \"curled tail\", \"lantern\", \"butterfly\"],\n    \"doNotDrawLiterally\": [\"detailed feathers\", \"facial expression\", \"glowing effects\"]\n  },\n  \"revealCandidates\": [\"lantern on tail\", \"butterfly\", \"wing colors\", \"mane\"],\n  \"promptFidelity\": {\n    \"agreement\": \"matches\",\n    \"differences\": []\n  }\n}",
+   "analysis": {
+    "subject": "a lion with wings",
+    "character": [
+     "playful",
+     "curious",
+     "bright",
+     "fantastical",
+     "friendly"
+    ],
+    "composition": "The lion is shown in a dynamic, forward-reaching pose with one paw extended toward a glowing butterfly, wings spread wide behind it, creating a balanced and engaging diagonal flow.",
+    "architecture": [
+     "a large, rounded lion head with a full mane sits atop a sturdy, quadruped body",
+     "two large, colorful wings emerge symmetrically from the lion's shoulders",
+     "the tail curls upward and ends in a glowing lantern",
+     "the extended front paw reaches toward a butterfly hovering nearby"
+    ],
+    "diagnosticFeatures": [
+     "mane",
+     "lion paws",
+     "lion face",
+     "large feathered wings",
+     "curled tail",
+     "lantern",
+     "butterfly"
+    ],
+    "modifiers": [
+     "winged",
+     "smiling",
+     "glowing lantern on tail",
+     "brightly colored wings",
+     "playful gesture"
+    ],
+    "proportion": "The wings are oversized and vibrant compared to the lion's body, emphasizing the fantastical element; the head and mane are large and expressive relative to the body.",
+    "gesture": "The creature reads as one coherent gesture of reaching and curiosity, with the wings and extended paw directing attention forward and upward.",
+    "abstraction": {
+     "survives": [
+      "mane",
+      "wing shapes",
+      "extended paw",
+      "curled tail",
+      "lantern",
+      "butterfly"
+     ],
+     "doNotDrawLiterally": [
+      "detailed feathers",
+      "facial expression",
+      "glowing effects"
+     ],
+     "note": null
+    },
+    "revealCandidates": [
+     "lantern on tail",
+     "butterfly",
+     "wing colors",
+     "mane"
+    ],
+    "promptFidelity": {
+     "agreement": "matches",
+     "differences": []
+    }
+   },
+   "ok": true
+  },
+  {
+   "id": "leafy",
+   "title": "Leafy — the Bloomling",
+   "file": "../../assets/leafy/hero.png",
+   "bytes": 727392,
+   "prompt": "a tiny plant creature living in a pot",
+   "model": "gpt-4.1-mini",
+   "ms": 11022,
+   "visible": "An invented being: a yellow ceramic flowerpot with a small smiling face on its front, two short yellow arms (one raised in a wave) and two stubby feet. A tall bunch of green leaves, stems and three flowers (pink, orange, purple) grows out of the top of the pot with dark soil visible at the rim. Upright, front-facing, the plant mass above is taller than the pot body below. No animal anatomy at all.",
+   "usage": {
+    "prompt": 1764,
+    "completion": 406
+   },
+   "servedModel": "gpt-4.1-mini-2025-04-14",
+   "validator": {
+    "ok": true,
+    "reasons": [],
+    "repairs": []
+   },
+   "raw": "{\n  \"subject\": \"tiny plant creature in a pot\",\n  \"character\": [\"cute\", \"friendly\", \"cheerful\", \"playful\", \"whimsical\"],\n  \"composition\": \"A compact, upright figure with a pot body and plant elements growing from the top, balanced with small limbs extending from the pot.\",\n  \"architecture\": [\n    \"rectangular pot forms the main body\",\n    \"two short legs at the base of the pot\",\n    \"two arms extending from the sides of the pot\",\n    \"soil fills the top of the pot\",\n    \"various green leaves and colorful flowers sprout from the soil\",\n    \"two small plant-like eyes emerge from the soil among the leaves\"\n  ],\n  \"diagnosticFeatures\": [\"pot body\", \"plant eyes\", \"green leaves\", \"colorful flowers\", \"small arms\", \"short legs\", \"smiling face\"],\n  \"modifiers\": [\"smiling face\", \"blushing cheeks\", \"tiny limbs\", \"flowering stems\", \"animated eyes\"],\n  \"proportion\": \"The pot body is dominant and boxy, with small limbs and plant parts proportionally smaller but varied in height due to the flowers and leaves.\",\n  \"gesture\": \"The creature reads as one coherent upright figure with a stable, grounded stance and lively plant growth extending upward.\",\n  \"abstraction\": {\n    \"survives\": [\"rectangular pot body\", \"small limbs\", \"plant leaves and flowers\", \"two eyes in soil\", \"smiling face\"],\n    \"doNotDrawLiterally\": [\"blushing cheeks\", \"detailed leaf textures\", \"soil granules\"],\n    \"note\": \"The pot shape and plant growth must be clear, with eyes and limbs simplified to points and lines.\"\n  },\n  \"revealCandidates\": [\"flower shapes\", \"plant eyes\", \"blushing cheeks\"],\n  \"promptFidelity\": {\n    \"agreement\": \"matches\",\n    \"differences\": []\n  }\n}",
+   "analysis": {
+    "subject": "tiny plant creature in a pot",
+    "character": [
+     "cute",
+     "friendly",
+     "cheerful",
+     "playful",
+     "whimsical"
+    ],
+    "composition": "A compact, upright figure with a pot body and plant elements growing from the top, balanced with small limbs extending from the pot.",
+    "architecture": [
+     "rectangular pot forms the main body",
+     "two short legs at the base of the pot",
+     "two arms extending from the sides of the pot",
+     "soil fills the top of the pot",
+     "various green leaves and colorful flowers sprout from the soil",
+     "two small plant-like eyes emerge from the soil among the leaves"
+    ],
+    "diagnosticFeatures": [
+     "pot body",
+     "plant eyes",
+     "green leaves",
+     "colorful flowers",
+     "small arms",
+     "short legs",
+     "smiling face"
+    ],
+    "modifiers": [
+     "smiling face",
+     "blushing cheeks",
+     "tiny limbs",
+     "flowering stems",
+     "animated eyes"
+    ],
+    "proportion": "The pot body is dominant and boxy, with small limbs and plant parts proportionally smaller but varied in height due to the flowers and leaves.",
+    "gesture": "The creature reads as one coherent upright figure with a stable, grounded stance and lively plant growth extending upward.",
+    "abstraction": {
+     "survives": [
+      "rectangular pot body",
+      "small limbs",
+      "plant leaves and flowers",
+      "two eyes in soil",
+      "smiling face"
+     ],
+     "doNotDrawLiterally": [
+      "blushing cheeks",
+      "detailed leaf textures",
+      "soil granules"
+     ],
+     "note": "The pot shape and plant growth must be clear, with eyes and limbs simplified to points and lines."
+    },
+    "revealCandidates": [
+     "flower shapes",
+     "plant eyes",
+     "blushing cheeks"
+    ],
+    "promptFidelity": {
+     "agreement": "matches",
+     "differences": []
+    }
+   },
+   "ok": true
+  },
+  {
+   "id": "quill",
+   "title": "Quill — the Ink Spirit",
+   "file": "../../assets/quill/hero.png",
+   "bytes": 1268336,
+   "prompt": "a little spirit made of ink holding a quill pen",
+   "model": "gpt-4.1-mini",
+   "ms": 10432,
+   "visible": "An invented being made of dark navy ink: a rounded glossy body with large pale violet eyes and a small smile, a swept-back crest of ink shaped like feathers rising from its head, a cape of ink with silver edging flaring out behind, and a puddle of ink under its feet with drops flying around it. It holds a tall silver-nibbed quill pen upright in one hand, taller than itself. Standing, front-facing, the body compact and the crest, cape and pen all reaching upward and outward from it.",
+   "usage": {
+    "prompt": 3339,
+    "completion": 469
+   },
+   "servedModel": "gpt-4.1-mini-2025-04-14",
+   "validator": {
+    "ok": true,
+    "reasons": [],
+    "repairs": []
+   },
+   "raw": "{\n  \"subject\": \"little ink spirit holding a quill pen\",\n  \"character\": [\"cute\", \"playful\", \"magical\", \"cheerful\", \"whimsical\"],\n  \"composition\": \"A compact, upright figure with a rounded head and body, standing firmly with one arm akimbo and the other holding a large quill pen, creating a balanced and confident stance.\",\n  \"architecture\": [\n    \"rounded head with large expressive eyes\",\n    \"small body with short limbs\",\n    \"ink-like fluid forms extending from head and cape edges\",\n    \"cape flowing around the body with ink splash effects\",\n    \"quill pen held upright in right hand\",\n    \"decorative silver markings on face, chest, and cape\"\n  ],\n  \"diagnosticFeatures\": [\n    \"large eyes\",\n    \"ink splash shapes\",\n    \"feathered crest on head\",\n    \"decorative silver patterns\",\n    \"quill pen\",\n    \"flowing cape\"\n  ],\n  \"modifiers\": [\n    \"smiling\",\n    \"oversized eyes\",\n    \"ink drops around body\",\n    \"feather-like crest\",\n    \"ornate silver details\",\n    \"glossy texture\"\n  ],\n  \"proportion\": \"The head and eyes are exaggeratedly large compared to the small, rounded body, emphasizing cuteness and expressiveness.\",\n  \"gesture\": \"The figure reads as one coherent, confident gesture with a slight forward lean and a raised arm holding the quill, suggesting readiness and charm.\",\n  \"abstraction\": {\n    \"survives\": [\n      \"large round head\",\n      \"big eyes\",\n      \"feather crest\",\n      \"flowing cape\",\n      \"quill pen\",\n      \"ink splash shapes\"\n    ],\n    \"doNotDrawLiterally\": [\n      \"silver decorative patterns\",\n      \"facial expressions\",\n      \"glossy texture\"\n    ],\n    \"note\": \"The silver details and facial expression should be suggested abstractly rather than literally drawn.\"\n  },\n  \"revealCandidates\": [\n    \"feather crest\",\n    \"ink splash\",\n    \"silver patterns\",\n    \"quill pen\"\n  ],\n  \"promptFidelity\": {\n    \"agreement\": \"matches\",\n    \"differences\": []\n  }\n}",
+   "analysis": {
+    "subject": "little ink spirit holding a quill pen",
+    "character": [
+     "cute",
+     "playful",
+     "magical",
+     "cheerful",
+     "whimsical"
+    ],
+    "composition": "A compact, upright figure with a rounded head and body, standing firmly with one arm akimbo and the other holding a large quill pen, creating a balanced and confident stance.",
+    "architecture": [
+     "rounded head with large expressive eyes",
+     "small body with short limbs",
+     "ink-like fluid forms extending from head and cape edges",
+     "cape flowing around the body with ink splash effects",
+     "quill pen held upright in right hand",
+     "decorative silver markings on face, chest, and cape"
+    ],
+    "diagnosticFeatures": [
+     "large eyes",
+     "ink splash shapes",
+     "feathered crest on head",
+     "decorative silver patterns",
+     "quill pen",
+     "flowing cape"
+    ],
+    "modifiers": [
+     "smiling",
+     "oversized eyes",
+     "ink drops around body",
+     "feather-like crest",
+     "ornate silver details",
+     "glossy texture"
+    ],
+    "proportion": "The head and eyes are exaggeratedly large compared to the small, rounded body, emphasizing cuteness and expressiveness.",
+    "gesture": "The figure reads as one coherent, confident gesture with a slight forward lean and a raised arm holding the quill, suggesting readiness and charm.",
+    "abstraction": {
+     "survives": [
+      "large round head",
+      "big eyes",
+      "feather crest",
+      "flowing cape",
+      "quill pen",
+      "ink splash shapes"
+     ],
+     "doNotDrawLiterally": [
+      "silver decorative patterns",
+      "facial expressions",
+      "glossy texture"
+     ],
+     "note": "The silver details and facial expression should be suggested abstractly rather than literally drawn."
+    },
+    "revealCandidates": [
+     "feather crest",
+     "ink splash",
+     "silver patterns",
+     "quill pen"
+    ],
+    "promptFidelity": {
+     "agreement": "matches",
+     "differences": []
+    }
+   },
+   "ok": true
+  },
+  {
+   "id": "nimbus",
+   "title": "Nimbus — the Dream Sprite",
+   "file": "../../assets/nimbus/hero.png",
+   "bytes": 1004286,
+   "prompt": "a sleepy cloud sprite carrying a little moon",
+   "model": "gpt-4.1-mini",
+   "ms": 10182,
+   "visible": "An invented being: a small pale child-like sprite with pointed ears, standing barefoot on a cloud, its hair a mass of white cloud curls with a crescent moon on the forehead; a white and lilac layered dress with a tassel and a small blue gem; another crescent moon hangs from the dress. The cloud body and cloud hair are the dominant soft masses; the face is calm with a slight smile. Upright, front-facing, floating rather than grounded.",
+   "usage": {
+    "prompt": 3336,
+    "completion": 512
+   },
+   "servedModel": "gpt-4.1-mini-2025-04-14",
+   "validator": {
+    "ok": true,
+    "reasons": [],
+    "repairs": []
+   },
+   "raw": "{\n  \"subject\": \"a cloud sprite with moon motifs\",\n  \"character\": [\"sleepy\", \"gentle\", \"whimsical\", \"magical\", \"cute\"],\n  \"composition\": \"A compact, upright figure with a rounded, cloud-like mass forming the head and body, standing firmly with a confident pose.\",\n  \"architecture\": [\n    \"Head is a large fluffy cloud mass with swirling curls\",\n    \"Two large pointed ears extend sideways from the head\",\n    \"Face with big expressive eyes and a crescent moon symbol on the forehead\",\n    \"Body is small and humanoid, emerging from cloud-like formations\",\n    \"Cloud swirls wrap around the shoulders and form a cloak-like shape\",\n    \"Decorative crescent moons and tassels hang from the outfit\",\n    \"Lower body blends into a cloud base that curls around the feet\"\n  ],\n  \"diagnosticFeatures\": [\n    \"cloud hair\",\n    \"crescent moon forehead mark\",\n    \"large purple eyes\",\n    \"pointed elf-like ears\",\n    \"cloud cloak\",\n    \"moon symbols on body\",\n    \"tassel ornament\",\n    \"cloud base\"\n  ],\n  \"modifiers\": [\n    \"smiling\",\n    \"small stature\",\n    \"ornate clothing\",\n    \"glowing moon motifs\",\n    \"swirling cloud curls\"\n  ],\n  \"proportion\": \"The head and cloud hair are exaggeratedly large compared to the small humanoid body, emphasizing a whimsical and sprite-like appearance.\",\n  \"gesture\": \"The figure reads as one coherent, upright and confident gesture with a slight playful charm, unified by the swirling cloud forms wrapping around the body.\",\n  \"abstraction\": {\n    \"survives\": [\n      \"large cloud head\",\n      \"crescent moon symbol\",\n      \"pointed ears\",\n      \"cloud cloak wrapping\",\n      \"small humanoid body\",\n      \"swirling cloud base\"\n    ],\n    \"doNotDrawLiterally\": [\n      \"facial details\",\n      \"ornate clothing textures\",\n      \"glowing effects\"\n    ]\n  },\n  \"revealCandidates\": [\n    \"crescent moon forehead mark\",\n    \"tassel ornament\",\n    \"cloud curls\",\n    \"moon symbols on body\"\n  ],\n  \"promptFidelity\": {\n    \"agreement\": \"partly\",\n    \"differences\": [\n      \"sprite is awake and smiling, not sleepy\",\n      \"moon is a symbol on the body, not carried separately\"\n    ]\n  }\n}",
+   "analysis": {
+    "subject": "a cloud sprite with moon motifs",
+    "character": [
+     "sleepy",
+     "gentle",
+     "whimsical",
+     "magical",
+     "cute"
+    ],
+    "composition": "A compact, upright figure with a rounded, cloud-like mass forming the head and body, standing firmly with a confident pose.",
+    "architecture": [
+     "Head is a large fluffy cloud mass with swirling curls",
+     "Two large pointed ears extend sideways from the head",
+     "Face with big expressive eyes and a crescent moon symbol on the forehead",
+     "Body is small and humanoid, emerging from cloud-like formations",
+     "Cloud swirls wrap around the shoulders and form a cloak-like shape",
+     "Decorative crescent moons and tassels hang from the outfit",
+     "Lower body blends into a cloud base that curls around the feet"
+    ],
+    "diagnosticFeatures": [
+     "cloud hair",
+     "crescent moon forehead mark",
+     "large purple eyes",
+     "pointed elf-like ears",
+     "cloud cloak",
+     "moon symbols on body",
+     "tassel ornament",
+     "cloud base"
+    ],
+    "modifiers": [
+     "smiling",
+     "small stature",
+     "ornate clothing",
+     "glowing moon motifs",
+     "swirling cloud curls"
+    ],
+    "proportion": "The head and cloud hair are exaggeratedly large compared to the small humanoid body, emphasizing a whimsical and sprite-like appearance.",
+    "gesture": "The figure reads as one coherent, upright and confident gesture with a slight playful charm, unified by the swirling cloud forms wrapping around the body.",
+    "abstraction": {
+     "survives": [
+      "large cloud head",
+      "crescent moon symbol",
+      "pointed ears",
+      "cloud cloak wrapping",
+      "small humanoid body",
+      "swirling cloud base"
+     ],
+     "doNotDrawLiterally": [
+      "facial details",
+      "ornate clothing textures",
+      "glowing effects"
+     ],
+     "note": null
+    },
+    "revealCandidates": [
+     "crescent moon forehead mark",
+     "tassel ornament",
+     "cloud curls",
+     "moon symbols on body"
+    ],
+    "promptFidelity": {
+     "agreement": "partly",
+     "differences": [
+      "sprite is awake and smiling, not sleepy",
+      "moon is a symbol on the body, not carried separately"
+     ]
+    }
+   },
+   "ok": true
+  },
+  {
+   "id": "twemoji-mermaid",
+   "title": "Mermaid (Twemoji)",
+   "file": "artwork/twemoji-mermaid.png",
+   "bytes": 39972,
+   "prompt": "a graceful mermaid with flowing hair",
+   "model": "gpt-4.1-mini",
+   "ms": 7058,
+   "visible": "A flat-colour mermaid: a human upper body with long blue hair, a red top and a smiling face, one arm raised open-handed and the other resting on the tail; from the hips a green fish tail curves down and to the right, ending in a two-lobed fin. Seated pose, the tail one continuous S-curve from the hips to the fin. Plain cream background.",
+   "usage": {
+    "prompt": 1676,
+    "completion": 384
+   },
+   "servedModel": "gpt-4.1-mini-2025-04-14",
+   "validator": {
+    "ok": true,
+    "reasons": [],
+    "repairs": []
+   },
+   "raw": "{\n  \"subject\": \"cartoon-style mermaid\",\n  \"character\": [\"playful\", \"cheerful\", \"bright\", \"simple\"],\n  \"composition\": \"The figure is composed of a humanoid upper body with a fish tail replacing legs, arranged in a compact, upright pose with one arm raised and the other resting on the tail.\",\n  \"architecture\": [\n    \"yellow humanoid head and torso with blue flowing hair\",\n    \"red strapless top covering the chest\",\n    \"green fish tail attached at the waist, curving to the side\",\n    \"two arms extending from the shoulders, one bent upward and the other resting on the tail\"\n  ],\n  \"diagnosticFeatures\": [\"fish tail\", \"flowing hair\", \"human upper body\", \"strapless top\", \"smiling face\"],\n  \"modifiers\": [\"bright colors\", \"simplified shapes\", \"cartoonish style\", \"blue hair\"],\n  \"proportion\": \"The upper body and head are proportionally larger compared to the tail, emphasizing the humanoid aspect.\",\n  \"gesture\": \"The mermaid reads as one coherent figure with a gentle curve from the raised arm through the tail, suggesting a relaxed, inviting pose.\",\n  \"abstraction\": {\n    \"survives\": [\"head with hair\", \"upper torso\", \"curved tail\", \"raised arm\"],\n    \"doNotDrawLiterally\": [\"facial features\", \"clothing details\"],\n    \"note\": \"The flowing hair and tail curve are key to conveying grace and mermaid identity.\"\n  },\n  \"revealCandidates\": [\"flowing hair\", \"tail fin\", \"smiling face\"],\n  \"promptFidelity\": {\n    \"agreement\": \"partly\",\n    \"differences\": [\"hair is stylized and blocky rather than flowing\", \"pose is more static than graceful\"]\n  }\n}",
+   "analysis": {
+    "subject": "cartoon-style mermaid",
+    "character": [
+     "playful",
+     "cheerful",
+     "bright",
+     "simple"
+    ],
+    "composition": "The figure is composed of a humanoid upper body with a fish tail replacing legs, arranged in a compact, upright pose with one arm raised and the other resting on the tail.",
+    "architecture": [
+     "yellow humanoid head and torso with blue flowing hair",
+     "red strapless top covering the chest",
+     "green fish tail attached at the waist, curving to the side",
+     "two arms extending from the shoulders, one bent upward and the other resting on the tail"
+    ],
+    "diagnosticFeatures": [
+     "fish tail",
+     "flowing hair",
+     "human upper body",
+     "strapless top",
+     "smiling face"
+    ],
+    "modifiers": [
+     "bright colors",
+     "simplified shapes",
+     "cartoonish style",
+     "blue hair"
+    ],
+    "proportion": "The upper body and head are proportionally larger compared to the tail, emphasizing the humanoid aspect.",
+    "gesture": "The mermaid reads as one coherent figure with a gentle curve from the raised arm through the tail, suggesting a relaxed, inviting pose.",
+    "abstraction": {
+     "survives": [
+      "head with hair",
+      "upper torso",
+      "curved tail",
+      "raised arm"
+     ],
+     "doNotDrawLiterally": [
+      "facial features",
+      "clothing details"
+     ],
+     "note": "The flowing hair and tail curve are key to conveying grace and mermaid identity."
+    },
+    "revealCandidates": [
+     "flowing hair",
+     "tail fin",
+     "smiling face"
+    ],
+    "promptFidelity": {
+     "agreement": "partly",
+     "differences": [
+      "hair is stylized and blocky rather than flowing",
+      "pose is more static than graceful"
+     ]
+    }
+   },
+   "ok": true
+  },
+  {
+   "id": "openmoji-mermaid",
+   "title": "Mermaid with a trident (OpenMoji)",
+   "file": "artwork/openmoji-mermaid.png",
+   "bytes": 38102,
+   "prompt": "a graceful mermaid with flowing hair",
+   "model": "gpt-4.1-mini",
+   "ms": 6789,
+   "visible": "An outlined mermaid facing left, holding a tall three-pronged trident upright beside her; orange hair, a yellow top, and a pink fish tail that sweeps down and back to the right, ending in a forked fin. Profile view, the trident a vertical line against the tail's curve. Plain cream background.",
+   "usage": {
+    "prompt": 1676,
+    "completion": 330
+   },
+   "servedModel": "gpt-4.1-mini-2025-04-14",
+   "validator": {
+    "ok": true,
+    "reasons": [],
+    "repairs": []
+   },
+   "raw": "{\n  \"subject\": \"mermaid holding a trident\",\n  \"character\": [\"playful\", \"simple\", \"bright\", \"friendly\"],\n  \"composition\": \"The figure is upright with a clear division between the upper human torso and the lower fish tail, holding a trident vertically.\",\n  \"architecture\": [\n    \"round head with flowing hair behind\",\n    \"torso with two arms, one holding a trident\",\n    \"curved fish tail with a fin at the end\",\n    \"hair flows down behind the head and torso\"\n  ],\n  \"diagnosticFeatures\": [\"mermaid tail\", \"trident\", \"flowing hair\", \"human torso\", \"fish fin\"],\n  \"modifiers\": [\"bright colors\", \"stylized shapes\", \"simplified facial features\"],\n  \"proportion\": \"The tail is elongated and curves smoothly, while the torso and head are compact and rounded.\",\n  \"gesture\": \"The figure reads as a single coherent upright gesture with a gentle curve in the tail suggesting grace.\",\n  \"abstraction\": {\n    \"survives\": [\"head with hair\", \"torso\", \"curved tail with fin\", \"trident\"],\n    \"doNotDrawLiterally\": [\"solid filled colors\", \"facial details\"]\n  },\n  \"revealCandidates\": [\"trident\", \"flowing hair\", \"tail fin\"],\n  \"promptFidelity\": {\n    \"agreement\": \"partly\",\n    \"differences\": [\"hair is stylized and not flowing\", \"pose is upright not flowing\", \"gracefulness is minimal due to simplicity\"]\n  }\n}",
+   "analysis": {
+    "subject": "mermaid holding a trident",
+    "character": [
+     "playful",
+     "simple",
+     "bright",
+     "friendly"
+    ],
+    "composition": "The figure is upright with a clear division between the upper human torso and the lower fish tail, holding a trident vertically.",
+    "architecture": [
+     "round head with flowing hair behind",
+     "torso with two arms, one holding a trident",
+     "curved fish tail with a fin at the end",
+     "hair flows down behind the head and torso"
+    ],
+    "diagnosticFeatures": [
+     "mermaid tail",
+     "trident",
+     "flowing hair",
+     "human torso",
+     "fish fin"
+    ],
+    "modifiers": [
+     "bright colors",
+     "stylized shapes",
+     "simplified facial features"
+    ],
+    "proportion": "The tail is elongated and curves smoothly, while the torso and head are compact and rounded.",
+    "gesture": "The figure reads as a single coherent upright gesture with a gentle curve in the tail suggesting grace.",
+    "abstraction": {
+     "survives": [
+      "head with hair",
+      "torso",
+      "curved tail with fin",
+      "trident"
+     ],
+     "doNotDrawLiterally": [
+      "solid filled colors",
+      "facial details"
+     ],
+     "note": null
+    },
+    "revealCandidates": [
+     "trident",
+     "flowing hair",
+     "tail fin"
+    ],
+    "promptFidelity": {
+     "agreement": "partly",
+     "differences": [
+      "hair is stylized and not flowing",
+      "pose is upright not flowing",
+      "gracefulness is minimal due to simplicity"
+     ]
+    }
+   },
+   "ok": true
+  },
+  {
+   "id": "gameicons-mermaid",
+   "title": "Mermaid silhouette (game-icons.net)",
+   "file": "artwork/gameicons-mermaid.png",
+   "bytes": 28779,
+   "prompt": "a graceful mermaid with flowing hair",
+   "model": "gpt-4.1-mini",
+   "ms": 6235,
+   "visible": "A white silhouette on black: a mermaid seen from the front-left with hair streaming out to the left, arms spread, and a thick tail curling down in an S below the torso to a forked fin at the bottom left. A few bubbles float around her. The whole figure is one flowing curve from the streaming hair through the torso into the tail.",
+   "usage": {
+    "prompt": 1676,
+    "completion": 351
+   },
+   "servedModel": "gpt-4.1-mini-2025-04-14",
+   "validator": {
+    "ok": true,
+    "reasons": [],
+    "repairs": []
+   },
+   "raw": "{\n  \"subject\": \"a stylized mermaid\",\n  \"character\": [\"graceful\", \"flowing\", \"simplified\", \"elegant\"],\n  \"composition\": \"The figure is composed of a flowing, curved body forming an S-shape with a clear division between the upper humanoid torso and the lower fish tail, creating a smooth vertical gesture.\",\n  \"architecture\": [\n    \"head with flowing hair extending backward\",\n    \"upper torso with arms bent outward\",\n    \"narrow waist connecting to a wide, curved fish tail\",\n    \"tail fin at the bottom\",\n    \"bubbles surrounding the figure\"\n  ],\n  \"diagnosticFeatures\": [\"flowing hair\", \"mermaid tail\", \"curved torso\", \"arms\", \"bubbles\"],\n  \"modifiers\": [\"simplified silhouette\", \"large eye\", \"stylized hair spikes\"],\n  \"proportion\": \"The tail is dominant and large compared to the upper body, with the hair elongated and exaggerated to emphasize flow.\",\n  \"gesture\": \"The whole figure reads as one coherent flowing gesture, emphasizing smooth curves and movement from head to tail.\",\n  \"abstraction\": {\n    \"survives\": [\"flowing hair\", \"S-shaped body curve\", \"tail fin\", \"arms\", \"bubbles\"],\n    \"doNotDrawLiterally\": [\"large eye\", \"hair spikes\"],\n    \"note\": \"The flowing hair and curved tail shape are key to preserving the mermaid's graceful movement in abstract form.\"\n  },\n  \"revealCandidates\": [\"bubbles\", \"tail fin\", \"hair spikes\"],\n  \"promptFidelity\": {\n    \"agreement\": \"matches\",\n    \"differences\": []\n  }\n}",
+   "analysis": {
+    "subject": "a stylized mermaid",
+    "character": [
+     "graceful",
+     "flowing",
+     "simplified",
+     "elegant"
+    ],
+    "composition": "The figure is composed of a flowing, curved body forming an S-shape with a clear division between the upper humanoid torso and the lower fish tail, creating a smooth vertical gesture.",
+    "architecture": [
+     "head with flowing hair extending backward",
+     "upper torso with arms bent outward",
+     "narrow waist connecting to a wide, curved fish tail",
+     "tail fin at the bottom",
+     "bubbles surrounding the figure"
+    ],
+    "diagnosticFeatures": [
+     "flowing hair",
+     "mermaid tail",
+     "curved torso",
+     "arms",
+     "bubbles"
+    ],
+    "modifiers": [
+     "simplified silhouette",
+     "large eye",
+     "stylized hair spikes"
+    ],
+    "proportion": "The tail is dominant and large compared to the upper body, with the hair elongated and exaggerated to emphasize flow.",
+    "gesture": "The whole figure reads as one coherent flowing gesture, emphasizing smooth curves and movement from head to tail.",
+    "abstraction": {
+     "survives": [
+      "flowing hair",
+      "S-shaped body curve",
+      "tail fin",
+      "arms",
+      "bubbles"
+     ],
+     "doNotDrawLiterally": [
+      "large eye",
+      "hair spikes"
+     ],
+     "note": "The flowing hair and curved tail shape are key to preserving the mermaid's graceful movement in abstract form."
+    },
+    "revealCandidates": [
+     "bubbles",
+     "tail fin",
+     "hair spikes"
+    ],
+    "promptFidelity": {
+     "agreement": "matches",
+     "differences": []
+    }
+   },
+   "ok": true
+  },
+  {
+   "id": "openmoji-elephant",
+   "title": "Elephant (OpenMoji)",
+   "file": "artwork/openmoji-elephant.png",
+   "bytes": 31680,
+   "prompt": "a tiny elephant with huge ears",
+   "model": "gpt-4.1-mini",
+   "ms": 6414,
+   "visible": "An outlined grey elephant in side view facing left, standing on four straight legs; a large rounded back, a big flat ear over the head, a long trunk curling down and forward to the ground, one short tusk, a thin tail at the right. A compact, grounded, heavy body; the trunk and ear are the recognisable parts. Plain cream background.",
+   "usage": {
+    "prompt": 1675,
+    "completion": 297
+   },
+   "servedModel": "gpt-4.1-mini-2025-04-14",
+   "validator": {
+    "ok": true,
+    "reasons": [],
+    "repairs": []
+   },
+   "raw": "{\n  \"subject\": \"a stylized elephant\",\n  \"character\": [\"simple\", \"cute\", \"minimalist\", \"friendly\"],\n  \"composition\": \"a compact, side-profile silhouette with a clear separation of head, body, and legs\",\n  \"architecture\": [\n    \"large rounded head with oversized ears attached\",\n    \"curved trunk extending downward and curling slightly\",\n    \"rounded body mass connected to four short legs\",\n    \"small tail depicted as a short curved line\"\n  ],\n  \"diagnosticFeatures\": [\"trunk\", \"large ears\", \"tusks\", \"tail\", \"four legs\"],\n  \"modifiers\": [\"oversized ears\", \"tiny body\", \"curled trunk\"],\n  \"proportion\": \"ears are exaggeratedly large compared to the small, compact body\",\n  \"gesture\": \"the creature reads as one coherent, simple silhouette with a gentle forward curve in the trunk\",\n  \"abstraction\": {\n    \"survives\": [\"large ears\", \"trunk shape\", \"body mass\", \"four legs\", \"tail\"],\n    \"doNotDrawLiterally\": [\"curled trunk\", \"rounded shapes\"]\n  },\n  \"revealCandidates\": [\"tusks\", \"tail\", \"ear shape\"],\n  \"promptFidelity\": {\n    \"agreement\": \"partly\",\n    \"differences\": [\"ears are large but not huge\", \"body is small but not extremely tiny\"]\n  }\n}",
+   "analysis": {
+    "subject": "a stylized elephant",
+    "character": [
+     "simple",
+     "cute",
+     "minimalist",
+     "friendly"
+    ],
+    "composition": "a compact, side-profile silhouette with a clear separation of head, body, and legs",
+    "architecture": [
+     "large rounded head with oversized ears attached",
+     "curved trunk extending downward and curling slightly",
+     "rounded body mass connected to four short legs",
+     "small tail depicted as a short curved line"
+    ],
+    "diagnosticFeatures": [
+     "trunk",
+     "large ears",
+     "tusks",
+     "tail",
+     "four legs"
+    ],
+    "modifiers": [
+     "oversized ears",
+     "tiny body",
+     "curled trunk"
+    ],
+    "proportion": "ears are exaggeratedly large compared to the small, compact body",
+    "gesture": "the creature reads as one coherent, simple silhouette with a gentle forward curve in the trunk",
+    "abstraction": {
+     "survives": [
+      "large ears",
+      "trunk shape",
+      "body mass",
+      "four legs",
+      "tail"
+     ],
+     "doNotDrawLiterally": [
+      "curled trunk",
+      "rounded shapes"
+     ],
+     "note": null
+    },
+    "revealCandidates": [
+     "tusks",
+     "tail",
+     "ear shape"
+    ],
+    "promptFidelity": {
+     "agreement": "partly",
+     "differences": [
+      "ears are large but not huge",
+      "body is small but not extremely tiny"
+     ]
+    }
+   },
+   "ok": true
+  },
+  {
+   "id": "twemoji-elephant",
+   "title": "Elephant (Twemoji)",
+   "file": "artwork/twemoji-elephant.png",
+   "bytes": 22721,
+   "prompt": "a tiny elephant with huge ears",
+   "model": "gpt-4.1-mini",
+   "ms": 6745,
+   "visible": "A very simplified flat blue-grey elephant in side view facing left: one big rounded body-and-head mass filling the frame, a single dark eye, a large ear drawn as a curved band, a trunk hanging down at the left, four stubby legs and a small tail. Almost no detail — a bulky rounded silhouette. Plain cream background.",
+   "usage": {
+    "prompt": 1675,
+    "completion": 324
+   },
+   "servedModel": "gpt-4.1-mini-2025-04-14",
+   "validator": {
+    "ok": true,
+    "reasons": [],
+    "repairs": []
+   },
+   "raw": "{\n  \"subject\": \"a tiny elephant with huge ears\",\n  \"character\": [\"cute\", \"simplified\", \"friendly\", \"minimalist\"],\n  \"composition\": \"a compact, rounded body with oversized ears dominating the head area, standing firmly on four short legs\",\n  \"architecture\": [\n    \"large rounded head with a single large ear extending backward\",\n    \"small circular eye near the front of the head\",\n    \"short trunk hanging down from the head\",\n    \"rounded body mass attached directly behind the head\",\n    \"four stubby legs supporting the body\",\n    \"small tail extending from the rear\"\n  ],\n  \"diagnosticFeatures\": [\"trunk\", \"huge ears\", \"rounded body\", \"stubby legs\", \"small tail\", \"large eye\"],\n  \"modifiers\": [\"tiny body\", \"oversized ears\", \"minimal detail\", \"smooth edges\"],\n  \"proportion\": \"ears are disproportionately large compared to the small, compact body and short legs\",\n  \"gesture\": \"the creature reads as one coherent, solid, rounded shape with a gentle forward-facing stance\",\n  \"abstraction\": {\n    \"survives\": [\"large ears\", \"trunk\", \"rounded body\", \"stubby legs\", \"compact form\"],\n    \"doNotDrawLiterally\": [\"smooth minimalism\", \"lack of texture or detail\"]\n  },\n  \"revealCandidates\": [\"trunk\", \"huge ears\", \"stubby legs\"],\n  \"promptFidelity\": {\n    \"agreement\": \"matches\",\n    \"differences\": []\n  }\n}",
+   "analysis": {
+    "subject": "a tiny elephant with huge ears",
+    "character": [
+     "cute",
+     "simplified",
+     "friendly",
+     "minimalist"
+    ],
+    "composition": "a compact, rounded body with oversized ears dominating the head area, standing firmly on four short legs",
+    "architecture": [
+     "large rounded head with a single large ear extending backward",
+     "small circular eye near the front of the head",
+     "short trunk hanging down from the head",
+     "rounded body mass attached directly behind the head",
+     "four stubby legs supporting the body",
+     "small tail extending from the rear"
+    ],
+    "diagnosticFeatures": [
+     "trunk",
+     "huge ears",
+     "rounded body",
+     "stubby legs",
+     "small tail",
+     "large eye"
+    ],
+    "modifiers": [
+     "tiny body",
+     "oversized ears",
+     "minimal detail",
+     "smooth edges"
+    ],
+    "proportion": "ears are disproportionately large compared to the small, compact body and short legs",
+    "gesture": "the creature reads as one coherent, solid, rounded shape with a gentle forward-facing stance",
+    "abstraction": {
+     "survives": [
+      "large ears",
+      "trunk",
+      "rounded body",
+      "stubby legs",
+      "compact form"
+     ],
+     "doNotDrawLiterally": [
+      "smooth minimalism",
+      "lack of texture or detail"
+     ],
+     "note": null
+    },
+    "revealCandidates": [
+     "trunk",
+     "huge ears",
+     "stubby legs"
+    ],
+    "promptFidelity": {
+     "agreement": "matches",
+     "differences": []
+    }
+   },
+   "ok": true
+  },
+  {
+   "id": "gameicons-elephant",
+   "title": "Elephant silhouette (game-icons.net)",
+   "file": "artwork/gameicons-elephant.png",
+   "bytes": 27871,
+   "prompt": "an elephant",
+   "model": "gpt-4.1-mini",
+   "ms": 5124,
+   "visible": "A white silhouette of an elephant on black, side view facing right: a big humped body on four thick legs, a large ear, a long trunk curling under the head, one tusk, a small eye and a tail at the left. Grounded and heavy; the trunk and tusk read at once.",
+   "usage": {
+    "prompt": 1671,
+    "completion": 303
+   },
+   "servedModel": "gpt-4.1-mini-2025-04-14",
+   "validator": {
+    "ok": true,
+    "reasons": [],
+    "repairs": []
+   },
+   "raw": "{\n  \"subject\": \"an elephant\",\n  \"character\": [\"simplified\", \"bold\", \"friendly\", \"iconic\"],\n  \"composition\": \"a compact, solid body with a clear side profile, emphasizing the head and trunk in a smooth, continuous shape\",\n  \"architecture\": [\n    \"large head with a prominent ear forming a rounded triangular shape\",\n    \"curved trunk curling inward beneath the head\",\n    \"four sturdy legs supporting a rectangular body\",\n    \"small tail at the rear\",\n    \"a single visible tusk extending forward from the head\"\n  ],\n  \"diagnosticFeatures\": [\"trunk\", \"tusk\", \"large ear\", \"four legs\", \"tail\"],\n  \"modifiers\": [\"stylized\", \"minimal detail\", \"curled trunk\", \"smiling eye\"],\n  \"proportion\": \"head and trunk are slightly exaggerated relative to the body for emphasis\",\n  \"gesture\": \"the elephant reads as one coherent, solid shape with a gentle forward curve from head to trunk\",\n  \"abstraction\": {\n    \"survives\": [\"trunk\", \"ear shape\", \"tusk\", \"four legs\", \"body mass\"],\n    \"doNotDrawLiterally\": [\"smiling eye\", \"curled trunk\"]\n  },\n  \"revealCandidates\": [\"tusk\", \"curled trunk\", \"large ear\"],\n  \"promptFidelity\": {\n    \"agreement\": \"matches\",\n    \"differences\": []\n  }\n}",
+   "analysis": {
+    "subject": "an elephant",
+    "character": [
+     "simplified",
+     "bold",
+     "friendly",
+     "iconic"
+    ],
+    "composition": "a compact, solid body with a clear side profile, emphasizing the head and trunk in a smooth, continuous shape",
+    "architecture": [
+     "large head with a prominent ear forming a rounded triangular shape",
+     "curved trunk curling inward beneath the head",
+     "four sturdy legs supporting a rectangular body",
+     "small tail at the rear",
+     "a single visible tusk extending forward from the head"
+    ],
+    "diagnosticFeatures": [
+     "trunk",
+     "tusk",
+     "large ear",
+     "four legs",
+     "tail"
+    ],
+    "modifiers": [
+     "stylized",
+     "minimal detail",
+     "curled trunk",
+     "smiling eye"
+    ],
+    "proportion": "head and trunk are slightly exaggerated relative to the body for emphasis",
+    "gesture": "the elephant reads as one coherent, solid shape with a gentle forward curve from head to trunk",
+    "abstraction": {
+     "survives": [
+      "trunk",
+      "ear shape",
+      "tusk",
+      "four legs",
+      "body mass"
+     ],
+     "doNotDrawLiterally": [
+      "smiling eye",
+      "curled trunk"
+     ],
+     "note": null
+    },
+    "revealCandidates": [
+     "tusk",
+     "curled trunk",
+     "large ear"
+    ],
+    "promptFidelity": {
+     "agreement": "matches",
+     "differences": []
+    }
+   },
+   "ok": true
+  },
+  {
+   "id": "gameicons-falcon",
+   "title": "Falcon in flight with a crescent moon (game-icons.net)",
+   "file": "artwork/gameicons-falcon-moon.png",
+   "bytes": 28078,
+   "prompt": "a falcon",
+   "model": "gpt-4.1-mini",
+   "ms": 5987,
+   "visible": "A white silhouette on black of a falcon in flight, seen from below and slightly behind, body diagonal from lower-left to upper-right, wings swept in a wide X across the frame with a forked tail at the lower left; a large crescent moon arcs behind it at the upper right. Two overlapping shapes — the bird's X of wings and the moon's arc.",
+   "usage": {
+    "prompt": 1672,
+    "completion": 382
+   },
+   "servedModel": "gpt-4.1-mini-2025-04-14",
+   "validator": {
+    "ok": true,
+    "reasons": [],
+    "repairs": []
+   },
+   "raw": "{\n  \"subject\": \"stylized falcon silhouette\",\n  \"character\": [\"bold\", \"dynamic\", \"minimalist\", \"sharp\", \"symbolic\"],\n  \"composition\": \"The falcon is depicted in a strong, angular pose with wings spread wide, positioned diagonally across the image, complemented by a crescent shape behind it.\",\n  \"architecture\": [\n    \"central body forming the core mass\",\n    \"two wings extending diagonally from the body with pointed feather tips\",\n    \"head with a curved beak attached to the front of the body\",\n    \"tail extending from the rear of the body\",\n    \"crescent shape positioned behind the falcon, framing the upper right side\"\n  ],\n  \"diagnosticFeatures\": [\"hooked beak\", \"spread wings\", \"pointed feathers\", \"tail\", \"crescent shape\"],\n  \"modifiers\": [\"silhouette\", \"high contrast\", \"simplified shapes\", \"angular wings\", \"curved crescent\"],\n  \"proportion\": \"The wings are broad and angular, dominating the composition, while the body and head are compact and streamlined.\",\n  \"gesture\": \"The falcon reads as one coherent, dynamic gesture with a strong diagonal thrust, conveying motion and power.\",\n  \"abstraction\": {\n    \"survives\": [\"hooked beak\", \"spread wings\", \"tail\", \"crescent shape\", \"diagonal posture\"],\n    \"doNotDrawLiterally\": [\"solid silhouette\", \"sharp feather points\"],\n    \"note\": \"The crescent shape is a graphic element that complements the falcon but is not a literal part of the bird.\"\n  },\n  \"revealCandidates\": [\"hooked beak\", \"feather tips\", \"crescent shape\"],\n  \"promptFidelity\": {\n    \"agreement\": \"matches\",\n    \"differences\": []\n  }\n}",
+   "analysis": {
+    "subject": "stylized falcon silhouette",
+    "character": [
+     "bold",
+     "dynamic",
+     "minimalist",
+     "sharp",
+     "symbolic"
+    ],
+    "composition": "The falcon is depicted in a strong, angular pose with wings spread wide, positioned diagonally across the image, complemented by a crescent shape behind it.",
+    "architecture": [
+     "central body forming the core mass",
+     "two wings extending diagonally from the body with pointed feather tips",
+     "head with a curved beak attached to the front of the body",
+     "tail extending from the rear of the body",
+     "crescent shape positioned behind the falcon, framing the upper right side"
+    ],
+    "diagnosticFeatures": [
+     "hooked beak",
+     "spread wings",
+     "pointed feathers",
+     "tail",
+     "crescent shape"
+    ],
+    "modifiers": [
+     "silhouette",
+     "high contrast",
+     "simplified shapes",
+     "angular wings",
+     "curved crescent"
+    ],
+    "proportion": "The wings are broad and angular, dominating the composition, while the body and head are compact and streamlined.",
+    "gesture": "The falcon reads as one coherent, dynamic gesture with a strong diagonal thrust, conveying motion and power.",
+    "abstraction": {
+     "survives": [
+      "hooked beak",
+      "spread wings",
+      "tail",
+      "crescent shape",
+      "diagonal posture"
+     ],
+     "doNotDrawLiterally": [
+      "solid silhouette",
+      "sharp feather points"
+     ],
+     "note": "The crescent shape is a graphic element that complements the falcon but is not a literal part of the bird."
+    },
+    "revealCandidates": [
+     "hooked beak",
+     "feather tips",
+     "crescent shape"
+    ],
+    "promptFidelity": {
+     "agreement": "matches",
+     "differences": []
+    }
+   },
+   "ok": true
+  },
+  {
+   "id": "openmoji-eagle",
+   "title": "Eagle, a bird of prey (OpenMoji)",
+   "file": "artwork/openmoji-eagle.png",
+   "bytes": 31848,
+   "prompt": "a falcon",
+   "model": "gpt-4.1-mini",
+   "ms": 6398,
+   "visible": "An outlined brown bird of prey with a white head and a yellow hooked beak, seen side-on facing left in a landing or perching pose: body leaning forward, both wings raised up and back behind it, tail feathers down at the right, one leg with talons reaching to the ground. The two raised wings are the biggest shapes. Plain cream background.",
+   "usage": {
+    "prompt": 1672,
+    "completion": 347
+   },
+   "servedModel": "gpt-4.1-mini-2025-04-14",
+   "validator": {
+    "ok": true,
+    "reasons": [],
+    "repairs": []
+   },
+   "raw": "{\n  \"subject\": \"stylized falcon\",\n  \"character\": [\"bold\", \"simplified\", \"graphic\", \"compact\"],\n  \"composition\": \"a compact, upright posture with a strong diagonal formed by the wing and tail, suggesting readiness or alertness\",\n  \"architecture\": [\n    \"a rounded body forming the central mass\",\n    \"a large wing attached to the upper back, extending upward and backward\",\n    \"a small, curved head with a sharp beak at the front\",\n    \"a single visible leg with a claw beneath the body\",\n    \"a tail extending backward and slightly downward from the body\"\n  ],\n  \"diagnosticFeatures\": [\"hooked beak\", \"wing\", \"tail\", \"claw\", \"head shape\"],\n  \"modifiers\": [\"oversized wing\", \"simplified shapes\", \"bold outlines\", \"minimal detail\"],\n  \"proportion\": \"the wing is exaggerated in size relative to the body, while the head and leg are simplified and small\",\n  \"gesture\": \"the figure reads as one coherent, compact gesture with a clear forward and upward thrust\",\n  \"abstraction\": {\n    \"survives\": [\"hooked beak\", \"wing shape\", \"tail\", \"body mass\", \"claw\"],\n    \"doNotDrawLiterally\": [\"solid filled shapes\", \"bold black outlines\"]\n  },\n  \"revealCandidates\": [\"wing\", \"hooked beak\", \"claw\"],\n  \"promptFidelity\": {\n    \"agreement\": \"partly\",\n    \"differences\": [\"highly stylized form\", \"missing detailed feathers\", \"single leg visible\", \"exaggerated wing size\"]\n  }\n}",
+   "analysis": {
+    "subject": "stylized falcon",
+    "character": [
+     "bold",
+     "simplified",
+     "graphic",
+     "compact"
+    ],
+    "composition": "a compact, upright posture with a strong diagonal formed by the wing and tail, suggesting readiness or alertness",
+    "architecture": [
+     "a rounded body forming the central mass",
+     "a large wing attached to the upper back, extending upward and backward",
+     "a small, curved head with a sharp beak at the front",
+     "a single visible leg with a claw beneath the body",
+     "a tail extending backward and slightly downward from the body"
+    ],
+    "diagnosticFeatures": [
+     "hooked beak",
+     "wing",
+     "tail",
+     "claw",
+     "head shape"
+    ],
+    "modifiers": [
+     "oversized wing",
+     "simplified shapes",
+     "bold outlines",
+     "minimal detail"
+    ],
+    "proportion": "the wing is exaggerated in size relative to the body, while the head and leg are simplified and small",
+    "gesture": "the figure reads as one coherent, compact gesture with a clear forward and upward thrust",
+    "abstraction": {
+     "survives": [
+      "hooked beak",
+      "wing shape",
+      "tail",
+      "body mass",
+      "claw"
+     ],
+     "doNotDrawLiterally": [
+      "solid filled shapes",
+      "bold black outlines"
+     ],
+     "note": null
+    },
+    "revealCandidates": [
+     "wing",
+     "hooked beak",
+     "claw"
+    ],
+    "promptFidelity": {
+     "agreement": "partly",
+     "differences": [
+      "highly stylized form",
+      "missing detailed feathers",
+      "single leg visible",
+      "exaggerated wing size"
+     ]
+    }
+   },
+   "ok": true
+  },
+  {
+   "id": "gameicons-centaur",
+   "title": "Centaur archer silhouette (game-icons.net)",
+   "file": "artwork/gameicons-centaur.png",
+   "bytes": 34715,
+   "prompt": "a centaur",
+   "model": "gpt-4.1-mini",
+   "ms": 5869,
+   "visible": "A white silhouette on black of a centaur: a horse body in side view facing right, standing on four legs with a tail at the left, and from where the horse's neck would be a human torso rises upright with a round head, one arm drawn back and the other holding a bow with an arrow aimed up and to the left. The human half sits on top of the horse half at the front of the horse body; the bow is the largest single shape above.",
+   "usage": {
+    "prompt": 1672,
+    "completion": 309
+   },
+   "servedModel": "gpt-4.1-mini-2025-04-14",
+   "validator": {
+    "ok": true,
+    "reasons": [],
+    "repairs": []
+   },
+   "raw": "{\n  \"subject\": \"centaur\",\n  \"character\": [\"mythical\", \"dynamic\", \"bold\", \"simplified\"],\n  \"composition\": \"A compact, upright figure combining a human torso and head with a horse's body, arranged in a balanced, stable stance.\",\n  \"architecture\": [\n    \"human upper body with an oval head and simplified arms\",\n    \"horse body forming the lower half, with four legs\",\n    \"human torso seamlessly attached to the horse body at the waist\",\n    \"one arm raised holding a bow\",\n    \"tail extending from the horse body\"\n  ],\n  \"diagnosticFeatures\": [\"human torso\", \"horse body\", \"four legs\", \"bow\", \"tail\"],\n  \"modifiers\": [\"stylized\", \"minimalist\", \"solid silhouette\", \"no facial features\"],\n  \"proportion\": \"The human upper body is proportionally smaller and simplified compared to the horse body, which dominates the figure.\",\n  \"gesture\": \"The figure reads as one coherent gesture, with the raised arm and bow creating a sense of action and readiness.\",\n  \"abstraction\": {\n    \"survives\": [\"human torso\", \"horse body\", \"four legs\", \"bow\", \"tail\"],\n    \"doNotDrawLiterally\": [\"faceless head\", \"solid shapes without detail\"]\n  },\n  \"revealCandidates\": [\"bow\", \"tail\"],\n  \"promptFidelity\": {\n    \"agreement\": \"matches\",\n    \"differences\": []\n  }\n}",
+   "analysis": {
+    "subject": "centaur",
+    "character": [
+     "mythical",
+     "dynamic",
+     "bold",
+     "simplified"
+    ],
+    "composition": "A compact, upright figure combining a human torso and head with a horse's body, arranged in a balanced, stable stance.",
+    "architecture": [
+     "human upper body with an oval head and simplified arms",
+     "horse body forming the lower half, with four legs",
+     "human torso seamlessly attached to the horse body at the waist",
+     "one arm raised holding a bow",
+     "tail extending from the horse body"
+    ],
+    "diagnosticFeatures": [
+     "human torso",
+     "horse body",
+     "four legs",
+     "bow",
+     "tail"
+    ],
+    "modifiers": [
+     "stylized",
+     "minimalist",
+     "solid silhouette",
+     "no facial features"
+    ],
+    "proportion": "The human upper body is proportionally smaller and simplified compared to the horse body, which dominates the figure.",
+    "gesture": "The figure reads as one coherent gesture, with the raised arm and bow creating a sense of action and readiness.",
+    "abstraction": {
+     "survives": [
+      "human torso",
+      "horse body",
+      "four legs",
+      "bow",
+      "tail"
+     ],
+     "doNotDrawLiterally": [
+      "faceless head",
+      "solid shapes without detail"
+     ],
+     "note": null
+    },
+    "revealCandidates": [
+     "bow",
+     "tail"
+    ],
+    "promptFidelity": {
+     "agreement": "matches",
+     "differences": []
+    }
+   },
+   "ok": true
+  },
+  {
+   "id": "twemoji-dragon",
+   "title": "Dragon, serpentine (Twemoji)",
+   "file": "artwork/twemoji-dragon.png",
+   "bytes": 43392,
+   "prompt": "a smiling dragon with enormous wings",
+   "model": "gpt-4.1-mini",
+   "ms": 5673,
+   "visible": "A flat green dragon with a long serpentine body that rises from the head at the upper left, dips in a deep U, and rises again into a tail at the upper right; a ridge of dark spines runs along its whole back; a frowning face with a single eye, a snout and two white fangs; one small clawed hand at the left under the neck; no wings. The body is one thick continuous U-curve. Plain cream background.",
+   "usage": {
+    "prompt": 1675,
+    "completion": 337
+   },
+   "servedModel": "gpt-4.1-mini-2025-04-14",
+   "validator": {
+    "ok": true,
+    "reasons": [],
+    "repairs": []
+   },
+   "raw": "{\n  \"subject\": \"a cartoonish green dragon\",\n  \"character\": [\"playful\", \"friendly\", \"simplified\", \"cheerful\"],\n  \"composition\": \"a compact, curved body forming a loose 'S' shape with the head raised and tail curled upward\",\n  \"architecture\": [\n    \"elongated head with two white teeth protruding from the lower jaw\",\n    \"single visible arm with three clawed fingers raised near the head\",\n    \"spiky ridge running from the top of the head down the back to the tail\",\n    \"thick, tapering tail curling upward\",\n    \"no visible wings\"\n  ],\n  \"diagnosticFeatures\": [\"snout\", \"teeth\", \"clawed hand\", \"spiky ridge\", \"curled tail\"],\n  \"modifiers\": [\"smiling\", \"simplified shapes\", \"no wings\"],\n  \"proportion\": \"head and body are large and rounded, claws and teeth are exaggerated, tail is thick and curves prominently\",\n  \"gesture\": \"the creature reads as a single coherent curved gesture emphasizing a playful, upright posture\",\n  \"abstraction\": {\n    \"survives\": [\"curved body shape\", \"spiky ridge\", \"clawed hand\", \"teeth\", \"head shape\"],\n    \"doNotDrawLiterally\": [\"smile\", \"color gradients\"]\n  },\n  \"revealCandidates\": [\"spiky ridge\", \"clawed hand\", \"teeth\"],\n  \"promptFidelity\": {\n    \"agreement\": \"differs\",\n    \"differences\": [\"no wings visible\", \"expression is more neutral than smiling\"]\n  }\n}",
+   "analysis": {
+    "subject": "a cartoonish green dragon",
+    "character": [
+     "playful",
+     "friendly",
+     "simplified",
+     "cheerful"
+    ],
+    "composition": "a compact, curved body forming a loose 'S' shape with the head raised and tail curled upward",
+    "architecture": [
+     "elongated head with two white teeth protruding from the lower jaw",
+     "single visible arm with three clawed fingers raised near the head",
+     "spiky ridge running from the top of the head down the back to the tail",
+     "thick, tapering tail curling upward",
+     "no visible wings"
+    ],
+    "diagnosticFeatures": [
+     "snout",
+     "teeth",
+     "clawed hand",
+     "spiky ridge",
+     "curled tail"
+    ],
+    "modifiers": [
+     "smiling",
+     "simplified shapes",
+     "no wings"
+    ],
+    "proportion": "head and body are large and rounded, claws and teeth are exaggerated, tail is thick and curves prominently",
+    "gesture": "the creature reads as a single coherent curved gesture emphasizing a playful, upright posture",
+    "abstraction": {
+     "survives": [
+      "curved body shape",
+      "spiky ridge",
+      "clawed hand",
+      "teeth",
+      "head shape"
+     ],
+     "doNotDrawLiterally": [
+      "smile",
+      "color gradients"
+     ],
+     "note": null
+    },
+    "revealCandidates": [
+     "spiky ridge",
+     "clawed hand",
+     "teeth"
+    ],
+    "promptFidelity": {
+     "agreement": "differs",
+     "differences": [
+      "no wings visible",
+      "expression is more neutral than smiling"
+     ]
+    }
+   },
+   "ok": true
+  },
+  {
+   "id": "openmoji-dragon",
+   "title": "Dragon breathing fire (OpenMoji)",
+   "file": "artwork/openmoji-dragon.png",
+   "bytes": 41858,
+   "prompt": "a dragon",
+   "model": "gpt-4.1-mini",
+   "ms": 11258,
+   "visible": "An outlined lime-green dragon rearing up and facing right, breathing a small red flame from its open mouth; a spiky head with horns, a long neck, one raised wing spread to the left, a small foreleg, and a tail curling down and to the left below the body. Upright rearing pose; the neck, wing and tail all curve away from a small body. Plain cream background.",
+   "usage": {
+    "prompt": 1671,
+    "completion": 306
+   },
+   "servedModel": "gpt-4.1-mini-2025-04-14",
+   "validator": {
+    "ok": true,
+    "reasons": [],
+    "repairs": []
+   },
+   "raw": "{\n  \"subject\": \"stylized dragon\",\n  \"character\": [\"playful\", \"simplified\", \"bold\", \"iconic\"],\n  \"composition\": \"a compact, upright figure with a clear separation between head, wing, and tail elements\",\n  \"architecture\": [\n    \"head with open mouth facing right\",\n    \"three short horn-like protrusions on top of the head\",\n    \"wing extending backward from the upper body\",\n    \"curved tail flowing downward from the lower body\",\n    \"tongue or flame-like shape emerging from the mouth\"\n  ],\n  \"diagnosticFeatures\": [\"horns\", \"wing\", \"open mouth\", \"tongue or flame\", \"curved tail\"],\n  \"modifiers\": [\"bright green color\", \"thick black outline\", \"red tongue or flame\"],\n  \"proportion\": \"head and wing are roughly balanced in size, tail is elongated and flowing\",\n  \"gesture\": \"the figure reads as one coherent, upward and rightward flowing gesture\",\n  \"abstraction\": {\n    \"survives\": [\"head shape\", \"horns\", \"wing outline\", \"curved tail\", \"tongue or flame\"],\n    \"doNotDrawLiterally\": [\"thick black outlines\", \"solid fill colors\"]\n  },\n  \"revealCandidates\": [\"horns\", \"wing shape\", \"tongue or flame\"],\n  \"promptFidelity\": {\n    \"agreement\": \"matches\",\n    \"differences\": []\n  }\n}",
+   "analysis": {
+    "subject": "stylized dragon",
+    "character": [
+     "playful",
+     "simplified",
+     "bold",
+     "iconic"
+    ],
+    "composition": "a compact, upright figure with a clear separation between head, wing, and tail elements",
+    "architecture": [
+     "head with open mouth facing right",
+     "three short horn-like protrusions on top of the head",
+     "wing extending backward from the upper body",
+     "curved tail flowing downward from the lower body",
+     "tongue or flame-like shape emerging from the mouth"
+    ],
+    "diagnosticFeatures": [
+     "horns",
+     "wing",
+     "open mouth",
+     "tongue or flame",
+     "curved tail"
+    ],
+    "modifiers": [
+     "bright green color",
+     "thick black outline",
+     "red tongue or flame"
+    ],
+    "proportion": "head and wing are roughly balanced in size, tail is elongated and flowing",
+    "gesture": "the figure reads as one coherent, upward and rightward flowing gesture",
+    "abstraction": {
+     "survives": [
+      "head shape",
+      "horns",
+      "wing outline",
+      "curved tail",
+      "tongue or flame"
+     ],
+     "doNotDrawLiterally": [
+      "thick black outlines",
+      "solid fill colors"
+     ],
+     "note": null
+    },
+    "revealCandidates": [
+     "horns",
+     "wing shape",
+     "tongue or flame"
+    ],
+    "promptFidelity": {
+     "agreement": "matches",
+     "differences": []
+    }
+   },
+   "ok": true
+  },
+  {
+   "id": "gameicons-sea-dragon",
+   "title": "Sea dragon silhouette (game-icons.net)",
+   "file": "artwork/gameicons-sea-dragon.png",
+   "bytes": 29944,
+   "prompt": "a playful sea creature with butterfly wings",
+   "model": "gpt-4.1-mini",
+   "ms": 6633,
+   "visible": "A white silhouette on black of a serpentine dragon coiled in a thick S: a horned head at the upper right facing right with an open jaw, the body curving down and around to the left and back under itself to a rounded tail at the lower right, a fin-like crest along the upper back. One thick continuous S-curve; no legs, no wings.",
+   "usage": {
+    "prompt": 1676,
+    "completion": 341
+   },
+   "servedModel": "gpt-4.1-mini-2025-04-14",
+   "validator": {
+    "ok": true,
+    "reasons": [],
+    "repairs": []
+   },
+   "raw": "{\n  \"subject\": \"stylized sea serpent or dragon\",\n  \"character\": [\"bold\", \"simplified\", \"strong\", \"mythical\", \"abstract\"],\n  \"composition\": \"a compact, curved S-shape with a strong forward-facing head and a tail curling back toward the body\",\n  \"architecture\": [\n    \"thick serpentine body forming a smooth S-curve\",\n    \"head with angular snout and a single pointed horn or crest\",\n    \"eye represented as a sharp, almond-shaped cutout\",\n    \"tail ends in a large, arrowhead-like fin\"\n  ],\n  \"diagnosticFeatures\": [\"serpentine body\", \"horn or crest\", \"arrowhead tail\", \"sharp eye shape\"],\n  \"modifiers\": [\"bold silhouette\", \"no visible wings\", \"high contrast black and white\"],\n  \"proportion\": \"body is thick and uniform in width, head is angular and prominent, tail tapers to a pointed fin\",\n  \"gesture\": \"the creature reads as one coherent flowing S-shaped gesture emphasizing smooth curves and a strong forward direction\",\n  \"abstraction\": {\n    \"survives\": [\"S-shaped body curve\", \"angular head\", \"arrowhead tail\", \"single eye shape\"],\n    \"doNotDrawLiterally\": [\"horn as a sharp spike\", \"tail fin as an arrowhead\"]\n  },\n  \"revealCandidates\": [\"horn or crest\", \"eye shape\", \"tail fin\"],\n  \"promptFidelity\": {\n    \"agreement\": \"differs\",\n    \"differences\": [\"no butterfly wings visible\", \"creature appears more dragon-like than playful sea creature\"]\n  }\n}",
+   "analysis": {
+    "subject": "stylized sea serpent or dragon",
+    "character": [
+     "bold",
+     "simplified",
+     "strong",
+     "mythical",
+     "abstract"
+    ],
+    "composition": "a compact, curved S-shape with a strong forward-facing head and a tail curling back toward the body",
+    "architecture": [
+     "thick serpentine body forming a smooth S-curve",
+     "head with angular snout and a single pointed horn or crest",
+     "eye represented as a sharp, almond-shaped cutout",
+     "tail ends in a large, arrowhead-like fin"
+    ],
+    "diagnosticFeatures": [
+     "serpentine body",
+     "horn or crest",
+     "arrowhead tail",
+     "sharp eye shape"
+    ],
+    "modifiers": [
+     "bold silhouette",
+     "no visible wings",
+     "high contrast black and white"
+    ],
+    "proportion": "body is thick and uniform in width, head is angular and prominent, tail tapers to a pointed fin",
+    "gesture": "the creature reads as one coherent flowing S-shaped gesture emphasizing smooth curves and a strong forward direction",
+    "abstraction": {
+     "survives": [
+      "S-shaped body curve",
+      "angular head",
+      "arrowhead tail",
+      "single eye shape"
+     ],
+     "doNotDrawLiterally": [
+      "horn as a sharp spike",
+      "tail fin as an arrowhead"
+     ],
+     "note": null
+    },
+    "revealCandidates": [
+     "horn or crest",
+     "eye shape",
+     "tail fin"
+    ],
+    "promptFidelity": {
+     "agreement": "differs",
+     "differences": [
+      "no butterfly wings visible",
+      "creature appears more dragon-like than playful sea creature"
+     ]
+    }
+   },
+   "ok": true
+  }
+ ]
+}

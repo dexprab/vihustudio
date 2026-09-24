@@ -85,7 +85,10 @@
       // here or there ever writes it to storage or into an export.
       Conn.setDirectKey($('directKey').value); paintStatus();
     });
+    var seed = Conn.models ? Conn.models() : null;
+    if (seed) { $('directModel').value = seed.model; if ($('directImageModel')) $('directImageModel').value = seed.imageModel; }
     $('directModel').addEventListener('input', function () { Conn.setDirectModel($('directModel').value); });
+    if ($('directImageModel')) $('directImageModel').addEventListener('input', function () { Conn.setDirectImageModel($('directImageModel').value); });
     $('testBtn').addEventListener('click', function () {
       $('testBtn').disabled = true;
       Conn.probe().then(function () { $('testBtn').disabled = false; paintStatus(); });

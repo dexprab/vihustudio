@@ -15,11 +15,30 @@ prompt is built in ONE place (`tools/ether-mystery-lab/labKit.js`);
 the function holds the KEY, the session-derived caller check, the
 `platform_admins` gate, the `lab-generate` rate bucket (30/hour), the
 bounded one-attempt request, and the guarantee that no provider error
-text and no key ever reaches a browser. Its `BUILD` is `LAB2` — LAB2 added the
-creature pipeline's `image` action (one gpt-image-2 candidate per request) and
-lets a relayed message carry PARTS: text plus one image data URL, so the text
-model can read a picture. A `LAB1` deployment still answers the Mystery Lab
-and refuses the Shape Lab's image action with `unknown-action`.
+text and no key ever reaches a browser. Its `BUILD` is `LAB3`.
+
+Since build `LAB2` (the Shape Lab's prompt → visual → understanding
+sprint) it carries THREE actions behind the one gate and the one
+bucket: `generate` (chat, structured text), `imagine`
+(`images/generations` — artistic interpretations of a creative prompt;
+an account with no image model is relayed as the one word
+`no-image-model`, which the Lab shows as UNAVAILABLE) and `understand`
+(chat with ONE picture attached as an image part — what is visible in
+a chosen picture; the picture is validated by type and size, reaches
+the provider and nowhere else, and is never stored). The `lab-generate`
+bucket (30/hour) counts all three: an `imagine` press asks for three
+pictures at once, so an administrator deliberately pressing it every
+two minutes for an hour is the ceiling, and that is a research session
+rather than a leak.
+
+`LAB3` serves the creature pipeline (PROMPT. CHOOSE. THE LAB DOES THE
+REST) on the same routes: `imagine` accepts an optional `quality`
+(low · medium · high) and `format` (png · jpeg) from two short lists —
+the Lab asks for one low-quality JPEG candidate per request, three in
+parallel — and a `generate` message may carry PARTS: text plus ONE
+image data URL, bounded, so the text model can read the chosen picture.
+A `LAB1` deployment still answers the Mystery Lab and refuses both
+image actions with `unknown-action`.
 
 It is NOT part of the Ether runtime and no child-facing path reaches
 it. A candidate it returns still passes the one validator, a human
@@ -58,7 +77,7 @@ review, and a reviewed commit before any child could meet it.
    paste `https://<project>.supabase.co/functions/v1/lab-generate`
    and an administrator session's access token → **Test connection**.
    Expected: `LLM CONNECTED (endpoint)`, and the ping reports
-   `build: LAB2, provider: configured`. `provider: none` means step 3;
+   `build: LAB3, provider: configured, imageModel: gpt-image-2`. `provider: none` means step 3;
    401 means the token; 403 means step 4.
 
 6. **Generate.** Every failure is HTTP 200 with a one-word reason
