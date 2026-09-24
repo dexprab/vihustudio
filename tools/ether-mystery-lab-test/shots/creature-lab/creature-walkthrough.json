@@ -1,0 +1,1033 @@
+{
+  "ranAt": "2026-09-24T15:31:33.494Z",
+  "credential": "network-held",
+  "proxy": true,
+  "creatures": [
+    {
+      "prompt": "A panda made of stars in a night sky",
+      "slug": "a-panda-made-of-stars-in-a-night-sky",
+      "epoch": 1,
+      "images": {
+        "count": 1,
+        "ms": 25941,
+        "note": "1 image from LLM — Direct (dev) · gpt-image-2 (2 did not arrive) — choose the one you like.",
+        "last": {
+          "mode": "direct",
+          "outcome": "generated",
+          "model": "gpt-image-2",
+          "count": 1,
+          "failed": 2,
+          "ms": 25836,
+          "prompt": "A panda made of stars in a night sky. One whole creature, its entire body visible and centred, clearly silhouetted against a dark night sky. No text, no frame, no other figures."
+        }
+      },
+      "chosen": 0,
+      "build": {
+        "ms": 53523,
+        "note": "Creature built from the chosen image (LLM — Direct (dev) · gpt-4.1). Review it: UNFINISHED · COMPLETE · COME ALIVE.",
+        "last": {
+          "mode": "direct",
+          "model": "gpt-4.1",
+          "ms": 30877,
+          "refine": "",
+          "another": true,
+          "outcome": "generated",
+          "parse": {
+            "ok": true,
+            "reasons": [],
+            "repairs": [
+              "creature-name-stripped"
+            ]
+          },
+          "compile": {
+            "ok": true,
+            "reasons": [],
+            "repairs": [
+              "fitted:1.21"
+            ]
+          },
+          "rawChars": 2076,
+          "source": "generated",
+          "confidence": 0.94,
+          "loaded": true
+        },
+        "retries": 1,
+        "refusedRaw": [
+          null
+        ]
+      },
+      "creature": "PANDA",
+      "seen": "The panda is standing facing forward-left, with its legs, full face, and both ears clearly visible; the full right side is seen.",
+      "confidence": 0.94,
+      "budget": 16,
+      "points": 15,
+      "joins": 17,
+      "missing": [
+        "NOSE — CHIN",
+        "SHOULDER — BACK HIP",
+        "FRONT PAW RIGHT — CHEST"
+      ],
+      "missingSource": "model",
+      "reveals": [
+        {
+          "name": "LEFT EYE PATCH",
+          "role": "IDENTITY",
+          "kind": "fill",
+          "at": "LEFT EYE",
+          "toward": "NOSE",
+          "why": "The eye patch makes this unmistakably a panda."
+        },
+        {
+          "name": "NOSE SHINE",
+          "role": "LIFE",
+          "kind": "glow",
+          "at": "NOSE",
+          "toward": null,
+          "why": "A soft shine at the nose brings a sense of warmth to the face."
+        },
+        {
+          "name": "EAR CONTOUR",
+          "role": "IDENTITY",
+          "kind": "contour",
+          "at": "LEFT EAR",
+          "toward": "HEAD TOP",
+          "why": "Ear fluff marks it as a bear-like creature."
+        },
+        {
+          "name": "SHOULDER FUR",
+          "role": "LIFE",
+          "kind": "contour",
+          "at": "SHOULDER",
+          "toward": "BACK HIP",
+          "why": "Flowing fur defines the bear's solid body."
+        }
+      ],
+      "hint": "A gentle wonder of misty forests glimmers in the sky…",
+      "hold": 4.8,
+      "alive": {
+        "gesture": "Ready and gentle, the panda stands solid with a soft, alert curiosity.",
+        "movement": "This panda would sway and amble gently forward, pausing to sniff the night air."
+      },
+      "playableInEther": false,
+      "strip": "PANDA · 15 POINTS · 17 CONNECTED · 3 MISSING · 4 REVEAL",
+      "summary": "PANDA · 15 points · 3 missing · 4 reveals",
+      "extractionPoints": 15,
+      "outcome": "built",
+      "aliveAt4600": {
+        "state": "alive",
+        "playing": true,
+        "ms": 4622,
+        "phase": "alive",
+        "frame": 278,
+        "scale": 0.71,
+        "pos": [
+          -0.05,
+          0.04
+        ],
+        "travelled": 0.06,
+        "painted": 4
+      },
+      "aliveAt7600": {
+        "state": "alive",
+        "playing": true,
+        "ms": 9422,
+        "phase": "roam",
+        "frame": 562,
+        "scale": 0.71,
+        "pos": [
+          -0.09,
+          -0.06
+        ],
+        "travelled": 1.22,
+        "painted": 4
+      },
+      "comeAliveWorks": true,
+      "leak": {
+        "editorName": "PANDA",
+        "sessionCreature": "PANDA",
+        "previousNamesPresent": []
+      }
+    },
+    {
+      "prompt": "A mermaid made of stars in a night sky",
+      "slug": "a-mermaid-made-of-stars-in-a-night-sky",
+      "epoch": 2,
+      "images": {
+        "count": 2,
+        "ms": 19669,
+        "note": "2 images from LLM — Direct (dev) · gpt-image-2 (1 did not arrive) — choose the one you like.",
+        "last": {
+          "mode": "direct",
+          "outcome": "generated",
+          "model": "gpt-image-2",
+          "count": 2,
+          "failed": 1,
+          "ms": 19453,
+          "prompt": "A mermaid made of stars in a night sky. One whole creature, its entire body visible and centred, clearly silhouetted against a dark night sky. No text, no frame, no other figures."
+        }
+      },
+      "chosen": 0,
+      "build": {
+        "ms": 19599,
+        "note": "Creature built from the chosen image (LLM — Direct (dev) · gpt-4.1). Review it: UNFINISHED · COMPLETE · COME ALIVE.",
+        "last": {
+          "mode": "direct",
+          "model": "gpt-4.1",
+          "ms": 8071,
+          "refine": "",
+          "another": false,
+          "outcome": "generated",
+          "parse": {
+            "ok": true,
+            "reasons": [],
+            "repairs": [
+              "reveal-name-stripped:2"
+            ]
+          },
+          "compile": {
+            "ok": true,
+            "reasons": [],
+            "repairs": [
+              "fitted:1.11"
+            ]
+          },
+          "rawChars": 1881,
+          "source": "generated",
+          "confidence": 0.98,
+          "loaded": true
+        },
+        "retries": 0
+      },
+      "creature": "MERMAID",
+      "seen": "Side view of a mermaid, head in profile, arms drifting back, hair streaming, tail fin spread.",
+      "confidence": 0.98,
+      "budget": 16,
+      "points": 13,
+      "joins": 14,
+      "missing": [
+        "RIGHT HAND — RIGHT HIP",
+        "LEFT HIP — LEFT HAND",
+        "TAIL TIP — TAIL RIGHT"
+      ],
+      "missingSource": "model",
+      "reveals": [
+        {
+          "name": "HAIR FLOW",
+          "role": "LIFE",
+          "kind": "contour",
+          "at": "HEAD",
+          "toward": "HAIR TIP",
+          "why": "Long flowing hair defines her silhouette."
+        },
+        {
+          "name": "TAIL FIN",
+          "role": "IDENTITY",
+          "kind": "fill",
+          "at": "TAIL BASE",
+          "toward": "TAIL TIP",
+          "why": "The wide, split fin is key for a mermaid."
+        },
+        {
+          "name": "EYE",
+          "role": "MAGIC",
+          "kind": "glow",
+          "at": "HEAD",
+          "toward": null,
+          "why": "A single glowing eye gives her life."
+        },
+        {
+          "name": "FIN LINES",
+          "role": "LIFE",
+          "kind": "lines",
+          "at": "TAIL TIP",
+          "toward": "TAIL BASE",
+          "why": "Flowing lines show the fin's movement."
+        }
+      ],
+      "hint": "A shimmering dweller of the deep is drifting through the sky…",
+      "hold": 5,
+      "alive": {
+        "gesture": "She arches gracefully upward, arms drifting back and tail curling below.",
+        "movement": "She would ripple through the water, hair and tail flowing with every motion."
+      },
+      "playableInEther": false,
+      "strip": "MERMAID · 13 POINTS · 14 CONNECTED · 3 MISSING · 4 REVEAL",
+      "summary": "MERMAID · 13 points · 3 missing · 4 reveals",
+      "extractionPoints": 13,
+      "outcome": "built",
+      "aliveAt4600": {
+        "state": "alive",
+        "playing": true,
+        "ms": 4626,
+        "phase": "alive",
+        "frame": 278,
+        "scale": 0.71,
+        "pos": [
+          0,
+          0.06
+        ],
+        "travelled": 0.06,
+        "painted": 4
+      },
+      "aliveAt7600": {
+        "state": "alive",
+        "playing": true,
+        "ms": 8076,
+        "phase": "roam",
+        "frame": 482,
+        "scale": 0.73,
+        "pos": [
+          -0.26,
+          0.38
+        ],
+        "travelled": 0.81,
+        "painted": 4
+      },
+      "comeAliveWorks": true,
+      "leak": {
+        "editorName": "MERMAID",
+        "sessionCreature": "MERMAID",
+        "previousNamesPresent": []
+      }
+    },
+    {
+      "prompt": "A baby dragon made of stars in a night sky",
+      "slug": "a-baby-dragon-made-of-stars-in-a-night-s",
+      "epoch": 3,
+      "images": {
+        "count": 2,
+        "ms": 19216,
+        "note": "2 images from LLM — Direct (dev) · gpt-image-2 (1 did not arrive) — choose the one you like.",
+        "last": {
+          "mode": "direct",
+          "outcome": "generated",
+          "model": "gpt-image-2",
+          "count": 2,
+          "failed": 1,
+          "ms": 19064,
+          "prompt": "A baby dragon made of stars in a night sky. One whole creature, its entire body visible and centred, clearly silhouetted against a dark night sky. No text, no frame, no other figures."
+        }
+      },
+      "chosen": 0,
+      "build": {
+        "ms": 42980,
+        "note": "Creature built from the chosen image (LLM — Direct (dev) · gpt-4.1). Review it: UNFINISHED · COMPLETE · COME ALIVE.",
+        "last": {
+          "mode": "direct",
+          "model": "gpt-4.1",
+          "ms": 26783,
+          "refine": "",
+          "another": false,
+          "outcome": "generated",
+          "parse": {
+            "ok": true,
+            "reasons": [],
+            "repairs": []
+          },
+          "compile": {
+            "ok": true,
+            "reasons": [],
+            "repairs": []
+          },
+          "rawChars": 2279,
+          "source": "generated",
+          "confidence": 0.99,
+          "loaded": true
+        },
+        "retries": 0
+      },
+      "creature": "BABY DRAGON",
+      "seen": "A front-facing, floating baby dragon with both wings spread wide, head turned slightly left, large bright eyes, and curled tail visible.",
+      "confidence": 0.99,
+      "budget": 18,
+      "points": 18,
+      "joins": 19,
+      "missing": [
+        "RIGHT WING BASE — RIGHT WINGTIP",
+        "RIGHT SHOULDER — RIGHT FRONT FOOT",
+        "LEFT FRONT FOOT — LEFT REAR FOOT"
+      ],
+      "missingSource": "model",
+      "reveals": [
+        {
+          "name": "EYE",
+          "role": "LIFE",
+          "kind": "glow",
+          "at": "EYE",
+          "toward": null,
+          "why": "The bright eye gives the dragon its lively, magical gaze."
+        },
+        {
+          "name": "LEFT HORN TIP",
+          "role": "IDENTITY",
+          "kind": "spike",
+          "at": "LEFT HORN TIP",
+          "toward": "HEAD TOP",
+          "why": "The horn shapes its dragon silhouette."
+        },
+        {
+          "name": "RIGHT HORN TIP",
+          "role": "IDENTITY",
+          "kind": "spike",
+          "at": "RIGHT HORN TIP",
+          "toward": "HEAD TOP",
+          "why": "Both horns define the dragon’s look."
+        },
+        {
+          "name": "LEFT WINGTIP",
+          "role": "MAGIC",
+          "kind": "fill",
+          "at": "LEFT WINGTIP",
+          "toward": "LEFT WING BASE",
+          "why": "The shimmering wing edges add a magical presence."
+        }
+      ],
+      "hint": "A little wonder with wings shimmers just out of sight in the stars…",
+      "hold": 4.5,
+      "alive": {
+        "gesture": "Wings spread wide in a floating, playful pose.",
+        "movement": "It would flutter gently, gliding and twisting in mid-air with curiosity."
+      },
+      "playableInEther": false,
+      "strip": "BABY DRAGON · 18 POINTS · 19 CONNECTED · 3 MISSING · 4 REVEAL",
+      "summary": "BABY DRAGON · 18 points · 3 missing · 4 reveals",
+      "extractionPoints": 18,
+      "outcome": "built",
+      "aliveAt4600": {
+        "state": "alive",
+        "playing": true,
+        "ms": 4625,
+        "phase": "alive",
+        "frame": 278,
+        "scale": 0.71,
+        "pos": [
+          0.04,
+          -0.05
+        ],
+        "travelled": 0.06,
+        "painted": 4
+      },
+      "aliveAt7600": {
+        "state": "alive",
+        "playing": true,
+        "ms": 8059,
+        "phase": "roam",
+        "frame": 482,
+        "scale": 0.73,
+        "pos": [
+          0.37,
+          -0.05
+        ],
+        "travelled": 0.93,
+        "painted": 4
+      },
+      "comeAliveWorks": true,
+      "leak": {
+        "editorName": "BABY DRAGON",
+        "sessionCreature": "BABY DRAGON",
+        "previousNamesPresent": []
+      }
+    },
+    {
+      "prompt": "A falcon made of stars in a night sky",
+      "slug": "a-falcon-made-of-stars-in-a-night-sky",
+      "epoch": 4,
+      "images": {
+        "count": 2,
+        "ms": 17819,
+        "note": "2 images from LLM — Direct (dev) · gpt-image-2 (1 did not arrive) — choose the one you like.",
+        "last": {
+          "mode": "direct",
+          "outcome": "generated",
+          "model": "gpt-image-2",
+          "count": 2,
+          "failed": 1,
+          "ms": 17635,
+          "prompt": "A falcon made of stars in a night sky. One whole creature, its entire body visible and centred, clearly silhouetted against a dark night sky. No text, no frame, no other figures."
+        }
+      },
+      "chosen": 0,
+      "build": {
+        "ms": 15131,
+        "note": "Creature built from the chosen image (LLM — Direct (dev) · gpt-4.1). Review it: UNFINISHED · COMPLETE · COME ALIVE.",
+        "last": {
+          "mode": "direct",
+          "model": "gpt-4.1",
+          "ms": 11430,
+          "refine": "",
+          "another": false,
+          "outcome": "generated",
+          "parse": {
+            "ok": true,
+            "reasons": [],
+            "repairs": []
+          },
+          "compile": {
+            "ok": true,
+            "reasons": [],
+            "repairs": [
+              "fitted:0.96"
+            ]
+          },
+          "rawChars": 2063,
+          "source": "generated",
+          "confidence": 1,
+          "loaded": true
+        },
+        "retries": 0
+      },
+      "creature": "FALCON",
+      "seen": "The falcon is shown from the front with both wings spread wide upward, body and head visible, talons extended downward.",
+      "confidence": 1,
+      "budget": 16,
+      "points": 14,
+      "joins": 15,
+      "missing": [
+        "LEFT SHOULDER — HEAD TOP",
+        "RIGHT SHOULDER — RIGHT WING BEND",
+        "LEFT TALON — TAIL LEFT",
+        "RIGHT TALON — TAIL RIGHT"
+      ],
+      "missingSource": "model",
+      "reveals": [
+        {
+          "name": "EYE",
+          "role": "IDENTITY",
+          "kind": "glow",
+          "at": "HEAD TOP",
+          "toward": "BEAK TIP",
+          "why": "The eye gives the falcon its fierce, living gaze."
+        },
+        {
+          "name": "WING FEATHERS",
+          "role": "LIFE",
+          "kind": "lines",
+          "at": "LEFT WING TIP",
+          "toward": "LEFT WING BEND",
+          "why": "Feather lines bring the wings to life."
+        },
+        {
+          "name": "TAIL FEATHERS",
+          "role": "LIFE",
+          "kind": "fill",
+          "at": "TAIL CENTER",
+          "toward": "TAIL LEFT",
+          "why": "The tail's fanned shape is key to the falcon's identity."
+        },
+        {
+          "name": "TALON CLAWS",
+          "role": "MAGIC",
+          "kind": "spike",
+          "at": "LEFT TALON",
+          "toward": "BODY BASE",
+          "why": "Talons show the falcon as a hunter."
+        }
+      ],
+      "hint": "A swift ruler of the winds is waiting among the stars…",
+      "hold": 4.5,
+      "alive": {
+        "gesture": "A powerful bird poised with wings outstretched, ready to soar or strike.",
+        "movement": "The falcon would sweep its wings downward and launch skyward in a burst of speed."
+      },
+      "playableInEther": false,
+      "strip": "FALCON · 14 POINTS · 15 CONNECTED · 4 MISSING · 4 REVEAL",
+      "summary": "FALCON · 14 points · 4 missing · 4 reveals",
+      "extractionPoints": 14,
+      "outcome": "built",
+      "aliveAt4600": {
+        "state": "alive",
+        "playing": true,
+        "ms": 4607,
+        "phase": "alive",
+        "frame": 277,
+        "scale": 0.71,
+        "pos": [
+          0.03,
+          0.05
+        ],
+        "travelled": 0.06,
+        "painted": 4
+      },
+      "aliveAt7600": {
+        "state": "alive",
+        "playing": true,
+        "ms": 8040,
+        "phase": "roam",
+        "frame": 479,
+        "scale": 0.73,
+        "pos": [
+          -0.05,
+          0.36
+        ],
+        "travelled": 0.92,
+        "painted": 4
+      },
+      "comeAliveWorks": true,
+      "leak": {
+        "editorName": "FALCON",
+        "sessionCreature": "FALCON",
+        "previousNamesPresent": []
+      }
+    },
+    {
+      "prompt": "A lion with wings made of stars in a night sky",
+      "slug": "a-lion-with-wings-made-of-stars-in-a-nig",
+      "epoch": 5,
+      "images": {
+        "count": 1,
+        "ms": 34134,
+        "note": "1 image from LLM — Direct (dev) · gpt-image-2 (2 did not arrive) — choose the one you like.",
+        "last": {
+          "mode": "direct",
+          "outcome": "generated",
+          "model": "gpt-image-2",
+          "count": 1,
+          "failed": 2,
+          "ms": 33990,
+          "prompt": "A lion with wings made of stars in a night sky. One whole creature, its entire body visible and centred, clearly silhouetted against a dark night sky. No text, no frame, no other figures."
+        }
+      },
+      "chosen": 0,
+      "build": {
+        "ms": 15136,
+        "note": "Creature built from the chosen image (LLM — Direct (dev) · gpt-4.1). Review it: UNFINISHED · COMPLETE · COME ALIVE.",
+        "last": {
+          "mode": "direct",
+          "model": "gpt-4.1",
+          "ms": 13352,
+          "refine": "",
+          "another": false,
+          "outcome": "generated",
+          "parse": {
+            "ok": true,
+            "reasons": [],
+            "repairs": [
+              "creature-name-stripped",
+              "reveal-name-stripped:2"
+            ]
+          },
+          "compile": {
+            "ok": true,
+            "reasons": [],
+            "repairs": [
+              "fitted:0.96",
+              "chose-missing:1"
+            ]
+          },
+          "rawChars": 2530,
+          "source": "generated",
+          "confidence": 0.98,
+          "loaded": true
+        },
+        "retries": 0
+      },
+      "creature": "WINGED LION",
+      "seen": "A lion with a full mane faces forward, wings outstretched wide to both sides, tail curled left.",
+      "confidence": 0.98,
+      "budget": 24,
+      "points": 22,
+      "joins": 24,
+      "missing": [
+        "LEFT WING MID — LEFT WING ROOT",
+        "RIGHT SHOULDER — RIGHT WING ROOT",
+        "LEFT REAR KNEE — TAIL BASE",
+        "CHEST — LEFT FRONT PAW"
+      ],
+      "missingSource": "mixed",
+      "reveals": [
+        {
+          "name": "MANE",
+          "role": "IDENTITY",
+          "kind": "contour",
+          "at": "HEAD TOP",
+          "toward": "CHEST",
+          "why": "The lion's mane frames its face and chest, making the head unmistakable."
+        },
+        {
+          "name": "WING FEATHERS",
+          "role": "MAGIC",
+          "kind": "lines",
+          "at": "LEFT WING MID",
+          "toward": "LEFT WING TIP",
+          "why": "Radiating lines hint at powerful feathered wings."
+        },
+        {
+          "name": "EYES",
+          "role": "LIFE",
+          "kind": "glow",
+          "at": "HEAD TOP",
+          "toward": null,
+          "why": "Bright eyes bring the lion's face to life."
+        },
+        {
+          "name": "TAIL TUFT",
+          "role": "IDENTITY",
+          "kind": "contour",
+          "at": "TAIL TIP",
+          "toward": null,
+          "why": "A curl of fur at the tail end marks it as a lion."
+        }
+      ],
+      "hint": "A regal beast with wings spread wide waits among the stars…",
+      "hold": 5.5,
+      "alive": {
+        "gesture": "Wings outstretched, chest lifted, head held high in a proud, majestic stance.",
+        "movement": "It would rise, wings beating in a slow, powerful motion as it surveys the sky."
+      },
+      "playableInEther": false,
+      "strip": "WINGED LION · 22 POINTS · 24 CONNECTED · 4 MISSING · 4 REVEAL",
+      "summary": "WINGED LION · 22 points · 4 missing · 4 reveals",
+      "extractionPoints": 22,
+      "outcome": "built",
+      "aliveAt4600": {
+        "state": "alive",
+        "playing": true,
+        "ms": 4608,
+        "phase": "alive",
+        "frame": 276,
+        "scale": 0.71,
+        "pos": [
+          0.05,
+          0.02
+        ],
+        "travelled": 0.06,
+        "painted": 4
+      },
+      "aliveAt7600": {
+        "state": "alive",
+        "playing": true,
+        "ms": 8041,
+        "phase": "roam",
+        "frame": 479,
+        "scale": 0.73,
+        "pos": [
+          0.27,
+          0.34
+        ],
+        "travelled": 0.83,
+        "painted": 4
+      },
+      "comeAliveWorks": true,
+      "leak": {
+        "editorName": "WINGED LION",
+        "sessionCreature": "WINGED LION",
+        "previousNamesPresent": []
+      }
+    },
+    {
+      "prompt": "A giant whale made of stars in a night sky",
+      "slug": "a-giant-whale-made-of-stars-in-a-night-s",
+      "epoch": 6,
+      "images": {
+        "count": 3,
+        "ms": 18183,
+        "note": "3 images from LLM — Direct (dev) · gpt-image-2 — choose the one you like.",
+        "last": {
+          "mode": "direct",
+          "outcome": "generated",
+          "model": "gpt-image-2",
+          "count": 3,
+          "failed": 0,
+          "ms": 18022,
+          "prompt": "A giant whale made of stars in a night sky. One whole creature, its entire body visible and centred, clearly silhouetted against a dark night sky. No text, no frame, no other figures."
+        }
+      },
+      "chosen": 0,
+      "build": {
+        "ms": 16659,
+        "note": "Creature built from the chosen image (LLM — Direct (dev) · gpt-4.1). Review it: UNFINISHED · COMPLETE · COME ALIVE.",
+        "last": {
+          "mode": "direct",
+          "model": "gpt-4.1",
+          "ms": 10689,
+          "refine": "",
+          "another": false,
+          "outcome": "generated",
+          "parse": {
+            "ok": true,
+            "reasons": [],
+            "repairs": []
+          },
+          "compile": {
+            "ok": true,
+            "reasons": [],
+            "repairs": [
+              "fitted:0.96"
+            ]
+          },
+          "rawChars": 1969,
+          "source": "generated",
+          "confidence": 1,
+          "loaded": true
+        },
+        "retries": 0
+      },
+      "creature": "STELLAR WHALE",
+      "seen": "A giant whale seen in three-quarter view from the left, body arched, with both fins and tail visible.",
+      "confidence": 1,
+      "budget": 12,
+      "points": 12,
+      "joins": 13,
+      "missing": [
+        "LEFT FLIPPER TIP — BELLY CURVE",
+        "TAIL ROOT — BACK CURVE",
+        "SNOUT TIP — DORSAL MID"
+      ],
+      "missingSource": "model",
+      "reveals": [
+        {
+          "name": "EYE",
+          "role": "IDENTITY",
+          "kind": "glow",
+          "at": "EYE",
+          "toward": null,
+          "why": "The glowing eye gives the whale its life and presence."
+        },
+        {
+          "name": "LEFT FLIPPER TIP",
+          "role": "LIFE",
+          "kind": "fill",
+          "at": "LEFT FLIPPER TIP",
+          "toward": "BELLY CURVE",
+          "why": "The flipper's shape brings out the whale's swimming gesture."
+        },
+        {
+          "name": "TAIL TIP",
+          "role": "MAGIC",
+          "kind": "contour",
+          "at": "TAIL TIP",
+          "toward": "TAIL LOWER",
+          "why": "The flowing tail edge makes the silhouette majestic."
+        },
+        {
+          "name": "SNOUT TIP",
+          "role": "IDENTITY",
+          "kind": "lines",
+          "at": "SNOUT TIP",
+          "toward": "LOWER JAW",
+          "why": "Lines along the jaw suggest baleen and whale identity."
+        }
+      ],
+      "hint": "A gentle giant drifts quietly through the sea of stars…",
+      "hold": 5.5,
+      "alive": {
+        "gesture": "The whale arches upward, as if breaking through a current of stars.",
+        "movement": "It glides in a slow, sweeping motion, as if swimming through the night sky."
+      },
+      "playableInEther": false,
+      "strip": "STELLAR WHALE · 12 POINTS · 13 CONNECTED · 3 MISSING · 4 REVEAL",
+      "summary": "STELLAR WHALE · 12 points · 3 missing · 4 reveals",
+      "extractionPoints": 12,
+      "outcome": "built",
+      "aliveAt4600": {
+        "state": "alive",
+        "playing": true,
+        "ms": 4610,
+        "phase": "alive",
+        "frame": 277,
+        "scale": 0.71,
+        "pos": [
+          -0.06,
+          -0.01
+        ],
+        "travelled": 0.06,
+        "painted": 4
+      },
+      "aliveAt7600": {
+        "state": "alive",
+        "playing": true,
+        "ms": 8043,
+        "phase": "roam",
+        "frame": 480,
+        "scale": 0.73,
+        "pos": [
+          -0.26,
+          -0.31
+        ],
+        "travelled": 0.89,
+        "painted": 4
+      },
+      "comeAliveWorks": true,
+      "leak": {
+        "editorName": "STELLAR WHALE",
+        "sessionCreature": "STELLAR WHALE",
+        "previousNamesPresent": []
+      }
+    },
+    {
+      "prompt": "An imaginary fox-like creature made of stars",
+      "slug": "an-imaginary-fox-like-creature-made-of-s",
+      "epoch": 7,
+      "images": {
+        "count": 1,
+        "ms": 18241,
+        "note": "1 image from LLM — Direct (dev) · gpt-image-2 (2 did not arrive) — choose the one you like.",
+        "last": {
+          "mode": "direct",
+          "outcome": "generated",
+          "model": "gpt-image-2",
+          "count": 1,
+          "failed": 2,
+          "ms": 18103,
+          "prompt": "An imaginary fox-like creature made of stars. One whole creature, its entire body visible and centred, clearly silhouetted against a dark night sky. No text, no frame, no other figures."
+        }
+      },
+      "chosen": 0,
+      "build": {
+        "ms": 13171,
+        "note": "Creature built from the chosen image (LLM — Direct (dev) · gpt-4.1). Review it: UNFINISHED · COMPLETE · COME ALIVE.",
+        "last": {
+          "mode": "direct",
+          "model": "gpt-4.1",
+          "ms": 11120,
+          "refine": "",
+          "another": false,
+          "outcome": "generated",
+          "parse": {
+            "ok": true,
+            "reasons": [],
+            "repairs": [
+              "reveal-name-stripped:0"
+            ]
+          },
+          "compile": {
+            "ok": true,
+            "reasons": [],
+            "repairs": [
+              "fitted:1.05"
+            ]
+          },
+          "rawChars": 2187,
+          "source": "generated",
+          "confidence": 0.97,
+          "loaded": true
+        },
+        "retries": 0
+      },
+      "creature": "STELLAR FOX",
+      "seen": "A fox-like creature stands in three-quarter view, facing left, with both ears, all four legs, and its long, bushy tail visible, made entirely of starlight.",
+      "confidence": 0.97,
+      "budget": 16,
+      "points": 16,
+      "joins": 16,
+      "missing": [
+        "LEFT REAR KNEE — LEFT REAR PAW",
+        "TAIL BASE — TAIL MID",
+        "NOSE — LEFT CHEST"
+      ],
+      "missingSource": "model",
+      "reveals": [
+        {
+          "name": "EYE",
+          "role": "IDENTITY",
+          "kind": "glow",
+          "at": "NOSE",
+          "toward": null,
+          "why": "The magical eye gives the fox its watchful, mystical look."
+        },
+        {
+          "name": "TAIL SHIMMER",
+          "role": "LIFE",
+          "kind": "fill",
+          "at": "TAIL MID",
+          "toward": "TAIL TIP",
+          "why": "The flowing tail of starlight is the signature of this celestial creature."
+        },
+        {
+          "name": "EAR FUR",
+          "role": "LIFE",
+          "kind": "contour",
+          "at": "LEFT EAR TIP",
+          "toward": "RIGHT EAR TIP",
+          "why": "The pointed ears show its alertness and fox-like spirit."
+        },
+        {
+          "name": "NECK FUR",
+          "role": "MAGIC",
+          "kind": "contour",
+          "at": "LEFT CHEST",
+          "toward": "RIGHT CHEST",
+          "why": "A halo of fur hints at its ethereal, otherworldly presence."
+        }
+      ],
+      "hint": "A clever night wanderer glimmers in the starlit silence…",
+      "hold": 4.5,
+      "alive": {
+        "gesture": "The fox stands tall, tail unfurling in a gentle arc, ears pricked and alert.",
+        "movement": "It would glide lightly across the sky, tail trailing sparkling motes in its wake."
+      },
+      "playableInEther": false,
+      "strip": "STELLAR FOX · 16 POINTS · 16 CONNECTED · 3 MISSING · 4 REVEAL",
+      "summary": "STELLAR FOX · 16 points · 3 missing · 4 reveals",
+      "extractionPoints": 16,
+      "outcome": "built",
+      "aliveAt4600": {
+        "state": "alive",
+        "playing": true,
+        "ms": 4625,
+        "phase": "alive",
+        "frame": 278,
+        "scale": 0.71,
+        "pos": [
+          0.05,
+          -0.04
+        ],
+        "travelled": 0.06,
+        "painted": 4
+      },
+      "aliveAt7600": {
+        "state": "alive",
+        "playing": true,
+        "ms": 8041,
+        "phase": "roam",
+        "frame": 481,
+        "scale": 0.73,
+        "pos": [
+          0.44,
+          -0.01
+        ],
+        "travelled": 0.82,
+        "painted": 4
+      },
+      "comeAliveWorks": true,
+      "leak": {
+        "editorName": "STELLAR FOX",
+        "sessionCreature": "STELLAR FOX",
+        "previousNamesPresent": []
+      }
+    }
+  ],
+  "errors": [
+    "console: Failed to load resource: the server responded with a status of 404 (Not Found)",
+    "failed net::ERR_TOO_MANY_RETRIES https://api.openai.com/v1/models",
+    "console: Failed to load resource: net::ERR_TOO_MANY_RETRIES",
+    "failed net::ERR_TOO_MANY_RETRIES https://api.openai.com/v1/images/generations",
+    "console: Failed to load resource: net::ERR_TOO_MANY_RETRIES",
+    "failed net::ERR_TOO_MANY_RETRIES https://api.openai.com/v1/images/generations",
+    "console: Failed to load resource: net::ERR_TOO_MANY_RETRIES",
+    "failed net::ERR_TOO_MANY_RETRIES https://api.openai.com/v1/chat/completions",
+    "console: Failed to load resource: net::ERR_TOO_MANY_RETRIES",
+    "failed net::ERR_TOO_MANY_RETRIES https://api.openai.com/v1/images/generations",
+    "console: Failed to load resource: net::ERR_TOO_MANY_RETRIES",
+    "failed net::ERR_TOO_MANY_RETRIES https://api.openai.com/v1/images/generations",
+    "console: Failed to load resource: net::ERR_TOO_MANY_RETRIES",
+    "failed net::ERR_TOO_MANY_RETRIES https://api.openai.com/v1/images/generations",
+    "console: Failed to load resource: net::ERR_TOO_MANY_RETRIES",
+    "failed net::ERR_TOO_MANY_RETRIES https://api.openai.com/v1/images/generations",
+    "console: Failed to load resource: net::ERR_TOO_MANY_RETRIES",
+    "console: Access to fetch at 'https://api.openai.com/v1/images/generations' from origin 'http://127.0.0.1:8941' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.",
+    "failed net::ERR_FAILED https://api.openai.com/v1/images/generations",
+    "console: Failed to load resource: net::ERR_FAILED",
+    "failed net::ERR_TOO_MANY_RETRIES https://api.openai.com/v1/models",
+    "console: Failed to load resource: net::ERR_TOO_MANY_RETRIES",
+    "failed net::ERR_TOO_MANY_RETRIES https://api.openai.com/v1/images/generations",
+    "console: Failed to load resource: net::ERR_TOO_MANY_RETRIES",
+    "failed net::ERR_TOO_MANY_RETRIES https://api.openai.com/v1/images/generations",
+    "console: Failed to load resource: net::ERR_TOO_MANY_RETRIES"
+  ],
+  "probes": 2,
+  "connection": {
+    "mode": "direct",
+    "line": "LLM CONNECTED (direct)"
+  }
+}

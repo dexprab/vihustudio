@@ -9835,6 +9835,14 @@ leads somewhere.
   credential was network-held in that environment (any bearer token
   reached the model); the report says so, and a developer elsewhere types
   their own key.
+- **SEVEN OF SEVEN, AND JUDGED BY LOOKING.** On the shipped contract all
+  seven prompts built and came alive with nothing of the previous creature
+  surviving; the panda, mermaid, falcon and whale read as what they are,
+  the winged lion and the dragon are the roughest — a many-limbed winged
+  creature in three-quarter view is where the model's placement is
+  weakest, and more lights did not help. Table and screenshots:
+  `docs/ETHER_MYSTERY_LAB.md` → *The seven prompts, run for real*;
+  `tools/ether-mystery-lab-test/shots/creature-lab/`.
 - Out of scope and not implemented: creature encounters as a reward
   system, creature dialogue, a Companion in the Ether, per-Traveller
   encounter history, more activity rows (story hunt, missing

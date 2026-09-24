@@ -3252,3 +3252,37 @@ constellation, memory, address, username, Creator or Companion word can
 be in it, by construction and by scan. The typed key reaches the provider
 and nowhere else: not storage, not the trace, not an export. Loading the
 page makes no request.
+
+### The seven prompts, run for real (`creature-walkthrough.js`)
+
+Run against the real models from the build environment (the credential
+was network-held there — the harness typed a placeholder and the report
+says so), taking the FIRST candidate every time so the choice is
+reproducible and plainly not a researcher's taste. All seven built and
+came alive; no creature's names survived into the next session.
+
+| prompt | creature | points | missing (by light) | reveals | hint | alive | images arrived / re-reads |
+|---|---|---|---|---|---|---|---|
+| A panda | PANDA | 15 | NOSE–CHIN · SHOULDER–BACK HIP · FRONT PAW RIGHT–CHEST | LEFT EYE PATCH (identity, fill) · NOSE SHINE (life, glow) · EAR CONTOUR (identity, contour) · SHOULDER FUR (life, contour) | A gentle wonder of misty forests glimmers in the sky… | yes | 1/1 |
+| A mermaid | MERMAID | 13 | RIGHT HAND–RIGHT HIP · LEFT HIP–LEFT HAND · TAIL TIP–TAIL RIGHT | HAIR FLOW (life, contour) · TAIL FIN (identity, fill) · EYE (magic, glow) · FIN LINES (life, lines) | A shimmering dweller of the deep is drifting through the sky… | yes | 2/0 |
+| A baby dragon | BABY DRAGON | 18 | RIGHT WING BASE–RIGHT WINGTIP · RIGHT SHOULDER–RIGHT FRONT FOOT · LEFT FRONT FOOT–LEFT REAR FOOT | EYE (life, glow) · LEFT HORN TIP (identity, spike) · RIGHT HORN TIP (identity, spike) · LEFT WINGTIP (magic, fill) | A little wonder with wings shimmers just out of sight in the stars… | yes | 2/0 |
+| A falcon | FALCON | 14 | LEFT SHOULDER–HEAD TOP · RIGHT SHOULDER–RIGHT WING BEND · LEFT TALON–TAIL LEFT · RIGHT TALON–TAIL RIGHT | EYE (identity, glow) · WING FEATHERS (life, lines) · TAIL FEATHERS (life, fill) · TALON CLAWS (magic, spike) | A swift ruler of the winds is waiting among the stars… | yes | 2/0 |
+| A lion with wings | WINGED LION | 22 | LEFT WING MID–LEFT WING ROOT · RIGHT SHOULDER–RIGHT WING ROOT · LEFT REAR KNEE–TAIL BASE · CHEST–LEFT FRONT PAW | MANE (identity, contour) · WING FEATHERS (magic, lines) · EYES (life, glow) · TAIL TUFT (identity, contour) | A regal beast with wings spread wide waits among the stars… | yes | 1/0 |
+| A giant whale | STELLAR WHALE | 12 | LEFT FLIPPER TIP–BELLY CURVE · TAIL ROOT–BACK CURVE · SNOUT TIP–DORSAL MID | EYE (identity, glow) · LEFT FLIPPER TIP (life, fill) · TAIL TIP (magic, contour) · SNOUT TIP (identity, lines) | A gentle giant drifts quietly through the sea of stars… | yes | 3/0 |
+| An imaginary fox-like creature | STELLAR FOX | 16 | LEFT REAR KNEE–LEFT REAR PAW · TAIL BASE–TAIL MID · NOSE–LEFT CHEST | EYE (identity, glow) · TAIL SHIMMER (life, fill) · EAR FUR (life, contour) · NECK FUR (magic, contour) | A clever night wanderer glimmers in the starlit silence… | yes | 1/0 |
+
+What the runs showed, by looking: the panda, the mermaid, the falcon and
+the whale read as what they are — an outline with the diagnostic parts
+(ears and a rounded body; a head, arms and a fluked tail; spread wings
+and a tail; a long body with a fluke). The winged lion at 22 lights and
+the first dragon at 28 are the weakest: a many-limbed, winged creature in
+three-quarter view is where the model's placement is roughest, and more
+lights did not make it clearer. The compiler's own choices are visible
+in the repairs column of the report — `fitted`, `creature-name-stripped`,
+`reveal-name-stripped`, `chose-missing` — and nothing else intervened.
+
+The unit-contract run is kept beside it
+(`shots/creature-lab-unit-contract/`): the same seven prompts, three of
+which needed re-reads and two of which never built, with a panda whose
+figure read as two blobs. Screenshots: `shots/creature-lab/<slug>-complete.png`
+and `-alive.png`, with the chosen picture beside each.
